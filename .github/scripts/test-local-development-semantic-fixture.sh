@@ -30,27 +30,39 @@ archive="${KAST_PREPARED_GENERATION_ARCHIVE:-}"
 evidence_dir="${KAST_SEMANTIC_FIXTURE_EVIDENCE_DIR:-${repo_root}/build/installed-semantic-fixture-evidence}"
 fixture_source="${repo_root}/backend-headless/src/test/resources/fixtures/installed-semantic-gradle"
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-installed-semantic-fixture.XXXXXX")"
+tmp_root="$(cd -- "$tmp_root" && pwd -P)"
 fixture_root="${tmp_root}/workspace"
+fixture_home="${tmp_root}/home"
 prepared_parent="${tmp_root}/prepared"
 local_prefix="${tmp_root}/local-development"
-runtime_started=false
+lease_acquired=false
+lease_id=""
 installed_kast=""
+
+invoke_installed_kast() {
+  env -u CODEX_HOME HOME="$fixture_home" "$installed_kast" "$@"
+}
 
 run_installed_kast() {
   local evidence_name="$1"
   shift
-  "$installed_kast" --output json "$@" \
+  local lease_args=()
+  if [[ -n "$lease_id" ]]; then
+    lease_args+=(--lease-id "$lease_id")
+  fi
+  invoke_installed_kast --output json "$@" \
     --workspace-root "$fixture_root" \
     --backend headless \
-    >"${evidence_dir}/${evidence_name}.json"
+    "${lease_args[@]}" >"${evidence_dir}/${evidence_name}.json"
 }
 
 cleanup() {
   local status=$?
-  if [[ "$runtime_started" == true && -x "$installed_kast" ]]; then
-    "$installed_kast" --output json developer runtime stop \
+  if [[ "$lease_acquired" == true && -x "$installed_kast" ]]; then
+    invoke_installed_kast --output json agent lease release \
       --workspace-root "$fixture_root" \
-      --backend headless >/dev/null 2>&1 || true
+      --backend headless \
+      --lease-id "$lease_id" >/dev/null 2>&1 || true
   fi
   if [[ "$status" -ne 0 && -d "$local_prefix" ]]; then
     mkdir -p "${evidence_dir}/runtime-logs"
@@ -71,7 +83,7 @@ command -v python3 >/dev/null 2>&1 || die 'python3 is required for the semantic 
 command -v tar >/dev/null 2>&1 || die 'tar is required for the semantic fixture'
 command -v git >/dev/null 2>&1 || die 'git is required for the semantic fixture'
 
-mkdir -p "$evidence_dir" "$fixture_root" "$prepared_parent"
+mkdir -p "$evidence_dir" "$fixture_root" "$fixture_home" "$prepared_parent"
 cp -R "${fixture_source}/." "$fixture_root/"
 cp "${repo_root}/gradlew" "$fixture_root/gradlew"
 cp "${repo_root}/gradlew.bat" "$fixture_root/gradlew.bat"
@@ -108,13 +120,45 @@ prepared_kast="${prepared_generation}/bin/kast"
 
 installed_kast="${local_prefix}/bin/kast-dev"
 [[ -x "$installed_kast" ]] || die 'Prepared generation activation did not install kast-dev'
+active_generation="$(jq -er '.receipt.generationId' "${evidence_dir}/activation.json")"
 hash_kotlin_tree "$fixture_root" >"${evidence_dir}/kotlin-before.sha256"
 
-runtime_started=true
-if ! run_installed_kast runtime-up developer runtime up; then
-  cat "${evidence_dir}/runtime-up.json" >&2
-  die 'Installed headless runtime failed to start for the representative fixture'
+if ! run_installed_kast lease-acquire agent lease acquire; then
+  cat "${evidence_dir}/lease-acquire.json" >&2
+  die 'Installed headless lease failed to acquire for the representative fixture'
 fi
+lease_id="$(jq -er '.result.leaseId' "${evidence_dir}/lease-acquire.json")"
+lease_acquired=true
+jq -e \
+  --arg generation "$active_generation" \
+  --arg workspace_root "$fixture_root" \
+  '.ok == true and
+   .result.state == "READY" and
+   .result.workspaceRoot == $workspace_root and
+   .result.backendName == "headless" and
+   .result.ownership == "STARTED" and
+   .result.installation.authority == "local-development" and
+   .result.installation.generation == $generation and
+   .result.runtime.descriptor.workspaceRoot == $workspace_root and
+   .result.runtime.descriptor.backendName == "headless" and
+   .result.runtime.descriptor.pid > 0 and
+   .result.runtime.process.pid == .result.runtime.descriptor.pid and
+   (.result.runtime.process.startedAt | length) > 0 and
+   (.result.runtime.descriptorPath | length) > 0' \
+  "${evidence_dir}/lease-acquire.json" >/dev/null \
+  || die 'Installed headless lease did not bind the active generation and exact READY runtime'
+
+wrong_root="${tmp_root}/wrong-workspace"
+mkdir -p "$wrong_root"
+if invoke_installed_kast --output json agent lease status \
+  --workspace-root "$wrong_root" \
+  --backend headless \
+  --lease-id "$lease_id" >"${evidence_dir}/lease-wrong-root.json"; then
+  die 'Installed lease accepted a different workspace root'
+fi
+jq -e '.error.code == "WORKSPACE_LEASE_ROOT_MISMATCH"' \
+  "${evidence_dir}/lease-wrong-root.json" >/dev/null \
+  || die 'Installed lease did not return the typed wrong-root failure'
 
 run_installed_kast verify agent verify --explain
 jq -e \
@@ -221,12 +265,23 @@ hash_kotlin_tree "$fixture_root" >"${evidence_dir}/kotlin-after.sha256"
 cmp "${evidence_dir}/kotlin-before.sha256" "${evidence_dir}/kotlin-after.sha256" \
   || die 'Representative semantic proof changed fixture Kotlin bytes'
 
-run_installed_kast runtime-stop developer runtime stop
-runtime_started=false
-jq -e '.stopped == true and .stoppedCount == 1' "${evidence_dir}/runtime-stop.json" >/dev/null \
-  || die 'Representative fixture did not stop exactly one runtime'
+run_installed_kast lease-release agent lease release
+lease_acquired=false
+jq -e \
+  '.ok == true and
+   .result.state == "RELEASED" and
+   .result.releaseReceipt.runtimeStopped == true and
+   .result.releaseReceipt.reason == "OWNED_RUNTIME_STOPPED"' \
+  "${evidence_dir}/lease-release.json" >/dev/null \
+  || die 'Representative fixture lease did not stop its exact owned runtime'
 
-"$installed_kast" --output json developer local remove \
+run_installed_kast lease-release-idempotent agent lease release
+jq -e --slurpfile first "${evidence_dir}/lease-release.json" \
+  '.ok == true and .result.releaseReceipt == $first[0].result.releaseReceipt' \
+  "${evidence_dir}/lease-release-idempotent.json" >/dev/null \
+  || die 'Representative fixture lease release was not idempotent'
+
+invoke_installed_kast --output json developer local remove \
   --prefix "$local_prefix" \
   --workspace-root "$fixture_root" >"${evidence_dir}/remove.json"
 [[ ! -e "$local_prefix" ]] || die 'Receipt-owned removal left the local prefix behind'

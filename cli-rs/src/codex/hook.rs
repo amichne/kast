@@ -899,6 +899,7 @@ fn semantic_mutation_name(command: &AgentCommand) -> Option<&'static str> {
         AgentCommand::AddStatement(_) => Some("add-statement"),
         AgentCommand::ReplaceDeclaration(_) => Some("replace-declaration"),
         AgentCommand::Lsp(_)
+        | AgentCommand::Lease(_)
         | AgentCommand::Verify(_)
         | AgentCommand::WorkspaceFiles(_)
         | AgentCommand::Symbol(_)

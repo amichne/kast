@@ -9,6 +9,10 @@ trap 'rm -rf "$KAST_TMP"' EXIT
 KAST_RESULT="$KAST_TMP/stdout.json"
 KAST_STDERR="$KAST_TMP/stderr.txt"
 
+kast --output json agent lease acquire --workspace-root "$PWD" --backend idea \
+  >"$KAST_RESULT" 2>"$KAST_STDERR"
+# Preserve result.leaseId and result.backendName. Append both to every command below.
+
 kast --output json agent references --symbol com.example.EventBean \
   --declaration-file src/main/kotlin/com/example/EventBean.kt \
   --declaration-start-offset 42 --kind class \
@@ -31,11 +35,11 @@ kast --output json agent rename --symbol com.example.EventBean --new-name Domain
   --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 ```
 
-Warm or inspect backend state only through public health commands:
+Inspect leased backend state only through public health commands:
 
 ```sh
-kast --output json agent verify --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
-kast --output json runtime status --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
+kast --output json agent lease status --workspace-root "$PWD" --backend <name> --lease-id <id> >"$KAST_RESULT" 2>"$KAST_STDERR"
+kast --output json agent verify --workspace-root "$PWD" --backend <name> --lease-id <id> >"$KAST_RESULT" 2>"$KAST_STDERR"
 kast --output json repair --workspace-root "$PWD" >"$KAST_RESULT" 2>"$KAST_STDERR"
 ```
 

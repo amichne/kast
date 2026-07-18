@@ -17,6 +17,20 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
             ),
         );
     }
+    if let Some(runtime) = agent_command_runtime(&command)
+        && let Some(lease_id) = runtime.lease_id.as_ref()
+        && let Err(error) = runtime::validate_workspace_lease_for_command(
+            lease_id,
+            runtime.workspace_root.as_deref(),
+            runtime.backend_name,
+        )
+    {
+        return error_envelope(
+            "agent/lease/validate".to_string(),
+            None,
+            AgentError::from_cli_error(error),
+        );
+    }
     if let AgentCommand::Workflow(_) = command {
         return removed_agent_command(
             "agent/workflow",
@@ -45,6 +59,7 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         AgentCommand::Lsp(_) => {
             unreachable!("operator agent commands are handled before request prep")
         }
+        AgentCommand::Lease(args) => execute_agent_lease(args),
         AgentCommand::Tools(_) => unreachable!("agent tools is handled before request prep"),
         AgentCommand::Call(_) => removed_agent_command(
             "agent/call",
@@ -85,6 +100,71 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         AgentCommand::AddStatement(args) => execute_agent_add_statement(args),
         AgentCommand::ReplaceDeclaration(args) => execute_agent_replace_declaration(args),
         AgentCommand::Operation(args) => execute_agent_operation(args),
+    }
+}
+
+fn agent_command_runtime(command: &AgentCommand) -> Option<&AgentRuntimeArgs> {
+    match command {
+        AgentCommand::Verify(args) => Some(&args.runtime),
+        AgentCommand::WorkspaceFiles(args) => Some(&args.runtime),
+        AgentCommand::Symbol(args) => Some(&args.runtime),
+        AgentCommand::References(args) => Some(&args.runtime),
+        AgentCommand::Callers(args) | AgentCommand::Callees(args) => Some(&args.runtime),
+        AgentCommand::Implementations(args) => Some(&args.runtime),
+        AgentCommand::Hierarchy(args) => Some(&args.runtime),
+        AgentCommand::Impact(args) => Some(&args.runtime),
+        AgentCommand::Diagnostics(args) => Some(&args.runtime),
+        AgentCommand::Rename(args) => Some(&args.runtime),
+        AgentCommand::AddFile(args) => Some(&args.runtime),
+        AgentCommand::AddDeclaration(args) | AgentCommand::AddImplementation(args) => {
+            Some(&args.runtime)
+        }
+        AgentCommand::AddStatement(args) => Some(&args.runtime),
+        AgentCommand::ReplaceDeclaration(args) => Some(&args.runtime),
+        AgentCommand::Operation(args) => match &args.command {
+            AgentOperationCommand::Status(args) | AgentOperationCommand::Cancel(args) => {
+                Some(&args.runtime)
+            }
+        },
+        AgentCommand::Lsp(_)
+        | AgentCommand::Lease(_)
+        | AgentCommand::Tools(_)
+        | AgentCommand::Call(_)
+        | AgentCommand::Workflow(_) => None,
+    }
+}
+
+fn execute_agent_lease(args: AgentLeaseArgs) -> AgentEnvelope {
+    let (method, result) = match args.command {
+        AgentLeaseCommand::Acquire(args) => (
+            "agent/lease/acquire",
+            runtime::workspace_lease_acquire(args),
+        ),
+        AgentLeaseCommand::Status(args) => (
+            "agent/lease/status",
+            runtime::workspace_lease_status(args),
+        ),
+        AgentLeaseCommand::Release(args) => (
+            "agent/lease/release",
+            runtime::workspace_lease_release(args),
+        ),
+    };
+    match result {
+        Ok(result) => AgentEnvelope {
+            ok: true,
+            method: method.to_string(),
+            request: None,
+            response: None,
+            result: Some(json!(result)),
+            raw_response: None,
+            error: None,
+            schema_version: SCHEMA_VERSION,
+        },
+        Err(error) => error_envelope(
+            method.to_string(),
+            None,
+            AgentError::from_cli_error(error),
+        ),
     }
 }
 

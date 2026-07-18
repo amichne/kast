@@ -956,7 +956,10 @@ fn render_local_skill(source_skill: &Path, entrypoint: &Path) -> Result<String> 
         "- Do not apply ordinary install repair through local-development authority; rerun the source checkout's `./gradlew refreshDevelopmentLocal` task instead.",
     );
     let entrypoint = shell_single_quoted_path(entrypoint);
-    let rendered = source.replace("`kast", &format!("`{entrypoint}"));
+    let rendered = source
+        .replace("`kast", &format!("`{entrypoint}"))
+        .replace("--backend <idea|headless>", "--backend=headless")
+        .replace("--backend <name>", "--backend=headless");
     let authority_guidance = if rendered.contains("Do not apply ordinary install repair") {
         String::new()
     } else {
@@ -964,7 +967,7 @@ fn render_local_skill(source_skill: &Path, entrypoint: &Path) -> Result<String> 
             .to_string()
     };
     Ok(format!(
-        "{rendered}{authority_guidance}\n\n## Local-development backend startup\n\nBefore the reuse-only verification command, start the exact receipt-owned headless backend with `{} developer runtime up --workspace-root \"$PWD\" --backend=headless`. Then run `{} agent verify --workspace-root \"$PWD\" --backend=headless`.\n",
+        "{rendered}{authority_guidance}\n\n## Local-development workspace lease\n\nAcquire the exact receipt-owned headless runtime with `{} agent lease acquire --workspace-root \"$PWD\" --backend=headless`. Pass its ID to `{} agent verify --workspace-root \"$PWD\" --backend=headless --lease-id <id>` and every later semantic command, then release that lease.\n",
         entrypoint,
         entrypoint,
     ))
@@ -973,7 +976,7 @@ fn render_local_skill(source_skill: &Path, entrypoint: &Path) -> Result<String> 
 fn render_local_guidance(skill: &Path, entrypoint: &Path, source: &SourceSnapshot) -> String {
     let entrypoint = shell_single_quoted_path(entrypoint);
     format!(
-        "<kast files=\"*.kt, *.kts\" type=\"instructions\" replaceTools=\"grep,search,write\">\n## Kast local-development routing\nUse `{}` before Kotlin or Gradle semantic work.\nStart the receipt-owned `{} developer runtime up --workspace-root \"$PWD\" --backend=headless` for this exact root, then run `{} agent verify --workspace-root \"$PWD\" --backend=headless` before semantic work.\nUse typed commands such as `{} agent symbol --query <name>`, `{} agent diagnostics --file-path <path>`, and `{} agent rename --symbol <fq-name> --new-name <name> --apply`.\nPrepared source commit: {}\nPrepared source SHA-256: {}\n</kast>\n",
+        "<kast files=\"*.kt, *.kts\" type=\"instructions\" replaceTools=\"grep,search,write\">\n## Kast local-development routing\nUse `{}` before Kotlin or Gradle semantic work.\nAcquire the receipt-owned `{} agent lease acquire --workspace-root \"$PWD\" --backend=headless` lease for this exact root.\nVerify with `{} agent verify --workspace-root \"$PWD\" --backend=headless --lease-id <id>`, pass the same root, backend, and lease ID to later typed commands such as `{} agent symbol`, `{} agent diagnostics`, and `{} agent rename`, then release the lease.\nPrepared source commit: {}\nPrepared source SHA-256: {}\n</kast>\n",
         skill.display(),
         entrypoint,
         entrypoint,
@@ -1053,6 +1056,7 @@ fn normalize_rendered_guidance_arguments(
                 "<fq-name>" => "io.example.Symbol.member",
                 "<path>" | "<snippet.kt>" => "/tmp/KastSnippet.kt",
                 "<stable-key>" => "kast-guidance-key",
+                "<id>" => "kast-guidance-lease-id",
                 token => token,
             };
             if token.contains(['\'', '"', '$', '<', '>']) {

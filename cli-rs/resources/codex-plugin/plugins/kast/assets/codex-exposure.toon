@@ -1,6 +1,9 @@
 version: "0.1.0"
 schema_version: 1
-semantic_commands[17]{command,path,mode,planApply,evidence,example}:
+semantic_commands[20]{command,path,mode,planApply,evidence,example}:
+  "lease-acquire",agent lease acquire,lifecycle,false,"READY exact-root runtime and install-generation lease","kast --output toon agent lease acquire --workspace-root <root> --backend <backend>"
+  "lease-status",agent lease status,lifecycle,false,authenticated lease lifecycle and exact runtime identity,"kast --output toon agent lease status --workspace-root <root> --backend <backend> --lease-id <id>"
+  "lease-release",agent lease release,lifecycle,false,idempotent release receipt and exact ownership cleanup,"kast --output toon agent lease release --workspace-root <root> --backend <backend> --lease-id <id>"
   "workspace-files","agent workspace-files",read,false,typed workspace paths and coverage,"kast --output toon agent workspace-files --workspace-root <root>"
   symbol,agent symbol,read,false,"compiler-resolved symbol identity","kast --output toon agent symbol --workspace-root <root> --query <name>"
   references,agent references,read,false,bounded reference identities,"kast --output toon agent references --workspace-root <root> --symbol <fq-name>"

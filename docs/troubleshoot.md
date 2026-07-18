@@ -27,6 +27,9 @@ sequence when needed.
 | `agent verify` reports `SEMANTIC_WORKSPACE_UNPREPARED` in a worktree or temporary checkout | That exact root has no admitted IDEA or headless semantic state | Prepare that exact root with the JetBrains plugin, or use an already installed supported headless distribution |
 | `agent verify` reports `SEMANTIC_WORKSPACE_UNSUPPORTED` | The selected root is not a Kotlin Gradle workspace | Select the root containing `settings.gradle(.kts)` or `build.gradle(.kts)` |
 | `agent verify` reports `SEMANTIC_BACKEND_AMBIGUOUS` | IDEA and headless are both ready for the exact root | Rerun with `--backend=idea` or `--backend=headless` after checking the candidate evidence |
+| Lease acquisition reports `WORKSPACE_LEASE_CONFLICT` | A live owner already holds the exact root/backend | Continue in the owning task or release there; do not delete the record or stop the runtime |
+| Lease status reports `ABANDONED` | The recorded owner process and start identity are gone | Acquire again to run typed abandoned-owner recovery; Kast stops only an exact runtime the old lease started |
+| A lease reports stale, foreign, tampered, replaced, or unavailable | Its session, install generation, authenticated record, or exact runtime no longer matches | Stop semantic work and acquire a fresh lease from the intended task/root; never edit the token or record |
 | An applied command reports `SEMANTIC_MUTATION_AUTHORITY_REQUIRED` | The read-only headless route was selected without exact-root plugin preparation on macOS | Open that exact root with the JetBrains-installed plugin, verify it, then rerun the applied command |
 | Hosted Linux agent cannot answer semantic questions | Headless bundle or backend is not active | Check the image/bootstrap flow and runtime state |
 | Symbol lookup returns an unexpected target | The query is too broad | Narrow by kind, file, or containing type before editing |
@@ -43,34 +46,39 @@ It also preserves `daemons.json` exactly; use an explicit lifecycle command if
 stale runtime state should be pruned.
 
 On macOS, open the exact checkout root in IntelliJ IDEA or Android Studio with
-the signed JetBrains-installed Kast plugin enabled. After the plugin has prepared that
-root, rerun verification and the read-only semantic commands against the same
-absolute path.
+the signed JetBrains-installed Kast plugin enabled. After preparation, acquire
+an IDEA lease and pass its ID to verification and every semantic command for
+the same absolute path.
 
 ```console
-kast --output json agent verify --backend=idea --workspace-root "$PWD"
-kast --output json agent symbol --query <name> --workspace-root "$PWD"
+kast --output json agent lease acquire --backend=idea --workspace-root "$PWD"
+kast --output json agent verify --backend=idea --lease-id <id> --workspace-root "$PWD"
+kast --output json agent symbol --backend=idea --lease-id <id> --query <name> --workspace-root "$PWD"
 kast --output json agent diagnostics \
+  --backend=idea --lease-id <id> \
   --file-path "$PWD/path/to/File.kt" \
   --workspace-root "$PWD"
+kast --output json agent lease release --backend=idea --lease-id <id> --workspace-root "$PWD"
 ```
 
-On a host with the supported headless distribution already installed and an
-exact-root runtime already ready, select the headless backend explicitly.
-Verification reuses that runtime and never starts, installs, or repairs a
-headless backend. Subsequent read-only symbol and diagnostics commands may use
-the installed distribution's normal lifecycle path.
+On a host with the supported headless distribution installed, select headless
+explicitly. Acquisition may start its exact-root runtime through the installed
+lifecycle; release stops it only when this lease owns that start.
 
 ```console
-kast --output json agent verify --backend=headless --workspace-root "$PWD"
+kast --output json agent lease acquire --backend=headless --workspace-root "$PWD"
+kast --output json agent verify --backend=headless --lease-id <id> --workspace-root "$PWD"
 kast --output json agent symbol \
   --backend=headless \
+  --lease-id <id> \
   --query <name> \
   --workspace-root "$PWD"
 kast --output json agent diagnostics \
   --backend=headless \
+  --lease-id <id> \
   --file-path "$PWD/path/to/File.kt" \
   --workspace-root "$PWD"
+kast --output json agent lease release --backend=headless --lease-id <id> --workspace-root "$PWD"
 ```
 
 Check the returned backend, workspace root, source modules, limitations, and

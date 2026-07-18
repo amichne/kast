@@ -31,6 +31,10 @@ directory. Internal catalog truth and generated request fixtures live under
   by diagnostics for current file contents.
 - Keep readiness and repair guidance read-only by default. Applying repair
   requires explicit user authority.
+- Acquire one exact-root lease before semantic work, pass its opaque ID and
+  selected backend to later semantic commands, and release the same lease when
+  the worker finishes. Do not teach direct developer runtime lifecycle as the
+  agent startup path.
 - Do not teach retired `tools`, `call`, or `workflow` commands, raw RPC names,
   LSP internals, developer commands, package files, or hooks as the normal
   semantic surface.

@@ -199,7 +199,7 @@ mod refresh_tests {
         let source_skill = fixture.path().join("SKILL.md");
         fs::write(
             &source_skill,
-            "---\nname: kast\ndescription: fixture\n---\nRun `kast agent verify --workspace-root \"$PWD\"`.\n",
+            "---\nname: kast\ndescription: fixture\n---\nAcquire `kast agent lease acquire --workspace-root \"$PWD\" --backend <idea|headless>`. Run `kast agent verify --workspace-root \"$PWD\" --backend <name> --lease-id <id>`.\n",
         )
         .expect("source skill");
         let entrypoint = fixture
@@ -221,7 +221,13 @@ mod refresh_tests {
             "rendered skill command must shell-quote the entrypoint: {rendered_skill}",
         );
         assert!(
-            rendered_guidance.contains(&format!("`{quoted_entrypoint} developer runtime up")),
+            !rendered_skill.contains("<idea|headless>")
+                && !rendered_skill.contains("--backend <name>")
+                && rendered_skill.contains("--backend=headless"),
+            "local authority must specialize generic backend templates: {rendered_skill}",
+        );
+        assert!(
+            rendered_guidance.contains(&format!("`{quoted_entrypoint} agent lease acquire")),
             "rendered guidance command must shell-quote the entrypoint: {rendered_guidance}",
         );
         validate_rendered_command_lockstep(&rendered_skill, &entrypoint)
@@ -295,12 +301,12 @@ mod refresh_tests {
                 .to_string()
                 .replace('\'', "'\"'\"'")
         );
-        let start_command = format!(
-            "{} developer runtime up --workspace-root \"$PWD\" --backend=headless",
+        let acquire_command = format!(
+            "{} agent lease acquire --workspace-root \"$PWD\" --backend=headless",
             quoted_entrypoint,
         );
         let verify_command = format!(
-            "{} agent verify --workspace-root \"$PWD\" --backend=headless",
+            "{} agent verify --workspace-root \"$PWD\" --backend=headless --lease-id <id>",
             quoted_entrypoint,
         );
         for installed_resource in [
@@ -308,8 +314,8 @@ mod refresh_tests {
             prefix.join("current/guidance/AGENTS.local.md"),
         ] {
             let content = fs::read_to_string(&installed_resource).expect("installed resource");
-            let start_offset = content.find(&start_command).unwrap_or_else(|| {
-                panic!("{} must teach local startup", installed_resource.display())
+            let acquire_offset = content.find(&acquire_command).unwrap_or_else(|| {
+                panic!("{} must teach local lease acquisition", installed_resource.display())
             });
             let verify_offset = content.find(&verify_command).unwrap_or_else(|| {
                 panic!(
@@ -318,8 +324,8 @@ mod refresh_tests {
                 )
             });
             assert!(
-                start_offset < verify_offset,
-                "{} must start the reuse-only runtime before verification",
+                acquire_offset < verify_offset,
+                "{} must acquire the exact runtime before verification",
                 installed_resource.display(),
             );
         }

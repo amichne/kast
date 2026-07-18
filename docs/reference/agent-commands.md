@@ -16,6 +16,7 @@ names.
 
 | Agent need | Kast capability | Why it matters |
 | --- | --- | --- |
+| Bind one worker to one semantic runtime | Exact-root workspace lease | Prevents cross-worktree, backend, runtime, generation, and session drift |
 | Confirm semantic readiness | Backend verification | Avoids acting on stale IDE or headless state |
 | Discover owned Kotlin files | Workspace file discovery | Composes compiler/project-model and source-index evidence without recursive search |
 | Find the declaration behind a name | Symbol identity | Distinguishes real Kotlin declarations from matching text |
@@ -32,6 +33,41 @@ names.
 Interactive use should stay readable. Automation that needs a parser contract
 should request JSON explicitly. The public docs only describe those two output
 shapes.
+
+## Exact-Root Workspace Leases
+
+Acquire a lease before a coordinated semantic-work session:
+
+```console
+kast --output json agent lease acquire --workspace-root "$PWD" --backend idea
+```
+
+The `READY` result contains an opaque `leaseId`, canonical `workspaceRoot`,
+workspace classification, selected backend, full runtime and process-start
+identity, effective install authority and generation, owner identity, and
+`STARTED` or `BORROWED` ownership. Acquisition accepts only a fully `READY`
+runtime. It may start headless through the existing lifecycle, but it only
+borrows IDEA and never launches or terminates the IDE.
+
+Pass `--workspace-root`, `--backend`, and `--lease-id` to every semantic or
+operation command in the session. Kast authenticates the token and record,
+then rechecks the same root, backend, live owner/session, effective generation,
+and exact ready runtime before opening a semantic session.
+
+```console
+kast agent lease status --workspace-root "$PWD" --backend idea --lease-id <id>
+kast agent verify --workspace-root "$PWD" --backend idea --lease-id <id>
+kast agent lease release --workspace-root "$PWD" --backend idea --lease-id <id>
+```
+
+Status reports `READY`, `ABANDONED`, `FAILED`, or terminal `RELEASED`. One live
+lease owns an exact root/backend; another acquisition returns
+`WORKSPACE_LEASE_CONFLICT`. A later acquisition may recover an abandoned owner
+using process-start evidence. Release is idempotent and stops only the exact
+headless runtime that the lease started. Borrowed headless and IDEA runtimes
+remain running. Wrong-root, wrong-backend, foreign-session/authority,
+tampered-record/token, stale-generation, replaced-runtime, and unavailable
+runtime failures remain distinct typed outcomes.
 
 ## Verification Evidence
 
@@ -88,6 +124,7 @@ are not a public command surface.
 | --- | --- |
 | `--workspace-root <path>` | Uses this exact normalized workspace root; when omitted, the current directory supplies the root. Another checkout or worktree is never substituted |
 | `--backend idea|headless` | Selects one admitted runtime when automatic selection is ambiguous |
+| `--lease-id <opaque-id>` | Revalidates an acquired exact-root lease before any semantic session opens; requires explicit root and backend |
 | `--module backend:<name>` | Matches an exact backend module owner |
 | `--module gradle:<build-root>#<project-path>` | Matches a model-proven indexed Gradle owner; the build root is workspace-relative and the project path is absolute, such as `gradle:included/tools#:app` |
 | `--source-set <name>` | Matches an exact model-proven, build-qualified Gradle source-set name |
@@ -326,6 +363,9 @@ cardinality only.
 ??? info "Command names for agent authors"
     The current typed agent commands are:
 
+    - `kast agent lease acquire`
+    - `kast agent lease status`
+    - `kast agent lease release`
     - `kast agent verify`
     - `kast agent workspace-files`
     - `kast agent symbol`
@@ -346,7 +386,9 @@ cardinality only.
     developer install path.
 
     ```console
-    kast agent verify --workspace-root "$PWD"
+    kast agent lease acquire --workspace-root "$PWD" --backend idea
+    # Append --backend idea --lease-id <id> to every semantic command below.
+    kast agent verify --workspace-root "$PWD" --backend idea --lease-id <id>
     kast agent workspace-files --kind source --workspace-root "$PWD"
     kast agent symbol --query OrderService --workspace-root "$PWD"
     kast agent symbol --query order --mode discovery --workspace-root "$PWD"
@@ -374,4 +416,5 @@ cardinality only.
     kast agent operation status \
       --idempotency-key rename-order-service \
       --workspace-root "$PWD"
+    kast agent lease release --workspace-root "$PWD" --backend idea --lease-id <id>
     ```

@@ -4,6 +4,9 @@ Generated from the exhaustive Rust exposure contract. Do not edit.
 
 | Command | Mode | Plan/apply | Evidence |
 | --- | --- | --- | --- |
+| `kast agent lease acquire` | `Lifecycle` | no | READY exact-root runtime and install-generation lease |
+| `kast agent lease status` | `Lifecycle` | no | authenticated lease lifecycle and exact runtime identity |
+| `kast agent lease release` | `Lifecycle` | no | idempotent release receipt and exact ownership cleanup |
 | `kast agent workspace-files` | `Read` | no | typed workspace paths and coverage |
 | `kast agent symbol` | `Read` | no | compiler-resolved symbol identity |
 | `kast agent references` | `Read` | no | bounded reference identities |

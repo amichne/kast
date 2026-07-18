@@ -11,8 +11,8 @@ resources.
 - `src/cli/root.rs` and `src/main.rs` define the root AXI CLI: compact context,
   setup, readiness, repair, status, and developer operations.
 - `src/cli/agent.rs` and `src/agent/` own typed compiler-backed agent commands:
-  `verify`, `workspace-files`, `symbol`, `diagnostics`, `impact`, `rename`, and
-  `lsp`.
+  `lease`, `verify`, `workspace-files`, `symbol`, `diagnostics`, `impact`,
+  `rename`, and `lsp`.
 - `src/runtime/` owns backend lifecycle inspection and mutation for IDEA and
   headless runtimes behind the same command dialect.
 - `src/install/` owns repository setup, managed guidance, CLI machine receipts,
@@ -71,7 +71,9 @@ The broader public product surface, workflows, and AXI contract live in
 distribution, runtime compatibility, index privacy, lifecycle, and semantic
 cockpit authority live in
 `.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`.
-The Codex CLI-only plugin, exhaustive Rust exposure classifier, hook state, and
+Exact-root agent lease identity, ownership, recovery, and release authority
+live in `.agents/adr/0028-exact-root-agent-workspace-leases.md`. The Codex
+CLI-only plugin, exhaustive Rust exposure classifier, hook state, and
 release coupling live in
 `.agents/adr/0026-codex-cli-plugin-and-rust-exposure-authority.md`.
 
@@ -89,7 +91,8 @@ release coupling live in
   launcher may only resolve the active binary and forward the event and stdin.
   Hooks may inspect readiness and produce repair plans but must never apply
   setup or repair mutations.
-- Agent-facing semantic workflows use typed `kast agent verify`,
+- Agent-facing semantic workflows acquire and release one typed exact-root
+  lease, then use `kast agent verify`,
   `workspace-files`, `symbol`, `diagnostics`, `impact`, `rename`, and `lsp`
   commands.
 - Keep raw workspace paging handles and public workspace-file continuation

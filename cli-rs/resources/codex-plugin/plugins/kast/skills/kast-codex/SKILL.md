@@ -11,20 +11,23 @@ failures, and diagnostics as evidence.
 
 ## Workflow
 
-1. Discover owned Kotlin paths with `workspace-files` before broad filesystem search.
-2. Resolve a symbol with `symbol`; keep its fully qualified name, declaration file,
+1. Acquire an exact-root `lease`; preserve its backend and opaque ID on every later
+   semantic command. Never share it with another task or worktree.
+2. Discover owned Kotlin paths with `workspace-files` before broad filesystem search.
+3. Resolve a symbol with `symbol`; keep its fully qualified name, declaration file,
    declaration offset, kind, and containing type together as one identity.
-3. Pass that identity to `references`, `callers`, `callees`, `implementations`,
+4. Pass that identity to `references`, `callers`, `callees`, `implementations`,
    `hierarchy`, or `impact`. Continue paginated results without rediscovering identity.
-4. Run `diagnostics` for each Kotlin file whose current contents matter to the task.
-5. For a mutation, run `rename`, `add-file`, `add-declaration`,
+5. Run `diagnostics` for each Kotlin file whose current contents matter to the task.
+6. For a mutation, run `rename`, `add-file`, `add-declaration`,
    `add-implementation`, `add-statement`, or `replace-declaration` without applying
    it. Review the typed plan, then apply that same request with a stable idempotency
    key.
-6. After interruption or uncertain completion, use `operation status` with the same
+7. After interruption or uncertain completion, use `operation status` with the same
    idempotency key. Use `operation cancel` only when cancellation is the intended
    outcome.
-7. Before finishing, rerun diagnostics for every newly changed Kotlin file.
+8. Before finishing, rerun diagnostics for every newly changed Kotlin file, then
+   release the same lease. Release is idempotent.
 
 ## Fallbacks
 

@@ -164,13 +164,13 @@ fn local_wrapper_ready_uses_explicit_local_authority_even_with_invalid_homebrew_
         serde_json::from_slice(&inactive_runtime.stdout).expect("inactive local runtime JSON");
     let canonical_prefix = std::fs::canonicalize(&prefix).expect("canonical local prefix");
     assert_eq!(
-        inactive_payload["details"]["startCommand"],
+        inactive_payload["details"]["leaseCommand"],
         format!(
-            "'{}' developer runtime up --workspace-root '{}' --backend=headless",
+            "'{}' agent lease acquire --workspace-root '{}' --backend=headless",
             canonical_prefix.join("bin/kast-dev").display(),
             repository.display(),
         ),
-        "inactive local authority must teach a shell-safe receipt-owned start command: {inactive_payload}"
+        "inactive local authority must teach a shell-safe receipt-owned lease command: {inactive_payload}"
     );
     assert!(
         !inactive_payload
@@ -371,7 +371,7 @@ fn initialize_repository(root: &std::path::Path) {
     write_file(&root.join(".gitignore"), b"/AGENTS.local.md\n/.kast/\n");
     write_file(
         &root.join("cli-rs/resources/kast-skill/SKILL.md"),
-        b"---\nname: kast\ndescription: fixture\nmetadata:\n  kast-cli-dialect-revision: \"1\"\n---\nUse `kast agent verify`.\n",
+        b"---\nname: kast\ndescription: fixture\nmetadata:\n  kast-cli-dialect-revision: \"2\"\n---\nUse `kast agent verify`.\n",
     );
     write_file(
         &root.join("cli-rs/resources/local-development/config.toml"),

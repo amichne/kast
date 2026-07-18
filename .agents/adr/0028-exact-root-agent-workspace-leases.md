@@ -14,6 +14,8 @@ prove that later worker requests use the runtime they prepared.
 
 This decision adds the coordination primitive requested by issue #397. It does
 not add another runtime manager or weaken any existing admission rule.
+It supersedes ADR 0026 only where that record's exhaustive Codex command list
+omits this lease lifecycle; all other exposure and generation rules remain.
 
 ## Decision
 
@@ -53,10 +55,11 @@ An active record binds:
 - runtime process-start identity in addition to PID;
 - effective installation authority and generation;
 - `STARTED` or `BORROWED` resource disposition;
-- the acquiring shell's PID and process-start identity; and
+- the stable caller process behind a transient shell, its process-start
+  identity, and an invocation-scoped agent-session digest when available; and
 - acquisition time and explicit lifecycle state.
 
-Possession of a valid identifier authorizes use, but every semantic command
+Possession of a valid identifier is necessary but does not cross sessions. Every semantic command
 that supplies `--lease-id` revalidates the requested root, backend, effective
 environment, owner liveness, and exact ready runtime identity before sending a
 request. A lease identifier that is merely returned and never checked is not a

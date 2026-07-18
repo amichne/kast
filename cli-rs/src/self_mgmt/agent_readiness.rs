@@ -688,12 +688,12 @@ fn render_plugin_guidance_region(workspace_root: &Path) -> String {
             "Use `{}` before Kotlin or Gradle semantic work.",
             skill_path.display()
         ),
-        "Use `kast agent verify --workspace-root \"$PWD\"` to verify the plugin-prepared workspace."
+        "Acquire with `kast agent lease acquire --workspace-root \"$PWD\" --backend idea`; preserve its lease ID and release it when the worker finishes."
             .to_string(),
-        "Use typed commands such as `kast agent symbol --query <name>`, `kast agent diagnostics --file-path <path>`, and `kast agent rename --symbol <fq-name> --new-name <name> --apply`.".to_string(),
+        "Pass `--workspace-root \"$PWD\" --backend idea --lease-id <id>` to typed commands such as `kast agent symbol`, `kast agent diagnostics`, and `kast agent rename`.".to_string(),
         "Do not run `kast setup` on macOS; the IntelliJ plugin owns workspace bootstrap."
             .to_string(),
-        "Before each linked worker starts, open the exact worktree root as its own IDE project and run `kast agent verify --workspace-root \"$PWD\"` from that worktree.".to_string(),
+        "Before each linked worker starts, open the exact worktree root as its own IDE project and acquire its lease from that worktree.".to_string(),
         "Never reuse another worktree's Kast runtime, metadata, or semantic evidence."
             .to_string(),
         "Keep the IDE project open while active; close its exact IDE project or window before removing the worktree.".to_string(),
@@ -707,7 +707,7 @@ fn render_plugin_skill(plugin: &PluginWorkspaceEvidence, dialect_revision: u32) 
     let cli_version = plugin.cli_version.as_deref()?;
     let cli_binary = plugin.cli_binary.as_deref()?;
     Some(format!(
-        "---\nname: kast\ndescription: Kotlin semantic work and linked-worktree lifecycle in Gradle repositories prepared by the Kast IntelliJ plugin.\nmetadata:\n  kast-cli-dialect-revision: \"{dialect_revision}\"\n---\n\n# Kast\n\nThis workspace was prepared by the Kast IntelliJ plugin. JetBrains owns plugin installation and updates; Homebrew owns only the CLI.\n\nUse `kast agent verify --workspace-root \"$PWD\"` before Kotlin semantic work when state is uncertain.\nUse typed commands such as `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, and `kast agent rename`.\nDo not run `kast setup` or install runtime resources separately on macOS; update the CLI and plugin, reopen this exact project, and refresh metadata when compatibility fails.\n\n## Linked Worktrees\n\nFor every delegated worker using a linked Git worktree:\n\n1. Before the worker starts, open the exact worktree root as its own IntelliJ IDEA or Android Studio project with the Kast plugin enabled.\n2. Wait for `.kast/setup/workspace.json`, then run `kast agent verify --workspace-root \"$PWD\"` from that worktree.\n3. Never reuse another worktree's Kast runtime, metadata, or semantic evidence.\n4. Keep that IDE project open while the worker and worktree are active.\n5. Before retiring or deleting the worktree, close that exact IDE project or window before removing the worktree.\n\nPrepared plugin version: {plugin_version}\nCLI version: {cli_version}\nCLI invocation: `{cli_binary}`\n"
+        "---\nname: kast\ndescription: Kotlin semantic work and linked-worktree lifecycle in Gradle repositories prepared by the Kast IntelliJ plugin.\nmetadata:\n  kast-cli-dialect-revision: \"{dialect_revision}\"\n---\n\n# Kast\n\nThis workspace was prepared by the Kast IntelliJ plugin. JetBrains owns plugin installation and updates; Homebrew owns only the CLI.\n\nAcquire with `kast agent lease acquire --workspace-root \"$PWD\" --backend idea`; pass its `leaseId` to every typed semantic command and release it when the worker finishes.\nUse typed commands such as `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, and `kast agent rename` under that exact-root lease.\nDo not run `kast setup` or install runtime resources separately on macOS; update the CLI and plugin, reopen this exact project, and refresh metadata when compatibility fails.\n\n## Linked Worktrees\n\nFor every delegated worker using a linked Git worktree:\n\n1. Before the worker starts, open the exact worktree root as its own IntelliJ IDEA or Android Studio project with the Kast plugin enabled.\n2. Wait for `.kast/setup/workspace.json`, then acquire an IDEA lease for `\"$PWD\"` from that worktree.\n3. Never reuse another worktree's Kast runtime, metadata, or semantic evidence.\n4. Keep that IDE project open while the worker and worktree are active.\n5. Before retiring or deleting the worktree, close that exact IDE project or window before removing the worktree.\n\nPrepared plugin version: {plugin_version}\nCLI version: {cli_version}\nCLI invocation: `{cli_binary}`\n"
     ))
 }
 

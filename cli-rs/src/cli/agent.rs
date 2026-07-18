@@ -9,6 +9,8 @@ pub struct AgentArgs {
 pub enum AgentCommand {
     /// Run the Language Server Protocol adapter over stdio.
     Lsp(LspArgs),
+    /// Acquire, inspect, or release an exact-root semantic workspace lease.
+    Lease(AgentLeaseArgs),
     /// Verify backend health, runtime state, and capabilities.
     Verify(AgentVerifyArgs),
     /// Discover Kotlin source and script files with typed workspace evidence.
@@ -82,6 +84,75 @@ pub struct AgentRuntimeArgs {
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
     /// Pin the command to a specific backend.
+    #[arg(long = "backend", value_enum)]
+    pub backend_name: Option<BackendName>,
+    /// Opaque workspace lease acquired for this exact root and backend.
+    #[arg(long = "lease-id")]
+    pub lease_id: Option<AgentWorkspaceLeaseId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentWorkspaceLeaseId(String);
+
+impl AgentWorkspaceLeaseId {
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::str::FromStr for AgentWorkspaceLeaseId {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if value.is_empty()
+            || value.trim() != value
+            || value.chars().any(char::is_whitespace)
+            || value.chars().any(char::is_control)
+        {
+            return Err("workspace lease ids must be non-blank opaque tokens".to_string());
+        }
+        Ok(Self(value.to_string()))
+    }
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentLeaseArgs {
+    #[command(subcommand)]
+    pub command: AgentLeaseCommand,
+}
+
+#[derive(Debug, Subcommand, Clone)]
+pub enum AgentLeaseCommand {
+    /// Acquire a READY lease for one exact semantic workspace root.
+    Acquire(AgentLeaseAcquireArgs),
+    /// Inspect a lease without changing runtime ownership.
+    Status(AgentLeaseAccessArgs),
+    /// Release a lease and stop only the exact runtime it started.
+    Release(AgentLeaseAccessArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentLeaseAcquireArgs {
+    /// Absolute semantic workspace root to bind.
+    #[arg(long)]
+    pub workspace_root: PathBuf,
+    /// Pin the lease to one runtime backend.
+    #[arg(long = "backend", value_enum)]
+    pub backend_name: Option<BackendName>,
+    /// Maximum time to settle the runtime to READY.
+    #[arg(long, default_value_t = crate::cli::DEFAULT_RUNTIME_WAIT_TIMEOUT_MS, hide = true)]
+    pub wait_timeout_ms: u64,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentLeaseAccessArgs {
+    /// Opaque lease identifier returned by `lease acquire`.
+    #[arg(long = "lease-id")]
+    pub lease_id: AgentWorkspaceLeaseId,
+    /// Absolute semantic workspace root the lease must bind.
+    #[arg(long)]
+    pub workspace_root: PathBuf,
+    /// Assert the runtime backend bound by the lease.
     #[arg(long = "backend", value_enum)]
     pub backend_name: Option<BackendName>,
 }

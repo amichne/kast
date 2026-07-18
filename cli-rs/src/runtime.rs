@@ -1,7 +1,10 @@
 use crate::SCHEMA_VERSION;
 #[cfg(target_os = "macos")]
 use crate::cli;
-use crate::cli::{BackendName, DaemonStartArgs, RuntimeArgs};
+use crate::cli::{
+    AgentLeaseAccessArgs, AgentLeaseAcquireArgs, AgentWorkspaceLeaseId, BackendName,
+    DaemonStartArgs, RuntimeArgs,
+};
 use crate::config::{self, KastConfig, PathResolutionReport};
 use crate::daemon;
 use crate::error::{CliError, Result};
@@ -31,4 +34,5 @@ include!("runtime/backend_selection.rs");
 include!("runtime/descriptors.rs");
 include!("runtime/idea_launch.rs");
 include!("runtime/serialization.rs");
+include!("runtime/lease.rs");
 include!("runtime/tests.rs");

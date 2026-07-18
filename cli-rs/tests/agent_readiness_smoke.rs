@@ -117,7 +117,7 @@ fn agent_ready_rejects_old_codex_home_skill_against_new_cli_dialect() {
     let payload: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("readiness JSON");
     assert_eq!(payload["ok"], false, "{payload:#}");
     assert_eq!(
-        payload["agentEnvironment"]["binary"]["dialectRevision"], 1,
+        payload["agentEnvironment"]["binary"]["dialectRevision"], 2,
         "{payload:#}",
     );
     let candidates = payload["agentEnvironment"]["skills"]["candidates"]
@@ -190,8 +190,8 @@ fn agent_ready_reports_modified_plugin_resources_without_rewriting_them() {
     let changed = std::fs::read_to_string(&guidance)
         .expect("managed guidance")
         .replace(
-            "Use typed commands such as `kast agent symbol",
-            "Use removed commands such as `kast agent tools`; `kast agent symbol",
+            "Pass `--workspace-root",
+            "Use removed `kast agent tools`, then pass `--workspace-root",
         );
     std::fs::write(&guidance, &changed).expect("modified guidance");
     let skill = workspace.join(".agents/skills/kast/SKILL.md");
@@ -260,5 +260,5 @@ fn agent_ready_reports_modified_plugin_resources_without_rewriting_them() {
 
 #[cfg(target_os = "macos")]
 fn current_skill_fixture() -> &'static str {
-    "---\nname: kast\ndescription: current fixture\nmetadata:\n  kast-cli-dialect-revision: \"1\"\n---\nUse `kast agent verify`.\n"
+    "---\nname: kast\ndescription: current fixture\nmetadata:\n  kast-cli-dialect-revision: \"2\"\n---\nUse `kast agent verify`.\n"
 }

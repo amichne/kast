@@ -1,7 +1,7 @@
 use crate::cli::{
-    AgentCommand, AgentOperationCommand, CodexCommand, CodexHookEvent, Command, DeveloperCommand,
-    GenerateCommand, InspectCommand, LocalDevelopmentCommand, MachineCommand, MetricsCommand,
-    PackageCommand, ReleaseActivateCommand, ReleaseCommand, RuntimeCommand,
+    AgentCommand, AgentLeaseCommand, AgentOperationCommand, CodexCommand, CodexHookEvent, Command,
+    DeveloperCommand, GenerateCommand, InspectCommand, LocalDevelopmentCommand, MachineCommand,
+    MetricsCommand, PackageCommand, ReleaseActivateCommand, ReleaseCommand, RuntimeCommand,
 };
 use serde::Serialize;
 
@@ -15,6 +15,9 @@ pub(crate) enum CodexExposure {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum CodexSemanticCommand {
+    LeaseAcquire,
+    LeaseStatus,
+    LeaseRelease,
     WorkspaceFiles,
     Symbol,
     References,
@@ -49,6 +52,7 @@ pub(crate) enum CodexHookCommand {
 #[serde(rename_all = "kebab-case")]
 pub(crate) enum CodexCommandMode {
     Read,
+    Lifecycle,
     PlanFirstMutation,
     OperationControl,
 }
@@ -65,7 +69,10 @@ pub(crate) struct CodexCommandDescriptor {
 }
 
 impl CodexSemanticCommand {
-    pub(crate) const ALL: [Self; 17] = [
+    pub(crate) const ALL: [Self; 20] = [
+        Self::LeaseAcquire,
+        Self::LeaseStatus,
+        Self::LeaseRelease,
         Self::WorkspaceFiles,
         Self::Symbol,
         Self::References,
@@ -87,6 +94,30 @@ impl CodexSemanticCommand {
 
     pub(crate) fn descriptor(self) -> CodexCommandDescriptor {
         match self {
+            Self::LeaseAcquire => descriptor(
+                self,
+                "agent lease acquire",
+                CodexCommandMode::Lifecycle,
+                false,
+                "READY exact-root runtime and install-generation lease",
+                "kast --output toon agent lease acquire --workspace-root <root> --backend <backend>",
+            ),
+            Self::LeaseStatus => descriptor(
+                self,
+                "agent lease status",
+                CodexCommandMode::Lifecycle,
+                false,
+                "authenticated lease lifecycle and exact runtime identity",
+                "kast --output toon agent lease status --workspace-root <root> --backend <backend> --lease-id <id>",
+            ),
+            Self::LeaseRelease => descriptor(
+                self,
+                "agent lease release",
+                CodexCommandMode::Lifecycle,
+                false,
+                "idempotent release receipt and exact ownership cleanup",
+                "kast --output toon agent lease release --workspace-root <root> --backend <backend> --lease-id <id>",
+            ),
             Self::WorkspaceFiles => descriptor(
                 self,
                 "agent workspace-files",
@@ -361,6 +392,11 @@ fn classify_generate(command: &GenerateCommand) -> CodexExposure {
 fn classify_agent(command: &AgentCommand) -> CodexExposure {
     match command {
         AgentCommand::Lsp(_) => CodexExposure::NotExposed,
+        AgentCommand::Lease(args) => match &args.command {
+            AgentLeaseCommand::Acquire(_) => visible(CodexSemanticCommand::LeaseAcquire),
+            AgentLeaseCommand::Status(_) => visible(CodexSemanticCommand::LeaseStatus),
+            AgentLeaseCommand::Release(_) => visible(CodexSemanticCommand::LeaseRelease),
+        },
         AgentCommand::Verify(_) => CodexExposure::HookOnly(CodexHookCommand::Verify),
         AgentCommand::WorkspaceFiles(_) => visible(CodexSemanticCommand::WorkspaceFiles),
         AgentCommand::Symbol(_) => visible(CodexSemanticCommand::Symbol),
@@ -410,6 +446,9 @@ mod tests {
         assert_eq!(
             paths,
             [
+                "agent lease acquire",
+                "agent lease status",
+                "agent lease release",
                 "agent workspace-files",
                 "agent symbol",
                 "agent references",
@@ -444,6 +483,16 @@ mod tests {
         assert_eq!(
             parsed_exposure(&["repair", "--apply"]),
             CodexExposure::NotExposed
+        );
+        assert_eq!(
+            parsed_exposure(&[
+                "agent",
+                "lease",
+                "acquire",
+                "--workspace-root",
+                "/workspace",
+            ]),
+            CodexExposure::AgentVisible(CodexSemanticCommand::LeaseAcquire)
         );
         assert_eq!(
             parsed_exposure(&["agent", "workspace-files"]),
