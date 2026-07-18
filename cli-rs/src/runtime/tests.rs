@@ -410,7 +410,7 @@ mod tests {
                 .expect("release revision"),
             protocol_revision: ProtocolRevision(NonZeroU32::new(1).expect("protocol")),
             workspace_metadata_revision: WorkspaceMetadataRevision(
-                NonZeroU32::new(3).expect("metadata"),
+                NonZeroU32::new(4).expect("metadata"),
             ),
             read_capabilities: vec![
                 WorkspaceReadCapability::ResolveSymbol,
