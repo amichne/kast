@@ -539,7 +539,7 @@ require_contains "$idea_plugin_update_feed" 'id="io.github.amichne.kast"' "IDEA 
 require_contains "$idea_plugin_update_feed" 'version="#version#"' "IDEA update feed must bind the release version"
 require_contains "$idea_plugin_update_feed" "releases/download/#tag#/kast-idea-#tag#.zip" "IDEA update feed must resolve the exact release ZIP"
 require_block_contains "$release_workflow" "  build-codex-plugin:" "  build-idea-plugin:" "KAST_VERSION=" "Codex plugin generation must use the release-coupled Kast binary"
-require_block_contains "$release_workflow" "  build-codex-plugin:" "  build-idea-plugin:" "developer codex generate" "Release must generate the Codex plugin from the typed Rust contract"
+require_block_contains "$release_workflow" "  build-codex-plugin:" "  build-idea-plugin:" "cargo run --locked --bin kast -- developer codex generate --check" "Release must check committed Codex plugin generation with the exact Kast binary"
 require_block_contains "$release_workflow" "  build-codex-plugin:" "  build-idea-plugin:" "--release" "Release must request release-mode Codex metadata"
 # shellcheck disable=SC2016 # Release shell expressions must remain literal contract strings.
 require_block_contains "$release_workflow" "  build-codex-plugin:" "  build-idea-plugin:" 'asset_name="kast-codex-plugin-${tag}.zip"' "Release must publish the versioned Codex plugin ZIP"

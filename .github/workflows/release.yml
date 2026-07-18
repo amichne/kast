@@ -629,7 +629,7 @@ jobs:
       - name: Verify committed Codex plugin generation
         working-directory: cli-rs
         shell: bash
-        run: cargo run --locked -- developer codex generate --check
+        run: cargo run --locked --bin kast -- developer codex generate --check
 
       - name: Build release-coupled Kast generator
         working-directory: cli-rs
