@@ -172,6 +172,8 @@ pub(crate) fn write_macos_plugin_workspace_metadata_for_cli(
                 "compatibility": {
                     "pluginVersion": cli_version,
                     "cliVersion": cli_version,
+                    "pluginRevision": env!("KAST_RELEASE_REVISION"),
+                    "cliRevision": env!("KAST_RELEASE_REVISION"),
                     "protocolRevision": 1,
                     "workspaceMetadataRevision": 3,
                     "readCapabilities": [
