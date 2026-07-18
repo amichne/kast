@@ -1176,6 +1176,11 @@ components:
       type: integer
       format: int32
       minimum: 1
+    ReleaseRevision:
+      type: string
+      minLength: 40
+      maxLength: 40
+      pattern: "^[0-9a-f]{40}$"
     PluginImplementationVersion:
       type: string
       minLength: 1
@@ -1275,8 +1280,6 @@ components:
         - readCapabilities
         - mutationCapabilities
         - runtimeIdentity
-    ReleaseRevision:
-      type: string
     SupportedRuntimeCompatibilityPair:
       type: object
       properties:
@@ -1305,6 +1308,7 @@ components:
     RuntimeCompatibilityUpdateRequirement:
       oneOf:
         - "$ref": "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair"
+        - "$ref": "#/components/schemas/RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision"
         - "$ref": "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision"
         - "$ref": "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision"
         - "$ref": "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity"
@@ -1313,6 +1317,7 @@ components:
         propertyName: type
         mapping:
           UNSUPPORTED_RELEASE_PAIR: "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair"
+          MISMATCHED_RELEASE_REVISION: "#/components/schemas/RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision"
           UNSUPPORTED_PROTOCOL_REVISION: "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision"
           UNSUPPORTED_WORKSPACE_METADATA_REVISION: "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision"
           UNSUPPORTED_RUNTIME_IDENTITY: "#/components/schemas/RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity"
@@ -1336,6 +1341,21 @@ components:
         - type
         - pluginVersion
         - cliVersion
+        - pluginRevision
+        - cliRevision
+    RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision:
+      type: object
+      properties:
+        type:
+          type: string
+          const: MISMATCHED_RELEASE_REVISION
+        pluginRevision:
+          "$ref": "#/components/schemas/ReleaseRevision"
+        cliRevision:
+          "$ref": "#/components/schemas/ReleaseRevision"
+      additionalProperties: false
+      required:
+        - type
         - pluginRevision
         - cliRevision
     RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision:

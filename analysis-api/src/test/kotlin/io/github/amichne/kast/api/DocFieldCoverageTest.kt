@@ -116,6 +116,8 @@ class DocFieldCoverageTest {
         "RuntimeCompatibilityUpdateRequirement" to RuntimeCompatibilityUpdateRequirement.serializer(),
         "RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair" to
             RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair.serializer(),
+        "RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision" to
+            RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision.serializer(),
         "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision" to
             RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision.serializer(),
         "RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision" to

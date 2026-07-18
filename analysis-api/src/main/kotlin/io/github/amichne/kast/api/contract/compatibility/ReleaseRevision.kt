@@ -20,7 +20,7 @@ value class ReleaseRevision(
 
     override fun toString(): String = value
 
-    private companion object {
-        const val REVISION_LENGTH = 40
+    companion object {
+        private const val REVISION_LENGTH = 40
     }
 }
