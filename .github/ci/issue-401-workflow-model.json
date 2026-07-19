@@ -27,7 +27,6 @@
           "macos-installer-contract",
           "local-development-refresh-contract",
           "installed-selector-handle-workflow",
-          "cli-plugin-authority-cutover-contract",
           "kast-routing-evals",
           "release-asset-verifier",
           "release-provenance-assembler",
@@ -297,8 +296,7 @@
         "id": "local-authority-contracts",
         "needs": [],
         "outputs": [
-          "local-development-refresh-contract",
-          "cli-plugin-authority-cutover-contract"
+          "local-development-refresh-contract"
         ],
         "durationSamplesSeconds": [
           304

@@ -152,10 +152,6 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-local-development-refresh-contract.sh
 
-      - name: Test CLI and plugin authority cutover contract
-        shell: bash
-        run: ./.github/scripts/test-cli-plugin-authority-cutover-contract.sh
-
   runtime-contracts:
     name: Runtime command and bundle contracts
     runs-on: ubuntu-latest

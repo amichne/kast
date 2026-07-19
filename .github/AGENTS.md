@@ -34,10 +34,10 @@ orchestration, machine manifest activation, closed-IDE reconciliation, local
 readiness, or installed skill/Codex routing changes. Its Gradle graph must build
 the IDEA plugin, must not build or start `backend-headless`, and must not
 install launchd state.
-Umbrella source contracts must not rerun focused owners. The CLI/plugin
-cutover contract owns source presence, absence, and authority assertions only;
-the runtime compatibility contract owns deterministic source and manifest
-rendering only. Rust unit and integration tests run in `rust-cli`, Kotlin and
+Umbrella source contracts must not rerun focused owners. The processless
+machine authority contract owns source presence, absence, activation, and
+reconciliation assertions; the runtime compatibility contract owns
+deterministic source and manifest rendering only. Rust unit and integration tests run in `rust-cli`, Kotlin and
 IDEA tests run in their Gradle owners, documentation rendering runs in the
 documentation workflow, and installer, release, provenance, and asset
 contracts run once in their named jobs. A focused Rust integration test must
