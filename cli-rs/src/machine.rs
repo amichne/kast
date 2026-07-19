@@ -1,9 +1,12 @@
-use crate::cli::MachineActivateArgs;
+use crate::cli::{MachineActivateArgs, MachineReconcileArgs};
 use crate::error::{CliError, Result};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fs;
+use std::io;
+use std::path::Component;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -30,11 +33,12 @@ pub(crate) struct MachineStatus {
     schema_version: u32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 #[serde(rename_all = "camelCase")]
 struct MachineManifest {
     #[serde(rename = "type")]
-    manifest_type: &'static str,
+    manifest_type: String,
     cli_sha256: String,
     idea_plugin_sha256: String,
     skill_sha256: String,
@@ -50,6 +54,18 @@ pub(crate) struct MachineActivation {
     pub(crate) cli: String,
     idea_plugin: String,
     skill: String,
+    schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct MachineReconciliation {
+    #[serde(rename = "type")]
+    reconciliation_type: &'static str,
+    state: &'static str,
+    pub(crate) idea_plugin: String,
+    pub(crate) skill: String,
+    quarantined_plugin: Option<String>,
     schema_version: u32,
 }
 
@@ -110,7 +126,7 @@ pub(crate) fn activate(args: MachineActivateArgs) -> Result<MachineActivation> {
         )),
     )?;
     let manifest = MachineManifest {
-        manifest_type: "KAST_MACHINE_MANIFEST",
+        manifest_type: "KAST_MACHINE_MANIFEST".to_string(),
         cli_sha256: crate::manifest::sha256_file(&installed_cli)?,
         idea_plugin_sha256: crate::manifest::sha256_file(&installed_plugin)?,
         skill_sha256: crate::manifest::sha256_file(&installed_skill)?,
@@ -148,8 +164,247 @@ pub(crate) fn activate(args: MachineActivateArgs) -> Result<MachineActivation> {
     })
 }
 
+pub(crate) fn reconcile(args: MachineReconcileArgs) -> Result<MachineReconciliation> {
+    let root = machine_root();
+    validate_machine_install(&root)?;
+    require_jetbrains_ides_closed()?;
+    let plugins = match args.idea_plugins_dir {
+        Some(path) => path,
+        None => default_idea_plugins_dir()?,
+    };
+    if !plugins.is_absolute() {
+        return Err(CliError::new(
+            "IDE_PROFILE_INVALID",
+            format!(
+                "IDE plugins directory must be absolute: {}",
+                plugins.display()
+            ),
+        ));
+    }
+    fs::create_dir_all(&plugins)?;
+    let transaction = uuid::Uuid::new_v4();
+    let staging = plugins.join(format!(".kast-staging-{transaction}"));
+    let installed_plugin = plugins.join("kast");
+    extract_plugin_zip(&root.join("idea/kast.zip"), &staging)?;
+
+    let quarantined_plugin = if fs::symlink_metadata(&installed_plugin).is_ok() {
+        let quarantine = root.join("quarantine").join(format!("{transaction}-kast"));
+        fs::create_dir_all(quarantine.parent().expect("quarantine parent"))?;
+        fs::rename(&installed_plugin, &quarantine)?;
+        Some(quarantine)
+    } else {
+        None
+    };
+    if let Err(error) = fs::rename(&staging, &installed_plugin) {
+        if let Some(quarantine) = &quarantined_plugin {
+            let _ = fs::rename(quarantine, &installed_plugin);
+        }
+        return Err(error.into());
+    }
+    let skill = reconcile_global_skill(&root, transaction)?;
+    Ok(MachineReconciliation {
+        reconciliation_type: "KAST_MACHINE_RECONCILIATION",
+        state: "RECONCILED",
+        idea_plugin: installed_plugin.display().to_string(),
+        skill: skill.display().to_string(),
+        quarantined_plugin: quarantined_plugin.map(|path| path.display().to_string()),
+        schema_version: 1,
+    })
+}
+
 fn machine_root() -> PathBuf {
     crate::config::home_dir().join("Library/Application Support/Kast/machine")
+}
+
+fn validate_machine_install(root: &Path) -> Result<MachineManifest> {
+    let path = root.join("machine.json");
+    let manifest: MachineManifest = serde_json::from_slice(&fs::read(&path).map_err(|error| {
+        CliError::new(
+            "MACHINE_NOT_INSTALLED",
+            format!("Cannot read {}: {error}", path.display()),
+        )
+    })?)?;
+    if manifest.schema_version != 1
+        || manifest.manifest_type != "KAST_MACHINE_MANIFEST"
+        || crate::manifest::sha256_file(&root.join("bin/kast"))? != manifest.cli_sha256
+        || crate::manifest::sha256_file(&root.join("idea/kast.zip"))? != manifest.idea_plugin_sha256
+        || crate::manifest::sha256_file(&root.join("resources/kast-skill/SKILL.md"))?
+            != manifest.skill_sha256
+    {
+        return Err(CliError::new(
+            "MACHINE_INSTALL_INVALID",
+            format!(
+                "Machine installation is incomplete or modified at {}.",
+                root.display()
+            ),
+        ));
+    }
+    Ok(manifest)
+}
+
+fn extract_plugin_zip(source: &Path, target: &Path) -> Result<()> {
+    let file = fs::File::open(source)?;
+    let mut archive = zip::ZipArchive::new(file).map_err(|error| {
+        CliError::new(
+            "IDE_PLUGIN_ARCHIVE_INVALID",
+            format!("Cannot read IDEA plugin ZIP {}: {error}", source.display()),
+        )
+    })?;
+    let mut root_name = None;
+    let mut file_count = 0usize;
+    for index in 0..archive.len() {
+        let mut entry = archive
+            .by_index(index)
+            .map_err(|error| CliError::new("IDE_PLUGIN_ARCHIVE_INVALID", error.to_string()))?;
+        let enclosed = entry.enclosed_name().ok_or_else(|| {
+            CliError::new(
+                "IDE_PLUGIN_ARCHIVE_UNSAFE",
+                format!("IDE plugin ZIP contains an unsafe path: {}", entry.name()),
+            )
+        })?;
+        if entry
+            .unix_mode()
+            .is_some_and(|mode| mode & 0o170000 == 0o120000)
+        {
+            return Err(CliError::new(
+                "IDE_PLUGIN_ARCHIVE_UNSAFE",
+                format!("IDE plugin ZIP contains a symlink: {}", entry.name()),
+            ));
+        }
+        let mut components = enclosed.components();
+        let Some(Component::Normal(first)) = components.next() else {
+            continue;
+        };
+        match &root_name {
+            Some(expected) if expected != first => {
+                return Err(CliError::new(
+                    "IDE_PLUGIN_ARCHIVE_INVALID",
+                    "IDE plugin ZIP must contain exactly one top-level directory.",
+                ));
+            }
+            None => root_name = Some(first.to_os_string()),
+            _ => {}
+        }
+        let relative = components.collect::<PathBuf>();
+        if relative.as_os_str().is_empty() {
+            continue;
+        }
+        let output = target.join(relative);
+        if entry.is_dir() {
+            fs::create_dir_all(&output)?;
+        } else {
+            if let Some(parent) = output.parent() {
+                fs::create_dir_all(parent)?;
+            }
+            let mut file = fs::File::create(&output)?;
+            io::copy(&mut entry, &mut file)?;
+            file_count += 1;
+        }
+    }
+    if root_name.is_none() || file_count == 0 {
+        return Err(CliError::new(
+            "IDE_PLUGIN_ARCHIVE_INVALID",
+            "IDE plugin ZIP must contain one nonempty top-level plugin directory.",
+        ));
+    }
+    Ok(())
+}
+
+fn reconcile_global_skill(root: &Path, transaction: uuid::Uuid) -> Result<PathBuf> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::symlink;
+        let skill = crate::config::home_dir().join(".agents/skills/kast");
+        if let Ok(metadata) = fs::symlink_metadata(&skill) {
+            if metadata.file_type().is_symlink() {
+                fs::remove_file(&skill)?;
+            } else {
+                let quarantine = root.join("quarantine").join(format!("{transaction}-skill"));
+                fs::create_dir_all(quarantine.parent().expect("quarantine parent"))?;
+                fs::rename(&skill, quarantine)?;
+            }
+        }
+        fs::create_dir_all(skill.parent().expect("skill parent"))?;
+        symlink(root.join("resources/kast-skill"), &skill)?;
+        Ok(skill)
+    }
+    #[cfg(not(unix))]
+    {
+        let _ = (root, transaction);
+        Err(CliError::new(
+            "MACHINE_PLATFORM_UNSUPPORTED",
+            "Machine resource reconciliation requires macOS or another Unix host.",
+        ))
+    }
+}
+
+fn default_idea_plugins_dir() -> Result<PathBuf> {
+    let profiles = crate::config::home_dir().join("Library/Application Support/JetBrains");
+    let mut candidates = fs::read_dir(&profiles)
+        .map_err(|error| {
+            CliError::new(
+                "IDE_PROFILE_NOT_FOUND",
+                format!("Cannot inspect {}: {error}", profiles.display()),
+            )
+        })?
+        .filter_map(std::result::Result::ok)
+        .filter(|entry| {
+            entry.file_type().is_ok_and(|kind| kind.is_dir())
+                && entry.file_name().to_str().is_some_and(|name| {
+                    ["IntelliJIdea", "IdeaIC", "AndroidStudio"]
+                        .iter()
+                        .any(|prefix| name.starts_with(prefix))
+                })
+        })
+        .map(|entry| entry.path().join("plugins"))
+        .collect::<Vec<_>>();
+    candidates.sort();
+    candidates.pop().ok_or_else(|| {
+        CliError::new(
+            "IDE_PROFILE_NOT_FOUND",
+            "No IntelliJ IDEA or Android Studio profile was found; pass --idea-plugins-dir.",
+        )
+    })
+}
+
+fn require_jetbrains_ides_closed() -> Result<()> {
+    if let Ok(state) = std::env::var("KAST_MACHINE_IDE_STATE") {
+        return match state.as_str() {
+            "closed" => Ok(()),
+            "open" => Err(CliError::new(
+                "IDE_RESTART_REQUIRED",
+                "Close IntelliJ IDEA or Android Studio, then rerun `kast machine reconcile`.",
+            )),
+            _ => Err(CliError::new(
+                "IDE_STATE_INVALID",
+                "KAST_MACHINE_IDE_STATE must be `open` or `closed` when set.",
+            )),
+        };
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let output = Command::new("pgrep")
+            .args([
+                "-f",
+                "/(IntelliJ IDEA|Android Studio)[^/]*\\.app/Contents/MacOS/",
+            ])
+            .output()?;
+        match output.status.code() {
+            Some(1) => Ok(()),
+            Some(0) => Err(CliError::new(
+                "IDE_RESTART_REQUIRED",
+                "Close IntelliJ IDEA or Android Studio, then rerun `kast machine reconcile`.",
+            )),
+            status => Err(CliError::new(
+                "IDE_STATE_UNAVAILABLE",
+                format!("Could not determine IDE process state: {status:?}."),
+            )),
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(())
+    }
 }
 
 fn require_regular_file(path: &Path, label: &str) -> Result<()> {

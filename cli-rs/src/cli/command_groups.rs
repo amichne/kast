@@ -57,6 +57,8 @@ pub enum MachineCommand {
     Status,
     /// Atomically make this CLI, one IDEA plugin, and embedded resources machine-wide.
     Activate(MachineActivateArgs),
+    /// Repair the selected closed-IDE plugin and global agent resources.
+    Reconcile(MachineReconcileArgs),
     /// Configure developer-machine defaults to use the IDEA plugin backend.
     Defaults(DeveloperMachineDefaultsArgs),
     /// Install shell PATH and completion integration.
@@ -71,6 +73,13 @@ pub struct MachineActivateArgs {
     /// Exact Kast IDEA plugin ZIP to install beside this running CLI.
     #[arg(long = "idea-plugin")]
     pub idea_plugin: PathBuf,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct MachineReconcileArgs {
+    /// Exact JetBrains profile plugins directory to reconcile.
+    #[arg(long = "idea-plugins-dir")]
+    pub idea_plugins_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]

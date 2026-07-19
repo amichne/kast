@@ -681,6 +681,18 @@ fn run_machine(command: cli::MachineCommand, output_format: OutputFormat) -> Res
             }
             Ok(0)
         }
+        cli::MachineCommand::Reconcile(args) => {
+            let result = machine::reconcile(args)?;
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
+            } else {
+                println!(
+                    "Kast machine\n\nState: reconciled\nIDEA plugin: {}\nSkill: {}",
+                    result.idea_plugin, result.skill
+                );
+            }
+            Ok(0)
+        }
         cli::MachineCommand::Defaults(args) => {
             let result = self_mgmt::configure_developer_machine_defaults(args.dry_run)?;
             if output_format.is_structured() {

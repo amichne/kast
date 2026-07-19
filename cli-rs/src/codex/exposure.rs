@@ -359,6 +359,7 @@ fn classify_machine(command: &MachineCommand) -> CodexExposure {
     match command {
         MachineCommand::Status
         | MachineCommand::Activate(_)
+        | MachineCommand::Reconcile(_)
         | MachineCommand::Defaults(_)
         | MachineCommand::Shell(_)
         | MachineCommand::Completion(_) => CodexExposure::NotExposed,
