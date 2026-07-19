@@ -6,6 +6,7 @@ pub fn refresh_local_development(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum LocalRefreshPhase {
+    AfterStagingPublished,
     AfterActivation,
 }
 
@@ -220,19 +221,22 @@ fn activate_local_development_artifact_set(
             }
             (false, receipt)
         } else {
-            stage_generation(GenerationStageRequest {
-                prefix: &prefix,
-                generation: &generation,
-                generation_id: &generation_id,
-                source: &source,
-                workspace_root: &workspace_root,
-                cli_binary: &cli_binary,
-                backend_directory: &backend_directory,
-                skill_source: &skill_source,
-                config_source: &config_source,
-                artifacts: &artifacts,
-                previous_generation: previous_generation.as_ref(),
-            })?;
+            stage_generation(
+                GenerationStageRequest {
+                    prefix: &prefix,
+                    generation: &generation,
+                    generation_id: &generation_id,
+                    source: &source,
+                    workspace_root: &workspace_root,
+                    cli_binary: &cli_binary,
+                    backend_directory: &backend_directory,
+                    skill_source: &skill_source,
+                    config_source: &config_source,
+                    artifacts: &artifacts,
+                    previous_generation: previous_generation.as_ref(),
+                },
+                &mut observe,
+            )?;
             let receipt = read_local_development_receipt(&generation.join("authority.json"))?;
             validate_receipt_identity(&receipt, &prefix, &generation, &workspace_root)?;
             (true, receipt)
@@ -419,7 +423,10 @@ struct LocalStagingAuthority {
     workspace_root: PathBuf,
 }
 
-fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
+fn stage_generation(
+    request: GenerationStageRequest<'_>,
+    observe: &mut impl FnMut(LocalRefreshPhase) -> Result<()>,
+) -> Result<()> {
     let GenerationStageRequest {
         prefix,
         generation,
@@ -439,6 +446,7 @@ fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
         fs::remove_dir_all(&staged)?;
     }
     fs::create_dir(&staged)?;
+    observe(LocalRefreshPhase::AfterStagingPublished)?;
     if let Err(error) = write_json_atomic(
         &staged.join(LOCAL_STAGING_AUTHORITY_FILE),
         &LocalStagingAuthority {

@@ -1289,6 +1289,41 @@ mod refresh_tests {
     }
 
     #[test]
+    fn deterministic_staging_is_published_only_with_its_authority_receipt() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        let request = refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "first",
+        );
+
+        refresh_local_development_with_observer(request, |phase| {
+            if phase == LocalRefreshPhase::AfterStagingPublished {
+                let staged = fs::read_dir(&prefix)
+                    .expect("prefix")
+                    .filter_map(|entry| entry.ok())
+                    .map(|entry| entry.path())
+                    .find(|path| {
+                        path.file_name()
+                            .and_then(|name| name.to_str())
+                            .is_some_and(|name| name.starts_with(".staging-"))
+                    })
+                    .expect("published staging");
+                assert!(
+                    staged.join(super::LOCAL_STAGING_AUTHORITY_FILE).is_file(),
+                    "deterministic staging must never be observable without authority"
+                );
+            }
+            Ok(())
+        })
+        .expect("staging publication");
+    }
+
+    #[test]
     fn first_activation_retry_discards_receipt_owned_matching_staging() {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
@@ -1741,6 +1776,43 @@ mod refresh_tests {
         assert!(!prefix.exists());
         assert!(!tombstone.exists());
         assert!(!repository.path().join("AGENTS.local.md").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn removal_retry_uses_external_authority_after_partial_tombstone_deletion() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        refresh_local_development(refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "first",
+        ))
+        .expect("refresh");
+        let receipt = fs::read(prefix.join("authority.json")).expect("active authority");
+        let tombstone = fixture.path().join(".local-authority.removing");
+        let authority = fixture
+            .path()
+            .join(".local-authority.removing-authority.json");
+        fs::write(&authority, receipt).expect("external removal authority");
+        fs::rename(&prefix, &tombstone).expect("simulate removal rename");
+        fs::remove_file(tombstone.join("current")).expect("delete internal current proof");
+        fs::remove_dir_all(tombstone.join("generations"))
+            .expect("delete internal receipt proof");
+
+        let removed = remove_local_development(LocalDevelopmentRemoveRequest {
+            prefix: prefix.clone(),
+            workspace_root: repository.path().to_path_buf(),
+        })
+        .expect("finish partially deleted tombstone from external authority");
+
+        assert!(removed.removed);
+        assert!(!prefix.exists());
+        assert!(!tombstone.exists());
+        assert!(!authority.exists());
     }
 
     #[cfg(unix)]
