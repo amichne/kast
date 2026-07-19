@@ -1251,7 +1251,7 @@ mod refresh_tests {
     }
 
     #[test]
-    fn first_activation_retry_discards_only_its_matching_incomplete_staging() {
+    fn first_activation_retry_preserves_unreceipted_matching_staging() {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
         let prefix = fixture.path().join("local-authority");
@@ -1274,14 +1274,18 @@ mod refresh_tests {
         let staged = prefix.join(format!(".staging-{}", generation_id.as_str()));
         write_file(&staged.join("partial"), b"interrupted staging\n");
 
-        let recovered = refresh_local_development(request).expect("retry activation");
+        let error = refresh_local_development(request)
+            .expect_err("unreceipted staging must block activation");
 
-        assert_eq!(recovered.receipt.generation_id, generation_id);
-        assert!(!staged.exists(), "matching incomplete staging must be replaced");
         assert_eq!(
-            fs::read_link(prefix.join("current")).expect("recovered current"),
-            Path::new("generations").join(generation_id.as_str()),
+            error.code, "LOCAL_STAGING_AUTHORITY_INVALID",
+            "{error:#?}"
         );
+        assert_eq!(
+            fs::read(staged.join("partial")).expect("preserved foreign staging"),
+            b"interrupted staging\n",
+        );
+        assert!(!prefix.join("current").exists());
     }
 
     #[cfg(unix)]
