@@ -1,9 +1,0 @@
-{
-  "schemaVersion": 1,
-  "authority": {
-    "kind": "source-template",
-    "command": "kast",
-    "pluginVersion": "0.1.0",
-    "cliVersion": "0.1.0"
-  }
-}

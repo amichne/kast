@@ -211,26 +211,21 @@ pub fn resolve_paths() -> Result<ResolvedKastPaths> {
         return paths_from_manifest(&read_manifest_at(&receipt.install_manifest)?);
     }
     #[cfg(target_os = "macos")]
-    match crate::install::resolve_macos_homebrew_authority() {
-        crate::install::MacosHomebrewAuthorityResolution::Active(receipt)
-        | crate::install::MacosHomebrewAuthorityResolution::Recoverable(receipt) => {
-            let mut paths = default_resolved_paths();
-            let bin_dir = receipt.cli.binary.parent().ok_or_else(|| {
-                CliError::new(
-                    "MACOS_HOMEBREW_RECEIPT_INVALID",
-                    format!(
-                        "macOS Homebrew receipt CLI has no parent directory: {}",
-                        receipt.cli.binary.display()
-                    ),
-                )
-            })?;
-            paths.bin_dir = bin_dir.to_path_buf();
-            paths.shim_path = receipt.cli.binary.clone();
-            paths.active_binary = receipt.cli.binary;
-            return Ok(paths);
-        }
-        crate::install::MacosHomebrewAuthorityResolution::Blocked(error) => return Err(error),
-        crate::install::MacosHomebrewAuthorityResolution::Absent => {}
+    if let Some(receipt) = crate::install::read_macos_homebrew_receipt()? {
+        let mut paths = default_resolved_paths();
+        let bin_dir = receipt.cli.binary.parent().ok_or_else(|| {
+            CliError::new(
+                "MACOS_HOMEBREW_RECEIPT_INVALID",
+                format!(
+                    "macOS Homebrew receipt CLI has no parent directory: {}",
+                    receipt.cli.binary.display()
+                ),
+            )
+        })?;
+        paths.bin_dir = bin_dir.to_path_buf();
+        paths.shim_path = receipt.cli.binary.clone();
+        paths.active_binary = receipt.cli.binary;
+        return Ok(paths);
     }
     let manifest_path = default_install_manifest_path();
     if manifest_path.is_file() {

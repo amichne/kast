@@ -1,6 +1,6 @@
 use crate::SCHEMA_VERSION;
 #[cfg(target_os = "macos")]
-use crate::cli::{self, ReleaseRevision};
+use crate::cli;
 use crate::cli::{
     AgentLeaseAccessArgs, AgentLeaseAcquireArgs, AgentWorkspaceLeaseId, BackendName,
     DaemonStartArgs, RuntimeArgs,

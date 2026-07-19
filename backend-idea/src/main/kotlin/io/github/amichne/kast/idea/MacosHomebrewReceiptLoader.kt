@@ -117,10 +117,7 @@ internal object MacosHomebrewReceiptLoader {
         runCatching { get(key)?.jsonObject }.getOrNull()
 
     private fun JsonObject.string(key: String): String? =
-        runCatching { get(key)?.jsonPrimitive }
-            .getOrNull()
-            ?.takeIf { primitive -> primitive.isString }
-            ?.content
+        runCatching { get(key)?.jsonPrimitive?.content }.getOrNull()
 
     private fun JsonObject.int(key: String): Int? =
         runCatching { get(key)?.jsonPrimitive?.intOrNull }.getOrNull()

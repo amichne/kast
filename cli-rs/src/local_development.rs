@@ -30,7 +30,6 @@ pub fn run(command: LocalDevelopmentCommand, output_format: OutputFormat) -> Res
             Ok(0)
         }
         LocalDevelopmentCommand::Prepare(args) => {
-            let selection_file = args.selection_file;
             let skill_source = args
                 .source_root
                 .join("cli-rs/resources/kast-skill/SKILL.md");
@@ -44,12 +43,6 @@ pub fn run(command: LocalDevelopmentCommand, output_format: OutputFormat) -> Res
                 skill_source,
                 output_directory: args.output_directory,
             })?;
-            if let Some(path) = selection_file {
-                replace_plain_file_atomically(
-                    &path,
-                    format!("{}\n", result.directory.display()).as_bytes(),
-                )?;
-            }
             crate::output::print_structured(&result, output_format)?;
             Ok(0)
         }

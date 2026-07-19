@@ -78,15 +78,7 @@ pub fn prepare_local_development_generation(
         ));
     }
 
-    let generation_id = LocalGenerationId::from_verified_artifacts(
-        &source,
-        &cli_provenance.sha256,
-        &cli_provenance.implementation_version,
-        &backend_provenance.sha256,
-        &backend_provenance.implementation_version,
-    );
-    let parent = prepared_output_parent(&request.output_directory)?;
-    let output = parent.join(generation_id.as_str());
+    let output = prepared_output_path(&request.output_directory)?;
     if output.exists() {
         let verified = verify_local_development_generation(&request.source_root, &output)?;
         if verified.ledger.source != source
@@ -111,9 +103,21 @@ pub fn prepare_local_development_generation(
         });
     }
 
-    let name = output
-        .file_name()
-        .expect("artifact-qualified generation has a directory name");
+    let parent = output.parent().ok_or_else(|| {
+        CliError::new(
+            "LOCAL_PREPARED_GENERATION_PATH_INVALID",
+            format!("Prepared generation has no parent: {}.", output.display()),
+        )
+    })?;
+    fs::create_dir_all(parent)?;
+    let parent = canonical_directory(parent, "prepared-generation parent")?;
+    let name = output.file_name().ok_or_else(|| {
+        CliError::new(
+            "LOCAL_PREPARED_GENERATION_PATH_INVALID",
+            format!("Prepared generation has no directory name: {}.", output.display()),
+        )
+    })?;
+    let output = parent.join(name);
     let staged = parent.join(format!(
         ".{}-staging-{}",
         name.to_string_lossy(),
@@ -184,6 +188,13 @@ pub fn prepare_local_development_generation(
             guidance_inputs: prepared_component(&staged, PREPARED_GUIDANCE_INPUTS_PATH)?,
             config: prepared_component(&staged, PREPARED_CONFIG_PATH)?,
         };
+        let generation_id = LocalGenerationId::from_verified_artifacts(
+            &source,
+            &components.cli.sha256,
+            &cli_provenance.implementation_version,
+            &components.backend.sha256,
+            &backend_provenance.implementation_version,
+        );
         let ledger = LocalPreparedGenerationLedger {
             schema_version: LOCAL_PREPARED_GENERATION_SCHEMA_VERSION,
             generation_id,
@@ -545,7 +556,7 @@ fn collect_prepared_regular_files(
     Ok(())
 }
 
-fn prepared_output_parent(requested: &Path) -> Result<PathBuf> {
+fn prepared_output_path(requested: &Path) -> Result<PathBuf> {
     let absolute = absolute_path(requested.to_path_buf())?;
     if let Ok(metadata) = fs::symlink_metadata(&absolute)
         && metadata.file_type().is_symlink()
@@ -558,8 +569,7 @@ fn prepared_output_parent(requested: &Path) -> Result<PathBuf> {
             ),
         ));
     }
-    fs::create_dir_all(&absolute)?;
-    canonical_directory(&absolute, "prepared-generations parent")
+    Ok(absolute)
 }
 
 fn prepared_component(

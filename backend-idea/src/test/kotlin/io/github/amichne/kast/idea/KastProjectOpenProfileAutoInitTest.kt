@@ -18,7 +18,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
@@ -86,8 +85,6 @@ class KastProjectOpenProfileAutoInitTest {
         assertTrue(skill.contains("Never reuse another worktree's Kast runtime, metadata, or semantic evidence"), skill)
         assertTrue(skill.contains("Keep that IDE project open while the worker and worktree are active"), skill)
         assertTrue(skill.contains("close that exact IDE project or window before removing the worktree"), skill)
-        assertTrue(skill.contains("Prepared plugin revision: ${currentPluginRevision().value}"), skill)
-        assertTrue(skill.contains("CLI revision: ${currentPluginRevision().value}"), skill)
         val guidance = Files.readString(workspace.resolve("AGENTS.local.md"))
         assertTrue(guidance.contains("the IntelliJ plugin owns workspace bootstrap"), guidance)
         assertTrue(guidance.contains("Before each linked worker starts"), guidance)
@@ -96,14 +93,14 @@ class KastProjectOpenProfileAutoInitTest {
         assertTrue(metadata.contains("\"preparedBy\": \"kast-intellij-plugin\""), metadata)
         assertTrue(metadata.contains("\"cliBinary\": \"${binary.toString().jsonEscaped()}\""), metadata)
         val metadataObject = Json.parseToJsonElement(metadata).jsonObject
-        assertEquals(4, metadataObject.getValue("schemaVersion").jsonPrimitive.int)
+        assertEquals(3, metadataObject.getValue("schemaVersion").jsonPrimitive.int)
         assertFalse(metadataObject.containsKey("pluginVersion"))
         assertFalse(metadataObject.containsKey("cliVersion"))
         val compatibility = metadataObject.getValue("compatibility").jsonObject
         assertEquals(currentPluginRevision().value, compatibility.getValue("pluginRevision").jsonPrimitive.content)
         assertEquals(currentPluginRevision().value, compatibility.getValue("cliRevision").jsonPrimitive.content)
         assertEquals(1, compatibility.getValue("protocolRevision").jsonPrimitive.int)
-        assertEquals(4, compatibility.getValue("workspaceMetadataRevision").jsonPrimitive.int)
+        assertEquals(3, compatibility.getValue("workspaceMetadataRevision").jsonPrimitive.int)
         assertEquals("IDEA", compatibility.getValue("runtimeIdentity").jsonObject.getValue("backendKind").jsonPrimitive.content)
         assertTrue(
             compatibility.getValue("readCapabilities").jsonArray
@@ -180,11 +177,9 @@ class KastProjectOpenProfileAutoInitTest {
     }
 
     @Test
-    fun `explicit adjacent release identity reaches workspace preparation`() {
+    fun `release version skew fails before workspace preparation`() {
         val workspace = gradleWorkspace()
         val binary = fakeKastBinary()
-        val adjacentRevision = ReleaseRevision("b".repeat(40))
-        val requests = mutableListOf<PluginWorkspaceBootstrapRequest>()
 
         val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
@@ -194,42 +189,17 @@ class KastProjectOpenProfileAutoInitTest {
                     MacosHomebrewInstallReceipt(
                         cliBinary = binary,
                         formulaPrefix = binary.parent,
-                        cliVersion = CliImplementationVersion("0.12.9"),
-                        cliRevision = adjacentRevision,
+                        cliVersion = CliImplementationVersion("definitely-not-the-plugin-version"),
+                        cliRevision = currentPluginRevision(),
                     ),
                 )
             },
-            prepareWorkspace = { request ->
-                requests.add(request)
-                PluginWorkspaceBootstrapResult.Prepared(
-                    workspace.resolve(".kast/setup/workspace.json"),
-                    emptyList(),
-                )
-            },
+            prepareWorkspace = { error("version skew must fail before workspace preparation") },
         )
 
-        assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
-        assertEquals(CliImplementationVersion("0.12.9"), requests.single().cliVersion)
-        assertEquals(adjacentRevision, requests.single().cliRevision)
-    }
-
-    @Test
-    fun `bootstrap request rejects same-version mixed revisions before mutation`() {
-        val revision = currentPluginRevision()
-        val otherRevision = ReleaseRevision(
-            if (revision.value.startsWith("a")) "b".repeat(40) else "a".repeat(40),
-        )
-
-        assertThrows<IllegalArgumentException> {
-            PluginWorkspaceBootstrapRequest(
-                workspaceRoot = gradleWorkspace(),
-                cliBinary = fakeKastBinary(),
-                cliVersion = currentPluginVersion(),
-                cliRevision = otherRevision,
-                pluginVersion = PluginVersion(currentPluginVersion().value),
-                pluginRevision = revision,
-            )
-        }
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Failed)
+        assertTrue((result as ProjectOpenProfileAutoInitResult.Failed).message.contains("version"))
+        assertFalse(workspace.resolve(".kast/setup/workspace.json").exists())
     }
 
     @Test
@@ -260,26 +230,6 @@ class KastProjectOpenProfileAutoInitTest {
         assertEquals(configuredBinary, requests.single().cliBinary)
         assertEquals(currentPluginVersion(), requests.single().cliVersion)
         assertEquals(currentPluginRevision(), requests.single().cliRevision)
-    }
-
-    @Test
-    fun `configured CLI identity requires exact JSON scalar types`() {
-        val version = currentPluginVersion()
-        val revision = currentPluginRevision()
-        val valid =
-            """{"type":"KAST_CLI_BUILD_IDENTITY","version":"${version.value}","releaseRevision":"${revision.value}","schemaVersion":1}"""
-
-        assertEquals(
-            CliBuildIdentity(version = version, revision = revision),
-            parseCliBuildIdentityDocument(valid),
-        )
-        for (invalid in listOf(
-            valid.replace("\"schemaVersion\":1", "\"schemaVersion\":\"1\""),
-            valid.replace("\"version\":\"${version.value}\"", "\"version\":13"),
-            valid.replace("\"releaseRevision\":\"${revision.value}\"", "\"releaseRevision\":${"1".repeat(40)}"),
-        )) {
-            assertEquals(null, parseCliBuildIdentityDocument(invalid), invalid)
-        }
     }
 
     @Test

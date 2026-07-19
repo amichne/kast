@@ -152,9 +152,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-local-development-refresh-contract.sh
 
-      - name: Test local development clean break
+      - name: Test development CLI and IDEA profile install contract
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: bash
-        run: ./.github/scripts/test-local-development-clean-break-contract.sh
+        run: ./.github/scripts/test-development-cli-install-contract.sh
 
       - name: Test CLI and plugin authority cutover contract
         shell: bash
@@ -510,7 +511,7 @@ jobs:
             --source-snapshot build/ci-inputs/source-snapshot.json \
             --cli-archive build/ci-inputs/kast-v0.0.0-ci-linux-x64.zip \
             --backend-archive build/ci-inputs/kast-local-source-bound-backend.zip \
-            --prepared-generations build/ci-prepared-generations \
+            --prepared-generation build/ci-prepared-generation \
             --output dist/kast-local-prepared-generation.tar.zst
 
       - name: Record prepared generation output ledgers

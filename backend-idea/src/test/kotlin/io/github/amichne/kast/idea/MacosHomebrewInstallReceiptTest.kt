@@ -143,31 +143,6 @@ class MacosHomebrewInstallReceiptTest {
     }
 
     @Test
-    fun `receipt string fields reject numeric JSON primitives`() {
-        val numericVersionBinary = fakeBinary("123")
-        val numericVersion = writeReceipt(numericVersionBinary, "123")
-        Files.writeString(
-            numericVersion,
-            Files.readString(numericVersion).replace("\"version\": \"123\"", "\"version\": 123"),
-        )
-        val numericRevision = writeReceipt(numericVersionBinary, "123", cliRevision = "1".repeat(40))
-        Files.writeString(
-            numericRevision,
-            Files.readString(numericRevision).replace(
-                "\"releaseRevision\": \"${"1".repeat(40)}\"",
-                "\"releaseRevision\": ${"1".repeat(40)}",
-            ),
-        )
-
-        for (path in listOf(numericVersion, numericRevision)) {
-            assertEquals(
-                MacosHomebrewReceiptFailure.INVALID,
-                (MacosHomebrewReceiptLoader.load(path) as MacosHomebrewReceiptLoadResult.Rejected).failure,
-            )
-        }
-    }
-
-    @Test
     @EnabledOnOs(OS.MAC, OS.LINUX)
     fun `receipt binary symlink cannot escape the Homebrew formula`() {
         val outsideBinary = tempDir.resolve("outside/kast")

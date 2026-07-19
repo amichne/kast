@@ -83,9 +83,8 @@ require_not_contains ".github/workflows/release.yml" "SHA256_PLUGIN"
 require_contains "scripts/verify-release-state.sh" "Published Homebrew tap retains the retired plugin cask"
 require_contains ".github/workflows/ci.yml" "test-cli-plugin-authority-cutover-contract.sh"
 
-require_contains "cli-rs/src/install/macos_homebrew_receipt.rs" "MACOS_HOMEBREW_RECEIPT_SCHEMA_VERSION: u32 = 3"
+require_contains "cli-rs/src/install/macos_homebrew_receipt.rs" "MACOS_HOMEBREW_RECEIPT_SCHEMA_VERSION: u32 = 2"
 require_contains "cli-rs/src/install/macos_homebrew_receipt.rs" "deny_unknown_fields"
-require_contains "cli-rs/src/install/macos_homebrew_receipt.rs" "pub release_revision: cli::ReleaseRevision"
 require_not_contains "cli-rs/src/install/macos_homebrew_receipt.rs" "MacosHomebrewPluginReceipt"
 require_not_contains "cli-rs/src/install/macos_homebrew_receipt.rs" "pub plugin:"
 require_contains "cli-rs/src/install/legacy_idea_plugin_cleanup.rs" "LEGACY_IDEA_PLUGIN_CLEANUP_RELEASE"
@@ -106,8 +105,8 @@ require_not_contains "cli-rs/src/runtime/descriptors.rs" "IntelliJ plugin throug
 require_contains "cli-rs/src/runtime/descriptors.rs" "GitHub-hosted Kast plugin through JetBrains"
 require_not_contains "cli-rs/src/output/install.rs" "InstallIdeaPluginResult"
 
-require_contains "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/compatibility/WorkspaceMetadataRevision.kt" "CURRENT = WorkspaceMetadataRevision(4)"
-require_contains "packaging/jetbrains/runtime-compatibility.json" '"workspaceMetadataRevision": 4'
+require_contains "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/compatibility/WorkspaceMetadataRevision.kt" "CURRENT = WorkspaceMetadataRevision(3)"
+require_contains "packaging/jetbrains/runtime-compatibility.json" '"workspaceMetadataRevision": 3'
 require_not_contains "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/MacosHomebrewInstallReceipt.kt" "expectedPluginVersion"
 require_not_contains "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/MacosHomebrewInstallReceipt.kt" "caskToken"
 require_not_contains "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/MacosHomebrewInstallReceipt.kt" "pluginVersion"

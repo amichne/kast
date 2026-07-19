@@ -6,43 +6,6 @@ pub fn release_revision() -> &'static str {
     env!("KAST_RELEASE_REVISION")
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-#[serde(try_from = "String", into = "String")]
-pub struct ReleaseRevision(String);
-
-impl ReleaseRevision {
-    pub fn current() -> Self {
-        Self::try_from(release_revision().to_string())
-            .expect("build.rs validates KAST_RELEASE_REVISION")
-    }
-
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl TryFrom<String> for ReleaseRevision {
-    type Error = String;
-
-    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
-        if value.len() == 40
-            && value
-                .bytes()
-                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-        {
-            Ok(Self(value))
-        } else {
-            Err("release revision must be 40 lowercase hexadecimal characters".to_string())
-        }
-    }
-}
-
-impl From<ReleaseRevision> for String {
-    fn from(value: ReleaseRevision) -> Self {
-        value.0
-    }
-}
-
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CliBuildIdentity {

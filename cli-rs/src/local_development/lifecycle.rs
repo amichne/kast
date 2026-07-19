@@ -81,7 +81,7 @@ pub fn rollback_local_development(
             Some(current_target.clone()),
             Some(previous_target.clone()),
             None,
-            Some(fs::read_link(prefix.join("bin/kast"))?),
+            Some(fs::read_link(prefix.join("bin/kast-dev"))?),
         );
         let activation = (|| -> Result<LocalDevelopmentRollbackResult> {
             transaction.stable_entrypoints_installed = true;
@@ -131,18 +131,6 @@ enum LocalRemovalPhase {
     AfterPrefixRenamed,
 }
 
-const LOCAL_REMOVAL_TOMBSTONE_AUTHORITY_SCHEMA_VERSION: u32 = 1;
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct LocalRemovalTombstoneAuthority {
-    schema_version: u32,
-    authority: LocalDevelopmentAuthority,
-    generation_id: LocalGenerationId,
-    workspace_root: PathBuf,
-    prefix: PathBuf,
-}
-
 fn remove_local_development_with_observer(
     request: LocalDevelopmentRemoveRequest,
     mut observe: impl FnMut(LocalRemovalPhase) -> Result<()>,
@@ -153,14 +141,6 @@ fn remove_local_development_with_observer(
     with_local_authority_lock(&lock_prefix, || {
         if !requested_prefix.exists() {
             observe(LocalRemovalPhase::BeforeMissingPrefixCleanup)?;
-            if reconcile_receipt_owned_removal_tombstone(&lock_prefix, &workspace_root)? {
-                return Ok(LocalDevelopmentRemoveResult {
-                    prefix: lock_prefix.clone(),
-                    workspace_root: workspace_root.clone(),
-                    removed: true,
-                    schema_version: crate::SCHEMA_VERSION,
-                });
-            }
             remove_owned_workspace_guidance_link(&workspace_root, &lock_prefix)?;
             return Ok(LocalDevelopmentRemoveResult {
                 prefix: lock_prefix.clone(),
@@ -226,7 +206,19 @@ fn remove_local_development_with_observer(
         }
         reject_live_local_runtimes(&prefix)?;
 
-        let tombstone = removal_tombstone_path(&prefix)?;
+        let parent = prefix.parent().ok_or_else(|| {
+            CliError::new(
+                "LOCAL_PREFIX_INVALID",
+                format!("Local prefix has no parent: {}", prefix.display()),
+            )
+        })?;
+        let name = prefix.file_name().and_then(|name| name.to_str()).ok_or_else(|| {
+            CliError::new(
+                "LOCAL_PREFIX_INVALID",
+                format!("Local prefix has no UTF-8 name: {}", prefix.display()),
+            )
+        })?;
+        let tombstone = parent.join(format!(".{name}.removing-{}", std::process::id()));
         if fs::symlink_metadata(&tombstone).is_ok() {
             return Err(CliError::new(
                 "LOCAL_REMOVAL_CONFLICT",
@@ -236,30 +228,26 @@ fn remove_local_development_with_observer(
                 ),
             ));
         }
-        let tombstone_authority = removal_tombstone_authority_path(&prefix)?;
-        if fs::symlink_metadata(&tombstone_authority).is_ok() {
-            validate_removal_tombstone_authority(
-                &tombstone_authority,
-                &prefix,
-                &workspace_root,
-                Some(&receipt.generation_id),
-            )?;
-        }
-        write_removal_tombstone_authority(
-            &tombstone_authority,
-            &prefix,
-            &workspace_root,
-            &receipt.generation_id,
-        )?;
         fs::rename(&prefix, &tombstone)?;
 
-        (|| -> Result<()> {
+        let cleanup = (|| -> Result<()> {
             observe(LocalRemovalPhase::AfterPrefixRenamed)?;
             remove_owned_workspace_guidance_link(&workspace_root, &prefix)?;
             fs::remove_dir_all(&tombstone)?;
-            fs::remove_file(&tombstone_authority)?;
             Ok(())
-        })()?;
+        })();
+        if let Err(mut error) = cleanup {
+            if tombstone.exists() && !prefix.exists() {
+                if let Err(restore) = fs::rename(&tombstone, &prefix) {
+                    error
+                        .details
+                        .insert("restoreError".to_string(), restore.to_string());
+                } else {
+                    let _ = ensure_workspace_guidance_link(&workspace_root, &prefix);
+                }
+            }
+            return Err(error);
+        }
         Ok(LocalDevelopmentRemoveResult {
             prefix: result_prefix.clone(),
             workspace_root: workspace_root.clone(),
@@ -267,234 +255,6 @@ fn remove_local_development_with_observer(
             schema_version: crate::SCHEMA_VERSION,
         })
     })
-}
-
-fn removal_tombstone_path(prefix: &Path) -> Result<PathBuf> {
-    removal_sibling_path(prefix, "removing")
-}
-
-fn removal_tombstone_authority_path(prefix: &Path) -> Result<PathBuf> {
-    removal_sibling_path(prefix, "removing-authority.json")
-}
-
-fn removal_sibling_path(prefix: &Path, suffix: &str) -> Result<PathBuf> {
-    let parent = prefix.parent().ok_or_else(|| {
-        CliError::new(
-            "LOCAL_PREFIX_INVALID",
-            format!("Local prefix has no parent: {}", prefix.display()),
-        )
-    })?;
-    let name = prefix.file_name().and_then(|name| name.to_str()).ok_or_else(|| {
-        CliError::new(
-            "LOCAL_PREFIX_INVALID",
-            format!("Local prefix has no UTF-8 name: {}", prefix.display()),
-        )
-    })?;
-    Ok(parent.join(format!(".{name}.{suffix}")))
-}
-
-fn reconcile_receipt_owned_removal_tombstone(
-    prefix: &Path,
-    workspace_root: &Path,
-) -> Result<bool> {
-    let tombstone = removal_tombstone_path(prefix)?;
-    let tombstone_authority = removal_tombstone_authority_path(prefix)?;
-    let metadata = match fs::symlink_metadata(&tombstone) {
-        Ok(metadata) => metadata,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            let authority_exists = match fs::symlink_metadata(&tombstone_authority) {
-                Ok(_) => true,
-                Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
-                Err(error) => return Err(error.into()),
-            };
-            if !authority_exists {
-                return Ok(false);
-            }
-            if prefix.exists() {
-                let active_authority =
-                    validate_removal_authority_tree(prefix, prefix, workspace_root)?;
-                validate_removal_tombstone_authority(
-                    &tombstone_authority,
-                    prefix,
-                    workspace_root,
-                    Some(&active_authority.generation_id),
-                )?;
-                fs::remove_file(tombstone_authority)?;
-                return Ok(false);
-            } else {
-                validate_removal_tombstone_authority(
-                    &tombstone_authority,
-                    prefix,
-                    workspace_root,
-                    None,
-                )?;
-                remove_owned_workspace_guidance_link(workspace_root, prefix)?;
-                fs::remove_file(tombstone_authority)?;
-                return Ok(true);
-            }
-        }
-        Err(error) => return Err(error.into()),
-    };
-    if prefix.exists() {
-        return Err(CliError::new(
-            "LOCAL_REMOVAL_CONFLICT",
-            format!(
-                "Both the local prefix and its interrupted-removal tombstone exist; both were preserved unchanged: {} and {}.",
-                prefix.display(),
-                tombstone.display(),
-            ),
-        ));
-    }
-    if !metadata.is_dir() || metadata.file_type().is_symlink() {
-        return Err(invalid_removal_tombstone(
-            &tombstone,
-            "tombstone is not an owned directory",
-        ));
-    }
-    validate_removal_boundary(prefix, workspace_root)?;
-    if fs::symlink_metadata(&tombstone_authority).is_ok() {
-        validate_removal_tombstone_authority(
-            &tombstone_authority,
-            prefix,
-            workspace_root,
-            None,
-        )?;
-    } else {
-        let legacy_authority =
-            validate_removal_authority_tree(&tombstone, prefix, workspace_root)?;
-        write_removal_tombstone_authority(
-            &tombstone_authority,
-            prefix,
-            workspace_root,
-            &legacy_authority.generation_id,
-        )?;
-    }
-    remove_owned_workspace_guidance_link(workspace_root, prefix)?;
-    fs::remove_dir_all(&tombstone)?;
-    fs::remove_file(tombstone_authority)?;
-    Ok(true)
-}
-
-fn write_removal_tombstone_authority(
-    path: &Path,
-    prefix: &Path,
-    workspace_root: &Path,
-    generation_id: &LocalGenerationId,
-) -> Result<()> {
-    write_json_atomic(
-        path,
-        &LocalRemovalTombstoneAuthority {
-            schema_version: LOCAL_REMOVAL_TOMBSTONE_AUTHORITY_SCHEMA_VERSION,
-            authority: LocalDevelopmentAuthority::LocalDevelopment,
-            generation_id: generation_id.clone(),
-            workspace_root: workspace_root.to_path_buf(),
-            prefix: prefix.to_path_buf(),
-        },
-    )
-}
-
-fn validate_removal_tombstone_authority(
-    path: &Path,
-    prefix: &Path,
-    workspace_root: &Path,
-    generation_id: Option<&LocalGenerationId>,
-) -> Result<LocalRemovalTombstoneAuthority> {
-    let metadata = fs::symlink_metadata(path).map_err(|error| {
-        invalid_removal_tombstone(path, format!("could not inspect external authority: {error}"))
-    })?;
-    if !metadata.is_file() || metadata.file_type().is_symlink() {
-        return Err(invalid_removal_tombstone(
-            path,
-            "external authority is not an owned regular file",
-        ));
-    }
-    let authority: LocalRemovalTombstoneAuthority = serde_json::from_slice(
-        &fs::read(path).map_err(|error| {
-            invalid_removal_tombstone(path, format!("could not read external authority: {error}"))
-        })?,
-    )
-    .map_err(|error| {
-        invalid_removal_tombstone(path, format!("external authority is invalid: {error}"))
-    })?;
-    if authority.schema_version != LOCAL_REMOVAL_TOMBSTONE_AUTHORITY_SCHEMA_VERSION
-        || authority.authority != LocalDevelopmentAuthority::LocalDevelopment
-        || authority.prefix != prefix
-        || authority.workspace_root != workspace_root
-        || generation_id.is_some_and(|expected| authority.generation_id != *expected)
-    {
-        return Err(invalid_removal_tombstone(
-            path,
-            "external authority does not bind the exact prefix, generation, and workspace",
-        ));
-    }
-    Ok(authority)
-}
-
-fn validate_removal_authority_tree(
-    authority_root: &Path,
-    prefix: &Path,
-    workspace_root: &Path,
-) -> Result<LocalDevelopmentRemovalAuthority> {
-    validate_removal_boundary(prefix, workspace_root)?;
-    if fs::canonicalize(authority_root).map_err(|error| {
-        invalid_removal_tombstone(
-            authority_root,
-            format!("could not resolve authority tree: {error}"),
-        )
-    })? != authority_root
-    {
-        return Err(invalid_removal_tombstone(
-            authority_root,
-            "authority tree is not its canonical path",
-        ));
-    }
-    let current_target = read_generation_link(&authority_root.join("current"))
-        .map_err(|error| invalid_removal_tombstone(authority_root, error.message))?
-        .ok_or_else(|| invalid_removal_tombstone(authority_root, "active generation is missing"))?;
-    let generation = authority_root.join(&current_target);
-    let receipt = read_removal_authority(&generation.join("authority.json"))
-        .map_err(|error| invalid_removal_tombstone(authority_root, error.message))?;
-    if receipt.authority != LocalDevelopmentAuthority::LocalDevelopment
-        || receipt.prefix != prefix
-        || receipt.workspace_root != workspace_root
-        || current_target != generation_target(&receipt.generation_id)
-    {
-        return Err(invalid_removal_tombstone(
-            authority_root,
-            "receipt does not bind the exact prefix, generation, and workspace",
-        ));
-    }
-    let generation_metadata = fs::symlink_metadata(&generation).map_err(|error| {
-        invalid_removal_tombstone(
-            authority_root,
-            format!("could not inspect receipt generation: {error}"),
-        )
-    })?;
-    if !generation_metadata.is_dir()
-        || generation_metadata.file_type().is_symlink()
-        || fs::canonicalize(&generation).map_err(|error| {
-            invalid_removal_tombstone(
-                authority_root,
-                format!("could not resolve receipt generation: {error}"),
-            )
-        })? != generation
-    {
-        return Err(invalid_removal_tombstone(
-            authority_root,
-            "receipt generation is not an owned canonical directory",
-        ));
-    }
-    Ok(receipt)
-}
-
-fn invalid_removal_tombstone(tombstone: &Path, reason: impl std::fmt::Display) -> CliError {
-    CliError::new(
-        "LOCAL_REMOVAL_TOMBSTONE_INVALID",
-        format!(
-            "Interrupted-removal tombstone at {} is not receipt-owned and was preserved unchanged: {reason}.",
-            tombstone.display(),
-        ),
-    )
 }
 
 fn canonicalize_missing_path(path: &Path) -> Result<PathBuf> {
@@ -600,7 +360,7 @@ fn reject_live_local_runtimes(prefix: &Path) -> Result<()> {
                             format!(
                                 "'{}' developer runtime stop --workspace-root '{}' --backend={}",
                                 shell_single_quote(
-                                    &prefix.join("bin/kast").display().to_string(),
+                                    &prefix.join("bin/kast-dev").display().to_string(),
                                 ),
                                 shell_single_quote(&descriptor.workspace_root),
                                 descriptor.backend_name,

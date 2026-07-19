@@ -15,41 +15,6 @@ use std::time::{Duration, Instant};
 
 const STATE_SCHEMA_VERSION: u32 = 2;
 const READINESS_TIMEOUT: Duration = Duration::from_secs(5);
-const AUTHORITY_SCHEMA_VERSION: u32 = 1;
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct CodexAuthorityManifest {
-    schema_version: u32,
-    authority: CodexDeclaredAuthority,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(
-    tag = "kind",
-    rename_all = "kebab-case",
-    rename_all_fields = "camelCase",
-    deny_unknown_fields
-)]
-enum CodexDeclaredAuthority {
-    SourceTemplate {
-        command: PathBuf,
-        plugin_version: String,
-        cli_version: String,
-    },
-    Release {
-        command: PathBuf,
-        plugin_version: String,
-        cli_version: String,
-        release_revision: String,
-    },
-    LocalDevelopment {
-        command: PathBuf,
-        plugin_version: String,
-        cli_version: String,
-        generation_id: String,
-    },
-}
 
 #[derive(Debug, Deserialize)]
 struct HookInput {
@@ -162,7 +127,6 @@ pub(crate) fn run(event: CodexHookEvent) -> Result<i32> {
 
 fn evaluate(event: CodexHookEvent) -> Result<Value> {
     let input = read_input()?;
-    validate_declared_authority()?;
     let workspace = resolve_workspace(input.cwd.as_deref())?;
     let state_path = state_path(&input.session_id)?;
     match event {
@@ -546,107 +510,6 @@ fn plugin_version() -> String {
         .unwrap_or_else(|| "unknown".to_string())
 }
 
-fn authority_manifest() -> Result<CodexAuthorityManifest> {
-    let root = std::env::var_os("PLUGIN_ROOT").ok_or_else(|| {
-        CliError::new(
-            "CODEX_AUTHORITY_UNAVAILABLE",
-            "PLUGIN_ROOT is required to resolve the generated Kast authority manifest.",
-        )
-    })?;
-    let path = PathBuf::from(root).join("assets/kast-authority.json");
-    let manifest: CodexAuthorityManifest =
-        serde_json::from_slice(&fs::read(&path)?).map_err(|error| {
-            CliError::new(
-                "CODEX_AUTHORITY_INVALID",
-                format!(
-                    "Invalid generated Kast authority manifest {}: {error}.",
-                    path.display()
-                ),
-            )
-        })?;
-    if manifest.schema_version != AUTHORITY_SCHEMA_VERSION {
-        return Err(CliError::new(
-            "CODEX_AUTHORITY_UNSUPPORTED",
-            format!(
-                "Kast authority schema {} is unsupported; expected {}.",
-                manifest.schema_version, AUTHORITY_SCHEMA_VERSION,
-            ),
-        ));
-    }
-    Ok(manifest)
-}
-
-fn validate_declared_authority() -> Result<()> {
-    let manifest = authority_manifest()?;
-    let installed_plugin_version = plugin_version();
-    match manifest.authority {
-        CodexDeclaredAuthority::SourceTemplate {
-            command,
-            plugin_version,
-            cli_version,
-        } => {
-            if command != Path::new("kast")
-                || plugin_version != installed_plugin_version
-                || cli_version != crate::cli::version()
-                || crate::local_development::active_local_development_receipt()?.is_some()
-            {
-                return Err(CliError::new(
-                    "CODEX_SOURCE_AUTHORITY_MISMATCH",
-                    "The repository Codex plugin template does not match the active Kast CLI.",
-                ));
-            }
-        }
-        CodexDeclaredAuthority::Release {
-            command,
-            plugin_version,
-            cli_version,
-            release_revision,
-        } => {
-            if command != Path::new("kast")
-                || plugin_version != installed_plugin_version
-                || cli_version != crate::cli::version()
-                || release_revision != crate::cli::release_revision()
-                || crate::local_development::active_local_development_receipt()?.is_some()
-            {
-                return Err(CliError::new(
-                    "CODEX_RELEASE_AUTHORITY_MISMATCH",
-                    "The installed Codex plugin does not match the active released Kast generation.",
-                ));
-            }
-        }
-        CodexDeclaredAuthority::LocalDevelopment {
-            command,
-            plugin_version,
-            cli_version,
-            generation_id,
-        } => {
-            let configured_binary = std::env::var_os("KAST_CODEX_BINARY").map(PathBuf::from);
-            let configured_generation = std::env::var("KAST_CODEX_GENERATION").ok();
-            let receipt = crate::local_development::verified_active_local_development_receipt()?
-                .ok_or_else(|| {
-                    CliError::new(
-                        "CODEX_LOCAL_AUTHORITY_MISSING",
-                        "The generated local Codex plugin no longer has an active local Kast authority.",
-                    )
-                })?;
-            if !command.is_absolute()
-                || configured_binary.as_ref() != Some(&command)
-                || configured_generation.as_deref() != Some(generation_id.as_str())
-                || receipt.entrypoint.effective_target != command
-                || receipt.generation_id.as_str() != generation_id
-                || plugin_version != installed_plugin_version
-                || cli_version != crate::cli::version()
-            {
-                return Err(CliError::new(
-                    "CODEX_LOCAL_GENERATION_MISMATCH",
-                    "The generated local Codex plugin does not match the active worktree generation.",
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
 fn versions_coherent(plugin: &str, kast: &str) -> bool {
     match (base_codex_version(plugin), base_codex_version(kast)) {
         (Some(plugin), Some(kast)) => plugin == kast,
@@ -903,19 +766,9 @@ fn tool_command(input: &Value) -> Option<&str> {
 }
 
 fn parsed_agent_command(command: &str) -> Option<AgentCommand> {
-    let declared = authority_manifest().ok()?.authority;
-    let declared_command = match declared {
-        CodexDeclaredAuthority::SourceTemplate { command, .. }
-        | CodexDeclaredAuthority::Release { command, .. }
-        | CodexDeclaredAuthority::LocalDevelopment { command, .. } => command,
-    };
-    parsed_agent_command_for(command, &declared_command)
-}
-
-fn parsed_agent_command_for(command: &str, declared_command: &Path) -> Option<AgentCommand> {
     let arguments = shlex::split(command)?;
     let executable = arguments.first()?;
-    if Path::new(executable) != declared_command {
+    if Path::new(executable).file_name()?.to_str()? != "kast" {
         return None;
     }
     let cli = Cli::try_parse_from(arguments).ok()?;
@@ -1174,22 +1027,8 @@ mod tests {
     #[test]
     fn local_stable_entrypoint_is_recognized_as_a_typed_agent_command() {
         assert!(matches!(
-            parsed_agent_command_for(
-                "/tmp/worktree/.kast/local-development/bin/kast agent verify",
-                Path::new("/tmp/worktree/.kast/local-development/bin/kast"),
-            ),
+            parsed_agent_command("/tmp/worktree/.kast/local-development/bin/kast-dev agent verify"),
             Some(AgentCommand::Verify(_)),
         ));
-    }
-
-    #[test]
-    fn another_kast_basename_is_not_the_declared_agent_command() {
-        assert!(
-            parsed_agent_command_for(
-                "/opt/homebrew/bin/kast agent verify",
-                Path::new("/tmp/worktree/.kast/local-development/bin/kast"),
-            )
-            .is_none()
-        );
     }
 }

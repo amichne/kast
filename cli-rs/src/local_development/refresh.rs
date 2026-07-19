@@ -6,7 +6,6 @@ pub fn refresh_local_development(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum LocalRefreshPhase {
-    AfterStagingPublished,
     AfterActivation,
 }
 
@@ -116,13 +115,11 @@ fn activate_local_development_artifact_set(
 
     let requested_prefix = absolute_path(prefix)?;
     reject_symlink_selected_prefix(&requested_prefix)?;
-    let lock_prefix = canonicalize_missing_path(&requested_prefix)?;
     let generation_id = LocalGenerationId::from_artifact_set(&source, &artifacts);
 
-    with_local_authority_lock(&lock_prefix, || {
-        reconcile_receipt_owned_removal_tombstone(&lock_prefix, &workspace_root)?;
-        fs::create_dir_all(&lock_prefix)?;
-        let prefix = canonical_directory(&lock_prefix, "local-development prefix")?;
+    with_local_authority_lock(&requested_prefix, || {
+        fs::create_dir_all(&requested_prefix)?;
+        let prefix = canonical_directory(&requested_prefix, "local-development prefix")?;
         let generations = prefix.join("generations");
         let generation = generations.join(generation_id.as_str());
         fs::create_dir_all(&generations)?;
@@ -163,12 +160,7 @@ fn activate_local_development_artifact_set(
                 ));
             }
         } else {
-            reject_unowned_prefix_contents(
-                &prefix,
-                &generation,
-                &generation_id,
-                &workspace_root,
-            )?;
+            reject_unowned_prefix_contents(&prefix, &generation)?;
         }
         validate_workspace_guidance_target(&workspace_root, &prefix)?;
         require_workspace_guidance_ignored(&workspace_root)?;
@@ -221,22 +213,19 @@ fn activate_local_development_artifact_set(
             }
             (false, receipt)
         } else {
-            stage_generation(
-                GenerationStageRequest {
-                    prefix: &prefix,
-                    generation: &generation,
-                    generation_id: &generation_id,
-                    source: &source,
-                    workspace_root: &workspace_root,
-                    cli_binary: &cli_binary,
-                    backend_directory: &backend_directory,
-                    skill_source: &skill_source,
-                    config_source: &config_source,
-                    artifacts: &artifacts,
-                    previous_generation: previous_generation.as_ref(),
-                },
-                &mut observe,
-            )?;
+            stage_generation(GenerationStageRequest {
+                prefix: &prefix,
+                generation: &generation,
+                generation_id: &generation_id,
+                source: &source,
+                workspace_root: &workspace_root,
+                cli_binary: &cli_binary,
+                backend_directory: &backend_directory,
+                skill_source: &skill_source,
+                config_source: &config_source,
+                artifacts: &artifacts,
+                previous_generation: previous_generation.as_ref(),
+            })?;
             let receipt = read_local_development_receipt(&generation.join("authority.json"))?;
             validate_receipt_identity(&receipt, &prefix, &generation, &workspace_root)?;
             (true, receipt)
@@ -252,7 +241,7 @@ fn activate_local_development_artifact_set(
 
         let stable_entrypoint_before = current_receipt
             .as_ref()
-            .map(|_| fs::read_link(prefix.join("bin/kast")))
+            .map(|_| fs::read_link(prefix.join("bin/kast-dev")))
             .transpose()?;
         let mut transaction = LocalRefreshTransaction::new(
             &prefix,
@@ -362,13 +351,13 @@ impl LocalRefreshTransaction {
         if self.stable_entrypoints_installed {
             if let Some(contents) = &self.stable_entrypoint_before {
                 if let Err(error) =
-                    replace_relative_symlink(&self.prefix.join("bin/kast"), contents)
+                    replace_relative_symlink(&self.prefix.join("bin/kast-dev"), contents)
                 {
                     failures.push(error.to_string());
                 }
             } else {
                 for path in [
-                    self.prefix.join("bin/kast"),
+                    self.prefix.join("bin/kast-dev"),
                     self.prefix.join("authority.json"),
                     self.prefix.join("install.json"),
                 ] {
@@ -410,23 +399,7 @@ struct GenerationStageRequest<'a> {
     previous_generation: Option<&'a LocalGenerationId>,
 }
 
-const LOCAL_STAGING_AUTHORITY_SCHEMA_VERSION: u32 = 1;
-const LOCAL_STAGING_AUTHORITY_FILE: &str = ".kast-staging-authority.json";
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct LocalStagingAuthority {
-    schema_version: u32,
-    authority: LocalDevelopmentAuthority,
-    generation_id: LocalGenerationId,
-    prefix: PathBuf,
-    workspace_root: PathBuf,
-}
-
-fn stage_generation(
-    request: GenerationStageRequest<'_>,
-    observe: &mut impl FnMut(LocalRefreshPhase) -> Result<()>,
-) -> Result<()> {
+fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
     let GenerationStageRequest {
         prefix,
         generation,
@@ -440,43 +413,13 @@ fn stage_generation(
         artifacts,
         previous_generation,
     } = request;
-    let published_staging = prefix.join(format!(".staging-{}", generation_id.as_str()));
-    if fs::symlink_metadata(&published_staging).is_ok() {
-        validate_staging_authority(
-            &published_staging,
-            prefix,
-            generation_id,
-            workspace_root,
-        )?;
-        fs::remove_dir_all(&published_staging)?;
+    let staged = prefix.join(format!(".staging-{}", generation_id.as_str()));
+    if staged.exists() {
+        fs::remove_dir_all(&staged)?;
     }
-    let staging_parent = prefix.parent().ok_or_else(|| {
-        CliError::new(
-            "LOCAL_PREFIX_INVALID",
-            format!("Local prefix has no parent: {}", prefix.display()),
-        )
-    })?;
-    let staged = staging_parent.join(format!(
-        ".kast-local-preparing-{}-{}",
-        generation_id.as_str(),
-        uuid::Uuid::new_v4()
-    ));
-    fs::create_dir(&staged)?;
-    if let Err(error) = write_json_atomic(
-        &staged.join(LOCAL_STAGING_AUTHORITY_FILE),
-        &LocalStagingAuthority {
-            schema_version: LOCAL_STAGING_AUTHORITY_SCHEMA_VERSION,
-            authority: LocalDevelopmentAuthority::LocalDevelopment,
-            generation_id: generation_id.clone(),
-            prefix: prefix.to_path_buf(),
-            workspace_root: workspace_root.to_path_buf(),
-        },
-    ) {
-        let _ = fs::remove_dir_all(&staged);
-        return Err(error);
-    }
+    fs::create_dir_all(&staged)?;
     let result = (|| -> Result<()> {
-        let physical_entrypoint = staged.join("entrypoint/kast");
+        let physical_entrypoint = staged.join("entrypoint/kast-dev");
         write_bytes(
             &physical_entrypoint,
             local_entrypoint_script(prefix).as_bytes(),
@@ -491,7 +434,7 @@ fn stage_generation(
         copy_directory_tree(backend_directory, &physical_backend)?;
         validate_backend_distribution(&physical_backend)?;
 
-        let entrypoint_target = prefix.join("bin/kast");
+        let entrypoint_target = prefix.join("bin/kast-dev");
         let physical_skill = staged.join("lib/skills/kast/SKILL.md");
         let rendered_skill = render_local_skill(skill_source, &entrypoint_target)?;
         validate_rendered_command_lockstep(&rendered_skill, &entrypoint_target)?;
@@ -548,7 +491,7 @@ fn stage_generation(
             workspace_root: workspace_root.to_path_buf(),
             prefix: prefix.to_path_buf(),
             entrypoint: LocalDevelopmentEntrypoint {
-                physical_target: generation.join("entrypoint/kast"),
+                physical_target: generation.join("entrypoint/kast-dev"),
                 effective_target: entrypoint_target.clone(),
                 sha256: Sha256Digest::try_from(crate::manifest::sha256_file(
                     &physical_entrypoint,
@@ -565,14 +508,11 @@ fn stage_generation(
             updated_at: crate::manifest::current_timestamp(),
         };
         write_json_atomic(&staged.join("authority.json"), &receipt)?;
-        fs::rename(&staged, &published_staging)?;
-        observe(LocalRefreshPhase::AfterStagingPublished)?;
-        fs::rename(&published_staging, generation)?;
+        fs::rename(&staged, generation)?;
         Ok(())
     })();
     if result.is_err() {
         let _ = fs::remove_dir_all(&staged);
-        let _ = fs::remove_dir_all(&published_staging);
     }
     result
 }
@@ -649,12 +589,7 @@ fn remove_path_if_present(path: &Path) -> Result<()> {
     }
 }
 
-fn reject_unowned_prefix_contents(
-    prefix: &Path,
-    allowed_generation: &Path,
-    generation_id: &LocalGenerationId,
-    workspace_root: &Path,
-) -> Result<()> {
+fn reject_unowned_prefix_contents(prefix: &Path, allowed_generation: &Path) -> Result<()> {
     let allowed_generation_name = allowed_generation.file_name().ok_or_else(|| {
         CliError::new(
             "LOCAL_PREFIX_INVALID",
@@ -715,10 +650,10 @@ fn reject_unowned_prefix_contents(
                     let launcher = launcher?;
                     if !matches!(
                         launcher.file_name().to_str(),
-                        Some("kast" | "kast.next")
+                        Some("kast-dev" | "kast-dev.next")
                     )
                         || read_relative_symlink(&launcher.path())?
-                            != Some(PathBuf::from("../current/entrypoint/kast"))
+                            != Some(PathBuf::from("../current/entrypoint/kast-dev"))
                     {
                         return Err(unowned_prefix_conflict(&launcher.path()));
                     }
@@ -746,68 +681,11 @@ fn reject_unowned_prefix_contents(
                 if !metadata.is_dir() || metadata.is_symlink() {
                     return Err(unowned_prefix_conflict(&path));
                 }
-                validate_staging_authority(&path, prefix, generation_id, workspace_root)?;
             }
             _ => return Err(unowned_prefix_conflict(&path)),
         }
     }
     Ok(())
-}
-
-fn validate_staging_authority(
-    staged: &Path,
-    prefix: &Path,
-    generation_id: &LocalGenerationId,
-    workspace_root: &Path,
-) -> Result<()> {
-    let metadata = fs::symlink_metadata(staged).map_err(|error| {
-        invalid_staging_authority(staged, format!("could not inspect staging directory: {error}"))
-    })?;
-    if !metadata.is_dir() || metadata.file_type().is_symlink() {
-        return Err(invalid_staging_authority(
-            staged,
-            "staging path is not an owned directory",
-        ));
-    }
-    let receipt_path = staged.join(LOCAL_STAGING_AUTHORITY_FILE);
-    let receipt_metadata = fs::symlink_metadata(&receipt_path).map_err(|error| {
-        invalid_staging_authority(
-            staged,
-            format!("staging authority receipt is missing: {error}"),
-        )
-    })?;
-    if !receipt_metadata.is_file() || receipt_metadata.file_type().is_symlink() {
-        return Err(invalid_staging_authority(
-            staged,
-            "staging authority receipt is not a regular file",
-        ));
-    }
-    let receipt: LocalStagingAuthority = serde_json::from_slice(&fs::read(&receipt_path)?)
-        .map_err(|error| {
-            invalid_staging_authority(staged, format!("receipt is invalid: {error}"))
-        })?;
-    if receipt.schema_version != LOCAL_STAGING_AUTHORITY_SCHEMA_VERSION
-        || receipt.authority != LocalDevelopmentAuthority::LocalDevelopment
-        || receipt.generation_id != *generation_id
-        || receipt.prefix != prefix
-        || receipt.workspace_root != workspace_root
-    {
-        return Err(invalid_staging_authority(
-            staged,
-            "receipt does not bind the exact generation, prefix, and workspace",
-        ));
-    }
-    Ok(())
-}
-
-fn invalid_staging_authority(staged: &Path, reason: impl std::fmt::Display) -> CliError {
-    CliError::new(
-        "LOCAL_STAGING_AUTHORITY_INVALID",
-        format!(
-            "Local staging at {} is not receipt-owned and was preserved unchanged: {reason}.",
-            staged.display(),
-        ),
-    )
 }
 
 fn unowned_prefix_conflict(path: &Path) -> CliError {
@@ -913,8 +791,8 @@ fn validate_receipt_identity(
             ));
         }
     }
-    if receipt.entrypoint.physical_target != generation.join("entrypoint/kast")
-        || receipt.entrypoint.effective_target != prefix.join("bin/kast")
+    if receipt.entrypoint.physical_target != generation.join("entrypoint/kast-dev")
+        || receipt.entrypoint.effective_target != prefix.join("bin/kast-dev")
         || receipt.install_manifest != generation.join("install.json")
     {
         return Err(CliError::new(
@@ -960,8 +838,8 @@ fn artifact_sets_equivalent(
 fn install_stable_entrypoints(prefix: &Path, receipt: &LocalDevelopmentReceipt) -> Result<()> {
     validate_physical_entrypoint(receipt)?;
     replace_relative_symlink(
-        &prefix.join("bin/kast"),
-        Path::new("../current/entrypoint/kast"),
+        &prefix.join("bin/kast-dev"),
+        Path::new("../current/entrypoint/kast-dev"),
     )?;
     replace_relative_symlink(
         &prefix.join("authority.json"),
@@ -1089,7 +967,7 @@ fn remove_owned_workspace_guidance_link(workspace_root: &Path, prefix: &Path) ->
 fn local_entrypoint_script(prefix: &Path) -> String {
     let prefix = shell_single_quote(&prefix.display().to_string());
     format!(
-        "#!/bin/sh\nset -eu\nprefix='{prefix}'\ntarget=$(readlink \"$prefix/current\")\ncase \"$target\" in\n  generations/*) generation=${{target#generations/}} ;;\n  *) echo 'kast: invalid local generation authority' >&2; exit 70 ;;\nesac\ncase \"$generation\" in\n  ''|*[!0-9a-f-]*|*-*-*) echo 'kast: invalid local generation identity' >&2; exit 70 ;;\nesac\ngeneration_root=\"$prefix/$target\"\nstate=\"$prefix/state/$generation\"\nexport KAST_LOCAL_DEVELOPMENT_RECEIPT=\"$generation_root/authority.json\"\nexport KAST_INSTALL_ROOT=\"$prefix\"\nexport KAST_CONFIG_HOME=\"$generation_root/config\"\nexport KAST_DATA_HOME=\"$state/data\"\nexport KAST_CACHE_HOME=\"$state/cache\"\nexec \"$generation_root/bin/kast\" \"$@\"\n"
+        "#!/bin/sh\nset -eu\nprefix='{prefix}'\ntarget=$(readlink \"$prefix/current\")\ncase \"$target\" in\n  generations/*) generation=${{target#generations/}} ;;\n  *) echo 'kast-dev: invalid local generation authority' >&2; exit 70 ;;\nesac\ncase \"$generation\" in\n  ''|*[!0-9a-f-]*|*-*-*) echo 'kast-dev: invalid local generation identity' >&2; exit 70 ;;\nesac\ngeneration_root=\"$prefix/$target\"\nstate=\"$prefix/state/$generation\"\nexport KAST_LOCAL_DEVELOPMENT_RECEIPT=\"$generation_root/authority.json\"\nexport KAST_INSTALL_ROOT=\"$prefix\"\nexport KAST_CONFIG_HOME=\"$generation_root/config\"\nexport KAST_DATA_HOME=\"$state/data\"\nexport KAST_CACHE_HOME=\"$state/cache\"\nexec \"$generation_root/bin/kast\" \"$@\"\n"
     )
 }
 
@@ -1255,7 +1133,7 @@ fn local_install_manifest(
     source: &SourceSnapshot,
     workspace_root: &Path,
 ) -> crate::manifest::KastInstallManifest {
-    let generation = prefix.join(generation_target(generation_id));
+    let generation = prefix.join(generation_target(&generation_id));
     let state = prefix.join("state").join(generation_id.as_str());
     let now = crate::manifest::current_timestamp();
     crate::manifest::KastInstallManifest {
@@ -1277,7 +1155,7 @@ fn local_install_manifest(
             locks: state.join("locks").display().to_string(),
         },
         entrypoints: crate::manifest::ManifestEntrypoints {
-            shim: prefix.join("bin/kast").display().to_string(),
+            shim: prefix.join("bin/kast-dev").display().to_string(),
             active_binary: generation.join("bin/kast").display().to_string(),
         },
         schemas: crate::manifest::ManifestSchemas::default(),
@@ -1313,7 +1191,7 @@ fn local_install_manifest(
         managed_paths: vec![
             "generations".to_string(),
             format!("state/{}", generation_id.as_str()),
-            "bin/kast".to_string(),
+            "bin/kast-dev".to_string(),
         ],
         owned_paths: vec![prefix.display().to_string()],
         shell_rc_patches: vec![],
@@ -1608,7 +1486,7 @@ fn validate_stable_authority(
         ));
     }
     let entrypoint_target = read_relative_symlink(&receipt.entrypoint.effective_target)?;
-    if entrypoint_target.as_deref() != Some(Path::new("../current/entrypoint/kast"))
+    if entrypoint_target.as_deref() != Some(Path::new("../current/entrypoint/kast-dev"))
         || fs::canonicalize(&receipt.entrypoint.effective_target)?
             != fs::canonicalize(&receipt.entrypoint.physical_target)?
     {

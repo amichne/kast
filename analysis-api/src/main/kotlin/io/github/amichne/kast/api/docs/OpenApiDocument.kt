@@ -213,7 +213,6 @@ object OpenApiDocument {
         // Runtime compatibility negotiation vocabulary
         registry.register("ProtocolRevision", ProtocolRevision.serializer())
         registry.register("WorkspaceMetadataRevision", WorkspaceMetadataRevision.serializer())
-        registry.register("ReleaseRevision", ReleaseRevision.serializer())
         registry.register("PluginImplementationVersion", PluginImplementationVersion.serializer())
         registry.register("CliImplementationVersion", CliImplementationVersion.serializer())
         registry.register("RuntimeImplementationVersion", RuntimeImplementationVersion.serializer())
@@ -232,10 +231,6 @@ object OpenApiDocument {
         registry.register(
             "RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair",
             RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair.serializer(),
-        )
-        registry.register(
-            "RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision",
-            RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision.serializer(),
         )
         registry.register(
             "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision",
@@ -936,8 +931,6 @@ internal class SchemaRegistry {
                 "type",
                 "UNSUPPORTED_RELEASE_PAIR" to
                     "RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair",
-                "MISMATCHED_RELEASE_REVISION" to
-                    "RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision",
                 "UNSUPPORTED_PROTOCOL_REVISION" to
                     "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision",
                 "UNSUPPORTED_WORKSPACE_METADATA_REVISION" to
@@ -950,10 +943,6 @@ internal class SchemaRegistry {
             "RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair" -> subtypeWithDiscriminator(
                 RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair.serializer(),
                 discriminatorValue = "UNSUPPORTED_RELEASE_PAIR",
-            )
-            "RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision" -> subtypeWithDiscriminator(
-                RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision.serializer(),
-                discriminatorValue = "MISMATCHED_RELEASE_REVISION",
             )
             "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision" -> subtypeWithDiscriminator(
                 RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision.serializer(),
@@ -1122,11 +1111,6 @@ internal class SchemaRegistry {
             "PluginImplementationVersion", "CliImplementationVersion", "RuntimeImplementationVersion" -> {
                 schema["minLength"] = 1
                 schema["pattern"] = "^\\S+$"
-            }
-            "ReleaseRevision" -> {
-                schema["minLength"] = 40
-                schema["maxLength"] = 40
-                schema["pattern"] = "^[0-9a-f]{40}$"
             }
             "WorkspaceRoot", "BackendName", "NormalizedQuery", "Projection" -> schema["minLength"] = 1
             "Limit" -> {

@@ -18,10 +18,7 @@ data class RuntimeCompatibilityMatrix(
         facts: RuntimeCompatibilityFacts,
         operationCapability: RuntimeCapability? = null,
     ): RuntimeCompatibilityOutcome {
-        if (
-            facts.pluginVersion.value == facts.cliVersion.value &&
-            facts.pluginRevision != facts.cliRevision
-        ) {
+        if (facts.pluginRevision != facts.cliRevision) {
             return RuntimeCompatibilityOutcome.UpdateRequired(
                 RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision(
                     pluginRevision = facts.pluginRevision,

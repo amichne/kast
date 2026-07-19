@@ -116,27 +116,6 @@ fn agent_ready_rejects_old_codex_home_skill_against_new_cli_dialect() {
     );
     let payload: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("readiness JSON");
     assert_eq!(payload["ok"], false, "{payload:#}");
-    assert_eq!(payload["authorityResolution"]["state"], "ACTIVE");
-    assert_eq!(
-        payload["authorityResolution"]["generation"]["kind"],
-        "release"
-    );
-    assert_eq!(
-        payload["authorityResolution"]["generation"]["distribution"],
-        "macos-homebrew"
-    );
-    assert_eq!(
-        payload["authorityResolution"]["generation"]["revision"],
-        env!("KAST_RELEASE_REVISION")
-    );
-    assert_eq!(
-        payload["agentEnvironment"]["binary"]["revision"],
-        env!("KAST_RELEASE_REVISION")
-    );
-    assert_eq!(
-        payload["agentEnvironment"]["backend"]["revision"],
-        env!("KAST_RELEASE_REVISION")
-    );
     assert_eq!(
         payload["agentEnvironment"]["binary"]["dialectRevision"], 2,
         "{payload:#}",

@@ -108,12 +108,9 @@ pub struct LocalDevelopmentPrepareArgs {
     /// Provenance for the exact source-bound backend tree.
     #[arg(long)]
     pub backend_provenance: PathBuf,
-    /// Parent directory that owns artifact-qualified immutable generations.
+    /// Immutable generation directory to publish atomically.
     #[arg(long)]
     pub output_directory: PathBuf,
-    /// Optional pointer file updated atomically after the selected generation verifies.
-    #[arg(long)]
-    pub selection_file: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]

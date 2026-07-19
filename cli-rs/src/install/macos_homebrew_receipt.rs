@@ -12,7 +12,7 @@ pub struct MacosHomebrewCliReceipt {
     pub binary: PathBuf,
     pub formula_prefix: PathBuf,
     pub version: String,
-    pub release_revision: cli::ReleaseRevision,
+    pub release_revision: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,14 +66,6 @@ enum ExistingMacosHomebrewReceiptForRepair {
     LegacySchema1(MacosHomebrewInstallReceipt),
 }
 
-#[derive(Debug)]
-pub(crate) enum MacosHomebrewAuthorityResolution {
-    Absent,
-    Active(MacosHomebrewInstallReceipt),
-    Recoverable(MacosHomebrewInstallReceipt),
-    Blocked(CliError),
-}
-
 impl MacosHomebrewInstallReceipt {
     fn new(cli_binary: PathBuf, formula_prefix: PathBuf, cli_version: String) -> Self {
         Self {
@@ -83,7 +75,7 @@ impl MacosHomebrewInstallReceipt {
                 binary: cli_binary,
                 formula_prefix,
                 version: cli_version,
-                release_revision: cli::ReleaseRevision::current(),
+                release_revision: cli::release_revision().to_string(),
             },
             updated_at: current_timestamp(),
         }
@@ -209,6 +201,7 @@ fn validate_macos_homebrew_receipt(
     if !receipt.cli.binary.is_absolute()
         || !receipt.cli.formula_prefix.is_absolute()
         || receipt.cli.version.trim().is_empty()
+        || !is_release_revision(&receipt.cli.release_revision)
         || receipt.updated_at.trim().is_empty()
     {
         return Err(invalid_receipt(path, "contains an invalid CLI authority projection"));
@@ -224,12 +217,12 @@ fn validate_macos_homebrew_receipt(
             ),
         ));
     }
-    if receipt.cli.release_revision != cli::ReleaseRevision::current() {
+    if receipt.cli.release_revision != cli::release_revision() {
         return Err(CliError::new(
             "MACOS_HOMEBREW_RECEIPT_REVISION_MISMATCH",
             format!(
                 "macOS Homebrew CLI receipt records release revision {}; update Kast and rerun `kast repair --for machine --apply` with running revision {} at {}",
-                receipt.cli.release_revision.as_str(),
+                receipt.cli.release_revision,
                 cli::release_revision(),
                 path.display(),
             ),
@@ -264,6 +257,13 @@ fn invalid_receipt(path: &Path, reason: &str) -> CliError {
         "MACOS_HOMEBREW_RECEIPT_INVALID",
         format!("macOS Homebrew CLI receipt {reason} at {}", path.display()),
     )
+}
+
+fn is_release_revision(value: &str) -> bool {
+    value.len() == 40
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 fn receipt_binary_is_executable(path: &Path) -> bool {
@@ -372,8 +372,9 @@ fn exact_stale_schema_3_macos_homebrew_receipt(path: &Path) -> Result<bool> {
     };
     Ok(receipt.schema_version == MACOS_HOMEBREW_RECEIPT_SCHEMA_VERSION
         && (receipt.cli.version != cli::version()
-            || receipt.cli.release_revision != cli::ReleaseRevision::current())
+            || receipt.cli.release_revision != cli::release_revision())
         && !receipt.cli.version.trim().is_empty()
+        && is_release_revision(&receipt.cli.release_revision)
         && !receipt.updated_at.trim().is_empty()
         && path_is_normalized_absolute(&receipt.cli.binary)
         && path_is_normalized_absolute(&receipt.cli.formula_prefix)
@@ -526,57 +527,6 @@ pub fn read_macos_homebrew_receipt() -> Result<Option<MacosHomebrewInstallReceip
     read_macos_homebrew_receipt_at(&path)
         .and_then(|receipt| validate_running_macos_homebrew_receipt(&path, receipt))
         .map(Some)
-}
-
-pub(crate) fn resolve_macos_homebrew_authority() -> MacosHomebrewAuthorityResolution {
-    #[cfg(not(target_os = "macos"))]
-    {
-        MacosHomebrewAuthorityResolution::Absent
-    }
-    #[cfg(target_os = "macos")]
-    {
-        let path = default_macos_homebrew_receipt_path();
-        if !path.is_file() {
-            return match discover_running_homebrew_receipt() {
-                Ok(Some(replacement)) => {
-                    MacosHomebrewAuthorityResolution::Recoverable(replacement)
-                }
-                Ok(None) => MacosHomebrewAuthorityResolution::Absent,
-                Err(error) => MacosHomebrewAuthorityResolution::Blocked(error),
-            };
-        }
-        match read_macos_homebrew_receipt_at(&path) {
-            Ok(receipt) => {
-                match validate_running_macos_homebrew_receipt(&path, receipt) {
-                    Ok(receipt) => MacosHomebrewAuthorityResolution::Active(receipt),
-                    Err(error) => MacosHomebrewAuthorityResolution::Blocked(error),
-                }
-            }
-            Err(strict_error) => match classify_existing_macos_homebrew_receipt_for_repair(&path) {
-                Ok(
-                    ExistingMacosHomebrewReceiptForRepair::StaleSchema3
-                    | ExistingMacosHomebrewReceiptForRepair::LegacySchema2
-                    | ExistingMacosHomebrewReceiptForRepair::LegacySchema1(_),
-                ) => match discover_running_homebrew_receipt() {
-                    Ok(Some(replacement)) => {
-                        MacosHomebrewAuthorityResolution::Recoverable(replacement)
-                    }
-                    Ok(None) => MacosHomebrewAuthorityResolution::Blocked(CliError::new(
-                        "MACOS_HOMEBREW_RECEIPT_BINARY_MISMATCH",
-                        format!(
-                            "Recognized stale Homebrew receipt state at {}, but the running Kast executable is not the exact current Cellar/kast formula binary; the receipt was preserved unchanged",
-                            path.display(),
-                        ),
-                    )),
-                    Err(error) => MacosHomebrewAuthorityResolution::Blocked(error),
-                },
-                Ok(ExistingMacosHomebrewReceiptForRepair::Current(_)) => {
-                    MacosHomebrewAuthorityResolution::Blocked(strict_error)
-                }
-                Err(_) => MacosHomebrewAuthorityResolution::Blocked(strict_error),
-            },
-        }
-    }
 }
 
 pub fn macos_homebrew_authority_is_active() -> Result<bool> {

@@ -6,6 +6,26 @@ pub(crate) struct ProtocolRevision(pub(crate) NonZeroU32);
 #[serde(transparent)]
 pub(crate) struct WorkspaceMetadataRevision(pub(crate) NonZeroU32);
 
+#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
+#[serde(try_from = "String")]
+pub(crate) struct ReleaseRevision(String);
+
+impl TryFrom<String> for ReleaseRevision {
+    type Error = String;
+
+    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
+        if value.len() == 40
+            && value
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        {
+            Ok(Self(value))
+        } else {
+            Err("release revision must be 40 lowercase hexadecimal characters".to_string())
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub(crate) enum WorkspaceReadCapability {
@@ -174,18 +194,8 @@ pub(crate) fn assess_runtime_compatibility(
             format!("The compiled runtime compatibility source is invalid: {error}"),
         )
     })?;
-    assess_runtime_compatibility_source(facts, operation_capability, &source)
-}
-
-fn assess_runtime_compatibility_source(
-    facts: &RuntimeCompatibilityFacts,
-    operation_capability: Option<RuntimeCapability>,
-    source: &RuntimeCompatibilitySource,
-) -> Result<RuntimeCompatibilityAssessment> {
-    validate_runtime_compatibility_source(source)?;
-    if facts.plugin_version == facts.cli_version
-        && facts.plugin_revision != facts.cli_revision
-    {
+    validate_runtime_compatibility_source(&source)?;
+    if facts.plugin_revision != facts.cli_revision {
         return Ok(RuntimeCompatibilityAssessment::UpdateRequired {
             requirement: RuntimeCompatibilityUpdateRequirement::MismatchedReleaseRevision {
                 plugin_revision: facts.plugin_revision.clone(),
@@ -352,9 +362,7 @@ fn validate_runtime_compatibility_source(source: &RuntimeCompatibilitySource) ->
             || pair.evidence.is_empty()
             || resolve_release_revision(&pair.plugin_revision).is_none()
             || resolve_release_revision(&pair.cli_revision).is_none()
-            || (resolve_release_version(&pair.plugin_version)
-                == resolve_release_version(&pair.cli_version)
-                && pair.plugin_revision != pair.cli_revision)
+            || pair.plugin_revision != pair.cli_revision
             || required.len() != pair.required_capabilities.len()
             || optional.len() != pair.optional_capabilities.len()
             || !required.is_disjoint(&optional)

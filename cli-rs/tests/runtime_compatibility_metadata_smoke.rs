@@ -73,8 +73,10 @@ mod macos {
         assert_update_required(fixture.status());
 
         let mut old = original;
-        old["schemaVersion"] = serde_json::json!(3);
-        old["compatibility"]["workspaceMetadataRevision"] = serde_json::json!(3);
+        old["schemaVersion"] = serde_json::json!(2);
+        old["pluginVersion"] = serde_json::json!(env!("CARGO_PKG_VERSION"));
+        old["cliVersion"] = serde_json::json!(env!("CARGO_PKG_VERSION"));
+        old["compatibility"]["workspaceMetadataRevision"] = serde_json::json!(2);
         fixture.write(&old);
         assert_update_required(fixture.status());
     }

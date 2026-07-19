@@ -328,7 +328,7 @@
         "needs": [],
         "outputs": [
           "local-development-refresh-contract",
-          "local-development-clean-break-contract",
+          "development-cli-install-contract",
           "cli-plugin-authority-cutover-contract"
         ],
         "durationSamplesSeconds": [
@@ -571,7 +571,6 @@
     ]
   },
   "retiredProofOutputReplacements": {
-    "development-cli-install-contract": "local-development-clean-break-contract",
     "ci-artifact-ledger-headless-macos": "ci-artifact-ledger-headless-linux",
     "headless-portable-artifact-macos": "headless-portable-artifact-linux",
     "headless-portable-no-fat-jar-macos": "headless-portable-no-fat-jar-linux"

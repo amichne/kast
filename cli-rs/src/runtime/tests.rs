@@ -410,7 +410,7 @@ mod tests {
                 .expect("release revision"),
             protocol_revision: ProtocolRevision(NonZeroU32::new(1).expect("protocol")),
             workspace_metadata_revision: WorkspaceMetadataRevision(
-                NonZeroU32::new(4).expect("metadata"),
+                NonZeroU32::new(3).expect("metadata"),
             ),
             read_capabilities: vec![
                 WorkspaceReadCapability::ResolveSymbol,
@@ -457,58 +457,5 @@ mod tests {
                 ..
             }
         ));
-    }
-
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn runtime_compatibility_source_accepts_adjacent_distinct_revisions() {
-        let mut document: serde_json::Value = serde_json::from_str(include_str!(
-            "../../../packaging/jetbrains/runtime-compatibility.json"
-        ))
-        .expect("compatibility source");
-        let mut adjacent = document["supportedPairs"][0].clone();
-        adjacent["relation"] = serde_json::json!("adjacent-release");
-        adjacent["pluginVersion"] = serde_json::json!(cli::version());
-        adjacent["cliVersion"] = serde_json::json!("0.12.9");
-        adjacent["pluginRevision"] = serde_json::json!("a".repeat(40));
-        adjacent["cliRevision"] = serde_json::json!("b".repeat(40));
-        adjacent["runtime"]["implementationVersion"] = serde_json::json!(cli::version());
-        document["supportedPairs"]
-            .as_array_mut()
-            .expect("supported pairs")
-            .push(adjacent);
-        let source: RuntimeCompatibilitySource =
-            serde_json::from_value(document).expect("adjacent source");
-
-        validate_runtime_compatibility_source(&source).expect("valid adjacent source");
-        let facts = RuntimeCompatibilityFacts {
-            plugin_version: cli::version().to_string(),
-            cli_version: "0.12.9".to_string(),
-            plugin_revision: ReleaseRevision::try_from("a".repeat(40)).expect("plugin revision"),
-            cli_revision: ReleaseRevision::try_from("b".repeat(40)).expect("CLI revision"),
-            protocol_revision: ProtocolRevision(NonZeroU32::new(1).expect("protocol")),
-            workspace_metadata_revision: WorkspaceMetadataRevision(
-                NonZeroU32::new(4).expect("metadata"),
-            ),
-            read_capabilities: vec![
-                WorkspaceReadCapability::ResolveSymbol,
-                WorkspaceReadCapability::Diagnostics,
-                WorkspaceReadCapability::WorkspaceFiles,
-            ],
-            mutation_capabilities: vec![
-                WorkspaceMutationCapability::ApplyEdits,
-                WorkspaceMutationCapability::RefreshWorkspace,
-                WorkspaceMutationCapability::Rename,
-            ],
-            runtime_identity: WorkspaceRuntimeIdentity {
-                implementation_version: cli::version().to_string(),
-                backend_kind: WorkspaceRuntimeBackendKind::Idea,
-            },
-        };
-        assert_eq!(
-            assess_runtime_compatibility_source(&facts, None, &source)
-                .expect("adjacent assessment"),
-            RuntimeCompatibilityAssessment::Compatible,
-        );
     }
 }

@@ -82,13 +82,9 @@ fn machine_ready_rejects_a_stale_homebrew_receipt_with_a_stable_code() {
         .expect("machine ready");
 
     assert!(!ready.status.success(), "stale authority must fail closed");
-    let stdout: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("ready json");
+    let stdout: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("error json");
     assert_eq!(
-        stdout["authorityResolution"]["state"], "BLOCKED",
-        "{stdout}"
-    );
-    assert_eq!(
-        stdout["authorityResolution"]["reason"]["code"], "MACOS_HOMEBREW_RECEIPT_VERSION_MISMATCH",
+        stdout["code"], "MACOS_HOMEBREW_RECEIPT_VERSION_MISMATCH",
         "{stdout}"
     );
 }
@@ -106,12 +102,9 @@ fn machine_ready_and_repair_reject_same_version_receipt_for_another_binary() {
     let receipt = write_macos_homebrew_receipt_for_test(&home, &forged_binary);
     let original = std::fs::read(&receipt).expect("receipt bytes");
 
-    for (arguments, ready_command) in [
-        (vec!["--output", "json", "ready", "--for", "machine"], true),
-        (
-            vec!["--output", "json", "repair", "--for", "machine", "--apply"],
-            false,
-        ),
+    for arguments in [
+        vec!["--output", "json", "ready", "--for", "machine"],
+        vec!["--output", "json", "repair", "--for", "machine", "--apply"],
     ] {
         let output = kast_at(&running_binary, &home, &config_home)
             .args(arguments)
@@ -123,19 +116,10 @@ fn machine_ready_and_repair_reject_same_version_receipt_for_another_binary() {
         );
         let payload: serde_json::Value =
             serde_json::from_slice(&output.stdout).expect("error JSON");
-        if ready_command {
-            assert_eq!(payload["authorityResolution"]["state"], "BLOCKED");
-            assert_eq!(
-                payload["authorityResolution"]["reason"]["code"],
-                "MACOS_HOMEBREW_RECEIPT_BINARY_MISMATCH",
-                "{payload}",
-            );
-        } else {
-            assert_eq!(
-                payload["code"], "MACOS_HOMEBREW_RECEIPT_BINARY_MISMATCH",
-                "{payload}",
-            );
-        }
+        assert_eq!(
+            payload["code"], "MACOS_HOMEBREW_RECEIPT_BINARY_MISMATCH",
+            "{payload}",
+        );
         assert_eq!(
             std::fs::read(&receipt).expect("preserved receipt"),
             original,

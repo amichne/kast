@@ -118,9 +118,6 @@ pub struct RepairArgs {
     /// Apply the planned install-state repairs.
     #[arg(long)]
     pub apply: bool,
-    /// Replace a blocked Homebrew receipt after preserving its exact bytes.
-    #[arg(long)]
-    pub reset_homebrew_receipt: bool,
     /// JetBrains config root containing IDE profile directories to audit.
     #[arg(long)]
     pub jetbrains_config_root: Option<PathBuf>,

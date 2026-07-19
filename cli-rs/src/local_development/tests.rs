@@ -204,7 +204,7 @@ mod refresh_tests {
         .expect("source skill");
         let entrypoint = fixture
             .path()
-            .join("agent's local authority/bin/kast");
+            .join("agent's local authority/bin/kast-dev");
         let quoted_entrypoint = format!(
             "'{}'",
             entrypoint.display().to_string().replace('\'', "'\"'\"'")
@@ -285,16 +285,9 @@ mod refresh_tests {
             "local headless authority must not invoke release-owned project-open bootstrap",
         );
         assert!(prefix.join("current/authority.json").is_file());
-        assert!(prefix.join("bin/kast").is_file());
-        assert_eq!(
-            fs::read_dir(prefix.join("bin"))
-                .expect("stable command directory")
-                .count(),
-            1,
-            "local authority must expose one command name",
-        );
+        assert!(prefix.join("bin/kast-dev").is_file());
         let entrypoint =
-            fs::read_to_string(prefix.join("bin/kast")).expect("local development entrypoint");
+            fs::read_to_string(prefix.join("bin/kast-dev")).expect("local development entrypoint");
         assert!(
             entrypoint.contains("export KAST_DATA_HOME=\"$state/data\""),
             "local entrypoint must isolate Kotlin workspace data by generation"
@@ -303,7 +296,7 @@ mod refresh_tests {
         let quoted_entrypoint = format!(
             "'{}'",
             canonical_prefix
-                .join("bin/kast")
+                .join("bin/kast-dev")
                 .display()
                 .to_string()
                 .replace('\'', "'\"'\"'")
@@ -429,7 +422,7 @@ mod refresh_tests {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
         let prefix = fixture.path().join("local-authority");
-        let prepared_generations = fixture.path().join("prepared-generations");
+        let prepared = fixture.path().join("prepared-generation");
         let skill_source = repository
             .path()
             .join("cli-rs/resources/kast-skill/SKILL.md");
@@ -453,12 +446,11 @@ mod refresh_tests {
                 backend_directory: raw.backend_directory.clone(),
                 backend_provenance: raw.backend_provenance.clone(),
                 skill_source,
-                output_directory: prepared_generations,
+                output_directory: prepared.clone(),
             },
         )
         .expect("prepare generation");
         assert!(!prepared_result.skipped);
-        let prepared = prepared_result.directory.clone();
         assert!(prepared.join("generation.json").is_file());
         assert!(prepared.join("source-snapshot.json").is_file());
         assert!(prepared.join("bin/kast").is_file());
@@ -490,74 +482,11 @@ mod refresh_tests {
     }
 
     #[test]
-    fn prepared_rebuilds_from_same_source_select_artifact_bound_directories() {
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("unused-local-authority");
-        let prepared_generations = fixture.path().join("prepared-generations");
-        let first_inputs = refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "first-prepared",
-        );
-        let first = prepare_local_development_generation(LocalDevelopmentPrepareRequest {
-            source_root: first_inputs.source_root,
-            expected_source_snapshot: first_inputs.expected_source_snapshot,
-            cli_binary: first_inputs.cli_binary,
-            cli_provenance: first_inputs.cli_provenance,
-            backend_directory: first_inputs.backend_directory,
-            backend_provenance: first_inputs.backend_provenance,
-            skill_source: first_inputs.skill_source,
-            output_directory: prepared_generations.clone(),
-        })
-        .expect("first prepared generation");
-
-        write_file(
-            &fixture.path().join("build/kast"),
-            b"#!/bin/sh\necho rebuilt\n",
-        );
-        make_executable(&fixture.path().join("build/kast"));
-        let rebuilt_inputs = refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "rebuilt-prepared",
-        );
-        let rebuilt = prepare_local_development_generation(LocalDevelopmentPrepareRequest {
-            source_root: rebuilt_inputs.source_root,
-            expected_source_snapshot: rebuilt_inputs.expected_source_snapshot,
-            cli_binary: rebuilt_inputs.cli_binary,
-            cli_provenance: rebuilt_inputs.cli_provenance,
-            backend_directory: rebuilt_inputs.backend_directory,
-            backend_provenance: rebuilt_inputs.backend_provenance,
-            skill_source: rebuilt_inputs.skill_source,
-            output_directory: prepared_generations.clone(),
-        })
-        .expect("rebuilt prepared generation");
-
-        assert_ne!(first.ledger.generation_id, rebuilt.ledger.generation_id);
-        assert_ne!(first.directory, rebuilt.directory);
-        let prepared_generations =
-            fs::canonicalize(prepared_generations).expect("canonical prepared generations");
-        assert_eq!(first.directory.parent(), Some(prepared_generations.as_path()));
-        assert_eq!(rebuilt.directory.parent(), Some(prepared_generations.as_path()));
-        assert_eq!(
-            fs::read_dir(prepared_generations)
-                .expect("prepared generations")
-                .count(),
-            2,
-        );
-    }
-
-    #[test]
     fn prepared_generation_tampering_fails_before_activation() {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
         let prefix = fixture.path().join("local-authority");
-        let prepared_generations = fixture.path().join("prepared-generations");
+        let prepared = fixture.path().join("prepared-generation");
         let skill_source = repository
             .path()
             .join("cli-rs/resources/kast-skill/SKILL.md");
@@ -572,7 +501,7 @@ mod refresh_tests {
             &prefix,
             "tampered-prepared",
         );
-        let prepared = prepare_local_development_generation(LocalDevelopmentPrepareRequest {
+        prepare_local_development_generation(LocalDevelopmentPrepareRequest {
             source_root: raw.source_root,
             expected_source_snapshot: raw.expected_source_snapshot,
             cli_binary: raw.cli_binary,
@@ -580,10 +509,9 @@ mod refresh_tests {
             backend_directory: raw.backend_directory,
             backend_provenance: raw.backend_provenance,
             skill_source,
-            output_directory: prepared_generations,
+            output_directory: prepared.clone(),
         })
-        .expect("prepare generation")
-        .directory;
+        .expect("prepare generation");
         let ledger_path = prepared.join("generation.json");
         let ledger_bytes = fs::read(&ledger_path).expect("prepared ledger");
         let mut ledger_json: serde_json::Value =
@@ -692,8 +620,8 @@ mod refresh_tests {
             "first",
         );
         let first = refresh_local_development(request.clone()).expect("first refresh");
-        fs::remove_file(prefix.join("bin/kast")).expect("remove stable launcher");
-        symlink("../current/bin/kast", prefix.join("bin/kast")).expect("bypassing launcher");
+        fs::remove_file(prefix.join("bin/kast-dev")).expect("remove stable launcher");
+        symlink("../current/bin/kast", prefix.join("bin/kast-dev")).expect("bypassing launcher");
 
         let error = refresh_local_development(request).expect_err("bypassing launcher");
 
@@ -824,7 +752,7 @@ mod refresh_tests {
     #[test]
     fn command_lockstep_accepts_a_complete_templated_rename_invocation() {
         validate_rendered_command_path(
-            "/tmp/kast agent rename --symbol <fq-name> --new-name <name> --workspace-root \"$PWD\"",
+            "/tmp/kast-dev agent rename --symbol <fq-name> --new-name <name> --workspace-root \"$PWD\"",
             " agent rename --symbol <fq-name> --new-name <name> --workspace-root \"$PWD\"",
         )
         .expect("valid templated invocation");
@@ -832,14 +760,14 @@ mod refresh_tests {
 
     #[test]
     fn command_lockstep_accepts_a_bare_command_path_reference() {
-        validate_rendered_command_path("/tmp/kast agent rename", " agent rename")
+        validate_rendered_command_path("/tmp/kast-dev agent rename", " agent rename")
             .expect("valid bare command path");
     }
 
     #[test]
     fn command_lockstep_rejects_an_invocation_missing_a_required_argument() {
         let error = validate_rendered_command_path(
-            "/tmp/kast agent symbol --workspace-root \"$PWD\"",
+            "/tmp/kast-dev agent symbol --workspace-root \"$PWD\"",
             " agent symbol --workspace-root \"$PWD\"",
         )
         .expect_err("missing required query");
@@ -849,9 +777,9 @@ mod refresh_tests {
 
     #[test]
     fn command_lockstep_checks_positive_invocations_on_a_mixed_negative_guidance_line() {
-        let entrypoint = Path::new("/tmp/kast");
+        let entrypoint = Path::new("/tmp/kast-dev");
         let error = validate_rendered_command_lockstep(
-            "Do not teach `'/tmp/kast' agent tools`; instead run `'/tmp/kast' agent imaginary --bad`.",
+            "Do not teach `'/tmp/kast-dev' agent tools`; instead run `'/tmp/kast-dev' agent imaginary --bad`.",
             entrypoint,
         )
         .expect_err("positive stale invocation must not inherit the negative exemption");
@@ -862,8 +790,8 @@ mod refresh_tests {
     #[test]
     fn command_lockstep_accepts_only_the_closed_negative_command_references() {
         validate_rendered_command_lockstep(
-            "Do not teach `'/tmp/kast' agent tools`, `'/tmp/kast' agent call`, `'/tmp/kast' agent workflow`, or `'/tmp/kast' rpc`.",
-            Path::new("/tmp/kast"),
+            "Do not teach `'/tmp/kast-dev' agent tools`, `'/tmp/kast-dev' agent call`, `'/tmp/kast-dev' agent workflow`, or `'/tmp/kast-dev' rpc`.",
+            Path::new("/tmp/kast-dev"),
         )
         .expect("closed negative references");
     }
@@ -1174,7 +1102,7 @@ mod refresh_tests {
         ))
         .expect("first refresh");
         let current_before = fs::read_link(prefix.join("current")).expect("current link");
-        let entrypoint_before = fs::read(prefix.join("bin/kast")).expect("entrypoint bytes");
+        let entrypoint_before = fs::read(prefix.join("bin/kast-dev")).expect("entrypoint bytes");
         fs::write(
             repository.path().join("settings.gradle.kts"),
             "rootProject.name = \"changed\"\n",
@@ -1189,10 +1117,8 @@ mod refresh_tests {
         );
 
         let error = refresh_local_development_with_observer(second_request, |phase| {
-            if phase == LocalRefreshPhase::AfterStagingPublished {
-                return Ok(());
-            }
-            fs::write(prefix.join("bin/kast"), b"incompatible wrapper\n")
+            assert_eq!(phase, LocalRefreshPhase::AfterActivation);
+            fs::write(prefix.join("bin/kast-dev"), b"incompatible wrapper\n")
                 .expect("simulate changed stable entrypoint");
             Err(super::CliError::new(
                 "TEST_INJECTED_FAILURE",
@@ -1220,7 +1146,7 @@ mod refresh_tests {
             .expect("restored active receipt");
         assert_eq!(active.generation_id, first.receipt.generation_id);
         assert_eq!(
-            fs::read(prefix.join("bin/kast")).expect("restored entrypoint bytes"),
+            fs::read(prefix.join("bin/kast-dev")).expect("restored entrypoint bytes"),
             entrypoint_before,
             "rollback must restore the stable entrypoint owned by the prior receipt"
         );
@@ -1253,7 +1179,7 @@ mod refresh_tests {
     }
 
     #[test]
-    fn first_activation_retry_preserves_unreceipted_matching_staging() {
+    fn first_activation_retry_discards_only_its_matching_incomplete_staging() {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
         let prefix = fixture.path().join("local-authority");
@@ -1275,95 +1201,11 @@ mod refresh_tests {
         let generation_id = super::LocalGenerationId::from_artifact_set(&source, &artifacts);
         let staged = prefix.join(format!(".staging-{}", generation_id.as_str()));
         write_file(&staged.join("partial"), b"interrupted staging\n");
-
-        let error = refresh_local_development(request)
-            .expect_err("unreceipted staging must block activation");
-
-        assert_eq!(
-            error.code, "LOCAL_STAGING_AUTHORITY_INVALID",
-            "{error:#?}"
-        );
-        assert_eq!(
-            fs::read(staged.join("partial")).expect("preserved foreign staging"),
-            b"interrupted staging\n",
-        );
-        assert!(!prefix.join("current").exists());
-    }
-
-    #[test]
-    fn deterministic_staging_is_published_only_with_its_authority_receipt() {
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("local-authority");
-        let request = refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "first",
-        );
-
-        refresh_local_development_with_observer(request, |phase| {
-            if phase == LocalRefreshPhase::AfterStagingPublished {
-                let staged = fs::read_dir(&prefix)
-                    .expect("prefix")
-                    .filter_map(|entry| entry.ok())
-                    .map(|entry| entry.path())
-                    .find(|path| {
-                        path.file_name()
-                            .and_then(|name| name.to_str())
-                            .is_some_and(|name| name.starts_with(".staging-"))
-                    })
-                    .expect("published staging");
-                assert!(
-                    staged.join(super::LOCAL_STAGING_AUTHORITY_FILE).is_file(),
-                    "deterministic staging must never be observable without authority"
-                );
-            }
-            Ok(())
-        })
-        .expect("staging publication");
-    }
-
-    #[test]
-    fn first_activation_retry_discards_receipt_owned_matching_staging() {
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("local-authority");
-        let request = refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "first",
-        );
-        let source = SourceSnapshot::read_strict(&request.expected_source_snapshot)
-            .expect("source snapshot");
-        let artifacts = super::LocalDevelopmentArtifactSet {
-            cli: super::read_local_artifact_provenance(&request.cli_provenance)
-                .expect("CLI provenance"),
-            backend: super::read_local_artifact_provenance(&request.backend_provenance)
-                .expect("backend provenance"),
-        };
-        let generation_id = super::LocalGenerationId::from_artifact_set(&source, &artifacts);
-        let staged = prefix.join(format!(".staging-{}", generation_id.as_str()));
-        write_file(&staged.join("partial"), b"interrupted staging\n");
-        super::write_json_atomic(
-            &staged.join(super::LOCAL_STAGING_AUTHORITY_FILE),
-            &super::LocalStagingAuthority {
-                schema_version: super::LOCAL_STAGING_AUTHORITY_SCHEMA_VERSION,
-                authority: super::LocalDevelopmentAuthority::LocalDevelopment,
-                generation_id: generation_id.clone(),
-                prefix: fs::canonicalize(&prefix).expect("canonical prefix"),
-                workspace_root: fs::canonicalize(repository.path()).expect("canonical workspace"),
-            },
-        )
-        .expect("staging authority");
 
         let recovered = refresh_local_development(request).expect("retry activation");
 
         assert_eq!(recovered.receipt.generation_id, generation_id);
-        assert!(!staged.exists(), "matching owned staging must be replaced");
+        assert!(!staged.exists(), "matching incomplete staging must be replaced");
         assert_eq!(
             fs::read_link(prefix.join("current")).expect("recovered current"),
             Path::new("generations").join(generation_id.as_str()),
@@ -1388,8 +1230,8 @@ mod refresh_tests {
         let first = refresh_local_development(request.clone()).expect("first activation");
         fs::remove_file(prefix.join("current")).expect("remove incomplete current");
         fs::rename(
-            prefix.join("bin/kast"),
-            prefix.join("bin/kast.next"),
+            prefix.join("bin/kast-dev"),
+            prefix.join("bin/kast-dev.next"),
         )
         .expect("interrupted launcher temporary");
         fs::rename(
@@ -1407,7 +1249,7 @@ mod refresh_tests {
 
         assert_eq!(recovered.receipt.generation_id, first.receipt.generation_id);
         for temporary in [
-            prefix.join("bin/kast.next"),
+            prefix.join("bin/kast-dev.next"),
             prefix.join("authority.next"),
             prefix.join("current.next"),
         ] {
@@ -1749,193 +1591,6 @@ mod refresh_tests {
 
         assert!(!removed.removed);
         assert!(fs::symlink_metadata(guidance).is_err());
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn removal_retry_finishes_the_discoverable_receipt_owned_tombstone() {
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("local-authority");
-        refresh_local_development(refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "first",
-        ))
-        .expect("refresh");
-        let tombstone = fixture.path().join(".local-authority.removing");
-        fs::rename(&prefix, &tombstone).expect("simulate crash after removal rename");
-
-        let removed = remove_local_development(LocalDevelopmentRemoveRequest {
-            prefix: prefix.clone(),
-            workspace_root: repository.path().to_path_buf(),
-        })
-        .expect("finish interrupted removal");
-
-        assert!(removed.removed);
-        assert!(!prefix.exists());
-        assert!(!tombstone.exists());
-        assert!(!repository.path().join("AGENTS.local.md").exists());
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn removal_retry_uses_external_authority_after_partial_tombstone_deletion() {
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("local-authority");
-        refresh_local_development(refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "first",
-        ))
-        .expect("refresh");
-        let tombstone = fixture.path().join(".local-authority.removing");
-        let authority = write_removal_tombstone_authority(&prefix);
-        fs::rename(&prefix, &tombstone).expect("simulate removal rename");
-        fs::remove_file(tombstone.join("current")).expect("delete internal current proof");
-        fs::remove_dir_all(tombstone.join("generations"))
-            .expect("delete internal receipt proof");
-
-        let removed = remove_local_development(LocalDevelopmentRemoveRequest {
-            prefix: prefix.clone(),
-            workspace_root: repository.path().to_path_buf(),
-        })
-        .expect("finish partially deleted tombstone from external authority");
-
-        assert!(removed.removed);
-        assert!(!prefix.exists());
-        assert!(!tombstone.exists());
-        assert!(!authority.exists());
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn refresh_reconciles_removal_intent_left_before_the_prefix_rename() {
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("local-authority");
-        let initial = refresh_local_development(refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "first",
-        ))
-        .expect("initial refresh");
-        let authority = write_removal_tombstone_authority(&prefix);
-        write_file(
-            &fixture.path().join("build/kast"),
-            b"#!/bin/sh\necho replacement\n",
-        );
-        make_executable(&fixture.path().join("build/kast"));
-
-        let replacement = refresh_local_development(refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "replacement",
-        ))
-        .expect("refresh after interrupted pre-rename removal");
-        assert_ne!(
-            initial.receipt.generation_id,
-            replacement.receipt.generation_id
-        );
-        let removed = remove_local_development(LocalDevelopmentRemoveRequest {
-            prefix: prefix.clone(),
-            workspace_root: repository.path().to_path_buf(),
-        })
-        .expect("new generation removal must not inherit stale intent");
-
-        assert!(removed.removed);
-        assert!(!prefix.exists());
-        assert!(!authority.exists());
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn removal_retry_preserves_an_unreceipted_discoverable_tombstone() {
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("local-authority");
-        let tombstone = fixture.path().join(".local-authority.removing");
-        write_file(&tombstone.join("foreign"), b"preserve me\n");
-
-        let error = remove_local_development(LocalDevelopmentRemoveRequest {
-            prefix,
-            workspace_root: repository.path().to_path_buf(),
-        })
-        .expect_err("unreceipted tombstone must block removal");
-
-        assert_eq!(error.code, "LOCAL_REMOVAL_TOMBSTONE_INVALID");
-        assert_eq!(
-            fs::read(tombstone.join("foreign")).expect("preserved tombstone"),
-            b"preserve me\n",
-        );
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn refresh_finishes_a_receipt_owned_removal_tombstone_before_activation() {
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("local-authority");
-        refresh_local_development(refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "first",
-        ))
-        .expect("initial refresh");
-        let tombstone = fixture.path().join(".local-authority.removing");
-        fs::rename(&prefix, &tombstone).expect("simulate interrupted removal");
-
-        let refreshed = refresh_local_development(refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "replacement",
-        ))
-        .expect("refresh after interrupted removal");
-
-        assert!(!tombstone.exists());
-        assert_eq!(
-            fs::read_link(prefix.join("current")).expect("replacement current"),
-            Path::new("generations").join(refreshed.receipt.generation_id.as_str()),
-        );
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn refresh_preserves_an_unreceipted_removal_tombstone() {
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("local-authority");
-        let tombstone = fixture.path().join(".local-authority.removing");
-        write_file(&tombstone.join("foreign"), b"preserve me\n");
-
-        let error = refresh_local_development(refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "replacement",
-        ))
-        .expect_err("foreign tombstone must block refresh");
-
-        assert_eq!(error.code, "LOCAL_REMOVAL_TOMBSTONE_INVALID");
-        assert!(!prefix.exists());
-        assert_eq!(
-            fs::read(tombstone.join("foreign")).expect("preserved tombstone"),
-            b"preserve me\n",
-        );
     }
 
     #[cfg(unix)]
@@ -2618,36 +2273,6 @@ mod refresh_tests {
     fn write_file(path: &Path, bytes: &[u8]) {
         fs::create_dir_all(path.parent().expect("file parent")).expect("create parent");
         fs::write(path, bytes).expect("write file");
-    }
-
-    fn write_removal_tombstone_authority(prefix: &Path) -> std::path::PathBuf {
-        let receipt: serde_json::Value = serde_json::from_slice(
-            &fs::read(prefix.join("authority.json")).expect("active authority"),
-        )
-        .expect("active authority JSON");
-        let authority = prefix
-            .parent()
-            .expect("prefix parent")
-            .join(format!(
-                ".{}.removing-authority.json",
-                prefix
-                    .file_name()
-                    .and_then(|name| name.to_str())
-                    .expect("prefix name")
-            ));
-        fs::write(
-            &authority,
-            serde_json::to_vec_pretty(&serde_json::json!({
-                "schemaVersion": 1,
-                "authority": receipt["authority"],
-                "generationId": receipt["generationId"],
-                "workspaceRoot": receipt["workspaceRoot"],
-                "prefix": receipt["prefix"],
-            }))
-            .expect("external removal authority JSON"),
-        )
-        .expect("external removal authority");
-        authority
     }
 
     #[cfg(unix)]

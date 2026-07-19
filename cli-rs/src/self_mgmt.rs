@@ -7,7 +7,9 @@ use crate::install::{self, InstallRepairResult};
 use crate::manifest;
 #[cfg(target_os = "macos")]
 use crate::runtime;
-use serde::{Deserialize, Serialize};
+#[cfg(target_os = "macos")]
+use serde::Deserialize;
+use serde::Serialize;
 #[cfg(target_os = "macos")]
 use std::collections::BTreeSet;
 use std::env;
@@ -28,7 +30,7 @@ const MANAGED_RESOURCE_HISTORY_LIMIT: usize = 5;
 #[cfg(target_os = "macos")]
 const MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE: &str = ".kast/setup/workspace.json";
 #[cfg(target_os = "macos")]
-const MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION: u32 = 4;
+const MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION: u32 = 3;
 #[cfg(target_os = "macos")]
 const MACOS_PLUGIN_WORKSPACE_PREPARED_BY: &str = "kast-intellij-plugin";
 #[cfg(target_os = "macos")]
@@ -92,91 +94,6 @@ pub enum InstallAuthority {
     Missing,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ReleaseDistribution {
-    MacosHomebrew,
-    ManagedLocal,
-}
-
-impl ReleaseDistribution {
-    pub(crate) fn canonical(self) -> &'static str {
-        match self {
-            Self::MacosHomebrew => "macos-homebrew",
-            Self::ManagedLocal => "managed-local",
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(
-    tag = "kind",
-    rename_all = "kebab-case",
-    rename_all_fields = "camelCase",
-    deny_unknown_fields
-)]
-pub enum EffectiveGeneration {
-    Release {
-        distribution: ReleaseDistribution,
-        revision: cli::ReleaseRevision,
-    },
-    LocalDevelopment {
-        generation_id: crate::local_development::LocalGenerationId,
-    },
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthorityRecoveryPlan {
-    pub kind: &'static str,
-    pub target: String,
-    pub apply_command: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AuthorityBlockReason {
-    pub code: &'static str,
-    pub message: String,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(
-    tag = "state",
-    rename_all = "SCREAMING_SNAKE_CASE",
-    rename_all_fields = "camelCase"
-)]
-pub enum AuthorityResolution {
-    Active { generation: EffectiveGeneration },
-    Recoverable { plan: AuthorityRecoveryPlan },
-    Blocked { reason: AuthorityBlockReason },
-}
-
-impl AuthorityResolution {
-    pub(crate) fn active_generation(&self) -> Option<&EffectiveGeneration> {
-        match self {
-            Self::Active { generation } => Some(generation),
-            Self::Recoverable { .. } | Self::Blocked { .. } => None,
-        }
-    }
-}
-
-impl EffectiveGeneration {
-    pub(crate) fn authority_name(&self) -> &'static str {
-        match self {
-            Self::Release { distribution, .. } => distribution.canonical(),
-            Self::LocalDevelopment { .. } => "local-development",
-        }
-    }
-
-    pub(crate) fn revision(&self) -> &str {
-        match self {
-            Self::Release { revision, .. } => revision.as_str(),
-            Self::LocalDevelopment { generation_id } => generation_id.as_str(),
-        }
-    }
-}
-
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LegacyShadowDiagnostic {
@@ -194,7 +111,6 @@ pub struct SelfDoctorResult {
     pub target: ReadyTarget,
     pub installed: bool,
     pub install_authority: InstallAuthority,
-    pub authority_resolution: AuthorityResolution,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub local_development: Option<crate::local_development::LocalDevelopmentReceipt>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -239,7 +155,6 @@ pub fn doctor(
         }
         let repair_args = InstallRepairArgs {
             apply: true,
-            reset_homebrew_receipt: false,
             jetbrains_config_root: None,
         };
         if !install::macos_homebrew_repair_authority_is_provable()? {
@@ -249,17 +164,14 @@ pub fn doctor(
     } else {
         None
     };
-    let homebrew_resolution = if local_development.is_some() {
-        install::MacosHomebrewAuthorityResolution::Absent
+    #[cfg(target_os = "macos")]
+    let homebrew_install = if local_development.is_some() {
+        None
     } else {
-        install::resolve_macos_homebrew_authority()
+        install::read_macos_homebrew_receipt()?
     };
-    let homebrew_install = match &homebrew_resolution {
-        install::MacosHomebrewAuthorityResolution::Active(receipt) => Some(receipt.clone()),
-        install::MacosHomebrewAuthorityResolution::Absent
-        | install::MacosHomebrewAuthorityResolution::Recoverable(_)
-        | install::MacosHomebrewAuthorityResolution::Blocked(_) => None,
-    };
+    #[cfg(not(target_os = "macos"))]
+    let homebrew_install = None;
     let global_config = match config::KastConfig::load_global() {
         Ok(global_config) => global_config,
         Err(error) => {
@@ -416,83 +328,19 @@ pub fn doctor(
         &binary,
         &mut issues,
     );
-    let (install_authority, authority_resolution) = if let Some(receipt) = &local_development {
-        (
-            InstallAuthority::LocalDevelopment,
-            AuthorityResolution::Active {
-                generation: EffectiveGeneration::LocalDevelopment {
-                    generation_id: receipt.generation_id.clone(),
-                },
-            },
-        )
+    let install_authority = if local_development.is_some() {
+        InstallAuthority::LocalDevelopment
+    } else if homebrew_install.is_some() {
+        InstallAuthority::MacosHomebrew
+    } else if install.is_some() {
+        InstallAuthority::ManagedLocal
     } else {
-        match &homebrew_resolution {
-            install::MacosHomebrewAuthorityResolution::Active(receipt) => (
-                InstallAuthority::MacosHomebrew,
-                AuthorityResolution::Active {
-                    generation: EffectiveGeneration::Release {
-                        distribution: ReleaseDistribution::MacosHomebrew,
-                        revision: receipt.cli.release_revision.clone(),
-                    },
-                },
-            ),
-            install::MacosHomebrewAuthorityResolution::Recoverable(receipt) => {
-                let plan = AuthorityRecoveryPlan {
-                    kind: "establish-homebrew-cli-receipt",
-                    target: install::default_macos_homebrew_receipt_path()
-                        .display()
-                        .to_string(),
-                    apply_command: format!(
-                        "{} repair --for machine --apply",
-                        shell_quote_for_remediation(&receipt.cli.binary.display().to_string())
-                    ),
-                };
-                issues.push(format!(
-                    "Homebrew CLI authority is recoverable; apply the bounded plan with: {}",
-                    plan.apply_command,
-                ));
-                (
-                    InstallAuthority::MacosHomebrew,
-                    AuthorityResolution::Recoverable { plan },
-                )
-            }
-            install::MacosHomebrewAuthorityResolution::Blocked(error) => {
-                issues.push(error.message.clone());
-                (
-                    InstallAuthority::MacosHomebrew,
-                    AuthorityResolution::Blocked {
-                        reason: AuthorityBlockReason {
-                            code: error.code,
-                            message: error.message.clone(),
-                        },
-                    },
-                )
-            }
-            install::MacosHomebrewAuthorityResolution::Absent if install.is_some() => (
-                InstallAuthority::ManagedLocal,
-                AuthorityResolution::Active {
-                    generation: EffectiveGeneration::Release {
-                        distribution: ReleaseDistribution::ManagedLocal,
-                        revision: cli::ReleaseRevision::current(),
-                    },
-                },
-            ),
-            install::MacosHomebrewAuthorityResolution::Absent => (
-                InstallAuthority::Missing,
-                AuthorityResolution::Blocked {
-                    reason: AuthorityBlockReason {
-                        code: "INSTALL_AUTHORITY_MISSING",
-                        message: "No complete Kast install authority is available.".to_string(),
-                    },
-                },
-            ),
-        }
+        InstallAuthority::Missing
     };
     let agent_environment = if matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin) {
         Some(agent_environment_diagnostic(
             workspace_root,
             install_authority,
-            authority_resolution.active_generation(),
             local_development.as_ref(),
             install.as_ref(),
             &binary,
@@ -505,7 +353,6 @@ pub fn doctor(
         target,
         installed: local_development.is_some() || homebrew_install.is_some() || install.is_some(),
         install_authority,
-        authority_resolution,
         local_development,
         homebrew_install,
         legacy_shadow,
@@ -1261,11 +1108,11 @@ mod tests {
                 compatibility: runtime::RuntimeCompatibilityFacts {
                     plugin_version: cli::version().to_string(),
                     cli_version: cli::version().to_string(),
-                    plugin_revision: cli::ReleaseRevision::try_from(
+                    plugin_revision: runtime::ReleaseRevision::try_from(
                         cli::release_revision().to_string(),
                     )
                     .expect("release revision"),
-                    cli_revision: cli::ReleaseRevision::try_from(
+                    cli_revision: runtime::ReleaseRevision::try_from(
                         cli::release_revision().to_string(),
                     )
                     .expect("release revision"),

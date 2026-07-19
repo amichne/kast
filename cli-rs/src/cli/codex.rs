@@ -22,9 +22,6 @@ pub struct CodexGenerateArgs {
     /// Render a release artifact using the compiled Kast version.
     #[arg(long, requires = "output_dir")]
     pub release: bool,
-    /// Render a host-local plugin bound to the active worktree generation.
-    #[arg(long, conflicts_with_all = ["check", "release"])]
-    pub local: bool,
     /// Marketplace root to render. Defaults to the checked-in source tree.
     #[arg(long)]
     pub output_dir: Option<PathBuf>,

@@ -34,10 +34,14 @@ orchestration, source/artifact provenance, immutable
 generation activation, rollback/removal, local readiness, or installed
 skill/guidance routing changes. Its Gradle graph must remain headless and must
 not include user JetBrains profile or release-configuration mutation.
-`.github/scripts/test-local-development-clean-break-contract.sh` proves the
-retired global development CLI and direct JetBrains-profile mutation tasks do
-not return. Local development uses only the receipt-owned headless generation;
-the installed released IDEA plugin remains JetBrains-owned.
+The legacy developer install remains covered separately by
+`.github/scripts/test-development-cli-install-contract.sh`. It is not the
+revision-coherent local authority and must not run for every pull request.
+Keep its real IDEA plugin task execution on integrated `main` pushes so
+explicit-directory, configured-profile, running-profile, newest-profile,
+missing-profile, and configuration-cache behavior cannot regress behind
+dry-run task-graph coverage. Removing that documented compatibility surface
+requires an explicit ADR decision.
 
 Umbrella source contracts must not rerun focused owners. The CLI/plugin
 cutover contract owns source presence, absence, and authority assertions only;
@@ -155,7 +159,8 @@ For local-development authority changes, run:
 ```console
 .github/scripts/test-ci-workflow-model.sh
 .github/scripts/test-local-development-refresh-contract.sh
-.github/scripts/test-local-development-clean-break-contract.sh
+.github/scripts/test-development-cli-install-contract.sh
+.github/scripts/test-selector-handle-installed-workflow.sh
 .github/scripts/test-local-development-semantic-fixture.sh
 .github/scripts/test-local-development-semantic-e2e.sh
 ```

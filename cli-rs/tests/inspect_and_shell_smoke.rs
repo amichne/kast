@@ -233,7 +233,7 @@ fn install_completion_command_renders_shell_completion_scripts() {
             "completion",
             "zsh",
             "--command-name",
-            "custom-kast",
+            "kast-dev",
         ])
         .output()
         .expect("zsh completion");
@@ -245,7 +245,7 @@ fn install_completion_command_renders_shell_completion_scripts() {
     );
     let zsh_stdout = String::from_utf8_lossy(&zsh.stdout);
     assert!(
-        zsh_stdout.contains("#compdef custom-kast"),
+        zsh_stdout.contains("#compdef kast-dev"),
         "zsh completion should use the requested command name: {zsh_stdout}"
     );
 }
@@ -280,7 +280,7 @@ fn install_shell_writes_path_and_completion_profile_integration() {
             "--profile",
             profile.to_str().expect("profile path"),
             "--command-name",
-            "custom-kast",
+            "kast-dev",
         ])
         .output()
         .expect("machine shell");
@@ -293,7 +293,7 @@ fn install_shell_writes_path_and_completion_profile_integration() {
     let stdout: serde_json::Value =
         serde_json::from_slice(&install.stdout).expect("machine shell json");
     assert_eq!(stdout["shell"], "zsh");
-    assert_eq!(stdout["commandName"], "custom-kast");
+    assert_eq!(stdout["commandName"], "kast-dev");
     assert_eq!(stdout["binDir"], expected_bin_dir.display().to_string());
     assert_eq!(stdout["profileUpdated"], true);
 
@@ -318,8 +318,8 @@ fn install_shell_writes_path_and_completion_profile_integration() {
         "source file should prepend the configured bin directory: {source}"
     );
     assert!(
-        source.contains("custom-kast developer machine completion zsh --command-name custom-kast"),
-        "source file should wire completions for custom-kast: {source}"
+        source.contains("kast-dev developer machine completion zsh --command-name kast-dev"),
+        "source file should wire completions for kast-dev: {source}"
     );
 
     let profile_content = std::fs::read_to_string(&profile).expect("profile content");

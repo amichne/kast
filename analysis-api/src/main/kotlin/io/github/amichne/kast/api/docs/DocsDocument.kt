@@ -103,7 +103,6 @@ object DocsDocument {
         // Runtime compatibility negotiation vocabulary
         "ProtocolRevision" to ProtocolRevision.serializer(),
         "WorkspaceMetadataRevision" to WorkspaceMetadataRevision.serializer(),
-        "ReleaseRevision" to ReleaseRevision.serializer(),
         "PluginImplementationVersion" to PluginImplementationVersion.serializer(),
         "CliImplementationVersion" to CliImplementationVersion.serializer(),
         "RuntimeImplementationVersion" to RuntimeImplementationVersion.serializer(),
@@ -118,8 +117,6 @@ object DocsDocument {
         "RuntimeCompatibilityUpdateRequirement" to RuntimeCompatibilityUpdateRequirement.serializer(),
         "RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair" to
             RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair.serializer(),
-        "RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision" to
-            RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision.serializer(),
         "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision" to
             RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision.serializer(),
         "RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision" to

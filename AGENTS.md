@@ -84,8 +84,8 @@ boundary.
 - `./gradlew :analysis-api:test` runs a focused module test; replace the module
   name for narrower checks.
 - `./gradlew buildIdeaPlugin` builds the IDEA plugin zip.
-- `./gradlew refreshDevelopmentLocal` builds and atomically activates the
-  worktree-local headless authority without changing Homebrew or JetBrains.
+- `./gradlew installDevelopmentLocal` installs the development CLI and IDEA
+  plugin into the configured local profile.
 - `cargo test --manifest-path cli-rs/Cargo.toml --locked` runs Rust CLI tests.
 - `cargo clippy --manifest-path cli-rs/Cargo.toml --all-targets --all-features -- -D warnings`
   enforces Rust lint cleanliness.

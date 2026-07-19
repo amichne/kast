@@ -16,6 +16,11 @@ repo_root="$(resolve_repo_root)"
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-local-refresh-contract.XXXXXX")"
 tmp_root="$(cd -- "$tmp_root" && pwd -P)"
 cleanup() {
+  local guidance="${repo_root}/AGENTS.local.md"
+  if [[ -L "$guidance" ]] \
+    && [[ "$(readlink "$guidance")" == "${tmp_root}/missing-prefix/current/guidance/AGENTS.local.md" ]]; then
+    rm -f "$guidance"
+  fi
   rm -rf "$tmp_root"
 }
 trap cleanup EXIT
@@ -127,18 +132,6 @@ grep -Fq 'targetDirectory.set(cliLocalDevelopmentTargetDirectory)' \
 grep -Fq 'cliLocalDevelopmentTargetDirectory.file("release/kast")' \
   "${repo_root}/build.gradle.kts" \
   || die 'the attested release binary must derive from the source-bound Cargo target directory'
-prepare_generation_task="$(
-  sed -n \
-    '/^abstract class PrepareLocalDevelopmentGenerationTask/,/^}/p' \
-    "${repo_root}/build.gradle.kts"
-)"
-if grep -Fq 'val generationId' <<<"$prepare_generation_task"; then
-  die 'Gradle must not shadow the artifact-bound Rust generation identity'
-fi
-grep -Fq 'preparedGenerations.absolutePath' <<<"$prepare_generation_task" \
-  || die 'Gradle must pass the prepared-generation parent to the typed CLI'
-grep -Fq '"--selection-file",' <<<"$prepare_generation_task" \
-  || die 'the typed CLI must atomically select the artifact-bound prepared generation'
 
 snapshot_file="${tmp_root}/source-snapshot.json"
 snapshot_json="$(
@@ -253,8 +246,8 @@ printf '%s\n' \
   '#!/usr/bin/env bash' \
   'set -euo pipefail' \
   'printf "%s\n" "$@" >"${KAST_RECOVERY_LOG:?}"' \
-  >"${recovery_prefix}/bin/kast"
-chmod 755 "${recovery_prefix}/bin/kast"
+  >"${recovery_prefix}/bin/kast-dev"
+chmod 755 "${recovery_prefix}/bin/kast-dev"
 KAST_RECOVERY_LOG="$recovery_log" CARGO="${tmp_root}/unbuildable-cargo" \
   "${repo_root}/gradlew" rollbackDevelopmentLocal \
     -PkastLocalPrefix="$recovery_prefix" \
@@ -277,17 +270,32 @@ cargo build \
   --manifest-path "${repo_root}/cli-rs/Cargo.toml" \
   --locked
 missing_prefix="${tmp_root}/missing-prefix"
-missing_workspace="${tmp_root}/missing-workspace"
-mkdir -p "$missing_workspace"
-missing_guidance="${missing_workspace}/AGENTS.local.md"
+missing_guidance="${repo_root}/AGENTS.local.md"
 ln -s "${missing_prefix}/current/guidance/AGENTS.local.md" "$missing_guidance"
 KAST_RECOVERY_LOG="$recovery_log" CARGO="${tmp_root}/unbuildable-cargo" \
   "${repo_root}/gradlew" removeDevelopmentLocal \
     -PkastLocalPrefix="$missing_prefix" \
-    -PkastLocalWorkspaceRoot="$missing_workspace" \
+    -PkastLocalWorkspaceRoot="$repo_root" \
     -PkastLocalRecoveryController="${repo_root}/cli-rs/target/debug/kast" \
     --no-daemon >/dev/null
 [[ ! -e "$missing_guidance" && ! -L "$missing_guidance" ]] \
   || die 'removeDevelopmentLocal must clean owned dangling guidance after the prefix is missing'
+
+profile_free_config_root="${tmp_root}/profile-free-jetbrains-config"
+profile_free_install_args=(
+  -m
+  installDevelopmentLocal
+  -PkastDevJetBrainsConfigRoot="$profile_free_config_root"
+  --configuration-cache
+  --no-daemon
+)
+legacy_install_dry_run="$("${repo_root}/gradlew" "${profile_free_install_args[@]}")"
+for required_task in installDevelopmentCli installDevelopmentIdeaPlugin configureDevelopmentMachineDefaults; do
+  grep -Fq ":${required_task}" <<<"$legacy_install_dry_run" \
+    || die "installDevelopmentLocal must preserve its established ${required_task} contract"
+done
+legacy_install_reuse="$("${repo_root}/gradlew" "${profile_free_install_args[@]}")"
+grep -Fq 'Configuration cache entry reused.' <<<"$legacy_install_reuse" \
+  || die 'profile-free legacy install planning must reuse configuration cache state'
 
 printf '%s\n' 'Local development refresh contract passed'

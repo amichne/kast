@@ -42,7 +42,6 @@ fn codex_generator_materializes_cli_only_plugin() {
         "plugins/kast/skills/kast-codex/references/examples.md",
         "plugins/kast/assets/codex-exposure.toon",
         "plugins/kast/assets/hook-recovery-messages.toon",
-        "plugins/kast/assets/kast-authority.json",
         "plugins/kast/assets/kast.svg",
     ] {
         assert!(output.join(relative).is_file(), "missing {relative}");
@@ -69,18 +68,6 @@ fn codex_generator_materializes_cli_only_plugin() {
         std::fs::read(output.join("marketplace.json")).expect("release marketplace"),
         std::fs::read(output.join(".agents/plugins/marketplace.json"))
             .expect("Codex discovery marketplace")
-    );
-    let authority: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(output.join("plugins/kast/assets/kast-authority.json"))
-            .expect("authority manifest"),
-    )
-    .expect("valid authority manifest");
-    assert_eq!(authority["schemaVersion"], 1);
-    assert_eq!(authority["authority"]["kind"], "release");
-    assert_eq!(authority["authority"]["command"], "kast");
-    assert_eq!(
-        authority["authority"]["releaseRevision"],
-        env!("KAST_RELEASE_REVISION"),
     );
 }
 

@@ -318,6 +318,8 @@ class SupportedPair:
                 fail(f"{field} adjacent runtime version must equal the plugin or CLI version")
             if RELEASE_REVISION_TEMPLATE in (plugin_revision, cli_revision):
                 fail(f"{field} adjacent-release revisions must be explicit")
+            if plugin_revision != cli_revision:
+                fail(f"{field} adjacent-release revisions must identify one source generation")
 
         required = parse_capabilities(
             payload["requiredCapabilities"], field=f"{field}.requiredCapabilities"

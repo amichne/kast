@@ -20,18 +20,15 @@ abstract class WriteBackendVersionTask : DefaultTask() {
 
     @TaskAction
     fun write() {
-        val version = backendVersion.get()
+        versionFile.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(backendVersion.get())
+        }
         val revision = backendRevision.get()
         require(revision.matches(Regex("[0-9a-f]{40}"))) {
             "Backend revision must be a full 40-character lowercase hexadecimal Git revision"
         }
-        val versionOutput = versionFile.get().asFile
-        val revisionOutput = revisionFile.get().asFile
-        versionOutput.apply {
-            parentFile.mkdirs()
-            writeText(version)
-        }
-        revisionOutput.apply {
+        revisionFile.get().asFile.apply {
             parentFile.mkdirs()
             writeText(revision)
         }

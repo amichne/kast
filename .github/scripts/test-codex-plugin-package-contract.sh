@@ -30,7 +30,6 @@ archive_path = Path(sys.argv[1])
 mutation = sys.argv[2]
 manifest_version = "9.8.8" if mutation == "manifest-version" else "9.8.7"
 exposure_version = "9.8.8" if mutation == "exposure-version" else "9.8.7"
-authority_command = "kast-other" if mutation == "authority-command" else "kast"
 
 marketplace = {
     "name": "kast",
@@ -102,16 +101,6 @@ files = {
     "plugins/kast/skills/kast-codex/references/examples.md": "# Examples\n",
     "plugins/kast/assets/codex-exposure.toon": f"version: {exposure_version}\n",
     "plugins/kast/assets/hook-recovery-messages.toon": "messages[0]:\n",
-    "plugins/kast/assets/kast-authority.json": json.dumps({
-        "schemaVersion": 1,
-        "authority": {
-            "kind": "release",
-            "command": authority_command,
-            "pluginVersion": "9.8.7",
-            "cliVersion": "9.8.7",
-            "releaseRevision": "a" * 40,
-        },
-    }),
     "plugins/kast/assets/kast.svg": "<svg/>\n",
 }
 if mutation == "missing-hooks":
@@ -156,7 +145,6 @@ assert_rejected mcp "forbidden Codex plugin payload"
 assert_rejected discovery-marketplace "discovery marketplace must match"
 assert_rejected manifest-version "plugin manifest version mismatch"
 assert_rejected exposure-version "Codex exposure version mismatch"
-assert_rejected authority-command "must select the released kast command"
 assert_rejected launcher-mode "regular executable file"
 assert_rejected traversal "unsafe archive path"
 

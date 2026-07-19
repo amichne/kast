@@ -6,7 +6,6 @@ import io.github.amichne.kast.api.client.fields.ProjectOpenProfileKind
 import io.github.amichne.kast.api.contract.compatibility.CliImplementationVersion
 import io.github.amichne.kast.api.contract.compatibility.ReleaseRevision
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.nio.file.Files
@@ -109,10 +108,12 @@ object KastProjectOpenProfileAutoInit {
             is CliAuthorityLoadResult.Rejected ->
                 return ProjectOpenProfileAutoInitResult.Failed(result.message)
         }
-        if (
-            pluginVersion.value == cliAuthority.version.value &&
-            pluginRevision != cliAuthority.revision
-        ) {
+        if (pluginVersion.value != cliAuthority.version.value) {
+            return ProjectOpenProfileAutoInitResult.Failed(
+                "Kast plugin version ${pluginVersion.value} does not match CLI version ${cliAuthority.version.value}; update both before workspace setup.",
+            )
+        }
+        if (pluginRevision != cliAuthority.revision) {
             return ProjectOpenProfileAutoInitResult.Failed(
                 "Kast plugin revision ${pluginRevision.value} does not match CLI revision ${cliAuthority.revision.value}; update both before workspace setup.",
             )
@@ -182,23 +183,16 @@ private fun loadConfiguredCliIdentity(binary: Path): CliBuildIdentity? {
     }
     if (process.exitValue() != 0) return null
     val output = process.inputStream.bufferedReader().use { reader -> reader.readText() }
-    return parseCliBuildIdentityDocument(output)
-}
-
-internal fun parseCliBuildIdentityDocument(output: String): CliBuildIdentity? {
     val document = runCatching { Json.parseToJsonElement(output).jsonObject }.getOrNull() ?: return null
     if (document.keys != setOf("type", "version", "releaseRevision", "schemaVersion")) return null
-    val type = runCatching { document["type"]?.jsonPrimitive }.getOrNull() ?: return null
-    val schemaVersion = runCatching { document["schemaVersion"]?.jsonPrimitive }.getOrNull() ?: return null
-    val version = runCatching { document["version"]?.jsonPrimitive }.getOrNull() ?: return null
-    val revision = runCatching { document["releaseRevision"]?.jsonPrimitive }.getOrNull() ?: return null
-    if (!type.isString || type.content != "KAST_CLI_BUILD_IDENTITY") return null
-    if (schemaVersion.isString || schemaVersion.intOrNull != 1) return null
-    if (!version.isString || !revision.isString) return null
+    if (document["type"]?.jsonPrimitive?.content != "KAST_CLI_BUILD_IDENTITY") return null
+    if (document["schemaVersion"]?.jsonPrimitive?.content != "1") return null
+    val version = document["version"]?.jsonPrimitive?.content ?: return null
+    val revision = document["releaseRevision"]?.jsonPrimitive?.content ?: return null
     return runCatching {
         CliBuildIdentity(
-            version = CliImplementationVersion(version.content),
-            revision = ReleaseRevision(revision.content),
+            version = CliImplementationVersion(version),
+            revision = ReleaseRevision(revision),
         )
     }.getOrNull()
 }

@@ -11,10 +11,4 @@ data class PluginWorkspaceBootstrapRequest(
     val cliRevision: ReleaseRevision,
     val pluginVersion: PluginVersion,
     val pluginRevision: ReleaseRevision,
-) {
-    init {
-        require(pluginVersion.value != cliVersion.value || pluginRevision == cliRevision) {
-            "Same-version plugin and CLI artifacts must share one release revision"
-        }
-    }
-}
+)
