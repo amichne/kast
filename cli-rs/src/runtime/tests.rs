@@ -458,4 +458,28 @@ mod tests {
             }
         ));
     }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn runtime_compatibility_source_accepts_adjacent_distinct_revisions() {
+        let mut document: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../packaging/jetbrains/runtime-compatibility.json"
+        ))
+        .expect("compatibility source");
+        let mut adjacent = document["supportedPairs"][0].clone();
+        adjacent["relation"] = serde_json::json!("adjacent-release");
+        adjacent["pluginVersion"] = serde_json::json!(cli::version());
+        adjacent["cliVersion"] = serde_json::json!("0.12.9");
+        adjacent["pluginRevision"] = serde_json::json!("a".repeat(40));
+        adjacent["cliRevision"] = serde_json::json!("b".repeat(40));
+        adjacent["runtime"]["implementationVersion"] = serde_json::json!(cli::version());
+        document["supportedPairs"]
+            .as_array_mut()
+            .expect("supported pairs")
+            .push(adjacent);
+        let source: RuntimeCompatibilitySource =
+            serde_json::from_value(document).expect("adjacent source");
+
+        validate_runtime_compatibility_source(&source).expect("valid adjacent source");
+    }
 }
