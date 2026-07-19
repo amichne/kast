@@ -1,6 +1,20 @@
 mod support;
 
+use std::io::Write;
 use support::*;
+
+fn write_idea_plugin(path: &Path) {
+    let file = std::fs::File::create(path).expect("plugin zip");
+    let mut archive = zip::ZipWriter::new(file);
+    archive
+        .start_file(
+            "backend-idea/lib/kast-plugin.jar",
+            zip::write::SimpleFileOptions::default(),
+        )
+        .expect("plugin entry");
+    archive.write_all(b"plugin").expect("plugin bytes");
+    archive.finish().expect("finish plugin zip");
+}
 
 #[test]
 fn machine_status_is_a_definitive_read_only_empty_state() {
@@ -108,4 +122,72 @@ fn activation_installs_one_processless_machine_bundle() {
         serde_json::from_slice(&status.stdout).expect("installed status JSON");
     assert_eq!(status["state"], "INSTALLED");
     assert!(status.get("daemon").is_none());
+}
+
+#[test]
+fn reconciliation_replaces_only_the_closed_ide_plugin_and_global_skill() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let plugin = temp.path().join("kast-idea.zip");
+    let plugins = temp.path().join("idea-profile/plugins");
+    std::fs::create_dir_all(plugins.join("kast")).expect("old plugin");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::write(plugins.join("kast/old.jar"), b"old").expect("old plugin bytes");
+    write_idea_plugin(&plugin);
+
+    let activation = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "machine",
+            "activate",
+            "--idea-plugin",
+            plugin.to_str().expect("plugin path"),
+        ])
+        .output()
+        .expect("activation");
+    assert!(activation.status.success());
+
+    let reconciliation = kast(&home, &config_home)
+        .env("KAST_MACHINE_IDE_STATE", "closed")
+        .args([
+            "--output",
+            "json",
+            "machine",
+            "reconcile",
+            "--idea-plugins-dir",
+            plugins.to_str().expect("plugins path"),
+        ])
+        .output()
+        .expect("reconciliation");
+    assert!(
+        reconciliation.status.success(),
+        "reconciliation: stdout={}, stderr={}",
+        String::from_utf8_lossy(&reconciliation.stdout),
+        String::from_utf8_lossy(&reconciliation.stderr),
+    );
+    let reconciliation: serde_json::Value =
+        serde_json::from_slice(&reconciliation.stdout).expect("reconciliation JSON");
+    assert_eq!(reconciliation["type"], "KAST_MACHINE_RECONCILIATION");
+    assert_eq!(reconciliation["state"], "RECONCILED");
+    assert_eq!(
+        std::fs::read(plugins.join("kast/lib/kast-plugin.jar")).expect("new plugin"),
+        b"plugin",
+    );
+    assert!(!plugins.join("kast/old.jar").exists());
+    let quarantine = PathBuf::from(
+        reconciliation["quarantinedPlugin"]
+            .as_str()
+            .expect("quarantine path"),
+    );
+    assert_eq!(
+        std::fs::read(quarantine.join("old.jar")).expect("quarantined plugin"),
+        b"old",
+    );
+    assert_eq!(
+        std::fs::read_link(home.join(".agents/skills/kast")).expect("global skill link"),
+        home.join("Library/Application Support/Kast/machine/resources/kast-skill"),
+    );
+    assert!(!home.join("Library/LaunchAgents").exists());
 }
