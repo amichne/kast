@@ -1767,6 +1767,65 @@ mod refresh_tests {
 
     #[cfg(unix)]
     #[test]
+    fn refresh_finishes_a_receipt_owned_removal_tombstone_before_activation() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        refresh_local_development(refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "first",
+        ))
+        .expect("initial refresh");
+        let tombstone = fixture.path().join(".local-authority.removing");
+        fs::rename(&prefix, &tombstone).expect("simulate interrupted removal");
+
+        let refreshed = refresh_local_development(refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "replacement",
+        ))
+        .expect("refresh after interrupted removal");
+
+        assert!(!tombstone.exists());
+        assert_eq!(
+            fs::read_link(prefix.join("current")).expect("replacement current"),
+            Path::new("generations").join(refreshed.receipt.generation_id.as_str()),
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn refresh_preserves_an_unreceipted_removal_tombstone() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        let tombstone = fixture.path().join(".local-authority.removing");
+        write_file(&tombstone.join("foreign"), b"preserve me\n");
+
+        let error = refresh_local_development(refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "replacement",
+        ))
+        .expect_err("foreign tombstone must block refresh");
+
+        assert_eq!(error.code, "LOCAL_REMOVAL_TOMBSTONE_INVALID");
+        assert!(!prefix.exists());
+        assert_eq!(
+            fs::read(tombstone.join("foreign")).expect("preserved tombstone"),
+            b"preserve me\n",
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn missing_prefix_removal_and_refresh_share_the_namespace_lock() {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");

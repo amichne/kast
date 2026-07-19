@@ -115,11 +115,13 @@ fn activate_local_development_artifact_set(
 
     let requested_prefix = absolute_path(prefix)?;
     reject_symlink_selected_prefix(&requested_prefix)?;
+    let lock_prefix = canonicalize_missing_path(&requested_prefix)?;
     let generation_id = LocalGenerationId::from_artifact_set(&source, &artifacts);
 
-    with_local_authority_lock(&requested_prefix, || {
-        fs::create_dir_all(&requested_prefix)?;
-        let prefix = canonical_directory(&requested_prefix, "local-development prefix")?;
+    with_local_authority_lock(&lock_prefix, || {
+        reconcile_receipt_owned_removal_tombstone(&lock_prefix, &workspace_root)?;
+        fs::create_dir_all(&lock_prefix)?;
+        let prefix = canonical_directory(&lock_prefix, "local-development prefix")?;
         let generations = prefix.join("generations");
         let generation = generations.join(generation_id.as_str());
         fs::create_dir_all(&generations)?;

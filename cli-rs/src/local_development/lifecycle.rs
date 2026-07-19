@@ -141,6 +141,14 @@ fn remove_local_development_with_observer(
     with_local_authority_lock(&lock_prefix, || {
         if !requested_prefix.exists() {
             observe(LocalRemovalPhase::BeforeMissingPrefixCleanup)?;
+            if reconcile_receipt_owned_removal_tombstone(&lock_prefix, &workspace_root)? {
+                return Ok(LocalDevelopmentRemoveResult {
+                    prefix: lock_prefix.clone(),
+                    workspace_root: workspace_root.clone(),
+                    removed: true,
+                    schema_version: crate::SCHEMA_VERSION,
+                });
+            }
             remove_owned_workspace_guidance_link(&workspace_root, &lock_prefix)?;
             return Ok(LocalDevelopmentRemoveResult {
                 prefix: lock_prefix.clone(),
@@ -206,19 +214,7 @@ fn remove_local_development_with_observer(
         }
         reject_live_local_runtimes(&prefix)?;
 
-        let parent = prefix.parent().ok_or_else(|| {
-            CliError::new(
-                "LOCAL_PREFIX_INVALID",
-                format!("Local prefix has no parent: {}", prefix.display()),
-            )
-        })?;
-        let name = prefix.file_name().and_then(|name| name.to_str()).ok_or_else(|| {
-            CliError::new(
-                "LOCAL_PREFIX_INVALID",
-                format!("Local prefix has no UTF-8 name: {}", prefix.display()),
-            )
-        })?;
-        let tombstone = parent.join(format!(".{name}.removing-{}", std::process::id()));
+        let tombstone = removal_tombstone_path(&prefix)?;
         if fs::symlink_metadata(&tombstone).is_ok() {
             return Err(CliError::new(
                 "LOCAL_REMOVAL_CONFLICT",
@@ -255,6 +251,118 @@ fn remove_local_development_with_observer(
             schema_version: crate::SCHEMA_VERSION,
         })
     })
+}
+
+fn removal_tombstone_path(prefix: &Path) -> Result<PathBuf> {
+    let parent = prefix.parent().ok_or_else(|| {
+        CliError::new(
+            "LOCAL_PREFIX_INVALID",
+            format!("Local prefix has no parent: {}", prefix.display()),
+        )
+    })?;
+    let name = prefix.file_name().and_then(|name| name.to_str()).ok_or_else(|| {
+        CliError::new(
+            "LOCAL_PREFIX_INVALID",
+            format!("Local prefix has no UTF-8 name: {}", prefix.display()),
+        )
+    })?;
+    Ok(parent.join(format!(".{name}.removing")))
+}
+
+fn reconcile_receipt_owned_removal_tombstone(
+    prefix: &Path,
+    workspace_root: &Path,
+) -> Result<bool> {
+    let tombstone = removal_tombstone_path(prefix)?;
+    let metadata = match fs::symlink_metadata(&tombstone) {
+        Ok(metadata) => metadata,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(false),
+        Err(error) => return Err(error.into()),
+    };
+    if prefix.exists() {
+        return Err(CliError::new(
+            "LOCAL_REMOVAL_CONFLICT",
+            format!(
+                "Both the local prefix and its interrupted-removal tombstone exist; both were preserved unchanged: {} and {}.",
+                prefix.display(),
+                tombstone.display(),
+            ),
+        ));
+    }
+    if !metadata.is_dir() || metadata.file_type().is_symlink() {
+        return Err(invalid_removal_tombstone(
+            &tombstone,
+            "tombstone is not an owned directory",
+        ));
+    }
+    validate_removal_tombstone(&tombstone, prefix, workspace_root)?;
+    remove_owned_workspace_guidance_link(workspace_root, prefix)?;
+    fs::remove_dir_all(&tombstone)?;
+    Ok(true)
+}
+
+fn validate_removal_tombstone(
+    tombstone: &Path,
+    prefix: &Path,
+    workspace_root: &Path,
+) -> Result<()> {
+    validate_removal_boundary(prefix, workspace_root)?;
+    if fs::canonicalize(tombstone).map_err(|error| {
+        invalid_removal_tombstone(tombstone, format!("could not resolve tombstone: {error}"))
+    })? != tombstone
+    {
+        return Err(invalid_removal_tombstone(
+            tombstone,
+            "tombstone is not its canonical path",
+        ));
+    }
+    let current_target = read_generation_link(&tombstone.join("current"))
+        .map_err(|error| invalid_removal_tombstone(tombstone, error.message))?
+        .ok_or_else(|| invalid_removal_tombstone(tombstone, "active generation is missing"))?;
+    let generation = tombstone.join(&current_target);
+    let receipt = read_removal_authority(&generation.join("authority.json"))
+        .map_err(|error| invalid_removal_tombstone(tombstone, error.message))?;
+    if receipt.authority != LocalDevelopmentAuthority::LocalDevelopment
+        || receipt.prefix != prefix
+        || receipt.workspace_root != workspace_root
+        || current_target != generation_target(&receipt.generation_id)
+    {
+        return Err(invalid_removal_tombstone(
+            tombstone,
+            "receipt does not bind the exact prefix, generation, and workspace",
+        ));
+    }
+    let generation_metadata = fs::symlink_metadata(&generation).map_err(|error| {
+        invalid_removal_tombstone(
+            tombstone,
+            format!("could not inspect receipt generation: {error}"),
+        )
+    })?;
+    if !generation_metadata.is_dir()
+        || generation_metadata.file_type().is_symlink()
+        || fs::canonicalize(&generation).map_err(|error| {
+            invalid_removal_tombstone(
+                tombstone,
+                format!("could not resolve receipt generation: {error}"),
+            )
+        })? != generation
+    {
+        return Err(invalid_removal_tombstone(
+            tombstone,
+            "receipt generation is not an owned canonical directory",
+        ));
+    }
+    Ok(())
+}
+
+fn invalid_removal_tombstone(tombstone: &Path, reason: impl std::fmt::Display) -> CliError {
+    CliError::new(
+        "LOCAL_REMOVAL_TOMBSTONE_INVALID",
+        format!(
+            "Interrupted-removal tombstone at {} is not receipt-owned and was preserved unchanged: {reason}.",
+            tombstone.display(),
+        ),
+    )
 }
 
 fn canonicalize_missing_path(path: &Path) -> Result<PathBuf> {
