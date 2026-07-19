@@ -1295,6 +1295,49 @@ fn read_workspace_lease_record(path: &Path) -> Result<WorkspaceLeaseRecord> {
 mod workspace_lease_tests {
     use super::*;
 
+    #[derive(Serialize)]
+    #[serde(rename_all = "kebab-case")]
+    enum TestLegacyInstallAuthority {
+        LocalDevelopment,
+    }
+
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct TestLegacyInstallationIdentity {
+        authority: TestLegacyInstallAuthority,
+        generation: String,
+        environment_sha256: String,
+    }
+
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct TestLegacyBinding {
+        schema_version: u32,
+        record_id: uuid::Uuid,
+        workspace_root: PathBuf,
+        workspace_kind: SemanticWorkspaceKind,
+        backend_name: BackendName,
+        runtime: WorkspaceLeaseRuntimeIdentity,
+        installation: TestLegacyInstallationIdentity,
+        ownership: WorkspaceLeaseOwnership,
+        owner: WorkspaceLeaseOwnerIdentity,
+        acquired_at: String,
+    }
+
+    #[derive(Serialize)]
+    #[serde(
+        tag = "state",
+        rename_all = "SCREAMING_SNAKE_CASE",
+        rename_all_fields = "camelCase"
+    )]
+    enum TestLegacyRecord {
+        Released {
+            binding: TestLegacyBinding,
+            receipt: WorkspaceLeaseReleaseReceipt,
+            record_mac: String,
+        },
+    }
+
     #[test]
     fn hmac_matches_rfc_4231_case_one() {
         let key = [0x0b_u8; 20];
@@ -1303,6 +1346,90 @@ mod workspace_lease_tests {
             hex::encode(actual),
             "b0344c61d8db38535ca8afceaf0bf12b881dc200c9833da726e9376c2e32cff7"
         );
+    }
+
+    #[test]
+    fn acquisition_ignores_an_authenticated_released_schema_one_record() {
+        let fixture = tempfile::tempdir().expect("fixture");
+        let records = fixture.path().join("records");
+        fs::create_dir_all(&records).expect("records");
+        let workspace_root = fixture.path().join("workspace");
+        fs::create_dir(&workspace_root).expect("workspace");
+        let record_id = uuid::Uuid::new_v4();
+        let binding = TestLegacyBinding {
+            schema_version: 1,
+            record_id,
+            workspace_root: workspace_root.clone(),
+            workspace_kind: SemanticWorkspaceKind::PrimaryCheckout,
+            backend_name: BackendName::Headless,
+            runtime: WorkspaceLeaseRuntimeIdentity {
+                descriptor_path: "legacy-descriptor".to_string(),
+                descriptor: ServerInstanceDescriptor {
+                    workspace_root: workspace_root.display().to_string(),
+                    backend_name: "headless".to_string(),
+                    backend_version: "legacy-revision".to_string(),
+                    transport: "uds".to_string(),
+                    socket_path: "/tmp/legacy-kast.sock".to_string(),
+                    pid: 42,
+                    schema_version: SCHEMA_VERSION,
+                },
+                process: WorkspaceLeaseProcessIdentity {
+                    pid: 42,
+                    started_at: "legacy-runtime-start".to_string(),
+                },
+            },
+            installation: TestLegacyInstallationIdentity {
+                authority: TestLegacyInstallAuthority::LocalDevelopment,
+                generation: "legacy-generation".to_string(),
+                environment_sha256: "a".repeat(64),
+            },
+            ownership: WorkspaceLeaseOwnership::Borrowed,
+            owner: WorkspaceLeaseOwnerIdentity {
+                process: WorkspaceLeaseProcessIdentity {
+                    pid: 42,
+                    started_at: "legacy-owner-start".to_string(),
+                },
+                session_sha256: None,
+            },
+            acquired_at: "unix:1".to_string(),
+        };
+        let receipt = WorkspaceLeaseReleaseReceipt {
+            released_at: "unix:2".to_string(),
+            runtime_stopped: false,
+            reason: WorkspaceLeaseReleaseReason::BorrowedRuntimePreserved,
+        };
+        let secret = [7_u8; 32];
+        let payload = serde_json::to_vec(&("RELEASED", &binding, &receipt)).expect("payload");
+        let record = TestLegacyRecord::Released {
+            binding,
+            receipt,
+            record_mac: hex::encode(workspace_lease_hmac_sha256(&secret, &payload)),
+        };
+        fs::write(
+            records.join(format!("{record_id}.json")),
+            serde_json::to_vec_pretty(&record).expect("legacy record"),
+        )
+        .expect("write legacy record");
+        let paths = WorkspaceLeasePaths {
+            records,
+            secret: fixture.path().join("secret"),
+            lock: fixture.path().join("lock"),
+        };
+        let admission = SemanticWorkspaceAdmission {
+            workspace_root,
+            backend_name: BackendName::Headless,
+            workspace_kind: SemanticWorkspaceKind::PrimaryCheckout,
+        };
+        let installation = WorkspaceLeaseInstallationIdentity {
+            generation: self_mgmt::EffectiveGeneration::Release {
+                distribution: self_mgmt::ReleaseDistribution::ManagedLocal,
+                revision: cli::ReleaseRevision::current(),
+            },
+            environment_sha256: "b".repeat(64),
+        };
+
+        recover_or_reject_existing_lease(&paths, &secret, &admission, &installation)
+            .expect("released legacy record must not block a current acquisition");
     }
 
     #[test]
