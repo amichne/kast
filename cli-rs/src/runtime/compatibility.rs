@@ -183,7 +183,9 @@ fn assess_runtime_compatibility_source(
     source: &RuntimeCompatibilitySource,
 ) -> Result<RuntimeCompatibilityAssessment> {
     validate_runtime_compatibility_source(&source)?;
-    if facts.plugin_revision != facts.cli_revision {
+    if facts.plugin_version == facts.cli_version
+        && facts.plugin_revision != facts.cli_revision
+    {
         return Ok(RuntimeCompatibilityAssessment::UpdateRequired {
             requirement: RuntimeCompatibilityUpdateRequirement::MismatchedReleaseRevision {
                 plugin_revision: facts.plugin_revision.clone(),
