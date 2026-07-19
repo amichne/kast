@@ -85,7 +85,7 @@ require_contains ".github/workflows/ci.yml" "test-cli-plugin-authority-cutover-c
 
 require_contains "cli-rs/src/install/macos_homebrew_receipt.rs" "MACOS_HOMEBREW_RECEIPT_SCHEMA_VERSION: u32 = 3"
 require_contains "cli-rs/src/install/macos_homebrew_receipt.rs" "deny_unknown_fields"
-require_contains "cli-rs/src/install/macos_homebrew_receipt.rs" "pub release_revision: String"
+require_contains "cli-rs/src/install/macos_homebrew_receipt.rs" "pub release_revision: cli::ReleaseRevision"
 require_not_contains "cli-rs/src/install/macos_homebrew_receipt.rs" "MacosHomebrewPluginReceipt"
 require_not_contains "cli-rs/src/install/macos_homebrew_receipt.rs" "pub plugin:"
 require_contains "cli-rs/src/install/legacy_idea_plugin_cleanup.rs" "LEGACY_IDEA_PLUGIN_CLEANUP_RELEASE"
