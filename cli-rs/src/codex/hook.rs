@@ -928,6 +928,7 @@ fn parsed_agent_command_for(command: &str, declared_command: &Path) -> Option<Ag
         | CliCommand::Ready(_)
         | CliCommand::Repair(_)
         | CliCommand::Status(_)
+        | CliCommand::Machine(_)
         | CliCommand::Demo(_)
         | CliCommand::Developer(_)
         | CliCommand::Doctor(_) => None,

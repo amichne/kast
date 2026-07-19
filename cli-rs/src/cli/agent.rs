@@ -136,9 +136,6 @@ pub struct AgentLeaseAcquireArgs {
     /// Absolute semantic workspace root to bind.
     #[arg(long)]
     pub workspace_root: PathBuf,
-    /// Pin the lease to one runtime backend.
-    #[arg(long = "backend", value_enum)]
-    pub backend_name: Option<BackendName>,
     /// Maximum time to settle the runtime to READY.
     #[arg(long, default_value_t = crate::cli::DEFAULT_RUNTIME_WAIT_TIMEOUT_MS, hide = true)]
     pub wait_timeout_ms: u64,

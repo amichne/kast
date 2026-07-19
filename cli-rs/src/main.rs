@@ -13,6 +13,7 @@ mod error;
 mod install;
 mod local_development;
 mod lsp;
+mod machine;
 mod manifest;
 mod metrics;
 mod metrics_database;
@@ -222,6 +223,7 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
         Command::Ready(args) => run_ready(args, output_format),
         Command::Repair(args) => run_repair(args, output_format),
         Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
+        Command::Machine(args) => run_machine(args.command, output_format),
         Command::Demo(args) => demo::run_public(args, output_format),
         Command::Developer(args) => run_developer(args.command, output_format),
         Command::Doctor(args) => run_ready(args.into(), output_format),
@@ -661,6 +663,18 @@ fn run_inspect(command: cli::InspectCommand, output_format: OutputFormat) -> Res
 
 fn run_machine(command: cli::MachineCommand, output_format: OutputFormat) -> Result<i32> {
     match command {
+        cli::MachineCommand::Status => {
+            let result = machine::status();
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
+            } else {
+                println!(
+                    "Kast machine\n\nState: {}\nDaemon: {}",
+                    result.state, result.daemon
+                );
+            }
+            Ok(0)
+        }
         cli::MachineCommand::Defaults(args) => {
             let result = self_mgmt::configure_developer_machine_defaults(args.dry_run)?;
             if output_format.is_structured() {

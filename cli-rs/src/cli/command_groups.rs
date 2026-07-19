@@ -53,6 +53,8 @@ pub struct MachineArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum MachineCommand {
+    /// Report the installed bundle and daemon state without changing them.
+    Status,
     /// Configure developer-machine defaults to use the IDEA plugin backend.
     Defaults(DeveloperMachineDefaultsArgs),
     /// Install shell PATH and completion integration.

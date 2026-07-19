@@ -289,6 +289,7 @@ pub(crate) fn classify_command(command: &Command) -> CodexExposure {
         Command::Repair(args) if args.apply => CodexExposure::NotExposed,
         Command::Repair(_) => CodexExposure::HookOnly(CodexHookCommand::RepairPlan),
         Command::Status(_) => CodexExposure::HookOnly(CodexHookCommand::Status),
+        Command::Machine(_) => CodexExposure::NotExposed,
         Command::Demo(_) => CodexExposure::NotExposed,
         Command::Developer(args) => classify_developer(&args.command),
         Command::Doctor(_) => CodexExposure::NotExposed,
@@ -356,9 +357,10 @@ fn classify_metrics(command: &MetricsCommand) -> CodexExposure {
 
 fn classify_machine(command: &MachineCommand) -> CodexExposure {
     match command {
-        MachineCommand::Defaults(_) | MachineCommand::Shell(_) | MachineCommand::Completion(_) => {
-            CodexExposure::NotExposed
-        }
+        MachineCommand::Status
+        | MachineCommand::Defaults(_)
+        | MachineCommand::Shell(_)
+        | MachineCommand::Completion(_) => CodexExposure::NotExposed,
     }
 }
 

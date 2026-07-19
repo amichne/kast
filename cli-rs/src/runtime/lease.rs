@@ -236,7 +236,7 @@ impl WorkspaceLeasePaths {
 
 pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceLeaseResult> {
     let requested_root = exact_lease_root(&args.workspace_root)?;
-    let admission = admitted_lease_workspace(requested_root, args.backend_name)?;
+    let admission = admitted_lease_workspace(requested_root, Some(BackendName::Idea))?;
     let initial_installation =
         lease_installation_identity(&admission.workspace_root, admission.backend_name)?;
     let paths = WorkspaceLeasePaths::resolve()?;

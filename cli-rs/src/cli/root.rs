@@ -46,6 +46,8 @@ pub enum Command {
     Repair(RepairArgs),
     /// Check the current workspace status.
     Status(RuntimeArgs),
+    /// Inspect or manage the one developer-machine Kast installation.
+    Machine(MachineArgs),
     /// Explore a guided semantic story from this Kotlin repository.
     Demo(PublicDemoArgs),
     /// Developer and release-engineering commands.
