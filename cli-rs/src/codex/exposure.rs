@@ -1,7 +1,7 @@
 use crate::cli::{
     AgentCommand, AgentLeaseCommand, AgentOperationCommand, CodexCommand, CodexHookEvent, Command,
-    DeveloperCommand, GenerateCommand, InspectCommand, LocalDevelopmentCommand, MachineCommand,
-    MetricsCommand, PackageCommand, ReleaseActivateCommand, ReleaseCommand, RuntimeCommand,
+    DeveloperCommand, GenerateCommand, InspectCommand, MachineCommand, MetricsCommand,
+    PackageCommand, ReleaseActivateCommand, ReleaseCommand, RuntimeCommand,
 };
 use serde::Serialize;
 
@@ -299,7 +299,6 @@ pub(crate) fn classify_command(command: &Command) -> CodexExposure {
 
 pub(crate) fn classify_developer(command: &DeveloperCommand) -> CodexExposure {
     match command {
-        DeveloperCommand::Local(args) => classify_local_development(&args.command),
         DeveloperCommand::Runtime(args) => classify_runtime(&args.command),
         DeveloperCommand::Inspect(args) => classify_inspect(&args.command),
         DeveloperCommand::Machine(args) => classify_machine(&args.command),
@@ -310,19 +309,6 @@ pub(crate) fn classify_developer(command: &DeveloperCommand) -> CodexExposure {
                 CodexExposure::HookOnly(CodexHookCommand::Event(args.event))
             }
         },
-    }
-}
-
-fn classify_local_development(command: &LocalDevelopmentCommand) -> CodexExposure {
-    match command {
-        LocalDevelopmentCommand::Snapshot(_)
-        | LocalDevelopmentCommand::Attest(_)
-        | LocalDevelopmentCommand::Prepare(_)
-        | LocalDevelopmentCommand::Verify(_)
-        | LocalDevelopmentCommand::Activate(_)
-        | LocalDevelopmentCommand::Refresh(_)
-        | LocalDevelopmentCommand::Rollback(_)
-        | LocalDevelopmentCommand::Remove(_) => CodexExposure::NotExposed,
     }
 }
 

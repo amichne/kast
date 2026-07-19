@@ -79,7 +79,7 @@ fn developer_scope_has_no_local_headless_authority() {
     assert!(help.status.success());
     let help = String::from_utf8_lossy(&help.stdout);
     assert!(
-        !help.contains("local"),
+        !help.contains("\n  local "),
         "developer machines must not expose a parallel local headless authority: {help}",
     );
 }

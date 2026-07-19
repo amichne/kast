@@ -625,7 +625,6 @@ fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Res
 
 fn run_developer(command: cli::DeveloperCommand, output_format: OutputFormat) -> Result<i32> {
     match command {
-        cli::DeveloperCommand::Local(args) => local_development::run(args.command, output_format),
         cli::DeveloperCommand::Runtime(args) => run_runtime(args.command, output_format),
         cli::DeveloperCommand::Inspect(args) => run_inspect(args.command, output_format),
         cli::DeveloperCommand::Machine(args) => run_machine(args.command, output_format),
