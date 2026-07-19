@@ -34,8 +34,8 @@ scoped `AGENTS.md` in the same change. Agent-only ADRs stay under
 
 ## Revision-Coherent Contract Evolution
 
-ADR 0024 makes the local-development CLI, backend, skill, guidance, and
-configuration one attested source generation. Inside an execution path that
+ADR 0029 makes the processless development-machine CLI, IDEA plugin, skill,
+and Codex adapter one attested machine bundle. Inside an execution path that
 proves those components came from the same revision, treat their private
 protocol and data model as one atomic contract. Prefer a clean replacement to
 backward-compatibility scaffolding: required fields may become required,
@@ -69,11 +69,9 @@ configuration. Stable releases update the matching Homebrew CLI before making
 the draft public so the IDE's `latest` feed cannot advertise an unavailable
 CLI pair.
 
-`install.sh` may delegate initial plugin installation to a closed IDE through
-its supported `installPlugins` command and the installed CLI's
-version-specific feed. That command must not be presented as an updater because
-JetBrains skips an already-installed plugin. Existing updates remain IDE-owned.
-The script must not write plugin directories or recreate profile links. Run
+`install.sh` downloads the exact release plugin and asks the installed CLI to
+activate and synchronously reconcile the machine bundle while IDEA is closed.
+No launchd service is installed. Run
 `.github/scripts/test-release-workflow-contract.sh` and
 `.github/scripts/test-macos-installer-contract.sh` after changing this
 boundary.
@@ -84,8 +82,8 @@ boundary.
 - `./gradlew :analysis-api:test` runs a focused module test; replace the module
   name for narrower checks.
 - `./gradlew buildIdeaPlugin` builds the IDEA plugin zip.
-- `./gradlew installDevelopmentLocal` installs the development CLI and IDEA
-  plugin into the configured local profile.
+- `./gradlew refreshDevelopmentMachine` builds and synchronously activates the
+  CLI, IDEA plugin, and agent resources without starting a headless runtime.
 - `cargo test --manifest-path cli-rs/Cargo.toml --locked` runs Rust CLI tests.
 - `cargo clippy --manifest-path cli-rs/Cargo.toml --all-targets --all-features -- -D warnings`
   enforces Rust lint cleanliness.

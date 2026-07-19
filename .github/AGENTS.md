@@ -27,26 +27,17 @@ its adjacent `updatePlugins.xml` feed asset; neither participates in the
 non-IDEA checksum or provenance system.
 For CLI terminal command or executable example changes, run
 `.github/scripts/test-terminal-command-contract.sh`.
-The release-free local authority gate lives in
+The release-free processless machine authority gate lives in
 `.github/scripts/test-local-development-refresh-contract.sh`. Keep it wired in
 the independent `local-authority-contracts` CI job whenever refresh
-orchestration, source/artifact provenance, immutable
-generation activation, rollback/removal, local readiness, or installed
-skill/guidance routing changes. Its Gradle graph must remain headless and must
-not include user JetBrains profile or release-configuration mutation.
-The legacy developer install remains covered separately by
-`.github/scripts/test-development-cli-install-contract.sh`. It is not the
-revision-coherent local authority and must not run for every pull request.
-Keep its real IDEA plugin task execution on integrated `main` pushes so
-explicit-directory, configured-profile, running-profile, newest-profile,
-missing-profile, and configuration-cache behavior cannot regress behind
-dry-run task-graph coverage. Removing that documented compatibility surface
-requires an explicit ADR decision.
-
-Umbrella source contracts must not rerun focused owners. The CLI/plugin
-cutover contract owns source presence, absence, and authority assertions only;
-the runtime compatibility contract owns deterministic source and manifest
-rendering only. Rust unit and integration tests run in `rust-cli`, Kotlin and
+orchestration, machine manifest activation, closed-IDE reconciliation, local
+readiness, or installed skill/Codex routing changes. Its Gradle graph must build
+the IDEA plugin, must not build or start `backend-headless`, and must not
+install launchd state.
+Umbrella source contracts must not rerun focused owners. The processless
+machine authority contract owns source presence, absence, activation, and
+reconciliation assertions; the runtime compatibility contract owns
+deterministic source and manifest rendering only. Rust unit and integration tests run in `rust-cli`, Kotlin and
 IDEA tests run in their Gradle owners, documentation rendering runs in the
 documentation workflow, and installer, release, provenance, and asset
 contracts run once in their named jobs. A focused Rust integration test must
@@ -78,25 +69,10 @@ they remain in the output inventory without inflating the required
 pull-request critical path. Run `.github/scripts/test-ci-workflow-model.sh`
 whenever jobs, `needs` edges, proof owners, canary classification, or timing
 evidence change.
-The separate `.github/scripts/test-local-development-semantic-e2e.sh` canary
-must exercise the receipt-owned installed entrypoint, not checkout build
-outputs. It owns refresh idempotence plus compiler-backed readiness, exact
-symbol resolution, a known exhaustive nonzero reference, complete clean-file
-diagnostics, plan-only mutation, explicit runtime shutdown, and receipt-owned
-removal. Keep its authoritative job in
-`.github/workflows/local-development-canary.yml`, outside ordinary pull-request
-CI. The reusable workflow must run on integrated `main`, nightly, manually,
-and from release preparation; release publication must fail closed when it
-fails and preserve actionable runtime logs.
-
-Ordinary pull requests own one narrower installed proof in
-`.github/scripts/test-local-development-semantic-fixture.sh`. Its job must
-depend only on `prepared-generation`, verify that artifact and ledger, activate
-without a refresh or producer toolchain, and exercise the authored two-module
-Gradle fixture with one runtime cycle. It must prove compiler-backed readiness,
-selector-handle reuse, clean and deliberately broken diagnostics, plan-only
-rename, unchanged source bytes, explicit stop, and receipt-owned removal. It
-must not invoke the full Kast-on-Kast canary or add a second build owner.
+Developer-machine semantic proof runs through an open IDEA project and the
+selected machine CLI. Do not add a local headless semantic fixture or canary.
+Linux release headless packaging and action-runtime contracts remain separate
+CI/release concerns and must not be described as developer-machine authority.
 
 `packaging/jetbrains/updatePlugins.xml` is the hand-authored GitHub Release feed
 template. The release job substitutes its tag and version and uploads the feed
@@ -113,16 +89,11 @@ built, and downstream packaging or publication jobs must verify that receipt
 against the exact downloaded file before consuming it. Do not add a publishing
 job that rebuilds a receipt-owned artifact; add a new producer receipt or make
 the publisher consume an existing one. Pull-request Linux packaging is owned
-by three explicit layers. `source-bound-cli` and
+by explicit release layers. `source-bound-cli` and
 `source-bound-headless-backend` build the single release CLI and backend while
 their required Rust and Kotlin validation jobs run independently.
-`prepared-generation` verifies both components and publishes one immutable
-generation for the representative semantic fixture. The
-`prepared-ubuntu-debian-bundle` producer and `kast-action-runtime-contract`
-derive only their owned package family from those verified bytes; the action
-contract consumes its derived inputs without a second artifact hop. A
-derivative owner may verify the generation ledger and digest, but must not
-rerun the generation's internal semantic verification.
+Downstream Ubuntu/Debian and `kast-action` packaging consumes the verified
+release components without creating a developer-machine generation.
 
 ## Copilot Package Source
 
@@ -154,15 +125,12 @@ For terminal commands and executable examples, run:
 .github/scripts/test-terminal-command-contract.sh
 ```
 
-For local-development authority changes, run:
+For development-machine authority changes, run:
 
 ```console
 .github/scripts/test-ci-workflow-model.sh
 .github/scripts/test-local-development-refresh-contract.sh
-.github/scripts/test-development-cli-install-contract.sh
 .github/scripts/test-selector-handle-installed-workflow.sh
-.github/scripts/test-local-development-semantic-fixture.sh
-.github/scripts/test-local-development-semantic-e2e.sh
 ```
 
 For IDEA GitHub Release distribution changes, run:

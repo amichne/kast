@@ -492,7 +492,7 @@ fn agent_rename_without_apply_returns_identity_first_plan_without_applied_mutati
         "package io.example\nclass OrderService { fun process() = Unit }\n",
     )
     .expect("Kotlin rename fixture");
-    let backend = spawn_scripted_headless_backend(
+    let backend = spawn_scripted_idea_backend(
         &home,
         &config_home,
         &workspace,
@@ -599,7 +599,7 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
     )
     .expect("Kotlin rename fixture");
     let selector_handle = "ksh1.rename-handle";
-    let plan_backend = spawn_scripted_headless_backend(
+    let plan_backend = spawn_scripted_idea_backend(
         &home,
         &config_home,
         &workspace,
@@ -820,7 +820,7 @@ fn agent_rename_preview_rejects_duplicate_hash_rows_that_leave_an_affected_file_
         "affectedFiles": [first_file, second_file],
         "schemaVersion": 3,
     });
-    let backend = spawn_scripted_headless_backend(
+    let backend = spawn_scripted_idea_backend(
         &home,
         &config_home,
         &workspace,

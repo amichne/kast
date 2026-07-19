@@ -207,9 +207,6 @@ pub struct ResolvedKastPaths {
 }
 
 pub fn resolve_paths() -> Result<ResolvedKastPaths> {
-    if let Some(receipt) = crate::local_development::active_local_development_receipt()? {
-        return paths_from_manifest(&read_manifest_at(&receipt.install_manifest)?);
-    }
     #[cfg(target_os = "macos")]
     if let Some(receipt) = crate::install::read_macos_homebrew_receipt()? {
         let mut paths = default_resolved_paths();

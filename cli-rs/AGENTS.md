@@ -13,8 +13,8 @@ resources.
 - `src/cli/agent.rs` and `src/agent/` own typed compiler-backed agent commands:
   `lease`, `verify`, `workspace-files`, `symbol`, `diagnostics`, `impact`,
   `rename`, and `lsp`.
-- `src/runtime/` owns backend lifecycle inspection and mutation for IDEA and
-  headless runtimes behind the same command dialect.
+- `src/runtime/` owns IDEA lifecycle inspection and exact-root leases on macOS,
+  plus release headless lifecycle on supported non-macOS hosts.
 - `src/install/` owns repository setup, managed guidance, CLI machine receipts,
   repair, bundle activation, shell integration, and bounded legacy cleanup. It
   does not install or update IDEA plugins.
@@ -31,21 +31,10 @@ resources.
   `src/self_mgmt/agent_readiness.rs` own install state, managed resource
   records, doctor checks, effective binary/backend/skill/guidance evidence,
   CLI dialect compatibility, and repair behavior.
-- `src/local_development.rs` and `src/local_development/` own framed checkout
-  identity, independently attested CLI/backend artifacts, immutable local
-  generations, the strict portable prepared-generation ledger, exact receipt topology, generation-scoped runtime state, and
-  the canonical prefix authority lock shared by runtime registration,
-  activation, rollback, and removal. It also owns local skill/guidance command
-  routing. Keep this boundary separate from Homebrew and JetBrains release
-  authority. Changes require
-  `.github/scripts/test-local-development-refresh-contract.sh` plus focused
-  Rust tests; never accept an artifact label without recomputing its source and
-  byte identity. Prepared generations have one closed layout, path-independent
-  component provenance, and an exact source-bound CLI. Verification must reject
-  unknown ledger fields, missing or extra entries, symlinks, special files,
-  component drift, stale source, and backend-manifest drift before activation.
-  `developer local activate` consumes only an already-verified generation; it
-  must never gain an implicit Cargo or Gradle build path.
+- `src/machine.rs` and `src/cli/machine.rs` own one processless machine bundle:
+  strict digest validation, atomic CLI/plugin/resource activation, closed-IDE
+  plugin reconciliation, and native Codex plugin selection. They must not add a
+  launchd plist, resident daemon, socket, watcher, or worktree resource copy.
 - `src/self_mgmt.rs` parses revision-3 exact-root compatibility facts strictly
   and delegates active admission to the authored typed compatibility matrix.
   Unknown fields, capabilities, revisions, unsupported rows, and missing
@@ -77,6 +66,8 @@ recovery, and release authority live in
 plugin, exhaustive Rust exposure classifier, hook state, and
 release coupling live in
 `.agents/adr/0026-codex-cli-plugin-and-rust-exposure-authority.md`.
+The processless development-machine boundary and IDEA-only leases live in
+`.agents/adr/0029-processless-development-machine-authority.md`.
 
 ## Edit rules
 

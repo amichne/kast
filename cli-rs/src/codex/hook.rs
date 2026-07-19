@@ -781,6 +781,7 @@ fn parsed_agent_command(command: &str) -> Option<AgentCommand> {
         | CliCommand::Ready(_)
         | CliCommand::Repair(_)
         | CliCommand::Status(_)
+        | CliCommand::Machine(_)
         | CliCommand::Demo(_)
         | CliCommand::Developer(_)
         | CliCommand::Doctor(_) => None,
@@ -1021,5 +1022,13 @@ mod tests {
         assert!(!versions_coherent("1.2.3+codex.local", "1.2.4"));
         assert!(!versions_coherent("1.2.3+codex.", "1.2.3"));
         assert!(!versions_coherent("1.2.3+other.local", "1.2.3"));
+    }
+
+    #[test]
+    fn machine_entrypoint_is_recognized_as_a_typed_agent_command() {
+        assert!(matches!(
+            parsed_agent_command("/tmp/machine/bin/kast agent verify"),
+            Some(AgentCommand::Verify(_)),
+        ));
     }
 }

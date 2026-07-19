@@ -7,8 +7,6 @@ pub struct DeveloperArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum DeveloperCommand {
-    /// Build and inspect isolated local-development authority.
-    Local(LocalDevelopmentArgs),
     /// Manage backend runtime lifecycle.
     Runtime(RuntimeCommandArgs),
     /// Inspect local Kast state, catalogs, demos, and source-index metrics.
@@ -53,6 +51,12 @@ pub struct MachineArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum MachineCommand {
+    /// Report the installed machine bundle without changing it.
+    Status,
+    /// Atomically make this CLI, one IDEA plugin, and embedded resources machine-wide.
+    Activate(MachineActivateArgs),
+    /// Repair the selected closed-IDE plugin and global agent resources.
+    Reconcile(MachineReconcileArgs),
     /// Configure developer-machine defaults to use the IDEA plugin backend.
     Defaults(DeveloperMachineDefaultsArgs),
     /// Install shell PATH and completion integration.
@@ -60,6 +64,20 @@ pub enum MachineCommand {
     /// Print shell completion scripts.
     #[command(hide = true)]
     Completion(CompletionArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct MachineActivateArgs {
+    /// Exact Kast IDEA plugin ZIP to install beside this running CLI.
+    #[arg(long = "idea-plugin")]
+    pub idea_plugin: PathBuf,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct MachineReconcileArgs {
+    /// Exact JetBrains profile plugins directory to reconcile.
+    #[arg(long = "idea-plugins-dir")]
+    pub idea_plugins_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]

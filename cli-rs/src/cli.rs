@@ -7,7 +7,6 @@ include!("cli/inspect_metrics_demo_rpc.rs");
 include!("cli/agent.rs");
 include!("cli/release_package_generate.rs");
 include!("cli/runtime_lsp.rs");
-include!("cli/local_development.rs");
 include!("cli/codex.rs");
 include!("cli/command_groups.rs");
 include!("cli/conversions.rs");

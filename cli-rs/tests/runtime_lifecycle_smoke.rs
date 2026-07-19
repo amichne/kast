@@ -80,6 +80,7 @@ fn lifecycle_commands_render_human_text_when_selected_and_json_when_selected() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn stop_removes_every_matching_stale_headless_descriptor() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

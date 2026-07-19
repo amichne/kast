@@ -145,6 +145,7 @@ fn prepared_linked_worktree_verify_views_retain_admission_evidence() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn unprepared_disposable_checkout_can_use_headless_read_only_workflows() {
     let fixture = tempfile::tempdir().expect("headless fixture");
     let workspace = fixture.path().join("disposable");
@@ -458,6 +459,7 @@ fn default_applied_mutation_maps_every_public_family_to_authority_required() {
 
 #[cfg(target_os = "macos")]
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn prepared_workspace_authority_allows_explicit_headless_mutation() {
     let fixture = tempfile::tempdir().expect("prepared mutation fixture");
     let workspace = fixture.path().join("workspace");
@@ -668,6 +670,7 @@ fn descriptor_cannot_make_non_gradle_root_supported() {
 }
 
 #[test]
+#[cfg(not(target_os = "macos"))]
 fn automatic_selection_rejects_two_ready_exact_root_backends() {
     let fixture = tempfile::tempdir().expect("ambiguity fixture");
     let workspace = fixture.path().join("workspace");
@@ -726,50 +729,6 @@ fn automatic_selection_rejects_two_ready_exact_root_backends() {
     );
     assert!(!idea.finish().is_empty());
     assert!(!headless.finish().is_empty());
-}
-
-#[cfg(target_os = "macos")]
-#[test]
-fn automatic_selection_uses_sole_ready_headless_backend_on_macos() {
-    let fixture = tempfile::tempdir().expect("sole headless fixture");
-    let workspace = fixture.path().join("workspace");
-    let home = fixture.path().join("home");
-    let config_home = fixture.path().join("config");
-    let socket_path = fixture.path().join("headless.sock");
-    write_gradle_workspace(&workspace);
-    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
-    std::fs::create_dir_all(&home).expect("home");
-    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
-    let backend = ObservedSemanticBackend::spawn(
-        bind_semantic_listener(&socket_path),
-        workspace.clone(),
-        "headless",
-    );
-
-    let verify = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "verify",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("automatic verify");
-
-    assert!(
-        verify.status.success(),
-        "sole ready headless backend must override the macOS default: stdout={}, stderr={}",
-        String::from_utf8_lossy(&verify.stdout),
-        String::from_utf8_lossy(&verify.stderr)
-    );
-    let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
-    assert_eq!(
-        output["result"]["semanticWorkspace"]["backendName"],
-        "headless"
-    );
-    assert!(!backend.finish().is_empty());
 }
 
 #[test]

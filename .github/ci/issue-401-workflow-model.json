@@ -26,9 +26,7 @@
           "docs-content-contract",
           "macos-installer-contract",
           "local-development-refresh-contract",
-          "development-cli-install-contract",
           "installed-selector-handle-workflow",
-          "cli-plugin-authority-cutover-contract",
           "kast-routing-evals",
           "release-asset-verifier",
           "release-provenance-assembler",
@@ -43,21 +41,6 @@
           915,
           1013,
           936
-        ],
-        "executionClass": "toolchain"
-      },
-      {
-        "id": "local-development-semantic-e2e",
-        "needs": [],
-        "outputs": [
-          "local-development-installed-semantic-e2e"
-        ],
-        "durationSamplesSeconds": [
-          1277,
-          889,
-          1237,
-          1297,
-          1289
         ],
         "executionClass": "toolchain"
       },
@@ -177,20 +160,6 @@
           933,
           803,
           452
-        ],
-        "executionClass": "gradle-cache"
-      },
-      {
-        "id": "installed-semantic-fixture",
-        "needs": [
-          "build-and-test-linux",
-          "rust-cli"
-        ],
-        "outputs": [
-          "representative-installed-semantic-fixture"
-        ],
-        "durationSamplesSeconds": [
-          300
         ],
         "executionClass": "gradle-cache"
       },
@@ -327,25 +296,12 @@
         "id": "local-authority-contracts",
         "needs": [],
         "outputs": [
-          "local-development-refresh-contract",
-          "development-cli-install-contract",
-          "cli-plugin-authority-cutover-contract"
+          "local-development-refresh-contract"
         ],
         "durationSamplesSeconds": [
           304
         ],
         "executionClass": "toolchain"
-      },
-      {
-        "id": "local-development-semantic-e2e",
-        "needs": [],
-        "outputs": [
-          "local-development-installed-semantic-e2e"
-        ],
-        "durationSamplesSeconds": [
-          1223
-        ],
-        "executionClass": "release"
       },
       {
         "id": "runtime-contracts",
@@ -478,19 +434,6 @@
         "executionClass": "gradle-cache"
       },
       {
-        "id": "installed-semantic-fixture",
-        "needs": [
-          "prepared-generation"
-        ],
-        "outputs": [
-          "representative-installed-semantic-fixture"
-        ],
-        "durationSamplesSeconds": [
-          300
-        ],
-        "executionClass": "artifact-consumer"
-      },
-      {
         "id": "analysis-server-transport",
         "needs": [
           "workflow-contracts"
@@ -560,9 +503,7 @@
         "executionClass": "artifact-consumer"
       }
     ],
-    "canaryTaskIds": [
-      "local-development-semantic-e2e"
-    ],
+    "canaryTaskIds": [],
     "fanoutGateTaskIds": [
       "workflow-contracts"
     ],

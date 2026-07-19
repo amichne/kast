@@ -35,9 +35,6 @@ const MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION: u32 = 3;
 const MACOS_PLUGIN_WORKSPACE_PREPARED_BY: &str = "kast-intellij-plugin";
 #[cfg(target_os = "macos")]
 const MACOS_PLUGIN_WORKSPACE_BACKEND: &str = "idea";
-#[cfg(target_os = "macos")]
-const MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE: &str = ".agents/skills/kast/SKILL.md";
-
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorConfigurationDiagnostic {
@@ -88,7 +85,7 @@ pub struct DeveloperMachineDefaultsResult {
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum InstallAuthority {
-    LocalDevelopment,
+    Machine,
     MacosHomebrew,
     ManagedLocal,
     Missing,
@@ -111,8 +108,6 @@ pub struct SelfDoctorResult {
     pub target: ReadyTarget,
     pub installed: bool,
     pub install_authority: InstallAuthority,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub local_development: Option<crate::local_development::LocalDevelopmentReceipt>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub homebrew_install: Option<install::MacosHomebrewInstallReceipt>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -141,18 +136,12 @@ pub fn doctor(
     target: ReadyTarget,
     workspace_root: Option<&Path>,
 ) -> Result<SelfDoctorResult> {
-    let local_development = crate::local_development::verified_active_local_development_receipt()?;
+    let machine_identity = crate::machine::active_machine_identity()?;
     let config_path = config::global_config_path();
     let manifest_path = manifest::default_install_manifest_path();
     let mut issues = vec![];
     let mut warnings = vec![];
     let repair_result = if repair {
-        if local_development.is_some() {
-            return Err(CliError::new(
-                "LOCAL_AUTHORITY_REPAIR_UNSUPPORTED",
-                "Local-development authority cannot apply ordinary install repair; refresh its source checkout instead.",
-            ));
-        }
         let repair_args = InstallRepairArgs {
             apply: true,
             jetbrains_config_root: None,
@@ -165,7 +154,7 @@ pub fn doctor(
         None
     };
     #[cfg(target_os = "macos")]
-    let homebrew_install = if local_development.is_some() {
+    let homebrew_install = if machine_identity.is_some() {
         None
     } else {
         install::read_macos_homebrew_receipt()?
@@ -258,27 +247,16 @@ pub fn doctor(
                     backend_label, backend.runtime_libs_dir
                 ));
             }
-            if let Some(local) = &local_development {
-                if backend.name != "headless"
-                    || backend.version != local.backend.implementation_version
-                {
-                    issues.push(format!(
-                        "Local backend identity {}/{} does not match receipt headless/{}",
-                        backend.name, backend.version, local.backend.implementation_version
-                    ));
-                }
-            } else {
-                match version_meets_minimum(&backend.version, minimum_backend_version) {
-                    Some(true) => {}
-                    Some(false) => issues.push(format!(
-                        "{} backend {} is older than required minimum {}",
-                        backend_label, backend.version, minimum_backend_version
-                    )),
-                    None => warnings.push(format!(
-                        "{} backend version {} cannot be compared to required minimum {}",
-                        backend_label, backend.version, minimum_backend_version
-                    )),
-                }
+            match version_meets_minimum(&backend.version, minimum_backend_version) {
+                Some(true) => {}
+                Some(false) => issues.push(format!(
+                    "{} backend {} is older than required minimum {}",
+                    backend_label, backend.version, minimum_backend_version
+                )),
+                None => warnings.push(format!(
+                    "{} backend version {} cannot be compared to required minimum {}",
+                    backend_label, backend.version, minimum_backend_version
+                )),
             }
         }
         for repo in install
@@ -313,7 +291,7 @@ pub fn doctor(
                 }
             }
         }
-    } else if homebrew_install.is_none() {
+    } else if machine_identity.is_none() && homebrew_install.is_none() {
         issues.push(format!(
             "Install manifest is missing at {}",
             manifest_path.display()
@@ -323,13 +301,12 @@ pub fn doctor(
         target,
         workspace_root,
         install.as_ref(),
-        local_development.is_some(),
-        homebrew_install.is_some(),
+        machine_identity.is_some() || homebrew_install.is_some(),
         &binary,
         &mut issues,
     );
-    let install_authority = if local_development.is_some() {
-        InstallAuthority::LocalDevelopment
+    let install_authority = if machine_identity.is_some() {
+        InstallAuthority::Machine
     } else if homebrew_install.is_some() {
         InstallAuthority::MacosHomebrew
     } else if install.is_some() {
@@ -341,7 +318,6 @@ pub fn doctor(
         Some(agent_environment_diagnostic(
             workspace_root,
             install_authority,
-            local_development.as_ref(),
             install.as_ref(),
             &binary,
             &mut issues,
@@ -351,9 +327,8 @@ pub fn doctor(
     };
     Ok(SelfDoctorResult {
         target,
-        installed: local_development.is_some() || homebrew_install.is_some() || install.is_some(),
+        installed: machine_identity.is_some() || homebrew_install.is_some() || install.is_some(),
         install_authority,
-        local_development,
         homebrew_install,
         legacy_shadow,
         config_path: config_path.display().to_string(),
@@ -421,12 +396,11 @@ fn apply_ready_target_checks(
     target: ReadyTarget,
     workspace_root: Option<&Path>,
     install: Option<&InstallState>,
-    local_development: bool,
     homebrew_install: bool,
     binary: &DoctorBinaryDiagnostic,
     issues: &mut Vec<String>,
 ) {
-    apply_macos_plugin_workspace_check(target, workspace_root, local_development, issues);
+    apply_macos_plugin_workspace_check(target, workspace_root, issues);
     match target {
         ReadyTarget::Agent | ReadyTarget::Release => {}
         ReadyTarget::Machine => {
@@ -481,10 +455,9 @@ fn should_verify_repo_resources_for_target(
 fn apply_macos_plugin_workspace_check(
     target: ReadyTarget,
     workspace_root: Option<&Path>,
-    local_development: bool,
     issues: &mut Vec<String>,
 ) {
-    if local_development || !matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin) {
+    if !matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin) {
         return;
     }
     match workspace_root {
@@ -503,7 +476,6 @@ fn apply_macos_plugin_workspace_check(
 fn apply_macos_plugin_workspace_check(
     _target: ReadyTarget,
     _workspace_root: Option<&Path>,
-    _local_development: bool,
     _issues: &mut Vec<String>,
 ) {
 }
@@ -712,21 +684,9 @@ fn validate_macos_plugin_required_artifacts(
     workspace_root: &Path,
     required_artifacts: &[PathBuf],
 ) -> Result<()> {
-    if !required_artifacts
-        .iter()
-        .any(|artifact| artifact == Path::new(MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE))
-    {
+    if required_artifacts != [PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE)] {
         return Err(macos_plugin_workspace_error(format!(
-            "macOS Kast workspace metadata does not declare required artifact `{}`",
-            MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE
-        )));
-    }
-    if !required_artifacts
-        .iter()
-        .any(|artifact| artifact == Path::new(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE))
-    {
-        return Err(macos_plugin_workspace_error(format!(
-            "macOS Kast workspace metadata does not declare required artifact `{}`",
+            "macOS Kast workspace metadata must declare only its exact-root artifact `{}`",
             MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE
         )));
     }
@@ -1078,13 +1038,7 @@ mod tests {
     fn macos_plugin_workspace_metadata_accepts_resolved_config_socket_path() {
         let temp = tempfile::tempdir().expect("tempdir");
         let workspace_root = config::normalize(temp.path().join("workspace"));
-        fs::create_dir_all(workspace_root.join(".agents/skills/kast")).expect("skill dir");
         fs::create_dir_all(workspace_root.join(".kast/setup")).expect("metadata dir");
-        fs::write(
-            workspace_root.join(MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE),
-            "skill",
-        )
-        .expect("skill file");
         let metadata_path = workspace_root.join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
         fs::write(&metadata_path, "{}").expect("metadata file");
         let socket_path = config::KastConfig::defaults()
@@ -1130,10 +1084,7 @@ mod tests {
                         backend_kind: runtime::WorkspaceRuntimeBackendKind::Idea,
                     },
                 },
-                required_artifacts: vec![
-                    PathBuf::from(MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE),
-                    PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE),
-                ],
+                required_artifacts: vec![PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE)],
             },
         )
         .expect("resolved config socket path should be accepted");

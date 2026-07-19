@@ -68,23 +68,20 @@ Required manifest fields are:
 Missing fields, unsupported platforms, unsupported schema versions, and digest
 mismatches are install failures.
 
-## Prepared Generation Archive
+## CI Runtime Input Archive
 
-Pull-request Linux artifacts originate from one source-attested archive:
+Pull-request Linux artifacts originate from one immutable CI-only archive:
 
 ```text
 kast-local-prepared-generation.tar.zst
 ```
 
-Its unpacked root contains `generation.json`, the captured source snapshot,
-the exact executable CLI, the source-bound headless backend, portable artifact
-provenance, the producer-emitted backend component manifest, and the skill,
-guidance, and configuration inputs. The generation is verified with its own
-CLI before packaging. Relocation is allowed; changing component bytes, fixed
-relative paths, layout entries, source identity, or embedded backend evidence
-is not.
+Its unpacked root contains the captured source snapshot, exact executable CLI,
+and headless backend. The producing jobs validate and ledger those components
+before assembly. This archive is packaging input; it is never activated as a
+developer-machine authority.
 
-CI has one producer for this generation and one focused producer for each
+CI has one producer for this runtime input and one focused producer for each
 derived package family. The Ubuntu/Debian bundle is produced independently of
 the headless runtime archive, runtime manifest, and Gradle read-only cache, so
 neither package family delays the other. Container and action jobs download and

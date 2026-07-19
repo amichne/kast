@@ -152,15 +152,6 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-local-development-refresh-contract.sh
 
-      - name: Test development CLI and IDEA profile install contract
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        shell: bash
-        run: ./.github/scripts/test-development-cli-install-contract.sh
-
-      - name: Test CLI and plugin authority cutover contract
-        shell: bash
-        run: ./.github/scripts/test-cli-plugin-authority-cutover-contract.sh
-
   runtime-contracts:
     name: Runtime command and bundle contracts
     runs-on: ubuntu-latest
@@ -701,12 +692,17 @@ jobs:
             intellij-runtime-Linux-
 
       - name: Build source-bound headless backend distribution
-        run: >
-          ./scripts/ci-gradle-retry.sh
-          ./gradlew
-          packageSourceBoundDevelopmentBackend
-          -PkastLocalSourceSnapshot=build/ci-inputs/source-snapshot.json
-          -PkastHeadlessIdeaHomeProfile=agent
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./scripts/ci-gradle-retry.sh ./gradlew \
+            :backend-headless:portableDistZip \
+            :backend-headless:verifyHeadlessPortableDistLayout \
+            -PkastHeadlessIdeaHomeProfile=agent
+          mapfile -t archives < <(find backend-headless/build/distributions -maxdepth 1 -type f -name 'backend-headless-*-portable.zip' -print)
+          [[ "${#archives[@]}" -eq 1 ]] || { printf 'expected one headless archive, found %s\n' "${#archives[@]}" >&2; exit 1; }
+          mkdir -p build/distributions
+          cp "${archives[0]}" build/distributions/kast-local-source-bound-backend.zip
 
       - name: Upload source-bound headless backend distribution
         uses: actions/upload-artifact@v6
@@ -922,72 +918,6 @@ jobs:
             --workspace-id kast-action-ci-smoke \
             --module-name kast-action-smoke \
             --gradle-root "$GITHUB_WORKSPACE"
-
-  installed-semantic-fixture:
-    name: Representative installed semantic fixture
-    runs-on: ubuntu-24.04
-    timeout-minutes: 12
-    needs:
-      - prepared-generation
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - uses: gradle/actions/setup-gradle@v5
-        with:
-          cache-cleanup: always
-
-      - name: Ensure zstd is available for prepared generation extraction
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! command -v zstd >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends zstd
-          fi
-
-      - name: Download prepared local generation
-        uses: actions/download-artifact@v7
-        with:
-          name: kast-prepared-local-generation
-          path: ${{ runner.temp }}/kast-prepared-generation
-
-      - name: Download prepared generation ledgers
-        uses: actions/download-artifact@v7
-        with:
-          name: ci-artifact-ledger-prepared-generation
-          path: ${{ runner.temp }}/kast-prepared-generation-ledger
-
-      - name: Verify prepared local generation artifact
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger "$RUNNER_TEMP/kast-prepared-generation-ledger/ci-prepared-local-generation.json" \
-            --git-sha "$GITHUB_SHA" \
-            --require-kind ci-prepared-local-generation \
-            --artifact "ci-prepared-local-generation=$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst"
-          (cd "$RUNNER_TEMP/kast-prepared-generation" && sha256sum -c kast-local-prepared-generation.sha256)
-
-      - name: Exercise representative installed semantics
-        env:
-          KAST_PREPARED_GENERATION_ARCHIVE: ${{ runner.temp }}/kast-prepared-generation/kast-local-prepared-generation.tar.zst
-          KAST_SEMANTIC_FIXTURE_EVIDENCE_DIR: ${{ github.workspace }}/build/installed-semantic-fixture-evidence
-        shell: bash
-        run: ./.github/scripts/test-local-development-semantic-fixture.sh
-
-      - name: Upload representative semantic diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v6
-        with:
-          name: representative-installed-semantic-fixture-${{ github.run_id }}-${{ github.run_attempt }}
-          path: build/installed-semantic-fixture-evidence
-          if-no-files-found: warn
-          retention-days: 5
 
   analysis-server-transport:
     name: Analysis server transport

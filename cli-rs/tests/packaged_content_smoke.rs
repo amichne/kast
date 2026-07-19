@@ -137,25 +137,6 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
 }
 
 #[test]
-fn skill_dialect_revision_stays_revision_coherent_with_the_idea_plugin() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("repo root");
-    let plugin_bootstrap_path = root.join(
-        "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/PluginWorkspaceBootstrap.kt",
-    );
-    let plugin_bootstrap = std::fs::read_to_string(&plugin_bootstrap_path)
-        .unwrap_or_else(|error| panic!("read {}: {error}", plugin_bootstrap_path.display()));
-    let packaged_skill = include_str!("../resources/kast-skill/SKILL.md");
-
-    assert!(
-        packaged_skill.contains("kast-cli-dialect-revision: \"2\"")
-            && plugin_bootstrap.contains("CLI_DIALECT_REVISION = 2"),
-        "the packaged and IDEA-rendered skills must declare the same CLI dialect revision",
-    );
-}
-
-#[test]
 fn packaged_workspace_file_guidance_teaches_only_the_public_typed_route() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let sources = [

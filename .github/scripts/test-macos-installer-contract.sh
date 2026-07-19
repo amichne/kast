@@ -23,6 +23,16 @@ require_log_contains() {
   }
 }
 
+require_log_contains_fragment() {
+  local log_file="$1"
+  local expected="$2"
+  local description="$3"
+  grep -Fq -- "$expected" "$log_file" || {
+    sed -n '1,160p' "$log_file" >&2
+    die "${description}: missing '${expected}'"
+  }
+}
+
 require_log_count() {
   local log_file="$1"
   local expected="$2"
@@ -119,17 +129,27 @@ if [[ "$*" == "version" ]]; then
 fi
 SH
 
-  cat >"${bin_dir}/idea" <<'SH'
+  cat >"${bin_dir}/curl" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'idea' >>"${KAST_INSTALL_TEST_LOG:?}"
+printf 'curl' >>"${KAST_INSTALL_TEST_LOG:?}"
 for arg in "$@"; do
   printf ' %s' "$arg" >>"${KAST_INSTALL_TEST_LOG:?}"
 done
 printf '\n' >>"${KAST_INSTALL_TEST_LOG:?}"
+output=""
+while [[ $# -gt 0 ]]; do
+  if [[ "$1" == "--output" ]]; then
+    output="$2"
+    break
+  fi
+  shift
+done
+[[ -n "$output" ]] || exit 64
+printf 'plugin' >"$output"
 SH
 
-  chmod +x "${bin_dir}/brew" "${bin_dir}/idea" "${KAST_INSTALL_TEST_FORMULA_PREFIX}/bin/kast"
+  chmod +x "${bin_dir}/brew" "${bin_dir}/curl" "${KAST_INSTALL_TEST_FORMULA_PREFIX}/bin/kast"
 }
 
 run_installer() {
@@ -167,6 +187,9 @@ fi
 if grep -En "developer machine plugin|brew .*--cask|ps -axo|kill -TERM|KAST_JETBRAINS_CONFIG_ROOT" "$installer"; then
   die "installer retains forbidden IDE mutation authority"
 fi
+if grep -Fq -- "installPlugins" "$installer"; then
+  die "installer must use one processless machine reconciliation path"
+fi
 
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-macos-installer.XXXXXX")"
 trap 'rm -rf "$tmp_root"' EXIT
@@ -200,7 +223,7 @@ require_no_tool_calls "$log_file" "declined confirmation must fail before invoki
 
 : >"$log_file"
 install_stderr="${tmp_root}/install.stderr"
-CLICOLOR_FORCE=1 run_installer_noninteractive "$repo_root" install --ide-launcher "$fake_bin/idea" --workspace-root "$workspace" 2>"$install_stderr"
+CLICOLOR_FORCE=1 run_installer_noninteractive "$repo_root" install --workspace-root "$workspace" 2>"$install_stderr"
 require_stderr_contains "$install_stderr" $'\033[1;36mKast developer install\033[0m' "install should use the Kast section style"
 require_stderr_contains "$install_stderr" "██╗  ██╗ █████╗ ███████╗████████╗" "install should render the Kast banner"
 require_stderr_contains "$install_stderr" "Kotlin semantic analysis — from your terminal" "install should render the tagline"
@@ -208,10 +231,11 @@ require_stderr_contains "$install_stderr" "NONINTERACTIVE=1 set; skipping confir
 require_log_contains "$log_file" "brew tap amichne/kast" "install should tap the default repository"
 require_log_contains "$log_file" "brew install kast" "install should install the formula"
 require_log_contains "$log_file" "brew --prefix kast" "install should resolve the formula-owned binary"
-require_log_contains "$log_file" "kast repair --for machine --apply" "install should establish the CLI-only receipt"
 require_log_contains "$log_file" "kast version" "install should derive the plugin feed from the installed CLI"
-require_log_contains "$log_file" "idea installPlugins io.github.amichne.kast https://github.com/amichne/kast/releases/download/v0.13.0/updatePlugins.xml" "install should delegate exact-version plugin installation to the IDE"
-require_log_count "$log_file" "kast repair --for machine --apply" 1 "install should repair authority exactly once"
+require_log_contains_fragment "$log_file" "curl -fsSL --output " "install should download the exact plugin ZIP"
+require_log_contains_fragment "$log_file" "https://github.com/amichne/kast/releases/download/v0.13.0/kast-idea-v0.13.0.zip" "install should select the release-matched plugin"
+require_log_contains_fragment "$log_file" "kast machine activate --idea-plugin " "install should activate one machine bundle"
+require_log_contains "$log_file" "kast machine reconcile" "install should synchronously reconcile the plugin and resources"
 require_log_not_contains_prefix "$log_file" "kast setup" "install should leave workspace setup to JetBrains"
 
 : >"$log_file"
@@ -224,13 +248,9 @@ require_stderr_contains "$update_stderr" "██╗  ██╗ █████�
 require_log_contains "$log_file" "brew tap custom/tap https://git.example.test/homebrew/kast.git" "update should accept a custom tap URL"
 require_log_contains "$log_file" "brew update" "update should refresh Homebrew metadata"
 require_log_contains "$log_file" "brew upgrade kast" "update should upgrade the formula"
-require_log_contains "$log_file" "kast repair --for machine --apply" "update should repair the CLI-only receipt"
 require_log_contains "$log_file" "kast version" "update should derive the expected plugin release from the installed CLI"
-require_log_not_contains_prefix "$log_file" "idea installPlugins" "update must not claim that JetBrains' install-only command replaces an existing plugin"
-require_stderr_contains "$update_stderr" "Expected IDEA plugin release: v0.13.0" "update should name the plugin release expected by the updated CLI"
-require_stderr_contains "$update_stderr" "releases/latest/download/updatePlugins.xml" "update should direct native plugin discovery to the stable feed"
-require_stderr_contains "$update_stderr" "releases/download/v0.13.0/kast-idea-v0.13.0.zip" "update should provide the exact disk-install fallback"
-require_log_count "$log_file" "kast repair --for machine --apply" 1 "update should repair authority exactly once"
+require_log_contains_fragment "$log_file" "kast machine activate --idea-plugin " "update should replace the machine bundle"
+require_log_contains "$log_file" "kast machine reconcile" "update should synchronously reconcile the plugin and resources"
 require_log_not_contains_prefix "$log_file" "kast setup" "update should leave workspace setup to JetBrains"
 
 : >"$log_file"
@@ -246,9 +266,9 @@ require_stderr_not_contains "$help_stderr" "██╗  ██╗ █████
 
 : >"$log_file"
 source_stderr="${tmp_root}/source-entrypoint.stderr"
-run_installer_source_noninteractive "$repo_root" install --ide-launcher "$fake_bin/idea" --workspace-root "$workspace" 2>"$source_stderr"
+run_installer_source_noninteractive "$repo_root" install --workspace-root "$workspace" 2>"$source_stderr"
 require_log_contains "$log_file" "brew install kast" "the curl-style source entrypoint should install the formula"
-require_log_contains "$log_file" "kast repair --for machine --apply" "the source entrypoint should establish CLI authority"
+require_log_contains_fragment "$log_file" "kast machine activate --idea-plugin " "the source entrypoint should establish machine authority"
 
 : >"$log_file"
 stderr_file="${tmp_root}/unsupported-os.stderr"

@@ -49,7 +49,7 @@ object KastProjectOpenProfileAutoInit {
     internal fun executeWithDependencies(
         workspaceRoot: Path,
         config: KastConfig,
-        loadHomebrewReceipt: () -> MacosHomebrewReceiptLoadResult = MacosHomebrewReceiptLoader::load,
+        loadMachineManifest: () -> MacosMachineManifestLoadResult = MacosMachineManifestLoader::load,
         prepareWorkspace: (PluginWorkspaceBootstrapRequest) -> PluginWorkspaceBootstrapResult =
             PluginWorkspaceBootstrap::prepare,
     ): ProjectOpenProfileAutoInitResult =
@@ -57,13 +57,13 @@ object KastProjectOpenProfileAutoInit {
             workspaceRoot = workspaceRoot,
             config = config,
             resolveCliAuthority = {
-                when (val result = loadHomebrewReceipt()) {
-                    is MacosHomebrewReceiptLoadResult.Loaded ->
+                when (val result = loadMachineManifest()) {
+                    is MacosMachineManifestLoadResult.Loaded ->
                         CliAuthorityLoadResult.Loaded(
-                            binary = result.receipt.cliBinary,
-                            version = result.receipt.cliVersion,
+                            binary = result.binary,
+                            version = result.version,
                         )
-                    is MacosHomebrewReceiptLoadResult.Rejected ->
+                    is MacosMachineManifestLoadResult.Rejected ->
                         CliAuthorityLoadResult.Rejected(result.message)
                 }
             },
@@ -145,7 +145,7 @@ object KastProjectOpenProfileAutoInit {
     }
 }
 
-private fun loadConfiguredCliVersion(binary: Path): CliImplementationVersion? {
+internal fun loadConfiguredCliVersion(binary: Path): CliImplementationVersion? {
     val process = runCatching {
         ProcessBuilder(binary.toString(), "version")
             .redirectErrorStream(true)

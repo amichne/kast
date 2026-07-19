@@ -11,8 +11,8 @@ mod daemon;
 mod demo;
 mod error;
 mod install;
-mod local_development;
 mod lsp;
+mod machine;
 mod manifest;
 mod metrics;
 mod metrics_database;
@@ -217,6 +217,7 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
         Command::Ready(args) => run_ready(args, output_format),
         Command::Repair(args) => run_repair(args, output_format),
         Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
+        Command::Machine(args) => run_machine(args.command, output_format),
         Command::Demo(args) => demo::run_public(args, output_format),
         Command::Developer(args) => run_developer(args.command, output_format),
         Command::Doctor(args) => run_ready(args.into(), output_format),
@@ -413,12 +414,6 @@ fn run_repair(args: cli::RepairArgs, output_format: OutputFormat) -> Result<i32>
         apply,
         jetbrains_config_root,
     };
-    if apply && local_development::active_local_development_receipt()?.is_some() {
-        return Err(CliError::new(
-            "LOCAL_AUTHORITY_REPAIR_UNSUPPORTED",
-            "Local-development authority cannot mutate release install state; rerun the source checkout's refreshDevelopmentLocal task instead.",
-        ));
-    }
     if apply && !install::macos_homebrew_repair_authority_is_provable()? {
         manifest::install_current_executable()?;
     }
@@ -623,7 +618,6 @@ fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Res
 
 fn run_developer(command: cli::DeveloperCommand, output_format: OutputFormat) -> Result<i32> {
     match command {
-        cli::DeveloperCommand::Local(args) => local_development::run(args.command, output_format),
         cli::DeveloperCommand::Runtime(args) => run_runtime(args.command, output_format),
         cli::DeveloperCommand::Inspect(args) => run_inspect(args.command, output_format),
         cli::DeveloperCommand::Machine(args) => run_machine(args.command, output_format),
@@ -654,6 +648,38 @@ fn run_inspect(command: cli::InspectCommand, output_format: OutputFormat) -> Res
 
 fn run_machine(command: cli::MachineCommand, output_format: OutputFormat) -> Result<i32> {
     match command {
+        cli::MachineCommand::Status => {
+            let result = machine::status()?;
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
+            } else {
+                println!("Kast machine\n\nState: {}", result.state);
+            }
+            Ok(0)
+        }
+        cli::MachineCommand::Activate(args) => {
+            let result = machine::activate(args)?;
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
+            } else {
+                println!("Kast machine\n\nState: activated\nCLI: {}", result.cli);
+            }
+            Ok(0)
+        }
+        cli::MachineCommand::Reconcile(args) => {
+            let result = machine::reconcile(args)?;
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
+            } else {
+                println!(
+                    "Kast machine\n\nState: reconciled\nIDEA plugin: {}\nSkill: {}\nCodex: {}",
+                    result.idea_plugin,
+                    result.skill,
+                    result.codex.as_deref().unwrap_or("not installed"),
+                );
+            }
+            Ok(0)
+        }
         cli::MachineCommand::Defaults(args) => {
             let result = self_mgmt::configure_developer_machine_defaults(args.dry_run)?;
             if output_format.is_structured() {

@@ -16,7 +16,7 @@ sequence when needed.
 | --- | --- | --- |
 | Kast CLI does not appear after install | Homebrew formula or CLI receipt repair did not complete | Rerun the installer, then run `kast ready --for machine` |
 | Kast plugin does not appear | JetBrains did not install the release ZIP | Quit the IDE and rerun `install.sh install`, or use **Install Plugin from Disk** with the exact release ZIP |
-| The IDE does not discover Kast updates | The GitHub Release feed is not enrolled | Add `https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml` as a custom plugin repository |
+| The installed plugin differs from the selected CLI | Machine reconciliation was interrupted or external state changed | Quit the IDE and run `kast machine reconcile` |
 | A plugin update asks for restart | The IDE refused dynamic unload for this build or runtime state | Accept the JetBrains restart fallback; Kast does not force hot replacement |
 | `kast@kast` does not appear in Codex | The extracted Kast marketplace is not configured, or the plugin was not installed from it | Add the marketplace root, run `codex plugin add kast@kast`, and start a new Codex task |
 | Codex reports a Kast/plugin version mismatch | The marketplace archive and active Kast binary came from different releases | Install the matching CLI and Codex plugin release, reinstall `kast@kast`, and start a new task |
@@ -29,7 +29,7 @@ sequence when needed.
 | `agent verify` reports `SEMANTIC_WORKSPACE_UNPREPARED` in a worktree or temporary checkout | That exact root has no admitted IDEA or headless semantic state | Prepare that exact root with the JetBrains plugin, or use an already installed supported headless distribution |
 | `agent verify` reports `SEMANTIC_WORKSPACE_UNSUPPORTED` | The selected root is not a Kotlin Gradle workspace | Select the root containing `settings.gradle(.kts)` or `build.gradle(.kts)` |
 | `agent verify` reports `SEMANTIC_BACKEND_AMBIGUOUS` | IDEA and headless are both ready for the exact root | Rerun with `--backend=idea` or `--backend=headless` after checking the candidate evidence |
-| Lease acquisition reports `WORKSPACE_LEASE_CONFLICT` | A live owner already holds the exact root/backend | Continue in the owning task or release there; do not delete the record or stop the runtime |
+| Lease acquisition reports `WORKSPACE_LEASE_CONFLICT` | A live owner already holds the exact root/IDEA instance | Continue in the owning task or release there; do not delete the record or stop the runtime |
 | Lease status reports `ABANDONED` | The recorded owner process and start identity are gone | Acquire again to run typed abandoned-owner recovery; Kast stops only an exact runtime the old lease started |
 | A lease reports stale, foreign, tampered, replaced, or unavailable | Its session, install generation, authenticated record, or exact runtime no longer matches | Stop semantic work and acquire a fresh lease from the intended task/root; never edit the token or record |
 | An applied command reports `SEMANTIC_MUTATION_AUTHORITY_REQUIRED` | The read-only headless route was selected without exact-root plugin preparation on macOS | Open that exact root with the JetBrains-installed plugin, verify it, then rerun the applied command |
@@ -53,45 +53,21 @@ lease and pass its ID to verification and every semantic command for the same
 absolute path.
 
 ```console
-kast --output json agent lease acquire --backend=idea --workspace-root "$PWD"
+kast --output json agent lease acquire --workspace-root "$PWD"
 kast --output json agent verify --backend=idea --lease-id <id> --workspace-root "$PWD"
 kast --output json agent symbol --backend=idea --lease-id <id> --query <name> --workspace-root "$PWD"
 kast --output json agent diagnostics \
   --backend=idea --lease-id <id> \
   --file-path "$PWD/path/to/File.kt" \
   --workspace-root "$PWD"
-kast --output json agent lease release --backend=idea --lease-id <id> --workspace-root "$PWD"
-```
-
-On a host with the supported headless distribution installed, select headless
-explicitly. Acquisition may start its exact-root runtime through the installed
-lifecycle; release stops it only when this lease owns that start.
-
-```console
-kast --output json agent lease acquire --backend=headless --workspace-root "$PWD"
-kast --output json agent verify --backend=headless --lease-id <id> --workspace-root "$PWD"
-kast --output json agent symbol \
-  --backend=headless \
-  --lease-id <id> \
-  --query <name> \
-  --workspace-root "$PWD"
-kast --output json agent diagnostics \
-  --backend=headless \
-  --lease-id <id> \
-  --file-path "$PWD/path/to/File.kt" \
-  --workspace-root "$PWD"
-kast --output json agent lease release --backend=headless --lease-id <id> --workspace-root "$PWD"
+kast --output json agent lease release --lease-id <id> --workspace-root "$PWD"
 ```
 
 Check the returned backend, workspace root, source modules, limitations, and
 evidence quality before consuming symbol or diagnostics results. If the root
 does not match the temporary checkout, stop; Kast must not reuse that state.
-If automatic verification reports two ready candidates, choose one explicitly.
-If only one backend kind is ready, automatic verification selects it regardless
-of the host fallback.
-Do not use the unprepared headless route for applied mutations on macOS; plugin
-preparation for the exact root remains mandatory and is checked before runtime
-descriptor discovery.
+On Linux, the release headless runtime remains available through explicit
+runtime commands, but workspace leases are IDEA-only.
 
 ## Recover The Codex Plugin
 

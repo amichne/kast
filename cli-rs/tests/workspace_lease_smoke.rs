@@ -53,13 +53,7 @@ fn borrowed_idea_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
         vec![],
     );
 
-    let acquire = lease_command(
-        &binary,
-        &home,
-        &config_home,
-        &["acquire", "--backend", "idea"],
-        &workspace,
-    );
+    let acquire = lease_command(&binary, &home, &config_home, &["acquire"], &workspace);
     assert_success(&acquire, "acquire");
     let acquire_json = output_json(&acquire);
     assert_eq!(acquire_json["result"]["state"], "READY");
@@ -77,20 +71,14 @@ fn borrowed_idea_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
         .expect("lease id")
         .to_string();
 
-    let conflict = lease_command(
-        &binary,
-        &home,
-        &config_home,
-        &["acquire", "--backend", "idea"],
-        &workspace,
-    );
+    let conflict = lease_command(&binary, &home, &config_home, &["acquire"], &workspace);
     assert_error(&conflict, "WORKSPACE_LEASE_CONFLICT");
 
     let status = lease_command(
         &binary,
         &home,
         &config_home,
-        &["status", "--backend", "idea", "--lease-id", &lease_id],
+        &["status", "--lease-id", &lease_id],
         &workspace,
     );
     assert_success(&status, "status");
@@ -105,8 +93,6 @@ fn borrowed_idea_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
             "agent",
             "lease",
             "status",
-            "--backend",
-            "idea",
             "--lease-id",
             &lease_id,
             "--workspace-root",
@@ -120,19 +106,20 @@ fn borrowed_idea_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
         &binary,
         &home,
         &config_home,
-        &["status", "--backend", "idea", "--lease-id", &lease_id],
+        &["status", "--lease-id", &lease_id],
         &other_workspace,
     );
     assert_error(&wrong_root, "WORKSPACE_LEASE_ROOT_MISMATCH");
 
-    let wrong_backend = lease_command(
+    let backend_selector = lease_command(
         &binary,
         &home,
         &config_home,
         &["status", "--backend", "headless", "--lease-id", &lease_id],
         &workspace,
     );
-    assert_error(&wrong_backend, "WORKSPACE_LEASE_BACKEND_MISMATCH");
+    assert!(!backend_selector.status.success());
+    assert_eq!(output_json(&backend_selector)["code"], "CLI_USAGE");
 
     let mut tampered = lease_id.clone().into_bytes();
     let last = tampered.last_mut().expect("token byte");
@@ -142,7 +129,7 @@ fn borrowed_idea_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
         &binary,
         &home,
         &config_home,
-        &["status", "--backend", "idea", "--lease-id", &tampered],
+        &["status", "--lease-id", &tampered],
         &workspace,
     );
     assert_error(&tamper, "WORKSPACE_LEASE_TAMPERED");
@@ -151,7 +138,7 @@ fn borrowed_idea_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
         &binary,
         &home,
         &config_home,
-        &["release", "--backend", "idea", "--lease-id", &lease_id],
+        &["release", "--lease-id", &lease_id],
         &workspace,
     );
     assert_success(&release, "release");
@@ -170,7 +157,7 @@ fn borrowed_idea_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
         &binary,
         &home,
         &config_home,
-        &["release", "--backend", "idea", "--lease-id", &lease_id],
+        &["release", "--lease-id", &lease_id],
         &workspace,
     );
     assert_success(&second_release, "idempotent release");
@@ -265,8 +252,6 @@ raise SystemExit(completed.returncode)
             "agent",
             "lease",
             "acquire",
-            "--backend",
-            "idea",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
         ])
@@ -284,7 +269,7 @@ raise SystemExit(completed.returncode)
         &binary,
         &home,
         &config_home,
-        &["status", "--backend", "idea", "--lease-id", &abandoned_id],
+        &["status", "--lease-id", &abandoned_id],
         &workspace,
     );
     assert_success(&abandoned_status, "abandoned status");
@@ -293,13 +278,7 @@ raise SystemExit(completed.returncode)
         "ABANDONED"
     );
 
-    let recovered = lease_command(
-        &binary,
-        &home,
-        &config_home,
-        &["acquire", "--backend", "idea"],
-        &workspace,
-    );
+    let recovered = lease_command(&binary, &home, &config_home, &["acquire"], &workspace);
     assert_success(&recovered, "recovered acquire");
     let recovered_json = output_json(&recovered);
     assert_eq!(recovered_json["result"]["state"], "READY");
@@ -312,7 +291,7 @@ raise SystemExit(completed.returncode)
         &binary,
         &home,
         &config_home,
-        &["release", "--backend", "idea", "--lease-id", recovered_id],
+        &["release", "--lease-id", recovered_id],
         &workspace,
     );
     assert_success(&release, "recovered release");
@@ -349,13 +328,7 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
         2,
         vec![],
     );
-    let acquire = lease_command(
-        &binary,
-        &home,
-        &config_home,
-        &["acquire", "--backend", "idea"],
-        &workspace,
-    );
+    let acquire = lease_command(&binary, &home, &config_home, &["acquire"], &workspace);
     assert_success(&acquire, "acquire before runtime loss");
     let lease_id = output_json(&acquire)["result"]["leaseId"]
         .as_str()
@@ -368,7 +341,7 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
         &binary,
         &home,
         &config_home,
-        &["status", "--backend", "idea", "--lease-id", &lease_id],
+        &["status", "--lease-id", &lease_id],
         &workspace,
     );
     assert_success(&status, "failed lease status");
@@ -402,7 +375,7 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
         &binary,
         &home,
         &config_home,
-        &["release", "--backend", "idea", "--lease-id", &lease_id],
+        &["release", "--lease-id", &lease_id],
         &workspace,
     );
     assert_success(&failed_release, "release failed lease");
@@ -421,13 +394,7 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
         2,
         vec![],
     );
-    let recovery = lease_command(
-        &binary,
-        &home,
-        &config_home,
-        &["acquire", "--backend", "idea"],
-        &workspace,
-    );
+    let recovery = lease_command(&binary, &home, &config_home, &["acquire"], &workspace);
     assert_success(&recovery, "bounded recovery acquire");
     let recovery_id = output_json(&recovery)["result"]["leaseId"]
         .as_str()
@@ -437,7 +404,7 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
         &binary,
         &home,
         &config_home,
-        &["release", "--backend", "idea", "--lease-id", &recovery_id],
+        &["release", "--lease-id", &recovery_id],
         &workspace,
     );
     assert_success(&recovery_release, "bounded recovery release");
@@ -504,7 +471,7 @@ fn indexing_idea_runtime_never_becomes_lease_ready() {
         &binary,
         &home,
         &config_home,
-        &["acquire", "--backend", "idea", "--wait-timeout-ms", "100"],
+        &["acquire", "--wait-timeout-ms", "100"],
         &workspace,
     );
     assert_error(&acquire, "RUNTIME_TIMEOUT");
@@ -574,13 +541,7 @@ fn primary_and_linked_worktree_leases_keep_distinct_exact_roots() {
         2,
         vec![],
     );
-    let primary_acquire = lease_command(
-        &binary,
-        &home,
-        &config_home,
-        &["acquire", "--backend", "idea"],
-        &primary,
-    );
+    let primary_acquire = lease_command(&binary, &home, &config_home, &["acquire"], &primary);
     assert_success(&primary_acquire, "primary acquire");
     let primary_json = output_json(&primary_acquire);
     assert_eq!(primary_json["result"]["workspaceKind"], "PRIMARY_CHECKOUT");
@@ -591,7 +552,7 @@ fn primary_and_linked_worktree_leases_keep_distinct_exact_roots() {
         &binary,
         &home,
         &config_home,
-        &["release", "--backend", "idea", "--lease-id", primary_id],
+        &["release", "--lease-id", primary_id],
         &primary,
     );
     assert_success(&primary_release, "primary release");
@@ -607,13 +568,7 @@ fn primary_and_linked_worktree_leases_keep_distinct_exact_roots() {
         2,
         vec![],
     );
-    let linked_acquire = lease_command(
-        &binary,
-        &home,
-        &config_home,
-        &["acquire", "--backend", "idea"],
-        &linked,
-    );
+    let linked_acquire = lease_command(&binary, &home, &config_home, &["acquire"], &linked);
     assert_success(&linked_acquire, "linked acquire");
     let linked_json = output_json(&linked_acquire);
     assert_eq!(linked_json["result"]["workspaceKind"], "LINKED_WORKTREE");
@@ -628,7 +583,7 @@ fn primary_and_linked_worktree_leases_keep_distinct_exact_roots() {
         &binary,
         &home,
         &config_home,
-        &["status", "--backend", "idea", "--lease-id", linked_id],
+        &["status", "--lease-id", linked_id],
         &primary,
     );
     assert_error(&cross_root, "WORKSPACE_LEASE_ROOT_MISMATCH");
@@ -636,7 +591,7 @@ fn primary_and_linked_worktree_leases_keep_distinct_exact_roots() {
         &binary,
         &home,
         &config_home,
-        &["release", "--backend", "idea", "--lease-id", linked_id],
+        &["release", "--lease-id", linked_id],
         &linked,
     );
     assert_success(&linked_release, "linked release");

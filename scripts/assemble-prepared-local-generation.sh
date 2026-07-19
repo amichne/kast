@@ -16,8 +16,8 @@ Usage: scripts/assemble-prepared-local-generation.sh \
   --prepared-generation <directory> \
   --output <prepared-generation.tar.zst>
 
-Attest one already-built CLI and backend, publish one immutable prepared
-generation, verify it with its exact CLI, and package that generation once.
+Assemble one immutable CI runtime input from already-verified CLI and backend
+artifacts, then package it once. This is not a developer-machine authority.
 USAGE
 }
 
@@ -80,8 +80,7 @@ trap cleanup EXIT
 
 cli_extract="${scratch_dir}/cli"
 backend_extract="${scratch_dir}/backend"
-provenance_directory="${scratch_dir}/provenance"
-mkdir -p "$provenance_directory" "$(dirname -- "$prepared_generation")" "$(dirname -- "$output_path")"
+mkdir -p "$(dirname -- "$prepared_generation")" "$(dirname -- "$output_path")"
 "${repo_root}/scripts/extract-safe-zip.py" "$cli_archive" "$cli_extract"
 "${repo_root}/scripts/extract-safe-zip.py" "$backend_archive" "$backend_extract"
 
@@ -90,37 +89,17 @@ source_bound_backend="${backend_extract}/backend-headless"
 [[ -x "$source_bound_cli" ]] || die "CLI archive must contain executable kast at its root"
 [[ -d "$source_bound_backend" ]] || die "Backend archive must contain backend-headless/"
 
-cli_provenance="${provenance_directory}/cli.json"
-backend_provenance="${provenance_directory}/backend.json"
-"$source_bound_cli" --output json developer local attest \
-  --source-root "$source_root" \
-  --expected-source-snapshot "$source_snapshot" \
-  --artifact-kind cli \
-  --artifact "$source_bound_cli" \
-  --output-file "$cli_provenance" \
-  >/dev/null
-"$source_bound_cli" --output json developer local attest \
-  --source-root "$source_root" \
-  --expected-source-snapshot "$source_snapshot" \
-  --artifact-kind headless-backend \
-  --artifact "$source_bound_backend" \
-  --output-file "$backend_provenance" \
-  >/dev/null
-
-"$source_bound_cli" --output json developer local prepare \
-  --source-root "$source_root" \
-  --expected-source-snapshot "$source_snapshot" \
-  --cli-binary "$source_bound_cli" \
-  --cli-provenance "$cli_provenance" \
-  --backend-directory "$source_bound_backend" \
-  --backend-provenance "$backend_provenance" \
-  --output-directory "$prepared_generation" \
-  >/dev/null
+[[ ! -e "$prepared_generation" ]] || die "Prepared output already exists: $prepared_generation"
+mkdir -p "${prepared_generation}/bin"
+cp "$source_bound_cli" "${prepared_generation}/bin/kast"
+chmod 755 "${prepared_generation}/bin/kast"
+cp -R "$source_bound_backend" "${prepared_generation}/backend-headless"
+cp "$source_snapshot" "${prepared_generation}/source-snapshot.json"
 
 "${repo_root}/scripts/package-prepared-local-generation.sh" \
   --source-root "$source_root" \
   --prepared-generation "$prepared_generation" \
   --output "$output_path"
 
-printf 'Prepared one source-attested local generation at %s\n' \
+printf 'Prepared one immutable CI runtime input at %s\n' \
   "$prepared_generation" >&2

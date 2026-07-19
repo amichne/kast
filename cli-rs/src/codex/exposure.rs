@@ -1,7 +1,7 @@
 use crate::cli::{
     AgentCommand, AgentLeaseCommand, AgentOperationCommand, CodexCommand, CodexHookEvent, Command,
-    DeveloperCommand, GenerateCommand, InspectCommand, LocalDevelopmentCommand, MachineCommand,
-    MetricsCommand, PackageCommand, ReleaseActivateCommand, ReleaseCommand, RuntimeCommand,
+    DeveloperCommand, GenerateCommand, InspectCommand, MachineCommand, MetricsCommand,
+    PackageCommand, ReleaseActivateCommand, ReleaseCommand, RuntimeCommand,
 };
 use serde::Serialize;
 
@@ -289,6 +289,7 @@ pub(crate) fn classify_command(command: &Command) -> CodexExposure {
         Command::Repair(args) if args.apply => CodexExposure::NotExposed,
         Command::Repair(_) => CodexExposure::HookOnly(CodexHookCommand::RepairPlan),
         Command::Status(_) => CodexExposure::HookOnly(CodexHookCommand::Status),
+        Command::Machine(_) => CodexExposure::NotExposed,
         Command::Demo(_) => CodexExposure::NotExposed,
         Command::Developer(args) => classify_developer(&args.command),
         Command::Doctor(_) => CodexExposure::NotExposed,
@@ -298,7 +299,6 @@ pub(crate) fn classify_command(command: &Command) -> CodexExposure {
 
 pub(crate) fn classify_developer(command: &DeveloperCommand) -> CodexExposure {
     match command {
-        DeveloperCommand::Local(args) => classify_local_development(&args.command),
         DeveloperCommand::Runtime(args) => classify_runtime(&args.command),
         DeveloperCommand::Inspect(args) => classify_inspect(&args.command),
         DeveloperCommand::Machine(args) => classify_machine(&args.command),
@@ -309,19 +309,6 @@ pub(crate) fn classify_developer(command: &DeveloperCommand) -> CodexExposure {
                 CodexExposure::HookOnly(CodexHookCommand::Event(args.event))
             }
         },
-    }
-}
-
-fn classify_local_development(command: &LocalDevelopmentCommand) -> CodexExposure {
-    match command {
-        LocalDevelopmentCommand::Snapshot(_)
-        | LocalDevelopmentCommand::Attest(_)
-        | LocalDevelopmentCommand::Prepare(_)
-        | LocalDevelopmentCommand::Verify(_)
-        | LocalDevelopmentCommand::Activate(_)
-        | LocalDevelopmentCommand::Refresh(_)
-        | LocalDevelopmentCommand::Rollback(_)
-        | LocalDevelopmentCommand::Remove(_) => CodexExposure::NotExposed,
     }
 }
 
@@ -356,9 +343,12 @@ fn classify_metrics(command: &MetricsCommand) -> CodexExposure {
 
 fn classify_machine(command: &MachineCommand) -> CodexExposure {
     match command {
-        MachineCommand::Defaults(_) | MachineCommand::Shell(_) | MachineCommand::Completion(_) => {
-            CodexExposure::NotExposed
-        }
+        MachineCommand::Status
+        | MachineCommand::Activate(_)
+        | MachineCommand::Reconcile(_)
+        | MachineCommand::Defaults(_)
+        | MachineCommand::Shell(_)
+        | MachineCommand::Completion(_) => CodexExposure::NotExposed,
     }
 }
 
@@ -504,54 +494,6 @@ mod tests {
         );
         assert_eq!(
             parsed_exposure(&["developer", "codex", "generate"]),
-            CodexExposure::NotExposed
-        );
-        assert_eq!(
-            parsed_exposure(&[
-                "developer",
-                "local",
-                "prepare",
-                "--source-root",
-                ".",
-                "--expected-source-snapshot",
-                "snapshot.json",
-                "--cli-binary",
-                "kast",
-                "--cli-provenance",
-                "cli.json",
-                "--backend-directory",
-                "backend",
-                "--backend-provenance",
-                "backend.json",
-                "--output-directory",
-                "prepared",
-            ]),
-            CodexExposure::NotExposed
-        );
-        assert_eq!(
-            parsed_exposure(&[
-                "developer",
-                "local",
-                "verify",
-                "--source-root",
-                ".",
-                "--prepared-generation",
-                "prepared",
-            ]),
-            CodexExposure::NotExposed
-        );
-        assert_eq!(
-            parsed_exposure(&[
-                "developer",
-                "local",
-                "activate",
-                "--source-root",
-                ".",
-                "--workspace-root",
-                ".",
-                "--prepared-generation",
-                "prepared",
-            ]),
             CodexExposure::NotExposed
         );
         assert_eq!(

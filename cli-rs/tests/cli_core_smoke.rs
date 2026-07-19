@@ -38,6 +38,7 @@ fn smoke_core_cli_commands() {
             "ready",
             "repair",
             "status",
+            "machine",
             "developer",
             "agent",
         ]
@@ -49,6 +50,7 @@ fn smoke_core_cli_commands() {
             "ready",
             "repair",
             "status",
+            "machine",
             "developer",
             "agent",
         ]
@@ -60,15 +62,14 @@ fn smoke_core_cli_commands() {
         );
     }
     for hidden in [
-        "runtime", "inspect", "machine", "release", "rpc", "doctor", "install", "paths", "up",
-        "package",
+        "runtime", "inspect", "release", "rpc", "doctor", "install", "paths", "up", "package",
     ] {
         assert!(
             !help_lists_command(&help_stdout, hidden),
             "hidden or legacy top-level command {hidden} should not appear in public help: {help_stdout}"
         );
     }
-    for hidden_topic in ["runtime", "inspect", "machine", "release", "rpc", "doctor"] {
+    for hidden_topic in ["runtime", "inspect", "release", "rpc", "doctor"] {
         let topic = kast(&home, &config_home)
             .args(["help", hidden_topic])
             .output()
@@ -242,7 +243,7 @@ fn smoke_core_cli_commands() {
         "setup --dry-run must not run readiness repair or write install state"
     );
 
-    for removed_root in ["runtime", "inspect", "machine", "release", "rpc"] {
+    for removed_root in ["runtime", "inspect", "release", "rpc"] {
         let direct = kast(&home, &config_home)
             .args([removed_root, "--help"])
             .output()

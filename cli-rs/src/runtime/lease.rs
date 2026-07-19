@@ -20,7 +20,7 @@ pub enum WorkspaceLeaseOwnership {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum WorkspaceLeaseInstallAuthority {
-    LocalDevelopment,
+    Machine,
     MacosHomebrew,
     ManagedLocal,
 }
@@ -28,7 +28,7 @@ pub enum WorkspaceLeaseInstallAuthority {
 impl WorkspaceLeaseInstallAuthority {
     fn canonical(self) -> &'static str {
         match self {
-            Self::LocalDevelopment => "local-development",
+            Self::Machine => "machine",
             Self::MacosHomebrew => "macos-homebrew",
             Self::ManagedLocal => "managed-local",
         }
@@ -188,7 +188,7 @@ impl WorkspaceLeasePaths {
 
 pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceLeaseResult> {
     let requested_root = exact_lease_root(&args.workspace_root)?;
-    let admission = admitted_lease_workspace(requested_root, args.backend_name)?;
+    let admission = admitted_lease_workspace(requested_root, Some(BackendName::Idea))?;
     let initial_installation =
         lease_installation_identity(&admission.workspace_root, admission.backend_name)?;
     let paths = WorkspaceLeasePaths::resolve()?;
@@ -289,16 +289,15 @@ pub fn validate_workspace_lease_for_command(
             "Leased semantic commands require an explicit --workspace-root.",
         )
     })?;
-    let backend_name = backend_name.ok_or_else(|| {
-        CliError::new(
-            "WORKSPACE_LEASE_BACKEND_REQUIRED",
-            "Leased semantic commands require an explicit --backend.",
-        )
-    })?;
+    if backend_name.is_some_and(|backend| backend != BackendName::Idea) {
+        return Err(CliError::new(
+            "WORKSPACE_LEASE_BACKEND_MISMATCH",
+            "Workspace leases bind IntelliJ plugin instances; leased commands cannot select a headless backend.",
+        ));
+    }
     let args = AgentLeaseAccessArgs {
         lease_id: lease_id.clone(),
         workspace_root: workspace_root.to_path_buf(),
-        backend_name: Some(backend_name),
     };
     let result = access_workspace_lease(args, WorkspaceLeaseAccess::Validate)?;
     if result.state != WorkspaceLeaseState::Ready {
@@ -323,7 +322,7 @@ fn access_workspace_lease(
     with_workspace_lease_lock(&paths, || {
         let secret = read_workspace_lease_secret(&paths.secret)?;
         let claims = verify_workspace_lease_token(&secret, args.lease_id.as_str())?;
-        validate_token_request_identity(&claims, &requested_root, args.backend_name)?;
+        validate_token_request_identity(&claims, &requested_root)?;
         let installation =
             lease_installation_identity(&claims.workspace_root, claims.backend_name)?;
         validate_token_environment(&claims, &installation)?;
@@ -334,7 +333,6 @@ fn access_workspace_lease(
             record.binding(),
             &claims,
             &requested_root,
-            args.backend_name,
         )?;
         validate_lease_binding_environment(record.binding(), &installation)?;
 
@@ -476,12 +474,9 @@ fn lease_installation_identity(
     let serialized = serde_json::to_vec(environment)?;
     let environment_sha256 = crate::manifest::sha256_bytes(&serialized);
     let (authority, generation) = match doctor.install_authority {
-        self_mgmt::InstallAuthority::LocalDevelopment => (
-            WorkspaceLeaseInstallAuthority::LocalDevelopment,
-            doctor
-                .local_development
-                .as_ref()
-                .map(|receipt| receipt.generation_id.as_str().to_string()),
+        self_mgmt::InstallAuthority::Machine => (
+            WorkspaceLeaseInstallAuthority::Machine,
+            crate::machine::active_machine_identity()?,
         ),
         self_mgmt::InstallAuthority::MacosHomebrew => (
             WorkspaceLeaseInstallAuthority::MacosHomebrew,
@@ -895,7 +890,6 @@ fn validate_lease_binding_identity(
     binding: &WorkspaceLeaseBinding,
     claims: &WorkspaceLeaseTokenClaims,
     workspace_root: &Path,
-    backend_name: Option<BackendName>,
 ) -> Result<()> {
     if binding.schema_version != WORKSPACE_LEASE_SCHEMA_VERSION
         || binding.record_id != claims.record_id
@@ -923,14 +917,10 @@ fn validate_lease_binding_identity(
             ),
         ));
     }
-    if backend_name.is_some_and(|backend| backend != binding.backend_name) {
+    if binding.backend_name != BackendName::Idea {
         return Err(CliError::new(
             "WORKSPACE_LEASE_BACKEND_MISMATCH",
-            format!(
-                "Workspace lease binds backend {}, not {}.",
-                binding.backend_name.canonical(),
-                backend_name.expect("checked backend").canonical()
-            ),
+            "Workspace leases bind IntelliJ plugin instances, not headless backends.",
         ));
     }
     Ok(())
@@ -939,7 +929,6 @@ fn validate_lease_binding_identity(
 fn validate_token_request_identity(
     claims: &WorkspaceLeaseTokenClaims,
     workspace_root: &Path,
-    backend_name: Option<BackendName>,
 ) -> Result<()> {
     if claims.workspace_root != workspace_root {
         return Err(CliError::new(
@@ -951,16 +940,10 @@ fn validate_token_request_identity(
             ),
         ));
     }
-    if let Some(backend_name) = backend_name
-        && backend_name != claims.backend_name
-    {
+    if claims.backend_name != BackendName::Idea {
         return Err(CliError::new(
             "WORKSPACE_LEASE_BACKEND_MISMATCH",
-            format!(
-                "Workspace lease binds backend {}, not {}.",
-                claims.backend_name.canonical(),
-                backend_name.canonical()
-            ),
+            "Workspace leases bind IntelliJ plugin instances, not headless backends.",
         ));
     }
     Ok(())
@@ -1439,11 +1422,11 @@ mod workspace_lease_tests {
     #[test]
     fn token_environment_distinguishes_foreign_authority_from_stale_generation() {
         let claims = WorkspaceLeaseTokenClaims {
-            authority: WorkspaceLeaseInstallAuthority::LocalDevelopment,
+            authority: WorkspaceLeaseInstallAuthority::Machine,
             generation: "generation-1".to_string(),
             environment_sha256: "a".repeat(64),
             workspace_root: PathBuf::from("/workspace"),
-            backend_name: BackendName::Headless,
+            backend_name: BackendName::Idea,
             binding_sha256: "b".repeat(64),
             record_id: uuid::Uuid::new_v4(),
         };
