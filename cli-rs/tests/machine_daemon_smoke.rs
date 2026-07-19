@@ -51,16 +51,18 @@ fn macos_workspace_leases_are_idea_only() {
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&home).expect("home");
 
-    let help = kast(&home, &config_home)
-        .args(["agent", "lease", "acquire", "--help"])
-        .output()
-        .expect("lease acquire help");
-    assert!(help.status.success());
-    let help = String::from_utf8_lossy(&help.stdout);
-    assert!(
-        !help.contains("--backend"),
-        "workspace leases must bind IDEA plugin projects, not backend processes: {help}",
-    );
+    for command in ["acquire", "status", "release"] {
+        let help = kast(&home, &config_home)
+            .args(["agent", "lease", command, "--help"])
+            .output()
+            .unwrap_or_else(|error| panic!("lease {command} help: {error}"));
+        assert!(help.status.success());
+        let help = String::from_utf8_lossy(&help.stdout);
+        assert!(
+            !help.contains("--backend"),
+            "workspace leases must bind IDEA plugin projects, not backend processes: {help}",
+        );
+    }
 }
 
 #[test]
