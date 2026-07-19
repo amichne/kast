@@ -229,6 +229,77 @@ fn repair_plans_schema_2_recovery_without_mutation() {
 
 #[cfg(target_os = "macos")]
 #[test]
+fn explicit_homebrew_receipt_reset_preserves_unknown_bytes_and_restores_authority() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+    let binary = write_homebrew_kast_for_test(temp.path());
+    let receipt = home.join("Library/Application Support/Kast/homebrew-install.json");
+    std::fs::create_dir_all(receipt.parent().expect("receipt parent")).expect("receipt dir");
+    let original = b"unknown receipt bytes\n";
+    std::fs::write(&receipt, original).expect("unknown receipt");
+
+    let ordinary = kast_at(&binary, &home, &config_home)
+        .args(["--output", "json", "repair", "--for", "machine", "--apply"])
+        .output()
+        .expect("ordinary repair");
+    assert!(
+        !ordinary.status.success(),
+        "ordinary repair must fail closed"
+    );
+    assert_eq!(
+        std::fs::read(&receipt).expect("preserved receipt"),
+        original
+    );
+
+    let reset = kast_at(&binary, &home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "repair",
+            "--for",
+            "machine",
+            "--reset-homebrew-receipt",
+            "--apply",
+        ])
+        .output()
+        .expect("explicit reset");
+    assert!(
+        reset.status.success(),
+        "explicit reset should restore authority: stdout={}, stderr={}",
+        String::from_utf8_lossy(&reset.stdout),
+        String::from_utf8_lossy(&reset.stderr),
+    );
+    let payload: serde_json::Value =
+        serde_json::from_slice(&reset.stdout).expect("reset result JSON");
+    assert_eq!(payload["ready"]["authorityResolution"]["state"], "ACTIVE");
+    let action = payload["repair"]["actions"]
+        .as_array()
+        .expect("repair actions")
+        .iter()
+        .find(|action| action["kind"] == "reset-homebrew-cli-receipt")
+        .unwrap_or_else(|| panic!("missing reset action: {payload:#}"));
+    assert_eq!(action["status"], "applied", "{payload:#}");
+    let backup = payload["repair"]["backups"]
+        .as_array()
+        .expect("backups")
+        .iter()
+        .find_map(serde_json::Value::as_str)
+        .expect("receipt backup");
+    assert_eq!(std::fs::read(backup).expect("backup bytes"), original);
+    let refreshed: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&receipt).expect("refreshed receipt"))
+            .expect("refreshed JSON");
+    assert_eq!(refreshed["schemaVersion"], 3);
+    assert_eq!(
+        refreshed["cli"]["releaseRevision"],
+        env!("KAST_RELEASE_REVISION")
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
 fn repair_migrates_exact_schema_2_receipt_without_revision() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
