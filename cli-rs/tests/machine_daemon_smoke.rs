@@ -123,6 +123,12 @@ fn activation_installs_one_processless_machine_bundle() {
         b"idea-plugin",
     );
     assert!(machine.join("resources/kast-skill/SKILL.md").is_file());
+    assert!(machine.join("resources/codex-marketplace/marketplace.json").is_file());
+    assert!(
+        machine
+            .join("resources/codex-marketplace/plugins/kast/hooks/hooks.json")
+            .is_file()
+    );
     assert!(machine.join("machine.json").is_file());
     assert_eq!(
         std::fs::read_link(home.join(".local/bin/kast")).expect("stable command"),
