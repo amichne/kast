@@ -46,25 +46,16 @@ fn missing_expected_skill_reports_install_repair_instead_of_quarantine() {
         !repair.starts_with("mv "),
         "a missing path cannot be quarantined: {repair}"
     );
-    if cfg!(target_os = "macos") {
-        assert!(repair.contains("open -a 'IntelliJ IDEA'"), "{repair}");
-    } else {
-        assert!(repair.contains(" setup --workspace-root "), "{repair}");
-    }
 }
 
 #[cfg(target_os = "macos")]
 #[test]
-fn agent_ready_rejects_old_codex_home_skill_against_new_cli_dialect() {
+fn agent_ready_uses_only_the_machine_skill() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let codex_home = temp.path().join("codex-home");
     let workspace = temp.path().join("workspace");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&config_home).expect("config home");
-    std::fs::create_dir_all(&workspace).expect("workspace");
-    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     let nested_workspace = workspace.join("module");
     std::fs::create_dir_all(&nested_workspace).expect("nested workspace");
 
@@ -80,18 +71,13 @@ fn agent_ready_rejects_old_codex_home_skill_against_new_cli_dialect() {
         .expect("stale skill parent");
     std::fs::write(
         &stale_skill,
-        "---\nname: kast\ndescription: stale fixture\n---\nUse `kast agent tools` and `kast agent workflow`.\n",
+        "---\nname: kast\ndescription: stale fixture\n---\nUse removed commands.\n",
     )
-    .expect("stale Codex-home skill");
-    let stale_before = std::fs::read(&stale_skill).expect("stale skill before readiness");
-    let shell_skill = home.join(".agents/skills/kast/SKILL.md");
-    std::fs::create_dir_all(shell_skill.parent().expect("shell skill parent"))
-        .expect("shell skill parent");
-    std::fs::write(&shell_skill, current_skill_fixture()).expect("shell-installed skill");
-    let ancestor_skill = nested_workspace.join(".agents/skills/kast/SKILL.md");
-    std::fs::create_dir_all(ancestor_skill.parent().expect("ancestor skill parent"))
-        .expect("ancestor skill parent");
-    std::fs::write(&ancestor_skill, current_skill_fixture()).expect("workspace ancestor skill");
+    .expect("stale Codex skill");
+    let workspace_skill = nested_workspace.join(".agents/skills/kast/SKILL.md");
+    std::fs::create_dir_all(workspace_skill.parent().expect("workspace skill parent"))
+        .expect("workspace skill parent");
+    std::fs::write(&workspace_skill, "workspace-owned").expect("workspace skill");
 
     let ready = kast_at(&homebrew_binary, &home, &config_home)
         .env("CODEX_HOME", &codex_home)
@@ -109,74 +95,38 @@ fn agent_ready_rejects_old_codex_home_skill_against_new_cli_dialect() {
         .expect("agent ready");
 
     assert!(
-        !ready.status.success(),
-        "a stale selectable Codex-home skill must block unconditional readiness: stdout={}, stderr={}",
+        ready.status.success(),
+        "machine-scoped resources must ignore provider and worktree copies: stdout={}, stderr={}",
         String::from_utf8_lossy(&ready.stdout),
         String::from_utf8_lossy(&ready.stderr),
     );
     let payload: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("readiness JSON");
-    assert_eq!(payload["ok"], false, "{payload:#}");
-    assert_eq!(
-        payload["agentEnvironment"]["binary"]["dialectRevision"], 2,
-        "{payload:#}",
-    );
     let candidates = payload["agentEnvironment"]["skills"]["candidates"]
         .as_array()
         .expect("skill candidates");
-    let stale = candidates
-        .iter()
-        .find(|candidate| candidate["path"] == stale_skill.display().to_string())
-        .unwrap_or_else(|| panic!("missing stale Codex-home skill: {payload:#}"));
-    assert_eq!(stale["state"], "user-owned", "{stale:#}");
-    assert_eq!(stale["compatible"], false, "{stale:#}");
-    assert!(stale["dialectRevision"].is_null(), "{stale:#}");
-    assert!(
-        stale["repairCommand"]
-            .as_str()
-            .is_some_and(|command| command.contains("mv ") && command.contains(".incompatible")),
-        "{stale:#}",
-    );
+    assert_eq!(candidates.len(), 1, "{payload:#}");
     assert_eq!(
-        std::fs::read(&stale_skill).expect("stale skill after readiness"),
-        stale_before,
-        "readiness must not rewrite user-owned skill content",
+        candidates[0]["path"],
+        home.join(".agents/skills/kast/SKILL.md")
+            .display()
+            .to_string(),
     );
-    let shell = candidates
-        .iter()
-        .find(|candidate| candidate["path"] == shell_skill.display().to_string())
-        .unwrap_or_else(|| panic!("missing shell-installed skill: {payload:#}"));
-    assert_eq!(shell["source"], "user-home", "{shell:#}");
-    assert_eq!(shell["state"], "user-owned", "{shell:#}");
-    assert_eq!(shell["compatible"], true, "{shell:#}");
-    let ancestor = candidates
-        .iter()
-        .find(|candidate| candidate["path"] == ancestor_skill.display().to_string())
-        .unwrap_or_else(|| panic!("missing workspace-ancestor skill: {payload:#}"));
-    assert_eq!(ancestor["source"], "workspace-ancestor", "{ancestor:#}");
-    assert_eq!(ancestor["compatible"], true, "{ancestor:#}");
-    let plugin_skill = workspace.join(".agents/skills/kast/SKILL.md");
-    let plugin = candidates
-        .iter()
-        .find(|candidate| candidate["path"] == plugin_skill.display().to_string())
-        .unwrap_or_else(|| panic!("missing plugin-managed skill: {payload:#}"));
-    assert_eq!(plugin["state"], "managed", "{plugin:#}");
-    assert_eq!(plugin["compatible"], true, "{plugin:#}");
+    assert_eq!(candidates[0]["source"], "machine");
+    assert_eq!(candidates[0]["state"], "managed");
+    assert_eq!(candidates[0]["compatible"], true);
     assert_eq!(
-        payload["agentEnvironment"]["guidance"]["state"], "managed",
-        "{payload:#}",
+        payload["agentEnvironment"]["guidance"]["source"],
+        "machine-skill",
     );
 }
 
 #[cfg(target_os = "macos")]
 #[test]
-fn agent_ready_reports_modified_plugin_resources_without_rewriting_them() {
+fn workspace_resources_do_not_affect_machine_readiness() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
-    let codex_home = temp.path().join("codex-home");
     let workspace = temp.path().join("workspace");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
 
     let homebrew_binary = write_homebrew_kast_for_test(temp.path());
@@ -187,24 +137,13 @@ fn agent_ready_reports_modified_plugin_resources_without_rewriting_them() {
         env!("CARGO_PKG_VERSION"),
     );
     let guidance = workspace.join("AGENTS.local.md");
-    let changed = std::fs::read_to_string(&guidance)
-        .expect("managed guidance")
-        .replace(
-            "Pass `--workspace-root",
-            "Use removed `kast agent tools`, then pass `--workspace-root",
-        );
-    std::fs::write(&guidance, &changed).expect("modified guidance");
     let skill = workspace.join(".agents/skills/kast/SKILL.md");
-    let changed_skill = std::fs::read_to_string(&skill)
-        .expect("managed skill")
-        .replace(
-            "Use typed commands such as `kast agent symbol`",
-            "Use removed `kast agent tools`, then `kast agent symbol`",
-        );
-    std::fs::write(&skill, &changed_skill).expect("modified skill");
+    std::fs::create_dir_all(skill.parent().expect("skill parent")).expect("skill parent");
+    std::fs::write(&guidance, "user guidance").expect("guidance");
+    std::fs::write(&skill, "user skill").expect("skill");
 
     let ready = kast_at(&homebrew_binary, &home, &config_home)
-        .env("CODEX_HOME", &codex_home)
+        .env_remove("CODEX_HOME")
         .args([
             "--output",
             "json",
@@ -218,47 +157,17 @@ fn agent_ready_reports_modified_plugin_resources_without_rewriting_them() {
         .expect("agent ready");
 
     assert!(
-        !ready.status.success(),
-        "modified guidance must block ready"
-    );
-    let payload: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("readiness JSON");
-    assert_eq!(
-        payload["agentEnvironment"]["guidance"]["state"], "modified",
-        "{payload:#}",
-    );
-    assert!(
-        payload["agentEnvironment"]["guidance"]["repairCommand"]
-            .as_str()
-            .is_some_and(|command| command.contains("open -a 'IntelliJ IDEA'")),
-        "{payload:#}",
-    );
-    let modified_skill = payload["agentEnvironment"]["skills"]["candidates"]
-        .as_array()
-        .expect("skill candidates")
-        .iter()
-        .find(|candidate| candidate["path"] == skill.display().to_string())
-        .unwrap_or_else(|| panic!("missing modified plugin skill: {payload:#}"));
-    assert_eq!(modified_skill["state"], "modified", "{modified_skill:#}");
-    assert_eq!(modified_skill["compatible"], false, "{modified_skill:#}");
-    assert!(
-        modified_skill["repairCommand"]
-            .as_str()
-            .is_some_and(|command| command.contains("open -a 'IntelliJ IDEA'")),
-        "{modified_skill:#}",
+        ready.status.success(),
+        "worktree resources are outside machine authority: stdout={}, stderr={}",
+        String::from_utf8_lossy(&ready.stdout),
+        String::from_utf8_lossy(&ready.stderr),
     );
     assert_eq!(
         std::fs::read_to_string(&guidance).expect("guidance after readiness"),
-        changed,
-        "readiness must remain read-only",
+        "user guidance",
     );
     assert_eq!(
         std::fs::read_to_string(&skill).expect("skill after readiness"),
-        changed_skill,
-        "readiness must not replace a modified plugin skill",
+        "user skill",
     );
-}
-
-#[cfg(target_os = "macos")]
-fn current_skill_fixture() -> &'static str {
-    "---\nname: kast\ndescription: current fixture\nmetadata:\n  kast-cli-dialect-revision: \"2\"\n---\nUse `kast agent verify`.\n"
 }

@@ -36,8 +36,6 @@ const MACOS_PLUGIN_WORKSPACE_PREPARED_BY: &str = "kast-intellij-plugin";
 #[cfg(target_os = "macos")]
 const MACOS_PLUGIN_WORKSPACE_BACKEND: &str = "idea";
 #[cfg(target_os = "macos")]
-const MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE: &str = ".agents/skills/kast/SKILL.md";
-
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorConfigurationDiagnostic {
@@ -723,21 +721,9 @@ fn validate_macos_plugin_required_artifacts(
     workspace_root: &Path,
     required_artifacts: &[PathBuf],
 ) -> Result<()> {
-    if !required_artifacts
-        .iter()
-        .any(|artifact| artifact == Path::new(MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE))
-    {
+    if required_artifacts != [PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE)] {
         return Err(macos_plugin_workspace_error(format!(
-            "macOS Kast workspace metadata does not declare required artifact `{}`",
-            MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE
-        )));
-    }
-    if !required_artifacts
-        .iter()
-        .any(|artifact| artifact == Path::new(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE))
-    {
-        return Err(macos_plugin_workspace_error(format!(
-            "macOS Kast workspace metadata does not declare required artifact `{}`",
+            "macOS Kast workspace metadata must declare only its exact-root artifact `{}`",
             MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE
         )));
     }
@@ -1089,13 +1075,7 @@ mod tests {
     fn macos_plugin_workspace_metadata_accepts_resolved_config_socket_path() {
         let temp = tempfile::tempdir().expect("tempdir");
         let workspace_root = config::normalize(temp.path().join("workspace"));
-        fs::create_dir_all(workspace_root.join(".agents/skills/kast")).expect("skill dir");
         fs::create_dir_all(workspace_root.join(".kast/setup")).expect("metadata dir");
-        fs::write(
-            workspace_root.join(MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE),
-            "skill",
-        )
-        .expect("skill file");
         let metadata_path = workspace_root.join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
         fs::write(&metadata_path, "{}").expect("metadata file");
         let socket_path = config::KastConfig::defaults()
@@ -1141,10 +1121,7 @@ mod tests {
                         backend_kind: runtime::WorkspaceRuntimeBackendKind::Idea,
                     },
                 },
-                required_artifacts: vec![
-                    PathBuf::from(MACOS_PLUGIN_REQUIRED_SKILL_RELATIVE),
-                    PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE),
-                ],
+                required_artifacts: vec![PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE)],
             },
         )
         .expect("resolved config socket path should be accepted");

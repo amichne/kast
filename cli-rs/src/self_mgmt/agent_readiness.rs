@@ -311,6 +311,17 @@ fn effective_skill_diagnostic(
             );
         }
     }
+    if cfg!(target_os = "macos") {
+        let machine_skill = config::normalize(home.join(".agents/skills/kast/SKILL.md"));
+        discovered.retain(|(path, _)| *path == machine_skill);
+        if discovered.is_empty() {
+            discovered.push((machine_skill, "machine".to_string()));
+        } else {
+            discovered.iter_mut().for_each(|(_, source)| {
+                *source = "machine".to_string();
+            });
+        }
+    }
     discovered.retain(|(path, _)| path.exists() || managed_skill_resource(install, path).is_some());
     if discovered.is_empty() {
         let path = workspace_root
@@ -329,10 +340,14 @@ fn effective_skill_diagnostic(
             .flatten();
         let local_owned = local_development
             .is_some_and(|local| same_binary_path(&local.components.skill.effective_target, &path));
+        let machine_owned = cfg!(target_os = "macos")
+            && path == config::normalize(home.join(".agents/skills/kast/SKILL.md"))
+            && fs::read_to_string(&path).is_ok_and(|content| content == PACKAGED_KAST_SKILL);
         let mut state = agent_resource_state(
             &path,
             managed_resource,
             local_owned,
+            machine_owned,
             plugin_owned,
             expected_plugin_skill.as_deref(),
         )?;
@@ -423,13 +438,14 @@ fn agent_resource_state(
     path: &Path,
     managed_resource: Option<&ManagedRepoResource>,
     local_owned: bool,
+    machine_owned: bool,
     plugin_owned: bool,
     expected_plugin_skill: Option<&str>,
 ) -> Result<AgentResourceState> {
     if !path.is_file() {
         return Ok(AgentResourceState::Missing);
     }
-    if local_owned {
+    if local_owned || machine_owned {
         return Ok(AgentResourceState::Managed);
     }
     if plugin_owned {
@@ -546,6 +562,17 @@ fn effective_guidance_diagnostic(
     plugin: Option<&PluginWorkspaceEvidence>,
     running_binary: &str,
 ) -> Result<DoctorAgentGuidanceDiagnostic> {
+    if cfg!(target_os = "macos") && plugin.is_some_and(|plugin| plugin.trusted) {
+        return Ok(DoctorAgentGuidanceDiagnostic {
+            path: config::home_dir()
+                .join(".agents/skills/kast/SKILL.md")
+                .display()
+                .to_string(),
+            source: "machine-skill".to_string(),
+            state: AgentResourceState::Managed,
+            repair_command: None,
+        });
+    }
     if let Some(local) = local_development {
         return Ok(DoctorAgentGuidanceDiagnostic {
             path: local
