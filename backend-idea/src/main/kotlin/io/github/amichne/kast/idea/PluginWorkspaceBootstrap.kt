@@ -13,32 +13,13 @@ import io.github.amichne.kast.api.contract.compatibility.WorkspaceMetadataRevisi
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
-import java.nio.file.LinkOption
 import java.nio.file.Path
-import java.time.Instant
-import java.time.format.DateTimeFormatter
+import java.nio.file.StandardCopyOption
+import java.util.UUID
 
 object PluginWorkspaceBootstrap {
-    private val SCHEMA_VERSION = WorkspaceMetadataRevision.CURRENT.value
-    private const val CLI_DIALECT_REVISION = 2
-    private const val REQUIRED_SKILL_RELATIVE = ".agents/skills/kast/SKILL.md"
-    private const val METADATA_RELATIVE = ".kast/setup/workspace.json"
-    private const val KAST_MANAGED_FENCE_START = "<kast>"
-    private const val KAST_MANAGED_FENCE_END = "</kast>"
-
-    private val knownActiveArtifactRelatives = listOf(
-        ".agents/skills/kast",
-        ".agents/instructions/kast",
-        ".codex/skills/kast",
-        ".codex/instructions/kast",
-        ".github/skills/kast",
-        ".github/instructions/kast",
-        ".claude/skills/kast",
-        ".claude/instructions/kast",
-        ".github/lsp.json",
-        ".github/extensions/kast",
-        ".opencode/kast-context.plugin.json",
-    )
+    private val schemaVersion = WorkspaceMetadataRevision.CURRENT.value
+    private const val metadataRelative = ".kast/setup/workspace.json"
 
     fun prepare(request: PluginWorkspaceBootstrapRequest): PluginWorkspaceBootstrapResult {
         if (!Files.isRegularFile(request.cliBinary)) {
@@ -47,186 +28,32 @@ object PluginWorkspaceBootstrap {
             )
         }
         val workspaceRoot = request.workspaceRoot.toAbsolutePath().normalize()
-        val contextPath = defaultContextTarget(workspaceRoot)
-        val requiredArtifacts = listOf(
-            REQUIRED_SKILL_RELATIVE,
-            workspaceRoot.relativize(contextPath).toString(),
-            METADATA_RELATIVE,
-        ).toSet()
-        val backupRoot = workspaceRoot.resolve(".kast/backups/plugin-setup-${backupTimestamp()}")
-        val backups = mutableListOf<Path>()
-
-        knownActiveArtifactRelatives
-            .filterNot { relative -> relative == ".agents/skills/kast" }
-            .forEach { relative -> backupAndRemove(workspaceRoot, relative, backupRoot, backups) }
-
-        val skillPath = workspaceRoot.resolve(REQUIRED_SKILL_RELATIVE)
-        replaceSkillDirectoryWithBackup(
-            workspaceRoot,
-            skillPath,
-            renderSkill(request),
-            backupRoot,
-            backups,
-        )
-        replaceContextWithBackup(
-            workspaceRoot,
-            contextPath,
-            skillPath,
-            backupRoot,
-            backups,
-        )
-        val metadataPath = workspaceRoot.resolve(METADATA_RELATIVE)
-        replaceFileWithBackup(
-            workspaceRoot,
-            metadataPath,
-            renderMetadata(request, requiredArtifacts.sorted()),
-            backupRoot,
-            backups,
-        )
-        return PluginWorkspaceBootstrapResult.Prepared(metadataPath, backups.toList())
+        val metadataPath = workspaceRoot.resolve(metadataRelative)
+        writeMetadataAtomically(metadataPath, renderMetadata(request))
+        return PluginWorkspaceBootstrapResult.Prepared(metadataPath, emptyList())
     }
 
-    private fun defaultContextTarget(workspaceRoot: Path): Path =
-        listOf("AGENTS.md", "CODEX.md", "CLAUDE.md", "AGENTS.local.md")
-            .map(workspaceRoot::resolve)
-            .firstOrNull { candidate -> Files.exists(candidate, LinkOption.NOFOLLOW_LINKS) }
-            ?.toAbsolutePath()
-            ?.normalize()
-            ?: workspaceRoot.resolve("AGENTS.local.md").toAbsolutePath().normalize()
-
-    private fun backupAndRemove(
-        workspaceRoot: Path,
-        relative: String,
-        backupRoot: Path,
-        backups: MutableList<Path>,
-    ) {
-        val target = workspaceRoot.resolve(relative)
-        if (!Files.exists(target, LinkOption.NOFOLLOW_LINKS)) return
-        val backup = backupPath(backupRoot, relative)
-        Files.createDirectories(backup.parent)
-        Files.move(target, backup)
-        backups.add(backup)
-    }
-
-    private fun replaceFileWithBackup(
-        workspaceRoot: Path,
+    private fun writeMetadataAtomically(
         target: Path,
         contents: String,
-        backupRoot: Path,
-        backups: MutableList<Path>,
     ) {
-        val normalizedTarget = target.toAbsolutePath().normalize()
-        if (Files.isRegularFile(normalizedTarget) && Files.readString(normalizedTarget) == contents) return
-        if (Files.exists(normalizedTarget, LinkOption.NOFOLLOW_LINKS)) {
-            val backup = backupPath(backupRoot, workspaceRoot.relativize(normalizedTarget).toString())
-            Files.createDirectories(backup.parent)
-            Files.move(normalizedTarget, backup)
-            backups.add(backup)
+        Files.createDirectories(target.parent)
+        if (Files.isRegularFile(target) && Files.readString(target) == contents) return
+        val staging = target.resolveSibling(".workspace-${UUID.randomUUID()}.tmp")
+        Files.writeString(staging, contents)
+        runCatching {
+            Files.move(
+                staging,
+                target,
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        }.getOrElse {
+            Files.move(staging, target, StandardCopyOption.REPLACE_EXISTING)
         }
-        Files.createDirectories(normalizedTarget.parent)
-        Files.writeString(normalizedTarget, contents)
     }
 
-    private fun replaceSkillDirectoryWithBackup(
-        workspaceRoot: Path,
-        skillPath: Path,
-        contents: String,
-        backupRoot: Path,
-        backups: MutableList<Path>,
-    ) {
-        val skillDirectory = skillPath.parent.toAbsolutePath().normalize()
-        val onlyExpectedSkill = Files.isDirectory(skillDirectory) &&
-            Files.list(skillDirectory).use { entries ->
-                entries.allMatch { entry -> entry.fileName.toString() == "SKILL.md" }
-            }
-        if (onlyExpectedSkill && Files.isRegularFile(skillPath) && Files.readString(skillPath) == contents) return
-        if (Files.exists(skillDirectory, LinkOption.NOFOLLOW_LINKS)) {
-            val backup = backupPath(backupRoot, workspaceRoot.relativize(skillDirectory).toString())
-            Files.createDirectories(backup.parent)
-            Files.move(skillDirectory, backup)
-            backups.add(backup)
-        }
-        Files.createDirectories(skillDirectory)
-        Files.writeString(skillPath, contents)
-    }
-
-    private fun replaceContextWithBackup(
-        workspaceRoot: Path,
-        target: Path,
-        skillPath: Path,
-        backupRoot: Path,
-        backups: MutableList<Path>,
-    ) {
-        val original = if (Files.isRegularFile(target)) Files.readString(target) else ""
-        val updated = replaceOrAppendManagedRegion(original, renderGuidance(skillPath))
-        if (updated == original && Files.exists(target, LinkOption.NOFOLLOW_LINKS)) return
-        replaceFileWithBackup(workspaceRoot, target, updated, backupRoot, backups)
-    }
-
-    private fun replaceOrAppendManagedRegion(original: String, expectedRegion: String): String {
-        val start = original.indexOf(KAST_MANAGED_FENCE_START)
-        val end = original.indexOf(KAST_MANAGED_FENCE_END)
-        if (start >= 0 && end >= start) {
-            return original.replaceRange(start, end + KAST_MANAGED_FENCE_END.length, expectedRegion)
-        }
-        val prefix = original.trimEnd()
-        return if (prefix.isEmpty()) "$expectedRegion\n" else "$prefix\n\n$expectedRegion\n"
-    }
-
-    private fun backupPath(backupRoot: Path, relative: String): Path =
-        backupRoot.resolve(relative.replace('\\', '/')).toAbsolutePath().normalize()
-
-    private fun renderSkill(request: PluginWorkspaceBootstrapRequest): String =
-        """
-        |---
-        |name: kast
-        |description: Kotlin semantic work and linked-worktree lifecycle in Gradle repositories prepared by the Kast IntelliJ plugin.
-        |metadata:
-        |  kast-cli-dialect-revision: "$CLI_DIALECT_REVISION"
-        |---
-        |
-        |# Kast
-        |
-        |This workspace was prepared by the Kast IntelliJ plugin. JetBrains owns plugin installation and updates; Homebrew owns only the CLI.
-        |
-        |Acquire with `kast agent lease acquire --workspace-root "${'$'}PWD" --backend idea`; pass its `leaseId` to every typed semantic command and release it when the worker finishes.
-        |Use typed commands such as `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, and `kast agent rename` under that exact-root lease.
-        |Do not run `kast setup` or install runtime resources separately on macOS; update the CLI and plugin, reopen this exact project, and refresh metadata when compatibility fails.
-        |
-        |## Linked Worktrees
-        |
-        |For every delegated worker using a linked Git worktree:
-        |
-        |1. Before the worker starts, open the exact worktree root as its own IntelliJ IDEA or Android Studio project with the Kast plugin enabled.
-        |2. Wait for `.kast/setup/workspace.json`, then acquire an IDEA lease for `"${'$'}PWD"` from that worktree.
-        |3. Never reuse another worktree's Kast runtime, metadata, or semantic evidence.
-        |4. Keep that IDE project open while the worker and worktree are active.
-        |5. Before retiring or deleting the worktree, close that exact IDE project or window before removing the worktree.
-        |
-        |Prepared plugin version: ${request.pluginVersion.value}
-        |CLI version: ${request.cliVersion.value}
-        |CLI invocation: `${request.cliBinary}`
-        |""".trimMargin() + "\n"
-
-    private fun renderGuidance(skillPath: Path): String =
-        listOf(
-            KAST_MANAGED_FENCE_START,
-            "## Kast routing",
-            "Use `$skillPath` before Kotlin or Gradle semantic work.",
-            "Acquire with `kast agent lease acquire --workspace-root \"\$PWD\" --backend idea`; preserve its lease ID and release it when the worker finishes.",
-            "Pass `--workspace-root \"\$PWD\" --backend idea --lease-id <id>` to typed commands such as `kast agent symbol`, `kast agent diagnostics`, and `kast agent rename`.",
-            "Do not run `kast setup` on macOS; the IntelliJ plugin owns workspace bootstrap.",
-            "Before each linked worker starts, open the exact worktree root as its own IDE project and acquire its lease from that worktree.",
-            "Never reuse another worktree's Kast runtime, metadata, or semantic evidence.",
-            "Keep the IDE project open while active; close its exact IDE project or window before removing the worktree.",
-            KAST_MANAGED_FENCE_END,
-        ).joinToString("\n")
-
-    private fun renderMetadata(
-        request: PluginWorkspaceBootstrapRequest,
-        requiredArtifacts: List<String>,
-    ): String {
-        val artifacts = requiredArtifacts.joinToString(",\n") { artifact -> "    ${jsonString(artifact)}" }
+    private fun renderMetadata(request: PluginWorkspaceBootstrapRequest): String {
         val compatibility = Json.encodeToString(
             RuntimeCompatibilityFacts(
                 pluginVersion = PluginImplementationVersion(request.pluginVersion.value),
@@ -243,7 +70,7 @@ object PluginWorkspaceBootstrap {
         )
         return """
         |{
-        |  "schemaVersion": $SCHEMA_VERSION,
+        |  "schemaVersion": $schemaVersion,
         |  "preparedBy": "kast-intellij-plugin",
         |  "workspaceRoot": ${jsonString(request.workspaceRoot.toString())},
         |  "cliBinary": ${jsonString(request.cliBinary.toString())},
@@ -251,14 +78,11 @@ object PluginWorkspaceBootstrap {
         |  "socketPath": ${jsonString(defaultSocketPath(request.workspaceRoot).toString())},
         |  "compatibility": $compatibility,
         |  "requiredArtifacts": [
-        |$artifacts
+        |    ${jsonString(metadataRelative)}
         |  ]
         |}
         |""".trimMargin()
     }
 
     private fun jsonString(value: String): String = Json.encodeToString(value)
-
-    private fun backupTimestamp(): String =
-        DateTimeFormatter.ISO_INSTANT.format(Instant.now()).replace(':', '-').replace('.', '-')
 }
