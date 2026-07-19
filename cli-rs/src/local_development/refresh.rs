@@ -440,13 +440,28 @@ fn stage_generation(
         artifacts,
         previous_generation,
     } = request;
-    let staged = prefix.join(format!(".staging-{}", generation_id.as_str()));
-    if fs::symlink_metadata(&staged).is_ok() {
-        validate_staging_authority(&staged, prefix, generation_id, workspace_root)?;
-        fs::remove_dir_all(&staged)?;
+    let published_staging = prefix.join(format!(".staging-{}", generation_id.as_str()));
+    if fs::symlink_metadata(&published_staging).is_ok() {
+        validate_staging_authority(
+            &published_staging,
+            prefix,
+            generation_id,
+            workspace_root,
+        )?;
+        fs::remove_dir_all(&published_staging)?;
     }
+    let staging_parent = prefix.parent().ok_or_else(|| {
+        CliError::new(
+            "LOCAL_PREFIX_INVALID",
+            format!("Local prefix has no parent: {}", prefix.display()),
+        )
+    })?;
+    let staged = staging_parent.join(format!(
+        ".kast-local-preparing-{}-{}",
+        generation_id.as_str(),
+        uuid::Uuid::new_v4()
+    ));
     fs::create_dir(&staged)?;
-    observe(LocalRefreshPhase::AfterStagingPublished)?;
     if let Err(error) = write_json_atomic(
         &staged.join(LOCAL_STAGING_AUTHORITY_FILE),
         &LocalStagingAuthority {
@@ -550,11 +565,14 @@ fn stage_generation(
             updated_at: crate::manifest::current_timestamp(),
         };
         write_json_atomic(&staged.join("authority.json"), &receipt)?;
-        fs::rename(&staged, generation)?;
+        fs::rename(&staged, &published_staging)?;
+        observe(LocalRefreshPhase::AfterStagingPublished)?;
+        fs::rename(&published_staging, generation)?;
         Ok(())
     })();
     if result.is_err() {
         let _ = fs::remove_dir_all(&staged);
+        let _ = fs::remove_dir_all(&published_staging);
     }
     result
 }

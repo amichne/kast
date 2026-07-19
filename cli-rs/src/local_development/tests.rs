@@ -1189,7 +1189,9 @@ mod refresh_tests {
         );
 
         let error = refresh_local_development_with_observer(second_request, |phase| {
-            assert_eq!(phase, LocalRefreshPhase::AfterActivation);
+            if phase == LocalRefreshPhase::AfterStagingPublished {
+                return Ok(());
+            }
             fs::write(prefix.join("bin/kast"), b"incompatible wrapper\n")
                 .expect("simulate changed stable entrypoint");
             Err(super::CliError::new(
@@ -1792,12 +1794,26 @@ mod refresh_tests {
             "first",
         ))
         .expect("refresh");
-        let receipt = fs::read(prefix.join("authority.json")).expect("active authority");
+        let receipt: serde_json::Value = serde_json::from_slice(
+            &fs::read(prefix.join("authority.json")).expect("active authority"),
+        )
+        .expect("active authority JSON");
         let tombstone = fixture.path().join(".local-authority.removing");
         let authority = fixture
             .path()
             .join(".local-authority.removing-authority.json");
-        fs::write(&authority, receipt).expect("external removal authority");
+        fs::write(
+            &authority,
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "schemaVersion": 1,
+                "authority": receipt["authority"],
+                "generationId": receipt["generationId"],
+                "workspaceRoot": receipt["workspaceRoot"],
+                "prefix": receipt["prefix"],
+            }))
+            .expect("external removal authority JSON"),
+        )
+        .expect("external removal authority");
         fs::rename(&prefix, &tombstone).expect("simulate removal rename");
         fs::remove_file(tombstone.join("current")).expect("delete internal current proof");
         fs::remove_dir_all(tombstone.join("generations"))
