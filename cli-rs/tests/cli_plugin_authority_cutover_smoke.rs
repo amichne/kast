@@ -211,6 +211,14 @@ fn repair_plans_schema_2_recovery_without_mutation() {
         payload["ready"]["authorityResolution"]["state"], "RECOVERABLE",
         "{payload:#}",
     );
+    assert_eq!(
+        payload["ready"]["authorityResolution"]["plan"]["applyCommand"],
+        format!(
+            "'{}' repair --for machine --apply",
+            binary.display().to_string().replace('\'', "'\\''")
+        ),
+        "the recovery plan must retain the proven Cellar binary: {payload:#}",
+    );
     assert!(
         payload["repair"]["actions"]
             .as_array()
@@ -248,6 +256,15 @@ fn explicit_homebrew_receipt_reset_preserves_unknown_bytes_and_restores_authorit
         !ordinary.status.success(),
         "ordinary repair must fail closed"
     );
+    let ordinary_diagnostic = format!(
+        "{}{}",
+        String::from_utf8_lossy(&ordinary.stdout),
+        String::from_utf8_lossy(&ordinary.stderr),
+    );
+    assert!(
+        ordinary_diagnostic.contains("--reset-homebrew-receipt"),
+        "blocked authority must name its explicit recovery path: {ordinary_diagnostic}"
+    );
     assert_eq!(
         std::fs::read(&receipt).expect("preserved receipt"),
         original
@@ -277,6 +294,14 @@ fn explicit_homebrew_receipt_reset_preserves_unknown_bytes_and_restores_authorit
         .find(|action| action["kind"] == "reset-homebrew-cli-receipt")
         .unwrap_or_else(|| panic!("missing planned reset: {plan_payload:#}"));
     assert_eq!(planned_reset["status"], "planned", "{plan_payload:#}");
+    assert_eq!(
+        planned_reset["command"],
+        format!(
+            "'{}' repair --for machine --reset-homebrew-receipt --apply",
+            binary.display().to_string().replace('\'', "'\\''")
+        ),
+        "{plan_payload:#}",
+    );
     assert_eq!(
         std::fs::read(&receipt).expect("receipt after reset plan"),
         original
@@ -310,6 +335,22 @@ fn explicit_homebrew_receipt_reset_preserves_unknown_bytes_and_restores_authorit
         .find(|action| action["kind"] == "reset-homebrew-cli-receipt")
         .unwrap_or_else(|| panic!("missing reset action: {payload:#}"));
     assert_eq!(action["status"], "applied", "{payload:#}");
+    let planned_kinds = plan_payload["repair"]["actions"]
+        .as_array()
+        .expect("planned actions")
+        .iter()
+        .map(|action| action["kind"].clone())
+        .collect::<Vec<_>>();
+    let applied_kinds = payload["repair"]["actions"]
+        .as_array()
+        .expect("applied actions")
+        .iter()
+        .map(|action| action["kind"].clone())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        applied_kinds, planned_kinds,
+        "reset dry-run and apply must describe the same transaction"
+    );
     let backup = payload["repair"]["backups"]
         .as_array()
         .expect("backups")
