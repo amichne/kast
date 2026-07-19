@@ -3,7 +3,6 @@ set -Eeuo pipefail
 
 DEFAULT_TAP="amichne/kast"
 INSTALL_URL="https://raw.githubusercontent.com/amichne/kast/main/install.sh"
-PLUGIN_ID="io.github.amichne.kast"
 RELEASE_BASE_URL="https://github.com/amichne/kast/releases"
 
 usage() {
@@ -15,14 +14,13 @@ Usage:
 macOS-only Kast developer-machine installer.
 
 Commands:
-  install   Install the Homebrew CLI and, when absent, its release-matched IDEA plugin.
-  update    Update the Homebrew CLI and print the matching IDEA update target.
+  install   Install one release-matched CLI, IDEA plugin, and agent-resource bundle.
+  update    Replace that bundle with the latest Homebrew release.
   verify    Run typed CLI/plugin/workspace admission against the IDEA backend.
 
 Options:
   --tap <owner/repo>       Homebrew tap name. Defaults to amichne/kast.
   --tap-url <git-url>      Optional Git URL for custom-host taps.
-  --ide-launcher <path>    JetBrains IDE launcher for initial install. Auto-detected on macOS.
   --workspace-root <path>  Repository to verify and show in guidance. Defaults to the current directory.
   -h, --help               Show this help.
 
@@ -167,15 +165,15 @@ print_mutation_plan() {
     install)
       log_note "  - tap Homebrew repository ${tap_target}"
       log_note "  - install the Homebrew formula kast"
-      log_note "  - establish the CLI-only Homebrew receipt with kast repair"
-      log_note "  - ask a closed JetBrains IDE to install the release-matched plugin when absent"
+      log_note "  - download the release-matched IDEA plugin"
+      log_note "  - activate and reconcile one processless machine bundle"
       ;;
     update)
       log_note "  - tap Homebrew repository ${tap_target}"
       log_note "  - run brew update"
       log_note "  - upgrade or reinstall the Homebrew formula kast"
-      log_note "  - repair the CLI-only Homebrew receipt"
-      log_note "  - leave the installed plugin update to JetBrains' custom-repository flow"
+      log_note "  - download the release-matched IDEA plugin"
+      log_note "  - activate and reconcile one processless machine bundle"
       ;;
     *)
       die "No mutation plan for command: ${command_name}"
@@ -223,35 +221,6 @@ resolve_homebrew_kast() {
   printf '%s\n' "$kast_binary"
 }
 
-validate_ide_launcher() {
-  local launcher="$1"
-  [[ -x "$launcher" ]] || die "IDE launcher is missing or not executable: ${launcher}"
-}
-
-resolve_ide_launcher() {
-  local requested_launcher="$1"
-  if [[ -n "$requested_launcher" ]]; then
-    printf '%s\n' "$requested_launcher"
-    return
-  fi
-
-  local candidate
-  for candidate in \
-    "/Applications/IntelliJ IDEA.app/Contents/MacOS/idea" \
-    "/Applications/IntelliJ IDEA CE.app/Contents/MacOS/idea" \
-    "/Applications/Android Studio.app/Contents/MacOS/studio" \
-    "${HOME}/Applications/IntelliJ IDEA.app/Contents/MacOS/idea" \
-    "${HOME}/Applications/IntelliJ IDEA CE.app/Contents/MacOS/idea" \
-    "${HOME}/Applications/Android Studio.app/Contents/MacOS/studio"
-  do
-    if [[ -x "$candidate" ]]; then
-      printf '%s\n' "$candidate"
-      return
-    fi
-  done
-  return 1
-}
-
 installed_release_tag() {
   local kast_binary="$1"
   local version_output
@@ -263,39 +232,26 @@ installed_release_tag() {
   die "Unexpected Kast version output: ${version_output}"
 }
 
-install_release_matched_plugin() {
-  local kast_binary="$1"
-  local requested_launcher="$2"
-  local tag
-  local feed_url
-  local launcher
-  tag="$(installed_release_tag "$kast_binary")"
-  feed_url="${RELEASE_BASE_URL}/download/${tag}/updatePlugins.xml"
-
-  if ! launcher="$(resolve_ide_launcher "$requested_launcher")"; then
-    log_note "No standard JetBrains launcher found; install ${RELEASE_BASE_URL}/download/${tag}/kast-idea-${tag}.zip from disk."
-    log_note "For native updates, add ${RELEASE_BASE_URL}/latest/download/updatePlugins.xml as a custom plugin repository."
-    return
-  fi
-
-  log_note "JetBrains installPlugins installs an absent plugin; existing installations update through the custom repository."
-  run "$launcher" installPlugins "$PLUGIN_ID" "$feed_url"
-}
-
-print_release_matched_plugin_update() {
+reconcile_release_matched_machine() {
   local kast_binary="$1"
   local tag
+  local plugin_url
+  local staging
+  local plugin_zip
   tag="$(installed_release_tag "$kast_binary")"
-  log_note "Expected IDEA plugin release: ${tag}"
-  log_note "Update it from ${RELEASE_BASE_URL}/latest/download/updatePlugins.xml in JetBrains."
-  log_note "If native update is unavailable, install ${RELEASE_BASE_URL}/download/${tag}/kast-idea-${tag}.zip from disk."
+  plugin_url="${RELEASE_BASE_URL}/download/${tag}/kast-idea-${tag}.zip"
+  staging="$(mktemp -d "${TMPDIR:-/tmp}/kast-machine.XXXXXX")"
+  plugin_zip="${staging}/kast-idea-${tag}.zip"
+  run curl -fsSL --output "$plugin_zip" "$plugin_url"
+  run "$kast_binary" machine activate --idea-plugin "$plugin_zip"
+  run "$kast_binary" machine reconcile
+  rm -rf -- "$staging"
 }
 
 install_kast() {
   local tap="$1"
   local tap_url="$2"
   local workspace_root="$3"
-  local ide_launcher="$4"
 
   log_section "Kast developer install"
   log_note "Workspace: ${workspace_root}"
@@ -304,8 +260,8 @@ install_kast() {
   run brew install kast
   local kast_binary
   kast_binary="$(resolve_homebrew_kast)"
-  run "$kast_binary" repair --for machine --apply
-  install_release_matched_plugin "$kast_binary" "$ide_launcher"
+  require_command curl
+  reconcile_release_matched_machine "$kast_binary"
   log_note "Open ${workspace_root} so the plugin can prepare workspace metadata."
   log_success "Install complete"
 }
@@ -327,9 +283,9 @@ update_kast() {
   fi
   local kast_binary
   kast_binary="$(resolve_homebrew_kast)"
-  run "$kast_binary" repair --for machine --apply
-  print_release_matched_plugin_update "$kast_binary"
-  log_note "After JetBrains applies the plugin update, open ${workspace_root} so it can refresh workspace metadata."
+  require_command curl
+  reconcile_release_matched_machine "$kast_binary"
+  log_note "Open ${workspace_root} so the plugin can refresh workspace metadata."
   log_success "Update complete"
 }
 
@@ -350,7 +306,6 @@ main() {
   local command_name="install"
   local tap="$DEFAULT_TAP"
   local tap_url=""
-  local ide_launcher=""
   local workspace_root=""
 
   if [[ $# -gt 0 ]]; then
@@ -392,15 +347,6 @@ main() {
         tap_url="${1#--tap-url=}"
         shift
         ;;
-      --ide-launcher)
-        [[ $# -ge 2 ]] || die "Missing value for --ide-launcher"
-        ide_launcher="$2"
-        shift 2
-        ;;
-      --ide-launcher=*)
-        ide_launcher="${1#--ide-launcher=}"
-        shift
-        ;;
       --workspace-root)
         [[ $# -ge 2 ]] || die "Missing value for --workspace-root"
         workspace_root="$2"
@@ -425,9 +371,6 @@ main() {
   if [[ -n "$tap_url" ]]; then
     validate_tap_url "$tap_url"
   fi
-  if [[ -n "$ide_launcher" ]]; then
-    validate_ide_launcher "$ide_launcher"
-  fi
   require_macos
 
   if [[ -z "$workspace_root" ]]; then
@@ -444,7 +387,7 @@ main() {
 
   case "$command_name" in
     install)
-      install_kast "$tap" "$tap_url" "$workspace_root" "$ide_launcher"
+      install_kast "$tap" "$tap_url" "$workspace_root"
       ;;
     update)
       update_kast "$tap" "$tap_url" "$workspace_root"

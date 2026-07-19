@@ -53,7 +53,7 @@ pub struct MachineArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum MachineCommand {
-    /// Report the installed bundle and daemon state without changing them.
+    /// Report the installed machine bundle without changing it.
     Status,
     /// Atomically make this CLI, one IDEA plugin, and embedded resources machine-wide.
     Activate(MachineActivateArgs),
