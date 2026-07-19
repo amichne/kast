@@ -1471,4 +1471,21 @@ mod workspace_lease_tests {
             "WORKSPACE_LEASE_STALE_ENVIRONMENT"
         );
     }
+
+    #[test]
+    fn release_identity_distinguishes_same_version_revisions() {
+        fn release_identity(_revision: &str) -> WorkspaceLeaseInstallationIdentity {
+            WorkspaceLeaseInstallationIdentity {
+                authority: WorkspaceLeaseInstallAuthority::MacosHomebrew,
+                generation: "0.13.2".to_string(),
+                environment_sha256: "a".repeat(64),
+            }
+        }
+
+        assert_ne!(
+            release_identity(&"a".repeat(40)),
+            release_identity(&"b".repeat(40)),
+            "release revision must participate in the lease generation identity",
+        );
+    }
 }
