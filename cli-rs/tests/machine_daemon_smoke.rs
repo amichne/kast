@@ -191,3 +191,33 @@ fn reconciliation_replaces_only_the_closed_ide_plugin_and_global_skill() {
     );
     assert!(!home.join("Library/LaunchAgents").exists());
 }
+
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_rejects_headless_runtime_before_spawn() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+
+    let start = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "runtime",
+            "up",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--backend",
+            "headless",
+        ])
+        .output()
+        .expect("headless refusal");
+    assert!(!start.status.success());
+    let start: serde_json::Value =
+        serde_json::from_slice(&start.stdout).expect("headless refusal JSON");
+    assert_eq!(start["code"], "HEADLESS_LOCAL_UNSUPPORTED");
+}
