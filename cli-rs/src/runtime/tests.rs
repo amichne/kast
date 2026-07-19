@@ -481,5 +481,34 @@ mod tests {
             serde_json::from_value(document).expect("adjacent source");
 
         validate_runtime_compatibility_source(&source).expect("valid adjacent source");
+        let facts = RuntimeCompatibilityFacts {
+            plugin_version: cli::version().to_string(),
+            cli_version: "0.12.9".to_string(),
+            plugin_revision: ReleaseRevision::try_from("a".repeat(40)).expect("plugin revision"),
+            cli_revision: ReleaseRevision::try_from("b".repeat(40)).expect("CLI revision"),
+            protocol_revision: ProtocolRevision(NonZeroU32::new(1).expect("protocol")),
+            workspace_metadata_revision: WorkspaceMetadataRevision(
+                NonZeroU32::new(4).expect("metadata"),
+            ),
+            read_capabilities: vec![
+                WorkspaceReadCapability::ResolveSymbol,
+                WorkspaceReadCapability::Diagnostics,
+                WorkspaceReadCapability::WorkspaceFiles,
+            ],
+            mutation_capabilities: vec![
+                WorkspaceMutationCapability::ApplyEdits,
+                WorkspaceMutationCapability::RefreshWorkspace,
+                WorkspaceMutationCapability::Rename,
+            ],
+            runtime_identity: WorkspaceRuntimeIdentity {
+                implementation_version: cli::version().to_string(),
+                backend_kind: WorkspaceRuntimeBackendKind::Idea,
+            },
+        };
+        assert_eq!(
+            assess_runtime_compatibility_source(&facts, None, &source)
+                .expect("adjacent assessment"),
+            RuntimeCompatibilityAssessment::Compatible,
+        );
     }
 }
