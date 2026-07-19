@@ -149,9 +149,6 @@ pub struct AgentLeaseAccessArgs {
     /// Absolute semantic workspace root the lease must bind.
     #[arg(long)]
     pub workspace_root: PathBuf,
-    /// Assert the runtime backend bound by the lease.
-    #[arg(long = "backend", value_enum)]
-    pub backend_name: Option<BackendName>,
 }
 
 #[derive(Debug, Args, Clone, Default)]

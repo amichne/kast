@@ -289,16 +289,15 @@ pub fn validate_workspace_lease_for_command(
             "Leased semantic commands require an explicit --workspace-root.",
         )
     })?;
-    let backend_name = backend_name.ok_or_else(|| {
-        CliError::new(
-            "WORKSPACE_LEASE_BACKEND_REQUIRED",
-            "Leased semantic commands require an explicit --backend.",
-        )
-    })?;
+    if backend_name.is_some_and(|backend| backend != BackendName::Idea) {
+        return Err(CliError::new(
+            "WORKSPACE_LEASE_BACKEND_MISMATCH",
+            "Workspace leases bind IntelliJ plugin instances; leased commands cannot select a headless backend.",
+        ));
+    }
     let args = AgentLeaseAccessArgs {
         lease_id: lease_id.clone(),
         workspace_root: workspace_root.to_path_buf(),
-        backend_name: Some(backend_name),
     };
     let result = access_workspace_lease(args, WorkspaceLeaseAccess::Validate)?;
     if result.state != WorkspaceLeaseState::Ready {
@@ -323,7 +322,7 @@ fn access_workspace_lease(
     with_workspace_lease_lock(&paths, || {
         let secret = read_workspace_lease_secret(&paths.secret)?;
         let claims = verify_workspace_lease_token(&secret, args.lease_id.as_str())?;
-        validate_token_request_identity(&claims, &requested_root, args.backend_name)?;
+        validate_token_request_identity(&claims, &requested_root)?;
         let installation =
             lease_installation_identity(&claims.workspace_root, claims.backend_name)?;
         validate_token_environment(&claims, &installation)?;
@@ -334,7 +333,6 @@ fn access_workspace_lease(
             record.binding(),
             &claims,
             &requested_root,
-            args.backend_name,
         )?;
         validate_lease_binding_environment(record.binding(), &installation)?;
 
@@ -895,7 +893,6 @@ fn validate_lease_binding_identity(
     binding: &WorkspaceLeaseBinding,
     claims: &WorkspaceLeaseTokenClaims,
     workspace_root: &Path,
-    backend_name: Option<BackendName>,
 ) -> Result<()> {
     if binding.schema_version != WORKSPACE_LEASE_SCHEMA_VERSION
         || binding.record_id != claims.record_id
@@ -923,14 +920,10 @@ fn validate_lease_binding_identity(
             ),
         ));
     }
-    if backend_name.is_some_and(|backend| backend != binding.backend_name) {
+    if binding.backend_name != BackendName::Idea {
         return Err(CliError::new(
             "WORKSPACE_LEASE_BACKEND_MISMATCH",
-            format!(
-                "Workspace lease binds backend {}, not {}.",
-                binding.backend_name.canonical(),
-                backend_name.expect("checked backend").canonical()
-            ),
+            "Workspace leases bind IntelliJ plugin instances, not headless backends.",
         ));
     }
     Ok(())
@@ -939,7 +932,6 @@ fn validate_lease_binding_identity(
 fn validate_token_request_identity(
     claims: &WorkspaceLeaseTokenClaims,
     workspace_root: &Path,
-    backend_name: Option<BackendName>,
 ) -> Result<()> {
     if claims.workspace_root != workspace_root {
         return Err(CliError::new(
@@ -951,16 +943,10 @@ fn validate_token_request_identity(
             ),
         ));
     }
-    if let Some(backend_name) = backend_name
-        && backend_name != claims.backend_name
-    {
+    if claims.backend_name != BackendName::Idea {
         return Err(CliError::new(
             "WORKSPACE_LEASE_BACKEND_MISMATCH",
-            format!(
-                "Workspace lease binds backend {}, not {}.",
-                claims.backend_name.canonical(),
-                backend_name.canonical()
-            ),
+            "Workspace leases bind IntelliJ plugin instances, not headless backends.",
         ));
     }
     Ok(())
