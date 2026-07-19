@@ -160,7 +160,12 @@ fn activate_local_development_artifact_set(
                 ));
             }
         } else {
-            reject_unowned_prefix_contents(&prefix, &generation)?;
+            reject_unowned_prefix_contents(
+                &prefix,
+                &generation,
+                &generation_id,
+                &workspace_root,
+            )?;
         }
         validate_workspace_guidance_target(&workspace_root, &prefix)?;
         require_workspace_guidance_ignored(&workspace_root)?;
@@ -399,6 +404,19 @@ struct GenerationStageRequest<'a> {
     previous_generation: Option<&'a LocalGenerationId>,
 }
 
+const LOCAL_STAGING_AUTHORITY_SCHEMA_VERSION: u32 = 1;
+const LOCAL_STAGING_AUTHORITY_FILE: &str = ".kast-staging-authority.json";
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct LocalStagingAuthority {
+    schema_version: u32,
+    authority: LocalDevelopmentAuthority,
+    generation_id: LocalGenerationId,
+    prefix: PathBuf,
+    workspace_root: PathBuf,
+}
+
 fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
     let GenerationStageRequest {
         prefix,
@@ -414,10 +432,24 @@ fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
         previous_generation,
     } = request;
     let staged = prefix.join(format!(".staging-{}", generation_id.as_str()));
-    if staged.exists() {
+    if fs::symlink_metadata(&staged).is_ok() {
+        validate_staging_authority(&staged, prefix, generation_id, workspace_root)?;
         fs::remove_dir_all(&staged)?;
     }
-    fs::create_dir_all(&staged)?;
+    fs::create_dir(&staged)?;
+    if let Err(error) = write_json_atomic(
+        &staged.join(LOCAL_STAGING_AUTHORITY_FILE),
+        &LocalStagingAuthority {
+            schema_version: LOCAL_STAGING_AUTHORITY_SCHEMA_VERSION,
+            authority: LocalDevelopmentAuthority::LocalDevelopment,
+            generation_id: generation_id.clone(),
+            prefix: prefix.to_path_buf(),
+            workspace_root: workspace_root.to_path_buf(),
+        },
+    ) {
+        let _ = fs::remove_dir_all(&staged);
+        return Err(error);
+    }
     let result = (|| -> Result<()> {
         let physical_entrypoint = staged.join("entrypoint/kast");
         write_bytes(
@@ -589,7 +621,12 @@ fn remove_path_if_present(path: &Path) -> Result<()> {
     }
 }
 
-fn reject_unowned_prefix_contents(prefix: &Path, allowed_generation: &Path) -> Result<()> {
+fn reject_unowned_prefix_contents(
+    prefix: &Path,
+    allowed_generation: &Path,
+    generation_id: &LocalGenerationId,
+    workspace_root: &Path,
+) -> Result<()> {
     let allowed_generation_name = allowed_generation.file_name().ok_or_else(|| {
         CliError::new(
             "LOCAL_PREFIX_INVALID",
@@ -681,11 +718,68 @@ fn reject_unowned_prefix_contents(prefix: &Path, allowed_generation: &Path) -> R
                 if !metadata.is_dir() || metadata.is_symlink() {
                     return Err(unowned_prefix_conflict(&path));
                 }
+                validate_staging_authority(&path, prefix, generation_id, workspace_root)?;
             }
             _ => return Err(unowned_prefix_conflict(&path)),
         }
     }
     Ok(())
+}
+
+fn validate_staging_authority(
+    staged: &Path,
+    prefix: &Path,
+    generation_id: &LocalGenerationId,
+    workspace_root: &Path,
+) -> Result<()> {
+    let metadata = fs::symlink_metadata(staged).map_err(|error| {
+        invalid_staging_authority(staged, format!("could not inspect staging directory: {error}"))
+    })?;
+    if !metadata.is_dir() || metadata.file_type().is_symlink() {
+        return Err(invalid_staging_authority(
+            staged,
+            "staging path is not an owned directory",
+        ));
+    }
+    let receipt_path = staged.join(LOCAL_STAGING_AUTHORITY_FILE);
+    let receipt_metadata = fs::symlink_metadata(&receipt_path).map_err(|error| {
+        invalid_staging_authority(
+            staged,
+            format!("staging authority receipt is missing: {error}"),
+        )
+    })?;
+    if !receipt_metadata.is_file() || receipt_metadata.file_type().is_symlink() {
+        return Err(invalid_staging_authority(
+            staged,
+            "staging authority receipt is not a regular file",
+        ));
+    }
+    let receipt: LocalStagingAuthority = serde_json::from_slice(&fs::read(&receipt_path)?)
+        .map_err(|error| {
+            invalid_staging_authority(staged, format!("receipt is invalid: {error}"))
+        })?;
+    if receipt.schema_version != LOCAL_STAGING_AUTHORITY_SCHEMA_VERSION
+        || receipt.authority != LocalDevelopmentAuthority::LocalDevelopment
+        || receipt.generation_id != *generation_id
+        || receipt.prefix != prefix
+        || receipt.workspace_root != workspace_root
+    {
+        return Err(invalid_staging_authority(
+            staged,
+            "receipt does not bind the exact generation, prefix, and workspace",
+        ));
+    }
+    Ok(())
+}
+
+fn invalid_staging_authority(staged: &Path, reason: impl std::fmt::Display) -> CliError {
+    CliError::new(
+        "LOCAL_STAGING_AUTHORITY_INVALID",
+        format!(
+            "Local staging at {} is not receipt-owned and was preserved unchanged: {reason}.",
+            staged.display(),
+        ),
+    )
 }
 
 fn unowned_prefix_conflict(path: &Path) -> CliError {

@@ -1288,6 +1288,51 @@ mod refresh_tests {
         assert!(!prefix.join("current").exists());
     }
 
+    #[test]
+    fn first_activation_retry_discards_receipt_owned_matching_staging() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        let request = refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "first",
+        );
+        let source = SourceSnapshot::read_strict(&request.expected_source_snapshot)
+            .expect("source snapshot");
+        let artifacts = super::LocalDevelopmentArtifactSet {
+            cli: super::read_local_artifact_provenance(&request.cli_provenance)
+                .expect("CLI provenance"),
+            backend: super::read_local_artifact_provenance(&request.backend_provenance)
+                .expect("backend provenance"),
+        };
+        let generation_id = super::LocalGenerationId::from_artifact_set(&source, &artifacts);
+        let staged = prefix.join(format!(".staging-{}", generation_id.as_str()));
+        write_file(&staged.join("partial"), b"interrupted staging\n");
+        super::write_json_atomic(
+            &staged.join(super::LOCAL_STAGING_AUTHORITY_FILE),
+            &super::LocalStagingAuthority {
+                schema_version: super::LOCAL_STAGING_AUTHORITY_SCHEMA_VERSION,
+                authority: super::LocalDevelopmentAuthority::LocalDevelopment,
+                generation_id: generation_id.clone(),
+                prefix: fs::canonicalize(&prefix).expect("canonical prefix"),
+                workspace_root: fs::canonicalize(repository.path()).expect("canonical workspace"),
+            },
+        )
+        .expect("staging authority");
+
+        let recovered = refresh_local_development(request).expect("retry activation");
+
+        assert_eq!(recovered.receipt.generation_id, generation_id);
+        assert!(!staged.exists(), "matching owned staging must be replaced");
+        assert_eq!(
+            fs::read_link(prefix.join("current")).expect("recovered current"),
+            Path::new("generations").join(generation_id.as_str()),
+        );
+    }
+
     #[cfg(unix)]
     #[test]
     fn first_activation_retry_reconciles_exact_atomic_symlink_temporaries() {
