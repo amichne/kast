@@ -93,7 +93,9 @@ fn activation_installs_one_processless_machine_bundle() {
         machine.join("bin/kast"),
     );
     assert!(
-        !home.join("Library/LaunchAgents/io.github.amichne.kast.plist").exists(),
+        !home
+            .join("Library/LaunchAgents/io.github.amichne.kast.plist")
+            .exists(),
         "processless activation must not install a LaunchAgent",
     );
 
