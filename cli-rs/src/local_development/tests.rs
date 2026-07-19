@@ -1716,6 +1716,57 @@ mod refresh_tests {
 
     #[cfg(unix)]
     #[test]
+    fn removal_retry_finishes_the_discoverable_receipt_owned_tombstone() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        refresh_local_development(refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "first",
+        ))
+        .expect("refresh");
+        let tombstone = fixture.path().join(".local-authority.removing");
+        fs::rename(&prefix, &tombstone).expect("simulate crash after removal rename");
+
+        let removed = remove_local_development(LocalDevelopmentRemoveRequest {
+            prefix: prefix.clone(),
+            workspace_root: repository.path().to_path_buf(),
+        })
+        .expect("finish interrupted removal");
+
+        assert!(removed.removed);
+        assert!(!prefix.exists());
+        assert!(!tombstone.exists());
+        assert!(!repository.path().join("AGENTS.local.md").exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn removal_retry_preserves_an_unreceipted_discoverable_tombstone() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        let tombstone = fixture.path().join(".local-authority.removing");
+        write_file(&tombstone.join("foreign"), b"preserve me\n");
+
+        let error = remove_local_development(LocalDevelopmentRemoveRequest {
+            prefix,
+            workspace_root: repository.path().to_path_buf(),
+        })
+        .expect_err("unreceipted tombstone must block removal");
+
+        assert_eq!(error.code, "LOCAL_REMOVAL_TOMBSTONE_INVALID");
+        assert_eq!(
+            fs::read(tombstone.join("foreign")).expect("preserved tombstone"),
+            b"preserve me\n",
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn missing_prefix_removal_and_refresh_share_the_namespace_lock() {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
