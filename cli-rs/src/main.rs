@@ -679,8 +679,10 @@ fn run_machine(command: cli::MachineCommand, output_format: OutputFormat) -> Res
                 output::print_structured(&result, output_format)?;
             } else {
                 println!(
-                    "Kast machine\n\nState: reconciled\nIDEA plugin: {}\nSkill: {}",
-                    result.idea_plugin, result.skill
+                    "Kast machine\n\nState: reconciled\nIDEA plugin: {}\nSkill: {}\nCodex: {}",
+                    result.idea_plugin,
+                    result.skill,
+                    result.codex.as_deref().unwrap_or("not installed"),
                 );
             }
             Ok(0)

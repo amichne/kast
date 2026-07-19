@@ -67,6 +67,7 @@ pub(crate) struct MachineReconciliation {
     state: &'static str,
     pub(crate) idea_plugin: String,
     pub(crate) skill: String,
+    pub(crate) codex: Option<String>,
     quarantined_plugin: Option<String>,
     schema_version: u32,
 }
@@ -225,14 +226,122 @@ pub(crate) fn reconcile(args: MachineReconcileArgs) -> Result<MachineReconciliat
         return Err(error.into());
     }
     let skill = reconcile_global_skill(&root, transaction)?;
+    let codex = reconcile_codex(&root)?;
     Ok(MachineReconciliation {
         reconciliation_type: "KAST_MACHINE_RECONCILIATION",
         state: "RECONCILED",
         idea_plugin: installed_plugin.display().to_string(),
         skill: skill.display().to_string(),
+        codex: codex.map(|path| path.display().to_string()),
         quarantined_plugin: quarantined_plugin.map(|path| path.display().to_string()),
         schema_version: 1,
     })
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CodexPluginList {
+    #[serde(default)]
+    installed: Vec<CodexInstalledPlugin>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CodexInstalledPlugin {
+    plugin_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CodexMarketplaceList {
+    #[serde(default)]
+    marketplaces: Vec<CodexMarketplace>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CodexMarketplace {
+    name: String,
+}
+
+fn reconcile_codex(root: &Path) -> Result<Option<PathBuf>> {
+    let marketplace = root.join("resources/codex-marketplace");
+    let Some(installed_output) = run_optional_codex(&["plugin", "list", "--json"])? else {
+        return Ok(None);
+    };
+    let installed: CodexPluginList =
+        serde_json::from_slice(&installed_output.stdout).map_err(|error| {
+            CliError::new(
+                "CODEX_PLUGIN_STATE_INVALID",
+                format!("Codex plugin list is not valid JSON: {error}"),
+            )
+        })?;
+    if installed
+        .installed
+        .iter()
+        .any(|plugin| plugin.plugin_id == "kast@kast")
+    {
+        run_codex(&["plugin", "remove", "kast@kast", "--json"])?;
+    }
+    let marketplaces_output = run_codex(&["plugin", "marketplace", "list", "--json"])?;
+    let marketplaces: CodexMarketplaceList = serde_json::from_slice(&marketplaces_output.stdout)
+        .map_err(|error| {
+            CliError::new(
+                "CODEX_MARKETPLACE_STATE_INVALID",
+                format!("Codex marketplace list is not valid JSON: {error}"),
+            )
+        })?;
+    if marketplaces
+        .marketplaces
+        .iter()
+        .any(|candidate| candidate.name == "kast")
+    {
+        run_codex(&["plugin", "marketplace", "remove", "kast", "--json"])?;
+    }
+    run_codex(&[
+        "plugin",
+        "marketplace",
+        "add",
+        marketplace.to_str().ok_or_else(|| {
+            CliError::new(
+                "CODEX_MARKETPLACE_PATH_INVALID",
+                format!(
+                    "Codex marketplace path is not UTF-8: {}",
+                    marketplace.display()
+                ),
+            )
+        })?,
+        "--json",
+    ])?;
+    run_codex(&["plugin", "add", "kast@kast", "--json"])?;
+    Ok(Some(marketplace))
+}
+
+fn run_optional_codex(args: &[&str]) -> Result<Option<std::process::Output>> {
+    match Command::new("codex").args(args).output() {
+        Ok(output) if output.status.success() => Ok(Some(output)),
+        Ok(output) => Err(codex_command_error(args, &output)),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn run_codex(args: &[&str]) -> Result<std::process::Output> {
+    let output = Command::new("codex").args(args).output()?;
+    if output.status.success() {
+        Ok(output)
+    } else {
+        Err(codex_command_error(args, &output))
+    }
+}
+
+fn codex_command_error(args: &[&str], output: &std::process::Output) -> CliError {
+    CliError::new(
+        "CODEX_RECONCILIATION_FAILED",
+        format!(
+            "`codex {}` failed: {}",
+            args.join(" "),
+            String::from_utf8_lossy(&output.stderr).trim()
+        ),
+    )
 }
 
 fn machine_root() -> PathBuf {
