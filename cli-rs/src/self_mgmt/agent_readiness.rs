@@ -127,18 +127,15 @@ struct PluginWorkspaceEvidence {
 pub(super) fn agent_environment_diagnostic(
     workspace_root: Option<&Path>,
     install_authority: InstallAuthority,
-    local_development: Option<&crate::local_development::LocalDevelopmentReceipt>,
     install: Option<&InstallState>,
     binary: &DoctorBinaryDiagnostic,
     issues: &mut Vec<String>,
 ) -> Result<DoctorAgentEnvironmentDiagnostic> {
     let dialect_revision = packaged_skill_dialect_revision()?;
     let plugin = workspace_root.and_then(plugin_workspace_evidence);
-    let backend =
-        effective_backend_diagnostic(workspace_root, local_development, install, plugin.as_ref());
+    let backend = effective_backend_diagnostic(workspace_root, install, plugin.as_ref());
     let skills = effective_skill_diagnostic(
         workspace_root,
-        local_development,
         install,
         plugin.as_ref(),
         &binary.running_binary,
@@ -146,7 +143,6 @@ pub(super) fn agent_environment_diagnostic(
     )?;
     let guidance = effective_guidance_diagnostic(
         workspace_root,
-        local_development,
         install,
         plugin.as_ref(),
         &binary.running_binary,
@@ -193,14 +189,8 @@ pub(super) fn agent_environment_diagnostic(
         binary: DoctorAgentBinaryDiagnostic {
             path: binary.running_binary.clone(),
             version: cli::version().to_string(),
-            revision: local_development.map_or_else(
-                || cli::version().to_string(),
-                |receipt| receipt.source.git_commit.as_str().to_string(),
-            ),
-            source_path: local_development.map_or_else(
-                || binary.running_binary.clone(),
-                |receipt| receipt.source.canonical_root.display().to_string(),
-            ),
+            revision: cli::version().to_string(),
+            source_path: binary.running_binary.clone(),
             dialect_revision,
         },
         backend,
@@ -244,7 +234,6 @@ fn skill_dialect_revision(identity: &KastSkillFrontMatter) -> Option<u32> {
 
 fn effective_skill_diagnostic(
     workspace_root: Option<&Path>,
-    local_development: Option<&crate::local_development::LocalDevelopmentReceipt>,
     install: Option<&InstallState>,
     plugin: Option<&PluginWorkspaceEvidence>,
     running_binary: &str,
@@ -258,12 +247,6 @@ fn effective_skill_diagnostic(
             discovered.push((path, source.to_string()));
         }
     };
-    if let Some(local) = local_development {
-        push(
-            local.components.skill.effective_target.clone(),
-            "local-development-receipt",
-        );
-    }
     if let Some(workspace_root) = workspace_root {
         for relative in WORKSPACE_SKILL_RELATIVES {
             let path = workspace_root.join(relative);
@@ -338,15 +321,12 @@ fn effective_skill_diagnostic(
         let expected_plugin_skill = plugin_owned
             .then(|| plugin.and_then(|plugin| render_plugin_skill(plugin, dialect_revision)))
             .flatten();
-        let local_owned = local_development
-            .is_some_and(|local| same_binary_path(&local.components.skill.effective_target, &path));
         let machine_owned = cfg!(target_os = "macos")
             && path == config::normalize(home.join(".agents/skills/kast/SKILL.md"))
             && fs::read_to_string(&path).is_ok_and(|content| content == PACKAGED_KAST_SKILL);
         let mut state = agent_resource_state(
             &path,
             managed_resource,
-            local_owned,
             machine_owned,
             plugin_owned,
             expected_plugin_skill.as_deref(),
@@ -373,7 +353,6 @@ fn effective_skill_diagnostic(
         } else {
             skill_repair_command(
                 workspace_root,
-                local_development,
                 &path,
                 managed_resource.is_some(),
                 plugin_owned,
@@ -437,7 +416,6 @@ fn resource_contains_path(resource: &ManagedRepoResource, path: &Path) -> bool {
 fn agent_resource_state(
     path: &Path,
     managed_resource: Option<&ManagedRepoResource>,
-    local_owned: bool,
     machine_owned: bool,
     plugin_owned: bool,
     expected_plugin_skill: Option<&str>,
@@ -445,7 +423,7 @@ fn agent_resource_state(
     if !path.is_file() {
         return Ok(AgentResourceState::Missing);
     }
-    if local_owned || machine_owned {
+    if machine_owned {
         return Ok(AgentResourceState::Managed);
     }
     if plugin_owned {
@@ -473,20 +451,11 @@ fn agent_resource_state(
 
 fn skill_repair_command(
     workspace_root: Option<&Path>,
-    local_development: Option<&crate::local_development::LocalDevelopmentReceipt>,
     skill_path: &Path,
     manifest_managed: bool,
     plugin_owned: bool,
     running_binary: &str,
 ) -> Option<String> {
-    if let Some(local) = local_development
-        && same_binary_path(&local.components.skill.effective_target, skill_path)
-    {
-        return Some(format!(
-            "cd {} && ./gradlew refreshDevelopmentLocal",
-            shell_quote_for_remediation(&local.source.canonical_root.display().to_string())
-        ));
-    }
     if plugin_owned {
         return Some(workspace_root.map_or_else(
             || "Open the exact project in IntelliJ IDEA with the Kast plugin enabled".to_string(),
@@ -557,7 +526,6 @@ fn unique_quarantine_path(skill_directory: &Path) -> PathBuf {
 
 fn effective_guidance_diagnostic(
     workspace_root: Option<&Path>,
-    local_development: Option<&crate::local_development::LocalDevelopmentReceipt>,
     install: Option<&InstallState>,
     plugin: Option<&PluginWorkspaceEvidence>,
     running_binary: &str,
@@ -571,28 +539,6 @@ fn effective_guidance_diagnostic(
             source: "machine-skill".to_string(),
             state: AgentResourceState::Managed,
             repair_command: None,
-        });
-    }
-    if let Some(local) = local_development {
-        return Ok(DoctorAgentGuidanceDiagnostic {
-            path: local
-                .components
-                .guidance
-                .effective_target
-                .display()
-                .to_string(),
-            source: "local-development-receipt".to_string(),
-            state: if local.components.guidance.effective_target.is_file() {
-                AgentResourceState::Managed
-            } else {
-                AgentResourceState::Missing
-            },
-            repair_command: (!local.components.guidance.effective_target.is_file()).then(|| {
-                format!(
-                    "cd {} && ./gradlew refreshDevelopmentLocal",
-                    shell_quote_for_remediation(&local.source.canonical_root.display().to_string())
-                )
-            }),
         });
     }
     let Some(workspace_root) = workspace_root else {
@@ -740,26 +686,9 @@ fn render_plugin_skill(plugin: &PluginWorkspaceEvidence, dialect_revision: u32) 
 
 fn effective_backend_diagnostic(
     workspace_root: Option<&Path>,
-    local_development: Option<&crate::local_development::LocalDevelopmentReceipt>,
     install: Option<&InstallState>,
     plugin: Option<&PluginWorkspaceEvidence>,
 ) -> DoctorAgentBackendDiagnostic {
-    if let Some(local) = local_development {
-        return DoctorAgentBackendDiagnostic {
-            state: AgentResourceState::Managed,
-            kind: Some("headless".to_string()),
-            version: Some(local.backend.implementation_version.clone()),
-            revision: Some(local.source.git_commit.as_str().to_string()),
-            source_path: Some(
-                local
-                    .components
-                    .backend
-                    .effective_target
-                    .display()
-                    .to_string(),
-            ),
-        };
-    }
     if let Some(plugin) = plugin
         && plugin.trusted
         && plugin.backend_kind.is_some()

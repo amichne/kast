@@ -33,8 +33,6 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         config::PathResolutionMode::Cli,
     )?;
     let preference = runtime_backend_preference(&config, args.backend_name);
-    let local_authority_active =
-        crate::local_development::active_local_development_receipt()?.is_some();
     validate_macos_workspace_for_preference(&workspace_root, preference)?;
     let stale_descriptor_policy = if args.no_auto_start.unwrap_or(false) {
         StaleDescriptorPolicy::Preserve
@@ -106,18 +104,13 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         ));
     };
 
-    if launch_backend == BackendName::Headless && !local_authority_active {
+    if launch_backend == BackendName::Headless {
         if select_servable(&inspection.candidates, Some(launch_backend), true).is_some()
             && let Ok(selected) = wait_for_servable(
                 &workspace_root,
                 Some(launch_backend),
                 args.accept_indexing.unwrap_or(false),
-                runtime_wait_timeout(
-                    args.wait_timeout_ms,
-                    launch_backend,
-                    local_authority_active,
-                    RuntimeWaitPhase::ExistingRuntime,
-                ),
+                args.wait_timeout_ms,
             )
         {
             return Ok(WorkspaceEnsureResult {
@@ -158,66 +151,15 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         runtime_libs_dir: Some(runtime_libs_dir),
         ..DaemonStartArgs::from(args.clone())
     };
-    let spawned_wait_timeout = runtime_wait_timeout(
-        args.wait_timeout_ms,
-        launch_backend,
-        local_authority_active,
-        RuntimeWaitPhase::SpawnedRuntime,
-    );
-    let launch =
-        crate::local_development::with_active_local_runtime_start_lock(|local_authority| {
-            if local_authority {
-                let locked_inspection = inspect_workspace_with_config(
-                    &workspace_root,
-                    &config,
-                    RuntimeBackendPreference::Fixed(launch_backend),
-                    StaleDescriptorPolicy::Prune,
-                )?;
-                if locked_inspection.candidates.iter().any(|candidate| {
-                    candidate.pid_alive
-                        && candidate.descriptor.backend_name == launch_backend.canonical()
-                }) {
-                    return Ok(RuntimeLaunch::ReusedRegistered);
-                }
-            }
-
-            let mut child = daemon::spawn_background(daemon_args, &log_file)?;
-            let spawned_at = Instant::now();
-            if local_authority
-                && let Err(error) = wait_for_runtime_registration(
-                    &inspection.descriptor_directory,
-                    &workspace_root,
-                    launch_backend,
-                    &mut child,
-                    remaining_runtime_wait_timeout(spawned_at, spawned_wait_timeout),
-                )
-            {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(error);
-            }
-            thread::spawn(move || {
-                let _ = child.wait();
-            });
-            Ok(RuntimeLaunch::Spawned { spawned_at })
-        })?;
-    let (remaining_wait_timeout, started, note) = match launch {
-        RuntimeLaunch::ReusedRegistered => (
-            runtime_wait_timeout(
-                args.wait_timeout_ms,
-                launch_backend,
-                local_authority_active,
-                RuntimeWaitPhase::ExistingRuntime,
-            ),
-            false,
-            Some("Reused a concurrently registered headless runtime.".to_string()),
-        ),
-        RuntimeLaunch::Spawned { spawned_at } => (
-            remaining_runtime_wait_timeout(spawned_at, spawned_wait_timeout),
-            true,
-            None,
-        ),
-    };
+    let mut child = daemon::spawn_background(daemon_args, &log_file)?;
+    let spawned_at = Instant::now();
+    thread::spawn(move || {
+        let _ = child.wait();
+    });
+    let remaining_wait_timeout =
+        remaining_runtime_wait_timeout(spawned_at, args.wait_timeout_ms);
+    let started = true;
+    let note = None;
     let selected = match wait_for_servable(
         &workspace_root,
         Some(launch_backend),
@@ -249,83 +191,9 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     })
 }
 
-fn wait_for_runtime_registration(
-    descriptor_directory: &Path,
-    workspace_root: &Path,
-    backend_name: BackendName,
-    child: &mut std::process::Child,
-    wait_timeout_ms: u64,
-) -> Result<()> {
-    let pid = u64::from(child.id());
-    let deadline = Instant::now() + Duration::from_millis(wait_timeout_ms);
-    loop {
-        if let Some(status) = child.try_wait()? {
-            return Err(CliError::new(
-                "DAEMON_START_ERROR",
-                format!(
-                    "The spawned {} runtime process {pid} exited with {status} before registering for {}.",
-                    backend_name.canonical(),
-                    workspace_root.display(),
-                ),
-            ));
-        }
-        let registered = read_descriptors(descriptor_directory)?
-            .into_iter()
-            .any(|descriptor| {
-                descriptor.pid == pid
-                    && descriptor.backend_name == backend_name.canonical()
-                    && config::normalize(PathBuf::from(descriptor.workspace_root)) == workspace_root
-            });
-        if registered {
-            return Ok(());
-        }
-        if Instant::now() >= deadline {
-            return Err(CliError::new(
-                "RUNTIME_REGISTRATION_TIMEOUT",
-                format!(
-                    "Timed out waiting for spawned {} runtime process {pid} to register for {}.",
-                    backend_name.canonical(),
-                    workspace_root.display(),
-                ),
-            ));
-        }
-        thread::sleep(Duration::from_millis(50));
-    }
-}
-
 fn remaining_runtime_wait_timeout(started_at: Instant, total_wait_timeout_ms: u64) -> u64 {
     let elapsed_ms = u64::try_from(started_at.elapsed().as_millis()).unwrap_or(u64::MAX);
     total_wait_timeout_ms.saturating_sub(elapsed_ms).max(1)
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RuntimeLaunch {
-    ReusedRegistered,
-    Spawned { spawned_at: Instant },
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RuntimeWaitPhase {
-    ExistingRuntime,
-    SpawnedRuntime,
-}
-
-const LOCAL_DEVELOPMENT_HEADLESS_COLD_START_WAIT_TIMEOUT_MS: u64 = 600_000;
-
-fn runtime_wait_timeout(
-    requested_timeout_ms: u64,
-    backend_name: BackendName,
-    local_authority_active: bool,
-    phase: RuntimeWaitPhase,
-) -> u64 {
-    if local_authority_active
-        && backend_name == BackendName::Headless
-        && phase == RuntimeWaitPhase::SpawnedRuntime
-    {
-        requested_timeout_ms.max(LOCAL_DEVELOPMENT_HEADLESS_COLD_START_WAIT_TIMEOUT_MS)
-    } else {
-        requested_timeout_ms
-    }
 }
 
 pub fn workspace_stop(args: RuntimeArgs) -> Result<DaemonStopResult> {

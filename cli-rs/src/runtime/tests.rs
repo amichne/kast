@@ -22,75 +22,6 @@ mod tests {
         assert_eq!(error.code, "IO_ERROR");
     }
 
-    #[test]
-    fn only_a_newly_spawned_local_headless_runtime_receives_the_cold_import_budget() {
-        assert_eq!(
-            runtime_wait_timeout(
-                60_000,
-                BackendName::Headless,
-                true,
-                RuntimeWaitPhase::SpawnedRuntime,
-            ),
-            600_000,
-        );
-        assert_eq!(
-            runtime_wait_timeout(
-                60_000,
-                BackendName::Headless,
-                true,
-                RuntimeWaitPhase::ExistingRuntime,
-            ),
-            60_000,
-        );
-        assert_eq!(
-            runtime_wait_timeout(
-                60_000,
-                BackendName::Idea,
-                true,
-                RuntimeWaitPhase::SpawnedRuntime,
-            ),
-            60_000,
-        );
-        assert_eq!(
-            runtime_wait_timeout(
-                60_000,
-                BackendName::Headless,
-                false,
-                RuntimeWaitPhase::SpawnedRuntime,
-            ),
-            60_000,
-        );
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn registration_wait_reaps_a_child_that_exits_before_publishing_a_descriptor() {
-        let fixture = tempfile::tempdir().expect("fixture");
-        let workspace = fixture.path().join("workspace");
-        std::fs::create_dir(&workspace).expect("workspace");
-        let mut child = Command::new("sh")
-            .args(["-c", "exit 23"])
-            .spawn()
-            .expect("short-lived child");
-        let started = Instant::now();
-
-        let error = wait_for_runtime_registration(
-            &fixture.path().join("descriptors"),
-            &workspace,
-            BackendName::Headless,
-            &mut child,
-            10_000,
-        )
-        .expect_err("exited child cannot register");
-
-        assert_eq!(error.code, "DAEMON_START_ERROR");
-        assert!(
-            started.elapsed() < Duration::from_secs(2),
-            "an exited child must be reaped promptly instead of consuming the cold-start budget",
-        );
-        assert!(child.try_wait().expect("reaped child status").is_some());
-    }
-
     fn candidate(name: &str, state: RuntimeState, indexing: bool) -> RuntimeCandidateStatus {
         RuntimeCandidateStatus {
             descriptor_path: format!("{name}:1"),
@@ -192,14 +123,6 @@ mod tests {
         };
 
         assert!(!descriptor_matches_workspace(&descriptor, requested_root));
-    }
-
-    #[test]
-    fn actionable_shell_paths_quote_spaces_and_single_quotes() {
-        assert_eq!(
-            shell_single_quoted_path(Path::new("/work/agent's checkout")),
-            "'/work/agent'\"'\"'s checkout'",
-        );
     }
 
     #[test]

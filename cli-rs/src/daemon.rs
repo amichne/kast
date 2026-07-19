@@ -48,7 +48,6 @@ pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<S
     }
     let runtime_libs_dir =
         config::backend_runtime_libs_dir(config, backend_name, args.runtime_libs_dir.clone())?;
-    crate::local_development::validate_active_local_backend_runtime(&runtime_libs_dir)?;
     let classpath = read_classpath(&runtime_libs_dir)?;
     let java_exec = env::var("JAVA_HOME")
         .ok()

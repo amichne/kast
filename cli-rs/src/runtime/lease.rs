@@ -21,7 +21,6 @@ pub enum WorkspaceLeaseOwnership {
 #[serde(rename_all = "kebab-case")]
 pub enum WorkspaceLeaseInstallAuthority {
     Machine,
-    LocalDevelopment,
     MacosHomebrew,
     ManagedLocal,
 }
@@ -30,7 +29,6 @@ impl WorkspaceLeaseInstallAuthority {
     fn canonical(self) -> &'static str {
         match self {
             Self::Machine => "machine",
-            Self::LocalDevelopment => "local-development",
             Self::MacosHomebrew => "macos-homebrew",
             Self::ManagedLocal => "managed-local",
         }
@@ -479,13 +477,6 @@ fn lease_installation_identity(
         self_mgmt::InstallAuthority::Machine => (
             WorkspaceLeaseInstallAuthority::Machine,
             crate::machine::active_machine_identity()?,
-        ),
-        self_mgmt::InstallAuthority::LocalDevelopment => (
-            WorkspaceLeaseInstallAuthority::LocalDevelopment,
-            doctor
-                .local_development
-                .as_ref()
-                .map(|receipt| receipt.generation_id.as_str().to_string()),
         ),
         self_mgmt::InstallAuthority::MacosHomebrew => (
             WorkspaceLeaseInstallAuthority::MacosHomebrew,
@@ -1431,11 +1422,11 @@ mod workspace_lease_tests {
     #[test]
     fn token_environment_distinguishes_foreign_authority_from_stale_generation() {
         let claims = WorkspaceLeaseTokenClaims {
-            authority: WorkspaceLeaseInstallAuthority::LocalDevelopment,
+            authority: WorkspaceLeaseInstallAuthority::Machine,
             generation: "generation-1".to_string(),
             environment_sha256: "a".repeat(64),
             workspace_root: PathBuf::from("/workspace"),
-            backend_name: BackendName::Headless,
+            backend_name: BackendName::Idea,
             binding_sha256: "b".repeat(64),
             record_id: uuid::Uuid::new_v4(),
         };

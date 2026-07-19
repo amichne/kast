@@ -269,7 +269,6 @@ pub enum PathResolutionSource {
     Default,
     Env,
     HomebrewReceipt,
-    LocalDevelopmentReceipt,
     Manifest,
 }
 
@@ -279,7 +278,6 @@ impl fmt::Display for PathResolutionSource {
             Self::Default => "default",
             Self::Env => "env",
             Self::HomebrewReceipt => "homebrew-receipt",
-            Self::LocalDevelopmentReceipt => "local-development-receipt",
             Self::Manifest => "manifest",
         };
         formatter.write_str(value)
@@ -310,7 +308,6 @@ impl PathResolutionEntryContext {
         workspace_root: Option<&Path>,
         install_manifest_exists: bool,
         homebrew_receipt_exists: bool,
-        local_development_receipt_active: bool,
     ) -> Self {
         Self::from_states(
             install_manifest_exists,
@@ -318,7 +315,6 @@ impl PathResolutionEntryContext {
             env_present("KAST_INSTALL_ROOT"),
             env_present("KAST_CACHE_HOME"),
             workspace_root.is_some() && env_present("KAST_CACHE_HOME"),
-            local_development_receipt_active,
         )
     }
 
@@ -328,21 +324,7 @@ impl PathResolutionEntryContext {
         install_root_env: bool,
         cache_home_env: bool,
         workspace_cache_environment: bool,
-        local_development_receipt_active: bool,
     ) -> Self {
-        if local_development_receipt_active {
-            return Self {
-                install_root_source: PathResolutionSource::LocalDevelopmentReceipt,
-                bin_dir_source: PathResolutionSource::LocalDevelopmentReceipt,
-                cache_dir_source: PathResolutionSource::LocalDevelopmentReceipt,
-                logs_dir_source: PathResolutionSource::LocalDevelopmentReceipt,
-                logs_dir_parent: None,
-                runtime_dir_source: PathResolutionSource::LocalDevelopmentReceipt,
-                runtime_dir_parent: None,
-                workspace_state_source: PathResolutionSource::LocalDevelopmentReceipt,
-                workspace_state_parent: Some("paths.runtimeDir"),
-            };
-        }
         let install_manifest_active = install_manifest_exists && !homebrew_receipt_exists;
         let install_root_source =
             source_for_manifest_or_env_state(install_manifest_active, install_root_env);

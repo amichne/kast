@@ -20,16 +20,8 @@ pub fn path_resolution_report(
 ) -> Result<PathResolutionReport> {
     let install_manifest = manifest::default_install_manifest_path();
     let install_manifest_exists = install_manifest.is_file();
-    let local_development_receipt = env::var_os("KAST_LOCAL_DEVELOPMENT_RECEIPT")
-        .filter(|value| !value.is_empty())
-        .map(PathBuf::from);
-    let local_development_receipt_active = local_development_receipt.is_some();
     #[cfg(target_os = "macos")]
-    let homebrew_receipt = if local_development_receipt_active {
-        PathBuf::new()
-    } else {
-        crate::install::default_macos_homebrew_receipt_path()
-    };
+    let homebrew_receipt = crate::install::default_macos_homebrew_receipt_path();
     #[cfg(not(target_os = "macos"))]
     let homebrew_receipt = PathBuf::new();
     let homebrew_receipt_exists = homebrew_receipt.is_file();
@@ -50,9 +42,7 @@ pub fn path_resolution_report(
         .chain(workspace_keys.iter())
         .filter(|key| install_owned_config_key(key))
     {
-        let authority = if local_development_receipt_active {
-            "the local-development receipt"
-        } else if homebrew_receipt_exists {
+        let authority = if homebrew_receipt_exists {
             "the macOS Homebrew receipt"
         } else if install_manifest_exists {
             "install.json"
@@ -77,13 +67,11 @@ pub fn path_resolution_report(
         workspace_root,
         install_manifest_exists,
         homebrew_receipt_exists,
-        local_development_receipt_active,
     );
     let entries = path_resolution_entries(config, mode, entry_context);
     Ok(PathResolutionReport {
         root: config.paths.install_root.display().to_string(),
         config_files: config_files(
-            local_development_receipt,
             homebrew_receipt,
             install_manifest,
             global_config,
@@ -251,20 +239,12 @@ fn path_entry(
 }
 
 fn config_files(
-    local_development_receipt: Option<PathBuf>,
     homebrew_receipt: PathBuf,
     install_manifest: PathBuf,
     global_config: PathBuf,
     workspace_config: Option<PathBuf>,
 ) -> Vec<PathResolutionConfigFile> {
     let mut files = Vec::new();
-    if let Some(local_development_receipt) = local_development_receipt {
-        files.push(PathResolutionConfigFile {
-            scope: "local-development-receipt".to_string(),
-            exists: local_development_receipt.is_file(),
-            path: local_development_receipt.display().to_string(),
-        });
-    }
     if !homebrew_receipt.as_os_str().is_empty() {
         files.push(PathResolutionConfigFile {
             scope: "macos-homebrew-receipt".to_string(),

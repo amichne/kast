@@ -11,7 +11,6 @@ mod daemon;
 mod demo;
 mod error;
 mod install;
-mod local_development;
 mod lsp;
 mod machine;
 mod manifest;
@@ -415,12 +414,6 @@ fn run_repair(args: cli::RepairArgs, output_format: OutputFormat) -> Result<i32>
         apply,
         jetbrains_config_root,
     };
-    if apply && local_development::active_local_development_receipt()?.is_some() {
-        return Err(CliError::new(
-            "LOCAL_AUTHORITY_REPAIR_UNSUPPORTED",
-            "Local-development authority cannot mutate release install state; rerun the source checkout's refreshDevelopmentLocal task instead.",
-        ));
-    }
     if apply && !install::macos_homebrew_repair_authority_is_provable()? {
         manifest::install_current_executable()?;
     }

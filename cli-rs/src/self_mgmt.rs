@@ -87,7 +87,6 @@ pub struct DeveloperMachineDefaultsResult {
 #[serde(rename_all = "kebab-case")]
 pub enum InstallAuthority {
     Machine,
-    LocalDevelopment,
     MacosHomebrew,
     ManagedLocal,
     Missing,
@@ -110,8 +109,6 @@ pub struct SelfDoctorResult {
     pub target: ReadyTarget,
     pub installed: bool,
     pub install_authority: InstallAuthority,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub local_development: Option<crate::local_development::LocalDevelopmentReceipt>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub homebrew_install: Option<install::MacosHomebrewInstallReceipt>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -141,22 +138,11 @@ pub fn doctor(
     workspace_root: Option<&Path>,
 ) -> Result<SelfDoctorResult> {
     let machine_identity = crate::machine::active_machine_identity()?;
-    let local_development = if machine_identity.is_none() {
-        crate::local_development::verified_active_local_development_receipt()?
-    } else {
-        None
-    };
     let config_path = config::global_config_path();
     let manifest_path = manifest::default_install_manifest_path();
     let mut issues = vec![];
     let mut warnings = vec![];
     let repair_result = if repair {
-        if local_development.is_some() {
-            return Err(CliError::new(
-                "LOCAL_AUTHORITY_REPAIR_UNSUPPORTED",
-                "Local-development authority cannot apply ordinary install repair; refresh its source checkout instead.",
-            ));
-        }
         let repair_args = InstallRepairArgs {
             apply: true,
             jetbrains_config_root: None,
@@ -169,7 +155,7 @@ pub fn doctor(
         None
     };
     #[cfg(target_os = "macos")]
-    let homebrew_install = if machine_identity.is_some() || local_development.is_some() {
+    let homebrew_install = if machine_identity.is_some() {
         None
     } else {
         install::read_macos_homebrew_receipt()?
@@ -262,27 +248,16 @@ pub fn doctor(
                     backend_label, backend.runtime_libs_dir
                 ));
             }
-            if let Some(local) = &local_development {
-                if backend.name != "headless"
-                    || backend.version != local.backend.implementation_version
-                {
-                    issues.push(format!(
-                        "Local backend identity {}/{} does not match receipt headless/{}",
-                        backend.name, backend.version, local.backend.implementation_version
-                    ));
-                }
-            } else {
-                match version_meets_minimum(&backend.version, minimum_backend_version) {
-                    Some(true) => {}
-                    Some(false) => issues.push(format!(
-                        "{} backend {} is older than required minimum {}",
-                        backend_label, backend.version, minimum_backend_version
-                    )),
-                    None => warnings.push(format!(
-                        "{} backend version {} cannot be compared to required minimum {}",
-                        backend_label, backend.version, minimum_backend_version
-                    )),
-                }
+            match version_meets_minimum(&backend.version, minimum_backend_version) {
+                Some(true) => {}
+                Some(false) => issues.push(format!(
+                    "{} backend {} is older than required minimum {}",
+                    backend_label, backend.version, minimum_backend_version
+                )),
+                None => warnings.push(format!(
+                    "{} backend version {} cannot be compared to required minimum {}",
+                    backend_label, backend.version, minimum_backend_version
+                )),
             }
         }
         for repo in install
@@ -327,15 +302,12 @@ pub fn doctor(
         target,
         workspace_root,
         install.as_ref(),
-        local_development.is_some(),
         machine_identity.is_some() || homebrew_install.is_some(),
         &binary,
         &mut issues,
     );
     let install_authority = if machine_identity.is_some() {
         InstallAuthority::Machine
-    } else if local_development.is_some() {
-        InstallAuthority::LocalDevelopment
     } else if homebrew_install.is_some() {
         InstallAuthority::MacosHomebrew
     } else if install.is_some() {
@@ -347,7 +319,6 @@ pub fn doctor(
         Some(agent_environment_diagnostic(
             workspace_root,
             install_authority,
-            local_development.as_ref(),
             install.as_ref(),
             &binary,
             &mut issues,
@@ -357,12 +328,8 @@ pub fn doctor(
     };
     Ok(SelfDoctorResult {
         target,
-        installed: machine_identity.is_some()
-            || local_development.is_some()
-            || homebrew_install.is_some()
-            || install.is_some(),
+        installed: machine_identity.is_some() || homebrew_install.is_some() || install.is_some(),
         install_authority,
-        local_development,
         homebrew_install,
         legacy_shadow,
         config_path: config_path.display().to_string(),
@@ -430,12 +397,11 @@ fn apply_ready_target_checks(
     target: ReadyTarget,
     workspace_root: Option<&Path>,
     install: Option<&InstallState>,
-    local_development: bool,
     homebrew_install: bool,
     binary: &DoctorBinaryDiagnostic,
     issues: &mut Vec<String>,
 ) {
-    apply_macos_plugin_workspace_check(target, workspace_root, local_development, issues);
+    apply_macos_plugin_workspace_check(target, workspace_root, issues);
     match target {
         ReadyTarget::Agent | ReadyTarget::Release => {}
         ReadyTarget::Machine => {
@@ -490,10 +456,9 @@ fn should_verify_repo_resources_for_target(
 fn apply_macos_plugin_workspace_check(
     target: ReadyTarget,
     workspace_root: Option<&Path>,
-    local_development: bool,
     issues: &mut Vec<String>,
 ) {
-    if local_development || !matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin) {
+    if !matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin) {
         return;
     }
     match workspace_root {
@@ -512,7 +477,6 @@ fn apply_macos_plugin_workspace_check(
 fn apply_macos_plugin_workspace_check(
     _target: ReadyTarget,
     _workspace_root: Option<&Path>,
-    _local_development: bool,
     _issues: &mut Vec<String>,
 ) {
 }
