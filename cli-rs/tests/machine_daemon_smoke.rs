@@ -1,6 +1,7 @@
 mod support;
 
 use std::io::Write;
+use std::process::Command;
 use support::*;
 
 fn write_idea_plugin(path: &Path) {
@@ -142,7 +143,20 @@ fn activation_installs_one_processless_machine_bundle() {
     let status: serde_json::Value =
         serde_json::from_slice(&status.stdout).expect("installed status JSON");
     assert_eq!(status["state"], "INSTALLED");
+    assert_eq!(status["active"], false);
     assert!(status.get("daemon").is_none());
+
+    let active_status = Command::new(machine.join("bin/kast"))
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
+        .args(["--output", "json", "machine", "status"])
+        .output()
+        .expect("active machine status");
+    assert!(active_status.status.success());
+    let active_status: serde_json::Value =
+        serde_json::from_slice(&active_status.stdout).expect("active machine status JSON");
+    assert_eq!(active_status["state"], "INSTALLED");
+    assert_eq!(active_status["active"], true);
 }
 
 #[test]
