@@ -171,6 +171,64 @@ fn repair_recovers_exact_stale_joint_receipt_after_formula_upgrade() {
 
 #[cfg(target_os = "macos")]
 #[test]
+fn repair_plans_schema_2_recovery_without_mutation() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+    let binary = write_homebrew_kast_for_test(temp.path());
+    let formula_prefix = binary
+        .parent()
+        .expect("formula bin")
+        .parent()
+        .expect("formula prefix");
+    let receipt = home.join("Library/Application Support/Kast/homebrew-install.json");
+    std::fs::create_dir_all(receipt.parent().expect("receipt parent")).expect("receipt dir");
+    let original = serde_json::to_vec_pretty(&serde_json::json!({
+        "schemaVersion": 2,
+        "authority": "macos-homebrew",
+        "cli": {
+            "binary": binary.display().to_string(),
+            "formulaPrefix": formula_prefix.display().to_string(),
+            "version": env!("CARGO_PKG_VERSION"),
+        },
+        "updatedAt": "unix:1",
+    }))
+    .expect("stale receipt");
+    std::fs::write(&receipt, &original).expect("receipt");
+
+    let output = kast_at(&binary, &home, &config_home)
+        .args(["--output", "json", "repair", "--for", "machine"])
+        .env("PATH", "")
+        .output()
+        .expect("schema-2 repair plan");
+
+    assert!(!output.status.success(), "authority is not active yet");
+    let payload: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("repair plan JSON");
+    assert_eq!(payload["type"], "KAST_REPAIR", "{payload:#}");
+    assert_eq!(
+        payload["ready"]["authorityResolution"]["state"], "RECOVERABLE",
+        "{payload:#}",
+    );
+    assert!(
+        payload["repair"]["actions"]
+            .as_array()
+            .expect("repair actions")
+            .iter()
+            .any(|action| {
+                action["kind"] == "establish-homebrew-cli-receipt" && action["status"] == "planned"
+            }),
+        "{payload:#}",
+    );
+    assert_eq!(
+        std::fs::read(&receipt).expect("preserved receipt"),
+        original
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
 fn repair_migrates_exact_schema_2_receipt_without_revision() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
