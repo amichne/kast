@@ -30,6 +30,7 @@ pub(crate) struct MachineStatus {
     #[serde(rename = "type")]
     status_type: &'static str,
     pub(crate) state: MachineState,
+    active: bool,
     schema_version: u32,
 }
 
@@ -69,18 +70,35 @@ pub(crate) struct MachineReconciliation {
     schema_version: u32,
 }
 
-pub(crate) fn status() -> MachineStatus {
+pub(crate) fn status() -> Result<MachineStatus> {
     let root = machine_root();
     let installed = root.join("machine.json").is_file();
-    MachineStatus {
+    let active = active_machine_identity()?.is_some();
+    Ok(MachineStatus {
         status_type: "KAST_MACHINE_STATUS",
         state: if installed {
             MachineState::Installed
         } else {
             MachineState::NotInstalled
         },
+        active,
         schema_version: 1,
+    })
+}
+
+pub(crate) fn active_machine_identity() -> Result<Option<String>> {
+    let root = machine_root();
+    let manifest_path = root.join("machine.json");
+    if !manifest_path.is_file() {
+        return Ok(None);
     }
+    validate_machine_install(&root)?;
+    let running = fs::canonicalize(std::env::current_exe()?)?;
+    let installed = fs::canonicalize(root.join("bin/kast"))?;
+    if running != installed {
+        return Ok(None);
+    }
+    Ok(Some(crate::manifest::sha256_file(&manifest_path)?))
 }
 
 pub(crate) fn activate(args: MachineActivateArgs) -> Result<MachineActivation> {

@@ -20,6 +20,7 @@ pub enum WorkspaceLeaseOwnership {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum WorkspaceLeaseInstallAuthority {
+    Machine,
     LocalDevelopment,
     MacosHomebrew,
     ManagedLocal,
@@ -28,6 +29,7 @@ pub enum WorkspaceLeaseInstallAuthority {
 impl WorkspaceLeaseInstallAuthority {
     fn canonical(self) -> &'static str {
         match self {
+            Self::Machine => "machine",
             Self::LocalDevelopment => "local-development",
             Self::MacosHomebrew => "macos-homebrew",
             Self::ManagedLocal => "managed-local",
@@ -474,6 +476,10 @@ fn lease_installation_identity(
     let serialized = serde_json::to_vec(environment)?;
     let environment_sha256 = crate::manifest::sha256_bytes(&serialized);
     let (authority, generation) = match doctor.install_authority {
+        self_mgmt::InstallAuthority::Machine => (
+            WorkspaceLeaseInstallAuthority::Machine,
+            crate::machine::active_machine_identity()?,
+        ),
         self_mgmt::InstallAuthority::LocalDevelopment => (
             WorkspaceLeaseInstallAuthority::LocalDevelopment,
             doctor

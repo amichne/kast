@@ -656,7 +656,7 @@ fn run_inspect(command: cli::InspectCommand, output_format: OutputFormat) -> Res
 fn run_machine(command: cli::MachineCommand, output_format: OutputFormat) -> Result<i32> {
     match command {
         cli::MachineCommand::Status => {
-            let result = machine::status();
+            let result = machine::status()?;
             if output_format.is_structured() {
                 output::print_structured(&result, output_format)?;
             } else {

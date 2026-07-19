@@ -212,6 +212,7 @@ fn agent_resource_state_label(
 
 fn install_authority_label(authority: crate::self_mgmt::InstallAuthority) -> &'static str {
     match authority {
+        crate::self_mgmt::InstallAuthority::Machine => "machine",
         crate::self_mgmt::InstallAuthority::LocalDevelopment => "local-development",
         crate::self_mgmt::InstallAuthority::MacosHomebrew => "macos-homebrew",
         crate::self_mgmt::InstallAuthority::ManagedLocal => "managed-local",

@@ -88,6 +88,7 @@ pub struct DeveloperMachineDefaultsResult {
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum InstallAuthority {
+    Machine,
     LocalDevelopment,
     MacosHomebrew,
     ManagedLocal,
@@ -141,7 +142,12 @@ pub fn doctor(
     target: ReadyTarget,
     workspace_root: Option<&Path>,
 ) -> Result<SelfDoctorResult> {
-    let local_development = crate::local_development::verified_active_local_development_receipt()?;
+    let machine_identity = crate::machine::active_machine_identity()?;
+    let local_development = if machine_identity.is_none() {
+        crate::local_development::verified_active_local_development_receipt()?
+    } else {
+        None
+    };
     let config_path = config::global_config_path();
     let manifest_path = manifest::default_install_manifest_path();
     let mut issues = vec![];
@@ -165,7 +171,7 @@ pub fn doctor(
         None
     };
     #[cfg(target_os = "macos")]
-    let homebrew_install = if local_development.is_some() {
+    let homebrew_install = if machine_identity.is_some() || local_development.is_some() {
         None
     } else {
         install::read_macos_homebrew_receipt()?
@@ -313,7 +319,7 @@ pub fn doctor(
                 }
             }
         }
-    } else if homebrew_install.is_none() {
+    } else if machine_identity.is_none() && homebrew_install.is_none() {
         issues.push(format!(
             "Install manifest is missing at {}",
             manifest_path.display()
@@ -324,11 +330,13 @@ pub fn doctor(
         workspace_root,
         install.as_ref(),
         local_development.is_some(),
-        homebrew_install.is_some(),
+        machine_identity.is_some() || homebrew_install.is_some(),
         &binary,
         &mut issues,
     );
-    let install_authority = if local_development.is_some() {
+    let install_authority = if machine_identity.is_some() {
+        InstallAuthority::Machine
+    } else if local_development.is_some() {
         InstallAuthority::LocalDevelopment
     } else if homebrew_install.is_some() {
         InstallAuthority::MacosHomebrew
@@ -351,7 +359,10 @@ pub fn doctor(
     };
     Ok(SelfDoctorResult {
         target,
-        installed: local_development.is_some() || homebrew_install.is_some() || install.is_some(),
+        installed: machine_identity.is_some()
+            || local_development.is_some()
+            || homebrew_install.is_some()
+            || install.is_some(),
         install_authority,
         local_development,
         homebrew_install,
