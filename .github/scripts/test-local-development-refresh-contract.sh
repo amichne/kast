@@ -13,6 +13,10 @@ resolve_repo_root() {
 }
 
 repo_root="$(resolve_repo_root)"
+if [[ -e "${repo_root}/cli-rs/src/local_development.rs" ]] \
+  || [[ -d "${repo_root}/cli-rs/src/local_development" ]]; then
+  die 'retired local-generation authority must not remain compiled into the CLI'
+fi
 task_list="$("${repo_root}/gradlew" -q tasks --all)"
 for retired in \
   refreshDevelopmentLocal \
