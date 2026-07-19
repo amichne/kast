@@ -123,12 +123,12 @@ struct PluginWorkspaceEvidence {
     plugin_revision: Option<String>,
     backend_kind: Option<String>,
     backend_version: Option<String>,
-    protocol_revision: Option<String>,
 }
 
 pub(super) fn agent_environment_diagnostic(
     workspace_root: Option<&Path>,
     install_authority: InstallAuthority,
+    effective_generation: Option<&super::EffectiveGeneration>,
     local_development: Option<&crate::local_development::LocalDevelopmentReceipt>,
     install: Option<&InstallState>,
     binary: &DoctorBinaryDiagnostic,
@@ -195,9 +195,9 @@ pub(super) fn agent_environment_diagnostic(
         binary: DoctorAgentBinaryDiagnostic {
             path: binary.running_binary.clone(),
             version: cli::version().to_string(),
-            revision: local_development.map_or_else(
-                || cli::version().to_string(),
-                |receipt| receipt.source.git_commit.as_str().to_string(),
+            revision: effective_generation.map_or_else(
+                || cli::release_revision().to_string(),
+                |generation| generation.revision().to_string(),
             ),
             source_path: local_development.map_or_else(
                 || binary.running_binary.clone(),
@@ -746,7 +746,7 @@ fn effective_backend_diagnostic(
             state: AgentResourceState::Managed,
             kind: plugin.backend_kind.clone(),
             version: plugin.backend_version.clone(),
-            revision: plugin.protocol_revision.clone(),
+            revision: plugin.plugin_revision.clone(),
             source_path: Some(plugin.metadata_path.display().to_string()),
         };
     }
@@ -831,10 +831,6 @@ fn plugin_workspace_evidence(workspace_root: &Path) -> Option<PluginWorkspaceEvi
             .and_then(|value| value.get("implementationVersion"))
             .and_then(serde_json::Value::as_str)
             .map(str::to_string),
-        protocol_revision: compatibility
-            .and_then(|value| value.get("protocolRevision"))
-            .and_then(serde_json::Value::as_u64)
-            .map(|revision| revision.to_string()),
     })
 }
 

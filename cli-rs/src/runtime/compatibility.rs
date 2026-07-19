@@ -6,26 +6,6 @@ pub(crate) struct ProtocolRevision(pub(crate) NonZeroU32);
 #[serde(transparent)]
 pub(crate) struct WorkspaceMetadataRevision(pub(crate) NonZeroU32);
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
-#[serde(try_from = "String")]
-pub(crate) struct ReleaseRevision(String);
-
-impl TryFrom<String> for ReleaseRevision {
-    type Error = String;
-
-    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
-        if value.len() == 40
-            && value
-                .bytes()
-                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-        {
-            Ok(Self(value))
-        } else {
-            Err("release revision must be 40 lowercase hexadecimal characters".to_string())
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub(crate) enum WorkspaceReadCapability {

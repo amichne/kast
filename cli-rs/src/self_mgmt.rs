@@ -7,9 +7,7 @@ use crate::install::{self, InstallRepairResult};
 use crate::manifest;
 #[cfg(target_os = "macos")]
 use crate::runtime;
-#[cfg(target_os = "macos")]
-use serde::Deserialize;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 #[cfg(target_os = "macos")]
 use std::collections::BTreeSet;
 use std::env;
@@ -94,6 +92,55 @@ pub enum InstallAuthority {
     Missing,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ReleaseDistribution {
+    MacosHomebrew,
+    ManagedLocal,
+}
+
+impl ReleaseDistribution {
+    pub(crate) fn canonical(self) -> &'static str {
+        match self {
+            Self::MacosHomebrew => "macos-homebrew",
+            Self::ManagedLocal => "managed-local",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "kebab-case",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
+pub enum EffectiveGeneration {
+    Release {
+        distribution: ReleaseDistribution,
+        revision: cli::ReleaseRevision,
+    },
+    LocalDevelopment {
+        generation_id: crate::local_development::LocalGenerationId,
+    },
+}
+
+impl EffectiveGeneration {
+    pub(crate) fn authority_name(&self) -> &'static str {
+        match self {
+            Self::Release { distribution, .. } => distribution.canonical(),
+            Self::LocalDevelopment { .. } => "local-development",
+        }
+    }
+
+    pub(crate) fn revision(&self) -> &str {
+        match self {
+            Self::Release { revision, .. } => revision.as_str(),
+            Self::LocalDevelopment { generation_id } => generation_id.as_str(),
+        }
+    }
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LegacyShadowDiagnostic {
@@ -111,6 +158,8 @@ pub struct SelfDoctorResult {
     pub target: ReadyTarget,
     pub installed: bool,
     pub install_authority: InstallAuthority,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effective_generation: Option<EffectiveGeneration>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub local_development: Option<crate::local_development::LocalDevelopmentReceipt>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -328,19 +377,37 @@ pub fn doctor(
         &binary,
         &mut issues,
     );
-    let install_authority = if local_development.is_some() {
-        InstallAuthority::LocalDevelopment
-    } else if homebrew_install.is_some() {
-        InstallAuthority::MacosHomebrew
+    let (install_authority, effective_generation) = if let Some(receipt) = &local_development {
+        (
+            InstallAuthority::LocalDevelopment,
+            Some(EffectiveGeneration::LocalDevelopment {
+                generation_id: receipt.generation_id.clone(),
+            }),
+        )
+    } else if let Some(receipt) = &homebrew_install {
+        (
+            InstallAuthority::MacosHomebrew,
+            Some(EffectiveGeneration::Release {
+                distribution: ReleaseDistribution::MacosHomebrew,
+                revision: receipt.cli.release_revision.clone(),
+            }),
+        )
     } else if install.is_some() {
-        InstallAuthority::ManagedLocal
+        (
+            InstallAuthority::ManagedLocal,
+            Some(EffectiveGeneration::Release {
+                distribution: ReleaseDistribution::ManagedLocal,
+                revision: cli::ReleaseRevision::current(),
+            }),
+        )
     } else {
-        InstallAuthority::Missing
+        (InstallAuthority::Missing, None)
     };
     let agent_environment = if matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin) {
         Some(agent_environment_diagnostic(
             workspace_root,
             install_authority,
+            effective_generation.as_ref(),
             local_development.as_ref(),
             install.as_ref(),
             &binary,
@@ -353,6 +420,7 @@ pub fn doctor(
         target,
         installed: local_development.is_some() || homebrew_install.is_some() || install.is_some(),
         install_authority,
+        effective_generation,
         local_development,
         homebrew_install,
         legacy_shadow,
@@ -1108,11 +1176,11 @@ mod tests {
                 compatibility: runtime::RuntimeCompatibilityFacts {
                     plugin_version: cli::version().to_string(),
                     cli_version: cli::version().to_string(),
-                    plugin_revision: runtime::ReleaseRevision::try_from(
+                    plugin_revision: cli::ReleaseRevision::try_from(
                         cli::release_revision().to_string(),
                     )
                     .expect("release revision"),
-                    cli_revision: runtime::ReleaseRevision::try_from(
+                    cli_revision: cli::ReleaseRevision::try_from(
                         cli::release_revision().to_string(),
                     )
                     .expect("release revision"),

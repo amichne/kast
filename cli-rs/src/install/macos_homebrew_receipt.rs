@@ -12,7 +12,7 @@ pub struct MacosHomebrewCliReceipt {
     pub binary: PathBuf,
     pub formula_prefix: PathBuf,
     pub version: String,
-    pub release_revision: String,
+    pub release_revision: cli::ReleaseRevision,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -75,7 +75,7 @@ impl MacosHomebrewInstallReceipt {
                 binary: cli_binary,
                 formula_prefix,
                 version: cli_version,
-                release_revision: cli::release_revision().to_string(),
+                release_revision: cli::ReleaseRevision::current(),
             },
             updated_at: current_timestamp(),
         }
@@ -201,7 +201,6 @@ fn validate_macos_homebrew_receipt(
     if !receipt.cli.binary.is_absolute()
         || !receipt.cli.formula_prefix.is_absolute()
         || receipt.cli.version.trim().is_empty()
-        || !is_release_revision(&receipt.cli.release_revision)
         || receipt.updated_at.trim().is_empty()
     {
         return Err(invalid_receipt(path, "contains an invalid CLI authority projection"));
@@ -217,12 +216,12 @@ fn validate_macos_homebrew_receipt(
             ),
         ));
     }
-    if receipt.cli.release_revision != cli::release_revision() {
+    if receipt.cli.release_revision != cli::ReleaseRevision::current() {
         return Err(CliError::new(
             "MACOS_HOMEBREW_RECEIPT_REVISION_MISMATCH",
             format!(
                 "macOS Homebrew CLI receipt records release revision {}; update Kast and rerun `kast repair --for machine --apply` with running revision {} at {}",
-                receipt.cli.release_revision,
+                receipt.cli.release_revision.as_str(),
                 cli::release_revision(),
                 path.display(),
             ),
@@ -257,13 +256,6 @@ fn invalid_receipt(path: &Path, reason: &str) -> CliError {
         "MACOS_HOMEBREW_RECEIPT_INVALID",
         format!("macOS Homebrew CLI receipt {reason} at {}", path.display()),
     )
-}
-
-fn is_release_revision(value: &str) -> bool {
-    value.len() == 40
-        && value
-            .bytes()
-            .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
 fn receipt_binary_is_executable(path: &Path) -> bool {
@@ -372,9 +364,8 @@ fn exact_stale_schema_3_macos_homebrew_receipt(path: &Path) -> Result<bool> {
     };
     Ok(receipt.schema_version == MACOS_HOMEBREW_RECEIPT_SCHEMA_VERSION
         && (receipt.cli.version != cli::version()
-            || receipt.cli.release_revision != cli::release_revision())
+            || receipt.cli.release_revision != cli::ReleaseRevision::current())
         && !receipt.cli.version.trim().is_empty()
-        && is_release_revision(&receipt.cli.release_revision)
         && !receipt.updated_at.trim().is_empty()
         && path_is_normalized_absolute(&receipt.cli.binary)
         && path_is_normalized_absolute(&receipt.cli.formula_prefix)

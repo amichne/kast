@@ -1,5 +1,5 @@
-const WORKSPACE_LEASE_SCHEMA_VERSION: u32 = 1;
-const WORKSPACE_LEASE_TOKEN_VERSION: &str = "kl1";
+const WORKSPACE_LEASE_SCHEMA_VERSION: u32 = 2;
+const WORKSPACE_LEASE_TOKEN_VERSION: &str = "kl2";
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -17,29 +17,10 @@ pub enum WorkspaceLeaseOwnership {
     Borrowed,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "kebab-case")]
-pub enum WorkspaceLeaseInstallAuthority {
-    LocalDevelopment,
-    MacosHomebrew,
-    ManagedLocal,
-}
-
-impl WorkspaceLeaseInstallAuthority {
-    fn canonical(self) -> &'static str {
-        match self {
-            Self::LocalDevelopment => "local-development",
-            Self::MacosHomebrew => "macos-homebrew",
-            Self::ManagedLocal => "managed-local",
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct WorkspaceLeaseInstallationIdentity {
-    pub authority: WorkspaceLeaseInstallAuthority,
-    pub generation: String,
+    pub generation: self_mgmt::EffectiveGeneration,
     pub environment_sha256: String,
 }
 
@@ -156,8 +137,7 @@ impl WorkspaceLeaseRecord {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct WorkspaceLeaseTokenClaims {
-    authority: WorkspaceLeaseInstallAuthority,
-    generation: String,
+    generation: self_mgmt::EffectiveGeneration,
     environment_sha256: String,
     workspace_root: PathBuf,
     backend_name: BackendName,
@@ -241,7 +221,6 @@ pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceL
                 acquired_at: acquired_at.clone(),
             };
             let claims = WorkspaceLeaseTokenClaims {
-                authority: binding.installation.authority,
                 generation: binding.installation.generation.clone(),
                 environment_sha256: binding.installation.environment_sha256.clone(),
                 workspace_root: binding.workspace_root.clone(),
@@ -475,45 +454,13 @@ fn lease_installation_identity(
     }
     let serialized = serde_json::to_vec(environment)?;
     let environment_sha256 = crate::manifest::sha256_bytes(&serialized);
-    let (authority, generation) = match doctor.install_authority {
-        self_mgmt::InstallAuthority::LocalDevelopment => (
-            WorkspaceLeaseInstallAuthority::LocalDevelopment,
-            doctor
-                .local_development
-                .as_ref()
-                .map(|receipt| receipt.generation_id.as_str().to_string()),
-        ),
-        self_mgmt::InstallAuthority::MacosHomebrew => (
-            WorkspaceLeaseInstallAuthority::MacosHomebrew,
-            doctor
-                .homebrew_install
-                .as_ref()
-                .map(|receipt| receipt.cli.version.clone()),
-        ),
-        self_mgmt::InstallAuthority::ManagedLocal => (
-            WorkspaceLeaseInstallAuthority::ManagedLocal,
-            doctor
-                .install
-                .as_ref()
-                .map(|install| install.install_id.clone()),
-        ),
-        self_mgmt::InstallAuthority::Missing => {
-            return Err(CliError::new(
-                "WORKSPACE_LEASE_AUTHORITY_MISSING",
-                "Workspace leases require one effective install authority.",
-            ));
-        }
-    };
-    let generation = generation
-        .filter(|value| !value.is_empty())
-        .ok_or_else(|| {
-            CliError::new(
-                "WORKSPACE_LEASE_GENERATION_MISSING",
-                "The effective install authority did not provide a generation identity.",
-            )
-        })?;
+    let generation = doctor.effective_generation.ok_or_else(|| {
+        CliError::new(
+            "WORKSPACE_LEASE_AUTHORITY_MISSING",
+            "Workspace leases require one effective install generation.",
+        )
+    })?;
     Ok(WorkspaceLeaseInstallationIdentity {
-        authority,
         generation,
         environment_sha256,
     })
@@ -983,13 +930,13 @@ fn validate_token_environment(
     claims: &WorkspaceLeaseTokenClaims,
     installation: &WorkspaceLeaseInstallationIdentity,
 ) -> Result<()> {
-    if claims.authority != installation.authority {
+    if claims.generation.authority_name() != installation.generation.authority_name() {
         return Err(CliError::new(
             "WORKSPACE_LEASE_FOREIGN_AUTHORITY",
             format!(
                 "Workspace lease authority {} is not the effective authority {}.",
-                claims.authority.canonical(),
-                installation.authority.canonical()
+                claims.generation.authority_name(),
+                installation.generation.authority_name()
             ),
         ));
     }
@@ -1357,8 +1304,10 @@ mod workspace_lease_tests {
     #[test]
     fn signed_token_rejects_tampering() {
         let claims = WorkspaceLeaseTokenClaims {
-            authority: WorkspaceLeaseInstallAuthority::ManagedLocal,
-            generation: "generation-1".to_string(),
+            generation: self_mgmt::EffectiveGeneration::Release {
+                distribution: self_mgmt::ReleaseDistribution::ManagedLocal,
+                revision: cli::ReleaseRevision::current(),
+            },
             environment_sha256: "a".repeat(64),
             workspace_root: PathBuf::from("/workspace"),
             backend_name: BackendName::Headless,
@@ -1439,8 +1388,14 @@ mod workspace_lease_tests {
     #[test]
     fn token_environment_distinguishes_foreign_authority_from_stale_generation() {
         let claims = WorkspaceLeaseTokenClaims {
-            authority: WorkspaceLeaseInstallAuthority::LocalDevelopment,
-            generation: "generation-1".to_string(),
+            generation: self_mgmt::EffectiveGeneration::LocalDevelopment {
+                generation_id: crate::local_development::LocalGenerationId::try_from(format!(
+                    "{}-{}",
+                    "a".repeat(12),
+                    "1".repeat(64)
+                ))
+                .expect("generation"),
+            },
             environment_sha256: "a".repeat(64),
             workspace_root: PathBuf::from("/workspace"),
             backend_name: BackendName::Headless,
@@ -1448,8 +1403,10 @@ mod workspace_lease_tests {
             record_id: uuid::Uuid::new_v4(),
         };
         let foreign = WorkspaceLeaseInstallationIdentity {
-            authority: WorkspaceLeaseInstallAuthority::ManagedLocal,
-            generation: claims.generation.clone(),
+            generation: self_mgmt::EffectiveGeneration::Release {
+                distribution: self_mgmt::ReleaseDistribution::ManagedLocal,
+                revision: cli::ReleaseRevision::current(),
+            },
             environment_sha256: claims.environment_sha256.clone(),
         };
         assert_eq!(
@@ -1460,8 +1417,14 @@ mod workspace_lease_tests {
         );
 
         let stale = WorkspaceLeaseInstallationIdentity {
-            authority: claims.authority,
-            generation: "generation-2".to_string(),
+            generation: self_mgmt::EffectiveGeneration::LocalDevelopment {
+                generation_id: crate::local_development::LocalGenerationId::try_from(format!(
+                    "{}-{}",
+                    "a".repeat(12),
+                    "2".repeat(64)
+                ))
+                .expect("generation"),
+            },
             environment_sha256: claims.environment_sha256.clone(),
         };
         assert_eq!(
@@ -1474,18 +1437,30 @@ mod workspace_lease_tests {
 
     #[test]
     fn release_identity_distinguishes_same_version_revisions() {
-        fn release_identity(_revision: &str) -> WorkspaceLeaseInstallationIdentity {
+        fn release_identity(revision: &str) -> WorkspaceLeaseInstallationIdentity {
             WorkspaceLeaseInstallationIdentity {
-                authority: WorkspaceLeaseInstallAuthority::MacosHomebrew,
-                generation: "0.13.2".to_string(),
+                generation: self_mgmt::EffectiveGeneration::Release {
+                    distribution: self_mgmt::ReleaseDistribution::MacosHomebrew,
+                    revision: cli::ReleaseRevision::try_from(revision.to_string())
+                        .expect("revision"),
+                },
                 environment_sha256: "a".repeat(64),
             }
         }
 
+        let release_a = release_identity(&"a".repeat(40));
         assert_ne!(
-            release_identity(&"a".repeat(40)),
+            release_a,
             release_identity(&"b".repeat(40)),
             "release revision must participate in the lease generation identity",
         );
+        let serialized = serde_json::to_value(release_a).expect("installation identity");
+        assert_eq!(serialized["generation"]["kind"], "release");
+        assert_eq!(
+            serialized["generation"]["distribution"],
+            "macos-homebrew"
+        );
+        assert_eq!(serialized["generation"]["revision"], "a".repeat(40));
+        assert!(serialized.get("authority").is_none());
     }
 }
