@@ -174,6 +174,14 @@ pub(crate) fn assess_runtime_compatibility(
             format!("The compiled runtime compatibility source is invalid: {error}"),
         )
     })?;
+    assess_runtime_compatibility_source(facts, operation_capability, &source)
+}
+
+fn assess_runtime_compatibility_source(
+    facts: &RuntimeCompatibilityFacts,
+    operation_capability: Option<RuntimeCapability>,
+    source: &RuntimeCompatibilitySource,
+) -> Result<RuntimeCompatibilityAssessment> {
     validate_runtime_compatibility_source(&source)?;
     if facts.plugin_revision != facts.cli_revision {
         return Ok(RuntimeCompatibilityAssessment::UpdateRequired {
