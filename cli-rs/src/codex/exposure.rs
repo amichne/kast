@@ -358,6 +358,7 @@ fn classify_metrics(command: &MetricsCommand) -> CodexExposure {
 fn classify_machine(command: &MachineCommand) -> CodexExposure {
     match command {
         MachineCommand::Status
+        | MachineCommand::Activate(_)
         | MachineCommand::Defaults(_)
         | MachineCommand::Shell(_)
         | MachineCommand::Completion(_) => CodexExposure::NotExposed,

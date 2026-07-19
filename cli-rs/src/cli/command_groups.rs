@@ -55,6 +55,8 @@ pub struct MachineArgs {
 pub enum MachineCommand {
     /// Report the installed bundle and daemon state without changing them.
     Status,
+    /// Atomically make this CLI, one IDEA plugin, and embedded resources machine-wide.
+    Activate(MachineActivateArgs),
     /// Configure developer-machine defaults to use the IDEA plugin backend.
     Defaults(DeveloperMachineDefaultsArgs),
     /// Install shell PATH and completion integration.
@@ -62,6 +64,13 @@ pub enum MachineCommand {
     /// Print shell completion scripts.
     #[command(hide = true)]
     Completion(CompletionArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct MachineActivateArgs {
+    /// Exact Kast IDEA plugin ZIP to install beside this running CLI.
+    #[arg(long = "idea-plugin")]
+    pub idea_plugin: PathBuf,
 }
 
 #[derive(Debug, Args, Clone)]

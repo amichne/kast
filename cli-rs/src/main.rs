@@ -672,6 +672,15 @@ fn run_machine(command: cli::MachineCommand, output_format: OutputFormat) -> Res
             }
             Ok(0)
         }
+        cli::MachineCommand::Activate(args) => {
+            let result = machine::activate(args)?;
+            if output_format.is_structured() {
+                output::print_structured(&result, output_format)?;
+            } else {
+                println!("Kast machine\n\nState: activated\nCLI: {}", result.cli);
+            }
+            Ok(0)
+        }
         cli::MachineCommand::Defaults(args) => {
             let result = self_mgmt::configure_developer_machine_defaults(args.dry_run)?;
             if output_format.is_structured() {
