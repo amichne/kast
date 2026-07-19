@@ -497,54 +497,6 @@ mod tests {
             CodexExposure::NotExposed
         );
         assert_eq!(
-            parsed_exposure(&[
-                "developer",
-                "local",
-                "prepare",
-                "--source-root",
-                ".",
-                "--expected-source-snapshot",
-                "snapshot.json",
-                "--cli-binary",
-                "kast",
-                "--cli-provenance",
-                "cli.json",
-                "--backend-directory",
-                "backend",
-                "--backend-provenance",
-                "backend.json",
-                "--output-directory",
-                "prepared",
-            ]),
-            CodexExposure::NotExposed
-        );
-        assert_eq!(
-            parsed_exposure(&[
-                "developer",
-                "local",
-                "verify",
-                "--source-root",
-                ".",
-                "--prepared-generation",
-                "prepared",
-            ]),
-            CodexExposure::NotExposed
-        );
-        assert_eq!(
-            parsed_exposure(&[
-                "developer",
-                "local",
-                "activate",
-                "--source-root",
-                ".",
-                "--workspace-root",
-                ".",
-                "--prepared-generation",
-                "prepared",
-            ]),
-            CodexExposure::NotExposed
-        );
-        assert_eq!(
             parsed_exposure(&["developer", "codex", "hook", "stop"]),
             CodexExposure::HookOnly(CodexHookCommand::Event(CodexHookEvent::Stop))
         );

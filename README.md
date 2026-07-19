@@ -17,15 +17,10 @@ the developer installer:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The installer establishes the fail-closed Homebrew CLI receipt, derives its
-exact release tag, and delegates the matching plugin's initial installation to
-JetBrains' `installPlugins` command. That command does not replace an existing
-plugin. If no standard IDE launcher is found, the installer prints the exact
-GitHub Release ZIP for **Install Plugin from Disk**. Add
-`https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml`
-as a custom plugin repository for native updates, then open the exact project
-so the plugin writes compatibility metadata. `install.sh verify` rejects an
-unsupported CLI/plugin pair after that metadata refresh.
+The installer downloads one exact CLI/plugin release pair, activates it as the
+machine bundle, and synchronously reconciles the plugin and agent resources
+while the IDE is closed. It installs no background service. Open the exact
+project after the installer completes so the plugin writes workspace metadata.
 In normal use, open your project in IntelliJ IDEA or Android Studio after the
 installer completes.
 
@@ -48,15 +43,14 @@ Kast contributors can build and activate the exact current checkout without
 publishing a release or changing Homebrew and JetBrains release authority.
 
 ```console
-./gradlew refreshDevelopmentLocal
+./gradlew refreshDevelopmentMachine
 ```
 
-The command creates a source-bound headless authority under
-`.kast/local-development/`, including the CLI, backend, skill, agent guidance,
-configuration, and strict receipt. Follow [validate a local
-checkout](https://kast.michne.com/distribute/local-development-refresh/) for
-machine-readable verification, linked-worktree isolation, rollback, and
-removal.
+The command synchronously selects one machine-scoped CLI, IDEA plugin, skill,
+and Codex adapter. It creates no worktree-local installation and starts no
+headless JVM. Follow [refresh a development
+machine](https://kast.michne.com/distribute/local-development-refresh/) for
+verification and linked-worktree leases.
 
 ## Try it on your code
 
@@ -117,8 +111,7 @@ headless runtime on a supported host. `kast agent verify --workspace-root
 "$PWD"` reports the selected backend, exact root, source modules, limitations,
 and evidence quality; it never borrows another checkout's runtime.
 Verification only reuses an already ready runtime: it never launches an IDE or
-starts a headless backend. On macOS, applied mutations still require exact-root
-plugin preparation even when `--backend=headless` is selected.
+starts a headless backend. macOS does not permit a local headless runtime.
 
 ## Documentation
 
@@ -129,7 +122,7 @@ plugin preparation even when `--backend=headless` is selected.
   or explore your repository with the
   [read-only demo](https://kast.michne.com/learn/repository-demo/).
 - Browse the [command reference](https://kast.michne.com/reference/commands/).
-- Validate an unreleased checkout with the [local development refresh](https://kast.michne.com/distribute/local-development-refresh/).
+- Activate an unreleased checkout with the [development-machine refresh](https://kast.michne.com/distribute/local-development-refresh/).
 - Use [inspect Kotlin](https://kast.michne.com/use/inspect-kotlin/) and
   [plan safe edits](https://kast.michne.com/use/plan-safe-edits/) for common
   CLI workflows.

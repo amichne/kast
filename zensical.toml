@@ -43,7 +43,7 @@ nav = [
   ]},
   { "Troubleshoot" = "troubleshoot.md" },
   { "Distribute" = [
-    { "Validate a local checkout" = "distribute/local-development-refresh.md" },
+    { "Refresh a development machine" = "distribute/local-development-refresh.md" },
     { "Release and mirror workflow" = "distribute/release-and-mirror.md" },
     { "Runtime artifact contract" = "distribute/runtime-artifact-contract.md" },
   ]},

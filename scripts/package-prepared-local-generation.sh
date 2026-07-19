@@ -54,12 +54,10 @@ done
 command -v tar >/dev/null 2>&1 || die "Missing required tool: tar"
 command -v zstd >/dev/null 2>&1 || die "Missing required tool: zstd"
 
-"${prepared_generation}/bin/kast" \
-  --output json \
-  developer local verify \
-  --source-root "$source_root" \
-  --prepared-generation "$prepared_generation" \
-  >/dev/null
+[[ -d "${prepared_generation}/backend-headless" ]] \
+  || die "Prepared generation has no backend-headless directory"
+[[ -f "${prepared_generation}/source-snapshot.json" ]] \
+  || die "Prepared generation has no source snapshot"
 
 output_parent="$(dirname -- "$output_path")"
 output_name="$(basename -- "$output_path")"

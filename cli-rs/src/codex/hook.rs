@@ -1025,9 +1025,9 @@ mod tests {
     }
 
     #[test]
-    fn local_stable_entrypoint_is_recognized_as_a_typed_agent_command() {
+    fn machine_entrypoint_is_recognized_as_a_typed_agent_command() {
         assert!(matches!(
-            parsed_agent_command("/tmp/worktree/.kast/local-development/bin/kast-dev agent verify"),
+            parsed_agent_command("/tmp/machine/bin/kast agent verify"),
             Some(AgentCommand::Verify(_)),
         ));
     }

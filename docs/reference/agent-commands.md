@@ -39,33 +39,31 @@ shapes.
 Acquire a lease before a coordinated semantic-work session:
 
 ```console
-kast --output json agent lease acquire --workspace-root "$PWD" --backend idea
+kast --output json agent lease acquire --workspace-root "$PWD"
 ```
 
 The `READY` result contains an opaque `leaseId`, canonical `workspaceRoot`,
 workspace classification, selected backend, full runtime and process-start
 identity, effective install authority and generation, owner identity, and
-`STARTED` or `BORROWED` ownership. Acquisition accepts only a fully `READY`
-runtime. It may start headless through the existing lifecycle, but it only
-borrows IDEA and never launches or terminates the IDE.
+`BORROWED` ownership. Acquisition accepts only a fully `READY` IDEA runtime
+and never launches or terminates the IDE.
 
-Pass `--workspace-root`, `--backend`, and `--lease-id` to every semantic or
+Pass `--workspace-root`, `--backend idea`, and `--lease-id` to every semantic or
 operation command in the session. Kast authenticates the token and record,
 then rechecks the same root, backend, live owner/session, effective generation,
 and exact ready runtime before opening a semantic session.
 
 ```console
-kast agent lease status --workspace-root "$PWD" --backend idea --lease-id <id>
+kast agent lease status --workspace-root "$PWD" --lease-id <id>
 kast agent verify --workspace-root "$PWD" --backend idea --lease-id <id>
-kast agent lease release --workspace-root "$PWD" --backend idea --lease-id <id>
+kast agent lease release --workspace-root "$PWD" --lease-id <id>
 ```
 
 Status reports `READY`, `ABANDONED`, `FAILED`, or terminal `RELEASED`. One live
-lease owns an exact root/backend; another acquisition returns
+lease owns an exact root/IDEA instance; another acquisition returns
 `WORKSPACE_LEASE_CONFLICT`. A later acquisition may recover an abandoned owner
-using process-start evidence. Release is idempotent and stops only the exact
-headless runtime that the lease started. Borrowed headless and IDEA runtimes
-remain running. Wrong-root, wrong-backend, foreign-session/authority,
+using process-start evidence. Release is idempotent and leaves IDEA running.
+Wrong-root, wrong-backend, foreign-session/authority,
 tampered-record/token, stale-generation, replaced-runtime, and unavailable
 runtime failures remain distinct typed outcomes.
 
@@ -386,7 +384,7 @@ cardinality only.
     developer install path.
 
     ```console
-    kast agent lease acquire --workspace-root "$PWD" --backend idea
+    kast agent lease acquire --workspace-root "$PWD"
     # Append --backend idea --lease-id <id> to every semantic command below.
     kast agent verify --workspace-root "$PWD" --backend idea --lease-id <id>
     kast agent workspace-files --kind source --workspace-root "$PWD"
@@ -416,5 +414,5 @@ cardinality only.
     kast agent operation status \
       --idempotency-key rename-order-service \
       --workspace-root "$PWD"
-    kast agent lease release --workspace-root "$PWD" --backend idea --lease-id <id>
+    kast agent lease release --workspace-root "$PWD" --lease-id <id>
     ```

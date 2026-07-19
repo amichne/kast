@@ -36,14 +36,12 @@ if actual_replacements != expected_replacements:
     raise SystemExit(f"retired macOS proofs must name their Linux replacements: {actual_replacements}")
 if report["comparison"]["taskCountIncrease"] != 4:
     raise SystemExit("the final graph must add exactly four execution nodes after removing the duplicate macOS producer")
-if report["candidate"]["pullRequestTaskCount"] != report["baseline"]["pullRequestTaskCount"] + 3:
-    raise SystemExit("the final graph must add exactly three pull-request execution nodes after relocating the full canary and deleting the macOS duplicate")
+if report["candidate"]["pullRequestTaskCount"] != report["baseline"]["pullRequestTaskCount"] + 4:
+    raise SystemExit("the final graph must add exactly four pull-request execution nodes after deleting the macOS duplicate and local headless proofs")
 if report["candidate"]["fanoutGateSeconds"] > 90:
     raise SystemExit("the modeled static fanout gate must not exceed 90 seconds")
-if report["candidate"]["canaryTaskIds"] != ["local-development-semantic-e2e"]:
-    raise SystemExit("the full installed semantic E2E must remain modeled as a canary")
-if "local-development-semantic-e2e" in report["candidate"]["criticalPathTaskIds"]:
-    raise SystemExit("the full installed semantic E2E must not remain on the pull-request critical path")
+if report["candidate"]["canaryTaskIds"]:
+    raise SystemExit("the retired local headless semantic E2E must not remain modeled as a canary")
 if not any("provisional" in warning for warning in report["warnings"]):
     raise SystemExit("timing evidence must remain explicitly provisional below five samples")
 PY
@@ -88,41 +86,6 @@ if report["status"] != "pass":
         "blocking PR timing must not require five samples from an off-PR canary: "
         + "; ".join(report["failures"])
     )
-if not any(
-    warning.startswith(
-        "baseline required tasks below minimumTaskSamples: installed-semantic-fixture"
-    )
-    for warning in report["warnings"]
-):
-    raise SystemExit("undersampled historical baseline tasks must remain explicit warnings")
-PY
-
-required_canary_model="${scratch_dir}/required-canary.json"
-python3 - "$model" "$required_canary_model" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-source = Path(sys.argv[1])
-target = Path(sys.argv[2])
-document = json.loads(source.read_text(encoding="utf-8"))
-document["candidate"]["canaryTaskIds"] = []
-target.write_text(json.dumps(document), encoding="utf-8")
-PY
-
-required_canary_report="${scratch_dir}/required-canary-report.json"
-python3 "$checker" "$required_canary_model" >"$required_canary_report"
-python3 - "$report" "$required_canary_report" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-canary = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-required = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
-if "local-development-semantic-e2e" not in required["candidate"]["criticalPathTaskIds"]:
-    raise SystemExit("clearing canaryTaskIds must restore the E2E to the required critical path")
-if required["candidate"]["criticalPathSeconds"] <= canary["candidate"]["criticalPathSeconds"]:
-    raise SystemExit("a required full E2E must lengthen the modeled pull-request critical path")
 PY
 
 lost_output_model="${scratch_dir}/lost-output.json"

@@ -138,5 +138,5 @@ case "$package_kind" in
     ;;
 esac
 
-printf 'Derived %s package from attested prepared generation %s\n' \
+printf 'Derived %s package from immutable CI runtime input %s\n' \
   "$package_kind" "$prepared_generation" >&2
