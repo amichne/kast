@@ -75,19 +75,8 @@ class KastProjectOpenProfileAutoInitTest {
         val installed = result as ProjectOpenProfileAutoInitResult.Installed
         assertEquals(workspace.resolve(".kast/setup/workspace.json"), installed.metadataPath)
         assertEquals(emptyList<Path>(), installed.backups)
-        assertTrue(workspace.resolve(".agents/skills/kast/SKILL.md").isRegularFile())
-        assertTrue(workspace.resolve("AGENTS.local.md").isRegularFile())
-        val skill = Files.readString(workspace.resolve(".agents/skills/kast/SKILL.md"))
-        assertTrue(skill.contains("kast-cli-dialect-revision: \"2\""), skill)
-        assertTrue(skill.contains("For every delegated worker using a linked Git worktree"), skill)
-        assertTrue(skill.contains("Before the worker starts, open the exact worktree root"), skill)
-        assertTrue(skill.contains("Never reuse another worktree's Kast runtime, metadata, or semantic evidence"), skill)
-        assertTrue(skill.contains("Keep that IDE project open while the worker and worktree are active"), skill)
-        assertTrue(skill.contains("close that exact IDE project or window before removing the worktree"), skill)
-        val guidance = Files.readString(workspace.resolve("AGENTS.local.md"))
-        assertTrue(guidance.contains("the IntelliJ plugin owns workspace bootstrap"), guidance)
-        assertTrue(guidance.contains("Before each linked worker starts"), guidance)
-        assertTrue(guidance.contains("close its exact IDE project or window before removing the worktree"), guidance)
+        assertFalse(workspace.resolve(".agents/skills/kast").exists())
+        assertFalse(workspace.resolve("AGENTS.local.md").exists())
         val metadata = Files.readString(installed.metadataPath)
         assertTrue(metadata.contains("\"preparedBy\": \"kast-intellij-plugin\""), metadata)
         assertTrue(metadata.contains("\"cliBinary\": \"${binary.toString().jsonEscaped()}\""), metadata)
@@ -96,6 +85,12 @@ class KastProjectOpenProfileAutoInitTest {
         assertFalse(metadataObject.containsKey("pluginVersion"))
         assertFalse(metadataObject.containsKey("cliVersion"))
         val compatibility = metadataObject.getValue("compatibility").jsonObject
+        assertEquals(
+            listOf(".kast/setup/workspace.json"),
+            metadataObject.getValue("requiredArtifacts").jsonArray.map { artifact ->
+                artifact.jsonPrimitive.content
+            },
+        )
         assertEquals(1, compatibility.getValue("protocolRevision").jsonPrimitive.int)
         assertEquals(3, compatibility.getValue("workspaceMetadataRevision").jsonPrimitive.int)
         assertEquals("IDEA", compatibility.getValue("runtimeIdentity").jsonObject.getValue("backendKind").jsonPrimitive.content)
@@ -164,7 +159,7 @@ class KastProjectOpenProfileAutoInitTest {
     }
 
     @Test
-    fun `plugin bootstrap backs up and removes unknown prior managed artifacts`() {
+    fun `plugin bootstrap leaves user and provider resources untouched`() {
         val workspace = gradleWorkspace()
         val binary = fakeKastBinary()
         Files.createDirectories(workspace.resolve(".agents/instructions/kast"))
@@ -182,12 +177,10 @@ class KastProjectOpenProfileAutoInitTest {
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
         val installed = result as ProjectOpenProfileAutoInitResult.Installed
-        assertTrue(installed.backups.isNotEmpty())
-        assertFalse(workspace.resolve(".agents/instructions/kast").exists())
-        assertFalse(workspace.resolve(".github/extensions/kast").exists())
-        assertFalse(workspace.resolve(".agents/skills/kast/old.txt").exists())
-        assertTrue(workspace.resolve(".agents/skills/kast/SKILL.md").isRegularFile())
-        assertTrue(installed.backups.all { backup -> backup.startsWith(workspace.resolve(".kast/backups")) })
+        assertEquals(emptyList<Path>(), installed.backups)
+        assertTrue(workspace.resolve(".agents/instructions/kast/README.md").isRegularFile())
+        assertTrue(workspace.resolve(".github/extensions/kast/extension.mjs").isRegularFile())
+        assertTrue(workspace.resolve(".agents/skills/kast/old.txt").isRegularFile())
     }
 
     @Test
