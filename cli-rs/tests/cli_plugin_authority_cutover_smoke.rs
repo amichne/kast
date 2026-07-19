@@ -269,6 +269,10 @@ fn explicit_homebrew_receipt_reset_preserves_unknown_bytes_and_restores_authorit
         ordinary_diagnostic.contains("--reset-homebrew-receipt"),
         "blocked authority must name its explicit recovery path: {ordinary_diagnostic}"
     );
+    assert!(
+        !ordinary_diagnostic.contains("run `kast repair --for machine --apply`"),
+        "blocked authority must not recommend the repair path that rejected it: {ordinary_diagnostic}"
+    );
     assert_eq!(
         std::fs::read(&receipt).expect("preserved receipt"),
         original
