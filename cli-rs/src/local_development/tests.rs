@@ -1794,26 +1794,8 @@ mod refresh_tests {
             "first",
         ))
         .expect("refresh");
-        let receipt: serde_json::Value = serde_json::from_slice(
-            &fs::read(prefix.join("authority.json")).expect("active authority"),
-        )
-        .expect("active authority JSON");
         let tombstone = fixture.path().join(".local-authority.removing");
-        let authority = fixture
-            .path()
-            .join(".local-authority.removing-authority.json");
-        fs::write(
-            &authority,
-            serde_json::to_vec_pretty(&serde_json::json!({
-                "schemaVersion": 1,
-                "authority": receipt["authority"],
-                "generationId": receipt["generationId"],
-                "workspaceRoot": receipt["workspaceRoot"],
-                "prefix": receipt["prefix"],
-            }))
-            .expect("external removal authority JSON"),
-        )
-        .expect("external removal authority");
+        let authority = write_removal_tombstone_authority(&prefix);
         fs::rename(&prefix, &tombstone).expect("simulate removal rename");
         fs::remove_file(tombstone.join("current")).expect("delete internal current proof");
         fs::remove_dir_all(tombstone.join("generations"))
@@ -1828,6 +1810,50 @@ mod refresh_tests {
         assert!(removed.removed);
         assert!(!prefix.exists());
         assert!(!tombstone.exists());
+        assert!(!authority.exists());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn refresh_reconciles_removal_intent_left_before_the_prefix_rename() {
+        let repository = initialized_repository();
+        let fixture = tempfile::tempdir().expect("fixture");
+        let prefix = fixture.path().join("local-authority");
+        let initial = refresh_local_development(refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "first",
+        ))
+        .expect("initial refresh");
+        let authority = write_removal_tombstone_authority(&prefix);
+        write_file(
+            &fixture.path().join("build/kast"),
+            b"#!/bin/sh\necho replacement\n",
+        );
+        make_executable(&fixture.path().join("build/kast"));
+
+        let replacement = refresh_local_development(refresh_request(
+            repository.path(),
+            repository.path(),
+            fixture.path(),
+            &prefix,
+            "replacement",
+        ))
+        .expect("refresh after interrupted pre-rename removal");
+        assert_ne!(
+            initial.receipt.generation_id,
+            replacement.receipt.generation_id
+        );
+        let removed = remove_local_development(LocalDevelopmentRemoveRequest {
+            prefix: prefix.clone(),
+            workspace_root: repository.path().to_path_buf(),
+        })
+        .expect("new generation removal must not inherit stale intent");
+
+        assert!(removed.removed);
+        assert!(!prefix.exists());
         assert!(!authority.exists());
     }
 
@@ -2592,6 +2618,36 @@ mod refresh_tests {
     fn write_file(path: &Path, bytes: &[u8]) {
         fs::create_dir_all(path.parent().expect("file parent")).expect("create parent");
         fs::write(path, bytes).expect("write file");
+    }
+
+    fn write_removal_tombstone_authority(prefix: &Path) -> std::path::PathBuf {
+        let receipt: serde_json::Value = serde_json::from_slice(
+            &fs::read(prefix.join("authority.json")).expect("active authority"),
+        )
+        .expect("active authority JSON");
+        let authority = prefix
+            .parent()
+            .expect("prefix parent")
+            .join(format!(
+                ".{}.removing-authority.json",
+                prefix
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .expect("prefix name")
+            ));
+        fs::write(
+            &authority,
+            serde_json::to_vec_pretty(&serde_json::json!({
+                "schemaVersion": 1,
+                "authority": receipt["authority"],
+                "generationId": receipt["generationId"],
+                "workspaceRoot": receipt["workspaceRoot"],
+                "prefix": receipt["prefix"],
+            }))
+            .expect("external removal authority JSON"),
+        )
+        .expect("external removal authority");
+        authority
     }
 
     #[cfg(unix)]
