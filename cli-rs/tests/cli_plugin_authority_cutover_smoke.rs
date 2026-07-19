@@ -215,7 +215,11 @@ fn repair_plans_schema_2_recovery_without_mutation() {
         payload["ready"]["authorityResolution"]["plan"]["applyCommand"],
         format!(
             "'{}' repair --for machine --apply",
-            binary.display().to_string().replace('\'', "'\\''")
+            std::fs::canonicalize(&binary)
+                .expect("canonical Homebrew binary")
+                .display()
+                .to_string()
+                .replace('\'', "'\\''")
         ),
         "the recovery plan must retain the proven Cellar binary: {payload:#}",
     );
@@ -298,7 +302,11 @@ fn explicit_homebrew_receipt_reset_preserves_unknown_bytes_and_restores_authorit
         planned_reset["command"],
         format!(
             "'{}' repair --for machine --reset-homebrew-receipt --apply",
-            binary.display().to_string().replace('\'', "'\\''")
+            std::fs::canonicalize(&binary)
+                .expect("canonical Homebrew binary")
+                .display()
+                .to_string()
+                .replace('\'', "'\\''")
         ),
         "{plan_payload:#}",
     );

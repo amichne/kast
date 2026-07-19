@@ -499,15 +499,17 @@ fn repair_macos_homebrew_cli_authority(
                             ),
                         )
                     })?;
+                    let reset_command = format!(
+                        "{} repair --for machine --reset-homebrew-receipt --apply",
+                        shell_quote(&replacement.cli.binary.display().to_string())
+                    );
+                    result.apply_command = reset_command.clone();
                     push_repair_action(
                         result,
                         "reset-homebrew-cli-receipt",
                         &receipt_path,
                         "Preserve the exact blocked receipt bytes, then atomically establish CLI authority from the running Cellar/kast executable.",
-                        Some(
-                            "kast repair --for machine --reset-homebrew-receipt --apply"
-                                .to_string(),
-                        ),
+                        Some(reset_command),
                     );
                     if args.apply {
                         backup_existing_path(&receipt_path, backup_root, result)?;
@@ -515,16 +517,36 @@ fn repair_macos_homebrew_cli_authority(
                         let written = read_macos_homebrew_receipt_at(&receipt_path)?;
                         validate_running_macos_homebrew_receipt(&receipt_path, written)?;
                     }
-                    return Ok(args.apply);
+                    return Ok(false);
                 }
-                MacosHomebrewAuthorityResolution::Blocked(error) => return Err(error),
+                MacosHomebrewAuthorityResolution::Blocked(mut error) => {
+                    if let Some(replacement) = discover_running_homebrew_receipt()? {
+                        let reset_command = format!(
+                            "{} repair --for machine --reset-homebrew-receipt --apply",
+                            shell_quote(&replacement.cli.binary.display().to_string())
+                        );
+                        error.message = format!(
+                            "{}; preserve the receipt and explicitly reset it with: {reset_command}",
+                            error.message
+                        );
+                        error
+                            .details
+                            .insert("resetCommand".to_string(), reset_command);
+                    }
+                    return Err(error);
+                }
             };
+            let repair_command = format!(
+                "{} repair --for machine --apply",
+                shell_quote(&replacement.cli.binary.display().to_string())
+            );
+            result.apply_command = repair_command.clone();
             push_repair_action(
                 result,
                 "establish-homebrew-cli-receipt",
                 &receipt_path,
                 "Back up recognized legacy or stale receipt state and write the current CLI-only Homebrew authority receipt.",
-                Some("kast repair --for machine --apply".to_string()),
+                Some(repair_command),
             );
             if args.apply {
                 backup_existing_path(&receipt_path, backup_root, result)?;

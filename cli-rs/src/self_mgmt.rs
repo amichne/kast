@@ -130,7 +130,7 @@ pub enum EffectiveGeneration {
 pub struct AuthorityRecoveryPlan {
     pub kind: &'static str,
     pub target: String,
-    pub apply_command: &'static str,
+    pub apply_command: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -436,13 +436,16 @@ pub fn doctor(
                     },
                 },
             ),
-            install::MacosHomebrewAuthorityResolution::Recoverable(_) => {
+            install::MacosHomebrewAuthorityResolution::Recoverable(receipt) => {
                 let plan = AuthorityRecoveryPlan {
                     kind: "establish-homebrew-cli-receipt",
                     target: install::default_macos_homebrew_receipt_path()
                         .display()
                         .to_string(),
-                    apply_command: "kast repair --for machine --apply",
+                    apply_command: format!(
+                        "{} repair --for machine --apply",
+                        shell_quote_for_remediation(&receipt.cli.binary.display().to_string())
+                    ),
                 };
                 issues.push(format!(
                     "Homebrew CLI authority is recoverable; apply the bounded plan with: {}",
