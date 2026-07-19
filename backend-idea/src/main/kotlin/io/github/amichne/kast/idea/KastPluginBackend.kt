@@ -3,6 +3,7 @@ package io.github.amichne.kast.idea
 import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.ModuleManager
@@ -1722,12 +1723,19 @@ internal class KastPluginBackend(
                 file.collectDiagnostics(KaDiagnosticCheckerFilter.EXTENDED_AND_COMMON_CHECKERS)
                     .flatMap { diagnostic -> diagnostic.toApiDiagnostics() }
             }
+            val documentManager = FileDocumentManager.getInstance()
+            val document = documentManager.getDocument(virtualFile)
+            val fileHash = if (document != null && documentManager.isDocumentUnsaved(document)) {
+                FileHashing.sha256(file.text)
+            } else {
+                FileHashing.sha256(Files.readAllBytes(Path.of(filePath.value)))
+            }
             DiagnosticsFileAnalysis(
                 status = FileAnalysisStatus.analyzed(filePath),
                 diagnostics = fileDiagnostics,
                 fileHash = FileHash(
                     filePath = filePath.value,
-                    hash = FileHashing.sha256(file.text),
+                    hash = fileHash,
                 ),
             )
         } catch (ex: ProcessCanceledException) {

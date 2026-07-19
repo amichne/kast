@@ -151,6 +151,23 @@ class KastDiagnosticsCompletenessTest {
     }
 
     @Test
+    fun `saved diagnostic hash preserves raw BOM and CRLF bytes`() = runBlocking {
+        ensureProjectReady()
+        val filePath = sourceRoot.resolve("RawBytes.kt")
+        val sourceBytes = "\uFEFFpackage diagnostics\r\n\r\nfun rawBytes(): Int = 42\r\n".toByteArray()
+        Files.write(filePath, sourceBytes)
+        checkNotNull(LocalFileSystem.getInstance().refreshAndFindFileByNioFile(filePath))
+        waitUntilIndexesAreReady(project)
+
+        val result = backend().diagnostics(
+            DiagnosticsQuery(filePaths = listOf(filePath.toString())),
+        )
+
+        assertEquals(SemanticAnalysisOutcome.COMPLETE, result.semanticOutcome)
+        assertEquals(FileHashing.sha256(sourceBytes), result.fileHashes.single().hash)
+    }
+
+    @Test
     fun `diagnostic hash reflects unsaved committed PSI text from the analysis epoch`() = runBlocking {
         ensureProjectReady()
         val psiFile = validFileFixture.get()
