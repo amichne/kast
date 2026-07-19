@@ -342,7 +342,9 @@ fn validate_runtime_compatibility_source(source: &RuntimeCompatibilitySource) ->
             || pair.evidence.is_empty()
             || resolve_release_revision(&pair.plugin_revision).is_none()
             || resolve_release_revision(&pair.cli_revision).is_none()
-            || pair.plugin_revision != pair.cli_revision
+            || (resolve_release_version(&pair.plugin_version)
+                == resolve_release_version(&pair.cli_version)
+                && pair.plugin_revision != pair.cli_revision)
             || required.len() != pair.required_capabilities.len()
             || optional.len() != pair.optional_capabilities.len()
             || !required.is_disjoint(&optional)
