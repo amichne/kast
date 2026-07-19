@@ -35,7 +35,6 @@ const MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION: u32 = 3;
 const MACOS_PLUGIN_WORKSPACE_PREPARED_BY: &str = "kast-intellij-plugin";
 #[cfg(target_os = "macos")]
 const MACOS_PLUGIN_WORKSPACE_BACKEND: &str = "idea";
-#[cfg(target_os = "macos")]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorConfigurationDiagnostic {

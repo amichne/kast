@@ -240,6 +240,8 @@ fn validate_macos_workspace_for_preference(
     workspace_root: &Path,
     preference: RuntimeBackendPreference,
 ) -> Result<()> {
+    #[cfg(not(target_os = "macos"))]
+    let _ = preference;
     #[cfg(target_os = "macos")]
     if preference.fixed_backend() == Some(BackendName::Headless) {
         return Err(CliError::new(
