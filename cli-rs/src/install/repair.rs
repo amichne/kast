@@ -18,7 +18,9 @@ fn reconcile_install_state(args: InstallRepairArgs) -> Result<InstallRepairResul
     };
     let mut config_backed_up = false;
 
-    repair_macos_homebrew_cli_authority(&args, &mut result, &backup_root)?;
+    if !repair_macos_homebrew_cli_authority(&args, &mut result, &backup_root)? {
+        return Ok(result);
+    }
 
     if !config_path.is_file() {
         push_repair_action(
@@ -471,11 +473,11 @@ fn repair_macos_homebrew_cli_authority(
     args: &InstallRepairArgs,
     result: &mut InstallRepairResult,
     backup_root: &Path,
-) -> Result<()> {
+) -> Result<bool> {
     #[cfg(not(target_os = "macos"))]
     {
         let _ = (args, result, backup_root);
-        Ok(())
+        Ok(true)
     }
     #[cfg(target_os = "macos")]
     {
@@ -483,8 +485,38 @@ fn repair_macos_homebrew_cli_authority(
         with_macos_homebrew_receipt_lock(&receipt_path, || {
             let replacement = match resolve_macos_homebrew_authority() {
                 MacosHomebrewAuthorityResolution::Absent
-                | MacosHomebrewAuthorityResolution::Active(_) => return Ok(()),
+                | MacosHomebrewAuthorityResolution::Active(_) => return Ok(true),
                 MacosHomebrewAuthorityResolution::Recoverable(replacement) => replacement,
+                MacosHomebrewAuthorityResolution::Blocked(_)
+                    if args.reset_homebrew_receipt =>
+                {
+                    let replacement = discover_running_homebrew_receipt()?.ok_or_else(|| {
+                        CliError::new(
+                            "MACOS_HOMEBREW_RECEIPT_RESET_UNAVAILABLE",
+                            format!(
+                                "Homebrew receipt at {} is blocked, and reset requires the exact running Cellar/kast formula executable; the receipt was preserved unchanged",
+                                receipt_path.display(),
+                            ),
+                        )
+                    })?;
+                    push_repair_action(
+                        result,
+                        "reset-homebrew-cli-receipt",
+                        &receipt_path,
+                        "Preserve the exact blocked receipt bytes, then atomically establish CLI authority from the running Cellar/kast executable.",
+                        Some(
+                            "kast repair --for machine --reset-homebrew-receipt --apply"
+                                .to_string(),
+                        ),
+                    );
+                    if args.apply {
+                        backup_existing_path(&receipt_path, backup_root, result)?;
+                        write_macos_homebrew_receipt_at(&receipt_path, &replacement)?;
+                        let written = read_macos_homebrew_receipt_at(&receipt_path)?;
+                        validate_running_macos_homebrew_receipt(&receipt_path, written)?;
+                    }
+                    return Ok(args.apply);
+                }
                 MacosHomebrewAuthorityResolution::Blocked(error) => return Err(error),
             };
             push_repair_action(
@@ -500,7 +532,7 @@ fn repair_macos_homebrew_cli_authority(
                 let written = read_macos_homebrew_receipt_at(&receipt_path)?;
                 validate_running_macos_homebrew_receipt(&receipt_path, written)?;
             }
-            Ok(())
+            Ok(true)
         })
     }
 }

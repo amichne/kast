@@ -239,6 +239,7 @@ pub fn doctor(
         }
         let repair_args = InstallRepairArgs {
             apply: true,
+            reset_homebrew_receipt: false,
             jetbrains_config_root: None,
         };
         if !install::macos_homebrew_repair_authority_is_provable()? {

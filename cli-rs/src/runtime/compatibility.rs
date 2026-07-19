@@ -182,7 +182,7 @@ fn assess_runtime_compatibility_source(
     operation_capability: Option<RuntimeCapability>,
     source: &RuntimeCompatibilitySource,
 ) -> Result<RuntimeCompatibilityAssessment> {
-    validate_runtime_compatibility_source(&source)?;
+    validate_runtime_compatibility_source(source)?;
     if facts.plugin_version == facts.cli_version
         && facts.plugin_revision != facts.cli_revision
     {

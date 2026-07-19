@@ -407,6 +407,7 @@ fn run_repair(args: cli::RepairArgs, output_format: OutputFormat) -> Result<i32>
         runtime,
         target,
         apply,
+        reset_homebrew_receipt,
         jetbrains_config_root,
     } = args;
     let workspace_root = runtime
@@ -416,6 +417,7 @@ fn run_repair(args: cli::RepairArgs, output_format: OutputFormat) -> Result<i32>
         .transpose()?;
     let repair_args = cli::InstallRepairArgs {
         apply,
+        reset_homebrew_receipt,
         jetbrains_config_root,
     };
     if apply && local_development::active_local_development_receipt()?.is_some() {

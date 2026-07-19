@@ -253,6 +253,35 @@ fn explicit_homebrew_receipt_reset_preserves_unknown_bytes_and_restores_authorit
         original
     );
 
+    let plan = kast_at(&binary, &home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "repair",
+            "--for",
+            "machine",
+            "--reset-homebrew-receipt",
+        ])
+        .output()
+        .expect("explicit reset plan");
+    assert!(
+        !plan.status.success(),
+        "a reset plan is not active authority"
+    );
+    let plan_payload: serde_json::Value =
+        serde_json::from_slice(&plan.stdout).expect("reset plan JSON");
+    let planned_reset = plan_payload["repair"]["actions"]
+        .as_array()
+        .expect("repair actions")
+        .iter()
+        .find(|action| action["kind"] == "reset-homebrew-cli-receipt")
+        .unwrap_or_else(|| panic!("missing planned reset: {plan_payload:#}"));
+    assert_eq!(planned_reset["status"], "planned", "{plan_payload:#}");
+    assert_eq!(
+        std::fs::read(&receipt).expect("receipt after reset plan"),
+        original
+    );
+
     let reset = kast_at(&binary, &home, &config_home)
         .args([
             "--output",
