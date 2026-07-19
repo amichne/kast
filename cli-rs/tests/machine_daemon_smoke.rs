@@ -123,7 +123,11 @@ fn activation_installs_one_processless_machine_bundle() {
         b"idea-plugin",
     );
     assert!(machine.join("resources/kast-skill/SKILL.md").is_file());
-    assert!(machine.join("resources/codex-marketplace/marketplace.json").is_file());
+    assert!(
+        machine
+            .join("resources/codex-marketplace/marketplace.json")
+            .is_file()
+    );
     assert!(
         machine
             .join("resources/codex-marketplace/plugins/kast/hooks/hooks.json")
@@ -171,9 +175,19 @@ fn reconciliation_replaces_only_the_closed_ide_plugin_and_global_skill() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let plugin = temp.path().join("kast-idea.zip");
+    let codex_log = temp.path().join("codex.log");
+    let fake_bin = temp.path().join("bin");
+    let fake_codex = fake_bin.join("codex");
     let plugins = temp.path().join("idea-profile/plugins");
     std::fs::create_dir_all(plugins.join("kast")).expect("old plugin");
     std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&fake_bin).expect("fake bin");
+    std::fs::write(
+        &fake_codex,
+        "#!/bin/sh\nset -eu\nprintf '%s\\n' \"$*\" >>\"$KAST_TEST_CODEX_LOG\"\ncase \"$*\" in\n  'plugin list --json') printf '%s\\n' '{\"installed\":[]}' ;;\n  'plugin marketplace list --json') printf '%s\\n' '{\"marketplaces\":[]}' ;;\nesac\n",
+    )
+    .expect("fake codex");
+    set_executable_for_test(&fake_codex);
     std::fs::write(plugins.join("kast/old.jar"), b"old").expect("old plugin bytes");
     write_idea_plugin(&plugin);
 
@@ -191,7 +205,17 @@ fn reconciliation_replaces_only_the_closed_ide_plugin_and_global_skill() {
     assert!(activation.status.success());
 
     let reconciliation = kast(&home, &config_home)
+        .env_remove("CODEX_HOME")
         .env("KAST_MACHINE_IDE_STATE", "closed")
+        .env("KAST_TEST_CODEX_LOG", &codex_log)
+        .env(
+            "PATH",
+            format!(
+                "{}:{}",
+                fake_bin.display(),
+                std::env::var("PATH").unwrap_or_default()
+            ),
+        )
         .args([
             "--output",
             "json",
@@ -231,6 +255,20 @@ fn reconciliation_replaces_only_the_closed_ide_plugin_and_global_skill() {
         home.join("Library/Application Support/Kast/machine/resources/kast-skill"),
     );
     assert!(!home.join("Library/LaunchAgents").exists());
+    let codex_calls = std::fs::read_to_string(codex_log).expect("Codex calls");
+    assert!(codex_calls.contains("plugin list --json"), "{codex_calls}");
+    assert!(
+        codex_calls.contains("plugin marketplace list --json"),
+        "{codex_calls}"
+    );
+    assert!(
+        codex_calls.contains("plugin marketplace add ") && codex_calls.contains(" --json"),
+        "{codex_calls}"
+    );
+    assert!(
+        codex_calls.contains("plugin add kast@kast --json"),
+        "{codex_calls}"
+    );
 }
 
 #[cfg(target_os = "macos")]
