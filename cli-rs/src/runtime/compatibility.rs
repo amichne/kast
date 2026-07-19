@@ -6,26 +6,6 @@ pub(crate) struct ProtocolRevision(pub(crate) NonZeroU32);
 #[serde(transparent)]
 pub(crate) struct WorkspaceMetadataRevision(pub(crate) NonZeroU32);
 
-#[derive(Clone, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
-#[serde(try_from = "String")]
-pub(crate) struct ReleaseRevision(String);
-
-impl TryFrom<String> for ReleaseRevision {
-    type Error = String;
-
-    fn try_from(value: String) -> std::result::Result<Self, Self::Error> {
-        if value.len() == 40
-            && value
-                .bytes()
-                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
-        {
-            Ok(Self(value))
-        } else {
-            Err("release revision must be 40 lowercase hexadecimal characters".to_string())
-        }
-    }
-}
-
 #[derive(Clone, Copy, Debug, Deserialize, Eq, Ord, PartialEq, PartialOrd)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub(crate) enum WorkspaceReadCapability {
@@ -82,8 +62,6 @@ pub(crate) struct WorkspaceRuntimeIdentity {
 pub(crate) struct RuntimeCompatibilityFacts {
     pub(crate) plugin_version: String,
     pub(crate) cli_version: String,
-    pub(crate) plugin_revision: ReleaseRevision,
-    pub(crate) cli_revision: ReleaseRevision,
     pub(crate) protocol_revision: ProtocolRevision,
     pub(crate) workspace_metadata_revision: WorkspaceMetadataRevision,
     pub(crate) read_capabilities: Vec<WorkspaceReadCapability>,
@@ -113,10 +91,6 @@ pub(crate) enum RuntimeCompatibilityAssessment {
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum RuntimeCompatibilityUpdateRequirement {
     UnsupportedReleasePair,
-    MismatchedReleaseRevision {
-        plugin_revision: ReleaseRevision,
-        cli_revision: ReleaseRevision,
-    },
     UnsupportedProtocolRevision {
         actual: ProtocolRevision,
         supported: BTreeSet<ProtocolRevision>,
@@ -155,8 +129,6 @@ struct RuntimeCompatibilitySourcePair {
     relation: String,
     plugin_version: String,
     cli_version: String,
-    plugin_revision: String,
-    cli_revision: String,
     protocol_revision: ProtocolRevision,
     workspace_metadata_revision: WorkspaceMetadataRevision,
     runtime: WorkspaceRuntimeIdentity,
@@ -195,25 +167,12 @@ pub(crate) fn assess_runtime_compatibility(
         )
     })?;
     validate_runtime_compatibility_source(&source)?;
-    if facts.plugin_revision != facts.cli_revision {
-        return Ok(RuntimeCompatibilityAssessment::UpdateRequired {
-            requirement: RuntimeCompatibilityUpdateRequirement::MismatchedReleaseRevision {
-                plugin_revision: facts.plugin_revision.clone(),
-                cli_revision: facts.cli_revision.clone(),
-            },
-            plugin_version: facts.plugin_version.clone(),
-            cli_version: facts.cli_version.clone(),
-        });
-    }
     let release_rows = source
         .supported_pairs
         .iter()
         .filter(|pair| {
         resolve_release_version(&pair.plugin_version) == facts.plugin_version
             && resolve_release_version(&pair.cli_version) == facts.cli_version
-            && resolve_release_revision(&pair.plugin_revision).as_ref()
-                == Some(&facts.plugin_revision)
-            && resolve_release_revision(&pair.cli_revision).as_ref() == Some(&facts.cli_revision)
         })
         .collect::<Vec<_>>();
     if release_rows.is_empty() {
@@ -322,7 +281,7 @@ fn resolved_runtime_identity(source: &WorkspaceRuntimeIdentity) -> WorkspaceRunt
 }
 
 fn validate_runtime_compatibility_source(source: &RuntimeCompatibilitySource) -> Result<()> {
-    let invalid_header = source.schema_version != 2
+    let invalid_header = source.schema_version != 1
         || source.idea_build_range.since_build.trim().is_empty()
         || source
             .idea_build_range
@@ -351,8 +310,6 @@ fn validate_runtime_compatibility_source(source: &RuntimeCompatibilitySource) ->
         let identity = (
             resolve_release_version(&pair.plugin_version),
             resolve_release_version(&pair.cli_version),
-            resolve_release_revision(&pair.plugin_revision),
-            resolve_release_revision(&pair.cli_revision),
             pair.protocol_revision,
             pair.workspace_metadata_revision,
             resolve_release_version(&pair.runtime.implementation_version),
@@ -360,9 +317,6 @@ fn validate_runtime_compatibility_source(source: &RuntimeCompatibilitySource) ->
         );
         if pair.relation.trim().is_empty()
             || pair.evidence.is_empty()
-            || resolve_release_revision(&pair.plugin_revision).is_none()
-            || resolve_release_revision(&pair.cli_revision).is_none()
-            || pair.plugin_revision != pair.cli_revision
             || required.len() != pair.required_capabilities.len()
             || optional.len() != pair.optional_capabilities.len()
             || !required.is_disjoint(&optional)
@@ -383,13 +337,4 @@ fn resolve_release_version(version: &str) -> String {
     } else {
         version.to_string()
     }
-}
-
-fn resolve_release_revision(revision: &str) -> Option<ReleaseRevision> {
-    let resolved = if revision == "{releaseRevision}" {
-        cli::release_revision()
-    } else {
-        revision
-    };
-    ReleaseRevision::try_from(resolved.to_string()).ok()
 }

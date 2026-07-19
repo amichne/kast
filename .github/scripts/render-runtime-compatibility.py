@@ -10,10 +10,9 @@ from pathlib import Path
 from typing import Any
 
 
-SOURCE_SCHEMA_VERSION = 2
+SOURCE_SCHEMA_VERSION = 1
 MANIFEST_SCHEMA_VERSION = 1
 RELEASE_VERSION_TEMPLATE = "{releaseVersion}"
-RELEASE_REVISION_TEMPLATE = "{releaseRevision}"
 RELEASE_TAG_PATTERN = re.compile(r"v[0-9A-Za-z][0-9A-Za-z._-]*")
 VERSION_PATTERN = re.compile(r"[0-9A-Za-z][0-9A-Za-z._-]*")
 GIT_SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
@@ -99,14 +98,6 @@ def require_version(raw: object, *, field: str, allow_template: bool) -> str:
         return RELEASE_VERSION_TEMPLATE
     if not isinstance(raw, str) or VERSION_PATTERN.fullmatch(raw) is None:
         fail(f"{field} must be a release version")
-    return raw
-
-
-def require_release_revision(raw: object, *, field: str, allow_template: bool) -> str:
-    if raw == RELEASE_REVISION_TEMPLATE and allow_template:
-        return RELEASE_REVISION_TEMPLATE
-    if not isinstance(raw, str) or GIT_SHA_PATTERN.fullmatch(raw) is None:
-        fail(f"{field} must be a full lowercase Git revision")
     return raw
 
 
@@ -229,8 +220,6 @@ class SupportedPair:
     relation: str
     plugin_version: str
     cli_version: str
-    plugin_revision: str
-    cli_revision: str
     protocol_revision: int
     workspace_metadata_revision: int
     runtime: RuntimeIdentityTemplate
@@ -246,7 +235,6 @@ class SupportedPair:
         index: int,
         repo_root: Path | None,
         release_version: str | None,
-        release_revision: str | None,
     ) -> "SupportedPair":
         field = f"supportedPairs[{index}]"
         payload = require_object(
@@ -257,8 +245,6 @@ class SupportedPair:
                     "relation",
                     "pluginVersion",
                     "cliVersion",
-                    "pluginRevision",
-                    "cliRevision",
                     "protocolRevision",
                     "workspaceMetadataRevision",
                     "runtime",
@@ -281,16 +267,6 @@ class SupportedPair:
             field=f"{field}.cliVersion",
             allow_template=release_version is None,
         )
-        plugin_revision = require_release_revision(
-            payload["pluginRevision"],
-            field=f"{field}.pluginRevision",
-            allow_template=release_revision is None,
-        )
-        cli_revision = require_release_revision(
-            payload["cliRevision"],
-            field=f"{field}.cliRevision",
-            allow_template=release_revision is None,
-        )
         runtime = RuntimeIdentityTemplate.parse(
             payload["runtime"],
             field=f"{field}.runtime",
@@ -300,11 +276,6 @@ class SupportedPair:
             expected_version = RELEASE_VERSION_TEMPLATE if release_version is None else release_version
             if (plugin_version, cli_version, runtime.implementation_version) != (expected_version,) * 3:
                 fail(f"{field} same-release versions must all equal {expected_version}")
-            expected_revision = (
-                RELEASE_REVISION_TEMPLATE if release_revision is None else release_revision
-            )
-            if (plugin_revision, cli_revision) != (expected_revision,) * 2:
-                fail(f"{field} same-release revisions must both equal {expected_revision}")
         else:
             if RELEASE_VERSION_TEMPLATE in (
                 plugin_version,
@@ -316,10 +287,6 @@ class SupportedPair:
                 fail(f"{field} adjacent-release plugin and CLI versions must differ")
             if runtime.implementation_version not in (plugin_version, cli_version):
                 fail(f"{field} adjacent runtime version must equal the plugin or CLI version")
-            if RELEASE_REVISION_TEMPLATE in (plugin_revision, cli_revision):
-                fail(f"{field} adjacent-release revisions must be explicit")
-            if plugin_revision != cli_revision:
-                fail(f"{field} adjacent-release revisions must identify one source generation")
 
         required = parse_capabilities(
             payload["requiredCapabilities"], field=f"{field}.requiredCapabilities"
@@ -355,8 +322,6 @@ class SupportedPair:
             relation=relation,
             plugin_version=plugin_version,
             cli_version=cli_version,
-            plugin_revision=plugin_revision,
-            cli_revision=cli_revision,
             protocol_revision=require_positive_revision(
                 payload["protocolRevision"], field=f"{field}.protocolRevision"
             ),
@@ -374,8 +339,6 @@ class SupportedPair:
         return (
             self.plugin_version,
             self.cli_version,
-            self.plugin_revision,
-            self.cli_revision,
             self.protocol_revision,
             self.workspace_metadata_revision,
             self.runtime,
@@ -385,27 +348,20 @@ class SupportedPair:
         return (
             self.plugin_version,
             self.cli_version,
-            self.plugin_revision,
-            self.cli_revision,
             self.protocol_revision,
             self.workspace_metadata_revision,
             self.runtime.implementation_version,
             self.runtime.backend_kind,
         )
 
-    def render(self, release_version: str, release_revision: str) -> dict[str, object]:
+    def render(self, release_version: str) -> dict[str, object]:
         def resolve(value: str) -> str:
             return release_version if value == RELEASE_VERSION_TEMPLATE else value
-
-        def resolve_revision(value: str) -> str:
-            return release_revision if value == RELEASE_REVISION_TEMPLATE else value
 
         return {
             "relation": self.relation,
             "pluginVersion": resolve(self.plugin_version),
             "cliVersion": resolve(self.cli_version),
-            "pluginRevision": resolve_revision(self.plugin_revision),
-            "cliRevision": resolve_revision(self.cli_revision),
             "protocolRevision": self.protocol_revision,
             "workspaceMetadataRevision": self.workspace_metadata_revision,
             "runtime": {
@@ -442,7 +398,6 @@ class RuntimeCompatibilitySource:
                 index=index,
                 repo_root=repo_root,
                 release_version=None,
-                release_revision=None,
             )
             for index, raw in enumerate(pairs_raw)
         )
@@ -499,7 +454,6 @@ class RuntimeCompatibilityManifest:
                 index=index,
                 repo_root=None,
                 release_version=release_version,
-                release_revision=release_sha,
             )
             for index, raw in enumerate(pairs_raw)
         )
@@ -536,7 +490,7 @@ def render_manifest(
     if GIT_SHA_PATTERN.fullmatch(release_sha) is None:
         fail("release SHA must be 40 lowercase hexadecimal characters")
     release_version = release_tag.removeprefix("v")
-    pairs = [pair.render(release_version, release_sha) for pair in source.supported_pairs]
+    pairs = [pair.render(release_version) for pair in source.supported_pairs]
     pairs.sort(key=rendered_pair_sort_key)
     return {
         "schemaVersion": MANIFEST_SCHEMA_VERSION,
@@ -554,8 +508,6 @@ def rendered_pair_sort_key(pair: dict[str, object]) -> tuple[object, ...]:
     return (
         str(pair["pluginVersion"]),
         str(pair["cliVersion"]),
-        str(pair["pluginRevision"]),
-        str(pair["cliRevision"]),
         int(pair["protocolRevision"]),
         int(pair["workspaceMetadataRevision"]),
         str(runtime["implementationVersion"]),

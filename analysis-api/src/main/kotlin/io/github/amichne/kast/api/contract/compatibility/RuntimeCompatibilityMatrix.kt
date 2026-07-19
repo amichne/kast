@@ -18,28 +18,15 @@ data class RuntimeCompatibilityMatrix(
         facts: RuntimeCompatibilityFacts,
         operationCapability: RuntimeCapability? = null,
     ): RuntimeCompatibilityOutcome {
-        if (facts.pluginRevision != facts.cliRevision) {
-            return RuntimeCompatibilityOutcome.UpdateRequired(
-                RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision(
-                    pluginRevision = facts.pluginRevision,
-                    cliRevision = facts.cliRevision,
-                ),
-            )
-        }
-
         val releaseRows = supportedPairs.filter { pair ->
             pair.facts.pluginVersion == facts.pluginVersion &&
-                pair.facts.cliVersion == facts.cliVersion &&
-                pair.facts.pluginRevision == facts.pluginRevision &&
-                pair.facts.cliRevision == facts.cliRevision
+                pair.facts.cliVersion == facts.cliVersion
         }
         if (releaseRows.isEmpty()) {
             return RuntimeCompatibilityOutcome.UpdateRequired(
                 RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair(
                     pluginVersion = facts.pluginVersion,
                     cliVersion = facts.cliVersion,
-                    pluginRevision = facts.pluginRevision,
-                    cliRevision = facts.cliRevision,
                 ),
             )
         }
@@ -106,8 +93,6 @@ data class RuntimeCompatibilityMatrix(
 private data class RuntimeCompatibilityKey(
     val pluginVersion: PluginImplementationVersion,
     val cliVersion: CliImplementationVersion,
-    val pluginRevision: ReleaseRevision,
-    val cliRevision: ReleaseRevision,
     val protocolRevision: ProtocolRevision,
     val workspaceMetadataRevision: WorkspaceMetadataRevision,
     val runtimeIdentity: RuntimeIdentity,
@@ -117,8 +102,6 @@ private fun RuntimeCompatibilityFacts.compatibilityKey(): RuntimeCompatibilityKe
     RuntimeCompatibilityKey(
         pluginVersion = pluginVersion,
         cliVersion = cliVersion,
-        pluginRevision = pluginRevision,
-        cliRevision = cliRevision,
         protocolRevision = protocolRevision,
         workspaceMetadataRevision = workspaceMetadataRevision,
         runtimeIdentity = runtimeIdentity,

@@ -20,8 +20,6 @@ class RuntimeCompatibilityMatrixTest {
                 RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair(
                     pluginVersion = CURRENT_PLUGIN,
                     cliVersion = CliImplementationVersion("0.12.9"),
-                    pluginRevision = CURRENT_RELEASE,
-                    cliRevision = CURRENT_RELEASE,
                 ),
             ),
             matrix.assess(absentAdjacent),
@@ -96,35 +94,6 @@ class RuntimeCompatibilityMatrixTest {
     }
 
     @Test
-    fun `same-version artifacts from different release revisions fail closed`() {
-        val pluginRevision = ReleaseRevision("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-        val cliRevision = ReleaseRevision("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")
-        val matrix = RuntimeCompatibilityMatrix(
-            setOf(
-                supportedPair(
-                    pluginRevision = pluginRevision,
-                    cliRevision = pluginRevision,
-                ),
-            ),
-        )
-
-        assertEquals(
-            RuntimeCompatibilityOutcome.UpdateRequired(
-                RuntimeCompatibilityUpdateRequirement.MismatchedReleaseRevision(
-                    pluginRevision = pluginRevision,
-                    cliRevision = cliRevision,
-                ),
-            ),
-            matrix.assess(
-                facts(
-                    pluginRevision = pluginRevision,
-                    cliRevision = cliRevision,
-                ),
-            ),
-        )
-    }
-
-    @Test
     fun `typed update requirements reject empty supported evidence`() {
         assertThrows<IllegalArgumentException> {
             RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision(
@@ -170,22 +139,14 @@ class RuntimeCompatibilityMatrixTest {
 
     private fun supportedPair(
         cliVersion: CliImplementationVersion = CURRENT_CLI,
-        pluginRevision: ReleaseRevision = CURRENT_RELEASE,
-        cliRevision: ReleaseRevision = CURRENT_RELEASE,
     ): SupportedRuntimeCompatibilityPair = SupportedRuntimeCompatibilityPair(
-        facts = facts(
-            cliVersion = cliVersion,
-            pluginRevision = pluginRevision,
-            cliRevision = cliRevision,
-        ),
+        facts = facts(cliVersion = cliVersion),
         requiredCapabilities = setOf(DIAGNOSTICS),
     )
 
     private fun facts(
         pluginVersion: PluginImplementationVersion = CURRENT_PLUGIN,
         cliVersion: CliImplementationVersion = CURRENT_CLI,
-        pluginRevision: ReleaseRevision = CURRENT_RELEASE,
-        cliRevision: ReleaseRevision = CURRENT_RELEASE,
         protocolRevision: ProtocolRevision = CURRENT_PROTOCOL,
         workspaceMetadataRevision: WorkspaceMetadataRevision = CURRENT_METADATA,
         readCapabilities: Set<ReadCapability> = setOf(ReadCapability.DIAGNOSTICS),
@@ -194,8 +155,6 @@ class RuntimeCompatibilityMatrixTest {
     ): RuntimeCompatibilityFacts = RuntimeCompatibilityFacts(
         pluginVersion = pluginVersion,
         cliVersion = cliVersion,
-        pluginRevision = pluginRevision,
-        cliRevision = cliRevision,
         protocolRevision = protocolRevision,
         workspaceMetadataRevision = workspaceMetadataRevision,
         readCapabilities = readCapabilities,
@@ -206,7 +165,6 @@ class RuntimeCompatibilityMatrixTest {
     private companion object {
         val CURRENT_PLUGIN = PluginImplementationVersion("0.13.0")
         val CURRENT_CLI = CliImplementationVersion("0.13.0")
-        val CURRENT_RELEASE = ReleaseRevision("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
         val CURRENT_PROTOCOL = ProtocolRevision(1)
         val CURRENT_METADATA = WorkspaceMetadataRevision(3)
         val CURRENT_RUNTIME = RuntimeIdentity(

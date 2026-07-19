@@ -50,17 +50,6 @@ mod macos {
     }
 
     #[test]
-    fn same_version_artifacts_from_different_revisions_fail_closed() {
-        let fixture = Fixture::new();
-        let mut metadata = fixture.metadata();
-        metadata["compatibility"]["cliRevision"] =
-            serde_json::json!("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb");
-        fixture.write(&metadata);
-
-        assert_update_required(fixture.status());
-    }
-
-    #[test]
     fn unsupported_version_pair_and_old_metadata_revision_require_refresh() {
         let fixture = Fixture::new();
         let original = fixture.metadata();

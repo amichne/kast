@@ -5,7 +5,6 @@ import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.compatibility.PluginImplementationVersion
 import io.github.amichne.kast.api.contract.compatibility.ProtocolRevision
-import io.github.amichne.kast.api.contract.compatibility.ReleaseRevision
 import io.github.amichne.kast.api.contract.compatibility.RuntimeBackendKind
 import io.github.amichne.kast.api.contract.compatibility.RuntimeCompatibilityFacts
 import io.github.amichne.kast.api.contract.compatibility.RuntimeIdentity
@@ -205,9 +204,7 @@ object PluginWorkspaceBootstrap {
         |5. Before retiring or deleting the worktree, close that exact IDE project or window before removing the worktree.
         |
         |Prepared plugin version: ${request.pluginVersion.value}
-        |Prepared plugin revision: ${request.pluginRevision.value}
         |CLI version: ${request.cliVersion.value}
-        |CLI revision: ${request.cliRevision.value}
         |CLI invocation: `${request.cliBinary}`
         |""".trimMargin() + "\n"
 
@@ -234,8 +231,6 @@ object PluginWorkspaceBootstrap {
             RuntimeCompatibilityFacts(
                 pluginVersion = PluginImplementationVersion(request.pluginVersion.value),
                 cliVersion = request.cliVersion,
-                pluginRevision = request.pluginRevision,
-                cliRevision = request.cliRevision,
                 protocolRevision = ProtocolRevision.CURRENT,
                 workspaceMetadataRevision = WorkspaceMetadataRevision.CURRENT,
                 readCapabilities = ReadCapability.entries.toSet(),

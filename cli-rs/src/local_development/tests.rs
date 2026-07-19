@@ -373,51 +373,6 @@ mod refresh_tests {
     }
 
     #[test]
-    fn rebuilt_artifacts_from_the_same_source_activate_as_a_new_generation() {
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("local-authority");
-        let first = refresh_local_development(refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "first",
-        ))
-        .expect("first refresh");
-        write_file(
-            &fixture.path().join("build/kast"),
-            b"#!/bin/sh\necho rebuilt\n",
-        );
-        make_executable(&fixture.path().join("build/kast"));
-
-        let second = refresh_local_development(refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "rebuilt",
-        ))
-        .expect("rebuilt refresh");
-
-        assert_ne!(first.receipt.generation_id, second.receipt.generation_id);
-        assert_eq!(
-            fs::read_link(prefix.join("current")).expect("current generation"),
-            Path::new("generations").join(second.receipt.generation_id.as_str()),
-        );
-        assert_eq!(
-            fs::read_link(prefix.join("previous")).expect("previous generation"),
-            Path::new("generations").join(first.receipt.generation_id.as_str()),
-        );
-        assert_eq!(
-            fs::read_dir(prefix.join("generations"))
-                .expect("generations")
-                .count(),
-            2,
-        );
-    }
-
-    #[test]
     fn one_prepared_generation_activates_idempotently_without_rebuilding_inputs() {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
@@ -814,11 +769,11 @@ mod refresh_tests {
     }
 
     #[test]
-    fn rebuilt_artifacts_preserve_an_inactive_generation_from_the_same_source() {
+    fn inactive_generation_reuse_rejects_different_rebuilt_artifacts() {
         let repository = initialized_repository();
         let fixture = tempfile::tempdir().expect("fixture");
         let prefix = fixture.path().join("local-authority");
-        let first = refresh_local_development(refresh_request(
+        refresh_local_development(refresh_request(
             repository.path(),
             repository.path(),
             fixture.path(),
@@ -856,19 +811,9 @@ mod refresh_tests {
             "rebuilt-a",
         );
 
-        let rebuilt = refresh_local_development(request).expect("rebuilt A refresh");
+        let error = refresh_local_development(request).expect_err("artifact mismatch");
 
-        assert_ne!(first.receipt.generation_id, rebuilt.receipt.generation_id);
-        assert_eq!(
-            fs::read(
-                prefix
-                    .join("generations")
-                    .join(first.receipt.generation_id.as_str())
-                    .join("bin/kast"),
-            )
-            .expect("preserved first CLI"),
-            b"#!/bin/sh\nexit 0\n",
-        );
+        assert_eq!(error.code, "LOCAL_GENERATION_ARTIFACT_MISMATCH");
     }
 
     #[test]
@@ -1150,117 +1095,6 @@ mod refresh_tests {
             entrypoint_before,
             "rollback must restore the stable entrypoint owned by the prior receipt"
         );
-    }
-
-    #[test]
-    fn first_activation_retry_reconciles_receipt_owned_pre_current_state() {
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("local-authority");
-        let request = refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "first",
-        );
-        let first = refresh_local_development(request.clone()).expect("first activation");
-        fs::remove_file(prefix.join("current")).expect("simulate crash before current cutover");
-
-        let recovered = refresh_local_development(request).expect("retry activation");
-
-        assert_eq!(recovered.receipt.generation_id, first.receipt.generation_id);
-        assert_eq!(
-            fs::read_link(prefix.join("current")).expect("recovered current"),
-            Path::new("generations").join(first.receipt.generation_id.as_str()),
-        );
-        super::validate_receipt_components(&recovered.receipt)
-            .expect("complete recovered generation");
-    }
-
-    #[test]
-    fn first_activation_retry_discards_only_its_matching_incomplete_staging() {
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("local-authority");
-        let request = refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "first",
-        );
-        let source = SourceSnapshot::read_strict(&request.expected_source_snapshot)
-            .expect("source snapshot");
-        let artifacts = super::LocalDevelopmentArtifactSet {
-            cli: super::read_local_artifact_provenance(&request.cli_provenance)
-                .expect("CLI provenance"),
-            backend: super::read_local_artifact_provenance(&request.backend_provenance)
-                .expect("backend provenance"),
-        };
-        let generation_id = super::LocalGenerationId::from_artifact_set(&source, &artifacts);
-        let staged = prefix.join(format!(".staging-{}", generation_id.as_str()));
-        write_file(&staged.join("partial"), b"interrupted staging\n");
-
-        let recovered = refresh_local_development(request).expect("retry activation");
-
-        assert_eq!(recovered.receipt.generation_id, generation_id);
-        assert!(!staged.exists(), "matching incomplete staging must be replaced");
-        assert_eq!(
-            fs::read_link(prefix.join("current")).expect("recovered current"),
-            Path::new("generations").join(generation_id.as_str()),
-        );
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn first_activation_retry_reconciles_exact_atomic_symlink_temporaries() {
-        use std::os::unix::fs::symlink;
-
-        let repository = initialized_repository();
-        let fixture = tempfile::tempdir().expect("fixture");
-        let prefix = fixture.path().join("local-authority");
-        let request = refresh_request(
-            repository.path(),
-            repository.path(),
-            fixture.path(),
-            &prefix,
-            "first",
-        );
-        let first = refresh_local_development(request.clone()).expect("first activation");
-        fs::remove_file(prefix.join("current")).expect("remove incomplete current");
-        fs::rename(
-            prefix.join("bin/kast-dev"),
-            prefix.join("bin/kast-dev.next"),
-        )
-        .expect("interrupted launcher temporary");
-        fs::rename(
-            prefix.join("authority.json"),
-            prefix.join("authority.next"),
-        )
-        .expect("interrupted authority temporary");
-        symlink(
-            Path::new("generations").join(first.receipt.generation_id.as_str()),
-            prefix.join("current.next"),
-        )
-        .expect("interrupted current temporary");
-
-        let recovered = refresh_local_development(request).expect("retry activation");
-
-        assert_eq!(recovered.receipt.generation_id, first.receipt.generation_id);
-        for temporary in [
-            prefix.join("bin/kast-dev.next"),
-            prefix.join("authority.next"),
-            prefix.join("current.next"),
-        ] {
-            assert!(
-                fs::symlink_metadata(&temporary).is_err(),
-                "temporary must be consumed: {}",
-                temporary.display(),
-            );
-        }
-        super::validate_receipt_components(&recovered.receipt)
-            .expect("complete recovered generation");
     }
 
     #[test]

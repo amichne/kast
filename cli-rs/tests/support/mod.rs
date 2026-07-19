@@ -52,13 +52,12 @@ pub(crate) fn write_macos_homebrew_receipt_for_test(home: &Path, cli_binary: &Pa
     std::fs::write(
         &receipt,
         serde_json::to_vec_pretty(&serde_json::json!({
-            "schemaVersion": 3,
+            "schemaVersion": 2,
             "authority": "macos-homebrew",
             "cli": {
                 "binary": cli_binary.display().to_string(),
                 "formulaPrefix": cli_binary.parent().expect("formula bin").parent().expect("formula prefix").display().to_string(),
-                "version": env!("CARGO_PKG_VERSION"),
-                "releaseRevision": env!("KAST_RELEASE_REVISION")
+                "version": env!("CARGO_PKG_VERSION")
             },
             "updatedAt": "unix:1"
         }))
@@ -173,8 +172,6 @@ pub(crate) fn write_macos_plugin_workspace_metadata_for_cli(
                 "compatibility": {
                     "pluginVersion": cli_version,
                     "cliVersion": cli_version,
-                    "pluginRevision": env!("KAST_RELEASE_REVISION"),
-                    "cliRevision": env!("KAST_RELEASE_REVISION"),
                     "protocolRevision": 1,
                     "workspaceMetadataRevision": 3,
                     "readCapabilities": [

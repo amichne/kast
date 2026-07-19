@@ -1108,14 +1108,6 @@ mod tests {
                 compatibility: runtime::RuntimeCompatibilityFacts {
                     plugin_version: cli::version().to_string(),
                     cli_version: cli::version().to_string(),
-                    plugin_revision: runtime::ReleaseRevision::try_from(
-                        cli::release_revision().to_string(),
-                    )
-                    .expect("release revision"),
-                    cli_revision: runtime::ReleaseRevision::try_from(
-                        cli::release_revision().to_string(),
-                    )
-                    .expect("release revision"),
                     protocol_revision: runtime::ProtocolRevision(
                         std::num::NonZeroU32::new(1).expect("revision"),
                     ),

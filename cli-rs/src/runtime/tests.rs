@@ -404,10 +404,6 @@ mod tests {
         let mut facts = RuntimeCompatibilityFacts {
             plugin_version: cli::version().to_string(),
             cli_version: cli::version().to_string(),
-            plugin_revision: ReleaseRevision::try_from(cli::release_revision().to_string())
-                .expect("release revision"),
-            cli_revision: ReleaseRevision::try_from(cli::release_revision().to_string())
-                .expect("release revision"),
             protocol_revision: ProtocolRevision(NonZeroU32::new(1).expect("protocol")),
             workspace_metadata_revision: WorkspaceMetadataRevision(
                 NonZeroU32::new(3).expect("metadata"),

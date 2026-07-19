@@ -1,6 +1,5 @@
 package io.github.amichne.kast.idea
 
-import io.github.amichne.kast.api.contract.compatibility.ReleaseRevision
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -15,7 +14,7 @@ class MacosHomebrewInstallReceiptTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `schema 3 revision-bound CLI receipt parses into trusted Homebrew authority`() {
+    fun `schema 2 CLI-only receipt parses into trusted Homebrew authority`() {
         val binary = fakeBinary("1.2.3")
         val result = MacosHomebrewReceiptLoader.load(writeReceipt(binary, "1.2.3"))
 
@@ -23,21 +22,6 @@ class MacosHomebrewInstallReceiptTest {
         val receipt = (result as MacosHomebrewReceiptLoadResult.Loaded).receipt
         assertEquals(binary.toRealPath(), receipt.cliBinary)
         assertEquals("1.2.3", receipt.cliVersion.value)
-        assertEquals(ReleaseRevision(TEST_REVISION), receipt.cliRevision)
-    }
-
-    @Test
-    fun `schema 2 receipt without release revision is rejected by the forward reader`() {
-        val binary = fakeBinary("1.2.3")
-
-        val result = MacosHomebrewReceiptLoader.load(
-            writeReceipt(binary, "1.2.3", schemaVersion = 2, cliRevision = null),
-        )
-
-        assertEquals(
-            MacosHomebrewReceiptFailure.INVALID,
-            (result as MacosHomebrewReceiptLoadResult.Rejected).failure,
-        )
     }
 
     @Test
@@ -129,20 +113,6 @@ class MacosHomebrewInstallReceiptTest {
     }
 
     @Test
-    fun `malformed release revision is rejected`() {
-        val binary = fakeBinary("1.2.3")
-
-        val result = MacosHomebrewReceiptLoader.load(
-            writeReceipt(binary, "1.2.3", cliRevision = "abc123"),
-        )
-
-        assertEquals(
-            MacosHomebrewReceiptFailure.INVALID,
-            (result as MacosHomebrewReceiptLoadResult.Rejected).failure,
-        )
-    }
-
-    @Test
     @EnabledOnOs(OS.MAC, OS.LINUX)
     fun `receipt binary symlink cannot escape the Homebrew formula`() {
         val outsideBinary = tempDir.resolve("outside/kast")
@@ -180,8 +150,7 @@ class MacosHomebrewInstallReceiptTest {
     private fun writeReceipt(
         binary: Path,
         cliVersion: String,
-        schemaVersion: Int = 3,
-        cliRevision: String? = TEST_REVISION,
+        schemaVersion: Int = 2,
         pluginField: String = "",
         rootField: String = "",
         cliField: String = "",
@@ -197,17 +166,13 @@ class MacosHomebrewInstallReceiptTest {
               "cli": {
                 "binary": "${binary.toString().jsonEscaped()}",
                 "formulaPrefix": "${binary.parent.parent.toString().jsonEscaped()}",
-                "version": "$cliVersion"${cliRevision?.let { revision -> ",\n                \"releaseRevision\": \"$revision\"" }.orEmpty()}$cliField
+                "version": "$cliVersion"$cliField
               }$pluginField$rootField,
               "updatedAt": "unix:1"
             }
             """.trimIndent(),
         )
         return receipt
-    }
-
-    private companion object {
-        const val TEST_REVISION = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
 }
 

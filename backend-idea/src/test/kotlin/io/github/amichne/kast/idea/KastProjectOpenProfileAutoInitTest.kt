@@ -9,7 +9,6 @@ import io.github.amichne.kast.api.client.fields.ProjectOpenGradleLoadEnabled
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileAutoInit
 import io.github.amichne.kast.api.contract.compatibility.CliImplementationVersion
-import io.github.amichne.kast.api.contract.compatibility.ReleaseRevision
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
@@ -97,8 +96,6 @@ class KastProjectOpenProfileAutoInitTest {
         assertFalse(metadataObject.containsKey("pluginVersion"))
         assertFalse(metadataObject.containsKey("cliVersion"))
         val compatibility = metadataObject.getValue("compatibility").jsonObject
-        assertEquals(currentPluginRevision().value, compatibility.getValue("pluginRevision").jsonPrimitive.content)
-        assertEquals(currentPluginRevision().value, compatibility.getValue("cliRevision").jsonPrimitive.content)
         assertEquals(1, compatibility.getValue("protocolRevision").jsonPrimitive.int)
         assertEquals(3, compatibility.getValue("workspaceMetadataRevision").jsonPrimitive.int)
         assertEquals("IDEA", compatibility.getValue("runtimeIdentity").jsonObject.getValue("backendKind").jsonPrimitive.content)
@@ -127,8 +124,7 @@ class KastProjectOpenProfileAutoInitTest {
                     MacosHomebrewInstallReceipt(
                         cliBinary = homebrewBinary,
                         formulaPrefix = homebrewBinary.parent,
-                        cliVersion = currentPluginVersion(),
-                        cliRevision = currentPluginRevision(),
+                        cliVersion = CliImplementationVersion("receipt-cli-version"),
                     ),
                 )
             },
@@ -143,63 +139,7 @@ class KastProjectOpenProfileAutoInitTest {
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
         assertEquals(homebrewBinary, requests.single().cliBinary)
-        assertEquals(currentPluginVersion(), requests.single().cliVersion)
-    }
-
-    @Test
-    fun `release revision skew fails before workspace preparation`() {
-        val workspace = gradleWorkspace()
-        val binary = fakeKastBinary()
-        val pluginRevision = currentPluginRevision()
-        val otherRevision = ReleaseRevision(
-            if (pluginRevision.value.startsWith("a")) "b".repeat(40) else "a".repeat(40),
-        )
-
-        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
-            workspaceRoot = workspace,
-            config = autoInitConfig(binaryPath = binary),
-            loadHomebrewReceipt = {
-                MacosHomebrewReceiptLoadResult.Loaded(
-                    MacosHomebrewInstallReceipt(
-                        cliBinary = binary,
-                        formulaPrefix = binary.parent,
-                        cliVersion = currentPluginVersion(),
-                        cliRevision = otherRevision,
-                    ),
-                )
-            },
-            prepareWorkspace = { error("revision skew must fail before workspace preparation") },
-        )
-
-        assertTrue(result is ProjectOpenProfileAutoInitResult.Failed)
-        assertTrue((result as ProjectOpenProfileAutoInitResult.Failed).message.contains("revision"))
-        assertFalse(workspace.resolve(".kast/setup/workspace.json").exists())
-    }
-
-    @Test
-    fun `release version skew fails before workspace preparation`() {
-        val workspace = gradleWorkspace()
-        val binary = fakeKastBinary()
-
-        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
-            workspaceRoot = workspace,
-            config = autoInitConfig(binaryPath = binary),
-            loadHomebrewReceipt = {
-                MacosHomebrewReceiptLoadResult.Loaded(
-                    MacosHomebrewInstallReceipt(
-                        cliBinary = binary,
-                        formulaPrefix = binary.parent,
-                        cliVersion = CliImplementationVersion("definitely-not-the-plugin-version"),
-                        cliRevision = currentPluginRevision(),
-                    ),
-                )
-            },
-            prepareWorkspace = { error("version skew must fail before workspace preparation") },
-        )
-
-        assertTrue(result is ProjectOpenProfileAutoInitResult.Failed)
-        assertTrue((result as ProjectOpenProfileAutoInitResult.Failed).message.contains("version"))
-        assertFalse(workspace.resolve(".kast/setup/workspace.json").exists())
+        assertEquals("receipt-cli-version", requests.single().cliVersion.value)
     }
 
     @Test
@@ -211,12 +151,7 @@ class KastProjectOpenProfileAutoInitTest {
         val result = KastProjectOpenProfileAutoInit.executeWithConfiguredBinary(
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = configuredBinary),
-            loadCliIdentity = {
-                CliBuildIdentity(
-                    version = currentPluginVersion(),
-                    revision = currentPluginRevision(),
-                )
-            },
+            loadCliVersion = { CliImplementationVersion("configured-cli-version") },
             prepareWorkspace = { request ->
                 requests.add(request)
                 PluginWorkspaceBootstrapResult.Prepared(
@@ -228,8 +163,7 @@ class KastProjectOpenProfileAutoInitTest {
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
         assertEquals(configuredBinary, requests.single().cliBinary)
-        assertEquals(currentPluginVersion(), requests.single().cliVersion)
-        assertEquals(currentPluginRevision(), requests.single().cliRevision)
+        assertEquals("configured-cli-version", requests.single().cliVersion.value)
     }
 
     @Test
@@ -310,23 +244,10 @@ class KastProjectOpenProfileAutoInitTest {
             MacosHomebrewInstallReceipt(
                 cliBinary = binary,
                 formulaPrefix = binary.parent,
-                cliVersion = currentPluginVersion(),
-                cliRevision = currentPluginRevision(),
+                cliVersion = CliImplementationVersion("0.13.0"),
             ),
         )
     }
-
-    private fun currentPluginRevision(): ReleaseRevision = ReleaseRevision(
-        requireNotNull(KastPluginBackend::class.java.getResource("/kast-backend-revision.txt"))
-            .readText()
-            .trim(),
-    )
-
-    private fun currentPluginVersion(): CliImplementationVersion = CliImplementationVersion(
-        requireNotNull(KastPluginBackend::class.java.getResource("/kast-backend-version.txt"))
-            .readText()
-            .trim(),
-    )
 }
 
 private fun Path.exists(): Boolean = Files.exists(this)

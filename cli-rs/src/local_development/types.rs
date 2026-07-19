@@ -1,6 +1,6 @@
-const LOCAL_DEVELOPMENT_RECEIPT_SCHEMA_VERSION: u32 = 3;
+const LOCAL_DEVELOPMENT_RECEIPT_SCHEMA_VERSION: u32 = 2;
 const LOCAL_ARTIFACT_PROVENANCE_SCHEMA_VERSION: u32 = 1;
-const LOCAL_PREPARED_GENERATION_SCHEMA_VERSION: u32 = 2;
+const LOCAL_PREPARED_GENERATION_SCHEMA_VERSION: u32 = 1;
 const LOCAL_GUIDANCE_INPUTS_SCHEMA_VERSION: u32 = 1;
 const LOCAL_BACKEND_SOURCE_SNAPSHOT_ENTRY: &str = "META-INF/kast/local-source-snapshot.json";
 const LOCAL_BACKEND_COMPONENT_MANIFEST_ENTRY: &str = "META-INF/kast/local-backend-components.json";
@@ -208,43 +208,11 @@ pub enum LocalDevelopmentAuthority {
 pub struct LocalGenerationId(String);
 
 impl LocalGenerationId {
-    fn from_artifact_set(
-        source: &SourceSnapshot,
-        artifacts: &LocalDevelopmentArtifactSet,
-    ) -> Self {
-        Self::from_verified_artifacts(
-            source,
-            &artifacts.cli.sha256,
-            &artifacts.cli.implementation_version,
-            &artifacts.backend.sha256,
-            &artifacts.backend.implementation_version,
-        )
-    }
-
-    fn from_verified_artifacts(
-        source: &SourceSnapshot,
-        cli_sha256: &Sha256Digest,
-        cli_version: &str,
-        backend_sha256: &Sha256Digest,
-        backend_version: &str,
-    ) -> Self {
-        let mut digest = Sha256::new();
-        for field in [
-            "kast-local-generation-v2",
-            source.git_commit.as_str(),
-            source.source_tree_sha256.as_str(),
-            cli_sha256.as_str(),
-            cli_version,
-            backend_sha256.as_str(),
-            backend_version,
-        ] {
-            digest.update((field.len() as u64).to_be_bytes());
-            digest.update(field.as_bytes());
-        }
+    pub fn from_source(source: &SourceSnapshot) -> Self {
         Self(format!(
             "{}-{}",
             &source.git_commit.as_str()[..12],
-            hex::encode(digest.finalize()),
+            source.source_tree_sha256.as_str()
         ))
     }
 
@@ -270,7 +238,7 @@ impl TryFrom<String> for LocalGenerationId {
         } else {
             Err(CliError::new(
                 "LOCAL_GENERATION_ID_INVALID",
-                "Local generation identity must contain a 12-character commit prefix and artifact-set SHA-256 digest.",
+                "Local generation identity must contain a 12-character commit prefix and SHA-256 digest.",
             ))
         }
     }

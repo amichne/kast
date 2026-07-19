@@ -529,9 +529,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          release_sha="$(git rev-parse HEAD)"
           KAST_VERSION="${{ needs.prepare-release.outputs.release_version }}" \
-          KAST_RELEASE_REVISION="$release_sha" \
             cargo build --release --locked --target "${{ matrix.target }}"
 
       - name: Smoke Rust CLI
@@ -638,9 +636,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          release_sha="$(git rev-parse HEAD)"
           KAST_VERSION="${{ needs.prepare-release.outputs.release_version }}" \
-          KAST_RELEASE_REVISION="$release_sha" \
             cargo build --release --locked
 
       - name: Generate and verify Codex plugin package
@@ -781,15 +777,11 @@ jobs:
             release-idea-plugin-inputs-${{ runner.os }}-
 
       - name: Build unsigned IDEA plugin
-        shell: bash
-        run: |
-          set -euo pipefail
-          release_sha="$(git rev-parse HEAD)"
-          KAST_RELEASE_REVISION="$release_sha" \
-            ./scripts/ci-gradle-retry.sh \
-            ./gradlew \
-            :backend-idea:buildPlugin \
-            -Pversion="${{ needs.prepare-release.outputs.release_version }}"
+        run: >
+          ./scripts/ci-gradle-retry.sh
+          ./gradlew
+          :backend-idea:buildPlugin
+          -Pversion="${{ needs.prepare-release.outputs.release_version }}"
 
       - name: Upload IDEA plugin and update feed
         env:

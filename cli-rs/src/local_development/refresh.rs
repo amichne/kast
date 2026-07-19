@@ -115,7 +115,7 @@ fn activate_local_development_artifact_set(
 
     let requested_prefix = absolute_path(prefix)?;
     reject_symlink_selected_prefix(&requested_prefix)?;
-    let generation_id = LocalGenerationId::from_artifact_set(&source, &artifacts);
+    let generation_id = LocalGenerationId::from_source(&source);
 
     with_local_authority_lock(&requested_prefix, || {
         fs::create_dir_all(&requested_prefix)?;
@@ -413,7 +413,7 @@ fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
         artifacts,
         previous_generation,
     } = request;
-    let staged = prefix.join(format!(".staging-{}", generation_id.as_str()));
+    let staged = prefix.join(format!(".staging-{}", std::process::id()));
     if staged.exists() {
         fs::remove_dir_all(&staged)?;
     }
@@ -447,8 +447,7 @@ fn stage_generation(request: GenerationStageRequest<'_>) -> Result<()> {
         let physical_config = staged.join("config/config.toml");
         write_bytes(&physical_config, &fs::read(config_source)?)?;
 
-        let install_manifest =
-            local_install_manifest(prefix, generation_id, source, workspace_root);
+        let install_manifest = local_install_manifest(prefix, source, workspace_root);
         crate::manifest::write_manifest_atomic(&staged.join("install.json"), &install_manifest)?;
 
         let components = LocalDevelopmentComponents {
@@ -599,7 +598,6 @@ fn reject_unowned_prefix_contents(prefix: &Path, allowed_generation: &Path) -> R
             ),
         )
     })?;
-    let allowed_staging_name = format!(".staging-{}", allowed_generation_name.to_string_lossy());
     for entry in fs::read_dir(prefix)? {
         let entry = entry?;
         let path = entry.path();
@@ -641,47 +639,6 @@ fn reject_unowned_prefix_contents(prefix: &Path, allowed_generation: &Path) -> R
                     }
                 }
             }
-            Some("bin") => {
-                let metadata = entry.file_type()?;
-                if !metadata.is_dir() || metadata.is_symlink() {
-                    return Err(unowned_prefix_conflict(&path));
-                }
-                for launcher in fs::read_dir(&path)? {
-                    let launcher = launcher?;
-                    if !matches!(
-                        launcher.file_name().to_str(),
-                        Some("kast-dev" | "kast-dev.next")
-                    )
-                        || read_relative_symlink(&launcher.path())?
-                            != Some(PathBuf::from("../current/entrypoint/kast-dev"))
-                    {
-                        return Err(unowned_prefix_conflict(&launcher.path()));
-                    }
-                }
-            }
-            Some("authority.json" | "authority.next") => {
-                if read_relative_symlink(&path)? != Some(PathBuf::from("current/authority.json")) {
-                    return Err(unowned_prefix_conflict(&path));
-                }
-            }
-            Some("install.json" | "install.next") => {
-                if read_relative_symlink(&path)? != Some(PathBuf::from("current/install.json")) {
-                    return Err(unowned_prefix_conflict(&path));
-                }
-            }
-            Some("current.next") => {
-                if read_relative_symlink(&path)?
-                    != Some(Path::new("generations").join(allowed_generation_name))
-                {
-                    return Err(unowned_prefix_conflict(&path));
-                }
-            }
-            Some(name) if name == allowed_staging_name => {
-                let metadata = entry.file_type()?;
-                if !metadata.is_dir() || metadata.is_symlink() {
-                    return Err(unowned_prefix_conflict(&path));
-                }
-            }
             _ => return Err(unowned_prefix_conflict(&path)),
         }
     }
@@ -704,8 +661,7 @@ fn validate_receipt_identity(
     generation: &Path,
     workspace_root: &Path,
 ) -> Result<()> {
-    let expected_generation_id =
-        LocalGenerationId::from_artifact_set(&receipt.source, &receipt.artifacts);
+    let expected_generation_id = LocalGenerationId::from_source(&receipt.source);
     if receipt.generation_id != expected_generation_id {
         return Err(CliError::new(
             "LOCAL_AUTHORITY_RECEIPT_INVALID",
@@ -1129,10 +1085,10 @@ fn is_bare_command_path(arguments: &[String]) -> bool {
 
 fn local_install_manifest(
     prefix: &Path,
-    generation_id: &LocalGenerationId,
     source: &SourceSnapshot,
     workspace_root: &Path,
 ) -> crate::manifest::KastInstallManifest {
+    let generation_id = LocalGenerationId::from_source(source);
     let generation = prefix.join(generation_target(&generation_id));
     let state = prefix.join("state").join(generation_id.as_str());
     let now = crate::manifest::current_timestamp();

@@ -13,24 +13,7 @@ sealed interface RuntimeCompatibilityUpdateRequirement {
         val pluginVersion: PluginImplementationVersion,
         @DocField(description = "CLI release version that has no explicit compatibility row.")
         val cliVersion: CliImplementationVersion,
-        @DocField(description = "Full source revision embedded in the IDEA plugin artifact.")
-        val pluginRevision: ReleaseRevision,
-        @DocField(description = "Full source revision embedded in the CLI artifact.")
-        val cliRevision: ReleaseRevision,
     ) : RuntimeCompatibilityUpdateRequirement
-
-    @Serializable
-    @SerialName("MISMATCHED_RELEASE_REVISION")
-    data class MismatchedReleaseRevision(
-        @DocField(description = "Full source revision embedded in the IDEA plugin artifact.")
-        val pluginRevision: ReleaseRevision,
-        @DocField(description = "Full source revision embedded in the CLI artifact.")
-        val cliRevision: ReleaseRevision,
-    ) : RuntimeCompatibilityUpdateRequirement {
-        init {
-            require(pluginRevision != cliRevision) { "Mismatched release revisions must differ" }
-        }
-    }
 
     @Serializable
     @SerialName("UNSUPPORTED_PROTOCOL_REVISION")

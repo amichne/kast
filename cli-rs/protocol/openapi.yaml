@@ -1244,10 +1244,6 @@ components:
           "$ref": "#/components/schemas/PluginImplementationVersion"
         cliVersion:
           "$ref": "#/components/schemas/CliImplementationVersion"
-        pluginRevision:
-          "$ref": "#/components/schemas/ReleaseRevision"
-        cliRevision:
-          "$ref": "#/components/schemas/ReleaseRevision"
         protocolRevision:
           "$ref": "#/components/schemas/ProtocolRevision"
         workspaceMetadataRevision:
@@ -1268,15 +1264,11 @@ components:
       required:
         - pluginVersion
         - cliVersion
-        - pluginRevision
-        - cliRevision
         - protocolRevision
         - workspaceMetadataRevision
         - readCapabilities
         - mutationCapabilities
         - runtimeIdentity
-    ReleaseRevision:
-      type: string
     SupportedRuntimeCompatibilityPair:
       type: object
       properties:
@@ -1327,17 +1319,11 @@ components:
           "$ref": "#/components/schemas/PluginImplementationVersion"
         cliVersion:
           "$ref": "#/components/schemas/CliImplementationVersion"
-        pluginRevision:
-          "$ref": "#/components/schemas/ReleaseRevision"
-        cliRevision:
-          "$ref": "#/components/schemas/ReleaseRevision"
       additionalProperties: false
       required:
         - type
         - pluginVersion
         - cliVersion
-        - pluginRevision
-        - cliRevision
     RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision:
       type: object
       properties:

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 1,
   "ideaBuildRange": {
     "sinceBuild": "253",
     "untilBuild": null
@@ -9,8 +9,6 @@
       "relation": "same-release",
       "pluginVersion": "{releaseVersion}",
       "cliVersion": "{releaseVersion}",
-      "pluginRevision": "{releaseRevision}",
-      "cliRevision": "{releaseRevision}",
       "protocolRevision": 1,
       "workspaceMetadataRevision": 3,
       "runtime": {

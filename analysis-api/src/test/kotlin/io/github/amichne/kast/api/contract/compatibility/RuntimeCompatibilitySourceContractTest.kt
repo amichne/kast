@@ -45,8 +45,6 @@ class RuntimeCompatibilitySourceContractTest {
         )
         assertEquals("{releaseVersion}", sameReleaseIdea.string("pluginVersion"))
         assertEquals("{releaseVersion}", sameReleaseIdea.string("cliVersion"))
-        assertEquals("{releaseRevision}", sameReleaseIdea.string("pluginRevision"))
-        assertEquals("{releaseRevision}", sameReleaseIdea.string("cliRevision"))
         assertEquals(
             "{releaseVersion}",
             sameReleaseIdea.getValue("runtime").jsonObject.string("implementationVersion"),
@@ -130,8 +128,6 @@ class RuntimeCompatibilitySourceContractTest {
             facts = RuntimeCompatibilityFacts(
                 pluginVersion = PluginImplementationVersion(resolveVersion(string("pluginVersion"))),
                 cliVersion = CliImplementationVersion(resolveVersion(string("cliVersion"))),
-                pluginRevision = ReleaseRevision(resolveRevision(string("pluginRevision"))),
-                cliRevision = ReleaseRevision(resolveRevision(string("cliRevision"))),
                 protocolRevision = ProtocolRevision(getValue("protocolRevision").jsonPrimitive.int),
                 workspaceMetadataRevision = WorkspaceMetadataRevision(
                     getValue("workspaceMetadataRevision").jsonPrimitive.int,
@@ -181,17 +177,12 @@ class RuntimeCompatibilitySourceContractTest {
     private fun resolveVersion(value: String): String =
         if (value == RELEASE_VERSION_TEMPLATE) TEST_RELEASE_VERSION else value
 
-    private fun resolveRevision(value: String): String =
-        if (value == RELEASE_REVISION_TEMPLATE) TEST_RELEASE_REVISION else value
-
     private fun JsonObject.string(field: String): String =
         getValue(field).jsonPrimitive.content
 
     private companion object {
         const val SOURCE_PATH_PROPERTY = "kast.runtimeCompatibilitySource"
         const val RELEASE_VERSION_TEMPLATE = "{releaseVersion}"
-        const val RELEASE_REVISION_TEMPLATE = "{releaseRevision}"
         const val TEST_RELEASE_VERSION = "0.13.0"
-        const val TEST_RELEASE_REVISION = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     }
 }

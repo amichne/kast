@@ -190,16 +190,9 @@ abstract class BuildSourceBoundCliTask @Inject constructor(
             ?: throw GradleException(
                 "Local-development source snapshot has no valid sourceTreeSha256",
             )
-        val gitCommit = Regex(
-            """"gitCommit"\s*:\s*"([0-9a-f]{40})"""",
-        ).find(snapshot)?.groupValues?.get(1)
-            ?: throw GradleException(
-                "Local-development source snapshot has no valid full gitCommit",
-            )
         execOperations.exec {
             environment("KAST_VERSION", implementationVersion.get())
             environment("KAST_LOCAL_SOURCE_SHA256", sourceSha256)
-            environment("KAST_RELEASE_REVISION", gitCommit)
             commandLine(
                 cargoExecutable.get(),
                 "build",
