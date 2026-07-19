@@ -1,5 +1,6 @@
 const WORKSPACE_LEASE_SCHEMA_VERSION: u32 = 2;
 const WORKSPACE_LEASE_TOKEN_VERSION: &str = "kl2";
+const LEGACY_WORKSPACE_LEASE_SCHEMA_VERSION: u32 = 1;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -132,6 +133,73 @@ impl WorkspaceLeaseRecord {
             Self::Active { binding, .. } | Self::Released { binding, .. } => binding,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+enum LegacyWorkspaceLeaseInstallAuthority {
+    LocalDevelopment,
+    MacosHomebrew,
+    ManagedLocal,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct LegacyWorkspaceLeaseInstallationIdentity {
+    authority: LegacyWorkspaceLeaseInstallAuthority,
+    generation: String,
+    environment_sha256: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct LegacyWorkspaceLeaseBinding {
+    schema_version: u32,
+    record_id: uuid::Uuid,
+    workspace_root: PathBuf,
+    workspace_kind: SemanticWorkspaceKind,
+    backend_name: BackendName,
+    runtime: WorkspaceLeaseRuntimeIdentity,
+    installation: LegacyWorkspaceLeaseInstallationIdentity,
+    ownership: WorkspaceLeaseOwnership,
+    owner: WorkspaceLeaseOwnerIdentity,
+    acquired_at: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(
+    tag = "state",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    rename_all_fields = "camelCase",
+    deny_unknown_fields
+)]
+enum LegacyWorkspaceLeaseRecord {
+    Active {
+        binding: LegacyWorkspaceLeaseBinding,
+        record_mac: String,
+    },
+    Released {
+        binding: LegacyWorkspaceLeaseBinding,
+        receipt: WorkspaceLeaseReleaseReceipt,
+        record_mac: String,
+    },
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceLeaseRecordEnvelope {
+    binding: WorkspaceLeaseRecordSchemaEnvelope,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct WorkspaceLeaseRecordSchemaEnvelope {
+    schema_version: u32,
+}
+
+enum WorkspaceLeaseRecordForRecovery {
+    Current(WorkspaceLeaseRecord),
+    Legacy(LegacyWorkspaceLeaseRecord),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -790,56 +858,130 @@ fn recover_or_reject_existing_lease(
         if entry.path().extension().and_then(|value| value.to_str()) != Some("json") {
             continue;
         }
-        let record = read_workspace_lease_record(&entry.path())?;
-        validate_workspace_lease_record_mac(secret, &record)?;
-        let WorkspaceLeaseRecord::Active { binding, .. } = record else {
-            continue;
-        };
-        if binding.workspace_root != admission.workspace_root
-            || binding.backend_name != admission.backend_name
-        {
-            continue;
+        match read_workspace_lease_record_for_recovery(&entry.path())? {
+            WorkspaceLeaseRecordForRecovery::Current(record) => recover_current_workspace_lease(
+                &entry.path(),
+                secret,
+                admission,
+                installation,
+                record,
+            )?,
+            WorkspaceLeaseRecordForRecovery::Legacy(record) => {
+                recover_legacy_workspace_lease(&entry.path(), secret, admission, record)?
+            }
         }
-        if binding.installation != *installation {
-            return Err(stale_environment_error(
-                "An active workspace lease belongs to a different effective generation.",
-            ));
-        }
-        if owner_identity_is_live(&binding.owner) {
-            let mut error = CliError::new(
-                "WORKSPACE_LEASE_CONFLICT",
-                format!(
-                    "An active workspace lease already owns {} with backend {}.",
-                    binding.workspace_root.display(),
-                    binding.backend_name.canonical()
-                ),
-            );
-            error.details.insert(
-                "ownerPid".to_string(),
-                binding.owner.process.pid.to_string(),
-            );
-            return Err(error);
-        }
-        let runtime_stopped = if binding.ownership == WorkspaceLeaseOwnership::Started {
-            stop_exact_runtime(
-                &binding.workspace_root,
-                binding.backend_name,
-                &binding.runtime,
-            )?
-        } else {
-            false
-        };
-        let receipt = WorkspaceLeaseReleaseReceipt {
-            released_at: crate::manifest::current_timestamp(),
-            runtime_stopped,
-            reason: WorkspaceLeaseReleaseReason::RecoveredAbandonedOwner,
-        };
-        write_workspace_lease_record(
-            &entry.path(),
-            &released_workspace_lease_record(secret, binding, receipt)?,
-        )?;
     }
     Ok(())
+}
+
+fn recover_current_workspace_lease(
+    path: &Path,
+    secret: &[u8],
+    admission: &SemanticWorkspaceAdmission,
+    installation: &WorkspaceLeaseInstallationIdentity,
+    record: WorkspaceLeaseRecord,
+) -> Result<()> {
+    validate_workspace_lease_record_mac(secret, &record)?;
+    let WorkspaceLeaseRecord::Active { binding, .. } = record else {
+        return Ok(());
+    };
+    if binding.workspace_root != admission.workspace_root
+        || binding.backend_name != admission.backend_name
+    {
+        return Ok(());
+    }
+    if binding.installation != *installation {
+        return Err(stale_environment_error(
+            "An active workspace lease belongs to a different effective generation.",
+        ));
+    }
+    reject_live_workspace_lease(
+        &binding.workspace_root,
+        binding.backend_name,
+        &binding.owner,
+    )?;
+    let receipt = recovered_workspace_lease_receipt(
+        binding.ownership,
+        &binding.workspace_root,
+        binding.backend_name,
+        &binding.runtime,
+    )?;
+    write_workspace_lease_record(
+        path,
+        &released_workspace_lease_record(secret, binding, receipt)?,
+    )
+}
+
+fn recover_legacy_workspace_lease(
+    path: &Path,
+    secret: &[u8],
+    admission: &SemanticWorkspaceAdmission,
+    record: LegacyWorkspaceLeaseRecord,
+) -> Result<()> {
+    validate_legacy_workspace_lease_record_mac(secret, &record)?;
+    let LegacyWorkspaceLeaseRecord::Active { binding, .. } = record else {
+        return Ok(());
+    };
+    if binding.workspace_root != admission.workspace_root
+        || binding.backend_name != admission.backend_name
+    {
+        return Ok(());
+    }
+    reject_live_workspace_lease(
+        &binding.workspace_root,
+        binding.backend_name,
+        &binding.owner,
+    )?;
+    let receipt = recovered_workspace_lease_receipt(
+        binding.ownership,
+        &binding.workspace_root,
+        binding.backend_name,
+        &binding.runtime,
+    )?;
+    write_legacy_workspace_lease_record(
+        path,
+        &released_legacy_workspace_lease_record(secret, binding, receipt)?,
+    )
+}
+
+fn reject_live_workspace_lease(
+    workspace_root: &Path,
+    backend_name: BackendName,
+    owner: &WorkspaceLeaseOwnerIdentity,
+) -> Result<()> {
+    if !owner_identity_is_live(owner) {
+        return Ok(());
+    }
+    let mut error = CliError::new(
+        "WORKSPACE_LEASE_CONFLICT",
+        format!(
+            "An active workspace lease already owns {} with backend {}.",
+            workspace_root.display(),
+            backend_name.canonical()
+        ),
+    );
+    error
+        .details
+        .insert("ownerPid".to_string(), owner.process.pid.to_string());
+    Err(error)
+}
+
+fn recovered_workspace_lease_receipt(
+    ownership: WorkspaceLeaseOwnership,
+    workspace_root: &Path,
+    backend_name: BackendName,
+    runtime: &WorkspaceLeaseRuntimeIdentity,
+) -> Result<WorkspaceLeaseReleaseReceipt> {
+    let runtime_stopped = if ownership == WorkspaceLeaseOwnership::Started {
+        stop_exact_runtime(workspace_root, backend_name, runtime)?
+    } else {
+        false
+    };
+    Ok(WorkspaceLeaseReleaseReceipt {
+        released_at: crate::manifest::current_timestamp(),
+        runtime_stopped,
+        reason: WorkspaceLeaseReleaseReason::RecoveredAbandonedOwner,
+    })
 }
 
 fn validate_lease_binding_identity(
@@ -1043,6 +1185,19 @@ fn released_workspace_lease_record(
     })
 }
 
+fn released_legacy_workspace_lease_record(
+    secret: &[u8],
+    binding: LegacyWorkspaceLeaseBinding,
+    receipt: WorkspaceLeaseReleaseReceipt,
+) -> Result<LegacyWorkspaceLeaseRecord> {
+    let payload = serde_json::to_vec(&("RELEASED", &binding, &receipt))?;
+    Ok(LegacyWorkspaceLeaseRecord::Released {
+        binding,
+        receipt,
+        record_mac: hex::encode(workspace_lease_hmac_sha256(secret, &payload)),
+    })
+}
+
 fn validate_workspace_lease_record_mac(secret: &[u8], record: &WorkspaceLeaseRecord) -> Result<()> {
     let (payload, encoded_mac) = match record {
         WorkspaceLeaseRecord::Active {
@@ -1065,6 +1220,43 @@ fn validate_workspace_lease_record_mac(secret: &[u8], record: &WorkspaceLeaseRec
     } else {
         Err(record_tampered_error())
     }
+}
+
+fn validate_legacy_workspace_lease_record_mac(
+    secret: &[u8],
+    record: &LegacyWorkspaceLeaseRecord,
+) -> Result<()> {
+    let (binding, payload, encoded_mac) = match record {
+        LegacyWorkspaceLeaseRecord::Active {
+            binding,
+            record_mac,
+        } => (
+            binding,
+            serde_json::to_vec(&("ACTIVE", binding))?,
+            record_mac,
+        ),
+        LegacyWorkspaceLeaseRecord::Released {
+            binding,
+            receipt,
+            record_mac,
+        } => (
+            binding,
+            serde_json::to_vec(&("RELEASED", binding, receipt))?,
+            record_mac,
+        ),
+    };
+    let actual = hex::decode(encoded_mac).map_err(|_| record_tampered_error())?;
+    let expected = workspace_lease_hmac_sha256(secret, &payload);
+    if !constant_time_equal(&actual, &expected) {
+        return Err(record_tampered_error());
+    }
+    if binding.schema_version != LEGACY_WORKSPACE_LEASE_SCHEMA_VERSION {
+        return Err(CliError::new(
+            "WORKSPACE_LEASE_RECORD_INVALID",
+            "Legacy workspace lease record schema is invalid.",
+        ));
+    }
+    Ok(())
 }
 
 fn record_tampered_error() -> CliError {
@@ -1257,6 +1449,17 @@ fn constant_time_equal(actual: &[u8], expected: &[u8]) -> bool {
 }
 
 fn write_workspace_lease_record(path: &Path, record: &WorkspaceLeaseRecord) -> Result<()> {
+    write_workspace_lease_record_json(path, record)
+}
+
+fn write_legacy_workspace_lease_record(
+    path: &Path,
+    record: &LegacyWorkspaceLeaseRecord,
+) -> Result<()> {
+    write_workspace_lease_record_json(path, record)
+}
+
+fn write_workspace_lease_record_json(path: &Path, record: &impl Serialize) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -1277,65 +1480,89 @@ fn write_workspace_lease_record(path: &Path, record: &WorkspaceLeaseRecord) -> R
 }
 
 fn read_workspace_lease_record(path: &Path) -> Result<WorkspaceLeaseRecord> {
-    let bytes = fs::read(path).map_err(|error| {
+    let bytes = read_workspace_lease_record_bytes(path)?;
+    deserialize_workspace_lease_record(&bytes)
+}
+
+fn read_workspace_lease_record_for_recovery(
+    path: &Path,
+) -> Result<WorkspaceLeaseRecordForRecovery> {
+    let bytes = read_workspace_lease_record_bytes(path)?;
+    let envelope: WorkspaceLeaseRecordEnvelope =
+        serde_json::from_slice(&bytes).map_err(workspace_lease_record_invalid)?;
+    match envelope.binding.schema_version {
+        WORKSPACE_LEASE_SCHEMA_VERSION => deserialize_workspace_lease_record(&bytes)
+            .map(WorkspaceLeaseRecordForRecovery::Current),
+        LEGACY_WORKSPACE_LEASE_SCHEMA_VERSION => serde_json::from_slice(&bytes)
+            .map(WorkspaceLeaseRecordForRecovery::Legacy)
+            .map_err(workspace_lease_record_invalid),
+        schema_version => Err(CliError::new(
+            "WORKSPACE_LEASE_RECORD_INVALID",
+            format!("Workspace lease record schema {schema_version} is unsupported."),
+        )),
+    }
+}
+
+fn read_workspace_lease_record_bytes(path: &Path) -> Result<Vec<u8>> {
+    fs::read(path).map_err(|error| {
         CliError::new(
             "WORKSPACE_LEASE_UNKNOWN",
             format!("Workspace lease record is unavailable: {error}"),
         )
-    })?;
-    serde_json::from_slice(&bytes).map_err(|error| {
-        CliError::new(
-            "WORKSPACE_LEASE_RECORD_INVALID",
-            format!("Workspace lease record is invalid: {error}"),
-        )
     })
+}
+
+fn deserialize_workspace_lease_record(bytes: &[u8]) -> Result<WorkspaceLeaseRecord> {
+    serde_json::from_slice(bytes).map_err(workspace_lease_record_invalid)
+}
+
+fn workspace_lease_record_invalid(error: serde_json::Error) -> CliError {
+    CliError::new(
+        "WORKSPACE_LEASE_RECORD_INVALID",
+        format!("Workspace lease record is invalid: {error}"),
+    )
 }
 
 #[cfg(test)]
 mod workspace_lease_tests {
     use super::*;
 
-    #[derive(Serialize)]
-    #[serde(rename_all = "kebab-case")]
-    enum TestLegacyInstallAuthority {
-        LocalDevelopment,
-    }
-
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct TestLegacyInstallationIdentity {
-        authority: TestLegacyInstallAuthority,
-        generation: String,
-        environment_sha256: String,
-    }
-
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct TestLegacyBinding {
-        schema_version: u32,
+    fn legacy_binding(
+        workspace_root: &Path,
         record_id: uuid::Uuid,
-        workspace_root: PathBuf,
-        workspace_kind: SemanticWorkspaceKind,
-        backend_name: BackendName,
-        runtime: WorkspaceLeaseRuntimeIdentity,
-        installation: TestLegacyInstallationIdentity,
-        ownership: WorkspaceLeaseOwnership,
         owner: WorkspaceLeaseOwnerIdentity,
-        acquired_at: String,
-    }
-
-    #[derive(Serialize)]
-    #[serde(
-        tag = "state",
-        rename_all = "SCREAMING_SNAKE_CASE",
-        rename_all_fields = "camelCase"
-    )]
-    enum TestLegacyRecord {
-        Released {
-            binding: TestLegacyBinding,
-            receipt: WorkspaceLeaseReleaseReceipt,
-            record_mac: String,
-        },
+    ) -> LegacyWorkspaceLeaseBinding {
+        LegacyWorkspaceLeaseBinding {
+            schema_version: LEGACY_WORKSPACE_LEASE_SCHEMA_VERSION,
+            record_id,
+            workspace_root: workspace_root.to_path_buf(),
+            workspace_kind: SemanticWorkspaceKind::PrimaryCheckout,
+            backend_name: BackendName::Headless,
+            runtime: WorkspaceLeaseRuntimeIdentity {
+                descriptor_path: "legacy-descriptor".to_string(),
+                descriptor: ServerInstanceDescriptor {
+                    workspace_root: workspace_root.display().to_string(),
+                    backend_name: "headless".to_string(),
+                    backend_version: "legacy-revision".to_string(),
+                    transport: "uds".to_string(),
+                    socket_path: "/tmp/legacy-kast.sock".to_string(),
+                    pid: 42,
+                    schema_version: SCHEMA_VERSION,
+                },
+                process: WorkspaceLeaseProcessIdentity {
+                    pid: 42,
+                    started_at: "legacy-runtime-start".to_string(),
+                },
+            },
+            installation: LegacyWorkspaceLeaseInstallationIdentity {
+                authority: LegacyWorkspaceLeaseInstallAuthority::LocalDevelopment,
+                generation: "legacy-generation".to_string(),
+                environment_sha256: "a".repeat(64),
+            },
+            ownership: WorkspaceLeaseOwnership::Borrowed,
+            owner,
+            acquired_at: "unix:1".to_string(),
+        }
     }
 
     #[test]
@@ -1356,43 +1583,17 @@ mod workspace_lease_tests {
         let workspace_root = fixture.path().join("workspace");
         fs::create_dir(&workspace_root).expect("workspace");
         let record_id = uuid::Uuid::new_v4();
-        let binding = TestLegacyBinding {
-            schema_version: 1,
+        let binding = legacy_binding(
+            &workspace_root,
             record_id,
-            workspace_root: workspace_root.clone(),
-            workspace_kind: SemanticWorkspaceKind::PrimaryCheckout,
-            backend_name: BackendName::Headless,
-            runtime: WorkspaceLeaseRuntimeIdentity {
-                descriptor_path: "legacy-descriptor".to_string(),
-                descriptor: ServerInstanceDescriptor {
-                    workspace_root: workspace_root.display().to_string(),
-                    backend_name: "headless".to_string(),
-                    backend_version: "legacy-revision".to_string(),
-                    transport: "uds".to_string(),
-                    socket_path: "/tmp/legacy-kast.sock".to_string(),
-                    pid: 42,
-                    schema_version: SCHEMA_VERSION,
-                },
-                process: WorkspaceLeaseProcessIdentity {
-                    pid: 42,
-                    started_at: "legacy-runtime-start".to_string(),
-                },
-            },
-            installation: TestLegacyInstallationIdentity {
-                authority: TestLegacyInstallAuthority::LocalDevelopment,
-                generation: "legacy-generation".to_string(),
-                environment_sha256: "a".repeat(64),
-            },
-            ownership: WorkspaceLeaseOwnership::Borrowed,
-            owner: WorkspaceLeaseOwnerIdentity {
+            WorkspaceLeaseOwnerIdentity {
                 process: WorkspaceLeaseProcessIdentity {
                     pid: 42,
                     started_at: "legacy-owner-start".to_string(),
                 },
                 session_sha256: None,
             },
-            acquired_at: "unix:1".to_string(),
-        };
+        );
         let receipt = WorkspaceLeaseReleaseReceipt {
             released_at: "unix:2".to_string(),
             runtime_stopped: false,
@@ -1400,7 +1601,7 @@ mod workspace_lease_tests {
         };
         let secret = [7_u8; 32];
         let payload = serde_json::to_vec(&("RELEASED", &binding, &receipt)).expect("payload");
-        let record = TestLegacyRecord::Released {
+        let record = LegacyWorkspaceLeaseRecord::Released {
             binding,
             receipt,
             record_mac: hex::encode(workspace_lease_hmac_sha256(&secret, &payload)),
@@ -1430,6 +1631,59 @@ mod workspace_lease_tests {
 
         recover_or_reject_existing_lease(&paths, &secret, &admission, &installation)
             .expect("released legacy record must not block a current acquisition");
+    }
+
+    #[test]
+    fn acquisition_rejects_an_authenticated_live_schema_one_lease() {
+        let fixture = tempfile::tempdir().expect("fixture");
+        let records = fixture.path().join("records");
+        fs::create_dir_all(&records).expect("records");
+        let workspace_root = fixture.path().join("workspace");
+        fs::create_dir(&workspace_root).expect("workspace");
+        let record_id = uuid::Uuid::new_v4();
+        let binding = legacy_binding(
+            &workspace_root,
+            record_id,
+            caller_process_identity().expect("live owner"),
+        );
+        let secret = [7_u8; 32];
+        let payload = serde_json::to_vec(&("ACTIVE", &binding)).expect("payload");
+        let record = LegacyWorkspaceLeaseRecord::Active {
+            binding,
+            record_mac: hex::encode(workspace_lease_hmac_sha256(&secret, &payload)),
+        };
+        fs::write(
+            records.join(format!("{record_id}.json")),
+            serde_json::to_vec_pretty(&record).expect("legacy record"),
+        )
+        .expect("write legacy record");
+        let paths = WorkspaceLeasePaths {
+            records,
+            secret: fixture.path().join("secret"),
+            lock: fixture.path().join("lock"),
+        };
+        let admission = SemanticWorkspaceAdmission {
+            workspace_root,
+            backend_name: BackendName::Headless,
+            workspace_kind: SemanticWorkspaceKind::PrimaryCheckout,
+        };
+        let installation = WorkspaceLeaseInstallationIdentity {
+            generation: self_mgmt::EffectiveGeneration::Release {
+                distribution: self_mgmt::ReleaseDistribution::ManagedLocal,
+                revision: cli::ReleaseRevision::current(),
+            },
+            environment_sha256: "b".repeat(64),
+        };
+
+        let error = recover_or_reject_existing_lease(
+            &paths,
+            &secret,
+            &admission,
+            &installation,
+        )
+        .expect_err("a live legacy owner must still exclude current acquisition");
+
+        assert_eq!(error.code, "WORKSPACE_LEASE_CONFLICT");
     }
 
     #[test]
