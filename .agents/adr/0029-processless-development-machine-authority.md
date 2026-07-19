@@ -84,7 +84,7 @@ installation projection.
 
 | Contract | Owner | Validation |
 | --- | --- | --- |
-| Machine activation, strict manifest, and reconciliation | `cli-rs/src/machine.rs` and `cli-rs/src/cli/machine.rs` | `cli-rs/tests/machine_daemon_smoke.rs` |
+| Machine activation, strict manifest, and reconciliation | `cli-rs/src/machine.rs` and `cli-rs/src/cli/command_groups.rs` | `cli-rs/tests/machine_authority_smoke.rs` |
 | Development refresh graph | `build.gradle.kts` | `.github/scripts/test-local-development-refresh-contract.sh` |
 | macOS installation transaction | `install.sh` | `.github/scripts/test-macos-installer-contract.sh` |
 | IDEA plugin selection of the active CLI | `backend-idea/` | `:backend-idea:test` |
