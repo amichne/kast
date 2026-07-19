@@ -372,8 +372,12 @@ fn validate_macos_workspace_for_preference(
     workspace_root: &Path,
     preference: RuntimeBackendPreference,
 ) -> Result<()> {
-    if preference.fixed_backend() != Some(BackendName::Headless) {
-        self_mgmt::validate_macos_plugin_workspace(workspace_root)?;
+    #[cfg(target_os = "macos")]
+    if preference.fixed_backend() == Some(BackendName::Headless) {
+        return Err(CliError::new(
+            "HEADLESS_LOCAL_UNSUPPORTED",
+            "Kast does not run headless IntelliJ JVMs on macOS developer machines. Open this exact root in IntelliJ IDEA or Android Studio and use the IDEA backend.",
+        ));
     }
-    Ok(())
+    self_mgmt::validate_macos_plugin_workspace(workspace_root)
 }

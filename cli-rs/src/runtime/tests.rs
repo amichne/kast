@@ -215,12 +215,16 @@ mod tests {
     }
 
     #[test]
-    fn runtime_backend_preference_is_automatic_without_cli_or_config() {
+    fn runtime_backend_preference_uses_the_host_default_without_cli_or_config() {
         let config = KastConfig::defaults();
 
+        #[cfg(target_os = "macos")]
+        let expected = RuntimeBackendPreference::Fixed(BackendName::Idea);
+        #[cfg(not(target_os = "macos"))]
+        let expected = RuntimeBackendPreference::Automatic;
         assert_eq!(
             runtime_backend_preference(&config, None),
-            RuntimeBackendPreference::Automatic,
+            expected,
         );
     }
 
