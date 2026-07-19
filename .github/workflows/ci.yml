@@ -510,7 +510,7 @@ jobs:
             --source-snapshot build/ci-inputs/source-snapshot.json \
             --cli-archive build/ci-inputs/kast-v0.0.0-ci-linux-x64.zip \
             --backend-archive build/ci-inputs/kast-local-source-bound-backend.zip \
-            --prepared-generation build/ci-prepared-generation \
+            --prepared-generations build/ci-prepared-generations \
             --output dist/kast-local-prepared-generation.tar.zst
 
       - name: Record prepared generation output ledgers
