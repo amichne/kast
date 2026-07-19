@@ -454,12 +454,16 @@ fn lease_installation_identity(
     }
     let serialized = serde_json::to_vec(environment)?;
     let environment_sha256 = crate::manifest::sha256_bytes(&serialized);
-    let generation = doctor.effective_generation.ok_or_else(|| {
+    let generation = doctor
+        .authority_resolution
+        .active_generation()
+        .cloned()
+        .ok_or_else(|| {
         CliError::new(
             "WORKSPACE_LEASE_AUTHORITY_MISSING",
             "Workspace leases require one effective install generation.",
         )
-    })?;
+        })?;
     Ok(WorkspaceLeaseInstallationIdentity {
         generation,
         environment_sha256,

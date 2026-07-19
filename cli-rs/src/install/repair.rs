@@ -160,20 +160,17 @@ fn repair_install_config_state(
     let Some(mut install) = self_mgmt::read_global_install_state()? else {
         return Ok(());
     };
-    let homebrew_authority_active = match macos_homebrew_authority_is_active() {
-        Ok(active) => active,
-        Err(error)
-            if !args.apply
-                && default_macos_homebrew_receipt_path().is_file()
-                && exact_legacy_macos_homebrew_receipt(
-                    &default_macos_homebrew_receipt_path(),
-                )?
-                .is_some() =>
+    let homebrew_authority_active = match resolve_macos_homebrew_authority() {
+        MacosHomebrewAuthorityResolution::Active(_) => true,
+        MacosHomebrewAuthorityResolution::Recoverable(_)
+        | MacosHomebrewAuthorityResolution::Blocked(_)
+            if !args.apply =>
         {
-            let _recognized_legacy_error = error;
             true
         }
-        Err(error) => return Err(error),
+        MacosHomebrewAuthorityResolution::Absent => false,
+        MacosHomebrewAuthorityResolution::Recoverable(_) => false,
+        MacosHomebrewAuthorityResolution::Blocked(error) => return Err(error),
     };
     if homebrew_authority_active {
         repair_legacy_macos_install_identity(args, &install, result, backup_root)?;
@@ -484,31 +481,11 @@ fn repair_macos_homebrew_cli_authority(
     {
         let receipt_path = default_macos_homebrew_receipt_path();
         with_macos_homebrew_receipt_lock(&receipt_path, || {
-            let replacement = if receipt_path.is_file() {
-                match classify_existing_macos_homebrew_receipt_for_repair(&receipt_path)? {
-                    ExistingMacosHomebrewReceiptForRepair::Current(receipt) => {
-                        validate_running_macos_homebrew_receipt(&receipt_path, receipt)?;
-                        return Ok(());
-                    }
-                    ExistingMacosHomebrewReceiptForRepair::StaleSchema3
-                    | ExistingMacosHomebrewReceiptForRepair::LegacySchema2
-                    | ExistingMacosHomebrewReceiptForRepair::LegacySchema1(_) => {
-                        discover_running_homebrew_receipt()?.ok_or_else(|| {
-                            CliError::new(
-                                "MACOS_HOMEBREW_RECEIPT_BINARY_MISMATCH",
-                                format!(
-                                    "Recognized stale Homebrew receipt state at {}, but the running Kast executable is not the exact current Cellar/kast formula binary; the receipt was preserved unchanged",
-                                    receipt_path.display(),
-                                ),
-                            )
-                        })?
-                    }
-                }
-            } else {
-                let Some(discovered) = discover_running_homebrew_receipt()? else {
-                    return Ok(());
-                };
-                discovered
+            let replacement = match resolve_macos_homebrew_authority() {
+                MacosHomebrewAuthorityResolution::Absent
+                | MacosHomebrewAuthorityResolution::Active(_) => return Ok(()),
+                MacosHomebrewAuthorityResolution::Recoverable(replacement) => replacement,
+                MacosHomebrewAuthorityResolution::Blocked(error) => return Err(error),
             };
             push_repair_action(
                 result,
@@ -533,14 +510,18 @@ fn repair_recognized_legacy_idea_plugin_links(
     result: &mut InstallRepairResult,
     backup_root: &Path,
 ) -> Result<()> {
-    let receipt = match read_macos_homebrew_receipt() {
-        Ok(Some(receipt)) => receipt,
-        Ok(None) => return Ok(()),
-        Err(error) if !args.apply => {
-            exact_legacy_macos_homebrew_receipt(&default_macos_homebrew_receipt_path())?
-                .ok_or(error)?
+    let receipt = match resolve_macos_homebrew_authority() {
+        MacosHomebrewAuthorityResolution::Active(receipt) => receipt,
+        MacosHomebrewAuthorityResolution::Recoverable(receipt) if !args.apply => receipt,
+        MacosHomebrewAuthorityResolution::Absent => return Ok(()),
+        MacosHomebrewAuthorityResolution::Blocked(_) if !args.apply => return Ok(()),
+        MacosHomebrewAuthorityResolution::Recoverable(_) => {
+            return Err(CliError::new(
+                "MACOS_HOMEBREW_RECEIPT_RECOVERY_INCOMPLETE",
+                "Homebrew receipt recovery was applied but strict authority resolution is not active.",
+            ));
         }
-        Err(error) => return Err(error),
+        MacosHomebrewAuthorityResolution::Blocked(error) => return Err(error),
     };
     let jetbrains_config_root = args
         .jetbrains_config_root

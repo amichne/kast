@@ -66,6 +66,14 @@ enum ExistingMacosHomebrewReceiptForRepair {
     LegacySchema1(MacosHomebrewInstallReceipt),
 }
 
+#[derive(Debug)]
+pub(crate) enum MacosHomebrewAuthorityResolution {
+    Absent,
+    Active(MacosHomebrewInstallReceipt),
+    Recoverable(MacosHomebrewInstallReceipt),
+    Blocked(CliError),
+}
+
 impl MacosHomebrewInstallReceipt {
     fn new(cli_binary: PathBuf, formula_prefix: PathBuf, cli_version: String) -> Self {
         Self {
@@ -518,6 +526,57 @@ pub fn read_macos_homebrew_receipt() -> Result<Option<MacosHomebrewInstallReceip
     read_macos_homebrew_receipt_at(&path)
         .and_then(|receipt| validate_running_macos_homebrew_receipt(&path, receipt))
         .map(Some)
+}
+
+pub(crate) fn resolve_macos_homebrew_authority() -> MacosHomebrewAuthorityResolution {
+    #[cfg(not(target_os = "macos"))]
+    {
+        MacosHomebrewAuthorityResolution::Absent
+    }
+    #[cfg(target_os = "macos")]
+    {
+        let path = default_macos_homebrew_receipt_path();
+        if !path.is_file() {
+            return match discover_running_homebrew_receipt() {
+                Ok(Some(replacement)) => {
+                    MacosHomebrewAuthorityResolution::Recoverable(replacement)
+                }
+                Ok(None) => MacosHomebrewAuthorityResolution::Absent,
+                Err(error) => MacosHomebrewAuthorityResolution::Blocked(error),
+            };
+        }
+        match read_macos_homebrew_receipt_at(&path) {
+            Ok(receipt) => {
+                match validate_running_macos_homebrew_receipt(&path, receipt) {
+                    Ok(receipt) => MacosHomebrewAuthorityResolution::Active(receipt),
+                    Err(error) => MacosHomebrewAuthorityResolution::Blocked(error),
+                }
+            }
+            Err(strict_error) => match classify_existing_macos_homebrew_receipt_for_repair(&path) {
+                Ok(
+                    ExistingMacosHomebrewReceiptForRepair::StaleSchema3
+                    | ExistingMacosHomebrewReceiptForRepair::LegacySchema2
+                    | ExistingMacosHomebrewReceiptForRepair::LegacySchema1(_),
+                ) => match discover_running_homebrew_receipt() {
+                    Ok(Some(replacement)) => {
+                        MacosHomebrewAuthorityResolution::Recoverable(replacement)
+                    }
+                    Ok(None) => MacosHomebrewAuthorityResolution::Blocked(CliError::new(
+                        "MACOS_HOMEBREW_RECEIPT_BINARY_MISMATCH",
+                        format!(
+                            "Recognized stale Homebrew receipt state at {}, but the running Kast executable is not the exact current Cellar/kast formula binary; the receipt was preserved unchanged",
+                            path.display(),
+                        ),
+                    )),
+                    Err(error) => MacosHomebrewAuthorityResolution::Blocked(error),
+                },
+                Ok(ExistingMacosHomebrewReceiptForRepair::Current(_)) => {
+                    MacosHomebrewAuthorityResolution::Blocked(strict_error)
+                }
+                Err(_) => MacosHomebrewAuthorityResolution::Blocked(strict_error),
+            },
+        }
+    }
 }
 
 pub fn macos_homebrew_authority_is_active() -> Result<bool> {
