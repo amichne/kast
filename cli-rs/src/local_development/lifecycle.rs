@@ -302,7 +302,26 @@ fn reconcile_receipt_owned_removal_tombstone(
     let metadata = match fs::symlink_metadata(&tombstone) {
         Ok(metadata) => metadata,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            if !prefix.exists() && fs::symlink_metadata(&tombstone_authority).is_ok() {
+            let authority_exists = match fs::symlink_metadata(&tombstone_authority) {
+                Ok(_) => true,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
+                Err(error) => return Err(error.into()),
+            };
+            if !authority_exists {
+                return Ok(false);
+            }
+            if prefix.exists() {
+                let active_authority =
+                    validate_removal_authority_tree(prefix, prefix, workspace_root)?;
+                validate_removal_tombstone_authority(
+                    &tombstone_authority,
+                    prefix,
+                    workspace_root,
+                    Some(&active_authority.generation_id),
+                )?;
+                fs::remove_file(tombstone_authority)?;
+                return Ok(false);
+            } else {
                 validate_removal_tombstone_authority(
                     &tombstone_authority,
                     prefix,
@@ -313,7 +332,6 @@ fn reconcile_receipt_owned_removal_tombstone(
                 fs::remove_file(tombstone_authority)?;
                 return Ok(true);
             }
-            return Ok(false);
         }
         Err(error) => return Err(error.into()),
     };
@@ -342,7 +360,8 @@ fn reconcile_receipt_owned_removal_tombstone(
             None,
         )?;
     } else {
-        let legacy_authority = validate_removal_tombstone(&tombstone, prefix, workspace_root)?;
+        let legacy_authority =
+            validate_removal_authority_tree(&tombstone, prefix, workspace_root)?;
         write_removal_tombstone_authority(
             &tombstone_authority,
             prefix,
@@ -411,40 +430,43 @@ fn validate_removal_tombstone_authority(
     Ok(authority)
 }
 
-fn validate_removal_tombstone(
-    tombstone: &Path,
+fn validate_removal_authority_tree(
+    authority_root: &Path,
     prefix: &Path,
     workspace_root: &Path,
 ) -> Result<LocalDevelopmentRemovalAuthority> {
     validate_removal_boundary(prefix, workspace_root)?;
-    if fs::canonicalize(tombstone).map_err(|error| {
-        invalid_removal_tombstone(tombstone, format!("could not resolve tombstone: {error}"))
-    })? != tombstone
+    if fs::canonicalize(authority_root).map_err(|error| {
+        invalid_removal_tombstone(
+            authority_root,
+            format!("could not resolve authority tree: {error}"),
+        )
+    })? != authority_root
     {
         return Err(invalid_removal_tombstone(
-            tombstone,
-            "tombstone is not its canonical path",
+            authority_root,
+            "authority tree is not its canonical path",
         ));
     }
-    let current_target = read_generation_link(&tombstone.join("current"))
-        .map_err(|error| invalid_removal_tombstone(tombstone, error.message))?
-        .ok_or_else(|| invalid_removal_tombstone(tombstone, "active generation is missing"))?;
-    let generation = tombstone.join(&current_target);
+    let current_target = read_generation_link(&authority_root.join("current"))
+        .map_err(|error| invalid_removal_tombstone(authority_root, error.message))?
+        .ok_or_else(|| invalid_removal_tombstone(authority_root, "active generation is missing"))?;
+    let generation = authority_root.join(&current_target);
     let receipt = read_removal_authority(&generation.join("authority.json"))
-        .map_err(|error| invalid_removal_tombstone(tombstone, error.message))?;
+        .map_err(|error| invalid_removal_tombstone(authority_root, error.message))?;
     if receipt.authority != LocalDevelopmentAuthority::LocalDevelopment
         || receipt.prefix != prefix
         || receipt.workspace_root != workspace_root
         || current_target != generation_target(&receipt.generation_id)
     {
         return Err(invalid_removal_tombstone(
-            tombstone,
+            authority_root,
             "receipt does not bind the exact prefix, generation, and workspace",
         ));
     }
     let generation_metadata = fs::symlink_metadata(&generation).map_err(|error| {
         invalid_removal_tombstone(
-            tombstone,
+            authority_root,
             format!("could not inspect receipt generation: {error}"),
         )
     })?;
@@ -452,13 +474,13 @@ fn validate_removal_tombstone(
         || generation_metadata.file_type().is_symlink()
         || fs::canonicalize(&generation).map_err(|error| {
             invalid_removal_tombstone(
-                tombstone,
+                authority_root,
                 format!("could not resolve receipt generation: {error}"),
             )
         })? != generation
     {
         return Err(invalid_removal_tombstone(
-            tombstone,
+            authority_root,
             "receipt generation is not an owned canonical directory",
         ));
     }
