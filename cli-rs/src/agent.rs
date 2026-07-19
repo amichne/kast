@@ -12,12 +12,12 @@ use crate::cli::{
     AgentRelationPageToken, AgentRelationViewArgs, AgentRenameArgs, AgentReplaceDeclarationArgs,
     AgentReusableSymbolSelector, AgentReusableSymbolSelectorArgs, AgentRuntimeArgs,
     AgentScopedMutationArgs, AgentSelectorHandle, AgentStatementMutationArgs, AgentSymbolArgs,
-    AgentSymbolField, AgentSymbolMode, AgentSymbolViewArgs, AgentVerifyArgs, AgentVerifyField,
-    AgentVerifyViewArgs, AgentWorkspaceFilesArgs, AgentWorkspaceFilesField,
-    AgentWorkspaceFilesViewArgs, BackendName, WorkspaceDirtyFilter, WorkspaceDriftFilter,
-    WorkspaceFileKindFilter, WorkspaceFilesPublicPageToken, WorkspaceModuleSelector,
-    WorkspacePackageSelector, WorkspaceRelativeGlob, WorkspaceRelativePathPrefix,
-    WorkspaceSourceSetName,
+    AgentSymbolField, AgentSymbolMode, AgentSymbolViewArgs, AgentTaskArgs, AgentTaskCommand,
+    AgentTaskWorkspaceArgs, AgentVerifyArgs, AgentVerifyField, AgentVerifyViewArgs,
+    AgentWorkspaceFilesArgs, AgentWorkspaceFilesField, AgentWorkspaceFilesViewArgs, BackendName,
+    WorkspaceDirtyFilter, WorkspaceDriftFilter, WorkspaceFileKindFilter,
+    WorkspaceFilesPublicPageToken, WorkspaceModuleSelector, WorkspacePackageSelector,
+    WorkspaceRelativeGlob, WorkspaceRelativePathPrefix, WorkspaceSourceSetName,
 };
 use crate::error::{CliError, Result};
 use crate::metrics_database::ImpactSubjectKind;
@@ -41,9 +41,19 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path, PathBuf};
 
+const AGENT_TASK_GUIDANCE: &str = include_str!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/resources/agent-task/guidance.md"
+));
+
+pub(crate) fn agent_task_guidance() -> &'static str {
+    AGENT_TASK_GUIDANCE.trim()
+}
+
 include!("agent/types.rs");
 include!("agent/path.rs");
 include!("agent/public_capabilities.rs");
+include!("agent/task.rs");
 include!("agent/workspace_files.rs");
 include!("agent/relations.rs");
 include!("agent/dispatch.rs");
@@ -72,6 +82,10 @@ mod semantic_analysis_evidence_tests {
                 "filePath": "/workspace/src/Sample.kt",
                 "state": "ANALYZED"
             }],
+            "fileHashes": [{
+                "filePath": "/workspace/src/Sample.kt",
+                "hash": "a".repeat(64)
+            }],
             "semanticOutcome": "COMPLETE",
             "requestedFileCount": 1,
             "analyzedFileCount": 1,
@@ -83,6 +97,47 @@ mod semantic_analysis_evidence_tests {
         assert!(matches!(
             AgentSemanticAnalysisEvidence::from_result("raw/diagnostics", &request, Some(&result),),
             AgentSemanticAnalysisEvidence::Valid(_),
+        ));
+    }
+
+    #[test]
+    fn diagnostics_require_ordered_current_hash_evidence_for_analyzed_files() {
+        let request = json!({
+            "params": {
+                "filePaths": ["/workspace/A.kt", "/workspace/B.kt"],
+                "maxResults": 8
+            }
+        });
+        let mut result = json!({
+            "diagnostics": [],
+            "fileStatuses": [
+                {"filePath": "/workspace/A.kt", "state": "ANALYZED"},
+                {"filePath": "/workspace/B.kt", "state": "ANALYZED"}
+            ],
+            "fileHashes": [
+                {"filePath": "/workspace/B.kt", "hash": "b".repeat(64)},
+                {"filePath": "/workspace/A.kt", "hash": "a".repeat(64)}
+            ],
+            "semanticOutcome": "COMPLETE",
+            "requestedFileCount": 2,
+            "analyzedFileCount": 2,
+            "skippedFileCount": 0,
+            "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+            "cardinality": {"type": "EXACT", "totalCount": 0}
+        });
+
+        assert!(matches!(
+            AgentSemanticAnalysisEvidence::from_result("raw/diagnostics", &request, Some(&result)),
+            AgentSemanticAnalysisEvidence::Invalid,
+        ));
+
+        result["fileHashes"] = json!([
+            {"filePath": "/workspace/A.kt", "hash": "not-a-sha-256-digest"},
+            {"filePath": "/workspace/B.kt", "hash": "b".repeat(64)}
+        ]);
+        assert!(matches!(
+            AgentSemanticAnalysisEvidence::from_result("raw/diagnostics", &request, Some(&result)),
+            AgentSemanticAnalysisEvidence::Invalid,
         ));
     }
 

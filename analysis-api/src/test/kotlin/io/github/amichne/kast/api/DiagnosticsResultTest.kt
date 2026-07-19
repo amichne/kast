@@ -2,6 +2,7 @@ package io.github.amichne.kast.api
 
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
+import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
@@ -9,16 +10,21 @@ import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
+import io.github.amichne.kast.api.validation.FileHashing
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 
 class DiagnosticsResultTest {
     private val first = NormalizedPath.ofAbsolute(Path.of("/workspace/First.kt"))
     private val second = NormalizedPath.ofAbsolute(Path.of("/workspace/Second.kt"))
+    private val firstHash = FileHash(first.value, FileHashing.sha256("first"))
+    private val secondHash = FileHash(second.value, FileHashing.sha256("second"))
 
     @Test
     fun `all analyzed files produce complete counts`() {
@@ -28,6 +34,7 @@ class DiagnosticsResultTest {
                 FileAnalysisStatus.analyzed(first),
                 FileAnalysisStatus.analyzed(second),
             ),
+            fileHashes = listOf(firstHash, secondHash),
         )
 
         assertEquals(SemanticAnalysisOutcome.COMPLETE, result.semanticOutcome)
@@ -41,15 +48,18 @@ class DiagnosticsResultTest {
         val result = DiagnosticsResult.of(
             diagnostics = emptyList(),
             fileStatuses = listOf(FileAnalysisStatus.analyzed(first)),
+            fileHashes = listOf(firstHash),
         )
 
         val cardinality = Json.encodeToJsonElement(DiagnosticsResult.serializer(), result)
             .jsonObject
             .getValue("cardinality")
             .jsonObject
+        val encoded = Json.encodeToJsonElement(DiagnosticsResult.serializer(), result).jsonObject
 
         assertEquals("EXACT", cardinality.getValue("type").jsonPrimitive.content)
         assertEquals(0, cardinality.getValue("totalCount").jsonPrimitive.content.toInt())
+        assertTrue(encoded.containsKey("fileHashes"))
     }
 
     @Test
@@ -64,6 +74,7 @@ class DiagnosticsResultTest {
                     "File not found",
                 ),
             ),
+            fileHashes = listOf(firstHash),
         )
 
         assertEquals(SemanticAnalysisOutcome.INCOMPLETE, result.semanticOutcome)
@@ -77,9 +88,38 @@ class DiagnosticsResultTest {
         val result = DiagnosticsResult.of(
             diagnostics = listOf(analysisFailure(first.value, "backend failed")),
             fileStatuses = listOf(FileAnalysisStatus.analyzed(first)),
+            fileHashes = listOf(firstHash),
         )
 
         assertEquals(SemanticAnalysisOutcome.INCOMPLETE, result.semanticOutcome)
+    }
+
+    @Test
+    fun `file hashes bind exactly the analyzed files in request order`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            DiagnosticsResult.of(
+                diagnostics = emptyList(),
+                fileStatuses = listOf(
+                    FileAnalysisStatus.analyzed(first),
+                    FileAnalysisStatus.analyzed(second),
+                ),
+                fileHashes = listOf(secondHash, firstHash),
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            DiagnosticsResult.of(
+                diagnostics = emptyList(),
+                fileStatuses = listOf(FileAnalysisStatus.analyzed(first)),
+                fileHashes = emptyList(),
+            )
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            DiagnosticsResult.of(
+                diagnostics = emptyList(),
+                fileStatuses = listOf(FileAnalysisStatus.analyzed(first)),
+                fileHashes = listOf(FileHash(first.value, "not-a-sha-256-digest")),
+            )
+        }
     }
 
     @Test
@@ -103,6 +143,7 @@ class DiagnosticsResultTest {
         val firstPage = DiagnosticsResult.paged(
             diagnostics = diagnostics,
             fileStatuses = listOf(FileAnalysisStatus.analyzed(first)),
+            fileHashes = listOf(firstHash),
             pageOffset = 0,
             maxResults = 8,
             nextPageToken = "00000000-0000-0000-0000-000000000338",
@@ -110,6 +151,7 @@ class DiagnosticsResultTest {
         val secondPage = DiagnosticsResult.paged(
             diagnostics = diagnostics,
             fileStatuses = listOf(FileAnalysisStatus.analyzed(first)),
+            fileHashes = listOf(firstHash),
             pageOffset = 8,
             maxResults = 8,
             nextPageToken = "00000000-0000-0000-0000-000000000339",
@@ -122,6 +164,8 @@ class DiagnosticsResultTest {
         assertEquals("00000000-0000-0000-0000-000000000339", secondPage.page?.nextPageToken)
         assertEquals(8, firstPage.diagnostics.size)
         assertEquals(8, secondPage.diagnostics.size)
+        assertEquals(listOf(firstHash), firstPage.fileHashes)
+        assertEquals(firstPage.fileHashes, secondPage.fileHashes)
         assertEquals(
             emptySet<Diagnostic>(),
             firstPage.diagnostics.toSet().intersect(secondPage.diagnostics.toSet()),

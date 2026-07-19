@@ -150,13 +150,16 @@ reviewing delegated results, and final verification. Account for the shared
 workspace: do not delegate parallel work that would edit the same files,
 depend on unfinished shared state, or otherwise be tightly coupled.
 
+For each linked worker, open the exact worktree root as its own IDEA project
+and keep that project open while semantic work is active. On macOS the plugin
+owns workspace preparation; do not run legacy setup or reuse another
+worktree's runtime, metadata, or evidence. Close the exact IDEA project before
+removing its worktree.
+
 <kast>
 ## Kast routing
-Use `/Users/amichne/code/kast/.agents/skills/kast/SKILL.md` before Kotlin or Gradle semantic work.
-Use `kast agent verify --workspace-root "$PWD"` to verify the plugin-prepared workspace.
-Use typed commands such as `kast agent symbol --query <name>`, `kast agent diagnostics --file-path <path>`, and `kast agent rename --symbol <fq-name> --new-name <name> --apply`.
-Do not run `kast setup` on macOS; the IntelliJ plugin owns workspace bootstrap.
-Before each linked worker starts, open the exact worktree root as its own IDE project and run `kast agent verify --workspace-root "$PWD"` from that worktree.
-Never reuse another worktree's Kast runtime, metadata, or semantic evidence.
-Keep the IDE project open while active; close its exact IDE project or window before removing the worktree.
+Start Kotlin or Gradle work with `kast-agent-task begin --workspace-root "$PWD"`.
+Discover the current task and available semantic operations with `kast agent` and scoped `--help`.
+Finish with `kast-agent-task finish --workspace-root "$PWD"`.
+Report typed blockers exactly as returned; do not bypass task ownership, diagnostics, or Gradle proof.
 </kast>

@@ -1,7 +1,8 @@
 version: "0.1.0"
 schema_version: 1
-messages[4]{code,message,nextStep}:
-  KAST_CODEX_BINARY_MISSING,The Kast binary is unavailable to the Codex plugin.,"Install Kast or put the active binary on PATH, then start a new task."
-  KAST_CODEX_VERSION_MISMATCH,The plugin and active Kast binary are from different releases.,Update Kast and reinstall kast@kast from the same release.
+messages[5]{code,message,nextStep}:
+  KAST_AGENT_TASK_LAUNCHER_MISSING,"The generation-bound Kast agent-task launcher is unavailable to the Codex plugin.","Install or repair Kast's attested launcher pair, then start a new task."
+  KAST_CODEX_GENERATION_MISMATCH,The Codex adapter and active Kast task generation do not match.,Repair Kast resources and reinstall kast@kast from the selected generation.
+  HOOK_TRUST_REQUIRED,Kast cannot prove that Codex trusts the installed lifecycle hooks.,"Approve the kast@kast hooks in Codex, then start a new session."
   KAST_TYPED_ROUTE_REQUIRED,Try the corresponding typed Kast mutation before a generic Kotlin edit.,"Run the plan-first kast --output toon agent mutation and preserve its typed outcome."
   KAST_DIAGNOSTICS_REQUIRED,New Kotlin changes do not have diagnostics for their current contents.,"Run kast --output toon agent diagnostics for each changed Kotlin file."

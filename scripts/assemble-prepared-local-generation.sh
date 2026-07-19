@@ -85,14 +85,17 @@ mkdir -p "$(dirname -- "$prepared_generation")" "$(dirname -- "$output_path")"
 "${repo_root}/scripts/extract-safe-zip.py" "$backend_archive" "$backend_extract"
 
 source_bound_cli="${cli_extract}/kast"
+source_bound_task_launcher="${cli_extract}/kast-agent-task"
 source_bound_backend="${backend_extract}/backend-headless"
 [[ -x "$source_bound_cli" ]] || die "CLI archive must contain executable kast at its root"
+[[ -x "$source_bound_task_launcher" ]] || die "CLI archive must contain executable kast-agent-task at its root"
 [[ -d "$source_bound_backend" ]] || die "Backend archive must contain backend-headless/"
 
 [[ ! -e "$prepared_generation" ]] || die "Prepared output already exists: $prepared_generation"
 mkdir -p "${prepared_generation}/bin"
 cp "$source_bound_cli" "${prepared_generation}/bin/kast"
-chmod 755 "${prepared_generation}/bin/kast"
+cp "$source_bound_task_launcher" "${prepared_generation}/bin/kast-agent-task"
+chmod 755 "${prepared_generation}/bin/kast" "${prepared_generation}/bin/kast-agent-task"
 cp -R "$source_bound_backend" "${prepared_generation}/backend-headless"
 cp "$source_snapshot" "${prepared_generation}/source-snapshot.json"
 

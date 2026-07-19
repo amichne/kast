@@ -522,8 +522,20 @@ pub(crate) fn write_cli_archive(root: &Path) -> PathBuf {
     let cli = staging.join("kast");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &cli).expect("copy test kast binary");
     set_executable_for_test(&cli);
+    let task_launcher = staging.join("kast-agent-task");
+    std::fs::write(
+        &task_launcher,
+        include_bytes!("../../resources/agent-task/kast-agent-task"),
+    )
+    .expect("copy test task launcher");
+    set_executable_for_test(&task_launcher);
     let status = Command::new("zip")
-        .args(["-qr", archive.to_str().expect("archive path"), "kast"])
+        .args([
+            "-qr",
+            archive.to_str().expect("archive path"),
+            "kast",
+            "kast-agent-task",
+        ])
         .current_dir(&staging)
         .status()
         .expect("zip command");
@@ -545,7 +557,13 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
         .expect("kast-headless plugin");
 
     let bundled_kast = bundle.join("bin/kast");
+    let bundled_task_launcher = bundle.join("bin/kast-agent-task");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &bundled_kast).expect("copy test kast binary");
+    std::fs::write(
+        &bundled_task_launcher,
+        include_bytes!("../../resources/agent-task/kast-agent-task"),
+    )
+    .expect("task launcher");
     std::fs::write(backend_dir.join("kast-headless"), "#!/bin/sh\n").expect("launcher");
     std::fs::write(
         backend_dir.join("runtime-libs/classpath.txt"),
@@ -565,6 +583,7 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
     )
     .expect("bootstrap script");
     set_executable_for_test(&bundled_kast);
+    set_executable_for_test(&bundled_task_launcher);
     set_executable_for_test(&backend_dir.join("kast-headless"));
     set_executable_for_test(&bundle.join("scripts/install-ubuntu-debian.sh"));
 
@@ -572,7 +591,7 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
     std::fs::write(
         bundle.join("manifest.json"),
         serde_json::to_string_pretty(&serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "kind": "KAST_INSTALL_BUNDLE",
             "profile": "ubuntu-debian-headless",
             "version": version,
@@ -582,6 +601,7 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
             "buildCommit": "test",
             "activation": {
                 "cli": {"path": "bin/kast"},
+                "taskLauncher": {"path": "bin/kast-agent-task"},
                 "backend": {
                     "kind": "headless",
                     "name": "headless",
@@ -603,6 +623,11 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
                     "role": "cli",
                     "path": "bin/kast",
                     "sourceSha256": "test-cli-sha"
+                },
+                {
+                    "role": "agent-task-launcher",
+                    "path": "bin/kast-agent-task",
+                    "sourceSha256": "test-task-launcher-sha"
                 },
                 {
                     "role": "headless-backend",
@@ -668,3 +693,16 @@ pub(crate) fn set_executable_for_test(path: &Path) {
 
 #[cfg(not(unix))]
 pub(crate) fn set_executable_for_test(_path: &Path) {}
+
+#[cfg(unix)]
+pub(crate) fn is_executable_for_test(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    std::fs::metadata(path)
+        .is_ok_and(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(not(unix))]
+pub(crate) fn is_executable_for_test(path: &Path) -> bool {
+    path.is_file()
+}

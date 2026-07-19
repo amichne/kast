@@ -21,11 +21,26 @@ implementation class names.
 Keep automation on the public command dialect so agent behavior stays
 reviewable.
 
-## Prefer Readable Or JSON Output
+## Put Every Delivery Inside A Task
 
-Human-facing output should be readable. Agent and CI workflows that need a
-stable parser contract should request JSON explicitly. Public documentation
-should not require readers to understand internal compact output choices.
+Start one exact-root task before semantic work and finish the same task before
+claiming completion:
+
+```console
+kast-agent-task begin --workspace-root "$PWD"
+kast agent
+kast-agent-task finish --workspace-root "$PWD"
+```
+
+`begin` preserves pre-existing dirt as baseline evidence. `finish` validates
+only relevant Kotlin, Java, and Gradle-owned changes, binds diagnostics and
+Gradle outcomes to final content hashes, and retains a blocked task for repair
+and retry. Use `kast-agent-task abort --workspace-root "$PWD"` only to release
+the owned task without claiming completion.
+
+Agent commands default to TOON, including on an interactive terminal. Use
+`kast agent` and scoped `--help` to discover the current command surface; do
+not copy a generated command inventory into provider guidance.
 
 ## Let Setup Stay Invisible
 

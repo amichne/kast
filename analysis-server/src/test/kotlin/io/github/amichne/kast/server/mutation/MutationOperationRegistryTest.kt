@@ -1,6 +1,7 @@
 package io.github.amichne.kast.server.mutation
 
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.mutation.KastMutationEditApplicationState
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
 import io.github.amichne.kast.api.contract.mutation.KastMutationOperationId
@@ -16,6 +17,7 @@ import io.github.amichne.kast.api.contract.skill.KastDiagnosticsSummary
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationOperation
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationSuccessResponse
 import io.github.amichne.kast.api.protocol.ConflictException
+import io.github.amichne.kast.api.validation.FileHashing
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -238,6 +240,9 @@ class MutationOperationRegistryTest {
                         FileAnalysisStatus.analyzed(
                             NormalizedPath.ofAbsolute(Path.of("/workspace/Added.kt")),
                         ),
+                    ),
+                    fileHashes = listOf(
+                        FileHash("/workspace/Added.kt", FileHashing.sha256("added")),
                     ),
                 ),
             ),

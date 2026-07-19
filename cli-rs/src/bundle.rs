@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
 
 pub(crate) const BUNDLE_MANIFEST_FILE: &str = "manifest.json";
-pub(crate) const BUNDLE_MANIFEST_SCHEMA_VERSION: u32 = 2;
+pub(crate) const BUNDLE_MANIFEST_SCHEMA_VERSION: u32 = 3;
 pub(crate) const BUNDLE_MANIFEST_KIND: &str = "KAST_INSTALL_BUNDLE";
 pub(crate) const UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID: &str = "ubuntu-debian-headless-x86_64";
 pub(crate) const UBUNTU_DEBIAN_HEADLESS_PROFILE: &str = "ubuntu-debian-headless";
 pub(crate) const UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT: &str = "scripts/install-ubuntu-debian.sh";
+pub(crate) const AGENT_TASK_LAUNCHER: &str = "kast-agent-task";
 pub(crate) const HEADLESS_BACKEND_KIND: &str = "headless";
 pub(crate) const HEADLESS_BACKEND_NAME: &str = "headless";
 pub(crate) const HEADLESS_BACKEND_ROLE: &str = "headless-backend";
@@ -69,6 +70,7 @@ pub(crate) struct BundleManifest {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct BundleActivation {
     pub(crate) cli: BundleCliActivation,
+    pub(crate) task_launcher: BundleTaskLauncherActivation,
     pub(crate) backend: BundleBackendActivation,
     pub(crate) shim: BundleShimActivation,
 }
@@ -76,6 +78,12 @@ pub(crate) struct BundleActivation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct BundleCliActivation {
+    pub(crate) path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct BundleTaskLauncherActivation {
     pub(crate) path: String,
 }
 
@@ -115,6 +123,7 @@ pub(crate) struct BundleArtifact {
 pub(crate) fn ubuntu_debian_headless_manifest(
     version: &str,
     cli_sha256: String,
+    task_launcher_sha256: String,
     backend_sha256: String,
     build_commit: String,
 ) -> BundleManifest {
@@ -131,6 +140,9 @@ pub(crate) fn ubuntu_debian_headless_manifest(
         activation: BundleActivation {
             cli: BundleCliActivation {
                 path: "bin/kast".to_string(),
+            },
+            task_launcher: BundleTaskLauncherActivation {
+                path: format!("bin/{AGENT_TASK_LAUNCHER}"),
             },
             backend: BundleBackendActivation {
                 kind: HEADLESS_BACKEND_KIND.to_string(),
@@ -153,6 +165,11 @@ pub(crate) fn ubuntu_debian_headless_manifest(
                 role: "cli".to_string(),
                 path: "bin/kast".to_string(),
                 source_sha256: cli_sha256,
+            },
+            BundleArtifact {
+                role: "agent-task-launcher".to_string(),
+                path: format!("bin/{AGENT_TASK_LAUNCHER}"),
+                source_sha256: task_launcher_sha256,
             },
             BundleArtifact {
                 role: HEADLESS_BACKEND_ROLE.to_string(),

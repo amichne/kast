@@ -334,6 +334,8 @@ require_block_not_contains "$ci_workflow" "  rust-cli:" "  source-bound-cli:" "c
 require_block_contains "$ci_workflow" "  source-bound-cli:" "  build-and-test-linux:" "KAST_LOCAL_SOURCE_SHA256" "CI Rust production must bind the release build to the captured source snapshot"
 require_block_contains "$ci_workflow" "  source-bound-cli:" "  build-and-test-linux:" "kast-rust-cli-linux-x64" "The source-bound CLI producer must publish the exact release artifact"
 require_block_contains "$ci_workflow" "  source-bound-cli:" "  build-and-test-linux:" "ci-artifact-ledger-rust-cli-linux-x64" "The source-bound CLI producer must publish its artifact ledger"
+require_block_contains "$ci_workflow" "  source-bound-cli:" "  build-and-test-linux:" "Test packaged selector handle workflow" "The source-bound CLI producer must execute the packaged workflow acceptance"
+require_block_contains "$ci_workflow" "  source-bound-cli:" "  build-and-test-linux:" "KAST_INSTALLED_SELECTOR_WORKFLOW_LAUNCHER" "The packaged workflow acceptance must bind the attested launcher sibling"
 require_not_contains "$ci_build_and_test_workflow" "kast-local-source-snapshot" "Kotlin validation must not consume production-only source snapshot inputs"
 require_not_contains "$ci_build_and_test_workflow" "packageSourceBoundDevelopmentBackend" "Kotlin validation must not duplicate the source-bound backend producer"
 require_block_contains "$ci_workflow" "  source-bound-headless-backend:" "  install-ubuntu-debian-container:" "      - workflow-contracts" "Source-bound backend production must start from the static fanout gate"

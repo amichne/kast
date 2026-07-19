@@ -23,6 +23,10 @@ mod result_projection_tests {
                             "filePath": "/workspace/App.kt",
                             "state": "ANALYZED"
                         }],
+                        "fileHashes": [{
+                            "filePath": "/workspace/App.kt",
+                            "hash": "a".repeat(64)
+                        }],
                         "semanticOutcome": "COMPLETE",
                         "requestedFileCount": 1,
                         "analyzedFileCount": 1,
@@ -41,6 +45,7 @@ mod result_projection_tests {
         assert_eq!(result["type"], "KAST_AGENT_DIAGNOSTICS_COUNT");
         assert_eq!(result["analysis"]["analyzedFileCount"], 1);
         assert_eq!(result["severityCounts"]["error"], 1);
+        assert_eq!(result["fileHashes"][0]["filePath"], "/workspace/App.kt");
         assert!(result.get("diagnostics").is_none(), "{result}");
     }
 
@@ -309,6 +314,10 @@ mod result_projection_tests {
                         {"filePath": "/workspace/B.kt", "state": "ANALYZED"},
                         {"filePath": "/workspace/A.kt", "state": "ANALYZED"}
                     ],
+                    "fileHashes": [
+                        {"filePath": "/workspace/B.kt", "hash": "b".repeat(64)},
+                        {"filePath": "/workspace/A.kt", "hash": "a".repeat(64)}
+                    ],
                     "semanticOutcome": "COMPLETE",
                     "requestedFileCount": 2,
                     "analyzedFileCount": 2,
@@ -319,8 +328,15 @@ mod result_projection_tests {
                 "error": null
                 })],
             );
-            envelope.result.as_mut().and_then(Value::as_object_mut).expect("command result")
-                .insert("filePaths".to_string(), json!(["/workspace/B.kt", "/workspace/A.kt"]));
+            envelope
+                .result
+                .as_mut()
+                .and_then(Value::as_object_mut)
+                .expect("command result")
+                .insert(
+                    "filePaths".to_string(),
+                    json!(["/workspace/B.kt", "/workspace/A.kt"]),
+                );
             envelope
         };
 
@@ -333,7 +349,17 @@ mod result_projection_tests {
             let projected = project_diagnostics_envelope(envelope(), view, 8);
             let result = projected.result.expect("diagnostics result");
 
-            assert_eq!(result["filePaths"], json!(["/workspace/B.kt", "/workspace/A.kt"]));
+            assert_eq!(
+                result["filePaths"],
+                json!(["/workspace/B.kt", "/workspace/A.kt"])
+            );
+            assert_eq!(
+                result["fileHashes"],
+                json!([
+                    {"filePath": "/workspace/B.kt", "hash": "b".repeat(64)},
+                    {"filePath": "/workspace/A.kt", "hash": "a".repeat(64)}
+                ])
+            );
         }
     }
 

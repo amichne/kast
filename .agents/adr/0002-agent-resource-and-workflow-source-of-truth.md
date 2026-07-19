@@ -12,7 +12,10 @@ rules not replaced by ADR 0006. ADR 0024 adds an isolated local-development
 authority whose receipt must prove the same resource-trust facts without
 changing release authority. ADR 0027 supersedes the readiness and effective
 skill/guidance compatibility portions with a cross-authority agent-environment
-verdict.
+verdict. ADR 0029 retires the local-development authority. ADR 0030 supersedes
+the remaining packaged-skill, provider-workflow, task-resource, and public
+output portions; this record now remains authoritative only for the general
+manifest-backed trust and source-ownership rules not replaced there.
 
 This ADR records the current contract for agent-facing Kast resources. It
 exists so future agents can preserve the source of truth for the packaged
@@ -43,11 +46,11 @@ model.
 | --- | --- | --- | --- |
 | Plugin package source | `cli-rs/resources/plugin/` and `primitive-manifest.json` | generated plugin package artifacts consumed by release and LSP checks | `.github/scripts/test-kast-copilot-plugin.sh`, `.github/scripts/test-lsp-pivot-gates.sh` |
 | Internal command catalog | `cli-rs/protocol/source/commands.json` | internal request schemas, samples, and LSP custom route metadata | `cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check`, `cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke` |
-| Packaged skill | `cli-rs/resources/kast-skill/SKILL.md` | thin installed `kast` skill entrypoint only | CLI smoke tests and packaged content tests |
+| Agent task resources | `cli-rs/resources/kast-skill/SKILL.md` and `cli-rs/resources/agent-task/` | minimal lifecycle skill, launcher support, workflow schema, and Gradle proof script | task CLI, launcher, machine, and packaged-content tests |
 | Protocol maintenance evidence | `cli-rs/protocol/maintenance/` | routing and output-format evaluation reports | `.github/scripts/test-kast-routing-evals.sh`, packaged content tests |
 | Repo-local agent guidance | `cli-rs/src/install/agent_guidance.rs` | selected context file with one managed `<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">` region | CLI smoke tests, docs content contract |
 | Repo resource trust | `$HOME/.local/share/kast/install.json` | managed repo resource records with output checksums | `kast --output json ready`, verifier script |
-| Local-development resource trust | `cli-rs/src/local_development/` plus the captured checkout's skill source and independently attested CLI/backend artifacts | one immutable local generation and its strict authority receipt | `.github/scripts/test-local-development-refresh-contract.sh` |
+| Developer-machine resource trust | `cli-rs/src/machine.rs` and the complete bundled agent-resource tree | one active processless machine generation | `.github/scripts/test-local-development-refresh-contract.sh` and machine authority tests |
 
 Marker files such as `.kast-version` and `.github/.kast-copilot-version` are
 retired. They may be detected as stale state, but they are not trusted as a
@@ -75,15 +78,10 @@ Agent-facing changes must keep these requirements true:
 - Stale active-binary/resource combinations report incompatibility and require
   upgrade or reinstall. Do not add a compatibility helper just for older
   binaries.
-- A local-development refresh records the canonical checkout snapshot and
-  length-framed component hashes, requires matching CLI/backend artifact
-  provenance, projects resources only into the explicit exact workspace, and
-  fails closed when any effective resource differs from that generation.
-- Local-development runtime state is keyed by source generation, and its
-  installed skill and guidance route only through the receipt-owned local
-  entrypoint.
-- Local-development rollback and removal restore only receipt-owned resource
-  state; they never mutate Homebrew or JetBrains release authority.
+- A machine refresh activates one strict processless bundle whose CLI, IDEA
+  plugin, task launcher, skill, task resources, and provider adapters all
+  contribute to the effective generation. It never creates a competing
+  worktree-local runtime authority.
 
 ## Instruction topology
 

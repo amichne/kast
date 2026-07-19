@@ -8,7 +8,7 @@ pub fn agent_guidance_setup_plan(
     let agents_md_targets = resolve_agents_md_targets(&workspace_root, args)?;
     let agents_md_targets = agents_md_targets
         .iter()
-        .map(|target| agents_md_target_plan(target, &skill_target))
+        .map(agents_md_target_plan)
         .collect::<Result<Vec<_>>>()?;
     Ok(AgentGuidanceSetupPlan {
         result_type: "AGENT_SETUP_PLAN",
@@ -39,7 +39,6 @@ pub fn install_agent_guidance(
     for target in &agents_md_targets {
         agent_results.push(install_agents_md_guidance(
             target,
-            &PathBuf::from(&skill.installed_at).join("SKILL.md"),
             args.force,
             args.no_auto_exclude_git,
         )?);
@@ -144,7 +143,7 @@ fn is_local_context_file(path: &Path) -> bool {
         .is_some_and(|name| name == DEFAULT_AGENT_GUIDANCE_FILE)
 }
 
-fn agents_md_target_plan(target: &AgentsMdTarget, skill_path: &Path) -> Result<AgentsMdTargetPlan> {
+fn agents_md_target_plan(target: &AgentsMdTarget) -> Result<AgentsMdTargetPlan> {
     let exists = target.path.exists();
     let content = if exists {
         Some(fs::read_to_string(&target.path)?)
@@ -154,7 +153,7 @@ fn agents_md_target_plan(target: &AgentsMdTarget, skill_path: &Path) -> Result<A
     let managed_region_present = content
         .as_deref()
         .is_some_and(|content| find_kast_managed_fence(content).is_some());
-    let expected = render_agents_md_guidance_block(skill_path);
+    let expected = render_agents_md_guidance_block();
     let will_modify = match content.as_deref() {
         Some(content) => find_kast_managed_fence(content)
             .map(|range| content[range] != expected)
@@ -184,11 +183,10 @@ fn agents_md_target_plan(target: &AgentsMdTarget, skill_path: &Path) -> Result<A
 
 fn install_agents_md_guidance(
     target: &AgentsMdTarget,
-    skill_path: &Path,
     force: bool,
     no_auto_exclude_git: bool,
 ) -> Result<AgentsMdTargetResult> {
-    let expected = render_agents_md_guidance_block(skill_path);
+    let expected = render_agents_md_guidance_block();
     let existed = target.path.exists();
     let original = if existed {
         fs::read_to_string(&target.path)?
@@ -225,7 +223,9 @@ fn install_agents_md_guidance(
             std::slice::from_ref(&target.path),
             no_auto_exclude_git,
         )?,
-        (Some(repo_root), false) => update_context_git_filter(repo_root, &target.path, no_auto_exclude_git)?,
+        (Some(repo_root), false) => {
+            update_context_git_filter(repo_root, &target.path, no_auto_exclude_git)?
+        }
         (None, _) => git_exclude_not_repository(),
     };
     if let Some(repo_root) = &repo_root {
@@ -277,15 +277,11 @@ fn managed_region_manifest_checksum(path: &Path) -> Result<Option<String>> {
     }))
 }
 
-fn render_agents_md_guidance_block(skill_path: &Path) -> String {
-    let skill_path = skill_path.display().to_string();
+fn render_agents_md_guidance_block() -> String {
     [
         KAST_MANAGED_FENCE_START,
         "## Kast routing",
-        &format!("Use `{skill_path}` before Kotlin or Gradle semantic work."),
-        "Use `kast`, `kast help`, `kast ready`, and `kast agent verify --workspace-root \"$PWD\"` to orient.",
-        "Use typed commands such as `kast agent symbol --query <name>`, `kast agent diagnostics --file-path <path>`, and `kast agent rename --symbol <fq-name> --new-name <name> --apply`.",
-        "Run `kast repair --apply` only when readiness output asks for install-state repair.",
+        crate::agent::agent_task_guidance(),
         KAST_MANAGED_FENCE_END,
     ]
     .join("\n")
@@ -352,10 +348,7 @@ exec awk '
 '
 "#
     );
-    write_file_atomically(
-        &filter_script,
-        filter_script_contents.as_bytes(),
-    )?;
+    write_file_atomically(&filter_script, filter_script_contents.as_bytes())?;
     set_context_filter_executable(&filter_script)?;
     let relative = target
         .strip_prefix(repo_root)
@@ -475,7 +468,10 @@ fn set_context_filter_executable(path: &Path) -> Result<()> {
 fn shell_command(argv: &[String]) -> String {
     argv.iter()
         .map(|arg| {
-            if arg.chars().all(|ch| ch.is_ascii_alphanumeric() || "-_./".contains(ch)) {
+            if arg
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || "-_./".contains(ch))
+            {
                 arg.clone()
             } else {
                 format!("'{}'", arg.replace('\'', "'\\''"))

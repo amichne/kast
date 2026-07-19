@@ -56,7 +56,6 @@ manifest = {
 }
 hook_events = {
     "SessionStart": "session-start",
-    "SubagentStart": "subagent-start",
     "PreToolUse": "pre-tool-use",
     "PostToolUse": "post-tool-use",
     "Stop": "stop",
@@ -81,7 +80,12 @@ files = {
     "plugins/kast/hooks/hooks.json": json.dumps(
         {"hooks": {}} if mutation == "invalid-hooks" else hooks
     ),
-    "plugins/kast/scripts/kast-codex-hook": "#!/bin/sh\nexit 0\n",
+    "plugins/kast/scripts/kast-codex-hook": (
+        "#!/bin/sh\n"
+        "task_launcher=${KAST_AGENT_TASK_LAUNCHER:-$HOME/.local/bin/kast-agent-task}\n"
+        "kast_binary=$(dirname \"$task_launcher\")/kast\n"
+        "exec \"$kast_binary\" developer codex hook \"$1\"\n"
+    ),
     "plugins/kast/skills/kast-codex/SKILL.md": (
         "# Kast Codex\n" if mutation == "invalid-skill" else
         "---\nname: kast-codex\ndescription: \"Fixture skill.\"\n---\n\n# Kast Codex\n"
@@ -97,8 +101,6 @@ files = {
         "  default_prompt: \"Use $kast-codex.\n\n"
         "policy:\n  allow_implicit_invocation: true\n"
     ),
-    "plugins/kast/skills/kast-codex/references/commands.md": "# Commands\n",
-    "plugins/kast/skills/kast-codex/references/examples.md": "# Examples\n",
     "plugins/kast/assets/codex-exposure.toon": f"version: {exposure_version}\n",
     "plugins/kast/assets/hook-recovery-messages.toon": "messages[0]:\n",
     "plugins/kast/assets/kast.svg": "<svg/>\n",
@@ -109,6 +111,8 @@ if mutation == "mcp":
     files["plugins/kast/.mcp.json"] = "{}\n"
 if mutation == "traversal":
     files["../outside"] = "unsafe\n"
+if mutation == "json-guidance":
+    files["plugins/kast/skills/kast-codex/SKILL.md"] += "kast --output json agent verify\n"
 
 with zipfile.ZipFile(archive_path, "w") as archive:
     for name, contents in files.items():
@@ -140,6 +144,7 @@ assert_rejected() {
 assert_rejected missing-hooks "missing required Codex plugin files"
 assert_rejected invalid-hooks "hooks.json must define exactly"
 assert_rejected invalid-skill "SKILL.md must start with YAML frontmatter"
+assert_rejected json-guidance "must teach TOON-first commands"
 assert_rejected invalid-openai "does not match the closed metadata schema"
 assert_rejected mcp "forbidden Codex plugin payload"
 assert_rejected discovery-marketplace "discovery marketplace must match"

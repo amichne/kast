@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.contract.AnalysisBackend
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.mutation.KastMutationFailure
 import io.github.amichne.kast.api.contract.mutation.KastMutationEditApplicationState
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
@@ -30,6 +31,7 @@ import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
 import io.github.amichne.kast.api.validation.ParsedDiagnosticsQuery
+import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RpcAnalysisDispatcher
 import io.github.amichne.kast.testing.FakeAnalysisBackend
@@ -364,6 +366,9 @@ private class InvalidDiagnosticsBackend(
                 ),
             ),
             fileStatuses = listOf(FileAnalysisStatus.analyzed(query.filePaths.value.first())),
+            fileHashes = listOf(
+                FileHash(filePath, FileHashing.sha256(Files.readString(Path.of(filePath)))),
+            ),
         )
     }
 }
@@ -380,5 +385,6 @@ private class IncompleteMutationDiagnosticsBackend(
                 message = "Semantic analysis was unavailable after the mutation",
             )
         },
+        fileHashes = emptyList(),
     )
 }

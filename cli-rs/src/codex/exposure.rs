@@ -41,6 +41,8 @@ pub(crate) enum CodexSemanticCommand {
 pub(crate) enum CodexHookCommand {
     Version,
     Context,
+    AgentHome,
+    TaskLifecycle,
     Ready,
     RepairPlan,
     Status,
@@ -293,7 +295,7 @@ pub(crate) fn classify_command(command: &Command) -> CodexExposure {
         Command::Demo(_) => CodexExposure::NotExposed,
         Command::Developer(args) => classify_developer(&args.command),
         Command::Doctor(_) => CodexExposure::NotExposed,
-        Command::Agent(args) => classify_agent(&args.command),
+        Command::Agent(args) => classify_agent(args.command.as_ref()),
     }
 }
 
@@ -379,34 +381,40 @@ fn classify_generate(command: &GenerateCommand) -> CodexExposure {
     }
 }
 
-fn classify_agent(command: &AgentCommand) -> CodexExposure {
+fn classify_agent(command: Option<&AgentCommand>) -> CodexExposure {
     match command {
-        AgentCommand::Lsp(_) => CodexExposure::NotExposed,
-        AgentCommand::Lease(args) => match &args.command {
+        None => CodexExposure::HookOnly(CodexHookCommand::AgentHome),
+        Some(AgentCommand::Lsp(_)) => CodexExposure::NotExposed,
+        Some(AgentCommand::Lease(args)) => match &args.command {
             AgentLeaseCommand::Acquire(_) => visible(CodexSemanticCommand::LeaseAcquire),
             AgentLeaseCommand::Status(_) => visible(CodexSemanticCommand::LeaseStatus),
             AgentLeaseCommand::Release(_) => visible(CodexSemanticCommand::LeaseRelease),
         },
-        AgentCommand::Verify(_) => CodexExposure::HookOnly(CodexHookCommand::Verify),
-        AgentCommand::WorkspaceFiles(_) => visible(CodexSemanticCommand::WorkspaceFiles),
-        AgentCommand::Symbol(_) => visible(CodexSemanticCommand::Symbol),
-        AgentCommand::References(_) => visible(CodexSemanticCommand::References),
-        AgentCommand::Callers(_) => visible(CodexSemanticCommand::Callers),
-        AgentCommand::Callees(_) => visible(CodexSemanticCommand::Callees),
-        AgentCommand::Implementations(_) => visible(CodexSemanticCommand::Implementations),
-        AgentCommand::Hierarchy(_) => visible(CodexSemanticCommand::Hierarchy),
-        AgentCommand::Impact(_) => visible(CodexSemanticCommand::Impact),
-        AgentCommand::Diagnostics(_) => visible(CodexSemanticCommand::Diagnostics),
-        AgentCommand::Rename(_) => visible(CodexSemanticCommand::Rename),
-        AgentCommand::AddFile(_) => visible(CodexSemanticCommand::AddFile),
-        AgentCommand::AddDeclaration(_) => visible(CodexSemanticCommand::AddDeclaration),
-        AgentCommand::AddImplementation(_) => visible(CodexSemanticCommand::AddImplementation),
-        AgentCommand::AddStatement(_) => visible(CodexSemanticCommand::AddStatement),
-        AgentCommand::ReplaceDeclaration(_) => visible(CodexSemanticCommand::ReplaceDeclaration),
-        AgentCommand::Operation(args) => classify_operation(&args.command),
-        AgentCommand::Tools(_) => CodexExposure::NotExposed,
-        AgentCommand::Call(_) => CodexExposure::NotExposed,
-        AgentCommand::Workflow(_) => CodexExposure::NotExposed,
+        Some(AgentCommand::Task(_)) => CodexExposure::HookOnly(CodexHookCommand::TaskLifecycle),
+        Some(AgentCommand::Verify(_)) => CodexExposure::HookOnly(CodexHookCommand::Verify),
+        Some(AgentCommand::WorkspaceFiles(_)) => visible(CodexSemanticCommand::WorkspaceFiles),
+        Some(AgentCommand::Symbol(_)) => visible(CodexSemanticCommand::Symbol),
+        Some(AgentCommand::References(_)) => visible(CodexSemanticCommand::References),
+        Some(AgentCommand::Callers(_)) => visible(CodexSemanticCommand::Callers),
+        Some(AgentCommand::Callees(_)) => visible(CodexSemanticCommand::Callees),
+        Some(AgentCommand::Implementations(_)) => visible(CodexSemanticCommand::Implementations),
+        Some(AgentCommand::Hierarchy(_)) => visible(CodexSemanticCommand::Hierarchy),
+        Some(AgentCommand::Impact(_)) => visible(CodexSemanticCommand::Impact),
+        Some(AgentCommand::Diagnostics(_)) => visible(CodexSemanticCommand::Diagnostics),
+        Some(AgentCommand::Rename(_)) => visible(CodexSemanticCommand::Rename),
+        Some(AgentCommand::AddFile(_)) => visible(CodexSemanticCommand::AddFile),
+        Some(AgentCommand::AddDeclaration(_)) => visible(CodexSemanticCommand::AddDeclaration),
+        Some(AgentCommand::AddImplementation(_)) => {
+            visible(CodexSemanticCommand::AddImplementation)
+        }
+        Some(AgentCommand::AddStatement(_)) => visible(CodexSemanticCommand::AddStatement),
+        Some(AgentCommand::ReplaceDeclaration(_)) => {
+            visible(CodexSemanticCommand::ReplaceDeclaration)
+        }
+        Some(AgentCommand::Operation(args)) => classify_operation(&args.command),
+        Some(AgentCommand::Tools(_)) => CodexExposure::NotExposed,
+        Some(AgentCommand::Call(_)) => CodexExposure::NotExposed,
+        Some(AgentCommand::Workflow(_)) => CodexExposure::NotExposed,
     }
 }
 
@@ -483,6 +491,14 @@ mod tests {
                 "/workspace",
             ]),
             CodexExposure::AgentVisible(CodexSemanticCommand::LeaseAcquire)
+        );
+        assert_eq!(
+            parsed_exposure(&["agent"]),
+            CodexExposure::HookOnly(CodexHookCommand::AgentHome)
+        );
+        assert_eq!(
+            parsed_exposure(&["agent", "task", "begin"]),
+            CodexExposure::HookOnly(CodexHookCommand::TaskLifecycle)
         );
         assert_eq!(
             parsed_exposure(&["agent", "workspace-files"]),

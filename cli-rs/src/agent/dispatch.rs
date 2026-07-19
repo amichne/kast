@@ -60,6 +60,7 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
             unreachable!("operator agent commands are handled before request prep")
         }
         AgentCommand::Lease(args) => execute_agent_lease(args),
+        AgentCommand::Task(args) => execute_agent_task(args),
         AgentCommand::Tools(_) => unreachable!("agent tools is handled before request prep"),
         AgentCommand::Call(_) => removed_agent_command(
             "agent/call",
@@ -128,6 +129,7 @@ fn agent_command_runtime(command: &AgentCommand) -> Option<&AgentRuntimeArgs> {
         },
         AgentCommand::Lsp(_)
         | AgentCommand::Lease(_)
+        | AgentCommand::Task(_)
         | AgentCommand::Tools(_)
         | AgentCommand::Call(_)
         | AgentCommand::Workflow(_) => None,

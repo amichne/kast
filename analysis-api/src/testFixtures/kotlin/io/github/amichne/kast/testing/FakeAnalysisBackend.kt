@@ -394,9 +394,16 @@ class FakeAnalysisBackend private constructor(
             .flatMap { filePath -> diagnosticsByFile[filePath.value].orEmpty() }
             .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }))
         val fileStatuses = filePaths.map(FileAnalysisStatus::analyzed)
+        val fileHashes = filePaths.map { filePath ->
+            FileHash(
+                filePath = filePath.value,
+                hash = FileHashing.sha256(Files.readString(Path.of(filePath.value))),
+            )
+        }
         val page = FakeDiagnosticPage(
             diagnostics = diagnostics,
             fileStatuses = fileStatuses,
+            fileHashes = fileHashes,
             pageOffset = 0,
             maxResults = query.maxResults.value,
         )
@@ -406,6 +413,7 @@ class FakeAnalysisBackend private constructor(
                 FakeDiagnosticContinuation(
                     diagnostics = diagnostics,
                     fileStatuses = fileStatuses,
+                    fileHashes = fileHashes,
                     offset = page.nextOffset,
                 ),
             ).value
@@ -1190,11 +1198,13 @@ class FakeAnalysisBackend private constructor(
     private data class FakeDiagnosticContinuation(
         val diagnostics: List<Diagnostic>,
         val fileStatuses: List<FileAnalysisStatus>,
+        val fileHashes: List<FileHash>,
         var offset: Int,
     ) : ContinuationOwnedState() {
         fun page(maxResults: Int): FakeDiagnosticPage = FakeDiagnosticPage(
             diagnostics = diagnostics,
             fileStatuses = fileStatuses,
+            fileHashes = fileHashes,
             pageOffset = offset,
             maxResults = maxResults,
         )
@@ -1203,6 +1213,7 @@ class FakeAnalysisBackend private constructor(
     private data class FakeDiagnosticPage(
         val diagnostics: List<Diagnostic>,
         val fileStatuses: List<FileAnalysisStatus>,
+        val fileHashes: List<FileHash>,
         val pageOffset: Int,
         val maxResults: Int,
     ) : ContinuationProjection() {
@@ -1215,6 +1226,7 @@ class FakeAnalysisBackend private constructor(
         fun toResult(nextPageToken: String?): DiagnosticsResult = DiagnosticsResult.paged(
             diagnostics = diagnostics,
             fileStatuses = fileStatuses,
+            fileHashes = fileHashes,
             pageOffset = pageOffset,
             maxResults = maxResults,
             nextPageToken = nextPageToken,

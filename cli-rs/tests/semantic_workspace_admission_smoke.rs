@@ -1410,6 +1410,10 @@ fn spawn_verify_backend(
                             "filePath": file_path,
                             "state": "ANALYZED"
                         })).collect::<Vec<_>>(),
+                        "fileHashes": file_paths.iter().map(|file_path| serde_json::json!({
+                            "filePath": file_path,
+                            "hash": "a".repeat(64)
+                        })).collect::<Vec<_>>(),
                         "semanticOutcome": "COMPLETE",
                         "requestedFileCount": file_paths.len(),
                         "analyzedFileCount": file_paths.len(),

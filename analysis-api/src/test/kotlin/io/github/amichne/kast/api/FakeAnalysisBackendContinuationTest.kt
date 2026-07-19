@@ -4,15 +4,18 @@ import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.protocol.ConflictException
+import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.testing.AnalysisBackendContractFixture
 import io.github.amichne.kast.testing.FakeAnalysisBackend
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.test.TestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -108,11 +111,17 @@ class FakeAnalysisBackendContinuationTest {
             }.message,
         )
 
-        val nextToken = checkNotNull(
-            backend.diagnostics(query.parsed()).page?.nextPageToken,
-        )
+        val firstPage = backend.diagnostics(query.parsed())
+        val nextToken = checkNotNull(firstPage.page?.nextPageToken)
+        val snapshotHashes = firstPage.fileHashes
+        Files.writeString(fixture.brokenFile, "package changed\n\nfun changed() = Unit\n")
         val finalPage = backend.diagnostics(query.copy(pageToken = nextToken).parsed())
         assertNull(finalPage.page)
+        assertEquals(snapshotHashes, finalPage.fileHashes)
+        assertNotEquals(
+            FileHashing.sha256(Files.readString(fixture.brokenFile)),
+            finalPage.fileHashes.first().hash,
+        )
         assertEquals(
             "Unknown or consumed diagnostic continuation token",
             assertConflict {

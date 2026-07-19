@@ -51,6 +51,7 @@ done
 [[ -n "$output_path" ]] || { usage; die "--output is required"; }
 [[ -d "$prepared_generation" ]] || die "Prepared generation not found: $prepared_generation"
 [[ -x "${prepared_generation}/bin/kast" ]] || die "Prepared generation has no executable bin/kast"
+[[ -x "${prepared_generation}/bin/kast-agent-task" ]] || die "Prepared generation has no executable bin/kast-agent-task"
 command -v tar >/dev/null 2>&1 || die "Missing required tool: tar"
 command -v zstd >/dev/null 2>&1 || die "Missing required tool: zstd"
 

@@ -22,6 +22,9 @@ sequence when needed.
 | Codex reports a Kast/plugin version mismatch | The marketplace archive and active Kast binary came from different releases | Install the matching CLI and Codex plugin release, reinstall `kast@kast`, and start a new task |
 | A generic Kotlin edit is denied | The typed Kast mutation route has not produced target-bound fallback evidence | Let Codex try the corresponding typed mutation first; fall back only after its typed failure is recorded |
 | Codex continues instead of stopping | Changed Kotlin lacks diagnostics for its current hash or an explicit typed blocker | Run diagnostics for every changed Kotlin file or report the typed blocker |
+| Task finish reports `BLOCKED` | Diagnostics, Gradle task outcomes, test reports, generation, or final hashes do not prove one unchanged input | Read the typed blockers, repair the stated cause, then retry `kast-agent-task finish` in the same task |
+| Task finish reports `GRADLE_VALIDATION_POLICY_REQUIRED` | The Gradle model cannot select one build/test proof for the changed source set | Add the emitted strict `.kast/workflow.toml` stanza, then retry finish |
+| Task finish reports `WORKSPACE_CHANGED_DURING_VALIDATION` | A relevant file changed after the final-input digest was captured | Stop concurrent writes and retry finish; do not reuse the stale proof |
 | A delegated task reports the wrong workspace | The task and semantic evidence refer to different linked worktrees | Open and prepare the exact delegated worktree, then start verification there |
 | `~/.local/bin/kast` runs instead of Homebrew Kast | An older managed local shim precedes Homebrew on `PATH` | Run read-only machine readiness and use its cleanup command only when one is offered |
 | Repair asks for the IDE to close | A recognized legacy Homebrew plugin symlink is ready for bounded removal | Close the affected IDE window and rerun `kast repair --for machine --apply` |
@@ -53,14 +56,14 @@ lease and pass its ID to verification and every semantic command for the same
 absolute path.
 
 ```console
-kast --output json agent lease acquire --workspace-root "$PWD"
-kast --output json agent verify --backend=idea --lease-id <id> --workspace-root "$PWD"
-kast --output json agent symbol --backend=idea --lease-id <id> --query <name> --workspace-root "$PWD"
-kast --output json agent diagnostics \
+kast --output toon agent lease acquire --workspace-root "$PWD"
+kast --output toon agent verify --backend=idea --lease-id <id> --workspace-root "$PWD"
+kast --output toon agent symbol --backend=idea --lease-id <id> --query <name> --workspace-root "$PWD"
+kast --output toon agent diagnostics \
   --backend=idea --lease-id <id> \
   --file-path "$PWD/path/to/File.kt" \
   --workspace-root "$PWD"
-kast --output json agent lease release --lease-id <id> --workspace-root "$PWD"
+kast --output toon agent lease release --lease-id <id> --workspace-root "$PWD"
 ```
 
 Check the returned backend, workspace root, source modules, limitations, and
@@ -120,9 +123,9 @@ instead of applying it.
     capability without changing source files.
 
     ```console
-    kast --output json ready --for agent --workspace-root "$PWD"
-    kast --output json agent verify --workspace-root "$PWD"
-    kast --output json status --workspace-root "$PWD"
+    kast --output toon ready --for agent --workspace-root "$PWD"
+    kast --output toon agent verify --workspace-root "$PWD"
+    kast --output toon status --workspace-root "$PWD"
     ```
 
     When agent readiness fails, inspect `agentEnvironment.skills.candidates`

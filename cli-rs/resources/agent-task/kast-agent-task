@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+
+launcher_dir=$(CDPATH= cd -P "$(dirname "$0")" && pwd)
+kast_binary="$launcher_dir/kast"
+
+if [ ! -x "$kast_binary" ]; then
+  printf 'kast-agent-task: attested sibling CLI is not executable: %s\n' "$kast_binary" >&2
+  exit 126
+fi
+
+exec "$kast_binary" agent task "$@"

@@ -85,6 +85,7 @@ struct AgentDiagnosticsCompactResult {
     result_type: &'static str,
     ok: bool,
     file_paths: Vec<String>,
+    file_hashes: Vec<AgentDiagnosticsFileHash>,
     analysis: AgentSemanticAnalysisSummary,
     severity_counts: AgentDiagnosticSeverityCounts,
     cardinality: AgentDiagnosticsCardinalityProjection,
@@ -99,6 +100,7 @@ struct AgentDiagnosticsSelectedResult {
     result_type: &'static str,
     ok: bool,
     file_paths: Vec<String>,
+    file_hashes: Vec<AgentDiagnosticsFileHash>,
     #[serde(skip_serializing_if = "Option::is_none")]
     analysis: Option<AgentSemanticAnalysisSummary>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -116,6 +118,7 @@ struct AgentDiagnosticsCountResult {
     result_type: &'static str,
     ok: bool,
     file_paths: Vec<String>,
+    file_hashes: Vec<AgentDiagnosticsFileHash>,
     analysis: AgentSemanticAnalysisSummary,
     severity_counts: AgentDiagnosticSeverityCounts,
     cardinality: AgentDiagnosticsCardinalityProjection,
@@ -176,7 +179,14 @@ fn project_diagnostics_envelope(
             );
         }
     };
+    if !diagnostics.has_valid_file_hashes() {
+        return invalid_projection_envelope(
+            envelope.method,
+            "diagnostics evidence violated the validated semantic contract",
+        );
+    }
     let analysis = diagnostics.summary();
+    let file_hashes = diagnostics.file_hashes;
     let severity_counts = diagnostics.severity_counts;
     let cardinality = diagnostics.cardinality;
     let page = diagnostics.page;
@@ -205,6 +215,7 @@ fn project_diagnostics_envelope(
                 result_type: "KAST_AGENT_DIAGNOSTICS_RESULT",
                 ok,
                 file_paths,
+                file_hashes,
                 analysis,
                 severity_counts,
                 cardinality,
@@ -222,6 +233,7 @@ fn project_diagnostics_envelope(
                     result_type: "KAST_AGENT_DIAGNOSTICS_SELECTION",
                     ok,
                     file_paths,
+                    file_hashes,
                     analysis: selected(AgentDiagnosticsField::Analysis).then_some(analysis),
                     severity_counts: selected(AgentDiagnosticsField::SeverityCounts)
                         .then_some(severity_counts),
@@ -240,6 +252,7 @@ fn project_diagnostics_envelope(
                 result_type: "KAST_AGENT_DIAGNOSTICS_COUNT",
                 ok,
                 file_paths,
+                file_hashes,
                 analysis,
                 severity_counts,
                 cardinality,

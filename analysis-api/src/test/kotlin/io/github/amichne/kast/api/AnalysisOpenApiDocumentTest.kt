@@ -330,6 +330,16 @@ class AnalysisOpenApiDocumentTest {
         assertTrue(diagnosticsSchema.contains("cardinality:\n          \"\$ref\": \"#/components/schemas/EXACT\""))
     }
 
+    @Test
+    fun `diagnostics schema requires analyzed file content hashes`() {
+        val diagnosticsSchema = OpenApiDocument.renderYaml()
+            .substringAfter("    DiagnosticsResult:")
+            .substringBefore("    Diagnostic:")
+
+        assertTrue(diagnosticsSchema.contains("fileHashes:"))
+        assertTrue(diagnosticsSchema.contains("\n        - fileHashes"))
+    }
+
     private fun repoRoot(): Path =
         generateSequence(Path.of("").toAbsolutePath()) { current -> current.parent }
             .first { candidate -> Files.isDirectory(candidate.resolve("docs")) }

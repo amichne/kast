@@ -18,6 +18,13 @@ workspace-files`, `kast agent symbol`, standalone
 `references`/`callers`/`callees`/`implementations`/`hierarchy`, `kast agent
 diagnostics`, `kast agent impact`, `kast agent rename`, and `kast agent lsp`.
 
+`task.rs` is the single cross-provider completion owner. It persists strict
+exact-root task receipts, relevant-file baselines, Gradle model/policy proof,
+same-epoch diagnostic hashes, accepted task outcomes, and test-report digests.
+Provider hooks may supply a stable session identity, but must call this core
+instead of owning a second baseline or completion state machine. This task
+lease is never interchangeable with the IDEA runtime lease.
+
 `workspace_files.rs` owns exact-root admission, typed conjunctive discovery
 filters, the query-bound public continuation, and command execution.
 `projection/workspace_files.rs` owns compact, selected-field, count, verbose,
@@ -28,6 +35,10 @@ coverage, build-qualified Gradle owners, and proven or unproven package and
 source-set evidence. Public continuation binds the exact root, backend,
 normalized query, result projection, limit, and discriminated composition
 stamp; invalid or stale state must fail instead of restarting at page one.
+
+`projection/diagnostics.rs` preserves and validates the ordered hash for every
+analyzed file. Task completion consumes that projected same-read-epoch evidence
+and must fail closed when a requested file hash is missing or stale.
 
 `symbol_lookup.rs` owns identity lookup only. Exact lookup projects one
 reusable anchored identity containing canonical declaration file and start

@@ -711,6 +711,10 @@ fn diagnostics_default_keeps_completeness_and_actionable_records_without_steps()
                         "filePath": file.display().to_string(),
                         "state": "ANALYZED"
                     }],
+                    "fileHashes": [{
+                        "filePath": file.display().to_string(),
+                        "hash": "a".repeat(64)
+                    }],
                     "semanticOutcome": "COMPLETE",
                     "requestedFileCount": 1,
                     "analyzedFileCount": 1,
@@ -748,6 +752,11 @@ fn diagnostics_default_keeps_completeness_and_actionable_records_without_steps()
     assert_eq!(stdout["result"]["analysis"]["analyzedFileCount"], 1);
     assert_eq!(stdout["result"]["analysis"]["skippedFileCount"], 0);
     assert_eq!(stdout["result"]["severityCounts"]["error"], 1);
+    assert_eq!(
+        stdout["result"]["fileHashes"][0]["filePath"],
+        file.display().to_string()
+    );
+    assert_eq!(stdout["result"]["fileHashes"][0]["hash"], "a".repeat(64));
     assert_eq!(
         stdout["result"]["diagnostics"][0]["code"],
         "UNRESOLVED_REFERENCE"
@@ -800,6 +809,10 @@ fn diagnostics_default_bounds_real_high_cardinality_records_and_requests() {
                 "fileStatuses": [{
                     "filePath": file.display().to_string(),
                     "state": "ANALYZED"
+                }],
+                "fileHashes": [{
+                    "filePath": file.display().to_string(),
+                    "hash": "a".repeat(64)
                 }],
                 "semanticOutcome": "COMPLETE",
                 "requestedFileCount": 1,

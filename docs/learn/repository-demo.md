@@ -75,7 +75,7 @@ Use the global output option when a script, evaluation harness, or captured
 agent session needs stable data:
 
 ```console
-kast --output json demo --workspace-root "$PWD"
+kast --output toon demo --workspace-root "$PWD"
 ```
 
 The snapshot includes the evidence mode, ranked candidates, selected compiler

@@ -1,6 +1,6 @@
 ---
 title: Runtime And Output
-description: Reference for backend selection and readable or JSON output.
+description: Reference for backend selection and readable or TOON output.
 icon: lucide/activity
 ---
 
@@ -32,8 +32,9 @@ rewrites descriptor registry state.
 
 ## Output Shapes
 
-Human-facing commands should be readable. Automation that needs a stable parser
-contract should request JSON explicitly.
+Human-facing operator commands can stay readable. Agent commands default to
+TOON so structured evidence remains compact and deterministic. Explicit JSON
+is temporarily compatible but deprecated.
 
 ??? info "Runtime commands for agents and support"
     These commands are useful for support, CI, and agent workflows. They are not
@@ -43,8 +44,8 @@ contract should request JSON explicitly.
     kast developer runtime status --workspace-root "$PWD"
     kast developer runtime up --backend=headless --workspace-root "$PWD"
     kast developer runtime restart --backend=headless --workspace-root "$PWD"
-    kast --output json status --workspace-root "$PWD"
-    kast --output json agent verify --workspace-root "$PWD"
+    kast --output toon status --workspace-root "$PWD"
+    kast --output toon agent verify --workspace-root "$PWD"
     ```
 
 Use the [troubleshooting matrix](../troubleshoot.md) when runtime checks

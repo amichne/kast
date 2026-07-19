@@ -34,7 +34,7 @@ class Kast < Formula
     end
   end
   def install
-    bin.install "kast"
+    bin.install "kast", "kast-agent-task"
   end
 
   def caveats

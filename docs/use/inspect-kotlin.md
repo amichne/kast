@@ -115,55 +115,41 @@ Different questions need different evidence:
 
 ## Trace Usage And Impact Without Text Search
 
-Resolve once, preserve the complete declaration anchor, and pass it unchanged
-to each relationship command. This sequence uses compiler identity and the
-source index only:
+Resolve once, preserve the complete declaration anchor from the TOON result,
+and pass it unchanged to each relationship command. This sequence uses compiler
+identity and the source index only:
 
-```bash
-identity_json="$(kast --output json agent symbol \
+```console
+kast --output toon agent symbol \
   --query OrderService.process \
   --fields identity \
-  --workspace-root "$PWD")"
-
-fq_name="$(jq -r '.result.identity.fqName' <<<"$identity_json")"
-declaration_file="$(jq -r '.result.identity.declarationFile' <<<"$identity_json")"
-declaration_offset="$(jq -r '.result.identity.declarationStartOffset' <<<"$identity_json")"
-kind="$(jq -r '.result.identity.kind | ascii_downcase' <<<"$identity_json")"
-
-references_page_one="$(kast --output json agent references \
-  --symbol "$fq_name" \
-  --declaration-file "$declaration_file" \
-  --declaration-start-offset "$declaration_offset" \
-  --kind "$kind" \
-  --workspace-root "$PWD")"
-
-kast agent callers \
-  --symbol "$fq_name" \
-  --declaration-file "$declaration_file" \
-  --declaration-start-offset "$declaration_offset" \
-  --kind "$kind" \
   --workspace-root "$PWD"
 
-reference_page_token="$(jq -r '.result.page.nextPageToken // empty' \
-  <<<"$references_page_one")"
-if [[ -n "$reference_page_token" ]]; then
-  kast agent references \
-    --symbol "$fq_name" \
-    --declaration-file "$declaration_file" \
-    --declaration-start-offset "$declaration_offset" \
-    --kind "$kind" \
-    --page-token "$reference_page_token" \
-    --workspace-root "$PWD"
-fi
+kast agent references \
+  --symbol <fq-name> \
+  --declaration-file <declaration-file> \
+  --declaration-start-offset <declaration-offset> \
+  --kind <kind> \
+  --workspace-root "$PWD"
+
+kast agent callers \
+  --symbol <fq-name> \
+  --declaration-file <declaration-file> \
+  --declaration-start-offset <declaration-offset> \
+  --kind <kind> \
+  --workspace-root "$PWD"
 
 kast agent impact \
-  --symbol "$fq_name" \
-  --declaration-file "$declaration_file" \
-  --declaration-start-offset "$declaration_offset" \
-  --kind "$kind" \
+  --symbol <fq-name> \
+  --declaration-file <declaration-file> \
+  --declaration-start-offset <declaration-offset> \
+  --kind <kind> \
   --depth 3 \
   --workspace-root "$PWD"
 ```
+
+When a relationship page returns `nextPageToken`, repeat the identical selector
+and options with `--page-token <next-page-token>`.
 
 Reference and compiler-traversal tokens are runtime-owned and single-use.
 Impact tokens are stateless SQLite offsets. Every token is bound to the exact

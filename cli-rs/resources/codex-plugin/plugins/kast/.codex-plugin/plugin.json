@@ -1,7 +1,7 @@
 {
   "name": "kast",
   "version": "0.1.0",
-  "description": "Compiler-backed Kotlin semantics for Codex through the typed Kast CLI.",
+  "description": "Compiler-backed Kotlin and Gradle task proof for Codex through Kast.",
   "author": {
     "name": "Austin Michne",
     "email": "austin@michne.com",
@@ -19,8 +19,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Kast",
-    "shortDescription": "Compiler-backed Kotlin semantics for Codex.",
-    "longDescription": "Inspect and change Kotlin through Kast's fixed, typed, plan-first CLI surface.",
+    "shortDescription": "Compiler-backed Kotlin and Gradle task proof.",
+    "longDescription": "Begin, inspect, and finish Kotlin or Gradle work through Kast's typed task lifecycle.",
     "developerName": "Austin Michne",
     "category": "Productivity",
     "capabilities": [
@@ -31,9 +31,9 @@
     "privacyPolicyURL": "https://kast.michne.com/privacy/",
     "termsOfServiceURL": "https://kast.michne.com/terms/",
     "defaultPrompt": [
-      "Find a Kotlin symbol and show its callers.",
-      "Plan a safe Kotlin rename and run diagnostics.",
-      "Add a Kotlin implementation through Kast."
+      "Begin a Kast task and inspect a Kotlin symbol.",
+      "Finish this Kotlin change with diagnostics and Gradle proof.",
+      "Report the typed blocker preventing Kast task completion."
     ],
     "composerIcon": "./assets/kast.svg",
     "logo": "./assets/kast.svg",

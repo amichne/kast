@@ -1,6 +1,7 @@
 package io.github.amichne.kast.api.contract.mutation
 
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.skill.KastAddDeclarationRequest
@@ -18,6 +19,7 @@ import io.github.amichne.kast.api.contract.skill.KastScopeMutationOperation
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationSuccessResponse
 import io.github.amichne.kast.api.contract.skill.KastStatementPlacementAnchor
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
+import io.github.amichne.kast.api.validation.FileHashing
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -243,6 +245,9 @@ class KastMutationContractTest {
                             FileAnalysisStatus.analyzed(
                                 NormalizedPath.ofAbsolute(Path.of("/workspace/Added.kt")),
                             ),
+                        ),
+                        fileHashes = listOf(
+                            FileHash("/workspace/Added.kt", FileHashing.sha256("added")),
                         ),
                     ),
                 ),

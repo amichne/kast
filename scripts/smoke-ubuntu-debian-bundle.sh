@@ -149,7 +149,8 @@ fi
 [[ -x "$cli_bin" ]] || die "Rust CLI binary was not built at ${cli_bin}"
 packager_command=("$cli_bin" developer release package ubuntu-debian-bundle --repo-root "$repo_root")
 cp "$cli_bin" "${cli_tree}/kast"
-chmod +x "${cli_tree}/kast"
+cp "${repo_root}/cli-rs/resources/agent-task/kast-agent-task" "${cli_tree}/kast-agent-task"
+chmod +x "${cli_tree}/kast" "${cli_tree}/kast-agent-task"
 
 cat > "${backend_tree}/${backend_archive_root}/${backend_launcher}" <<'FAKE_BACKEND'
 #!/usr/bin/env bash
@@ -204,6 +205,7 @@ bundle_root="${extract_dir}/renamed-kast-bundle"
 mv "$extracted_bundle_root" "$bundle_root"
 
 [[ -x "${bundle_root}/bin/kast" ]] || die "Bundle missing executable Rust CLI"
+[[ -x "${bundle_root}/bin/kast-agent-task" ]] || die "Bundle missing executable agent task launcher"
 [[ -x "${bundle_root}/lib/backends/${backend_install_name}/${backend_launcher}" ]] || die "Bundle missing ${backend_launcher} launcher"
 [[ -f "${bundle_root}/lib/backends/${backend_install_name}/runtime-libs/classpath.txt" ]] || die "Bundle missing runtime classpath"
 [[ -f "${bundle_root}/lib/backends/${backend_install_name}/idea-home/lib/nio-fs.jar" ]] || die "Bundle missing headless IDEA home"
@@ -222,7 +224,7 @@ from pathlib import Path
 
 payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 version = sys.argv[2]
-assert payload["schemaVersion"] == 2, payload
+assert payload["schemaVersion"] == 3, payload
 assert payload["kind"] == "KAST_INSTALL_BUNDLE", payload
 assert payload["profile"] == "ubuntu-debian-headless", payload
 assert payload["version"] == version, payload
@@ -230,6 +232,7 @@ assert payload["platform"] == sys.argv[3], payload
 assert payload["entrypoint"] == "scripts/install-ubuntu-debian.sh", payload
 activation = payload["activation"]
 assert activation["cli"]["path"] == "bin/kast", payload
+assert activation["taskLauncher"]["path"] == "bin/kast-agent-task", payload
 assert activation["backend"]["kind"] == sys.argv[4], payload
 assert activation["backend"]["name"] == "headless", payload
 assert activation["backend"]["installDir"] == f"lib/backends/headless-{version}", payload
@@ -240,7 +243,7 @@ assert "-Didea.force.use.core.classloader=true" in activation["shim"]["javaOpts"
 assert activation["shim"]["exportsInstallRoot"] is True, payload
 assert activation["shim"]["exportsConfigHome"] is True, payload
 roles = {entry["role"] for entry in payload["artifacts"]}
-assert {"cli", sys.argv[5]}.issubset(roles), payload
+assert {"cli", "agent-task-launcher", sys.argv[5]}.issubset(roles), payload
 PY
 
 manifest_install_root="${scratch_dir}/manifest-install-root"
@@ -282,6 +285,7 @@ assert payload["activeVersion"] == version, payload
 assert payload["profile"] == "ubuntu-debian-headless", payload
 assert payload["roots"]["install"] == install_root, payload
 assert payload["entrypoints"]["activeBinary"] == f"{install_home}/bin/kast", payload
+assert payload["entrypoints"]["taskLauncher"].endswith("/kast-agent-task"), payload
 backend = payload["backends"][0]
 assert backend["name"] == "headless", payload
 assert backend["runtimeLibsDir"] == f"{install_home}/lib/backends/headless/current/runtime-libs", payload
@@ -300,10 +304,12 @@ KAST_JAVA_CMD=sh \
 
 installed_home="${install_root}/versions/${version}"
 installed_kast="${bin_dir}/kast"
+installed_task_launcher="${bin_dir}/kast-agent-task"
 config_file="${config_home}/config.toml"
 install_manifest="${install_root}/install.json"
 
 [[ -x "$installed_kast" ]] || die "Installed kast is not executable"
+[[ -x "$installed_task_launcher" ]] || die "Installed kast-agent-task is not executable"
 [[ -f "$installed_kast" && ! -L "$installed_kast" ]] || die "Installed headless kast must be an executable shim"
 grep -Fq -- "-Didea.force.use.core.classloader=true" "$installed_kast" \
   || die "Installed headless kast shim must export the core classloader JVM option"

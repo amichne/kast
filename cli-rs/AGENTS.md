@@ -11,8 +11,10 @@ resources.
 - `src/cli/root.rs` and `src/main.rs` define the root AXI CLI: compact context,
   setup, readiness, repair, status, and developer operations.
 - `src/cli/agent.rs` and `src/agent/` own typed compiler-backed agent commands:
+  the cross-provider `task begin|status|finish|abort` proof lifecycle plus
   `lease`, `verify`, `workspace-files`, `symbol`, `diagnostics`, `impact`,
-  `rename`, and `lsp`.
+  `rename`, and `lsp`. Task ownership is persisted and cross-process; it is
+  distinct from the IDEA runtime lease used by individual semantic requests.
 - `src/runtime/` owns IDEA lifecycle inspection and exact-root leases on macOS,
   plus release headless lifecycle on supported non-macOS hosts.
 - `src/install/` owns repository setup, managed guidance, CLI machine receipts,
@@ -54,6 +56,10 @@ resources.
   schemas and request samples; `protocol/maintenance/` contains routing and
   format evaluation fixtures. Other `protocol/` outputs serve release and
   integration consumers.
+- `resources/agent-task/` owns the sibling-only `kast-agent-task` launcher,
+  strict workflow schema, Gradle model/receipt init script, and compact
+  provider-neutral task guidance. These files participate in machine and
+  release bundle digests.
 
 The broader public product surface, workflows, and AXI contract live in
 `.agents/adr/0006-forward-system-definition-and-audit-scope.md`. IDEA runtime
@@ -83,6 +89,10 @@ The processless development-machine boundary and IDEA-only leases live in
   launcher may only resolve the active binary and forward the event and stdin.
   Hooks may inspect readiness and produce repair plans but must never apply
   setup or repair mutations.
+- Keep task completion evidence in the typed task core. Provider adapters may
+  supply a session identity and render provider-native allow/block decisions,
+  but must not duplicate changed-file, diagnostics-hash, Gradle-outcome, or
+  test-report policy.
 - Agent-facing semantic workflows acquire and release one typed exact-root
   lease, then use `kast agent verify`,
   `workspace-files`, `symbol`, `diagnostics`, `impact`, `rename`, and `lsp`
@@ -124,6 +134,9 @@ The processless development-machine boundary and IDEA-only leases live in
 - When install output shape changes, update manifest resource recording,
   doctor verification, package scripts, docs, and smoke tests in the same
   change.
+- Diagnostics completion proof requires the backend response to carry one
+  current-read hash for every requested file. Never reuse a pre-request hash
+  or silently accept a missing file hash.
 
 ## Source boundaries
 
@@ -137,6 +150,8 @@ The processless development-machine boundary and IDEA-only leases live in
   scoped `AGENTS.md` and checked by `developer codex generate --check`.
 - Package artifact output shape lives in `resources/plugin/primitive-manifest.json`.
 - Installable skill source lives in `resources/kast-skill/`.
+- Agent task launcher, workflow policy, Gradle receipt logic, and task guidance
+  live in `resources/agent-task/`.
 - Generated request schemas and samples under `protocol/source/requests/` are
   derived from the catalog. Regenerate them through the contract generator.
 - Generated protocol markdown, OpenAPI YAML, and example fixtures live under

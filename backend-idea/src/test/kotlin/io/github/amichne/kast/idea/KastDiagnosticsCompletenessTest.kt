@@ -1,6 +1,9 @@
 package io.github.amichne.kast.idea
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.readAction
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
@@ -19,10 +22,14 @@ import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
 import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import io.github.amichne.kast.api.protocol.ConflictException
+import io.github.amichne.kast.api.validation.FileHashing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
@@ -105,6 +112,7 @@ class KastDiagnosticsCompletenessTest {
         assertEquals(FileAnalysisState.MISSING_ON_DISK, result.fileStatuses.single().state)
         assertEquals(0, result.analyzedFileCount)
         assertEquals(1, result.skippedFileCount)
+        assertTrue(result.fileHashes.isEmpty())
         assertEquals("ANALYSIS_FAILURE", result.diagnostics.single().code)
     }
 
@@ -138,6 +146,57 @@ class KastDiagnosticsCompletenessTest {
         assertEquals(0, result.skippedFileCount)
         assertTrue(result.diagnostics.isNotEmpty())
         assertTrue(result.diagnostics.none { it.code == "ANALYSIS_FAILURE" })
+        assertEquals(brokenFile.toString(), result.fileHashes.single().filePath)
+        assertEquals(FileHashing.sha256(brokenFileFixture.get().text), result.fileHashes.single().hash)
+    }
+
+    @Test
+    fun `diagnostic hash reflects unsaved committed PSI text from the analysis epoch`() = runBlocking {
+        ensureProjectReady()
+        val psiFile = validFileFixture.get()
+        val ktFile = psiFile as KtFile
+        val filePath = Path.of(psiFile.virtualFile.path)
+        val diskText = Files.readString(filePath)
+        val document = readAction {
+            requireNotNull(FileDocumentManager.getInstance().getDocument(psiFile.virtualFile))
+        }
+
+        ApplicationManager.getApplication().invokeAndWait {
+            WriteCommandAction.runWriteCommandAction(project) {
+                ktFile.declarations.single().replace(
+                    KtPsiFactory(project).createFunction("fun valid(): String = \"unsaved\""),
+                )
+            }
+        }
+        val unsavedPsiText = readAction { ktFile.text }
+
+        val result = backend().diagnostics(
+            DiagnosticsQuery(filePaths = listOf(filePath.toString())),
+        )
+
+        assertEquals(diskText, Files.readString(filePath), "the document must remain unsaved")
+        assertNotEquals(diskText, unsavedPsiText)
+        assertTrue(FileDocumentManager.getInstance().isDocumentUnsaved(document))
+        assertEquals(FileHashing.sha256(unsavedPsiText), result.fileHashes.single().hash)
+        assertEquals(filePath.toString(), result.fileHashes.single().filePath)
+    }
+
+    @Test
+    fun `diagnostic continuation preserves snapshot hashes across pages`() = runBlocking {
+        ensureProjectReady()
+        val backend = backend()
+        val brokenFile = Path.of(brokenFileFixture.get().virtualFile.path).toString()
+        val query = DiagnosticsQuery(
+            filePaths = listOf(brokenFile, brokenFile),
+            maxResults = 1,
+        )
+
+        val firstPage = backend.diagnostics(query)
+        val secondPage = backend.diagnostics(
+            query.copy(pageToken = requireNotNull(firstPage.page?.nextPageToken)),
+        )
+
+        assertEquals(firstPage.fileHashes, secondPage.fileHashes)
     }
 
     @Test

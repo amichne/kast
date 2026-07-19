@@ -58,6 +58,11 @@ continue cleanup after individual failures, and preserve the runtime order:
 cancel indexing, close the running server/backend, then close the separately
 owned source-index store.
 
+Diagnostics compute the ordered analyzed-file hashes inside the same
+`timedReadAction` as compiler diagnostics. The diagnostic continuation state
+retains those hashes across pages; never hash disk contents after the read
+action or substitute a later editor/file-system view.
+
 ## Relationship ownership
 
 `backend-idea` owns compiler/PSI execution and all semantic relationship

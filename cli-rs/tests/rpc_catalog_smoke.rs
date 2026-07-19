@@ -631,10 +631,13 @@ fn agent_tool_surface_exposes_navigation_without_internal_transport_leaks() {
 }
 
 #[test]
-fn installed_skill_teaches_public_workspace_files_without_raw_continuation() {
+fn installed_skill_teaches_lifecycle_discovery_without_raw_commands() {
     let skill = include_str!("../resources/kast-skill/SKILL.md");
 
-    assert!(skill.contains("kast agent workspace-files"));
+    assert!(skill.contains("kast-agent-task begin"));
+    assert!(skill.contains("kast agent --help"));
+    assert!(skill.contains("kast-agent-task finish"));
+    assert!(!skill.contains("kast agent workspace-files"));
     assert!(!skill.contains("raw/workspace-files"));
     assert!(!skill.contains("raw/workspace-files-continuation"));
 }
@@ -706,23 +709,31 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
         "extension must resolve kast without shelling through bash"
     );
     assert!(
-        extension.contains("RECOVERABLE_WARMUP_CODES")
-            && extension.contains("\"INDEX_UNAVAILABLE\"")
-            && extension.contains("kast ready --for agent")
-            && extension.contains("createTraceEmitter"),
-        "extension must guide recovery for missing backend/index results"
+        extension.contains("KAST_AGENT_TASK_LAUNCHER")
+            && extension.contains("entrypoints?.taskLauncher")
+            && extension.contains("createTraceEmitter")
+            && extension.contains("onSessionStart")
+            && extension.contains("onPreToolUse")
+            && extension.contains("onPostToolUse")
+            && extension.contains("onPostToolUseFailure")
+            && extension.contains("onSessionEnd"),
+        "extension must translate the task lifecycle through an attested launcher"
     );
     assert!(
-        extension.contains("kast agent symbol")
-            && extension.contains("kast agent diagnostics")
-            && extension.contains("kast agent impact")
-            && extension.contains("kast agent rename")
+        extension.contains("runLifecycle(\"begin\"")
+            && extension.contains("runLifecycle(\"status\"")
+            && extension.contains("runLifecycle(\"finish\"")
             && extension.contains("tools: []")
+            && !extension.contains("process.env.PATH")
+            && !extension.contains("target/debug")
+            && !extension.contains("target/release")
+            && !extension.contains("KAST_TOOLING_CONTEXT")
+            && !extension.contains("RECOVERABLE_WARMUP_CODES")
             && !extension.contains("isKastAgentToolsEnvelope")
             && !extension.contains("formattedAgentResult")
             && !extension.contains("agentArgs(")
             && !extension.contains("rpcArgs("),
-        "extension must inject typed command guidance without dynamic tool registration"
+        "extension must keep lifecycle translation thin and avoid fallback discovery"
     );
     let repo_root = manifest_dir.parent().expect("repo root");
     let package_contract =

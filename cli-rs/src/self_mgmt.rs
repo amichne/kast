@@ -82,7 +82,7 @@ pub struct DeveloperMachineDefaultsResult {
     pub schema_version: u32,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum InstallAuthority {
     Machine,

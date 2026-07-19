@@ -41,9 +41,9 @@ struct MachineManifest {
     #[serde(rename = "type")]
     manifest_type: String,
     cli_sha256: String,
+    task_launcher_sha256: String,
     idea_plugin_sha256: String,
-    skill_sha256: String,
-    codex_sha256: String,
+    resources_sha256: String,
     schema_version: u32,
 }
 
@@ -54,6 +54,7 @@ pub(crate) struct MachineActivation {
     activation_type: &'static str,
     state: &'static str,
     pub(crate) cli: String,
+    task_launcher: String,
     idea_plugin: String,
     skill: String,
     schema_version: u32,
@@ -68,7 +69,27 @@ pub(crate) struct MachineReconciliation {
     pub(crate) idea_plugin: String,
     pub(crate) skill: String,
     pub(crate) codex: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    hook_trust: Option<CodexHookTrustRequirement>,
     quarantined_plugin: Option<String>,
+    schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct CodexHookTrustRequirement {
+    code: &'static str,
+    trusted: bool,
+    action: &'static str,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+struct CodexHookState {
+    #[serde(rename = "type")]
+    state_type: String,
+    machine_identity: String,
+    trusted: bool,
     schema_version: u32,
 }
 
@@ -130,15 +151,25 @@ pub(crate) fn activate(args: MachineActivateArgs) -> Result<MachineActivation> {
     let backup = parent.join(format!(".machine-backup-{transaction}"));
     fs::create_dir_all(staging.join("bin"))?;
     fs::create_dir_all(staging.join("idea"))?;
-    fs::create_dir_all(staging.join("resources/kast-skill"))?;
-    fs::create_dir_all(staging.join("resources/codex-marketplace"))?;
+    fs::create_dir_all(staging.join("resources"))?;
 
     let installed_cli = staging.join("bin/kast");
     fs::copy(&source_cli, &installed_cli)?;
     fs::set_permissions(&installed_cli, fs::metadata(&source_cli)?.permissions())?;
+    let installed_task_launcher = staging.join("bin/kast-agent-task");
+    fs::write(
+        &installed_task_launcher,
+        include_bytes!(concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/resources/agent-task/kast-agent-task"
+        )),
+    )?;
+    make_executable(&installed_task_launcher)?;
     let installed_plugin = staging.join("idea/kast.zip");
     fs::copy(&args.idea_plugin, &installed_plugin)?;
-    let installed_skill = staging.join("resources/kast-skill/SKILL.md");
+    let resources = staging.join("resources");
+    let installed_skill = resources.join("kast-skill/SKILL.md");
+    fs::create_dir_all(installed_skill.parent().expect("Kast skill parent"))?;
     fs::write(
         &installed_skill,
         include_bytes!(concat!(
@@ -146,15 +177,17 @@ pub(crate) fn activate(args: MachineActivateArgs) -> Result<MachineActivation> {
             "/resources/kast-skill/SKILL.md"
         )),
     )?;
-    let installed_codex = staging.join("resources/codex-marketplace");
+    write_agent_task_resources(&resources.join("agent-task"))?;
+    let installed_codex = resources.join("codex-marketplace");
     write_codex_marketplace(&installed_codex)?;
+    write_copilot_plugin(&resources.join("copilot-plugin"))?;
     let manifest = MachineManifest {
         manifest_type: "KAST_MACHINE_MANIFEST".to_string(),
         cli_sha256: crate::manifest::sha256_file(&installed_cli)?,
+        task_launcher_sha256: crate::manifest::sha256_file(&installed_task_launcher)?,
         idea_plugin_sha256: crate::manifest::sha256_file(&installed_plugin)?,
-        skill_sha256: crate::manifest::sha256_file(&installed_skill)?,
-        codex_sha256: directory_sha256(&installed_codex)?,
-        schema_version: 1,
+        resources_sha256: directory_sha256(&resources)?,
+        schema_version: 2,
     };
     fs::write(
         staging.join("machine.json"),
@@ -173,18 +206,20 @@ pub(crate) fn activate(args: MachineActivateArgs) -> Result<MachineActivation> {
     if backup.exists() {
         fs::remove_dir_all(&backup)?;
     }
-    replace_stable_command(&root.join("bin/kast"))?;
+    replace_stable_command("kast", &root.join("bin/kast"))?;
+    replace_stable_command("kast-agent-task", &root.join("bin/kast-agent-task"))?;
 
     Ok(MachineActivation {
         activation_type: "KAST_MACHINE_ACTIVATION",
         state: "ACTIVATED",
         cli: root.join("bin/kast").display().to_string(),
+        task_launcher: root.join("bin/kast-agent-task").display().to_string(),
         idea_plugin: root.join("idea/kast.zip").display().to_string(),
         skill: root
             .join("resources/kast-skill/SKILL.md")
             .display()
             .to_string(),
-        schema_version: 1,
+        schema_version: 2,
     })
 }
 
@@ -227,15 +262,97 @@ pub(crate) fn reconcile(args: MachineReconcileArgs) -> Result<MachineReconciliat
     }
     let skill = reconcile_global_skill(&root, transaction)?;
     let codex = reconcile_codex(&root)?;
+    let hook_trust = if codex.is_some() {
+        write_codex_hook_state(&root, false)?;
+        Some(CodexHookTrustRequirement {
+            code: "HOOK_TRUST_REQUIRED",
+            trusted: false,
+            action: "Review and trust the native kast@kast hooks when Codex prompts; Kast does not bypass provider trust.",
+        })
+    } else {
+        remove_codex_hook_state(&root)?;
+        None
+    };
     Ok(MachineReconciliation {
         reconciliation_type: "KAST_MACHINE_RECONCILIATION",
         state: "RECONCILED",
         idea_plugin: installed_plugin.display().to_string(),
         skill: skill.display().to_string(),
         codex: codex.map(|path| path.display().to_string()),
+        hook_trust,
         quarantined_plugin: quarantined_plugin.map(|path| path.display().to_string()),
-        schema_version: 1,
+        schema_version: 2,
     })
+}
+
+pub(crate) fn mark_codex_hook_trusted() -> Result<()> {
+    let root = machine_root();
+    if active_machine_identity()?.is_some() {
+        write_codex_hook_state(&root, true)?;
+    }
+    Ok(())
+}
+
+pub(crate) fn codex_hook_trust_proven() -> Result<Option<bool>> {
+    let root = machine_root();
+    let Some(machine_identity) = active_machine_identity()? else {
+        return Ok(None);
+    };
+    let path = codex_hook_state_path(&root);
+    if !path.is_file() {
+        return Ok(Some(false));
+    }
+    let state: CodexHookState = serde_json::from_slice(&fs::read(&path)?).map_err(|error| {
+        CliError::new(
+            "MACHINE_CODEX_HOOK_STATE_INVALID",
+            format!(
+                "Codex hook trust state is invalid at {}: {error}",
+                path.display()
+            ),
+        )
+    })?;
+    if state.state_type != "KAST_CODEX_HOOK_STATE"
+        || state.schema_version != 1
+        || state.machine_identity != machine_identity
+    {
+        return Err(CliError::new(
+            "MACHINE_CODEX_HOOK_STATE_INVALID",
+            format!(
+                "Codex hook trust state does not match the active machine generation at {}.",
+                path.display()
+            ),
+        ));
+    }
+    Ok(Some(state.trusted))
+}
+
+fn write_codex_hook_state(root: &Path, trusted: bool) -> Result<()> {
+    let path = codex_hook_state_path(root);
+    let parent = path.parent().expect("Codex hook state parent");
+    fs::create_dir_all(parent)?;
+    let state = CodexHookState {
+        state_type: "KAST_CODEX_HOOK_STATE".to_string(),
+        machine_identity: crate::manifest::sha256_file(&root.join("machine.json"))?,
+        trusted,
+        schema_version: 1,
+    };
+    let temporary = parent.join(format!(".codex-hook-{}.tmp", std::process::id()));
+    fs::write(&temporary, serde_json::to_vec_pretty(&state)?)?;
+    fs::rename(temporary, path)?;
+    Ok(())
+}
+
+fn remove_codex_hook_state(root: &Path) -> Result<()> {
+    let path = codex_hook_state_path(root);
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn codex_hook_state_path(root: &Path) -> PathBuf {
+    root.join("state/codex-hook.json")
 }
 
 #[derive(Debug, Deserialize)]
@@ -350,19 +467,34 @@ fn machine_root() -> PathBuf {
 
 fn validate_machine_install(root: &Path) -> Result<MachineManifest> {
     let path = root.join("machine.json");
-    let manifest: MachineManifest = serde_json::from_slice(&fs::read(&path).map_err(|error| {
+    let bytes = fs::read(&path).map_err(|error| {
         CliError::new(
             "MACHINE_NOT_INSTALLED",
             format!("Cannot read {}: {error}", path.display()),
         )
-    })?)?;
-    if manifest.schema_version != 1
+    })?;
+    let manifest: MachineManifest = serde_json::from_slice(&bytes).map_err(|error| {
+        CliError::new(
+            "MACHINE_INSTALL_INVALID",
+            format!("Machine manifest is invalid at {}: {error}", path.display()),
+        )
+    })?;
+    let executable_components = [
+        root.join("bin/kast"),
+        root.join("bin/kast-agent-task"),
+        root.join("resources/agent-task/kast-agent-task"),
+        root.join("resources/codex-marketplace/plugins/kast/scripts/kast-codex-hook"),
+    ];
+    if manifest.schema_version != 2
         || manifest.manifest_type != "KAST_MACHINE_MANIFEST"
+        || executable_components
+            .iter()
+            .any(|component| !is_executable_file(component))
         || crate::manifest::sha256_file(&root.join("bin/kast"))? != manifest.cli_sha256
+        || crate::manifest::sha256_file(&root.join("bin/kast-agent-task"))?
+            != manifest.task_launcher_sha256
         || crate::manifest::sha256_file(&root.join("idea/kast.zip"))? != manifest.idea_plugin_sha256
-        || crate::manifest::sha256_file(&root.join("resources/kast-skill/SKILL.md"))?
-            != manifest.skill_sha256
-        || directory_sha256(&root.join("resources/codex-marketplace"))? != manifest.codex_sha256
+        || directory_sha256(&root.join("resources"))? != manifest.resources_sha256
     {
         return Err(CliError::new(
             "MACHINE_INSTALL_INVALID",
@@ -373,6 +505,111 @@ fn validate_machine_install(root: &Path) -> Result<MachineManifest> {
         ));
     }
     Ok(manifest)
+}
+
+#[cfg(unix)]
+fn is_executable_file(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    fs::metadata(path)
+        .is_ok_and(|metadata| metadata.is_file() && metadata.permissions().mode() & 0o111 != 0)
+}
+
+#[cfg(not(unix))]
+fn is_executable_file(path: &Path) -> bool {
+    path.is_file()
+}
+
+fn write_agent_task_resources(target: &Path) -> Result<()> {
+    const FILES: &[(&str, &[u8])] = &[
+        (
+            "kast-agent-task",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/agent-task/kast-agent-task"
+            )),
+        ),
+        (
+            "gradle-receipt.init.gradle",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/agent-task/gradle-receipt.init.gradle"
+            )),
+        ),
+        (
+            "workflow.schema.json",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/agent-task/workflow.schema.json"
+            )),
+        ),
+        (
+            "guidance.md",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/agent-task/guidance.md"
+            )),
+        ),
+    ];
+    write_embedded_tree(target, FILES)?;
+    make_executable(&target.join("kast-agent-task"))
+}
+
+fn write_copilot_plugin(target: &Path) -> Result<()> {
+    const FILES: &[(&str, &[u8])] = &[
+        (
+            "plugin.json",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/plugin/plugin.json"
+            )),
+        ),
+        (
+            "primitive-manifest.json",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/plugin/primitive-manifest.json"
+            )),
+        ),
+        (
+            "primitive-manifest.schema.json",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/plugin/primitive-manifest.schema.json"
+            )),
+        ),
+        (
+            "lsp.json",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/plugin/lsp.json"
+            )),
+        ),
+        (
+            "extensions/kast/extension.mjs",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/plugin/extensions/kast/extension.mjs"
+            )),
+        ),
+        (
+            "extensions/kast/_shared/kast-trace.mjs",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/plugin/extensions/kast/_shared/kast-trace.mjs"
+            )),
+        ),
+    ];
+    write_embedded_tree(target, FILES)
+}
+
+fn write_embedded_tree(target: &Path, files: &[(&str, &[u8])]) -> Result<()> {
+    for (relative, contents) in files {
+        let path = target.join(relative);
+        fs::create_dir_all(path.parent().expect("embedded resource parent"))?;
+        fs::write(path, contents)?;
+    }
+    Ok(())
 }
 
 fn write_codex_marketplace(target: &Path) -> Result<()> {
@@ -445,20 +682,6 @@ fn write_codex_marketplace(target: &Path) -> Result<()> {
             include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/resources/codex-plugin/plugins/kast/skills/kast-codex/agents/openai.yaml"
-            )),
-        ),
-        (
-            "plugins/kast/skills/kast-codex/references/commands.md",
-            include_bytes!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/resources/codex-plugin/plugins/kast/skills/kast-codex/references/commands.md"
-            )),
-        ),
-        (
-            "plugins/kast/skills/kast-codex/references/examples.md",
-            include_bytes!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/resources/codex-plugin/plugins/kast/skills/kast-codex/references/examples.md"
             )),
         ),
     ];
@@ -710,9 +933,9 @@ fn require_regular_file(path: &Path, label: &str) -> Result<()> {
 }
 
 #[cfg(unix)]
-fn replace_stable_command(target: &Path) -> Result<()> {
+fn replace_stable_command(name: &str, target: &Path) -> Result<()> {
     use std::os::unix::fs::symlink;
-    let command = crate::config::home_dir().join(".local/bin/kast");
+    let command = crate::config::home_dir().join(".local/bin").join(name);
     let parent = command.parent().ok_or_else(|| {
         CliError::new(
             "MACHINE_INSTALL_PATH_INVALID",
@@ -737,9 +960,21 @@ fn replace_stable_command(target: &Path) -> Result<()> {
 }
 
 #[cfg(not(unix))]
-fn replace_stable_command(_target: &Path) -> Result<()> {
+fn replace_stable_command(_name: &str, _target: &Path) -> Result<()> {
     Err(CliError::new(
         "MACHINE_PLATFORM_UNSUPPORTED",
         "Machine activation currently requires macOS or another Unix host.",
     ))
+}
+
+#[cfg(unix)]
+fn make_executable(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    fs::set_permissions(path, fs::Permissions::from_mode(0o755))?;
+    Ok(())
+}
+
+#[cfg(not(unix))]
+fn make_executable(_path: &Path) -> Result<()> {
+    Ok(())
 }

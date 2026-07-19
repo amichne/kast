@@ -53,6 +53,7 @@ import io.github.amichne.kast.api.contract.result.CompletionItem
 import io.github.amichne.kast.api.contract.result.CompletionsResult
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
+import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
@@ -1620,6 +1621,7 @@ internal class KastPluginBackend(
                                 .flatMap(DiagnosticsFileAnalysis::diagnostics)
                                 .sortedWith(compareBy({ it.location.filePath }, { it.location.startOffset }, { it.code ?: "" })),
                             fileStatuses = fileAnalyses.map(DiagnosticsFileAnalysis::status),
+                            fileHashes = fileAnalyses.mapNotNull(DiagnosticsFileAnalysis::fileHash),
                         ),
                     )
                 }
@@ -1648,6 +1650,7 @@ internal class KastPluginBackend(
             DiagnosticsResult.paged(
                 diagnostics = projection.snapshot.diagnostics,
                 fileStatuses = projection.snapshot.fileStatuses,
+                fileHashes = projection.snapshot.fileHashes,
                 pageOffset = projection.pageOffset,
                 maxResults = query.maxResults.value,
                 nextPageToken = nextPageToken,
@@ -1722,6 +1725,10 @@ internal class KastPluginBackend(
             DiagnosticsFileAnalysis(
                 status = FileAnalysisStatus.analyzed(filePath),
                 diagnostics = fileDiagnostics,
+                fileHash = FileHash(
+                    filePath = filePath.value,
+                    hash = FileHashing.sha256(file.text),
+                ),
             )
         } catch (ex: ProcessCanceledException) {
             throw ex
@@ -1757,6 +1764,7 @@ internal class KastPluginBackend(
                 code = "ANALYSIS_FAILURE",
             ),
         ),
+        fileHash = null,
     )
 
     // Note: Unlike the headless backend, IDEA's ReferencesSearch.search() resolves
@@ -2224,11 +2232,19 @@ internal class KastPluginBackend(
     private data class DiagnosticsFileAnalysis(
         val status: FileAnalysisStatus,
         val diagnostics: List<Diagnostic>,
-    )
+        val fileHash: FileHash?,
+    ) {
+        init {
+            require((status.state == FileAnalysisState.ANALYZED) == (fileHash != null)) {
+                "Only successfully analyzed files may carry diagnostic content hashes"
+            }
+        }
+    }
 
     private data class DiagnosticSnapshot(
         val diagnostics: List<Diagnostic>,
         val fileStatuses: List<FileAnalysisStatus>,
+        val fileHashes: List<FileHash>,
     )
 
     private data class DiagnosticReadEpoch(

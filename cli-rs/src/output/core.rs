@@ -52,7 +52,7 @@ pub fn print_error(error: &CliError, output: OutputFormat) -> Result<()> {
     mdln!(document);
     mdln!(
         document,
-        "Use `kast --output json ...` for the machine-readable error payload."
+        "Use `kast --output toon ...` for the machine-readable error payload."
     );
     print_markdown_stderr(&document.into_string())
 }

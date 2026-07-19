@@ -85,6 +85,15 @@ fn relative_file_paths_are_canonical_in_every_compact_json_view() {
     for output in outputs {
         let document = decode_json(&output);
         assert_eq!(document["result"]["filePaths"], json!(expected));
+        assert_eq!(
+            document["result"]["fileHashes"],
+            json!(
+                expected
+                    .iter()
+                    .map(|file_path| json!({"filePath": file_path, "hash": "a".repeat(64)}))
+                    .collect::<Vec<_>>()
+            ),
+        );
     }
 }
 
@@ -889,6 +898,7 @@ fn incomplete_diagnostics(file: &Path) -> Value {
             "state": "MISSING_ON_DISK",
             "message": "File not found after refresh"
         }],
+        "fileHashes": [],
         "semanticOutcome": "INCOMPLETE",
         "requestedFileCount": 1,
         "analyzedFileCount": 0,
@@ -911,6 +921,7 @@ fn complete_compiler_diagnostics(file: &Path) -> Value {
             "filePath": file.display().to_string(),
             "state": "ANALYZED"
         }],
+        "fileHashes": [diagnostic_file_hash(file)],
         "semanticOutcome": "COMPLETE",
         "requestedFileCount": 1,
         "analyzedFileCount": 1,
@@ -934,6 +945,10 @@ fn complete_clean_diagnostics_for(file_paths: &[String]) -> Value {
                 "filePath": file_path,
                 "state": "ANALYZED"
             }))
+            .collect::<Vec<_>>(),
+        "fileHashes": file_paths
+            .iter()
+            .map(|file_path| diagnostic_file_hash_for_path(file_path))
             .collect::<Vec<_>>(),
         "semanticOutcome": "COMPLETE",
         "requestedFileCount": file_paths.len(),
@@ -990,6 +1005,7 @@ fn incomplete_diagnostics_with_page(file: &Path, page: Option<Value>) -> Value {
             "filePath": file.display().to_string(),
             "state": "ANALYZED"
         }],
+        "fileHashes": [diagnostic_file_hash(file)],
         "semanticOutcome": "INCOMPLETE",
         "requestedFileCount": 1,
         "analyzedFileCount": 1,
@@ -1021,6 +1037,7 @@ fn complete_outcome_with_skipped_file(file: &Path) -> Value {
             "state": "MISSING_ON_DISK",
             "message": "File not found"
         }],
+        "fileHashes": [],
         "semanticOutcome": "COMPLETE",
         "requestedFileCount": 1,
         "analyzedFileCount": 0,
@@ -1031,9 +1048,10 @@ fn complete_outcome_with_skipped_file(file: &Path) -> Value {
     })
 }
 
-fn missing_file_status_ledger(_file: &Path) -> Value {
+fn missing_file_status_ledger(file: &Path) -> Value {
     json!({
         "diagnostics": [],
+        "fileHashes": [diagnostic_file_hash(file)],
         "semanticOutcome": "COMPLETE",
         "requestedFileCount": 1,
         "analyzedFileCount": 1,
@@ -1051,6 +1069,7 @@ fn mismatched_file_status_ledger(file: &Path) -> Value {
             "filePath": file.display().to_string(),
             "state": "ANALYZED"
         }],
+        "fileHashes": [diagnostic_file_hash(file)],
         "semanticOutcome": "INCOMPLETE",
         "requestedFileCount": 1,
         "analyzedFileCount": 0,
@@ -1068,6 +1087,7 @@ fn unknown_file_analysis_state(file: &Path) -> Value {
             "filePath": file.display().to_string(),
             "state": "NOT_A_STATE"
         }],
+        "fileHashes": [diagnostic_file_hash(file)],
         "semanticOutcome": "COMPLETE",
         "requestedFileCount": 1,
         "analyzedFileCount": 1,
@@ -1090,6 +1110,7 @@ fn malformed_diagnostic_code(file: &Path) -> Value {
             "filePath": file.display().to_string(),
             "state": "ANALYZED"
         }],
+        "fileHashes": [diagnostic_file_hash(file)],
         "semanticOutcome": "COMPLETE",
         "requestedFileCount": 1,
         "analyzedFileCount": 1,
@@ -1111,6 +1132,7 @@ fn malformed_diagnostic_structure(file: &Path) -> Value {
             "filePath": file.display().to_string(),
             "state": "ANALYZED"
         }],
+        "fileHashes": [diagnostic_file_hash(file)],
         "semanticOutcome": "COMPLETE",
         "requestedFileCount": 1,
         "analyzedFileCount": 1,
@@ -1128,6 +1150,7 @@ fn malformed_completeness_evidence(file: &Path) -> Value {
             "filePath": file.display().to_string(),
             "state": "ANALYZED"
         }],
+        "fileHashes": [diagnostic_file_hash(file)],
         "semanticOutcome": "COMPLETE",
         "requestedFileCount": 1,
         "analyzedFileCount": 0,
@@ -1146,5 +1169,16 @@ fn diagnostic_location(file: &Path) -> Value {
         "startLine": 0,
         "startColumn": 0,
         "preview": ""
+    })
+}
+
+fn diagnostic_file_hash(file: &Path) -> Value {
+    diagnostic_file_hash_for_path(&file.display().to_string())
+}
+
+fn diagnostic_file_hash_for_path(file_path: &str) -> Value {
+    json!({
+        "filePath": file_path,
+        "hash": "a".repeat(64)
     })
 }
