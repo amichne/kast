@@ -66,6 +66,25 @@ fn macos_workspace_leases_are_idea_only() {
 }
 
 #[test]
+fn developer_scope_has_no_local_headless_authority() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let help = kast(&home, &config_home)
+        .args(["developer", "--help"])
+        .output()
+        .expect("developer help");
+    assert!(help.status.success());
+    let help = String::from_utf8_lossy(&help.stdout);
+    assert!(
+        !help.contains("local"),
+        "developer machines must not expose a parallel local headless authority: {help}",
+    );
+}
+
+#[test]
 fn activation_installs_one_processless_machine_bundle() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
