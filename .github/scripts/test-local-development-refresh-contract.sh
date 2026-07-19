@@ -13,6 +13,13 @@ resolve_repo_root() {
 }
 
 repo_root="$(resolve_repo_root)"
+task_list="$(${repo_root}/gradlew -q tasks --all)"
+if grep -Fq 'refreshDevelopmentLocal' <<<"$task_list"; then
+  die 'developer machines must not retain the headless local-development authority'
+fi
+machine_help="$(${repo_root}/gradlew -q help --task refreshDevelopmentMachine)"
+grep -Fq 'processless machine bundle' <<<"$machine_help" \
+  || die 'refreshDevelopmentMachine must own the processless CLI, plugin, and resource bundle'
 tmp_root="$(mktemp -d "${TMPDIR:-/tmp}/kast-local-refresh-contract.XXXXXX")"
 tmp_root="$(cd -- "$tmp_root" && pwd -P)"
 cleanup() {
