@@ -549,7 +549,7 @@ fn task_lifecycle_is_idempotent_strict_and_retryable() {
     let mut invalid_outcome = fixture.task("owner-a", "finish");
     invalid_outcome
         .args(["--output", "json"])
-        .env("KAST_TEST_GRADLE_OUTCOME", "NO_SOURCE");
+        .env("KAST_TEST_GRADLE_OUTCOME", "SKIPPED");
     let invalid_outcome = invalid_outcome.output().expect("invalid Gradle outcome");
     assert!(!invalid_outcome.status.success());
     let invalid_outcome = decode_json_output(&invalid_outcome);

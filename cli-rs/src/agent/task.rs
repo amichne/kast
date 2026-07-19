@@ -71,7 +71,10 @@ enum AgentTaskGradleOutcome {
 
 impl AgentTaskGradleOutcome {
     fn is_valid_proof(self) -> bool {
-        matches!(self, Self::Success | Self::UpToDate | Self::FromCache)
+        matches!(
+            self,
+            Self::Success | Self::UpToDate | Self::FromCache | Self::NoSource
+        )
     }
 }
 
@@ -2866,7 +2869,7 @@ fn agent_task_invalid_gradle_task(
         } else {
             "GRADLE_BUILD_TASK_INVALID"
         },
-        "A required Gradle task did not produce SUCCESS, UP_TO_DATE, or FROM_CACHE proof.",
+        "A required Gradle task did not complete successfully or report NO_SOURCE.",
     )
     .detail("buildRoot", build_root.to_string())
     .detail("task", task.to_string())
@@ -3291,16 +3294,16 @@ mod agent_task_core_tests {
     }
 
     #[test]
-    fn only_successful_observed_gradle_outcomes_are_accepted() {
+    fn successful_and_no_source_gradle_outcomes_are_accepted() {
         for accepted in [
             AgentTaskGradleOutcome::Success,
             AgentTaskGradleOutcome::UpToDate,
             AgentTaskGradleOutcome::FromCache,
+            AgentTaskGradleOutcome::NoSource,
         ] {
             assert!(accepted.is_valid_proof());
         }
         for rejected in [
-            AgentTaskGradleOutcome::NoSource,
             AgentTaskGradleOutcome::Skipped,
             AgentTaskGradleOutcome::Failed,
         ] {
