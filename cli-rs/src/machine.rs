@@ -43,6 +43,7 @@ struct MachineManifest {
     cli_sha256: String,
     idea_plugin_sha256: String,
     skill_sha256: String,
+    codex_sha256: String,
     schema_version: u32,
 }
 
@@ -129,6 +130,7 @@ pub(crate) fn activate(args: MachineActivateArgs) -> Result<MachineActivation> {
     fs::create_dir_all(staging.join("bin"))?;
     fs::create_dir_all(staging.join("idea"))?;
     fs::create_dir_all(staging.join("resources/kast-skill"))?;
+    fs::create_dir_all(staging.join("resources/codex-marketplace"))?;
 
     let installed_cli = staging.join("bin/kast");
     fs::copy(&source_cli, &installed_cli)?;
@@ -143,11 +145,14 @@ pub(crate) fn activate(args: MachineActivateArgs) -> Result<MachineActivation> {
             "/resources/kast-skill/SKILL.md"
         )),
     )?;
+    let installed_codex = staging.join("resources/codex-marketplace");
+    write_codex_marketplace(&installed_codex)?;
     let manifest = MachineManifest {
         manifest_type: "KAST_MACHINE_MANIFEST".to_string(),
         cli_sha256: crate::manifest::sha256_file(&installed_cli)?,
         idea_plugin_sha256: crate::manifest::sha256_file(&installed_plugin)?,
         skill_sha256: crate::manifest::sha256_file(&installed_skill)?,
+        codex_sha256: directory_sha256(&installed_codex)?,
         schema_version: 1,
     };
     fs::write(
@@ -248,6 +253,7 @@ fn validate_machine_install(root: &Path) -> Result<MachineManifest> {
         || crate::manifest::sha256_file(&root.join("idea/kast.zip"))? != manifest.idea_plugin_sha256
         || crate::manifest::sha256_file(&root.join("resources/kast-skill/SKILL.md"))?
             != manifest.skill_sha256
+        || directory_sha256(&root.join("resources/codex-marketplace"))? != manifest.codex_sha256
     {
         return Err(CliError::new(
             "MACHINE_INSTALL_INVALID",
@@ -258,6 +264,158 @@ fn validate_machine_install(root: &Path) -> Result<MachineManifest> {
         ));
     }
     Ok(manifest)
+}
+
+fn write_codex_marketplace(target: &Path) -> Result<()> {
+    const FILES: &[(&str, &[u8])] = &[
+        (
+            "marketplace.json",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/marketplace.json"
+            )),
+        ),
+        (
+            ".agents/plugins/marketplace.json",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/.agents/plugins/marketplace.json"
+            )),
+        ),
+        (
+            "plugins/kast/.codex-plugin/plugin.json",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/plugins/kast/.codex-plugin/plugin.json"
+            )),
+        ),
+        (
+            "plugins/kast/assets/codex-exposure.toon",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/plugins/kast/assets/codex-exposure.toon"
+            )),
+        ),
+        (
+            "plugins/kast/assets/hook-recovery-messages.toon",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/plugins/kast/assets/hook-recovery-messages.toon"
+            )),
+        ),
+        (
+            "plugins/kast/assets/kast.svg",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/plugins/kast/assets/kast.svg"
+            )),
+        ),
+        (
+            "plugins/kast/hooks/hooks.json",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/plugins/kast/hooks/hooks.json"
+            )),
+        ),
+        (
+            "plugins/kast/scripts/kast-codex-hook",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/plugins/kast/scripts/kast-codex-hook"
+            )),
+        ),
+        (
+            "plugins/kast/skills/kast-codex/SKILL.md",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/plugins/kast/skills/kast-codex/SKILL.md"
+            )),
+        ),
+        (
+            "plugins/kast/skills/kast-codex/agents/openai.yaml",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/plugins/kast/skills/kast-codex/agents/openai.yaml"
+            )),
+        ),
+        (
+            "plugins/kast/skills/kast-codex/references/commands.md",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/plugins/kast/skills/kast-codex/references/commands.md"
+            )),
+        ),
+        (
+            "plugins/kast/skills/kast-codex/references/examples.md",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/plugins/kast/skills/kast-codex/references/examples.md"
+            )),
+        ),
+    ];
+    for (relative, contents) in FILES {
+        let path = target.join(relative);
+        fs::create_dir_all(path.parent().expect("Codex resource parent"))?;
+        fs::write(&path, contents)?;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(
+            target.join("plugins/kast/scripts/kast-codex-hook"),
+            fs::Permissions::from_mode(0o755),
+        )?;
+    }
+    Ok(())
+}
+
+fn directory_sha256(root: &Path) -> Result<String> {
+    fn collect(root: &Path, directory: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+        for entry in fs::read_dir(directory)? {
+            let entry = entry?;
+            let metadata = fs::symlink_metadata(entry.path())?;
+            if metadata.file_type().is_symlink() {
+                return Err(CliError::new(
+                    "MACHINE_COMPONENT_INVALID",
+                    format!(
+                        "Machine resource contains a symlink: {}",
+                        entry.path().display()
+                    ),
+                ));
+            }
+            if metadata.is_dir() {
+                collect(root, &entry.path(), files)?;
+            } else if metadata.is_file() {
+                files.push(
+                    entry
+                        .path()
+                        .strip_prefix(root)
+                        .expect("directory child")
+                        .to_path_buf(),
+                );
+            } else {
+                return Err(CliError::new(
+                    "MACHINE_COMPONENT_INVALID",
+                    format!(
+                        "Machine resource is not a regular file: {}",
+                        entry.path().display()
+                    ),
+                ));
+            }
+        }
+        Ok(())
+    }
+    let mut files = Vec::new();
+    collect(root, root, &mut files)?;
+    files.sort();
+    let mut identity = Vec::new();
+    for relative in files {
+        identity.extend_from_slice(relative.to_string_lossy().as_bytes());
+        identity.push(b'\n');
+        identity.extend_from_slice(crate::manifest::sha256_file(&root.join(&relative))?.as_bytes());
+        identity.push(b'\n');
+    }
+    Ok(crate::manifest::sha256_bytes(&identity))
 }
 
 fn extract_plugin_zip(source: &Path, target: &Path) -> Result<()> {

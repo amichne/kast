@@ -53,13 +53,16 @@ class MacosMachineManifestLoaderTest {
         val binary = root.resolve("bin/kast")
         val plugin = root.resolve("idea/kast.zip")
         val skill = root.resolve("resources/kast-skill/SKILL.md")
+        val codex = root.resolve("resources/codex-marketplace/marketplace.json")
         Files.createDirectories(binary.parent)
         Files.createDirectories(plugin.parent)
         Files.createDirectories(skill.parent)
+        Files.createDirectories(codex.parent)
         Files.writeString(binary, "binary")
         check(binary.toFile().setExecutable(true))
         Files.writeString(plugin, "plugin")
         Files.writeString(skill, "skill")
+        Files.writeString(codex, "codex")
         return root.resolve("machine.json").also { manifest ->
             Files.writeString(
                 manifest,
@@ -69,6 +72,7 @@ class MacosMachineManifestLoaderTest {
                   "cliSha256": "${sha256(binary)}",
                   "ideaPluginSha256": "${sha256(plugin)}",
                   "skillSha256": "${sha256(skill)}",
+                  "codexSha256": "${directorySha256(codex.parent)}",
                   "schemaVersion": 1
                 }
                 """.trimIndent(),
@@ -80,4 +84,18 @@ class MacosMachineManifestLoaderTest {
         MessageDigest.getInstance("SHA-256")
             .digest(Files.readAllBytes(path))
             .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+
+    private fun directorySha256(root: Path): String {
+        val identity = Files.walk(root).use { entries ->
+            entries
+                .filter(Files::isRegularFile)
+                .map { path -> "${root.relativize(path)}\n${sha256(path)}\n" }
+                .sorted()
+                .toList()
+                .joinToString("")
+        }
+        return MessageDigest.getInstance("SHA-256")
+            .digest(identity.toByteArray())
+            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+    }
 }

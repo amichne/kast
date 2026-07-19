@@ -18,6 +18,7 @@ internal object MacosMachineManifestLoader {
         "cliSha256",
         "ideaPluginSha256",
         "skillSha256",
+        "codexSha256",
         "schemaVersion",
     )
     private val canonicalKeyPatterns = keys.associateWith { key ->
@@ -85,6 +86,12 @@ internal object MacosMachineManifestLoader {
         ) {
             return modified(path, "Kast skill")
         }
+        if (
+            directorySha256(root.resolve("resources/codex-marketplace")) !=
+            manifest.string("codexSha256")
+        ) {
+            return modified(path, "Codex resources")
+        }
         val version = loadCliVersion(binary)
             ?: return rejected(
                 "Kast machine CLI at $binary did not report a valid implementation version; rerun machine activation.",
@@ -111,6 +118,27 @@ internal object MacosMachineManifestLoader {
         MessageDigest.getInstance("SHA-256")
             .digest(Files.readAllBytes(path))
             .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+
+    private fun directorySha256(root: Path): String? {
+        if (!Files.isDirectory(root)) return null
+        val files = Files.walk(root).use { entries ->
+            entries
+                .filter { path -> path != root }
+                .map { path -> path to Files.readAttributes(path, java.nio.file.attribute.BasicFileAttributes::class.java) }
+                .toList()
+        }
+        if (files.any { (path, attributes) -> attributes.isSymbolicLink || !attributes.isDirectory && !attributes.isRegularFile }) {
+            return null
+        }
+        val identity = files
+            .filter { (_, attributes) -> attributes.isRegularFile }
+            .map { (path, _) -> root.relativize(path).toString() to sha256(path) }
+            .sortedBy { (relative, _) -> relative }
+            .joinToString(separator = "", transform = { (relative, digest) -> "$relative\n$digest\n" })
+        return MessageDigest.getInstance("SHA-256")
+            .digest(identity.toByteArray())
+            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+    }
 
     private fun invalid(path: Path, detail: String?): MacosMachineManifestLoadResult.Rejected =
         rejected("Kast machine manifest is invalid at $path: $detail")
