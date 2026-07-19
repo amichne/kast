@@ -520,14 +520,14 @@ fn repair_macos_homebrew_cli_authority(
                     return Ok(false);
                 }
                 MacosHomebrewAuthorityResolution::Blocked(mut error) => {
-                    if let Some(replacement) = discover_running_homebrew_receipt()? {
+                    if let Ok(Some(replacement)) = discover_running_homebrew_receipt() {
                         let reset_command = format!(
                             "{} repair --for machine --reset-homebrew-receipt --apply",
                             shell_quote(&replacement.cli.binary.display().to_string())
                         );
                         error.message = format!(
-                            "{}; preserve the receipt and explicitly reset it with: {reset_command}",
-                            error.message
+                            "Homebrew CLI authority is blocked by receipt state at {} and was preserved unchanged; explicitly reset it with: {reset_command}",
+                            receipt_path.display(),
                         );
                         error
                             .details
