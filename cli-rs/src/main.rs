@@ -668,10 +668,7 @@ fn run_machine(command: cli::MachineCommand, output_format: OutputFormat) -> Res
             if output_format.is_structured() {
                 output::print_structured(&result, output_format)?;
             } else {
-                println!(
-                    "Kast machine\n\nState: {}\nDaemon: {}",
-                    result.state, result.daemon
-                );
+                println!("Kast machine\n\nState: {}", result.state);
             }
             Ok(0)
         }
