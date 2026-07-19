@@ -42,6 +42,29 @@ fn rename_preview(workspace: &Path, new_name: &str) -> Value {
     })
 }
 
+fn begin_workspace_task(home: &Path, config_home: &Path, workspace: &Path) -> Value {
+    write_current_cli_install_manifest_for_test(home, config_home);
+    let output = kast(home, config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "task",
+            "begin",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("begin workspace task");
+    assert!(
+        output.status.success(),
+        "task begin failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    serde_json::from_slice(&output.stdout).expect("task begin JSON")
+}
+
 fn run_agent_symbol(
     home: &Path,
     config_home: &Path,
@@ -598,6 +621,7 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
         "package io.example\nclass OrderService { fun process() = Unit }\n",
     )
     .expect("Kotlin rename fixture");
+    let task = begin_workspace_task(&home, &config_home, &workspace);
     let selector_handle = "ksh1.rename-handle";
     let plan_backend = spawn_scripted_idea_backend(
         &home,
@@ -767,6 +791,10 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
         .find(|request| request["method"] == "mutation/submit")
         .expect("mutation submission");
     assert_eq!(submit["params"]["type"], "RENAME");
+    assert_eq!(
+        submit["params"]["workspaceTaskId"],
+        task["result"]["taskId"]
+    );
     assert_eq!(submit["params"]["idempotencyKey"], "issue-392-rename");
     assert_eq!(
         submit["params"]["request"]["type"],
@@ -1010,6 +1038,7 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
     )
     .expect("Gradle workspace marker");
     std::fs::write(&content_file, "fun greet() = \"replacement\"\n").expect("replacement");
+    let task = begin_workspace_task(&home, &config_home, &workspace);
     let selector_handle = "ksh1.replace-handle";
 
     let plan = kast(&home, &config_home)
@@ -1130,6 +1159,10 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
         .find(|request| request["method"] == "mutation/submit")
         .expect("mutation submission");
     assert_eq!(submit["params"]["type"], "REPLACE_DECLARATION");
+    assert_eq!(
+        submit["params"]["workspaceTaskId"],
+        task["result"]["taskId"]
+    );
     assert_eq!(submit["params"]["idempotencyKey"], "issue-392-replace",);
     assert_eq!(
         submit["params"]["request"]["type"],

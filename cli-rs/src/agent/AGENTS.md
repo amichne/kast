@@ -18,12 +18,13 @@ workspace-files`, `kast agent symbol`, standalone
 `references`/`callers`/`callees`/`implementations`/`hierarchy`, `kast agent
 diagnostics`, `kast agent impact`, `kast agent rename`, and `kast agent lsp`.
 
-`task.rs` is the single cross-provider completion owner. It persists strict
-exact-root task receipts, relevant-file baselines, Gradle model/policy proof,
-same-epoch diagnostic hashes, accepted task outcomes, and test-report digests.
-Provider hooks may supply a stable session identity, but must call this core
-instead of owning a second baseline or completion state machine. This task
-lease is never interchangeable with the IDEA runtime lease.
+`task.rs` owns the shared cross-provider exact-root lifecycle. Its compact
+current record has no session owner and retains no per-file hashes, diagnostic
+output, Gradle results, test-report hashes, or immutable audit archive.
+Diagnostics and Gradle outcomes are validated transiently during explicit
+finish. The temporary finish-executor claim exists only for liveness-aware
+repair. Provider hooks call this core instead of owning a second lifecycle.
+This task coordination is never interchangeable with the IDEA runtime lease.
 
 `workspace_files.rs` owns exact-root admission, typed conjunctive discovery
 filters, the query-bound public continuation, and command execution.

@@ -92,18 +92,19 @@ for (const hook of [
   assert(extension.includes(hook), `extension must register ${hook}`);
 }
 assert(!extension.includes("onUserPromptSubmitted"), "static prompt tutorials must be retired");
-for (const operation of ['runLifecycle("begin"', 'runLifecycle("status"', 'runLifecycle("finish"']) {
+for (const operation of ['runLifecycle("begin"', 'runLifecycle("status"']) {
   assert(extension.includes(operation), `extension must route lifecycle operation ${operation}`);
 }
+assert(!extension.includes('runLifecycle("finish"'), "Copilot session end must not run finish");
 assert(extension.includes("KAST_AGENT_TASK_LAUNCHER"), "extension must accept an absolute launcher override");
 assert(extension.includes("entrypoints?.taskLauncher"), "extension must consume the attested install entrypoint");
 assert(extension.includes('join(homedir(), ".local", "bin", "kast-agent-task")'), "extension must use the stable launcher path");
 assert(extension.includes("isExecutable(candidate)"), "extension must require an executable launcher");
 assert(extension.includes('join(dirname(candidate), "kast")'), "extension must require the launcher's sibling kast");
-assert(extension.includes("KAST_AGENT_SESSION_ID: sessionId"), "extension must bind task ownership to the Copilot session");
+assert(extension.includes("KAST_AGENT_SESSION_ID: sessionId"), "extension must preserve Copilot session context");
 assert(extension.includes("invocation?.sessionId"), "extension must use the SDK hook invocation identity");
-assert(extension.includes("permissionDecision: \"deny\""), "pre-tool status failure must remain a guardrail");
-assert(extension.includes("kast extension audit:"), "session end must record its non-blocking finish audit");
+assert(!extension.includes("permissionDecision: \"deny\""), "Copilot status reporting must not gate tools");
+assert(extension.includes("kast extension audit:"), "session end must record its non-blocking status audit");
 for (const forbidden of [
   "findOnPath",
   "process.env.PATH",
@@ -251,22 +252,23 @@ assert(postFailure.additionalContext.includes("operation: status"), `failed post
 
 await hooks.onSessionEnd({ reason: "complete" }, { sessionId: "end-success" });
 let audit = sdk.testState.logs.at(-1);
-assert(audit.message.includes("kast extension audit: operation: finish"), `success audit: ${JSON.stringify(audit)}`);
+assert(audit.message.includes("kast extension audit: operation: status"), `success audit: ${JSON.stringify(audit)}`);
 assert(audit.options.level === "info" && audit.options.ephemeral === true, `success audit options: ${JSON.stringify(audit)}`);
 
 process.env.KAST_TEST_FAIL_OPERATION = "status";
-const denied = await hooks.onPreToolUse(
+const reported = await hooks.onPreToolUse(
   { toolName: "edit" },
   { sessionId: "pre-failure" },
 );
-assert(denied.permissionDecision === "deny", `failed status was not denied: ${JSON.stringify(denied)}`);
-assert(denied.permissionDecisionReason.includes("typed-status-blocker"), `denial evidence: ${JSON.stringify(denied)}`);
+assert(!("permissionDecision" in reported), `status report denied a tool: ${JSON.stringify(reported)}`);
+assert(reported.additionalContext.includes("typed-status-blocker"), `status context: ${JSON.stringify(reported)}`);
+delete process.env.KAST_TEST_FAIL_OPERATION;
 
-process.env.KAST_TEST_FAIL_OPERATION = "finish";
+process.env.KAST_TEST_FAIL_OPERATION = "status";
 await hooks.onSessionEnd({ reason: "blocked" }, { sessionId: "end-failure" });
 audit = sdk.testState.logs.at(-1);
-assert(audit.message.includes("Kast agent task finish failed"), `failure audit: ${JSON.stringify(audit)}`);
-assert(audit.message.includes("typed-finish-blocker"), `failure evidence: ${JSON.stringify(audit)}`);
+assert(audit.message.includes("Kast agent task status failed"), `failure audit: ${JSON.stringify(audit)}`);
+assert(audit.message.includes("typed-status-blocker"), `failure context: ${JSON.stringify(audit)}`);
 assert(audit.options.level === "warning" && audit.options.ephemeral === false, `failure audit options: ${JSON.stringify(audit)}`);
 delete process.env.KAST_TEST_FAIL_OPERATION;
 
@@ -279,9 +281,9 @@ const expectedCalls = [
   ["pre-success", "status"],
   ["post-success", "status"],
   ["post-failure", "status"],
-  ["end-success", "finish"],
+  ["end-success", "status"],
   ["pre-failure", "status"],
-  ["end-failure", "finish"],
+  ["end-failure", "status"],
 ];
 assert(calls.length === expectedCalls.length, `unexpected calls: ${JSON.stringify(calls)}`);
 for (const [index, [sessionId, operation]] of expectedCalls.entries()) {

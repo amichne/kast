@@ -1,6 +1,6 @@
-use std::io::{IsTerminal as AgentTaskIsTerminal, Write as AgentTaskWrite};
+use std::io::Write as AgentTaskWrite;
 
-const AGENT_TASK_SCHEMA_VERSION: u32 = 1;
+const AGENT_TASK_SCHEMA_VERSION: u32 = 2;
 const AGENT_TASK_RECEIPT_TYPE: &str = "KAST_AGENT_TASK";
 const AGENT_TASK_HOME_TYPE: &str = "KAST_AGENT_HOME";
 const AGENT_TASK_MODEL_SCHEMA_VERSION: u32 = 1;
@@ -14,6 +14,7 @@ const AGENT_TASK_INIT_SCRIPT: &str = include_str!(concat!(
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub(crate) enum AgentTaskState {
     Active,
+    Draining,
     Validating,
     Complete,
     Blocked,
@@ -21,27 +22,12 @@ pub(crate) enum AgentTaskState {
 }
 
 impl AgentTaskState {
-    fn owns_lease(self) -> bool {
-        matches!(self, Self::Active | Self::Validating | Self::Blocked)
+    fn is_open(self) -> bool {
+        matches!(
+            self,
+            Self::Active | Self::Draining | Self::Validating | Self::Blocked
+        )
     }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(
-    tag = "kind",
-    rename_all = "SCREAMING_SNAKE_CASE",
-    rename_all_fields = "camelCase",
-    deny_unknown_fields
-)]
-enum AgentTaskOwnerIdentity {
-    Session {
-        provider: String,
-        session_sha256: String,
-    },
-    Process {
-        pid: u64,
-        started_at: String,
-    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -49,14 +35,6 @@ enum AgentTaskOwnerIdentity {
 struct AgentTaskGenerationIdentity {
     authority: String,
     generation: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct AgentTaskLeaseIdentity {
-    lease_id: String,
-    owner: AgentTaskOwnerIdentity,
-    acquired_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -71,21 +49,13 @@ enum AgentTaskContentIdentity {
     Deleted,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AgentTaskSnapshot {
     #[serde(skip_serializing_if = "Option::is_none")]
     git_head: Option<String>,
     files: BTreeMap<String, AgentTaskContentIdentity>,
     sha256: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct AgentTaskDiagnosticsProof {
-    files: BTreeMap<String, String>,
-    error_count: usize,
-    semantic_outcome: String,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -114,27 +84,11 @@ struct AgentTaskGradleTaskProof {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct AgentTaskGradleInvocationProof {
-    build_root: String,
-    input_sha256: String,
-    build_tasks: Vec<String>,
-    test_tasks: Vec<String>,
-    observed_tasks: Vec<AgentTaskGradleTaskProof>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct AgentTaskTestReportProof {
-    path: String,
-    sha256: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase", deny_unknown_fields)]
-struct AgentTaskValidationIdentity {
-    policy_sha256: String,
-    plan: Vec<AgentTaskValidationTarget>,
-    input_sha256: String,
+struct AgentTaskFinishExecutor {
+    coordination_token: String,
+    pid: u64,
+    started_at: String,
+    cancellation_requested: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -162,39 +116,21 @@ impl AgentTaskBlocker {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(
-    tag = "kind",
-    rename_all = "SCREAMING_SNAKE_CASE",
-    rename_all_fields = "camelCase",
-    deny_unknown_fields
-)]
-enum AgentTaskCompletionProof {
-    NoRelevantChanges { input_sha256: String },
-    Validated { input_sha256: String },
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct AgentTaskReceipt {
     #[serde(rename = "type")]
     receipt_type: String,
     pub(crate) state: AgentTaskState,
     pub(crate) task_id: String,
-    owner: AgentTaskOwnerIdentity,
     workspace_root: String,
     generation: AgentTaskGenerationIdentity,
-    lease: AgentTaskLeaseIdentity,
-    baseline: AgentTaskSnapshot,
-    current: AgentTaskSnapshot,
-    gradle_model: AgentTaskGradleModel,
-    gradle_model_sha256: String,
-    diagnostics: Vec<AgentTaskDiagnosticsProof>,
-    gradle: Vec<AgentTaskGradleInvocationProof>,
-    test_reports: Vec<AgentTaskTestReportProof>,
-    validation: Option<AgentTaskValidationIdentity>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    baseline_git_head: Option<String>,
+    baseline_sha256: String,
+    current_sha256: String,
     pub(crate) blockers: Vec<AgentTaskBlocker>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    completion: Option<AgentTaskCompletionProof>,
+    finish_executor: Option<AgentTaskFinishExecutor>,
     started_at: String,
     updated_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -226,6 +162,48 @@ struct AgentTaskHomeTask {
     blocker_codes: Vec<String>,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentTaskCommandResult {
+    #[serde(rename = "type")]
+    result_type: &'static str,
+    state: AgentTaskState,
+    task_id: String,
+    workspace_root: String,
+    generation: AgentTaskGenerationIdentity,
+    baseline_sha256: String,
+    current_sha256: String,
+    blocker_codes: Vec<String>,
+    started_at: String,
+    updated_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    finished_at: Option<String>,
+    schema_version: u32,
+}
+
+impl From<&AgentTaskReceipt> for AgentTaskCommandResult {
+    fn from(receipt: &AgentTaskReceipt) -> Self {
+        Self {
+            result_type: "KAST_AGENT_TASK_STATUS",
+            state: receipt.state,
+            task_id: receipt.task_id.clone(),
+            workspace_root: receipt.workspace_root.clone(),
+            generation: receipt.generation.clone(),
+            baseline_sha256: receipt.baseline_sha256.clone(),
+            current_sha256: receipt.current_sha256.clone(),
+            blocker_codes: receipt
+                .blockers
+                .iter()
+                .map(|blocker| blocker.code.clone())
+                .collect(),
+            started_at: receipt.started_at.clone(),
+            updated_at: receipt.updated_at.clone(),
+            finished_at: receipt.finished_at.clone(),
+            schema_version: AGENT_TASK_SCHEMA_VERSION,
+        }
+    }
+}
+
 impl From<&AgentTaskReceipt> for AgentTaskHomeTask {
     fn from(receipt: &AgentTaskReceipt) -> Self {
         Self {
@@ -233,7 +211,7 @@ impl From<&AgentTaskReceipt> for AgentTaskHomeTask {
             state: receipt.state,
             workspace_root: receipt.workspace_root.clone(),
             generation: receipt.generation.clone(),
-            current_sha256: receipt.current.sha256.clone(),
+            current_sha256: receipt.current_sha256.clone(),
             blocker_codes: receipt
                 .blockers
                 .iter()
@@ -258,12 +236,23 @@ struct AgentTaskExecution {
     ok: bool,
 }
 
+enum AgentTaskValidationOutcome {
+    Complete { current_sha256: String },
+    Blocked(AgentTaskBlocker),
+}
+
+enum AgentTaskFinishStart {
+    Existing(AgentTaskExecution),
+    Started {
+        receipt: AgentTaskReceipt,
+        coordination_token: String,
+    },
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum AgentTaskHookOperation {
     Begin,
     Status,
-    Finish,
-    Abort,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -280,10 +269,6 @@ impl AgentTaskHookResult {
 
     pub(crate) fn task_id(&self) -> &str {
         &self.receipt.task_id
-    }
-
-    pub(crate) fn blocker(&self) -> Option<&AgentTaskBlocker> {
-        self.receipt.blockers.first()
     }
 
     pub(crate) fn to_toon(&self) -> Result<String> {
@@ -324,44 +309,27 @@ impl AgentTaskPaths {
             .join(format!("{task_id}-gradle-outcome-{ordinal}.json"))
     }
 
-    fn completed_receipt(&self, task_id: &str) -> PathBuf {
-        self.directory.join(format!("{task_id}.complete.json"))
-    }
 }
 
 pub(crate) fn run_agent_home(output_format: OutputFormat) -> Result<i32> {
     let workspace_root = resolve_agent_task_workspace(AgentTaskWorkspaceArgs::default())?;
-    let owner = current_agent_task_owner();
     let generation = agent_task_effective_generation();
     let paths = AgentTaskPaths::resolve(&workspace_root)?;
     let active_task =
-        read_agent_task_receipt(&paths.receipt)?.filter(|receipt| receipt.state.owns_lease());
-    let owner_conflict = match owner {
-        Ok(owner) => active_task
-            .as_ref()
-            .filter(|receipt| receipt.owner != owner)
-            .map(|receipt| {
-                AgentTaskBlocker::new(
-                    "AGENT_TASK_OWNER_CONFLICT",
-                    "The exact workspace task lease belongs to another agent session.",
-                )
-                .detail("taskId", receipt.task_id.clone())
-            }),
-        Err(error) => Some(AgentTaskBlocker::new(error.code, error.message)),
-    };
+        read_agent_task_receipt(&paths.receipt)?.filter(|receipt| receipt.state.is_open());
     let task_generation_conflict = generation.as_ref().ok().and_then(|generation| {
         active_task
             .as_ref()
             .filter(|receipt| receipt.generation != *generation)
             .map(|receipt| agent_task_generation_blocker(&receipt.generation, generation))
     });
-    let admission_blocker = owner_conflict.or(task_generation_conflict);
+    let admission_blocker = task_generation_conflict;
     let (state, generation, blocker) = match (generation, admission_blocker) {
         (Ok(generation), Some(blocker)) => ("BLOCKED", Some(generation), Some(blocker)),
-        (Err(error), Some(owner_blocker)) => (
+        (Err(error), Some(task_blocker)) => (
             "BLOCKED",
             None,
-            Some(owner_blocker.detail(
+            Some(task_blocker.detail(
                 "generationError",
                 format!("{}: {}", error.code, error.message),
             )),
@@ -389,6 +357,7 @@ pub(crate) fn run_agent_home(output_format: OutputFormat) -> Result<i32> {
             "kast agent task begin".to_string(),
             "kast agent task status".to_string(),
             "kast agent task finish".to_string(),
+            "kast agent task repair".to_string(),
             "kast agent task abort".to_string(),
             "kast agent --help".to_string(),
         ],
@@ -403,6 +372,7 @@ fn execute_agent_task(args: AgentTaskArgs) -> AgentEnvelope {
         AgentTaskCommand::Begin(args) => ("agent/task/begin", begin_agent_task(args)),
         AgentTaskCommand::Status(args) => ("agent/task/status", status_agent_task(args)),
         AgentTaskCommand::Finish(args) => ("agent/task/finish", finish_agent_task(args)),
+        AgentTaskCommand::Repair(args) => ("agent/task/repair", repair_agent_task(args)),
         AgentTaskCommand::Abort(args) => ("agent/task/abort", abort_agent_task(args)),
     };
     match result {
@@ -431,7 +401,7 @@ fn execute_agent_task(args: AgentTaskArgs) -> AgentEnvelope {
                 method: method.to_string(),
                 request: None,
                 response: None,
-                result: Some(json!(execution.receipt)),
+                result: Some(json!(AgentTaskCommandResult::from(&execution.receipt))),
                 raw_response: None,
                 error,
                 schema_version: SCHEMA_VERSION,
@@ -444,16 +414,13 @@ fn execute_agent_task(args: AgentTaskArgs) -> AgentEnvelope {
 pub(crate) fn run_agent_task_hook(
     operation: AgentTaskHookOperation,
     workspace_start: &Path,
-    provider: &str,
-    session_id: &str,
+    _provider: &str,
+    _session_id: &str,
 ) -> Result<AgentTaskHookResult> {
     let workspace_root = resolve_agent_task_start_path(workspace_start)?;
-    let owner = agent_task_session_owner(provider, session_id)?;
     let execution = match operation {
-        AgentTaskHookOperation::Begin => begin_agent_task_core(workspace_root, owner),
-        AgentTaskHookOperation::Status => status_agent_task_core(workspace_root, owner),
-        AgentTaskHookOperation::Finish => finish_agent_task_core(workspace_root, owner),
-        AgentTaskHookOperation::Abort => abort_agent_task_core(workspace_root, owner),
+        AgentTaskHookOperation::Begin => begin_agent_task_core(workspace_root),
+        AgentTaskHookOperation::Status => status_agent_task_core(workspace_root),
     }?;
     Ok(AgentTaskHookResult {
         ok: execution.ok,
@@ -463,54 +430,19 @@ pub(crate) fn run_agent_task_hook(
 
 fn begin_agent_task(args: AgentTaskWorkspaceArgs) -> Result<AgentTaskExecution> {
     let workspace_root = resolve_agent_task_workspace(args)?;
-    let owner = current_agent_task_owner()?;
-    begin_agent_task_core(workspace_root, owner)
+    begin_agent_task_core(workspace_root)
 }
 
-fn begin_agent_task_core(
-    workspace_root: PathBuf,
-    owner: AgentTaskOwnerIdentity,
-) -> Result<AgentTaskExecution> {
+fn begin_agent_task_core(workspace_root: PathBuf) -> Result<AgentTaskExecution> {
     let generation = agent_task_effective_generation()?;
     let paths = AgentTaskPaths::resolve(&workspace_root)?;
     with_agent_task_lock(&paths, || {
         if let Some(receipt) = read_agent_task_receipt(&paths.receipt)?
-            && receipt.state.owns_lease()
+            && receipt.state.is_open()
         {
-            if receipt.owner != owner && agent_task_owner_is_dead_process(&receipt.owner) {
-                let mut recovered = receipt;
-                recovered.owner = owner.clone();
-                recovered.lease = AgentTaskLeaseIdentity {
-                    lease_id: format!("ktl1.{}", uuid::Uuid::new_v4()),
-                    owner,
-                    acquired_at: crate::manifest::current_timestamp(),
-                };
-                observe_agent_task_current(&mut recovered, &workspace_root)?;
-                recovered.state = AgentTaskState::Blocked;
-                recovered.blockers = vec![AgentTaskBlocker::new(
-                    "AGENT_TASK_OWNER_RECOVERED",
-                    "A dead process-owned task was recovered without inferring completion; retry finish.",
-                )];
-                recovered.completion = None;
-                recovered.finished_at = None;
-                recovered.updated_at = crate::manifest::current_timestamp();
-                write_agent_task_receipt(&paths.receipt, &recovered)?;
-                return Ok(AgentTaskExecution {
-                    receipt: recovered,
-                    ok: true,
-                });
-            }
-            require_agent_task_owner(&receipt, &owner)?;
             require_agent_task_generation(&receipt, &generation)?;
             let mut observed = receipt;
             observe_agent_task_current(&mut observed, &workspace_root)?;
-            if observed.state == AgentTaskState::Validating {
-                observed.state = AgentTaskState::Blocked;
-                observed.blockers = vec![AgentTaskBlocker::new(
-                    "AGENT_TASK_VALIDATION_INTERRUPTED",
-                    "The preceding validation did not reach an atomic terminal receipt; retry finish.",
-                )];
-            }
             observed.updated_at = crate::manifest::current_timestamp();
             write_agent_task_receipt(&paths.receipt, &observed)?;
             return Ok(AgentTaskExecution {
@@ -522,32 +454,18 @@ fn begin_agent_task_core(
         let task_id = uuid::Uuid::new_v4().to_string();
         materialize_agent_task_init_script(&paths)?;
         let baseline = capture_agent_task_snapshot(&workspace_root)?;
-        let gradle_model =
-            resolve_agent_task_gradle_model(&workspace_root, &paths, &task_id, &baseline)?;
-        let gradle_model_sha256 = digest_serializable(&gradle_model)?;
         let now = crate::manifest::current_timestamp();
         let receipt = AgentTaskReceipt {
             receipt_type: AGENT_TASK_RECEIPT_TYPE.to_string(),
             state: AgentTaskState::Active,
             task_id,
-            owner: owner.clone(),
             workspace_root: workspace_root.display().to_string(),
             generation,
-            lease: AgentTaskLeaseIdentity {
-                lease_id: format!("ktl1.{}", uuid::Uuid::new_v4()),
-                owner,
-                acquired_at: now.clone(),
-            },
-            current: baseline.clone(),
-            baseline,
-            gradle_model,
-            gradle_model_sha256,
-            diagnostics: Vec::new(),
-            gradle: Vec::new(),
-            test_reports: Vec::new(),
-            validation: None,
+            baseline_git_head: baseline.git_head.clone(),
+            baseline_sha256: baseline.sha256.clone(),
+            current_sha256: baseline.sha256,
             blockers: Vec::new(),
-            completion: None,
+            finish_executor: None,
             started_at: now.clone(),
             updated_at: now,
             finished_at: None,
@@ -560,19 +478,14 @@ fn begin_agent_task_core(
 
 fn status_agent_task(args: AgentTaskWorkspaceArgs) -> Result<AgentTaskExecution> {
     let workspace_root = resolve_agent_task_workspace(args)?;
-    let owner = current_agent_task_owner()?;
-    status_agent_task_core(workspace_root, owner)
+    status_agent_task_core(workspace_root)
 }
 
-fn status_agent_task_core(
-    workspace_root: PathBuf,
-    owner: AgentTaskOwnerIdentity,
-) -> Result<AgentTaskExecution> {
+fn status_agent_task_core(workspace_root: PathBuf) -> Result<AgentTaskExecution> {
     let paths = AgentTaskPaths::resolve(&workspace_root)?;
     let mut receipt = with_agent_task_read_lock(&paths, || {
         required_agent_task_receipt(&paths.receipt, &workspace_root)
     })?;
-    require_agent_task_owner(&receipt, &owner)?;
     if matches!(
         receipt.state,
         AgentTaskState::Complete | AgentTaskState::Aborted
@@ -594,30 +507,159 @@ fn status_agent_task_core(
             receipt.blockers = vec![AgentTaskBlocker::new(error.code, error.message)];
         }
     }
-    if receipt.state == AgentTaskState::Validating {
-        receipt.state = AgentTaskState::Blocked;
-        receipt.blockers = vec![AgentTaskBlocker::new(
-            "AGENT_TASK_VALIDATION_INTERRUPTED",
-            "The preceding validation did not reach an atomic terminal receipt; retry finish.",
-        )];
+    Ok(AgentTaskExecution { receipt, ok: true })
+}
+
+fn repair_agent_task(args: AgentTaskWorkspaceArgs) -> Result<AgentTaskExecution> {
+    let workspace_root = resolve_agent_task_workspace(args)?;
+    let paths = AgentTaskPaths::resolve(&workspace_root)?;
+    let receipt = match with_agent_task_read_lock(&paths, || {
+        required_agent_task_receipt(&paths.receipt, &workspace_root)
+    }) {
+        Ok(receipt) => receipt,
+        Err(error) if error.code == "AGENT_TASK_RECEIPT_INVALID" => {
+            return with_agent_task_lock(&paths, || {
+                repair_legacy_agent_task_receipt(&paths, &workspace_root)
+            });
+        }
+        Err(error) => return Err(error),
+    };
+    if !matches!(receipt.state, AgentTaskState::Draining | AgentTaskState::Validating) {
+        return Ok(AgentTaskExecution { receipt, ok: true });
     }
+    let executor = receipt.finish_executor.clone().ok_or_else(|| {
+        CliError::new(
+            "AGENT_TASK_RECEIPT_INVALID",
+            "A finish-in-progress task has no executor claim.",
+        )
+    })?;
+    if runtime::is_process_alive(executor.pid) {
+        return with_agent_task_lock(&paths, || {
+            let mut current = required_agent_task_receipt(&paths.receipt, &workspace_root)?;
+            require_agent_task_finish_executor(&current, &executor.coordination_token)?;
+            let current_executor = current.finish_executor.as_mut().expect("validated executor");
+            current_executor.cancellation_requested = true;
+            current.updated_at = crate::manifest::current_timestamp();
+            write_agent_task_receipt(&paths.receipt, &current)?;
+            Ok(AgentTaskExecution {
+                receipt: current,
+                ok: true,
+            })
+        });
+    }
+
+    agent_task_finish_barrier(
+        &workspace_root,
+        "mutation/finish-barrier/repair",
+        &receipt.task_id,
+        &executor.coordination_token,
+    )?;
+    let repaired_sha256 = capture_agent_task_snapshot(&workspace_root)?.sha256;
+    with_agent_task_lock(&paths, || {
+        let mut current = required_agent_task_receipt(&paths.receipt, &workspace_root)?;
+        require_agent_task_finish_executor(&current, &executor.coordination_token)?;
+        current.current_sha256 = repaired_sha256;
+        persist_blocked_agent_task(
+            &paths,
+            current,
+            vec![AgentTaskBlocker::new(
+                "AGENT_TASK_FINISH_INTERRUPTED",
+                "The finish executor stopped before completion; the task was reopened from the current workspace.",
+            )],
+        )
+    })
+}
+
+fn repair_legacy_agent_task_receipt(
+    paths: &AgentTaskPaths,
+    workspace_root: &Path,
+) -> Result<AgentTaskExecution> {
+    let bytes = std::fs::read(&paths.receipt)?;
+    let value: serde_json::Value = serde_json::from_slice(&bytes).map_err(|error| {
+        CliError::new(
+            "AGENT_TASK_RECEIPT_INVALID",
+            format!("Persisted agent task receipt is invalid: {error}"),
+        )
+    })?;
+    let object = value.as_object().ok_or_else(|| {
+        CliError::new(
+            "AGENT_TASK_RECEIPT_INVALID",
+            "Persisted agent task receipt must be one object.",
+        )
+    })?;
+    if object.get("type").and_then(serde_json::Value::as_str) != Some(AGENT_TASK_RECEIPT_TYPE)
+        || !matches!(
+            object
+                .get("schemaVersion")
+                .and_then(serde_json::Value::as_u64),
+            Some(1 | 2)
+        )
+        || object
+            .get("workspaceRoot")
+            .and_then(serde_json::Value::as_str)
+            != Some(workspace_root.to_string_lossy().as_ref())
+    {
+        return Err(CliError::new(
+            "AGENT_TASK_RECEIPT_INVALID",
+            "Only a schema-v1 or schema-v2 task for this exact workspace can be repaired automatically.",
+        ));
+    }
+    let task_id = object
+        .get("taskId")
+        .and_then(serde_json::Value::as_str)
+        .filter(|task_id| uuid::Uuid::parse_str(task_id).is_ok())
+        .ok_or_else(|| {
+            CliError::new(
+                "AGENT_TASK_RECEIPT_INVALID",
+                "Legacy task receipt has no valid task ID.",
+            )
+        })?
+        .to_string();
+    let generation: AgentTaskGenerationIdentity = serde_json::from_value(
+        object.get("generation").cloned().ok_or_else(|| {
+            CliError::new(
+                "AGENT_TASK_RECEIPT_INVALID",
+                "Legacy task receipt has no generation identity.",
+            )
+        })?,
+    )?;
+    let current = capture_agent_task_snapshot(workspace_root)?;
+    let now = crate::manifest::current_timestamp();
+    let receipt = AgentTaskReceipt {
+        receipt_type: AGENT_TASK_RECEIPT_TYPE.to_string(),
+        state: AgentTaskState::Aborted,
+        task_id,
+        workspace_root: workspace_root.display().to_string(),
+        generation,
+        baseline_git_head: current.git_head.clone(),
+        baseline_sha256: current.sha256.clone(),
+        current_sha256: current.sha256,
+        blockers: Vec::new(),
+        finish_executor: None,
+        started_at: object
+            .get("startedAt")
+            .and_then(serde_json::Value::as_str)
+            .filter(|timestamp| agent_task_timestamp(timestamp))
+            .unwrap_or(&now)
+            .to_string(),
+        updated_at: now.clone(),
+        finished_at: Some(now),
+        schema_version: AGENT_TASK_SCHEMA_VERSION,
+    };
+    let receipt = validate_agent_task_receipt(receipt)?;
+    write_agent_task_receipt(&paths.receipt, &receipt)?;
     Ok(AgentTaskExecution { receipt, ok: true })
 }
 
 fn abort_agent_task(args: AgentTaskWorkspaceArgs) -> Result<AgentTaskExecution> {
     let workspace_root = resolve_agent_task_workspace(args)?;
-    let owner = current_agent_task_owner()?;
-    abort_agent_task_core(workspace_root, owner)
+    abort_agent_task_core(workspace_root)
 }
 
-fn abort_agent_task_core(
-    workspace_root: PathBuf,
-    owner: AgentTaskOwnerIdentity,
-) -> Result<AgentTaskExecution> {
+fn abort_agent_task_core(workspace_root: PathBuf) -> Result<AgentTaskExecution> {
     let paths = AgentTaskPaths::resolve(&workspace_root)?;
     with_agent_task_lock(&paths, || {
         let mut receipt = required_agent_task_receipt(&paths.receipt, &workspace_root)?;
-        require_agent_task_owner(&receipt, &owner)?;
         if receipt.state == AgentTaskState::Aborted {
             return Ok(AgentTaskExecution { receipt, ok: true });
         }
@@ -627,11 +669,10 @@ fn abort_agent_task_core(
                 "A completed task cannot be reclassified as aborted.",
             ));
         }
-        receipt.current = capture_agent_task_snapshot(&workspace_root)?;
+        receipt.current_sha256 = capture_agent_task_snapshot(&workspace_root)?.sha256;
         receipt.state = AgentTaskState::Aborted;
         receipt.blockers.clear();
-        receipt.completion = None;
-        receipt.validation = None;
+        receipt.finish_executor = None;
         let now = crate::manifest::current_timestamp();
         receipt.updated_at = now.clone();
         receipt.finished_at = Some(now);
@@ -642,29 +683,18 @@ fn abort_agent_task_core(
 
 fn finish_agent_task(args: AgentTaskWorkspaceArgs) -> Result<AgentTaskExecution> {
     let workspace_root = resolve_agent_task_workspace(args)?;
-    let owner = current_agent_task_owner()?;
-    finish_agent_task_core(workspace_root, owner)
+    finish_agent_task_core(workspace_root)
 }
 
-fn finish_agent_task_core(
-    workspace_root: PathBuf,
-    owner: AgentTaskOwnerIdentity,
-) -> Result<AgentTaskExecution> {
+fn finish_agent_task_core(workspace_root: PathBuf) -> Result<AgentTaskExecution> {
     let paths = AgentTaskPaths::resolve(&workspace_root)?;
-    with_agent_task_lock(&paths, || {
+    let start = with_agent_task_lock(&paths, || {
         let mut receipt = required_agent_task_receipt(&paths.receipt, &workspace_root)?;
-        require_agent_task_owner(&receipt, &owner)?;
-        let completed_path = paths.completed_receipt(&receipt.task_id);
-        if let Some(completed) = read_agent_task_receipt(&completed_path)? {
-            require_agent_task_owner(&completed, &owner)?;
-            write_agent_task_receipt(&paths.receipt, &completed)?;
-            return Ok(AgentTaskExecution {
-                receipt: completed,
-                ok: true,
-            });
-        }
         if receipt.state == AgentTaskState::Complete {
-            return Ok(AgentTaskExecution { receipt, ok: true });
+            return Ok(AgentTaskFinishStart::Existing(AgentTaskExecution {
+                receipt,
+                ok: true,
+            }));
         }
         if receipt.state == AgentTaskState::Aborted {
             return Err(CliError::new(
@@ -672,134 +702,261 @@ fn finish_agent_task_core(
                 "An aborted task cannot claim completion; begin a new task.",
             ));
         }
+        if matches!(receipt.state, AgentTaskState::Draining | AgentTaskState::Validating) {
+            return Ok(AgentTaskFinishStart::Existing(AgentTaskExecution {
+                receipt,
+                ok: true,
+            }));
+        }
         let generation = agent_task_effective_generation()?;
         if generation != receipt.generation {
             let blocker = agent_task_generation_blocker(&receipt.generation, &generation);
-            return persist_blocked_agent_task(&paths, receipt, vec![blocker]);
+            return persist_blocked_agent_task(&paths, receipt, vec![blocker])
+                .map(AgentTaskFinishStart::Existing);
         }
-
-        receipt.state = AgentTaskState::Validating;
-        receipt.current = capture_agent_task_snapshot(&workspace_root)?;
-        receipt.diagnostics.clear();
-        receipt.gradle.clear();
-        receipt.test_reports.clear();
-        receipt.validation = None;
+        let coordination_token = uuid::Uuid::new_v4().to_string();
+        let now = crate::manifest::current_timestamp();
+        receipt.state = AgentTaskState::Draining;
         receipt.blockers.clear();
-        receipt.completion = None;
+        receipt.finish_executor = Some(AgentTaskFinishExecutor {
+            coordination_token: coordination_token.clone(),
+            pid: u64::from(std::process::id()),
+            started_at: now.clone(),
+            cancellation_requested: false,
+        });
         receipt.finished_at = None;
+        receipt.updated_at = now;
+        write_agent_task_receipt(&paths.receipt, &receipt)?;
+        Ok(AgentTaskFinishStart::Started {
+            receipt,
+            coordination_token,
+        })
+    })?;
+    let (draining, coordination_token) = match start {
+        AgentTaskFinishStart::Existing(execution) => return Ok(execution),
+        AgentTaskFinishStart::Started {
+            receipt,
+            coordination_token,
+        } => (receipt, coordination_token),
+    };
+    agent_task_finish_barrier(
+        &workspace_root,
+        "mutation/finish-barrier/acquire",
+        &draining.task_id,
+        &coordination_token,
+    )?;
+    let (validating, current) = with_agent_task_lock(&paths, || {
+        let mut receipt = required_agent_task_receipt(&paths.receipt, &workspace_root)?;
+        require_agent_task_finish_executor(&receipt, &coordination_token)?;
+        let current = capture_agent_task_snapshot(&workspace_root)?;
+        receipt.state = AgentTaskState::Validating;
+        receipt.current_sha256 = current.sha256.clone();
         receipt.updated_at = crate::manifest::current_timestamp();
         write_agent_task_receipt(&paths.receipt, &receipt)?;
-
-        let changed = agent_task_validation_paths(&receipt.baseline, &receipt.current);
-        if changed.is_empty() {
-            let input_sha256 = receipt.current.sha256.clone();
-            receipt.state = AgentTaskState::Complete;
-            receipt.completion = Some(AgentTaskCompletionProof::NoRelevantChanges { input_sha256 });
-            let now = crate::manifest::current_timestamp();
-            receipt.updated_at = now.clone();
-            receipt.finished_at = Some(now);
-            write_completed_agent_task_receipt(&completed_path, &receipt)?;
-            write_agent_task_receipt(&paths.receipt, &receipt)?;
-            return Ok(AgentTaskExecution { receipt, ok: true });
-        }
-
-        let kotlin_paths = changed
-            .iter()
-            .filter(|path| {
-                matches!(
-                    Path::new(path).extension().and_then(|value| value.to_str()),
-                    Some("kt" | "kts")
-                ) && matches!(
-                    receipt.current.files.get(*path),
-                    Some(AgentTaskContentIdentity::Present { .. })
-                )
-            })
-            .cloned()
-            .collect::<Vec<_>>();
-        if !kotlin_paths.is_empty() {
-            match collect_agent_task_diagnostics(&workspace_root, &receipt.current, &kotlin_paths) {
-                Ok(proof) => receipt.diagnostics.push(proof),
-                Err(blocker) => {
-                    return persist_blocked_agent_task(&paths, receipt, vec![blocker]);
-                }
-            }
-        }
-
-        let workflow = match read_agent_task_workflow(&workspace_root) {
-            Ok(workflow) => workflow,
-            Err(blocker) => {
-                return persist_blocked_agent_task(&paths, receipt, vec![blocker]);
-            }
-        };
-        let plan = match plan_agent_task_gradle_validation(
-            &workspace_root,
-            &receipt.gradle_model,
-            &changed,
-            workflow.as_ref(),
-        ) {
-            Ok(plan) => plan,
-            Err(blocker) => {
-                return persist_blocked_agent_task(&paths, receipt, vec![blocker]);
-            }
-        };
-        let policy_sha256 = agent_task_policy_sha256(&receipt.current);
-        let validation_input_sha256 = agent_task_validation_input_sha256(
-            &receipt.generation,
-            &receipt.gradle_model_sha256,
-            &receipt.current,
-            &policy_sha256,
-            &plan,
-        )?;
-        receipt.validation = Some(AgentTaskValidationIdentity {
-            policy_sha256,
-            plan: plan.clone(),
-            input_sha256: validation_input_sha256.clone(),
+        Ok((receipt, current))
+    })?;
+    let mut outcome = validate_agent_task(&workspace_root, &paths, &validating, &current)
+        .unwrap_or_else(|error| {
+            AgentTaskValidationOutcome::Blocked(AgentTaskBlocker::new(error.code, error.message))
         });
-        write_agent_task_receipt(&paths.receipt, &receipt)?;
-        match execute_agent_task_gradle_plan(
-            &workspace_root,
-            &paths,
-            &receipt.task_id,
-            &validation_input_sha256,
-            &receipt.gradle_model,
-            &plan,
-            &receipt.current,
-        ) {
-            Ok((gradle, test_reports)) => {
-                receipt.gradle = gradle;
-                receipt.test_reports = test_reports;
+    let cancellation_requested = with_agent_task_read_lock(&paths, || {
+        let receipt = required_agent_task_receipt(&paths.receipt, &workspace_root)?;
+        require_agent_task_finish_executor(&receipt, &coordination_token)?;
+        Ok(receipt
+            .finish_executor
+            .as_ref()
+            .is_some_and(|executor| executor.cancellation_requested))
+    })?;
+    if cancellation_requested {
+        outcome = AgentTaskValidationOutcome::Blocked(AgentTaskBlocker::new(
+            "AGENT_TASK_FINISH_CANCELLED",
+            "Task repair requested cooperative cancellation of this finish attempt.",
+        ));
+    }
+    let barrier_method = match &outcome {
+        AgentTaskValidationOutcome::Complete { .. } => "mutation/finish-barrier/complete",
+        AgentTaskValidationOutcome::Blocked(_) => "mutation/finish-barrier/reopen",
+    };
+    agent_task_finish_barrier(
+        &workspace_root,
+        barrier_method,
+        &validating.task_id,
+        &coordination_token,
+    )?;
+    with_agent_task_lock(&paths, || {
+        let mut receipt = required_agent_task_receipt(&paths.receipt, &workspace_root)?;
+        require_agent_task_finish_executor(&receipt, &coordination_token)?;
+        match outcome {
+            AgentTaskValidationOutcome::Complete { current_sha256 } => {
+                receipt.current_sha256 = current_sha256;
+                receipt.state = AgentTaskState::Complete;
+                receipt.blockers.clear();
+                receipt.finish_executor = None;
+                let now = crate::manifest::current_timestamp();
+                receipt.updated_at = now.clone();
+                receipt.finished_at = Some(now);
+                write_agent_task_receipt(&paths.receipt, &receipt)?;
+                Ok(AgentTaskExecution { receipt, ok: true })
             }
-            Err(blocker) => {
-                return persist_blocked_agent_task(&paths, receipt, vec![blocker]);
+            AgentTaskValidationOutcome::Blocked(blocker) => {
+                persist_blocked_agent_task(&paths, receipt, vec![blocker])
             }
         }
-
-        let final_snapshot = capture_agent_task_snapshot(&workspace_root)?;
-        if final_snapshot != receipt.current {
-            let before_sha256 = receipt.current.sha256.clone();
-            return persist_blocked_agent_task(
-                &paths,
-                receipt,
-                vec![AgentTaskBlocker::new(
-                    "WORKSPACE_CHANGED_DURING_VALIDATION",
-                    "Relevant workspace inputs changed while diagnostics or Gradle validation ran.",
-                )
-                .detail("beforeSha256", before_sha256)
-                .detail("afterSha256", final_snapshot.sha256)],
-            );
-        }
-        receipt.current = final_snapshot;
-        receipt.state = AgentTaskState::Complete;
-        receipt.completion = Some(AgentTaskCompletionProof::Validated {
-            input_sha256: validation_input_sha256,
-        });
-        let now = crate::manifest::current_timestamp();
-        receipt.updated_at = now.clone();
-        receipt.finished_at = Some(now);
-        write_completed_agent_task_receipt(&completed_path, &receipt)?;
-        write_agent_task_receipt(&paths.receipt, &receipt)?;
-        Ok(AgentTaskExecution { receipt, ok: true })
     })
+}
+
+fn validate_agent_task(
+    workspace_root: &Path,
+    paths: &AgentTaskPaths,
+    receipt: &AgentTaskReceipt,
+    current: &AgentTaskSnapshot,
+) -> Result<AgentTaskValidationOutcome> {
+    let changed = current_agent_task_validation_paths(
+        workspace_root,
+        receipt.baseline_git_head.as_deref(),
+    )?;
+    if current.sha256 == receipt.baseline_sha256 || changed.is_empty() {
+        return Ok(AgentTaskValidationOutcome::Complete {
+            current_sha256: current.sha256.clone(),
+        });
+    }
+
+    let kotlin_paths = changed
+        .iter()
+        .filter(|path| {
+            matches!(
+                Path::new(path).extension().and_then(|value| value.to_str()),
+                Some("kt" | "kts")
+            ) && workspace_root.join(path).is_file()
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    if !kotlin_paths.is_empty()
+        && let Err(blocker) = collect_agent_task_diagnostics(workspace_root, current, &kotlin_paths)
+    {
+        return Ok(AgentTaskValidationOutcome::Blocked(blocker));
+    }
+
+    let workflow = match read_agent_task_workflow(workspace_root) {
+        Ok(workflow) => workflow,
+        Err(blocker) => return Ok(AgentTaskValidationOutcome::Blocked(blocker)),
+    };
+    let gradle_model = match resolve_agent_task_gradle_model(
+        workspace_root,
+        paths,
+        &receipt.task_id,
+        current,
+    ) {
+        Ok(model) => model,
+        Err(error) => {
+            return Ok(AgentTaskValidationOutcome::Blocked(AgentTaskBlocker::new(
+                error.code,
+                error.message,
+            )));
+        }
+    };
+    let plan = match plan_agent_task_gradle_validation(
+        workspace_root,
+        &gradle_model,
+        &changed,
+        workflow.as_ref(),
+    ) {
+        Ok(plan) => plan,
+        Err(blocker) => return Ok(AgentTaskValidationOutcome::Blocked(blocker)),
+    };
+    let gradle_model_sha256 = digest_serializable(&gradle_model)?;
+    let policy_sha256 = agent_task_policy_sha256(current);
+    let validation_input_sha256 = agent_task_validation_input_sha256(
+        &receipt.generation,
+        &gradle_model_sha256,
+        current,
+        &policy_sha256,
+        &plan,
+    )?;
+    if let Err(blocker) = execute_agent_task_gradle_plan(
+        workspace_root,
+        paths,
+        &receipt.task_id,
+        &validation_input_sha256,
+        &gradle_model,
+        &plan,
+        current,
+    ) {
+        return Ok(AgentTaskValidationOutcome::Blocked(blocker));
+    }
+
+    let final_snapshot = capture_agent_task_snapshot(workspace_root)?;
+    if final_snapshot.sha256 != current.sha256 {
+        return Ok(AgentTaskValidationOutcome::Blocked(
+            AgentTaskBlocker::new(
+                "WORKSPACE_CHANGED_DURING_VALIDATION",
+                "Relevant workspace inputs changed while diagnostics or Gradle validation ran.",
+            )
+            .detail("beforeSha256", current.sha256.clone())
+            .detail("afterSha256", final_snapshot.sha256),
+        ));
+    }
+    Ok(AgentTaskValidationOutcome::Complete {
+        current_sha256: final_snapshot.sha256,
+    })
+}
+
+fn require_agent_task_finish_executor(
+    receipt: &AgentTaskReceipt,
+    coordination_token: &str,
+) -> Result<()> {
+    if !matches!(receipt.state, AgentTaskState::Draining | AgentTaskState::Validating)
+        || receipt
+            .finish_executor
+            .as_ref()
+            .is_none_or(|executor| executor.coordination_token != coordination_token)
+    {
+        return Err(CliError::new(
+            "AGENT_TASK_FINISH_ATTEMPT_STALE",
+            "The finish executor no longer owns the active coordination token.",
+        ));
+    }
+    Ok(())
+}
+
+fn agent_task_finish_barrier(
+    workspace_root: &Path,
+    method: &str,
+    task_id: &str,
+    coordination_token: &str,
+) -> Result<()> {
+    let request = json_rpc_request(
+        method,
+        json!({
+            "workspaceTaskId": task_id,
+            "coordinationToken": coordination_token,
+        }),
+    );
+    let raw_response = runtime::raw_request_passthrough(
+        serde_json::to_string(&request)?,
+        Some(workspace_root.to_path_buf()),
+        None,
+    )?;
+    let response: Value = serde_json::from_str(&raw_response)?;
+    if response.get("result").is_some() {
+        return Ok(());
+    }
+    let error = response.get("error");
+    let remote_code = error
+        .and_then(|value| value.get("data"))
+        .and_then(|value| value.get("code"))
+        .and_then(Value::as_str)
+        .unwrap_or("AGENT_TASK_FINISH_BARRIER_FAILED");
+    let message = error
+        .and_then(|value| value.get("data"))
+        .and_then(|value| value.get("message"))
+        .or_else(|| error.and_then(|value| value.get("message")))
+        .and_then(Value::as_str)
+        .unwrap_or("The mutation registry rejected the finish barrier.");
+    Err(CliError::new(
+        "AGENT_TASK_FINISH_BARRIER_FAILED",
+        format!("{remote_code}: {message}"),
+    ))
 }
 
 fn persist_blocked_agent_task(
@@ -809,7 +966,7 @@ fn persist_blocked_agent_task(
 ) -> Result<AgentTaskExecution> {
     receipt.state = AgentTaskState::Blocked;
     receipt.blockers = blockers;
-    receipt.completion = None;
+    receipt.finish_executor = None;
     receipt.finished_at = None;
     receipt.updated_at = crate::manifest::current_timestamp();
     write_agent_task_receipt(&paths.receipt, &receipt)?;
@@ -821,18 +978,14 @@ fn observe_agent_task_current(
     workspace_root: &Path,
 ) -> Result<bool> {
     let observed = capture_agent_task_snapshot(workspace_root)?;
-    if observed == receipt.current {
+    if observed.sha256 == receipt.current_sha256 {
         return Ok(false);
     }
-    receipt.current = observed;
-    receipt.diagnostics.clear();
-    receipt.gradle.clear();
-    receipt.test_reports.clear();
-    receipt.validation = None;
+    receipt.current_sha256 = observed.sha256;
     if receipt.state == AgentTaskState::Blocked {
         receipt.blockers = vec![AgentTaskBlocker::new(
-            "AGENT_TASK_PROOF_STALE",
-            "Relevant workspace inputs changed after the recorded validation attempt; retry finish.",
+            "AGENT_TASK_WORKSPACE_CHANGED",
+            "Relevant workspace inputs changed after validation was blocked; retry finish.",
         )];
     }
     Ok(true)
@@ -886,6 +1039,29 @@ fn validate_agent_task_workspace(declared: &Path) -> Result<PathBuf> {
     Ok(canonical)
 }
 
+pub(crate) fn agent_task_id_for_mutation(workspace_root: Option<PathBuf>) -> Result<String> {
+    let workspace_root = match workspace_root {
+        Some(declared) => validate_agent_task_workspace(&declared)?,
+        None => resolve_agent_task_start_path(&std::env::current_dir()?)?,
+    };
+    let paths = AgentTaskPaths::resolve(&workspace_root)?;
+    let receipt = with_agent_task_read_lock(&paths, || {
+        required_agent_task_receipt(&paths.receipt, &workspace_root)
+    })?;
+    require_agent_task_generation(&receipt, &agent_task_effective_generation()?)?;
+    match receipt.state {
+        AgentTaskState::Active | AgentTaskState::Blocked => Ok(receipt.task_id),
+        AgentTaskState::Draining | AgentTaskState::Validating => Err(CliError::new(
+            "TASK_FINISH_IN_PROGRESS",
+            "The shared workspace task is finishing; retry the mutation after it completes or reopens.",
+        )),
+        AgentTaskState::Complete | AgentTaskState::Aborted => Err(CliError::new(
+            "AGENT_TASK_CLOSED",
+            "The shared workspace task is closed; run task begin before applying a mutation.",
+        )),
+    }
+}
+
 pub(crate) fn resolve_agent_task_start_path(start: &Path) -> Result<PathBuf> {
     let canonical = std::fs::canonicalize(start).map_err(|error| {
         CliError::new(
@@ -927,98 +1103,6 @@ pub(crate) fn resolve_agent_task_start_path(start: &Path) -> Result<PathBuf> {
                 ),
             )
         })
-}
-
-fn current_agent_task_owner() -> Result<AgentTaskOwnerIdentity> {
-    const SESSION_ENVIRONMENTS: &[(&str, &str)] = &[
-        ("KAST_AGENT_SESSION_ID", "kast"),
-        ("CODEX_THREAD_ID", "codex"),
-    ];
-    if let Some((provider, session)) = SESSION_ENVIRONMENTS.iter().find_map(|(name, provider)| {
-        std::env::var(name)
-            .ok()
-            .filter(|value| !value.trim().is_empty())
-            .map(|value| ((*provider).to_string(), value))
-    }) {
-        return agent_task_session_owner(&provider, &session);
-    }
-    if !std::io::stdin().is_terminal() {
-        return Err(CliError::new(
-            "AGENT_TASK_OWNER_UNAVAILABLE",
-            "Non-interactive task callers must set KAST_AGENT_SESSION_ID or CODEX_THREAD_ID.",
-        ));
-    }
-    #[cfg(unix)]
-    let direct_parent = u64::try_from(unsafe { libc::getppid() }).map_err(|_| {
-        CliError::new(
-            "AGENT_TASK_OWNER_INVALID",
-            "The caller process id could not be represented.",
-        )
-    })?;
-    #[cfg(not(unix))]
-    let direct_parent = u64::from(std::process::id());
-    let pid = agent_task_parent_process(direct_parent)
-        .filter(|(_, command)| agent_task_transient_shell(command))
-        .map_or(direct_parent, |(parent, _)| parent);
-    let started_at = agent_task_process_started_at(pid)?;
-    Ok(AgentTaskOwnerIdentity::Process { pid, started_at })
-}
-
-fn agent_task_session_owner(provider: &str, session_id: &str) -> Result<AgentTaskOwnerIdentity> {
-    if provider.is_empty()
-        || provider.trim() != provider
-        || provider.chars().any(char::is_control)
-        || session_id.is_empty()
-        || session_id.trim() != session_id
-        || session_id.chars().any(char::is_control)
-    {
-        return Err(CliError::new(
-            "AGENT_TASK_OWNER_INVALID",
-            "Agent task provider and session identities must be non-blank stable values.",
-        ));
-    }
-    Ok(AgentTaskOwnerIdentity::Session {
-        provider: provider.to_string(),
-        session_sha256: crate::manifest::sha256_bytes(session_id.as_bytes()),
-    })
-}
-
-fn agent_task_parent_process(pid: u64) -> Option<(u64, String)> {
-    let output = std::process::Command::new("ps")
-        .env("LC_ALL", "C")
-        .args(["-o", "ppid=,comm=", "-p", &pid.to_string()])
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let line = String::from_utf8_lossy(&output.stdout);
-    let mut fields = line.split_whitespace();
-    let parent = fields.next()?.parse().ok()?;
-    let command = fields.collect::<Vec<_>>().join(" ");
-    (!command.is_empty()).then_some((parent, command))
-}
-
-fn agent_task_transient_shell(command: &str) -> bool {
-    Path::new(command)
-        .file_name()
-        .and_then(|name| name.to_str())
-        .is_some_and(|name| matches!(name, "sh" | "bash" | "dash" | "fish" | "zsh"))
-}
-
-fn agent_task_process_started_at(pid: u64) -> Result<String> {
-    let output = std::process::Command::new("ps")
-        .env("LC_ALL", "C")
-        .args(["-o", "lstart=", "-p", &pid.to_string()])
-        .output()?;
-    let started_at = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if !output.status.success() || started_at.is_empty() {
-        return Err(CliError::new(
-            "AGENT_TASK_OWNER_UNAVAILABLE",
-            format!("Could not prove process-start identity for PID {pid}."),
-        ));
-    }
-    Ok(started_at)
 }
 
 fn agent_task_effective_generation() -> Result<AgentTaskGenerationIdentity> {
@@ -1099,29 +1183,6 @@ fn agent_task_installed_generation(
             crate::manifest::sha256_file(launcher)?,
         ))?,
     })
-}
-
-fn require_agent_task_owner(
-    receipt: &AgentTaskReceipt,
-    owner: &AgentTaskOwnerIdentity,
-) -> Result<()> {
-    if receipt.owner == *owner && receipt.lease.owner == *owner {
-        return Ok(());
-    }
-    Err(CliError::new(
-        "AGENT_TASK_OWNER_CONFLICT",
-        "The exact workspace task lease belongs to another agent session.",
-    ))
-}
-
-fn agent_task_owner_is_dead_process(owner: &AgentTaskOwnerIdentity) -> bool {
-    let AgentTaskOwnerIdentity::Process { pid, started_at } = owner else {
-        return false;
-    };
-    match agent_task_process_started_at(*pid) {
-        Ok(actual) => actual != *started_at,
-        Err(_) => true,
-    }
 }
 
 fn require_agent_task_generation(
@@ -1251,23 +1312,25 @@ fn validate_agent_task_receipt(receipt: AgentTaskReceipt) -> Result<AgentTaskRec
     if receipt.receipt_type != AGENT_TASK_RECEIPT_TYPE
         || receipt.schema_version != AGENT_TASK_SCHEMA_VERSION
         || uuid::Uuid::parse_str(&receipt.task_id).is_err()
-        || receipt
-            .lease
-            .lease_id
-            .strip_prefix("ktl1.")
-            .is_none_or(|value| uuid::Uuid::parse_str(value).is_err())
-        || receipt.lease.owner != receipt.owner
         || receipt.workspace_root.trim().is_empty()
         || !matches!(
             receipt.generation.authority.as_str(),
             "machine" | "macos-homebrew" | "managed-local"
         )
         || !agent_task_sha256(&receipt.generation.generation)
-        || receipt.gradle_model_sha256 != digest_serializable(&receipt.gradle_model)?
+        || !agent_task_sha256(&receipt.baseline_sha256)
+        || !agent_task_sha256(&receipt.current_sha256)
+        || receipt
+            .baseline_git_head
+            .as_deref()
+            .is_some_and(|head| !agent_task_sha1(head))
+        || receipt.finish_executor.as_ref().is_some_and(|executor| {
+            uuid::Uuid::parse_str(&executor.coordination_token).is_err()
+                || executor.pid == 0
+                || !agent_task_timestamp(&executor.started_at)
+        })
         || !agent_task_receipt_state_valid(&receipt)
-        || !agent_task_owner_valid(&receipt.owner)
         || !Path::new(&receipt.workspace_root).is_absolute()
-        || !agent_task_timestamp(&receipt.lease.acquired_at)
         || !agent_task_timestamp(&receipt.started_at)
         || !agent_task_timestamp(&receipt.updated_at)
         || receipt
@@ -1295,53 +1358,6 @@ fn validate_agent_task_receipt(receipt: AgentTaskReceipt) -> Result<AgentTaskRec
             "Persisted agent task receipt failed its strict identity contract.",
         ));
     }
-    validate_agent_task_snapshot(&receipt.baseline)?;
-    validate_agent_task_snapshot(&receipt.current)?;
-    let normalized_model = validate_agent_task_gradle_model(
-        Path::new(&receipt.workspace_root),
-        receipt.gradle_model.clone(),
-    )?;
-    if normalized_model != receipt.gradle_model
-        || !agent_task_validation_identity_valid(&receipt)?
-        || !agent_task_completion_coherent(&receipt)
-        || !agent_task_diagnostics_coverage_valid(&receipt)
-    {
-        return Err(CliError::new(
-            "AGENT_TASK_RECEIPT_INVALID",
-            "Persisted agent task receipt contains incoherent completion proof.",
-        ));
-    }
-    if receipt.diagnostics.iter().any(|proof| {
-        proof.semantic_outcome != "COMPLETE"
-            || proof.error_count != 0
-            || proof.files.is_empty()
-            || proof.files.iter().any(|(path, hash)| {
-                !agent_task_relative_evidence_path(path)
-                    || !matches!(
-                        receipt.current.files.get(path),
-                        Some(AgentTaskContentIdentity::Present { sha256 }) if sha256 == hash
-                    )
-            })
-    }) || receipt.gradle.iter().any(|proof| {
-        !agent_task_sha256(&proof.input_sha256)
-            || validate_agent_task_relative_directory(&proof.build_root, "buildRoot").is_err()
-            || proof.build_tasks.is_empty()
-            || proof.test_tasks.is_empty()
-            || !agent_task_selected_gradle_tasks_valid(proof)
-            || proof
-                .observed_tasks
-                .iter()
-                .any(|task| validate_agent_task_gradle_task_path(&task.path).is_err())
-    }) || receipt.test_reports.iter().any(|proof| {
-        !agent_task_relative_evidence_path(&proof.path)
-            || !agent_task_sha256(&proof.sha256)
-            || !agent_task_report_path_in_model(&receipt.gradle_model, &proof.path)
-    }) {
-        return Err(CliError::new(
-            "AGENT_TASK_RECEIPT_INVALID",
-            "Persisted agent task receipt contains malformed validation evidence.",
-        ));
-    }
     Ok(receipt)
 }
 
@@ -1349,242 +1365,28 @@ fn agent_task_receipt_state_valid(receipt: &AgentTaskReceipt) -> bool {
     match receipt.state {
         AgentTaskState::Active => {
             receipt.blockers.is_empty()
-                && receipt.completion.is_none()
-                && receipt.validation.is_none()
-                && receipt.diagnostics.is_empty()
-                && receipt.gradle.is_empty()
-                && receipt.test_reports.is_empty()
+                && receipt.finish_executor.is_none()
                 && receipt.finished_at.is_none()
         }
-        AgentTaskState::Validating => {
+        AgentTaskState::Draining | AgentTaskState::Validating => {
             receipt.blockers.is_empty()
-                && receipt.completion.is_none()
+                && receipt.finish_executor.is_some()
                 && receipt.finished_at.is_none()
         }
         AgentTaskState::Blocked => {
             !receipt.blockers.is_empty()
-                && receipt.completion.is_none()
+                && receipt.finish_executor.is_none()
                 && receipt.finished_at.is_none()
         }
         AgentTaskState::Complete => {
             receipt.blockers.is_empty()
-                && receipt.completion.is_some()
+                && receipt.finish_executor.is_none()
                 && receipt.finished_at.is_some()
         }
         AgentTaskState::Aborted => {
             receipt.blockers.is_empty()
-                && receipt.completion.is_none()
-                && receipt.validation.is_none()
+                && receipt.finish_executor.is_none()
                 && receipt.finished_at.is_some()
-        }
-    }
-}
-
-fn agent_task_completion_coherent(receipt: &AgentTaskReceipt) -> bool {
-    match &receipt.completion {
-        None => receipt.state != AgentTaskState::Complete,
-        Some(AgentTaskCompletionProof::NoRelevantChanges { input_sha256 }) => {
-            receipt.state == AgentTaskState::Complete
-                && agent_task_validation_paths(&receipt.baseline, &receipt.current).is_empty()
-                && input_sha256 == &receipt.current.sha256
-                && receipt.diagnostics.is_empty()
-                && receipt.gradle.is_empty()
-                && receipt.test_reports.is_empty()
-                && receipt.validation.is_none()
-        }
-        Some(AgentTaskCompletionProof::Validated { input_sha256 }) => {
-            receipt.state == AgentTaskState::Complete
-                && receipt.baseline != receipt.current
-                && agent_task_sha256(input_sha256)
-                && !receipt.gradle.is_empty()
-                && !receipt.test_reports.is_empty()
-                && receipt
-                    .validation
-                    .as_ref()
-                    .is_some_and(|validation| validation.input_sha256 == *input_sha256)
-                && receipt
-                    .gradle
-                    .iter()
-                    .all(|proof| proof.input_sha256 == *input_sha256)
-                && agent_task_validation_paths(&receipt.baseline, &receipt.current)
-                    .into_iter()
-                    .filter(|path| {
-                        matches!(
-                            Path::new(path).extension().and_then(|value| value.to_str()),
-                            Some("kt" | "kts")
-                        ) && matches!(
-                            receipt.current.files.get(path),
-                            Some(AgentTaskContentIdentity::Present { .. })
-                        )
-                    })
-                    .all(|path| {
-                        receipt
-                            .diagnostics
-                            .iter()
-                            .any(|proof| proof.files.contains_key(&path))
-                    })
-        }
-    }
-}
-
-fn agent_task_validation_identity_valid(receipt: &AgentTaskReceipt) -> Result<bool> {
-    let Some(validation) = &receipt.validation else {
-        return Ok(!matches!(
-            receipt.completion,
-            Some(AgentTaskCompletionProof::Validated { .. })
-        ));
-    };
-    if validation.policy_sha256 != agent_task_policy_sha256(&receipt.current)
-        || validation.plan.is_empty()
-        || validation.input_sha256
-            != agent_task_validation_input_sha256(
-                &receipt.generation,
-                &receipt.gradle_model_sha256,
-                &receipt.current,
-                &validation.policy_sha256,
-                &validation.plan,
-            )?
-    {
-        return Ok(false);
-    }
-    let normalized = validation
-        .plan
-        .iter()
-        .cloned()
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect::<Vec<_>>();
-    if normalized != validation.plan {
-        return Ok(false);
-    }
-    for target in &validation.plan {
-        let policy = AgentTaskWorkflowValidation {
-            build_root: target.build_root.clone(),
-            project_path: target.project_path.clone(),
-            source_sets: target.source_set.clone().map(|source_set| vec![source_set]),
-            build_tasks: target.build_tasks.clone(),
-            test_tasks: target.test_tasks.clone(),
-        };
-        if validate_agent_task_policy_against_model(&receipt.gradle_model, &policy).is_err() {
-            return Ok(false);
-        }
-    }
-    if receipt.gradle.is_empty() {
-        return Ok(true);
-    }
-    let expected = group_agent_task_validation_plan(&validation.plan);
-    let actual = receipt
-        .gradle
-        .iter()
-        .map(|proof| {
-            (
-                proof.build_root.clone(),
-                (proof.build_tasks.clone(), proof.test_tasks.clone()),
-            )
-        })
-        .collect::<BTreeMap<_, _>>();
-    if actual.len() != receipt.gradle.len() || actual != expected {
-        return Ok(false);
-    }
-    Ok(validation.plan.iter().all(|target| {
-        target.test_tasks.iter().all(|task| {
-            let directories =
-                agent_task_report_directories(&receipt.gradle_model, &target.build_root, task);
-            !directories.is_empty()
-                && receipt.test_reports.iter().any(|report| {
-                    directories
-                        .iter()
-                        .any(|directory| agent_task_path_is_within(&report.path, directory))
-                })
-        })
-    }))
-}
-
-fn agent_task_diagnostics_coverage_valid(receipt: &AgentTaskReceipt) -> bool {
-    let expected = agent_task_validation_paths(&receipt.baseline, &receipt.current)
-        .into_iter()
-        .filter(|path| {
-            matches!(
-                Path::new(path).extension().and_then(|value| value.to_str()),
-                Some("kt" | "kts")
-            ) && matches!(
-                receipt.current.files.get(path),
-                Some(AgentTaskContentIdentity::Present { .. })
-            )
-        })
-        .collect::<BTreeSet<_>>();
-    let actual = receipt
-        .diagnostics
-        .iter()
-        .flat_map(|proof| proof.files.keys().cloned())
-        .collect::<BTreeSet<_>>();
-    let actual_count = receipt
-        .diagnostics
-        .iter()
-        .map(|proof| proof.files.len())
-        .sum::<usize>();
-    (actual.is_empty() && receipt.state != AgentTaskState::Complete)
-        || (actual == expected && actual_count == actual.len())
-}
-
-fn agent_task_selected_gradle_tasks_valid(proof: &AgentTaskGradleInvocationProof) -> bool {
-    let observed_paths = proof
-        .observed_tasks
-        .iter()
-        .map(|task| task.path.as_str())
-        .collect::<BTreeSet<_>>();
-    let selected_paths = proof
-        .build_tasks
-        .iter()
-        .chain(&proof.test_tasks)
-        .map(String::as_str)
-        .collect::<BTreeSet<_>>();
-    if observed_paths.len() != proof.observed_tasks.len()
-        || selected_paths.len() != proof.build_tasks.len() + proof.test_tasks.len()
-    {
-        return false;
-    }
-    let observed = proof
-        .observed_tasks
-        .iter()
-        .map(|task| (task.path.as_str(), task.outcome))
-        .collect::<BTreeMap<_, _>>();
-    proof
-        .build_tasks
-        .iter()
-        .chain(&proof.test_tasks)
-        .all(|path| {
-            validate_agent_task_gradle_task_path(path).is_ok()
-                && observed
-                    .get(path.as_str())
-                    .is_some_and(|outcome| outcome.is_valid_proof())
-        })
-}
-
-fn agent_task_report_path_in_model(model: &AgentTaskGradleModel, path: &str) -> bool {
-    model
-        .builds
-        .iter()
-        .flat_map(|build| &build.projects)
-        .flat_map(|project| &project.tasks)
-        .filter(|task| task.kind == AgentTaskGradleTaskKind::Test)
-        .flat_map(|task| &task.test_report_directories)
-        .any(|directory| agent_task_path_is_within(path, directory))
-}
-
-fn agent_task_owner_valid(owner: &AgentTaskOwnerIdentity) -> bool {
-    match owner {
-        AgentTaskOwnerIdentity::Session {
-            provider,
-            session_sha256,
-        } => {
-            !provider.trim().is_empty()
-                && provider.trim() == provider
-                && !provider.chars().any(char::is_control)
-                && agent_task_sha256(session_sha256)
-        }
-        AgentTaskOwnerIdentity::Process { pid, started_at } => {
-            *pid > 0 && !started_at.trim().is_empty()
         }
     }
 }
@@ -1594,6 +1396,10 @@ fn agent_task_sha256(value: &str) -> bool {
         && value
             .bytes()
             .all(|byte| byte.is_ascii_hexdigit() && !byte.is_ascii_uppercase())
+}
+
+fn agent_task_sha1(value: &str) -> bool {
+    value.len() == 40 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
 }
 
 fn agent_task_timestamp(value: &str) -> bool {
@@ -1640,72 +1446,6 @@ fn write_agent_task_receipt(path: &Path, receipt: &AgentTaskReceipt) -> Result<(
     if result.is_err() {
         let _ = std::fs::remove_file(&temporary);
     }
-    result
-}
-
-fn write_completed_agent_task_receipt(path: &Path, receipt: &AgentTaskReceipt) -> Result<()> {
-    if receipt.state != AgentTaskState::Complete {
-        return Err(CliError::new(
-            "AGENT_TASK_RECEIPT_INVALID",
-            "Only a completed task may be written to immutable completion storage.",
-        ));
-    }
-    validate_agent_task_receipt(receipt.clone())?;
-    if let Some(existing) = read_agent_task_receipt(path)? {
-        return if existing == *receipt {
-            Ok(())
-        } else {
-            Err(CliError::new(
-                "AGENT_TASK_COMPLETION_IMMUTABLE",
-                "A completed task receipt already exists with different proof.",
-            ))
-        };
-    }
-    let parent = path.parent().ok_or_else(|| {
-        CliError::new(
-            "AGENT_TASK_RECEIPT_INVALID",
-            "Completed agent task receipt path has no parent.",
-        )
-    })?;
-    let temporary = parent.join(format!(
-        ".{}.{}.complete.tmp",
-        receipt.task_id,
-        uuid::Uuid::new_v4()
-    ));
-    let result = (|| {
-        let mut options = std::fs::OpenOptions::new();
-        options.create_new(true).write(true);
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::OpenOptionsExt;
-            options.mode(0o600);
-        }
-        let mut file = options.open(&temporary)?;
-        serde_json::to_writer_pretty(&mut file, receipt)?;
-        file.write_all(b"\n")?;
-        file.sync_all()?;
-        match std::fs::hard_link(&temporary, path) {
-            Ok(()) => Ok(()),
-            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
-                let existing = read_agent_task_receipt(path)?.ok_or_else(|| {
-                    CliError::new(
-                        "AGENT_TASK_COMPLETION_IMMUTABLE",
-                        "Completed task storage raced without readable proof.",
-                    )
-                })?;
-                if existing == *receipt {
-                    Ok(())
-                } else {
-                    Err(CliError::new(
-                        "AGENT_TASK_COMPLETION_IMMUTABLE",
-                        "A completed task receipt already exists with different proof.",
-                    ))
-                }
-            }
-            Err(error) => Err(error.into()),
-        }
-    })();
-    let _ = std::fs::remove_file(&temporary);
     result
 }
 
@@ -1904,29 +1644,50 @@ fn agent_task_relevant_path(path: &str) -> bool {
         || path.contains("/build-logic/")
 }
 
-fn changed_agent_task_paths(
-    baseline: &AgentTaskSnapshot,
-    current: &AgentTaskSnapshot,
-) -> Vec<String> {
-    baseline
-        .files
-        .keys()
-        .chain(current.files.keys())
-        .cloned()
-        .collect::<BTreeSet<_>>()
+fn current_agent_task_validation_paths(
+    workspace_root: &Path,
+    baseline_git_head: Option<&str>,
+) -> Result<Vec<String>> {
+    let mut command = std::process::Command::new("git");
+    command.args(["diff", "--name-only", "-z"]);
+    if let Some(head) = baseline_git_head {
+        command.arg(head);
+    }
+    command.arg("--").current_dir(workspace_root);
+    let diff = command.output();
+    let untracked = std::process::Command::new("git")
+        .args(["ls-files", "-z", "--others", "--exclude-standard"])
+        .current_dir(workspace_root)
+        .output();
+    let mut paths = BTreeSet::new();
+    match (diff, untracked) {
+        (Ok(diff), Ok(untracked)) if diff.status.success() && untracked.status.success() => {
+            collect_agent_task_nul_paths(&diff.stdout, &mut paths)?;
+            collect_agent_task_nul_paths(&untracked.stdout, &mut paths)?;
+        }
+        _ => {
+            let mut files = BTreeMap::new();
+            collect_agent_task_filesystem_paths(workspace_root, workspace_root, &mut files)?;
+            paths.extend(files.into_keys());
+        }
+    }
+    Ok(paths
         .into_iter()
-        .filter(|path| baseline.files.get(path) != current.files.get(path))
-        .collect()
+        .filter(|path| path != ".kast/workflow.toml" && agent_task_relevant_path(path))
+        .collect())
 }
 
-fn agent_task_validation_paths(
-    baseline: &AgentTaskSnapshot,
-    current: &AgentTaskSnapshot,
-) -> Vec<String> {
-    changed_agent_task_paths(baseline, current)
-        .into_iter()
-        .filter(|path| path != ".kast/workflow.toml")
-        .collect()
+fn collect_agent_task_nul_paths(bytes: &[u8], paths: &mut BTreeSet<String>) -> Result<()> {
+    for raw in bytes.split(|byte| *byte == 0).filter(|raw| !raw.is_empty()) {
+        let path = std::str::from_utf8(raw).map_err(|_| {
+            CliError::new(
+                "AGENT_TASK_PATH_INVALID",
+                "Git returned a task path that is not valid UTF-8.",
+            )
+        })?;
+        paths.insert(path.to_string());
+    }
+    Ok(())
 }
 
 fn agent_task_forward_slash_path(path: &Path) -> Result<String> {
@@ -1991,7 +1752,7 @@ fn agent_task_policy_sha256(snapshot: &AgentTaskSnapshot) -> String {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AgentTaskGradleModel {
     schema_version: u32,
@@ -2876,13 +2637,7 @@ fn execute_agent_task_gradle_plan(
     model: &AgentTaskGradleModel,
     plan: &[AgentTaskValidationTarget],
     snapshot: &AgentTaskSnapshot,
-) -> std::result::Result<
-    (
-        Vec<AgentTaskGradleInvocationProof>,
-        Vec<AgentTaskTestReportProof>,
-    ),
-    AgentTaskBlocker,
-> {
+) -> std::result::Result<(), AgentTaskBlocker> {
     let wrapper = agent_task_gradle_wrapper(workspace_root).map_err(|error| {
         AgentTaskBlocker::new(error.code, error.message)
             .detail("workspaceRoot", workspace_root.display().to_string())
@@ -2892,7 +2647,7 @@ fn execute_agent_task_gradle_plan(
     verify_agent_task_init_script(paths)
         .map_err(|error| AgentTaskBlocker::new(error.code, error.message))?;
     let grouped = group_agent_task_validation_plan(plan);
-    let mut invocations = Vec::new();
+    let mut observed_test_task = false;
     let mut report_directories = BTreeSet::new();
     let mut required_test_reports = Vec::new();
     for (ordinal, (build_root, (build_tasks, test_tasks))) in grouped.into_iter().enumerate() {
@@ -2988,16 +2743,10 @@ fn execute_agent_task_gradle_plan(
                 report_directories.insert(directory.clone());
             }
             required_test_reports.push((build_root.clone(), task.clone(), directories));
+            observed_test_task = true;
         }
-        invocations.push(AgentTaskGradleInvocationProof {
-            build_root,
-            input_sha256: input_sha256.to_string(),
-            build_tasks,
-            test_tasks,
-            observed_tasks: receipt.tasks,
-        });
     }
-    if invocations.iter().all(|proof| proof.test_tasks.is_empty()) {
+    if !observed_test_task {
         return Err(AgentTaskBlocker::new(
             "GRADLE_TEST_PROOF_REQUIRED",
             "Agent task completion requires at least one observed valid Gradle test task.",
@@ -3008,7 +2757,7 @@ fn execute_agent_task_gradle_plan(
         if !reports.iter().any(|report| {
             directories
                 .iter()
-                .any(|directory| agent_task_path_is_within(&report.path, directory))
+                .any(|directory| agent_task_path_is_within(report, directory))
         }) {
             return Err(agent_task_test_report_required(
                 &task,
@@ -3017,7 +2766,7 @@ fn execute_agent_task_gradle_plan(
             ));
         }
     }
-    Ok((invocations, reports))
+    Ok(())
 }
 
 fn agent_task_test_report_required(
@@ -3144,7 +2893,7 @@ fn agent_task_report_directories(
 fn collect_agent_task_test_reports(
     workspace_root: &Path,
     directories: &BTreeSet<String>,
-) -> std::result::Result<Vec<AgentTaskTestReportProof>, AgentTaskBlocker> {
+) -> std::result::Result<Vec<String>, AgentTaskBlocker> {
     let mut reports = Vec::new();
     for relative in directories {
         let directory = if relative == "." {
@@ -3157,14 +2906,14 @@ fn collect_agent_task_test_reports(
         }
         collect_agent_task_test_report_directory(workspace_root, &directory, &mut reports)?;
     }
-    reports.sort_by(|left, right| left.path.cmp(&right.path));
+    reports.sort();
     Ok(reports)
 }
 
 fn collect_agent_task_test_report_directory(
     workspace_root: &Path,
     directory: &Path,
-    reports: &mut Vec<AgentTaskTestReportProof>,
+    reports: &mut Vec<String>,
 ) -> std::result::Result<(), AgentTaskBlocker> {
     let mut entries = std::fs::read_dir(directory)
         .map_err(|error| {
@@ -3206,13 +2955,7 @@ fn collect_agent_task_test_report_directory(
             let path = agent_task_forward_slash_path(relative).map_err(|error| {
                 AgentTaskBlocker::new("GRADLE_TEST_REPORT_INVALID", error.message)
             })?;
-            let sha256 = crate::manifest::sha256_file(&entry_path).map_err(|error| {
-                AgentTaskBlocker::new(
-                    "GRADLE_TEST_REPORT_UNAVAILABLE",
-                    format!("Cannot hash Gradle test report: {error}"),
-                )
-            })?;
-            reports.push(AgentTaskTestReportProof { path, sha256 });
+            reports.push(path);
         }
     }
     Ok(())
@@ -3222,7 +2965,7 @@ fn collect_agent_task_diagnostics(
     workspace_root: &Path,
     snapshot: &AgentTaskSnapshot,
     paths: &[String],
-) -> std::result::Result<AgentTaskDiagnosticsProof, AgentTaskBlocker> {
+) -> std::result::Result<(), AgentTaskBlocker> {
     let envelope = execute_agent_diagnostics(AgentDiagnosticsArgs {
         runtime: AgentRuntimeArgs {
             workspace_root: Some(workspace_root.to_path_buf()),
@@ -3307,7 +3050,6 @@ fn collect_agent_task_diagnostics(
                 "Compiler-backed diagnostics omitted file hashes from its read epoch.",
             )
         })?;
-    let mut files = BTreeMap::new();
     for path in paths {
         let expected = match snapshot.files.get(path) {
             Some(AgentTaskContentIdentity::Present { sha256 }) => sha256,
@@ -3338,13 +3080,8 @@ fn collect_agent_task_diagnostics(
                 actual.unwrap_or_else(|| "missing".to_string()),
             ));
         }
-        files.insert(path.clone(), expected.clone());
     }
-    Ok(AgentTaskDiagnosticsProof {
-        files,
-        error_count,
-        semantic_outcome: semantic_outcome.to_string(),
-    })
+    Ok(())
 }
 
 #[cfg(test)]
@@ -3554,7 +3291,7 @@ mod agent_task_core_tests {
     }
 
     #[test]
-    fn only_successful_observed_outcomes_are_completion_proof() {
+    fn only_successful_observed_gradle_outcomes_are_accepted() {
         for accepted in [
             AgentTaskGradleOutcome::Success,
             AgentTaskGradleOutcome::UpToDate,
@@ -3585,26 +3322,5 @@ mod agent_task_core_tests {
         for unrelated in ["README.md", "target/output.bin", "docs/guide.md"] {
             assert!(!agent_task_relevant_path(unrelated), "{unrelated}");
         }
-        let baseline = AgentTaskSnapshot {
-            git_head: None,
-            files: BTreeMap::from([(
-                ".kast/workflow.toml".to_string(),
-                AgentTaskContentIdentity::Present {
-                    sha256: "0".repeat(64),
-                },
-            )]),
-            sha256: String::new(),
-        };
-        let current = AgentTaskSnapshot {
-            git_head: None,
-            files: BTreeMap::from([(
-                ".kast/workflow.toml".to_string(),
-                AgentTaskContentIdentity::Present {
-                    sha256: "1".repeat(64),
-                },
-            )]),
-            sha256: String::new(),
-        };
-        assert!(agent_task_validation_paths(&baseline, &current).is_empty());
     }
 }

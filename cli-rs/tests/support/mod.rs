@@ -46,6 +46,53 @@ pub(crate) fn install_manifest_path(home: &Path) -> PathBuf {
     default_install_root(home).join("install.json")
 }
 
+pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, config_home: &Path) {
+    let install_root = default_install_root(home);
+    let binary = Path::new(env!("CARGO_BIN_EXE_kast"));
+    let task_launcher = default_bin_dir(home).join("kast-agent-task");
+    std::fs::create_dir_all(task_launcher.parent().expect("task launcher parent"))
+        .expect("task launcher directory");
+    std::fs::create_dir_all(&install_root).expect("install root");
+    std::fs::write(
+        &task_launcher,
+        include_bytes!("../../resources/agent-task/kast-agent-task"),
+    )
+    .expect("task launcher");
+    set_executable_for_test(&task_launcher);
+    std::fs::write(
+        install_manifest_path(home),
+        serde_json::to_vec_pretty(&serde_json::json!({
+            "tool": "kast",
+            "installId": "current-cli-test-install",
+            "profile": "user-local",
+            "activeVersion": env!("CARGO_PKG_VERSION"),
+            "createdAt": "unix:1",
+            "updatedAt": "unix:1",
+            "roots": {
+                "install": install_root.display().to_string(),
+                "bin": default_bin_dir(home).display().to_string(),
+                "config": config_home.display().to_string(),
+                "data": install_root.join("state").display().to_string(),
+                "cache": home.join(".cache/kast").display().to_string(),
+                "runtime": install_root.join("runtime").display().to_string(),
+                "logs": home.join(".local/state/kast/logs").display().to_string(),
+                "locks": install_root.join("locks").display().to_string()
+            },
+            "entrypoints": {
+                "shim": binary.display().to_string(),
+                "activeBinary": binary.display().to_string(),
+                "taskLauncher": task_launcher.display().to_string()
+            },
+            "schemas": {"manifest": 1, "workspaceRegistry": 1, "symbolIndex": 3},
+            "version": env!("CARGO_PKG_VERSION"),
+            "components": ["cli"],
+            "schemaVersion": 3
+        }))
+        .expect("install manifest JSON"),
+    )
+    .expect("install manifest");
+}
+
 pub(crate) fn write_macos_homebrew_receipt_for_test(home: &Path, cli_binary: &Path) -> PathBuf {
     let receipt = home.join("Library/Application Support/Kast/homebrew-install.json");
     std::fs::create_dir_all(receipt.parent().expect("receipt parent")).expect("receipt dir");

@@ -12,6 +12,7 @@ import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSnapsho
 import io.github.amichne.kast.api.contract.mutation.KastMutationOperationState
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutationKind
+import io.github.amichne.kast.api.contract.mutation.KastWorkspaceTaskId
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
@@ -52,6 +53,8 @@ import kotlin.io.path.exists
 class AnalysisServerSocketTest {
     @TempDir
     lateinit var tempDir: Path
+
+    private val testWorkspaceTaskId = KastWorkspaceTaskId("00000000-0000-0000-0000-000000000420")
 
     private val json = Json {
         encodeDefaults = true
@@ -222,6 +225,7 @@ class AnalysisServerSocketTest {
         Files.writeString(contentFile, "package sample\n\nclass Reconnected\n")
         val idempotencyKey = KastMutationIdempotencyKey("issue-333-reconnect")
         val mutation = KastSemanticMutation.AddFile(
+            workspaceTaskId = testWorkspaceTaskId,
             idempotencyKey = idempotencyKey,
             request = KastAddFileRequest(
                 workspaceRoot = tempDir.toString(),
@@ -346,6 +350,7 @@ class AnalysisServerSocketTest {
             ),
         ).start()
         val mutation = KastSemanticMutation.AddFile(
+            workspaceTaskId = testWorkspaceTaskId,
             idempotencyKey = KastMutationIdempotencyKey("issue-333-server-close"),
             request = KastAddFileRequest(
                 workspaceRoot = tempDir.toString(),

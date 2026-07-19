@@ -1,4 +1,6 @@
-use crate::agent::{AgentTaskHookOperation, AgentTaskHookResult, run_agent_task_hook};
+use crate::agent::{
+    AgentTaskHookOperation, AgentTaskHookResult, AgentTaskState, run_agent_task_hook,
+};
 use crate::cli::{AgentCommand, Cli, CodexHookEvent, Command as CliCommand};
 use crate::error::{CliError, Result};
 use clap::Parser;
@@ -153,17 +155,6 @@ fn session_start(input: &HookInput, workspace: &Path, state_path: &Path) -> Resu
 }
 
 fn pre_tool_use(input: &HookInput, workspace: &Path, state_path: &Path) -> Result<Value> {
-    if let Err(error) = run_agent_task_hook(
-        AgentTaskHookOperation::Status,
-        workspace,
-        "codex",
-        &input.session_id,
-    ) {
-        return Ok(pre_tool_denial(format!(
-            "{}: {}",
-            error.code, error.message
-        )));
-    }
     let Some(tool_name) = input.tool_name.as_deref() else {
         return Ok(json!({}));
     };
@@ -171,6 +162,31 @@ fn pre_tool_use(input: &HookInput, workspace: &Path, state_path: &Path) -> Resul
     let paths = kotlin_paths(&serialized, workspace);
     if paths.is_empty() || !is_generic_mutation(tool_name, &serialized) {
         return Ok(json!({}));
+    }
+    match run_agent_task_hook(
+        AgentTaskHookOperation::Status,
+        workspace,
+        "codex",
+        &input.session_id,
+    ) {
+        Ok(task)
+            if matches!(
+                task.state(),
+                AgentTaskState::Active | AgentTaskState::Blocked
+            ) => {}
+        Ok(task) => {
+            return Ok(pre_tool_denial(format!(
+                "AGENT_TASK_NOT_OPEN: task {} is {:?}; begin or repair the exact-workspace task before a generic Kotlin write.",
+                task.task_id(),
+                task.state(),
+            )));
+        }
+        Err(error) => {
+            return Ok(pre_tool_denial(format!(
+                "{}: {}",
+                error.code, error.message
+            )));
+        }
     }
     let state = read_state_for_workspace(state_path, workspace)?.unwrap_or_default();
     let allowed = state
@@ -243,15 +259,19 @@ fn post_tool_use(input: &HookInput, workspace: &Path, state_path: &Path) -> Resu
 
 fn stop(input: &HookInput, workspace: &Path) -> Result<Value> {
     match run_agent_task_hook(
-        AgentTaskHookOperation::Finish,
+        AgentTaskHookOperation::Status,
         workspace,
         "codex",
         &input.session_id,
     ) {
-        Ok(task) if task.ok => Ok(json!({})),
+        Ok(task) if task.state() == AgentTaskState::Complete => Ok(json!({})),
         Ok(task) => Ok(json!({
             "decision": "block",
-            "reason": agent_task_block_reason("finish", &task),
+            "reason": format!(
+                "AGENT_TASK_EXPLICIT_FINISH_REQUIRED: task {} is {:?}; run kast-agent-task finish before stopping.",
+                task.task_id(),
+                task.state(),
+            ),
         })),
         Err(error) => Ok(json!({
             "decision": "block",
@@ -262,32 +282,6 @@ fn stop(input: &HookInput, workspace: &Path) -> Result<Value> {
 
 fn agent_task_context(operation: &str, task: &AgentTaskHookResult) -> Result<String> {
     Ok(format!("operation: {operation}\n{}", task.to_toon()?))
-}
-
-fn agent_task_block_reason(operation: &str, task: &AgentTaskHookResult) -> String {
-    task.blocker().map_or_else(
-        || {
-            format!(
-                "AGENT_TASK_BLOCKED: task {} is {:?} after {operation}.",
-                task.task_id(),
-                task.state()
-            )
-        },
-        |blocker| {
-            let details = blocker
-                .details
-                .iter()
-                .map(|(key, value)| format!("{key}={value}"))
-                .collect::<Vec<_>>()
-                .join(", ");
-            let details = if details.is_empty() {
-                String::new()
-            } else {
-                format!(" ({details})")
-            };
-            format!("{}: {}{}", blocker.code, blocker.message, details)
-        },
-    )
 }
 
 fn pre_tool_denial(reason: String) -> Value {

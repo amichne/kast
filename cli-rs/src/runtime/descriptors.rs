@@ -39,7 +39,7 @@ fn descriptor_id(descriptor: &ServerInstanceDescriptor) -> String {
     )
 }
 
-fn is_process_alive(pid: u64) -> bool {
+pub(crate) fn is_process_alive(pid: u64) -> bool {
     if pid == 0 || pid > i32::MAX as u64 {
         return false;
     }

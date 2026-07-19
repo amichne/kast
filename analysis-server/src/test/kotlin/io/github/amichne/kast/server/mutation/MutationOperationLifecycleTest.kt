@@ -15,6 +15,7 @@ import io.github.amichne.kast.api.contract.mutation.KastMutationProgressStage
 import io.github.amichne.kast.api.contract.mutation.KastMutationSubmissionReceipt
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutationResult
+import io.github.amichne.kast.api.contract.mutation.KastWorkspaceTaskId
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileAnalysisState
@@ -58,6 +59,8 @@ class MutationOperationLifecycleTest {
     @TempDir
     lateinit var tempDir: Path
 
+    private val workspaceTaskId = KastWorkspaceTaskId("00000000-0000-0000-0000-000000000420")
+
     private val json = Json {
         encodeDefaults = true
         explicitNulls = false
@@ -71,6 +74,7 @@ class MutationOperationLifecycleTest {
         val contentFile = tempDir.resolve("declaration.kt")
         Files.writeString(contentFile, "\nfun added() = Unit\n")
         val mutation = KastSemanticMutation.AddDeclaration(
+            workspaceTaskId = workspaceTaskId,
             idempotencyKey = KastMutationIdempotencyKey("issue-333-lifecycle"),
             request = KastAddDeclarationRequest(
                 workspaceRoot = tempDir.toString(),
@@ -118,6 +122,7 @@ class MutationOperationLifecycleTest {
         val target = tempDir.resolve("src/Slow.kt")
         Files.writeString(contentFile, "package sample\n\nclass Slow\n")
         val mutation = KastSemanticMutation.AddFile(
+            workspaceTaskId = workspaceTaskId,
             idempotencyKey = KastMutationIdempotencyKey("issue-333-slow"),
             request = KastAddFileRequest(
                 workspaceRoot = tempDir.toString(),
@@ -151,6 +156,7 @@ class MutationOperationLifecycleTest {
         val target = tempDir.resolve("src/Cancelled.kt")
         Files.writeString(contentFile, "package sample\n\nclass Cancelled\n")
         val mutation = KastSemanticMutation.AddFile(
+            workspaceTaskId = workspaceTaskId,
             idempotencyKey = KastMutationIdempotencyKey("issue-333-cancel"),
             request = KastAddFileRequest(
                 workspaceRoot = tempDir.toString(),
@@ -185,6 +191,7 @@ class MutationOperationLifecycleTest {
         val target = tempDir.resolve("src/InvalidScope.kt")
         Files.writeString(contentFile, "package sample\n\nclass InvalidScope\n")
         val mutation = KastSemanticMutation.AddFile(
+            workspaceTaskId = workspaceTaskId,
             idempotencyKey = KastMutationIdempotencyKey("issue-333-invalid-scope"),
             request = KastAddFileRequest(
                 workspaceRoot = tempDir.toString(),
@@ -215,6 +222,7 @@ class MutationOperationLifecycleTest {
         val target = tempDir.resolve("src/IncompleteScope.kt")
         Files.writeString(contentFile, "package sample\n\nclass IncompleteScope\n")
         val mutation = KastSemanticMutation.AddFile(
+            workspaceTaskId = workspaceTaskId,
             idempotencyKey = KastMutationIdempotencyKey("issue-333-incomplete-scope"),
             request = KastAddFileRequest(
                 workspaceRoot = tempDir.toString(),
@@ -246,6 +254,7 @@ class MutationOperationLifecycleTest {
         val dispatcher = RpcAnalysisDispatcher(backend, AnalysisServerConfig())
         val target = tempDir.resolve("src/Sample.kt")
         val mutation = KastSemanticMutation.Rename(
+            workspaceTaskId = workspaceTaskId,
             idempotencyKey = KastMutationIdempotencyKey("issue-333-invalid-rename"),
             request = KastRenameBySymbolRequest(
                 workspaceRoot = tempDir.toString(),

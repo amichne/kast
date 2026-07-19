@@ -141,13 +141,15 @@ pub struct AgentTaskArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum AgentTaskCommand {
-    /// Begin or resume the current session's task for one exact workspace root.
+    /// Begin or join the shared task for one exact workspace root.
     Begin(AgentTaskWorkspaceArgs),
     /// Inspect current task proof and blockers without changing the receipt.
     Status(AgentTaskWorkspaceArgs),
     /// Validate relevant changes and complete only with current proof.
     Finish(AgentTaskWorkspaceArgs),
-    /// Release task ownership without claiming completion.
+    /// Repair interrupted coordination without changing workspace files.
+    Repair(AgentTaskWorkspaceArgs),
+    /// Close the shared task without claiming completion.
     Abort(AgentTaskWorkspaceArgs),
 }
 

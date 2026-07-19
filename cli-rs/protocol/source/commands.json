@@ -124,16 +124,26 @@
               "ADD_STATEMENT",
               "REPLACE_DECLARATION"
             ]
+          },
+          "workspaceTaskId": {
+            "type": "string",
+            "description": "Active exact-workspace task identity injected by the Kast CLI.",
+            "sample": "00000000-0000-0000-0000-000000000420"
           }
         },
         "required": [
-          "type"
+          "type",
+          "workspaceTaskId"
         ]
       },
       "responseType": "KastMutationSubmissionReceipt",
       "variants": {
         "RENAME": {
           "fields": {
+            "workspaceTaskId": {
+              "type": "string",
+              "sample": "00000000-0000-0000-0000-000000000420"
+            },
             "idempotencyKey": {
               "type": "string"
             },
@@ -142,6 +152,7 @@
             }
           },
           "required": [
+            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -157,6 +168,10 @@
         },
         "ADD_FILE": {
           "fields": {
+            "workspaceTaskId": {
+              "type": "string",
+              "sample": "00000000-0000-0000-0000-000000000420"
+            },
             "idempotencyKey": {
               "type": "string"
             },
@@ -165,6 +180,7 @@
             }
           },
           "required": [
+            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -179,6 +195,10 @@
         },
         "ADD_DECLARATION": {
           "fields": {
+            "workspaceTaskId": {
+              "type": "string",
+              "sample": "00000000-0000-0000-0000-000000000420"
+            },
             "idempotencyKey": {
               "type": "string"
             },
@@ -187,6 +207,7 @@
             }
           },
           "required": [
+            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -210,6 +231,10 @@
         },
         "ADD_IMPLEMENTATION": {
           "fields": {
+            "workspaceTaskId": {
+              "type": "string",
+              "sample": "00000000-0000-0000-0000-000000000420"
+            },
             "idempotencyKey": {
               "type": "string"
             },
@@ -218,6 +243,7 @@
             }
           },
           "required": [
+            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -241,6 +267,10 @@
         },
         "ADD_STATEMENT": {
           "fields": {
+            "workspaceTaskId": {
+              "type": "string",
+              "sample": "00000000-0000-0000-0000-000000000420"
+            },
             "idempotencyKey": {
               "type": "string"
             },
@@ -249,6 +279,7 @@
             }
           },
           "required": [
+            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -264,6 +295,10 @@
         },
         "REPLACE_DECLARATION": {
           "fields": {
+            "workspaceTaskId": {
+              "type": "string",
+              "sample": "00000000-0000-0000-0000-000000000420"
+            },
             "idempotencyKey": {
               "type": "string"
             },
@@ -272,6 +307,7 @@
             }
           },
           "required": [
+            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],

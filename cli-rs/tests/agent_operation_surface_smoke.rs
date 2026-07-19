@@ -140,6 +140,27 @@ fn applied_add_file_submits_typed_mutation_request() {
     )
     .expect("settings");
     std::fs::write(&content_file, "class Added\n").expect("content");
+    write_current_cli_install_manifest_for_test(&home, &config_home);
+    let begin = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "task",
+            "begin",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("begin workspace task");
+    assert!(
+        begin.status.success(),
+        "task begin failed: stdout={} stderr={}",
+        String::from_utf8_lossy(&begin.stdout),
+        String::from_utf8_lossy(&begin.stderr),
+    );
+    let begin: Value = serde_json::from_slice(&begin.stdout).expect("task begin JSON");
+    let workspace_task_id = begin["result"]["taskId"].clone();
     let canonical_target = workspace
         .canonicalize()
         .expect("canonical workspace")
@@ -183,6 +204,7 @@ fn applied_add_file_submits_typed_mutation_request() {
         .find(|request| request["method"] == "mutation/submit")
         .expect("mutation submit request");
     assert_eq!(submit["params"]["type"], "ADD_FILE", "{submit}");
+    assert_eq!(submit["params"]["workspaceTaskId"], workspace_task_id);
     assert_eq!(
         submit["params"]["idempotencyKey"], "issue-333-add-file",
         "{submit}"

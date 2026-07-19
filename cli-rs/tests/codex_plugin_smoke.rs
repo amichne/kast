@@ -160,7 +160,7 @@ fn codex_hooks_share_the_task_core_and_stop_is_a_hard_gate() {
     assert_eq!(
         task_context_without_observation_time(context),
         task_context_without_observation_time(resumed_context),
-        "begin must preserve the admitted task, lease, and baseline",
+        "begin must rejoin the shared task and preserve its baseline",
     );
 
     let post = fixture.hook(
@@ -199,24 +199,38 @@ fn codex_hooks_share_the_task_core_and_stop_is_a_hard_gate() {
         stopped["reason"]
             .as_str()
             .expect("stop reason")
-            .contains("GRADLE_VALIDATION_POLICY_REQUIRED")
+            .contains("AGENT_TASK_EXPLICIT_FINISH_REQUIRED")
     );
 }
 
 #[test]
-fn codex_pre_tool_use_fails_closed_for_another_session() {
+fn codex_pre_tool_use_allows_reads_across_sessions_and_gates_generic_kotlin_writes() {
     let fixture = HookFixture::new();
     assert_hook_success(&fixture.hook(
         "session-start",
         serde_json::json!({"session_id": "owner", "cwd": fixture.workspace}),
     ));
-    let denied = fixture.hook(
+    let read = fixture.hook(
         "pre-tool-use",
         serde_json::json!({
             "session_id": "other",
             "cwd": fixture.workspace,
             "tool_name": "Read",
             "tool_input": {},
+        }),
+    );
+    assert_hook_success(&read);
+    assert_eq!(output_json(&read), serde_json::json!({}));
+
+    let denied = fixture.hook(
+        "pre-tool-use",
+        serde_json::json!({
+            "session_id": "other",
+            "cwd": fixture.workspace,
+            "tool_name": "Bash",
+            "tool_input": {
+                "command": "printf 'class Main' > src/Main.kt"
+            },
         }),
     );
     assert_hook_success(&denied);
@@ -226,7 +240,7 @@ fn codex_pre_tool_use_fails_closed_for_another_session() {
         denied["hookSpecificOutput"]["permissionDecisionReason"]
             .as_str()
             .expect("denial reason")
-            .contains("AGENT_TASK_OWNER_CONFLICT")
+            .contains("KAST_TYPED_ROUTE_REQUIRED")
     );
 }
 

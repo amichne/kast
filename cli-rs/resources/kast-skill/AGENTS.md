@@ -18,10 +18,11 @@ directory. Internal catalog truth and generated request fixtures live under
 ## Edit rules
 
 - Keep the main skill below 40 lines and do not add reference inventories.
-- Teach only when Kast triggers, task begin, discovery through `kast agent` and
-  scoped help, task finish, and exact reporting of typed blockers.
-- Let the task core own workspace resolution, leases, diagnostics, Gradle proof,
-  and completion. Do not reproduce those policies in prose.
+- Teach only when Kast triggers, shared task begin, discovery through `kast
+  agent` and scoped help, explicit finish, compact recovery, and exact reporting
+  of typed blockers.
+- Let the task core own workspace resolution, finish coordination, transient
+  validation, and completion. Do not reproduce those policies in prose.
 - Do not teach retired `tools`, `call`, or `workflow` commands, raw RPC names,
   LSP internals, developer commands, package files, or hooks as the normal
   semantic surface.

@@ -192,6 +192,30 @@ exit 2
         .expect("Gradle wrapper");
         std::fs::set_permissions(&wrapper, std::fs::Permissions::from_mode(0o755))
             .expect("Gradle wrapper mode");
+        let git = |args: &[&str]| {
+            let output = Command::new("git")
+                .args(args)
+                .current_dir(&workspace)
+                .output()
+                .expect("run git fixture command");
+            assert!(
+                output.status.success(),
+                "git {args:?} failed: {}",
+                String::from_utf8_lossy(&output.stderr),
+            );
+        };
+        git(&["init", "--quiet"]);
+        git(&["add", "."]);
+        git(&[
+            "-c",
+            "user.name=Kast Test",
+            "-c",
+            "user.email=kast@example.invalid",
+            "commit",
+            "--quiet",
+            "-m",
+            "fixture baseline",
+        ]);
 
         let fixture = Self {
             home,
@@ -307,7 +331,7 @@ fn sha256_file(path: &Path) -> String {
 }
 
 #[test]
-fn installed_launcher_completes_one_toon_task_with_current_semantic_and_gradle_proof() {
+fn installed_launcher_completes_one_toon_task_with_compact_current_validation() {
     let temp = tempfile::tempdir().expect("tempdir");
     let fixture = InstalledTaskFixture::new(temp.path(), "kt");
     let begin = fixture
@@ -327,8 +351,16 @@ fn installed_launcher_completes_one_toon_task_with_current_semantic_and_gradle_p
         &fixture.workspace,
         &temp.path().join("agent-task-idea.sock"),
         ScriptedCliAuthority::new(&fixture.binary, &cli_version(&fixture.binary)),
-        4,
+        3,
         vec![
+            (
+                "mutation/finish-barrier/acquire",
+                serde_json::json!({
+                    "workspaceTaskId": begin["result"]["taskId"],
+                    "coordinationToken": uuid::Uuid::nil().to_string(),
+                    "state": "DRAINED"
+                }),
+            ),
             (
                 "raw/workspace-refresh",
                 serde_json::json!({
@@ -368,6 +400,14 @@ fn installed_launcher_completes_one_toon_task_with_current_semantic_and_gradle_p
                     "schemaVersion": 3
                 }),
             ),
+            (
+                "mutation/finish-barrier/complete",
+                serde_json::json!({
+                    "workspaceTaskId": begin["result"]["taskId"],
+                    "coordinationToken": uuid::Uuid::nil().to_string(),
+                    "state": "COMPLETE"
+                }),
+            ),
         ],
     );
 
@@ -378,48 +418,31 @@ fn installed_launcher_completes_one_toon_task_with_current_semantic_and_gradle_p
     let (_, finish) = decode_default_toon("task finish", finish);
     assert_eq!(finish["result"]["state"], "COMPLETE", "{finish:#}");
     assert_eq!(finish["result"]["taskId"], begin["result"]["taskId"]);
-    let relative_source = ["src/main/kt/Example", "kt"].join(".");
-    assert_eq!(
-        finish["result"]["diagnostics"][0]["files"][relative_source.clone()],
-        content_hash,
-    );
-    assert_eq!(finish["result"]["gradle"][0]["buildTasks"][0], ":classes");
-    assert_eq!(finish["result"]["gradle"][0]["testTasks"][0], ":test");
-    assert_eq!(
-        finish["result"]["testReports"].as_array().map(Vec::len),
-        Some(1)
-    );
-    assert_eq!(finish["result"]["completion"]["kind"], "VALIDATED");
     assert_eq!(
         finish["result"]["workspaceRoot"],
         fixture.workspace.display().to_string(),
     );
 
     let current_receipt = fixture.receipt_path();
-    let completed_receipt = current_receipt
-        .parent()
-        .expect("task receipt directory")
-        .join(format!(
-            "{}.complete.json",
-            finish["result"]["taskId"].as_str().expect("task id")
-        ));
-    let completion_bytes = std::fs::read(&completed_receipt).expect("completion receipt");
-    let mut stale_diagnostics: serde_json::Value =
-        serde_json::from_slice(&completion_bytes).expect("completion JSON");
-    stale_diagnostics["diagnostics"][0]["files"][relative_source] =
-        serde_json::json!("0".repeat(64));
-    std::fs::write(
-        &completed_receipt,
-        serde_json::to_vec_pretty(&stale_diagnostics).expect("tampered diagnostics JSON"),
-    )
-    .expect("tampered completion");
-    let tampered = fixture.task_json("installed-task-session", "finish");
-    assert!(!tampered.status.success());
-    assert_eq!(
-        decode_json_output(&tampered)["error"]["code"],
-        "AGENT_TASK_RECEIPT_INVALID",
-    );
-    std::fs::write(&completed_receipt, completion_bytes).expect("restore completion receipt");
+    let receipt_bytes = std::fs::read(&current_receipt).expect("current task state");
+    assert!(receipt_bytes.len() < 2_048, "task state must stay compact");
+    let receipt: serde_json::Value =
+        serde_json::from_slice(&receipt_bytes).expect("task state JSON");
+    for removed in [
+        "baseline",
+        "current",
+        "gradleModel",
+        "diagnostics",
+        "gradle",
+        "testReports",
+        "validation",
+        "completion",
+    ] {
+        assert!(
+            receipt.get(removed).is_none(),
+            "retained {removed}: {receipt:#}"
+        );
+    }
 
     let requests = backend.join().expect("task diagnostics backend");
     assert_eq!(
@@ -430,8 +453,14 @@ fn installed_launcher_completes_one_toon_task_with_current_semantic_and_gradle_p
         vec![
             "runtime/status",
             "capabilities",
+            "mutation/finish-barrier/acquire",
+            "runtime/status",
+            "capabilities",
             "raw/workspace-refresh",
             "raw/diagnostics",
+            "runtime/status",
+            "capabilities",
+            "mutation/finish-barrier/complete",
         ],
     );
 }
@@ -451,11 +480,16 @@ fn task_lifecycle_is_idempotent_strict_and_retryable() {
         .args(["begin", "--output", "json", "--workspace-root"])
         .arg(&fixture.workspace);
     let ownerless = ownerless.output().expect("ownerless task command");
-    assert!(!ownerless.status.success());
-    assert_eq!(
-        decode_json_output(&ownerless)["error"]["code"],
-        "AGENT_TASK_OWNER_UNAVAILABLE",
+    assert!(
+        ownerless.status.success(),
+        "ownerless begin stderr={}",
+        String::from_utf8_lossy(&ownerless.stderr),
     );
+    let ownerless = decode_json_output(&ownerless);
+    let task_id = ownerless["result"]["taskId"].clone();
+    assert_eq!(ownerless["result"]["schemaVersion"], 2);
+    assert!(ownerless["result"].get("owner").is_none());
+    assert!(ownerless["result"].get("lease").is_none());
 
     let begin_output = fixture.task_json("owner-a", "begin");
     assert!(
@@ -465,16 +499,19 @@ fn task_lifecycle_is_idempotent_strict_and_retryable() {
     );
     let begin = decode_json_output(&begin_output);
     assert_eq!(begin["result"]["state"], "ACTIVE", "{begin:#}");
-    let task_id = begin["result"]["taskId"].clone();
-    assert_eq!(begin["result"]["owner"]["provider"], "kast");
-    let baseline_sha256 = begin["result"]["baseline"]["sha256"].clone();
+    assert_eq!(begin["result"]["taskId"], task_id);
+    let baseline_sha256 = begin["result"]["baselineSha256"].clone();
 
     let source = fixture.source("java");
     std::fs::write(&source, "class Example { int value = 1; }\n").expect("modify source");
     let repeated = decode_json_output(&fixture.task_json("owner-a", "begin"));
     assert_eq!(repeated["result"]["taskId"], task_id);
-    assert_eq!(repeated["result"]["baseline"]["sha256"], baseline_sha256);
-    assert_ne!(repeated["result"]["current"]["sha256"], baseline_sha256);
+    assert_eq!(repeated["result"]["baselineSha256"], baseline_sha256);
+    assert_ne!(repeated["result"]["currentSha256"], baseline_sha256);
+
+    let shared = decode_json_output(&fixture.task_json("owner-b", "begin"));
+    assert_eq!(shared["result"]["taskId"], task_id);
+    assert_eq!(shared["result"]["baselineSha256"], baseline_sha256);
 
     let home_output = Command::new(&fixture.binary)
         .env("HOME", &fixture.home)
@@ -483,46 +520,31 @@ fn task_lifecycle_is_idempotent_strict_and_retryable() {
         .arg("agent")
         .current_dir(&fixture.workspace)
         .output()
-        .expect("conflicting task home");
+        .expect("shared task home");
     let (_, home) = decode_default_toon("task home", home_output);
     assert_eq!(home["activeTask"]["taskId"], task_id);
-    assert_eq!(home["readiness"]["state"], "BLOCKED");
-    assert_eq!(
-        home["readiness"]["blocker"]["code"],
-        "AGENT_TASK_OWNER_CONFLICT",
-    );
+    assert_eq!(home["readiness"]["state"], "READY");
 
-    let conflict_output = fixture.task_json("owner-b", "begin");
-    assert!(!conflict_output.status.success());
-    let conflict = decode_json_output(&conflict_output);
-    assert_eq!(
-        conflict["error"]["code"], "AGENT_TASK_OWNER_CONFLICT",
-        "{conflict:#}"
+    let barrier_backend = spawn_scripted_idea_backend_for_invocations(
+        &fixture.home,
+        &fixture.config_home,
+        &fixture.workspace,
+        &temp.path().join("agent-task-barrier.sock"),
+        ScriptedCliAuthority::new(&fixture.binary, &cli_version(&fixture.binary)),
+        10,
+        vec![
+            ("mutation/finish-barrier/acquire", serde_json::json!({})),
+            ("mutation/finish-barrier/reopen", serde_json::json!({})),
+            ("mutation/finish-barrier/acquire", serde_json::json!({})),
+            ("mutation/finish-barrier/reopen", serde_json::json!({})),
+            ("mutation/finish-barrier/acquire", serde_json::json!({})),
+            ("mutation/finish-barrier/reopen", serde_json::json!({})),
+            ("mutation/finish-barrier/acquire", serde_json::json!({})),
+            ("mutation/finish-barrier/complete", serde_json::json!({})),
+            ("mutation/finish-barrier/acquire", serde_json::json!({})),
+            ("mutation/finish-barrier/complete", serde_json::json!({})),
+        ],
     );
-
-    let mut interrupted: serde_json::Value =
-        serde_json::from_slice(&std::fs::read(fixture.receipt_path()).expect("active receipt"))
-            .expect("active receipt JSON");
-    interrupted["state"] = serde_json::json!("VALIDATING");
-    let dead_owner = serde_json::json!({
-        "kind": "PROCESS",
-        "pid": u64::MAX,
-        "startedAt": "dead-process"
-    });
-    interrupted["owner"] = dead_owner.clone();
-    interrupted["lease"]["owner"] = dead_owner;
-    std::fs::write(
-        fixture.receipt_path(),
-        serde_json::to_vec_pretty(&interrupted).expect("interrupted receipt JSON"),
-    )
-    .expect("interrupted receipt");
-    let recovered = decode_json_output(&fixture.task_json("owner-a", "begin"));
-    assert_eq!(recovered["result"]["state"], "BLOCKED", "{recovered:#}");
-    assert_eq!(
-        recovered["result"]["blockers"][0]["code"],
-        "AGENT_TASK_OWNER_RECOVERED",
-    );
-    assert_eq!(recovered["result"]["taskId"], task_id);
 
     let mut invalid_outcome = fixture.task("owner-a", "finish");
     invalid_outcome
@@ -579,57 +601,16 @@ fn task_lifecycle_is_idempotent_strict_and_retryable() {
     let complete = decode_json_output(&complete_output);
     assert_eq!(complete["result"]["state"], "COMPLETE", "{complete:#}");
     assert_eq!(complete["result"]["taskId"], task_id);
-    assert_eq!(complete["result"]["baseline"]["sha256"], baseline_sha256);
-    let completed_current = complete["result"]["current"]["sha256"].clone();
-    let current_receipt = fixture.receipt_path();
-    let completed_receipt = current_receipt
-        .parent()
-        .expect("task receipt directory")
-        .join(format!(
-            "{}.complete.json",
-            complete["result"]["taskId"].as_str().expect("task id")
-        ));
-    let immutable_completion = std::fs::read(&completed_receipt).expect("completion archive");
-    let completion_json: serde_json::Value =
-        serde_json::from_slice(&immutable_completion).expect("completion JSON");
-    let mut invalid_outcome_receipt = completion_json.clone();
-    invalid_outcome_receipt["gradle"][0]["observedTasks"][0]["outcome"] =
-        serde_json::json!("NO_SOURCE");
-    let mut invalid_input_receipt = completion_json.clone();
-    invalid_input_receipt["completion"]["inputSha256"] = serde_json::json!("0".repeat(64));
-    let mut escaping_report_receipt = completion_json;
-    escaping_report_receipt["testReports"][0]["path"] =
-        serde_json::json!("/outside/TEST-Example.xml");
-    for tampered_receipt in [
-        invalid_outcome_receipt,
-        invalid_input_receipt,
-        escaping_report_receipt,
-    ] {
-        std::fs::write(
-            &completed_receipt,
-            serde_json::to_vec_pretty(&tampered_receipt).expect("tampered completion JSON"),
-        )
-        .expect("tampered completion receipt");
-        let rejected = fixture.task_json("owner-a", "finish");
-        assert!(!rejected.status.success());
-        assert_eq!(
-            decode_json_output(&rejected)["error"]["code"],
-            "AGENT_TASK_RECEIPT_INVALID",
-        );
-    }
-    std::fs::write(&completed_receipt, &immutable_completion).expect("restore completion archive");
+    assert_eq!(complete["result"]["baselineSha256"], baseline_sha256);
+    let completed_current = complete["result"]["currentSha256"].clone();
 
     std::fs::write(&source, "class Example { int value = 2; }\n").expect("post-completion edit");
     let immutable = decode_json_output(&fixture.task_json("owner-a", "status"));
     assert_eq!(immutable["result"]["state"], "COMPLETE");
-    assert_eq!(immutable["result"]["current"]["sha256"], completed_current);
+    assert_eq!(immutable["result"]["currentSha256"], completed_current);
 
     let next = decode_json_output(&fixture.task_json("owner-a", "begin"));
     assert_ne!(next["result"]["taskId"], task_id);
-    assert_eq!(
-        std::fs::read(&completed_receipt).expect("preserved completion archive"),
-        immutable_completion,
-    );
     let aborted = decode_json_output(&fixture.task_json("owner-a", "abort"));
     assert_eq!(aborted["result"]["state"], "ABORTED");
     let repeated_abort = decode_json_output(&fixture.task_json("owner-a", "abort"));
@@ -642,8 +623,6 @@ fn task_lifecycle_is_idempotent_strict_and_retryable() {
     let no_op = decode_json_output(&fixture.task_json("owner-a", "finish"));
     assert_eq!(no_op["result"]["taskId"], no_op_task["result"]["taskId"]);
     assert_eq!(no_op["result"]["state"], "COMPLETE");
-    assert_eq!(no_op["result"]["completion"]["kind"], "NO_RELEVANT_CHANGES");
-    assert_eq!(no_op["result"]["gradle"], serde_json::json!([]));
 
     let drifted_task = decode_json_output(&fixture.task_json("owner-a", "begin"));
     assert_eq!(drifted_task["result"]["state"], "ACTIVE");
@@ -651,7 +630,7 @@ fn task_lifecycle_is_idempotent_strict_and_retryable() {
     let drifted = decode_json_output(&fixture.task_json("owner-a", "status"));
     assert_eq!(drifted["result"]["state"], "BLOCKED", "{drifted:#}");
     assert_eq!(
-        drifted["result"]["blockers"][0]["code"],
+        drifted["result"]["blockerCodes"][0],
         "AGENT_TASK_STALE_GENERATION",
     );
     let drifted_home = Command::new(&fixture.binary)
@@ -691,8 +670,161 @@ fn task_lifecycle_is_idempotent_strict_and_retryable() {
     let resource_drift = decode_json_output(&resource_drift);
     assert_eq!(resource_drift["result"]["state"], "BLOCKED");
     assert_eq!(
-        resource_drift["result"]["blockers"][0]["code"],
+        resource_drift["result"]["blockerCodes"][0],
         "AGENT_TASK_STALE_GENERATION",
+    );
+
+    let barrier_requests = barrier_backend.join().expect("finish barrier backend");
+    assert_eq!(
+        barrier_requests
+            .iter()
+            .filter_map(|request| request["method"].as_str())
+            .filter(|method| method.starts_with("mutation/finish-barrier/"))
+            .count(),
+        10,
+    );
+}
+
+#[test]
+fn task_repair_replaces_legacy_state_without_touching_workspace() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let fixture = InstalledTaskFixture::new(temp.path(), "java");
+    let begun = decode_json_output(&fixture.task_json("legacy-owner", "begin"));
+    let task_id = begun["result"]["taskId"]
+        .as_str()
+        .expect("task id")
+        .to_string();
+    let source = fixture.source("java");
+    let changed = b"class Example { int preserved = 1; }\n";
+    std::fs::write(&source, changed).expect("change source");
+
+    let mut legacy: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(fixture.receipt_path()).expect("current task state"))
+            .expect("current task JSON");
+    legacy["schemaVersion"] = serde_json::json!(1);
+    legacy["owner"] = serde_json::json!({
+        "kind": "SESSION",
+        "provider": "codex",
+        "sessionSha256": "0".repeat(64),
+    });
+    legacy["lease"] = serde_json::json!({
+        "leaseId": format!("ktl1.{}", uuid::Uuid::new_v4()),
+        "owner": legacy["owner"].clone(),
+        "acquiredAt": legacy["startedAt"].clone(),
+    });
+    std::fs::write(
+        fixture.receipt_path(),
+        serde_json::to_vec_pretty(&legacy).expect("legacy receipt JSON"),
+    )
+    .expect("legacy receipt");
+
+    let repaired = decode_json_output(&fixture.task_json("another-session", "repair"));
+    assert_eq!(repaired["result"]["taskId"], task_id);
+    assert_eq!(repaired["result"]["state"], "ABORTED");
+    assert_eq!(repaired["result"]["schemaVersion"], 2);
+    assert!(repaired["result"].get("owner").is_none());
+    assert!(repaired["result"].get("lease").is_none());
+    assert_eq!(std::fs::read(&source).expect("preserved source"), changed);
+    assert!(
+        !fixture
+            .receipt_path()
+            .parent()
+            .expect("receipt parent")
+            .join(format!("{task_id}.aborted.json"))
+            .exists()
+    );
+
+    let next = decode_json_output(&fixture.task_json("another-session", "begin"));
+    assert_ne!(next["result"]["taskId"], task_id);
+    assert_eq!(next["result"]["state"], "ACTIVE");
+}
+
+#[test]
+fn task_repair_requests_cooperative_cancellation_from_a_live_finish_executor() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let fixture = InstalledTaskFixture::new(temp.path(), "java");
+    let begun = decode_json_output(&fixture.task_json("live-finish", "begin"));
+    let task_id = begun["result"]["taskId"].clone();
+    let receipt_path = fixture.receipt_path();
+    let mut receipt: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&receipt_path).expect("task state"))
+            .expect("task state JSON");
+    receipt["state"] = serde_json::json!("DRAINING");
+    receipt["finishExecutor"] = serde_json::json!({
+        "coordinationToken": "00000000-0000-0000-0000-000000000424",
+        "pid": std::process::id(),
+        "startedAt": "unix:1",
+        "cancellationRequested": false
+    });
+    std::fs::write(
+        &receipt_path,
+        serde_json::to_vec_pretty(&receipt).expect("draining task state"),
+    )
+    .expect("draining task state");
+
+    let repaired = decode_json_output(&fixture.task_json("another-session", "repair"));
+    assert_eq!(repaired["result"]["taskId"], task_id);
+    assert_eq!(repaired["result"]["state"], "DRAINING");
+    let persisted: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(receipt_path).expect("repaired task state"))
+            .expect("repaired task state JSON");
+    assert_eq!(persisted["finishExecutor"]["cancellationRequested"], true);
+}
+
+#[test]
+fn task_repair_reopens_a_dead_finish_executor_without_touching_workspace() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let fixture = InstalledTaskFixture::new(temp.path(), "java");
+    let begun = decode_json_output(&fixture.task_json("dead-finish", "begin"));
+    let task_id = begun["result"]["taskId"].clone();
+    let source = fixture.source("java");
+    let changed = b"class Example { int preserved = 2; }\n";
+    std::fs::write(&source, changed).expect("changed source");
+    let receipt_path = fixture.receipt_path();
+    let mut receipt: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&receipt_path).expect("task state"))
+            .expect("task state JSON");
+    receipt["state"] = serde_json::json!("VALIDATING");
+    receipt["finishExecutor"] = serde_json::json!({
+        "coordinationToken": "00000000-0000-0000-0000-000000000425",
+        "pid": u32::MAX,
+        "startedAt": "unix:1",
+        "cancellationRequested": false
+    });
+    std::fs::write(
+        &receipt_path,
+        serde_json::to_vec_pretty(&receipt).expect("validating task state"),
+    )
+    .expect("validating task state");
+    let backend = spawn_scripted_idea_backend_for_invocations(
+        &fixture.home,
+        &fixture.config_home,
+        &fixture.workspace,
+        &temp.path().join("agent-task-repair.sock"),
+        ScriptedCliAuthority::new(&fixture.binary, &cli_version(&fixture.binary)),
+        1,
+        vec![("mutation/finish-barrier/repair", serde_json::json!({}))],
+    );
+
+    let repaired = decode_json_output(&fixture.task_json("another-session", "repair"));
+    assert_eq!(repaired["result"]["taskId"], task_id);
+    assert_eq!(repaired["result"]["state"], "BLOCKED");
+    assert_eq!(
+        repaired["result"]["blockerCodes"][0],
+        "AGENT_TASK_FINISH_INTERRUPTED",
+    );
+    assert_eq!(std::fs::read(source).expect("preserved source"), changed);
+    let requests = backend.join().expect("repair backend");
+    assert_eq!(
+        requests
+            .iter()
+            .filter_map(|request| request["method"].as_str())
+            .collect::<Vec<_>>(),
+        vec![
+            "runtime/status",
+            "capabilities",
+            "mutation/finish-barrier/repair"
+        ],
     );
 }
 

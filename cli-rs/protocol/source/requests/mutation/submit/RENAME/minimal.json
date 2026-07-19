@@ -7,6 +7,7 @@
     "request": {
       "example": true
     },
-    "type": "RENAME"
+    "type": "RENAME",
+    "workspaceTaskId": "00000000-0000-0000-0000-000000000420"
   }
 }

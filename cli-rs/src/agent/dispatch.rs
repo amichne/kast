@@ -292,14 +292,10 @@ fn execute_agent_rename(args: AgentRenameArgs) -> AgentEnvelope {
         Ok(key) => key,
         Err(error) => return error_envelope("agent/rename".to_string(), None, error),
     };
-    let request = json_rpc_request(
-        "mutation/submit",
-        json!({
-            "type": "RENAME",
-            "idempotencyKey": idempotency_key,
-            "request": params,
-        }),
-    );
+    let request = match applied_mutation_request("RENAME", idempotency_key, params, &args.runtime) {
+        Ok(request) => request,
+        Err(error) => return error_envelope("agent/rename".to_string(), None, error),
+    };
     execute_request(AgentRequest {
         method: "mutation/submit".to_string(),
         request,
@@ -815,14 +811,15 @@ fn execute_agent_mutation(
         Ok(key) => key,
         Err(error) => return error_envelope(agent_method.to_string(), None, error),
     };
-    let request = json_rpc_request(
-        "mutation/submit",
-        json!({
-            "type": mutation_kind,
-            "idempotencyKey": idempotency_key,
-            "request": params,
-        }),
-    );
+    let request = match applied_mutation_request(
+        mutation_kind,
+        idempotency_key,
+        params,
+        &runtime,
+    ) {
+        Ok(request) => request,
+        Err(error) => return error_envelope(agent_method.to_string(), None, error),
+    };
     execute_request(AgentRequest {
         method: "mutation/submit".to_string(),
         request,
@@ -830,6 +827,25 @@ fn execute_agent_mutation(
         full_response: true,
         operation: AgentOperation::AppliedMutation,
     })
+}
+
+fn applied_mutation_request(
+    mutation_kind: &'static str,
+    idempotency_key: String,
+    params: Value,
+    runtime: &AgentRuntimeArgs,
+) -> std::result::Result<Value, AgentError> {
+    let workspace_task_id = agent_task_id_for_mutation(runtime.workspace_root.clone())
+        .map_err(AgentError::from_cli_error)?;
+    Ok(json_rpc_request(
+        "mutation/submit",
+        json!({
+            "type": mutation_kind,
+            "workspaceTaskId": workspace_task_id,
+            "idempotencyKey": idempotency_key,
+            "request": params,
+        }),
+    ))
 }
 
 fn applied_idempotency_key(

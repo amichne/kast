@@ -722,7 +722,7 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     assert!(
         extension.contains("runLifecycle(\"begin\"")
             && extension.contains("runLifecycle(\"status\"")
-            && extension.contains("runLifecycle(\"finish\"")
+            && !extension.contains("runLifecycle(\"finish\"")
             && extension.contains("tools: []")
             && !extension.contains("process.env.PATH")
             && !extension.contains("target/debug")

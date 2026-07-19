@@ -30,7 +30,8 @@ is `.agents/adr/0006-forward-system-definition-and-audit-scope.md`.
   launcher pair. Do not search `PATH`, build output, or standalone `kast`
   candidates.
 - Keep provider hooks thin: begin on session start, inspect status around tool
-  events, finish and audit on session end. Task policy stays in Rust.
+  events, and audit status on session end. Explicit finish stays user-directed
+  and task policy stays in Rust.
 - Public package shape changes begin with a superseding ADR.
 
 ## Downstream surfaces

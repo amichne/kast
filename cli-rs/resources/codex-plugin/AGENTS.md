@@ -18,10 +18,10 @@ Edit these files directly when their behavior or presentation changes:
   CLI resolution plus stdin forwarding; and
 - `plugins/kast/assets/kast.svg` is the canonical copied brand asset.
 
-The routing skill teaches only task begin, discovery through `kast agent` and
-scoped help, task finish, and exact reporting of typed blockers. Do not add
-command inventories, setup, repair, LSP, developer commands, raw RPC names, or
-hook commands to the skill.
+The routing skill teaches only shared task begin, discovery through `kast
+agent` and scoped help, explicit finish, compact recovery, and exact reporting
+of typed blockers. Do not add command inventories, setup, LSP, developer
+commands, raw RPC names, or hook commands to the skill.
 
 ## Generated sources
 
@@ -54,10 +54,10 @@ It must not parse events, make workflow decisions, write session state, or
 transform output.
 
 Rust translates Codex host envelopes into the shared `kast agent task`
-lifecycle. The task core owns receipts, baselines, diagnostics, Gradle proof,
-and completion decisions; the Codex adapter retains only its typed-mutation
-guardrail and host response mapping. Hooks never apply setup, repair, IDE,
-installation, or source mutations.
+lifecycle. The task core owns compact current state, finish coordination,
+transient validation, and completion decisions; the Codex adapter retains only
+its typed-mutation guardrail and host response mapping. Hooks never apply setup,
+repair, IDE, installation, or source mutations.
 
 ## Metadata and release
 

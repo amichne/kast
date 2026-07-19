@@ -163,12 +163,6 @@ const hooks = {
   },
   onPreToolUse: async (input, invocation) => {
     const result = await runLifecycle("status", input, invocation);
-    if (!result.ok) {
-      return {
-        permissionDecision: "deny",
-        permissionDecisionReason: lifecycleContext("status", result),
-      };
-    }
     return { additionalContext: lifecycleContext("status", result) };
   },
   onPostToolUse: async (input, invocation) => {
@@ -180,8 +174,8 @@ const hooks = {
     return { additionalContext: lifecycleContext("status", result) };
   },
   onSessionEnd: async (input, invocation) => {
-    const result = await runLifecycle("finish", input, invocation);
-    await session?.log(`kast extension audit: ${lifecycleContext("finish", result)}`, {
+    const result = await runLifecycle("status", input, invocation);
+    await session?.log(`kast extension audit: ${lifecycleContext("status", result)}`, {
       level: result.ok ? "info" : "warning",
       ephemeral: result.ok,
     });
