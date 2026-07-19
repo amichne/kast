@@ -368,7 +368,8 @@ fn spawn_scripted_backend(
         let mut requests = Vec::new();
         let mut scripted_results = scripted_results.into_iter();
         let expected_requests = 2 * invocation_count + scripted_results.len();
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+        let deadline = std::time::Instant::now()
+            + std::time::Duration::from_secs(15 * invocation_count as u64);
         while requests.len() < expected_requests && std::time::Instant::now() < deadline {
             let (mut stream, _) = match listener.accept() {
                 Ok(connection) => connection,
