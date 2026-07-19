@@ -23,7 +23,10 @@ fn machine_status_is_a_definitive_read_only_empty_state() {
         serde_json::from_slice(&status.stdout).expect("machine status JSON");
     assert_eq!(status["type"], "KAST_MACHINE_STATUS");
     assert_eq!(status["state"], "NOT_INSTALLED");
-    assert_eq!(status["daemon"], "STOPPED");
+    assert!(
+        status.get("daemon").is_none(),
+        "machine authority must not invent a resident daemon lifecycle: {status:#}",
+    );
     assert_eq!(status["schemaVersion"], 1);
 }
 
