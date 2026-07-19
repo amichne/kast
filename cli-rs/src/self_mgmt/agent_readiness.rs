@@ -118,7 +118,9 @@ struct PluginWorkspaceEvidence {
     trusted: bool,
     cli_binary: Option<String>,
     cli_version: Option<String>,
+    cli_revision: Option<String>,
     plugin_version: Option<String>,
+    plugin_revision: Option<String>,
     backend_kind: Option<String>,
     backend_version: Option<String>,
     protocol_revision: Option<String>,
@@ -704,10 +706,12 @@ fn render_plugin_guidance_region(workspace_root: &Path) -> String {
 
 fn render_plugin_skill(plugin: &PluginWorkspaceEvidence, dialect_revision: u32) -> Option<String> {
     let plugin_version = plugin.plugin_version.as_deref()?;
+    let plugin_revision = plugin.plugin_revision.as_deref()?;
     let cli_version = plugin.cli_version.as_deref()?;
+    let cli_revision = plugin.cli_revision.as_deref()?;
     let cli_binary = plugin.cli_binary.as_deref()?;
     Some(format!(
-        "---\nname: kast\ndescription: Kotlin semantic work and linked-worktree lifecycle in Gradle repositories prepared by the Kast IntelliJ plugin.\nmetadata:\n  kast-cli-dialect-revision: \"{dialect_revision}\"\n---\n\n# Kast\n\nThis workspace was prepared by the Kast IntelliJ plugin. JetBrains owns plugin installation and updates; Homebrew owns only the CLI.\n\nAcquire with `kast agent lease acquire --workspace-root \"$PWD\" --backend idea`; pass its `leaseId` to every typed semantic command and release it when the worker finishes.\nUse typed commands such as `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, and `kast agent rename` under that exact-root lease.\nDo not run `kast setup` or install runtime resources separately on macOS; update the CLI and plugin, reopen this exact project, and refresh metadata when compatibility fails.\n\n## Linked Worktrees\n\nFor every delegated worker using a linked Git worktree:\n\n1. Before the worker starts, open the exact worktree root as its own IntelliJ IDEA or Android Studio project with the Kast plugin enabled.\n2. Wait for `.kast/setup/workspace.json`, then acquire an IDEA lease for `\"$PWD\"` from that worktree.\n3. Never reuse another worktree's Kast runtime, metadata, or semantic evidence.\n4. Keep that IDE project open while the worker and worktree are active.\n5. Before retiring or deleting the worktree, close that exact IDE project or window before removing the worktree.\n\nPrepared plugin version: {plugin_version}\nCLI version: {cli_version}\nCLI invocation: `{cli_binary}`\n"
+        "---\nname: kast\ndescription: Kotlin semantic work and linked-worktree lifecycle in Gradle repositories prepared by the Kast IntelliJ plugin.\nmetadata:\n  kast-cli-dialect-revision: \"{dialect_revision}\"\n---\n\n# Kast\n\nThis workspace was prepared by the Kast IntelliJ plugin. JetBrains owns plugin installation and updates; Homebrew owns only the CLI.\n\nAcquire with `kast agent lease acquire --workspace-root \"$PWD\" --backend idea`; pass its `leaseId` to every typed semantic command and release it when the worker finishes.\nUse typed commands such as `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, and `kast agent rename` under that exact-root lease.\nDo not run `kast setup` or install runtime resources separately on macOS; update the CLI and plugin, reopen this exact project, and refresh metadata when compatibility fails.\n\n## Linked Worktrees\n\nFor every delegated worker using a linked Git worktree:\n\n1. Before the worker starts, open the exact worktree root as its own IntelliJ IDEA or Android Studio project with the Kast plugin enabled.\n2. Wait for `.kast/setup/workspace.json`, then acquire an IDEA lease for `\"$PWD\"` from that worktree.\n3. Never reuse another worktree's Kast runtime, metadata, or semantic evidence.\n4. Keep that IDE project open while the worker and worktree are active.\n5. Before retiring or deleting the worktree, close that exact IDE project or window before removing the worktree.\n\nPrepared plugin version: {plugin_version}\nPrepared plugin revision: {plugin_revision}\nCLI version: {cli_version}\nCLI revision: {cli_revision}\nCLI invocation: `{cli_binary}`\n"
     ))
 }
 
@@ -807,8 +811,16 @@ fn plugin_workspace_evidence(workspace_root: &Path) -> Option<PluginWorkspaceEvi
             .and_then(|value| value.get("cliVersion"))
             .and_then(serde_json::Value::as_str)
             .map(str::to_string),
+        cli_revision: compatibility
+            .and_then(|value| value.get("cliRevision"))
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string),
         plugin_version: compatibility
             .and_then(|value| value.get("pluginVersion"))
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string),
+        plugin_revision: compatibility
+            .and_then(|value| value.get("pluginRevision"))
             .and_then(serde_json::Value::as_str)
             .map(str::to_string),
         backend_kind: runtime_identity

@@ -86,6 +86,8 @@ class KastProjectOpenProfileAutoInitTest {
         assertTrue(skill.contains("Never reuse another worktree's Kast runtime, metadata, or semantic evidence"), skill)
         assertTrue(skill.contains("Keep that IDE project open while the worker and worktree are active"), skill)
         assertTrue(skill.contains("close that exact IDE project or window before removing the worktree"), skill)
+        assertTrue(skill.contains("Prepared plugin revision: ${currentPluginRevision().value}"), skill)
+        assertTrue(skill.contains("CLI revision: ${currentPluginRevision().value}"), skill)
         val guidance = Files.readString(workspace.resolve("AGENTS.local.md"))
         assertTrue(guidance.contains("the IntelliJ plugin owns workspace bootstrap"), guidance)
         assertTrue(guidance.contains("Before each linked worker starts"), guidance)
