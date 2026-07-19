@@ -149,7 +149,19 @@ fn codex_hooks_share_the_task_core_and_stop_is_a_hard_gate() {
         }),
     );
     assert_hook_success(&resumed);
-    assert_eq!(start.stdout, resumed.stdout, "begin must be idempotent");
+    let resumed_value = output_json(&resumed);
+    assert_eq!(
+        resumed_value["hookSpecificOutput"]["hookEventName"],
+        "SessionStart"
+    );
+    let resumed_context = resumed_value["hookSpecificOutput"]["additionalContext"]
+        .as_str()
+        .expect("resumed context");
+    assert_eq!(
+        task_context_without_observation_time(context),
+        task_context_without_observation_time(resumed_context),
+        "begin must preserve the admitted task, lease, and baseline",
+    );
 
     let post = fixture.hook(
         "post-tool-use",
@@ -435,6 +447,13 @@ fn assert_hook_success(output: &Output) {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),
     );
+}
+
+fn task_context_without_observation_time(context: &str) -> Vec<&str> {
+    context
+        .lines()
+        .filter(|line| !line.trim_start().starts_with("updatedAt:"))
+        .collect()
 }
 
 fn git<const N: usize>(workspace: &std::path::Path, args: [&str; N]) {
