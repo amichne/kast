@@ -901,6 +901,12 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "state": "ANALYZED"
                         }
                     ],
+                    "fileHashes": [
+                        {
+                            "filePath": "/workspace/src/Sample.kt",
+                            "hash": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+                        }
+                    ],
                     "semanticOutcome": "COMPLETE",
                     "requestedFileCount": 1,
                     "analyzedFileCount": 1,
