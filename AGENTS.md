@@ -75,23 +75,6 @@ Command:
 - No files outside Allowed Writes changed.
 - No Non-Goal work was performed.
 
-## Execution Limits
-
-Maximum tool or shell calls: 12.
-
-When the limit is reached, stop and report the remaining concrete blocker. Do not broaden the investigation.
-
-## Execution State
-
-Status: not-started
-
-Changed files:
-
-- None
-
-Verification:
-
-- Not run
 
 ## Out-of-Scope Findings
 
