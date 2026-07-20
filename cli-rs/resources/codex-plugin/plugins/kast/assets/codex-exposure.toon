@@ -19,4 +19,5 @@ semantic_commands[18]{command,path,mode,planApply,evidence,example}:
   "add-implementation","agent add-implementation","plan-first-mutation",true,typed plan or applied operation with idempotency evidence,"kast --output toon agent add-implementation --workspace-root <root> --inside-file <path> --at file-bottom --content-file <file>"
   "add-statement","agent add-statement","plan-first-mutation",true,typed plan or applied operation with idempotency evidence,"kast --output toon agent add-statement --workspace-root <root> --inside-scope <fq-name> --at body-end --content-file <file>"
   "replace-declaration","agent replace-declaration","plan-first-mutation",true,typed plan or applied operation with idempotency evidence,"kast --output toon agent replace-declaration --workspace-root <root> --symbol <fq-name> --content-file <file>"
+hook_only[1]: "developer codex hook session-start|post-tool-use"
 not_exposed[10]: setup,"repair --apply",agent lsp,developer runtime,demo,doctor,developer codex generate,agent tools,agent call,agent workflow

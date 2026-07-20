@@ -28,7 +28,7 @@ compute_sha256() {
 write_zip_asset() {
   local asset_path="$1"
   local kind="$2"
-  python3 - "$asset_path" "$kind" <<'PY'
+  python3 - "$asset_path" "$kind" "$repo_root" <<'PY'
 import stat
 import sys
 import zipfile
@@ -37,6 +37,7 @@ from pathlib import Path
 
 asset_path = Path(sys.argv[1])
 kind = sys.argv[2]
+codex_plugin_root = Path(sys.argv[3]) / "cli-rs/resources/codex-plugin/plugins/kast"
 
 def write_entry(archive, name, data, mode=0o644):
     info = zipfile.ZipInfo(name)
@@ -84,10 +85,13 @@ elif kind == "codex":
         "plugins/kast/skills/kast-codex/agents/openai.yaml": b"interface:\n  display_name: \"Kast\"\n  short_description: \"Kast fixture\"\n  default_prompt: \"Use $kast-codex.\"\n\npolicy:\n  allow_implicit_invocation: true\n",
         "plugins/kast/assets/codex-exposure.toon": b"version: 9.8.7\n",
         "plugins/kast/assets/kast.svg": b"<svg/>\n",
+        "plugins/kast/hooks/hooks.json": (codex_plugin_root / "hooks/hooks.json").read_bytes(),
+        "plugins/kast/scripts/kast-codex-hook": (codex_plugin_root / "scripts/kast-codex-hook").read_bytes(),
     }
     with zipfile.ZipFile(asset_path, "w") as archive:
         for name, contents in files.items():
-            write_entry(archive, name, contents, 0o644)
+            mode = 0o755 if name == "plugins/kast/scripts/kast-codex-hook" else 0o644
+            write_entry(archive, name, contents, mode)
 else:
     raise SystemExit(f"unknown asset kind: {kind}")
 PY

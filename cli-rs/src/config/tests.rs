@@ -219,6 +219,26 @@ defaultBackend = "auto"
     }
 
     #[test]
+    fn codex_hooks_default_enabled_and_parse_independently() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_file = temp.path().join("config.toml");
+        fs::write(
+            &config_file,
+            r#"[codex.hooks]
+postToolUse = false
+"#,
+        )
+        .unwrap();
+
+        let mut config = KastConfig::defaults();
+        config.apply(read_partial_config(&config_file).unwrap());
+
+        assert!(config.codex.hooks.enabled);
+        assert!(config.codex.hooks.session_start);
+        assert!(!config.codex.hooks.post_tool_use);
+    }
+
+    #[test]
     fn install_owned_paths_in_toml_are_ignored() {
         let temp = tempfile::tempdir().unwrap();
         let install_root = temp.path().join("portable-kast");

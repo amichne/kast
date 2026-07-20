@@ -12,6 +12,7 @@ impl KastConfig {
             },
             runtime: RuntimeConfig::default(),
             project_open: ProjectOpenConfig::default(),
+            codex: CodexConfig::default(),
             indexing: IndexingConfig {
                 phase2_enabled: true,
                 phase2_batch_size: 50,
@@ -157,6 +158,17 @@ impl KastConfig {
             }
             if let Some(value) = project_open.gradle_load_enabled {
                 self.project_open.gradle_load_enabled = value;
+            }
+        }
+        if let Some(hooks) = partial.codex.and_then(|codex| codex.hooks) {
+            if let Some(value) = hooks.enabled {
+                self.codex.hooks.enabled = value;
+            }
+            if let Some(value) = hooks.session_start {
+                self.codex.hooks.session_start = value;
+            }
+            if let Some(value) = hooks.post_tool_use {
+                self.codex.hooks.post_tool_use = value;
             }
         }
         if let Some(indexing) = partial.indexing {

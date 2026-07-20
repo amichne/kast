@@ -29,6 +29,9 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
     var projectOpenProfile: String? = null
     var projectOpenAutoExcludeGit: Boolean? = null
     var projectOpenGradleLoadEnabled: Boolean? = null
+    var codexHooksEnabled: Boolean? = null
+    var codexSessionStartEnabled: Boolean? = null
+    var codexPostToolUseEnabled: Boolean? = null
 
     override fun getState(): KastSettingsState = this
 
@@ -41,6 +44,9 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
         projectOpenProfile = config.projectOpen.profile.value
         projectOpenAutoExcludeGit = config.projectOpen.autoExcludeGit.value
         projectOpenGradleLoadEnabled = config.projectOpen.gradleLoadEnabled.value
+        codexHooksEnabled = config.codex.hooks.enabled.value
+        codexSessionStartEnabled = config.codex.hooks.sessionStart.value
+        codexPostToolUseEnabled = config.codex.hooks.postToolUse.value
     }
 
     fun toOverride(): KastConfigOverride = KastConfigOverride(

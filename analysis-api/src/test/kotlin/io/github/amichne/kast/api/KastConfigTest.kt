@@ -179,6 +179,9 @@ class KastConfigTest {
             "projectOpen" to "profile",
             "projectOpen" to "autoExcludeGit",
             "projectOpen" to "gradleLoadEnabled",
+            "codex.hooks" to "enabled",
+            "codex.hooks" to "sessionStart",
+            "codex.hooks" to "postToolUse",
             "backends.headless" to "enabled",
             "backends.headless" to "runtimeLibsDir",
             "backends.headless" to "ideaHome",
@@ -197,6 +200,22 @@ class KastConfigTest {
 
         assertEquals(expectedFields, actualFields.toSet())
         assertEquals(actualFields.size, actualFields.toSet().size)
+    }
+
+    @Test
+    fun `global codex hook settings default enabled and parse independently`() {
+        tempDir.resolve("config.toml").writeText(
+            """
+                [codex.hooks]
+                sessionStart = false
+            """.trimIndent(),
+        )
+
+        val hooks = KastConfig.loadGlobal(configHome = { tempDir }).codex.hooks
+
+        assertEquals(true, hooks.enabled.value)
+        assertEquals(false, hooks.sessionStart.value)
+        assertEquals(true, hooks.postToolUse.value)
     }
 
     @Test

@@ -272,6 +272,7 @@ pub(crate) fn classify_developer(command: &DeveloperCommand) -> CodexExposure {
         DeveloperCommand::Release(args) => classify_release(&args.command),
         DeveloperCommand::Codex(args) => match &args.command {
             CodexCommand::Generate(_) => CodexExposure::NotExposed,
+            CodexCommand::Hook(_) => CodexExposure::NotExposed,
         },
     }
 }

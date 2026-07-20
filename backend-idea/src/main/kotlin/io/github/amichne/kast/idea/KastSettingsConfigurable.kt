@@ -12,6 +12,7 @@ import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.dsl.builder.panel
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.WorkspaceDirectoryResolver
+import io.github.amichne.kast.api.client.kastConfigHome
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.JComponent
@@ -26,6 +27,9 @@ internal class KastSettingsConfigurable(
     private lateinit var projectOpenProfileAutoInit: JBCheckBox
     private lateinit var projectOpenAutoExcludeGit: JBCheckBox
     private lateinit var projectOpenGradleLoadEnabled: JBCheckBox
+    private lateinit var codexHooksEnabled: JBCheckBox
+    private lateinit var codexSessionStartEnabled: JBCheckBox
+    private lateinit var codexPostToolUseEnabled: JBCheckBox
 
     override fun getDisplayName(): String = "Kast"
 
@@ -38,7 +42,10 @@ internal class KastSettingsConfigurable(
             backendsIdeaEnabled.isSelected != (state.backendsIdeaEnabled ?: false) ||
             projectOpenProfileAutoInit.isSelected != (state.projectOpenProfileAutoInit ?: false) ||
             projectOpenAutoExcludeGit.isSelected != (state.projectOpenAutoExcludeGit ?: true) ||
-            projectOpenGradleLoadEnabled.isSelected != (state.projectOpenGradleLoadEnabled ?: true)
+            projectOpenGradleLoadEnabled.isSelected != (state.projectOpenGradleLoadEnabled ?: true) ||
+            codexHooksEnabled.isSelected != (state.codexHooksEnabled ?: true) ||
+            codexSessionStartEnabled.isSelected != (state.codexSessionStartEnabled ?: true) ||
+            codexPostToolUseEnabled.isSelected != (state.codexPostToolUseEnabled ?: true)
     }
 
     override fun reset() {
@@ -60,6 +67,11 @@ internal class KastSettingsConfigurable(
         val nextToml = mergePublicWorkspaceToml(existingToml, state)
         Files.createDirectories(configPath.parent)
         Files.writeString(configPath, nextToml)
+
+        val globalConfigPath = kastConfigHome().resolve("config.toml")
+        val existingGlobalToml = if (Files.isRegularFile(globalConfigPath)) Files.readString(globalConfigPath) else ""
+        Files.createDirectories(globalConfigPath.parent)
+        Files.writeString(globalConfigPath, mergeGlobalCodexHooksToml(existingGlobalToml, state))
 
         KastPluginService.getInstance(project).reloadConfig()
     }
@@ -92,6 +104,18 @@ internal class KastSettingsConfigurable(
             }
         }
 
+        group("Codex Hooks (Global)") {
+            row {
+                codexHooksEnabled = checkBox("Enable Codex hooks").component
+            }
+            row {
+                codexSessionStartEnabled = checkBox("Open worktrees on session start").component
+            }
+            row {
+                codexPostToolUseEnabled = checkBox("Diagnose Kotlin files after writes").component
+            }
+        }
+
         group("Configuration") {
             row {
                 button("Open workspace config") { openWorkspaceConfig() }
@@ -107,6 +131,9 @@ internal class KastSettingsConfigurable(
         projectOpenProfileAutoInit.isSelected = state.projectOpenProfileAutoInit ?: false
         projectOpenAutoExcludeGit.isSelected = state.projectOpenAutoExcludeGit ?: true
         projectOpenGradleLoadEnabled.isSelected = state.projectOpenGradleLoadEnabled ?: true
+        codexHooksEnabled.isSelected = state.codexHooksEnabled ?: true
+        codexSessionStartEnabled.isSelected = state.codexSessionStartEnabled ?: true
+        codexPostToolUseEnabled.isSelected = state.codexPostToolUseEnabled ?: true
     }
 
     private fun updateStateFromFields(state: KastSettingsState) {
@@ -116,6 +143,9 @@ internal class KastSettingsConfigurable(
         state.projectOpenProfile = io.github.amichne.kast.api.client.fields.ProjectOpenProfile.JETBRAINS_PLUGIN
         state.projectOpenAutoExcludeGit = projectOpenAutoExcludeGit.isSelected
         state.projectOpenGradleLoadEnabled = projectOpenGradleLoadEnabled.isSelected
+        state.codexHooksEnabled = codexHooksEnabled.isSelected
+        state.codexSessionStartEnabled = codexSessionStartEnabled.isSelected
+        state.codexPostToolUseEnabled = codexPostToolUseEnabled.isSelected
     }
 
     private fun selectedRuntimeDefaultBackend(): KastRuntimeDefaultBackendOption =

@@ -29,9 +29,13 @@ pub fn resolve_workspace_root(value: Option<PathBuf>) -> Result<PathBuf> {
         return Ok(normalize(value));
     }
     let current = env::current_dir()?;
-    Ok(find_workspace_marker_root(&current)
+    Ok(resolve_workspace_root_from(&current))
+}
+
+pub(crate) fn resolve_workspace_root_from(start: &Path) -> PathBuf {
+    find_workspace_marker_root(start)
         .map(normalize)
-        .unwrap_or_else(|| normalize(current)))
+        .unwrap_or_else(|| normalize(start.to_path_buf()))
 }
 
 fn find_workspace_marker_root(start: &Path) -> Option<PathBuf> {

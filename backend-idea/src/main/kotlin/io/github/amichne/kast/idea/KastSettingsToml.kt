@@ -31,9 +31,32 @@ internal fun mergePublicWorkspaceToml(
     state: KastSettingsState,
     defaults: KastConfig = KastConfig.defaults(),
 ): String {
-    val preserved = removeManagedPublicSettings(existingToml).trimEnd()
-    val publicSettings = state.toWorkspaceToml(defaults).trimEnd()
-    val merged = listOf(preserved, publicSettings)
+    return mergeManagedToml(existingToml, state.toWorkspaceToml(defaults), managedPublicKeys)
+}
+
+internal fun mergeGlobalCodexHooksToml(
+    existingToml: String,
+    state: KastSettingsState,
+    defaults: KastConfig = KastConfig.defaults(),
+): String = mergeManagedToml(
+    existingToml,
+    tomlSection(
+        "codex.hooks",
+        "enabled" to state.codexHooksEnabled.changedFrom(defaults.codex.hooks.enabled.value),
+        "sessionStart" to state.codexSessionStartEnabled.changedFrom(defaults.codex.hooks.sessionStart.value),
+        "postToolUse" to state.codexPostToolUseEnabled.changedFrom(defaults.codex.hooks.postToolUse.value),
+    ),
+    managedGlobalCodexHookKeys,
+)
+
+private fun mergeManagedToml(
+    existingToml: String,
+    managedToml: String,
+    managedKeys: Set<String>,
+): String {
+    val preserved = removeManagedSettings(existingToml, managedKeys).trimEnd()
+    val managed = managedToml.trimEnd()
+    val merged = listOf(preserved, managed)
         .filter(String::isNotBlank)
         .joinToString(separator = System.lineSeparator() + System.lineSeparator())
     return if (merged.isBlank()) "" else merged + System.lineSeparator()
@@ -71,7 +94,13 @@ private val managedPublicKeys = setOf(
     "backends.idea.enabled",
 )
 
-private fun removeManagedPublicSettings(toml: String): String {
+private val managedGlobalCodexHookKeys = setOf(
+    "codex.hooks.enabled",
+    "codex.hooks.sessionstart",
+    "codex.hooks.posttooluse",
+)
+
+private fun removeManagedSettings(toml: String, managedKeys: Set<String>): String {
     if (toml.isBlank()) return ""
     val blocks = toml.lineSequence()
         .fold(mutableListOf(SectionBlock(""))) { blocks, line ->
@@ -83,7 +112,7 @@ private fun removeManagedPublicSettings(toml: String): String {
             blocks
         }
     return blocks
-        .mapNotNull { block -> block.withoutManagedPublicKeys() }
+        .mapNotNull { block -> block.withoutManagedKeys(managedKeys) }
         .flatMap { it.lines }
         .joinToString(separator = System.lineSeparator())
         .trimEnd()
@@ -94,27 +123,24 @@ private data class SectionBlock(
     val name: String,
     val lines: MutableList<String> = mutableListOf(),
 ) {
-    fun withoutManagedPublicKeys(): SectionBlock? {
-        val filtered = copy(lines = lines.filterNot(::isManagedLine).toMutableList())
-        if (filtered.name.normalizedConfigPath() !in managedPublicSections) return filtered
+    fun withoutManagedKeys(managedKeys: Set<String>): SectionBlock? {
+        val filtered = copy(lines = lines.filterNot { line -> isManagedLine(line, managedKeys) }.toMutableList())
+        val managedSections = managedKeys.map { it.substringBeforeLast(".") }.toSet()
+        if (filtered.name.normalizedConfigPath() !in managedSections) return filtered
         val hasEntries = filtered.lines.any { line -> line.isTomlEntry() }
         return filtered.takeIf { hasEntries }
     }
 
-    private fun isManagedLine(line: String): Boolean {
+    private fun isManagedLine(line: String, managedKeys: Set<String>): Boolean {
         val separator = line.withoutTomlComment().indexOf('=')
         if (separator <= 0) return false
         val key = line.substring(0, separator).trim()
         return listOf(name, key)
             .filter(String::isNotBlank)
             .joinToString(".")
-            .normalizedConfigPath() in managedPublicKeys
+            .normalizedConfigPath() in managedKeys
     }
 }
-
-private val managedPublicSections = managedPublicKeys
-    .map { it.substringBeforeLast(".") }
-    .toSet()
 
 private fun String.tomlSectionName(): String? {
     val trimmed = withoutTomlComment().trim()

@@ -6,6 +6,8 @@ pub struct KastConfig {
     pub runtime: RuntimeConfig,
     #[serde(skip_serializing_if = "ProjectOpenConfig::is_default")]
     pub project_open: ProjectOpenConfig,
+    #[serde(skip_serializing_if = "CodexConfig::is_default")]
+    pub codex: CodexConfig,
     pub indexing: IndexingConfig,
     pub cache: CacheConfig,
     pub watcher: WatcherConfig,
@@ -122,6 +124,42 @@ impl Default for ProjectOpenConfig {
             profile: ProjectOpenProfile::JetbrainsPlugin,
             auto_exclude_git: true,
             gradle_load_enabled: true,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct CodexConfig {
+    #[serde(skip_serializing_if = "CodexHooksConfig::is_default")]
+    pub hooks: CodexHooksConfig,
+}
+
+impl CodexConfig {
+    fn is_default(&self) -> bool {
+        self.hooks.is_default()
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexHooksConfig {
+    pub enabled: bool,
+    pub session_start: bool,
+    pub post_tool_use: bool,
+}
+
+impl CodexHooksConfig {
+    fn is_default(&self) -> bool {
+        self.enabled && self.session_start && self.post_tool_use
+    }
+}
+
+impl Default for CodexHooksConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            session_start: true,
+            post_tool_use: true,
         }
     }
 }

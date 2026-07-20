@@ -19,37 +19,22 @@ MCP server. The plugin does not independently transmit workspace or session
 state to a service operated by the Kast project.
 
 Codex supplies hook event input to the local plugin process. The plugin may
-inspect that input, local Git/worktree identity, Kotlin file state, and
-structured Kast CLI results to enforce its semantic workflow.
+inspect that input, exact worktree identity, Kotlin paths, and structured Kast
+CLI results to provide advisory context.
 
 ## Data Stored
 
-The plugin stores bounded recovery and guardrail evidence under Codex's local
-plugin data root:
+The plugin stores no plugin session data. Each hook invocation reads only its
+event input and current local Kast status, then returns advisory context to
+Codex. It does not maintain baselines, changed-file ledgers, or diagnostics
+evidence between events.
 
-```text
-$PLUGIN_DATA/sessions/<session-id>.json
-```
-
-The record may include:
-
-- the plugin and Kast versions and resolved binary path;
-- canonical workspace, Git, linked-worktree, and commit identity;
-- paths and SHA-256 fingerprints for relevant Kotlin files;
-- typed command outcomes, affected paths, in-flight mutation keys, and failures; and
-- diagnostics evidence and explicitly reported blockers.
-
-The plugin does not use this state as a source-code mirror or source index.
-Session files are written atomically with owner-only permissions.
+The global Kast config may retain the three Codex hook enablement booleans. It
+does not store hook event contents or diagnostics.
 
 ## Retention And Deletion
 
-Session evidence remains in the Codex-managed plugin data directory until it
-is removed by the local user or by Codex's plugin-data lifecycle. Removing a
-session record prevents later evidence checks until the next `SessionStart`,
-which establishes a new baseline.
-
-Uninstalling or disabling the plugin removes its packaged skill.
+Uninstalling or disabling the plugin removes its packaged skill and hooks.
 
 ## Network And Third Parties
 
@@ -64,9 +49,8 @@ performed by a Kast-operated service.
 ## Security And Sensitive Data
 
 Do not place secrets in command-line arguments or prompts merely because the
-plugin is local. Paths, diagnostics, and tool outcomes can be visible to Codex
-and can appear in local session evidence. Use your existing repository access,
-secret-management, and Codex data controls.
+plugin is local. Paths, diagnostics, and tool outcomes can be visible to Codex.
+Use your existing repository access, secret-management, and Codex data controls.
 
 The plugin is open source. Security reports should follow the reporting path
 in the [Kast repository](https://github.com/amichne/kast/security).
