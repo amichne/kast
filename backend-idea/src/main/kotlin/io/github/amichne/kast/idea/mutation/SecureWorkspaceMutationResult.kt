@@ -1,4 +1,4 @@
-package io.github.amichne.kast.idea
+package io.github.amichne.kast.idea.mutation
 
 import java.nio.file.Path
 

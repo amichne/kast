@@ -1,4 +1,4 @@
-package io.github.amichne.kast.idea
+package io.github.amichne.kast.idea.mutation
 
 internal enum class SecureWorkspaceRenamePhase {
     DETACH_TARGET,

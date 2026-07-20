@@ -15,7 +15,7 @@
     </extensions>
 
     <extensions defaultExtensionNs="com.intellij">
-        <projectService serviceImplementation="io.github.amichne.kast.idea.KastDiagnosticsService"/>
+        <projectService serviceImplementation="io.github.amichne.kast.idea.diagnostics.KastDiagnosticsService"/>
         <projectService serviceImplementation="io.github.amichne.kast.idea.KastPluginService"/>
         <projectService serviceImplementation="io.github.amichne.kast.idea.KastSettingsState"/>
         <postStartupActivity implementation="io.github.amichne.kast.idea.KastStartupActivity"/>

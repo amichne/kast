@@ -1,5 +1,7 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.idea.backend.KastPluginBackend
+
 import io.github.amichne.kast.api.client.fields.OptionalConfigString
 import io.github.amichne.kast.api.client.fields.IdeaBackendEnabled
 import io.github.amichne.kast.api.client.fields.IndexingRemoteSourceIndexUrl
