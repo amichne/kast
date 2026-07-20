@@ -2,7 +2,7 @@
 fn packaged_skill_describes_public_synchronous_mutations() {
     let skill = include_str!("../resources/kast-skill/SKILL.md");
     assert!(skill.contains("kast-cli-dialect-revision: \"3\""));
-    assert!(skill.contains("`kast agent`"));
+    assert!(skill.contains("`kast agent --help`"));
     assert!(skill.contains("synchronously"));
     for retired in [
         "agent task",
