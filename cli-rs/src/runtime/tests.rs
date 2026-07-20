@@ -382,6 +382,7 @@ mod tests {
         ));
     }
 
+    #[cfg(target_os = "macos")]
     #[test]
     fn runtime_compatibility_can_relax_only_plugin_version_matching() {
         let mut facts = RuntimeCompatibilityFacts {

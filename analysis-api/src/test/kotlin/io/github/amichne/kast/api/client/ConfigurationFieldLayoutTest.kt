@@ -93,6 +93,7 @@ class ConfigurationFieldLayoutTest {
             "ServerMaxResults.kt",
             "ServerRequestTimeoutMillis.kt",
             "RuntimeDefaultBackend.kt",
+            "RuntimeStrictPluginMatching.kt",
             "HeadlessBackendEnabled.kt",
             "HeadlessIdeaHome.kt",
             "HeadlessRuntimeLibsDir.kt",
