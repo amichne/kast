@@ -86,7 +86,7 @@ uses a discriminated response envelope.
 | `runtime/shutdown` | `system` | backend | Ask the runtime host to shut down after this response is flushed | none | none | `RuntimeLifecycleResponse` | single result |
 | `runtime/restart` | `system` | backend | Ask the runtime host to restart after this response is flushed | none | none | `RuntimeLifecycleResponse` | single result |
 | `capabilities` | `system` | backend | Advertised read and mutation capabilities | none | none | `BackendCapabilities` | single result |
-| `mutation/submit` | `mutation` | backend | Execute an idempotent semantic mutation and return its terminal result | `type`<br>`workspaceTaskId`<br>`RENAME`: `workspaceTaskId`, `idempotencyKey`, `request`<br>`ADD_FILE`: `workspaceTaskId`, `idempotencyKey`, `request`<br>`ADD_DECLARATION`: `workspaceTaskId`, `idempotencyKey`, `request`<br>`ADD_IMPLEMENTATION`: `workspaceTaskId`, `idempotencyKey`, `request`<br>`ADD_STATEMENT`: `workspaceTaskId`, `idempotencyKey`, `request`<br>`REPLACE_DECLARATION`: `workspaceTaskId`, `idempotencyKey`, `request` | none | `KastMutationExecutionResult` | single result |
+| `mutation/submit` | `mutation` | backend | Execute an idempotent semantic mutation and return its terminal result | `type`<br>`RENAME`: `idempotencyKey`, `request`<br>`ADD_FILE`: `idempotencyKey`, `request`<br>`ADD_DECLARATION`: `idempotencyKey`, `request`<br>`ADD_IMPLEMENTATION`: `idempotencyKey`, `request`<br>`ADD_STATEMENT`: `idempotencyKey`, `request`<br>`REPLACE_DECLARATION`: `idempotencyKey`, `request` | none | `KastMutationExecutionResult` | single result |
 | `symbol/scaffold` | `symbol` | backend | Gather structural generation context for a Kotlin file | `targetFile` | `workspaceRoot`<br>`targetSymbol`<br>`mode`<br>`kind` | `KastScaffoldResponse` | `SCAFFOLD_SUCCESS`<br>`SCAFFOLD_FAILURE` |
 | `symbol/discover` | `symbol` | backend | Rank candidate declarations for a simple symbol name | `symbol` | `workspaceRoot`<br>`fileHint`<br>`line`<br>`codeSnippet`<br>`kind`<br>`containingType`<br>`maxResults`<br>`includeDeclarationScope` | `KastDiscoverResponse` | `DISCOVER_SUCCESS`<br>`DISCOVER_FAILURE` |
 | `symbol/query` | `symbol` | sqlite | Query compiler-indexed declarations with symbolic hard filters, fielded lexical/name matching, bounded graph relationship evidence, and optional semantic discovery evidence | `query` | `workspaceRoot`<br>`modes`<br>`filters`<br>`anchor`<br>`graph`<br>`semantic`<br>`limit`<br>`includeEvidence`<br>`includeNextRequests` | `KastSymbolQueryResponse` | `SYMBOL_QUERY_SUCCESS`<br>`SYMBOL_QUERY_FAILURE` |
@@ -178,18 +178,18 @@ Response type: `BackendCapabilities`.
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
 | `type` | `string` | yes | no | `RENAME`<br>`ADD_FILE`<br>`ADD_DECLARATION`<br>`ADD_IMPLEMENTATION`<br>`ADD_STATEMENT`<br>`REPLACE_DECLARATION` |
-| `workspaceTaskId` | `string` | yes | no |  |
+
 
 Request variants:
 
 | Variant | Required params | Optional params |
 | --- | --- | --- |
-| `RENAME` | `workspaceTaskId`<br>`idempotencyKey`<br>`request` | none |
-| `ADD_FILE` | `workspaceTaskId`<br>`idempotencyKey`<br>`request` | none |
-| `ADD_DECLARATION` | `workspaceTaskId`<br>`idempotencyKey`<br>`request` | none |
-| `ADD_IMPLEMENTATION` | `workspaceTaskId`<br>`idempotencyKey`<br>`request` | none |
-| `ADD_STATEMENT` | `workspaceTaskId`<br>`idempotencyKey`<br>`request` | none |
-| `REPLACE_DECLARATION` | `workspaceTaskId`<br>`idempotencyKey`<br>`request` | none |
+| `RENAME` | `idempotencyKey`<br>`request` | none |
+| `ADD_FILE` | `idempotencyKey`<br>`request` | none |
+| `ADD_DECLARATION` | `idempotencyKey`<br>`request` | none |
+| `ADD_IMPLEMENTATION` | `idempotencyKey`<br>`request` | none |
+| `ADD_STATEMENT` | `idempotencyKey`<br>`request` | none |
+| `REPLACE_DECLARATION` | `idempotencyKey`<br>`request` | none |
 
 Response type: `KastMutationExecutionResult`.
 

@@ -60,7 +60,6 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
             unreachable!("operator agent commands are handled before request prep")
         }
         AgentCommand::Lease(args) => execute_agent_lease(args),
-        AgentCommand::Task(args) => execute_agent_task(args),
         AgentCommand::Tools(_) => unreachable!("agent tools is handled before request prep"),
         AgentCommand::Call(_) => removed_agent_command(
             "agent/call",
@@ -123,7 +122,6 @@ fn agent_command_runtime(command: &AgentCommand) -> Option<&AgentRuntimeArgs> {
         AgentCommand::ReplaceDeclaration(args) => Some(&args.runtime),
         AgentCommand::Lsp(_)
         | AgentCommand::Lease(_)
-        | AgentCommand::Task(_)
         | AgentCommand::Tools(_)
         | AgentCommand::Call(_)
         | AgentCommand::Workflow(_) => None,
@@ -827,15 +825,12 @@ fn applied_mutation_request(
     mutation_kind: &'static str,
     idempotency_key: String,
     params: Value,
-    runtime: &AgentRuntimeArgs,
+    _runtime: &AgentRuntimeArgs,
 ) -> std::result::Result<Value, AgentError> {
-    let workspace_task_id = agent_task_id_for_mutation(runtime.workspace_root.clone())
-        .map_err(AgentError::from_cli_error)?;
     Ok(json_rpc_request(
         "mutation/submit",
         json!({
             "type": mutation_kind,
-            "workspaceTaskId": workspace_task_id,
             "idempotencyKey": idempotency_key,
             "request": params,
         }),

@@ -451,7 +451,10 @@ fn run_repair(args: cli::RepairArgs, output_format: OutputFormat) -> Result<i32>
 
 fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
     match args.command {
-        None => agent::run_agent_home(output_format),
+        None => Err(CliError::new(
+            "CLI_USAGE",
+            "An agent command is required; run `kast agent --help`.",
+        )),
         Some(cli::AgentCommand::Lsp(args)) => lsp::run(args),
         Some(command) => agent::run(command, output_format),
     }

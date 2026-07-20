@@ -1,14 +1,13 @@
 use crate::cli::{
-    AgentCommand, AgentLeaseCommand, CodexCommand, CodexHookEvent, Command, DeveloperCommand,
-    GenerateCommand, InspectCommand, MachineCommand, MetricsCommand, PackageCommand,
-    ReleaseActivateCommand, ReleaseCommand, RuntimeCommand,
+    AgentCommand, AgentLeaseCommand, CodexCommand, Command, DeveloperCommand, GenerateCommand,
+    InspectCommand, MachineCommand, MetricsCommand, PackageCommand, ReleaseActivateCommand,
+    ReleaseCommand, RuntimeCommand,
 };
 use serde::Serialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum CodexExposure {
     AgentVisible(CodexSemanticCommand),
-    HookOnly(CodexHookCommand),
     NotExposed,
 }
 
@@ -33,19 +32,6 @@ pub(crate) enum CodexSemanticCommand {
     AddImplementation,
     AddStatement,
     ReplaceDeclaration,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum CodexHookCommand {
-    Version,
-    Context,
-    AgentHome,
-    TaskLifecycle,
-    Ready,
-    RepairPlan,
-    Status,
-    Verify,
-    Event(CodexHookEvent),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -263,13 +249,13 @@ fn mutation(
 pub(crate) fn classify_command(command: &Command) -> CodexExposure {
     match command {
         Command::Help { .. } => CodexExposure::NotExposed,
-        Command::Version => CodexExposure::HookOnly(CodexHookCommand::Version),
-        Command::Context(_) => CodexExposure::HookOnly(CodexHookCommand::Context),
+        Command::Version => CodexExposure::NotExposed,
+        Command::Context(_) => CodexExposure::NotExposed,
         Command::Setup(_) => CodexExposure::NotExposed,
-        Command::Ready(_) => CodexExposure::HookOnly(CodexHookCommand::Ready),
+        Command::Ready(_) => CodexExposure::NotExposed,
         Command::Repair(args) if args.apply => CodexExposure::NotExposed,
-        Command::Repair(_) => CodexExposure::HookOnly(CodexHookCommand::RepairPlan),
-        Command::Status(_) => CodexExposure::HookOnly(CodexHookCommand::Status),
+        Command::Repair(_) => CodexExposure::NotExposed,
+        Command::Status(_) => CodexExposure::NotExposed,
         Command::Machine(_) => CodexExposure::NotExposed,
         Command::Demo(_) => CodexExposure::NotExposed,
         Command::Developer(args) => classify_developer(&args.command),
@@ -286,9 +272,6 @@ pub(crate) fn classify_developer(command: &DeveloperCommand) -> CodexExposure {
         DeveloperCommand::Release(args) => classify_release(&args.command),
         DeveloperCommand::Codex(args) => match &args.command {
             CodexCommand::Generate(_) => CodexExposure::NotExposed,
-            CodexCommand::Hook(args) => {
-                CodexExposure::HookOnly(CodexHookCommand::Event(args.event))
-            }
         },
     }
 }
@@ -362,15 +345,14 @@ fn classify_generate(command: &GenerateCommand) -> CodexExposure {
 
 fn classify_agent(command: Option<&AgentCommand>) -> CodexExposure {
     match command {
-        None => CodexExposure::HookOnly(CodexHookCommand::AgentHome),
+        None => CodexExposure::NotExposed,
         Some(AgentCommand::Lsp(_)) => CodexExposure::NotExposed,
         Some(AgentCommand::Lease(args)) => match &args.command {
             AgentLeaseCommand::Acquire(_) => visible(CodexSemanticCommand::LeaseAcquire),
             AgentLeaseCommand::Status(_) => visible(CodexSemanticCommand::LeaseStatus),
             AgentLeaseCommand::Release(_) => visible(CodexSemanticCommand::LeaseRelease),
         },
-        Some(AgentCommand::Task(_)) => CodexExposure::HookOnly(CodexHookCommand::TaskLifecycle),
-        Some(AgentCommand::Verify(_)) => CodexExposure::HookOnly(CodexHookCommand::Verify),
+        Some(AgentCommand::Verify(_)) => CodexExposure::NotExposed,
         Some(AgentCommand::WorkspaceFiles(_)) => visible(CodexSemanticCommand::WorkspaceFiles),
         Some(AgentCommand::Symbol(_)) => visible(CodexSemanticCommand::Symbol),
         Some(AgentCommand::References(_)) => visible(CodexSemanticCommand::References),
@@ -398,98 +380,4 @@ fn classify_agent(command: Option<&AgentCommand>) -> CodexExposure {
 
 fn visible(command: CodexSemanticCommand) -> CodexExposure {
     CodexExposure::AgentVisible(command)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::cli::Cli;
-    use clap::Parser;
-
-    #[test]
-    fn semantic_contract_contains_exactly_the_fixed_codex_commands() {
-        let paths: Vec<_> = CodexSemanticCommand::ALL
-            .into_iter()
-            .map(|command| command.descriptor().path)
-            .collect();
-        assert_eq!(
-            paths,
-            [
-                "agent lease acquire",
-                "agent lease status",
-                "agent lease release",
-                "agent workspace-files",
-                "agent symbol",
-                "agent references",
-                "agent callers",
-                "agent callees",
-                "agent implementations",
-                "agent hierarchy",
-                "agent impact",
-                "agent diagnostics",
-                "agent rename",
-                "agent add-file",
-                "agent add-declaration",
-                "agent add-implementation",
-                "agent add-statement",
-                "agent replace-declaration",
-            ]
-        );
-    }
-
-    #[test]
-    fn parsed_commands_follow_the_exposure_policy() {
-        assert_eq!(
-            parsed_exposure(&["version"]),
-            CodexExposure::HookOnly(CodexHookCommand::Version)
-        );
-        assert_eq!(
-            parsed_exposure(&["repair"]),
-            CodexExposure::HookOnly(CodexHookCommand::RepairPlan)
-        );
-        assert_eq!(
-            parsed_exposure(&["repair", "--apply"]),
-            CodexExposure::NotExposed
-        );
-        assert_eq!(
-            parsed_exposure(&[
-                "agent",
-                "lease",
-                "acquire",
-                "--workspace-root",
-                "/workspace",
-            ]),
-            CodexExposure::AgentVisible(CodexSemanticCommand::LeaseAcquire)
-        );
-        assert_eq!(
-            parsed_exposure(&["agent"]),
-            CodexExposure::HookOnly(CodexHookCommand::AgentHome)
-        );
-        assert_eq!(
-            parsed_exposure(&["agent", "task", "begin"]),
-            CodexExposure::HookOnly(CodexHookCommand::TaskLifecycle)
-        );
-        assert_eq!(
-            parsed_exposure(&["agent", "workspace-files"]),
-            CodexExposure::AgentVisible(CodexSemanticCommand::WorkspaceFiles)
-        );
-        assert_eq!(
-            parsed_exposure(&["agent", "verify"]),
-            CodexExposure::HookOnly(CodexHookCommand::Verify)
-        );
-        assert_eq!(
-            parsed_exposure(&["developer", "codex", "generate"]),
-            CodexExposure::NotExposed
-        );
-        assert_eq!(
-            parsed_exposure(&["developer", "codex", "hook", "stop"]),
-            CodexExposure::HookOnly(CodexHookCommand::Event(CodexHookEvent::Stop))
-        );
-    }
-
-    fn parsed_exposure(args: &[&str]) -> CodexExposure {
-        let cli = Cli::try_parse_from(std::iter::once("kast").chain(args.iter().copied()))
-            .expect("valid test command");
-        classify_command(cli.command.as_ref().expect("test command"))
-    }
 }

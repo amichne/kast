@@ -127,7 +127,6 @@ pub struct ActivateBundleResult {
     pub manifest: String,
     pub active_binary: String,
     pub shim: String,
-    pub task_launcher: String,
     pub skipped: bool,
     pub verify_only: bool,
     pub schema_version: u32,
@@ -139,7 +138,6 @@ struct ValidatedBundle {
     manifest: BundleManifest,
     version: BundleVersion,
     cli_relative: PathBuf,
-    task_launcher_relative: PathBuf,
     backend_install_relative: PathBuf,
 }
 

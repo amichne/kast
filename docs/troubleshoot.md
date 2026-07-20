@@ -21,9 +21,9 @@ workflow can run the read-only command sequence when needed.
 | Codex reports a Kast/plugin version mismatch                                               | The marketplace archive and active Kast binary came from different releases                                   | Install the matching CLI and Codex plugin release, reinstall `kast@kast`, and start a new task                 |
 | A generic Kotlin edit is denied                                                            | The typed Kast mutation route has not produced target-bound fallback evidence                                 | Let Codex try the corresponding typed mutation first; fall back only after its typed failure is recorded       |
 | Codex continues instead of stopping                                                        | Changed Kotlin lacks diagnostics for its current hash or an explicit typed blocker                            | Run diagnostics for every changed Kotlin file or report the typed blocker                                      |
-| Task finish reports `BLOCKED`                                                              | Diagnostics, Gradle task outcomes, test reports, generation, or final hashes do not prove one unchanged input | Read the typed blockers, repair the stated cause, then retry `kast-agent-task finish` in the same task         |
-| Task finish reports `GRADLE_VALIDATION_POLICY_REQUIRED`                                    | The Gradle model cannot select one build/test proof for the changed source set                                | Add the emitted strict `.kast/workflow.toml` stanza, then retry finish                                         |
-| Task finish reports `WORKSPACE_CHANGED_DURING_VALIDATION`                                  | A relevant file changed after the final-input digest was captured                                             | Stop concurrent writes and retry finish; do not reuse the stale proof                                          |
+
+
+
 | A delegated task reports the wrong workspace                                               | The task and semantic evidence refer to different linked worktrees                                            | Open and prepare the exact delegated worktree, then start verification there                                   |
 | `~/.local/bin/kast` runs instead of Homebrew Kast                                          | An older managed local shim precedes Homebrew on `PATH`                                                       | Run read-only machine readiness and use its cleanup command only when one is offered                           |
 | Repair asks for the IDE to close                                                           | A recognized legacy Homebrew plugin symlink is ready for bounded removal                                      | Close the affected IDE window and rerun `kast repair --for machine --apply`                                    |
@@ -68,7 +68,7 @@ the release headless runtime remains available through explicit runtime commands
 
 ## Recover The Codex Plugin
 
-Use this sequence when Codex does not load the Kast skill or hooks, or when it reports a release mismatch.
+Use this sequence when Codex does not load the Kast skill, or when it reports a release mismatch.
 
 1. Confirm that the active `kast` binary came from the intended release.
 2. Confirm that the configured marketplace root contains `marketplace.json`

@@ -631,12 +631,9 @@ fn agent_tool_surface_exposes_navigation_without_internal_transport_leaks() {
 }
 
 #[test]
-fn installed_skill_teaches_lifecycle_discovery_without_raw_commands() {
+fn installed_skill_teaches_semantic_discovery_without_raw_commands() {
     let skill = include_str!("../resources/kast-skill/SKILL.md");
-
-    assert!(skill.contains("kast-agent-task begin"));
     assert!(skill.contains("kast agent --help"));
-    assert!(skill.contains("kast-agent-task finish"));
     assert!(!skill.contains("kast agent workspace-files"));
     assert!(!skill.contains("raw/workspace-files"));
     assert!(!skill.contains("raw/workspace-files-continuation"));
@@ -678,63 +675,14 @@ fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
         .iter()
         .map(|output| output["target"].as_str().expect("output target"))
         .collect();
-    assert_eq!(
-        targets,
-        BTreeSet::from([
-            "extensions/kast/_shared/kast-trace.mjs",
-            "extensions/kast/extension.mjs",
-            "lsp.json",
-        ])
-    );
+    assert_eq!(targets, BTreeSet::from(["lsp.json"]));
     assert!(
         !plugin_root
             .join("instructions/kast-kotlin.instructions.md")
             .exists(),
         "plugin source must not expose static Kotlin instructions"
     );
-    assert!(
-        plugin_root.join("extensions/kast/extension.mjs").is_file(),
-        "plugin source must own the Copilot extension entrypoint"
-    );
-    assert!(
-        !plugin_root
-            .join("extensions/kast/_shared/kast-agents.mjs")
-            .exists(),
-        "plugin source must not expose custom agent helpers"
-    );
-    let extension = std::fs::read_to_string(plugin_root.join("extensions/kast/extension.mjs"))
-        .expect("extension source");
-    assert!(
-        !extension.contains("\"bash\""),
-        "extension must resolve kast without shelling through bash"
-    );
-    assert!(
-        extension.contains("KAST_AGENT_TASK_LAUNCHER")
-            && extension.contains("entrypoints?.taskLauncher")
-            && extension.contains("createTraceEmitter")
-            && extension.contains("onSessionStart")
-            && extension.contains("onPreToolUse")
-            && extension.contains("onPostToolUse")
-            && extension.contains("onPostToolUseFailure")
-            && extension.contains("onSessionEnd"),
-        "extension must translate the task lifecycle through an attested launcher"
-    );
-    assert!(
-        extension.contains("runLifecycle(\"begin\"")
-            && extension.contains("runLifecycle(\"status\"")
-            && !extension.contains("runLifecycle(\"finish\"")
-            && extension.contains("tools: []")
-            && !extension.contains("process.env.PATH")
-            && !extension.contains("target/debug")
-            && !extension.contains("target/release")
-            && !extension.contains("KAST_TOOLING_CONTEXT")
-            && !extension.contains("RECOVERABLE_WARMUP_CODES")
-            && !extension.contains("isKastAgentToolsEnvelope")
-            && !extension.contains("formattedAgentResult")
-            && !extension.contains("agentArgs(")
-            && !extension.contains("rpcArgs("),
-        "extension must keep lifecycle translation thin and avoid fallback discovery"
-    );
+
     let repo_root = manifest_dir.parent().expect("repo root");
     let package_contract =
         std::fs::read_to_string(repo_root.join(".github/scripts/test-kast-copilot-plugin.sh"))

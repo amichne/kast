@@ -933,24 +933,6 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
     std::fs::create_dir_all(&workspace).expect("workspace");
     write_gradle_marker(&workspace);
     write_current_cli_install_manifest_for_test(&home, &config_home);
-    let task = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "task",
-            "begin",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("begin workspace task");
-    assert!(
-        task.status.success(),
-        "{}",
-        String::from_utf8_lossy(&task.stdout)
-    );
-    let task: Value = serde_json::from_slice(&task.stdout).expect("task JSON");
     let backend = spawn_scripted_idea_backend(
         &home,
         &config_home,
@@ -1010,15 +992,7 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
         "{}",
         String::from_utf8_lossy(&output.stdout)
     );
-    let requests = backend.join().expect("mutation backend");
-    let submitted = requests
-        .iter()
-        .find(|request| request["method"] == "mutation/submit")
-        .expect("mutation submission");
-    assert_eq!(
-        submitted["params"]["workspaceTaskId"],
-        task["result"]["taskId"],
-    );
+    backend.join().expect("mutation backend");
     let raw = String::from_utf8(output.stdout).expect("utf8");
     let stdout: Value = serde_json::from_str(&raw).expect("mutation json");
 

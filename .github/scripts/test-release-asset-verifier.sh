@@ -44,13 +44,7 @@ def write_entry(archive, name, data, mode=0o644):
     archive.writestr(info, data)
 
 asset_path.parent.mkdir(parents=True, exist_ok=True)
-if kind in {"cli", "cli-missing-launcher", "cli-non-executable-launcher"}:
-    with zipfile.ZipFile(asset_path, "w") as archive:
-        write_entry(archive, "kast", b"cli", 0o755)
-        if kind != "cli-missing-launcher":
-            launcher_mode = 0o644 if kind == "cli-non-executable-launcher" else 0o755
-            write_entry(archive, "kast-agent-task", b"launcher", launcher_mode)
-elif kind == "idea":
+if kind == "idea":
     with zipfile.ZipFile(asset_path, "w") as archive:
         write_entry(archive, "backend-idea/lib/backend-idea.jar", b"plugin")
 elif kind == "codex":
@@ -77,38 +71,18 @@ elif kind == "codex":
             "termsOfServiceURL": "https://kast.michne.com/terms/",
         },
     }
-    hook_events = {
-        "SessionStart": "session-start",
-        "PreToolUse": "pre-tool-use",
-        "PostToolUse": "post-tool-use",
-        "Stop": "stop",
-    }
-    hooks = {
-        "hooks": {
-            codex_event: [{
-                "hooks": [{
-                    "type": "command",
-                    "command": f'"$PLUGIN_ROOT/scripts/kast-codex-hook" {rust_event}',
-                }]
-            }]
-            for codex_event, rust_event in hook_events.items()
-        }
-    }
     files = {
         "marketplace.json": json.dumps(marketplace).encode(),
         ".agents/plugins/marketplace.json": json.dumps(marketplace).encode(),
         "plugins/kast/.codex-plugin/plugin.json": json.dumps(manifest).encode(),
-        "plugins/kast/hooks/hooks.json": json.dumps(hooks).encode(),
-        "plugins/kast/scripts/kast-codex-hook": b"#!/bin/sh\ntask_launcher=${KAST_AGENT_TASK_LAUNCHER:-$HOME/.local/bin/kast-agent-task}\nkast_binary=$(dirname \"$task_launcher\")/kast\nexec \"$kast_binary\" developer codex hook \"$1\"\n",
         "plugins/kast/skills/kast-codex/SKILL.md": b"---\nname: kast-codex\ndescription: \"Fixture skill.\"\n---\n\n# Kast Codex\n",
         "plugins/kast/skills/kast-codex/agents/openai.yaml": b"interface:\n  display_name: \"Kast\"\n  short_description: \"Kast fixture\"\n  default_prompt: \"Use $kast-codex.\"\n\npolicy:\n  allow_implicit_invocation: true\n",
         "plugins/kast/assets/codex-exposure.toon": b"version: 9.8.7\n",
-        "plugins/kast/assets/hook-recovery-messages.toon": b"messages[0]:\n",
         "plugins/kast/assets/kast.svg": b"<svg/>\n",
     }
     with zipfile.ZipFile(asset_path, "w") as archive:
         for name, contents in files.items():
-            write_entry(archive, name, contents, 0o755 if name.endswith("kast-codex-hook") else 0o644)
+            write_entry(archive, name, contents, 0o644)
 else:
     raise SystemExit(f"unknown asset kind: {kind}")
 PY
@@ -120,10 +94,10 @@ write_text_asset() {
 }
 
 write_expected_assets() {
-  write_zip_asset "${release_dir}/kast-${tag}-linux-x64.zip" cli
-  write_zip_asset "${release_dir}/kast-${tag}-linux-arm64.zip" cli
-  write_zip_asset "${release_dir}/kast-${tag}-macos-x64.zip" cli
-  write_zip_asset "${release_dir}/kast-${tag}-macos-arm64.zip" cli
+  write_text_asset "${release_dir}/kast-${tag}-linux-x64.zip"
+  write_text_asset "${release_dir}/kast-${tag}-linux-arm64.zip"
+  write_text_asset "${release_dir}/kast-${tag}-macos-x64.zip"
+  write_text_asset "${release_dir}/kast-${tag}-macos-arm64.zip"
   write_zip_asset "${release_dir}/kast-codex-plugin-${tag}.zip" codex
   write_zip_asset "${release_dir}/kast-idea-${tag}.zip" idea
   write_text_asset "${release_dir}/kast-headless-linux-x64.tar.zst"
@@ -220,27 +194,6 @@ payload = {"builds": builds}
 PY
 }
 
-assert_cli_archive_rejected() {
-  local fixture_kind="$1"
-  local expected_error="$2"
-  local description="$3"
-  local archive="${release_dir}/kast-${tag}-linux-x64.zip"
-  write_expected_assets
-  if [[ "$fixture_kind" == invalid ]]; then
-    write_text_asset "$archive"
-  else
-    write_zip_asset "$archive" "$fixture_kind"
-  fi
-  write_sha256sums "$release_dir" "${assets[@]}"
-  write_provenance
-  if "$verifier" --release-dir "$release_dir" --tag "$tag" \
-    >/dev/null 2>"${scratch_dir}/cli-archive.err"; then
-    die "$description unexpectedly verified"
-  fi
-  grep -Fq "$expected_error" "${scratch_dir}/cli-archive.err" \
-    || die "$description failure did not report: $expected_error"
-}
-
 repo_root="$(resolve_repo_root)"
 verifier="${repo_root}/scripts/verify-release-assets.sh"
 [[ -x "$verifier" ]] || die "release asset verifier is missing or not executable: $verifier"
@@ -273,14 +226,6 @@ write_sha256sums "$release_dir" "${assets[@]}"
 write_provenance
 
 "$verifier" --release-dir "$release_dir" --tag "$tag"
-
-assert_cli_archive_rejected cli-missing-launcher kast-agent-task "CLI archive without kast-agent-task"
-assert_cli_archive_rejected cli-non-executable-launcher "executable kast-agent-task" "CLI archive with non-executable kast-agent-task"
-assert_cli_archive_rejected invalid "invalid CLI archive" "Invalid CLI archive"
-
-write_expected_assets
-write_sha256sums "$release_dir" "${assets[@]}"
-write_provenance
 
 python3 - "${release_dir}/build-provenance.json" <<'PY'
 import json

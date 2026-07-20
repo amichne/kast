@@ -154,13 +154,8 @@ commands:
           - ADD_STATEMENT
           - REPLACE_DECLARATION
           type: string
-        workspaceTaskId:
-          description: Active exact-workspace task identity injected by the Kast CLI.
-          sample: 00000000-0000-0000-0000-000000000420
-          type: string
       required:
       - type
-      - workspaceTaskId
     responseType: KastMutationExecutionResult
     summary: Execute an idempotent semantic mutation and return its terminal result
     variants:
@@ -170,11 +165,7 @@ commands:
             type: string
           request:
             type: object
-          workspaceTaskId:
-            sample: 00000000-0000-0000-0000-000000000420
-            type: string
         required:
-        - workspaceTaskId
         - idempotencyKey
         - request
         sample:
@@ -195,11 +186,7 @@ commands:
             type: string
           request:
             type: object
-          workspaceTaskId:
-            sample: 00000000-0000-0000-0000-000000000420
-            type: string
         required:
-        - workspaceTaskId
         - idempotencyKey
         - request
         sample:
@@ -214,11 +201,7 @@ commands:
             type: string
           request:
             type: object
-          workspaceTaskId:
-            sample: 00000000-0000-0000-0000-000000000420
-            type: string
         required:
-        - workspaceTaskId
         - idempotencyKey
         - request
         sample:
@@ -239,11 +222,7 @@ commands:
             type: string
           request:
             type: object
-          workspaceTaskId:
-            sample: 00000000-0000-0000-0000-000000000420
-            type: string
         required:
-        - workspaceTaskId
         - idempotencyKey
         - request
         sample:
@@ -259,11 +238,7 @@ commands:
             type: string
           request:
             type: object
-          workspaceTaskId:
-            sample: 00000000-0000-0000-0000-000000000420
-            type: string
         required:
-        - workspaceTaskId
         - idempotencyKey
         - request
         sample:
@@ -279,11 +254,7 @@ commands:
             type: string
           request:
             type: object
-          workspaceTaskId:
-            sample: 00000000-0000-0000-0000-000000000420
-            type: string
         required:
-        - workspaceTaskId
         - idempotencyKey
         - request
         sample:

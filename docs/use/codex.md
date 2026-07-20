@@ -47,8 +47,7 @@ diagnostics before the task can finish.
 
 ## Understand The Guardrails
 
-The plugin hooks keep workflow evidence across tool calls without introducing
-another semantic API.
+The plugin skill routes requests to typed Kast commands.
 
 | Moment | Guardrail |
 | --- | --- |
@@ -62,8 +61,7 @@ Compaction rehydrates the same session state and preserves the original
 baseline. Pre-existing dirty files remain outside the plugin's claim about
 what the current task changed.
 
-Hooks may run read-only readiness checks and prepare repair guidance. They do
-not apply setup, repair, IDE, installation, or source mutations on their own.
+Kast runs readiness checks only when explicitly invoked.
 
 Use the [Codex plugin contract](../reference/codex-plugin.md) for the exact
 visible command set and state boundary.

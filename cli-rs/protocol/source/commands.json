@@ -122,26 +122,16 @@
               "ADD_STATEMENT",
               "REPLACE_DECLARATION"
             ]
-          },
-          "workspaceTaskId": {
-            "type": "string",
-            "description": "Active exact-workspace task identity injected by the Kast CLI.",
-            "sample": "00000000-0000-0000-0000-000000000420"
           }
         },
         "required": [
-          "type",
-          "workspaceTaskId"
+          "type"
         ]
       },
       "responseType": "KastMutationExecutionResult",
       "variants": {
         "RENAME": {
           "fields": {
-            "workspaceTaskId": {
-              "type": "string",
-              "sample": "00000000-0000-0000-0000-000000000420"
-            },
             "idempotencyKey": {
               "type": "string"
             },
@@ -150,7 +140,6 @@
             }
           },
           "required": [
-            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -166,10 +155,6 @@
         },
         "ADD_FILE": {
           "fields": {
-            "workspaceTaskId": {
-              "type": "string",
-              "sample": "00000000-0000-0000-0000-000000000420"
-            },
             "idempotencyKey": {
               "type": "string"
             },
@@ -178,7 +163,6 @@
             }
           },
           "required": [
-            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -193,10 +177,6 @@
         },
         "ADD_DECLARATION": {
           "fields": {
-            "workspaceTaskId": {
-              "type": "string",
-              "sample": "00000000-0000-0000-0000-000000000420"
-            },
             "idempotencyKey": {
               "type": "string"
             },
@@ -205,7 +185,6 @@
             }
           },
           "required": [
-            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -229,10 +208,6 @@
         },
         "ADD_IMPLEMENTATION": {
           "fields": {
-            "workspaceTaskId": {
-              "type": "string",
-              "sample": "00000000-0000-0000-0000-000000000420"
-            },
             "idempotencyKey": {
               "type": "string"
             },
@@ -241,7 +216,6 @@
             }
           },
           "required": [
-            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -265,10 +239,6 @@
         },
         "ADD_STATEMENT": {
           "fields": {
-            "workspaceTaskId": {
-              "type": "string",
-              "sample": "00000000-0000-0000-0000-000000000420"
-            },
             "idempotencyKey": {
               "type": "string"
             },
@@ -277,7 +247,6 @@
             }
           },
           "required": [
-            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -293,10 +262,6 @@
         },
         "REPLACE_DECLARATION": {
           "fields": {
-            "workspaceTaskId": {
-              "type": "string",
-              "sample": "00000000-0000-0000-0000-000000000420"
-            },
             "idempotencyKey": {
               "type": "string"
             },
@@ -305,7 +270,6 @@
             }
           },
           "required": [
-            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -962,14 +926,28 @@
             "type": "object",
             "optional": true,
             "fields": {
-              "fqName": { "type": "string" },
-              "declarationFile": { "type": "string" },
-              "declarationStartOffset": { "type": "integer" },
+              "fqName": {
+                "type": "string"
+              },
+              "declarationFile": {
+                "type": "string"
+              },
+              "declarationStartOffset": {
+                "type": "integer"
+              },
               "kind": {
                 "type": "string",
                 "optional": true,
                 "nullable": true,
-                "enum": ["CLASS", "INTERFACE", "OBJECT", "FUNCTION", "PROPERTY", "PARAMETER", "UNKNOWN"]
+                "enum": [
+                  "CLASS",
+                  "INTERFACE",
+                  "OBJECT",
+                  "FUNCTION",
+                  "PROPERTY",
+                  "PARAMETER",
+                  "UNKNOWN"
+                ]
               },
               "containingType": {
                 "type": "string",
@@ -977,7 +955,11 @@
                 "nullable": true
               }
             },
-            "required": ["fqName", "declarationFile", "declarationStartOffset"]
+            "required": [
+              "fqName",
+              "declarationFile",
+              "declarationStartOffset"
+            ]
           },
           "direction": {
             "type": "string",
@@ -1010,7 +992,16 @@
       },
       "responseType": "KastCallersResponse",
       "successType": "AVAILABLE",
-      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID", "SELECTOR_HANDLE_REJECTED"],
+      "responseVariants": [
+        "AVAILABLE",
+        "SUBJECT_NOT_FOUND",
+        "SUBJECT_IDENTITY_MISMATCH",
+        "UNSUPPORTED_SUBJECT_KIND",
+        "DEGRADED",
+        "CURSOR_STALE",
+        "CURSOR_INVALID",
+        "SELECTOR_HANDLE_REJECTED"
+      ],
       "notes": [
         "Provide exactly one of selector or selectorHandle. The explicit selector consumes the canonical identity returned by exact symbol lookup.",
         "selectorHandle is an opaque ksh1 value returned by exact compiler-backed symbol resolution; carry it unchanged and do not reconstruct it.",
@@ -1029,28 +1020,82 @@
       "dataSource": "backend",
       "request": {
         "fields": {
-          "workspaceRoot": { "type": "string", "optional": true, "nullable": true },
-          "selectorHandle": { "type": "string", "optional": true, "sample": "ksh1.example-selector-handle" },
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "selectorHandle": {
+            "type": "string",
+            "optional": true,
+            "sample": "ksh1.example-selector-handle"
+          },
           "selector": {
             "type": "object",
             "optional": true,
             "fields": {
-              "fqName": { "type": "string" },
-              "declarationFile": { "type": "string" },
-              "declarationStartOffset": { "type": "integer" },
-              "kind": { "type": "string", "optional": true, "nullable": true, "enum": ["CLASS", "INTERFACE", "OBJECT", "FUNCTION", "PROPERTY", "PARAMETER", "UNKNOWN"] },
-              "containingType": { "type": "string", "optional": true, "nullable": true }
+              "fqName": {
+                "type": "string"
+              },
+              "declarationFile": {
+                "type": "string"
+              },
+              "declarationStartOffset": {
+                "type": "integer"
+              },
+              "kind": {
+                "type": "string",
+                "optional": true,
+                "nullable": true,
+                "enum": [
+                  "CLASS",
+                  "INTERFACE",
+                  "OBJECT",
+                  "FUNCTION",
+                  "PROPERTY",
+                  "PARAMETER",
+                  "UNKNOWN"
+                ]
+              },
+              "containingType": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              }
             },
-            "required": ["fqName", "declarationFile", "declarationStartOffset"]
+            "required": [
+              "fqName",
+              "declarationFile",
+              "declarationStartOffset"
+            ]
           },
-          "maxResults": { "type": "integer", "optional": true },
-          "pageToken": { "type": "string", "optional": true, "nullable": true }
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          },
+          "pageToken": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          }
         },
-        "exclusiveRequired": ["selectorHandle", "selector"]
+        "exclusiveRequired": [
+          "selectorHandle",
+          "selector"
+        ]
       },
       "responseType": "KastImplementationsResponse",
       "successType": "AVAILABLE",
-      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID", "SELECTOR_HANDLE_REJECTED"]
+      "responseVariants": [
+        "AVAILABLE",
+        "SUBJECT_NOT_FOUND",
+        "SUBJECT_IDENTITY_MISMATCH",
+        "UNSUPPORTED_SUBJECT_KIND",
+        "DEGRADED",
+        "CURSOR_STALE",
+        "CURSOR_INVALID",
+        "SELECTOR_HANDLE_REJECTED"
+      ]
     },
     "symbol/hierarchy": {
       "method": "symbol/hierarchy",
@@ -1059,31 +1104,97 @@
       "dataSource": "backend",
       "request": {
         "fields": {
-          "workspaceRoot": { "type": "string", "optional": true, "nullable": true },
-          "selectorHandle": { "type": "string", "optional": true, "sample": "ksh1.example-selector-handle" },
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "selectorHandle": {
+            "type": "string",
+            "optional": true,
+            "sample": "ksh1.example-selector-handle"
+          },
           "selector": {
             "type": "object",
             "optional": true,
             "fields": {
-              "fqName": { "type": "string" },
-              "declarationFile": { "type": "string" },
-              "declarationStartOffset": { "type": "integer" },
-              "kind": { "type": "string", "optional": true, "nullable": true, "enum": ["CLASS", "INTERFACE", "OBJECT", "FUNCTION", "PROPERTY", "PARAMETER", "UNKNOWN"] },
-              "containingType": { "type": "string", "optional": true, "nullable": true }
+              "fqName": {
+                "type": "string"
+              },
+              "declarationFile": {
+                "type": "string"
+              },
+              "declarationStartOffset": {
+                "type": "integer"
+              },
+              "kind": {
+                "type": "string",
+                "optional": true,
+                "nullable": true,
+                "enum": [
+                  "CLASS",
+                  "INTERFACE",
+                  "OBJECT",
+                  "FUNCTION",
+                  "PROPERTY",
+                  "PARAMETER",
+                  "UNKNOWN"
+                ]
+              },
+              "containingType": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              }
             },
-            "required": ["fqName", "declarationFile", "declarationStartOffset"]
+            "required": [
+              "fqName",
+              "declarationFile",
+              "declarationStartOffset"
+            ]
           },
-          "direction": { "type": "string", "enum": ["SUPERTYPES", "SUBTYPES", "BOTH"] },
-          "depth": { "type": "integer", "optional": true },
-          "maxResults": { "type": "integer", "optional": true },
-          "pageToken": { "type": "string", "optional": true, "nullable": true }
+          "direction": {
+            "type": "string",
+            "enum": [
+              "SUPERTYPES",
+              "SUBTYPES",
+              "BOTH"
+            ]
+          },
+          "depth": {
+            "type": "integer",
+            "optional": true
+          },
+          "maxResults": {
+            "type": "integer",
+            "optional": true
+          },
+          "pageToken": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          }
         },
-        "required": ["direction"],
-        "exclusiveRequired": ["selectorHandle", "selector"]
+        "required": [
+          "direction"
+        ],
+        "exclusiveRequired": [
+          "selectorHandle",
+          "selector"
+        ]
       },
       "responseType": "KastHierarchyResponse",
       "successType": "AVAILABLE",
-      "responseVariants": ["AVAILABLE", "SUBJECT_NOT_FOUND", "SUBJECT_IDENTITY_MISMATCH", "UNSUPPORTED_SUBJECT_KIND", "DEGRADED", "CURSOR_STALE", "CURSOR_INVALID", "SELECTOR_HANDLE_REJECTED"]
+      "responseVariants": [
+        "AVAILABLE",
+        "SUBJECT_NOT_FOUND",
+        "SUBJECT_IDENTITY_MISMATCH",
+        "UNSUPPORTED_SUBJECT_KIND",
+        "DEGRADED",
+        "CURSOR_STALE",
+        "CURSOR_INVALID",
+        "SELECTOR_HANDLE_REJECTED"
+      ]
     },
     "symbol/rename": {
       "method": "symbol/rename",

@@ -131,26 +131,6 @@ fn applied_add_file_submits_typed_mutation_request() {
     .expect("settings");
     std::fs::write(&content_file, "class Added\n").expect("content");
     write_current_cli_install_manifest_for_test(&home, &config_home);
-    let begin = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "task",
-            "begin",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("begin workspace task");
-    assert!(
-        begin.status.success(),
-        "task begin failed: stdout={} stderr={}",
-        String::from_utf8_lossy(&begin.stdout),
-        String::from_utf8_lossy(&begin.stderr),
-    );
-    let begin: Value = serde_json::from_slice(&begin.stdout).expect("task begin JSON");
-    let workspace_task_id = begin["result"]["taskId"].clone();
     let canonical_target = workspace
         .canonicalize()
         .expect("canonical workspace")
@@ -198,7 +178,6 @@ fn applied_add_file_submits_typed_mutation_request() {
         .find(|request| request["method"] == "mutation/submit")
         .expect("mutation submit request");
     assert_eq!(submit["params"]["type"], "ADD_FILE", "{submit}");
-    assert_eq!(submit["params"]["workspaceTaskId"], workspace_task_id);
     assert_eq!(
         submit["params"]["idempotencyKey"], "issue-333-add-file",
         "{submit}"
@@ -214,123 +193,8 @@ fn applied_add_file_submits_typed_mutation_request() {
 }
 
 #[test]
-fn lost_response_retries_same_key_on_same_runtime_with_deduplicated_result() {
-    let fixture = MutationFixture::new();
-    let socket_path = fixture.temp.path().join("idea.sock");
-    fixture.begin();
-    let lost = spawn_operation_backend(
-        &fixture.home,
-        &fixture.config_home,
-        &fixture.workspace,
-        &socket_path,
-        None,
-        false,
-    );
-    let first = fixture.apply("retry-key");
-    assert!(!first.status.success(), "lost response must fail locally");
-    lost.join().expect("lost response backend");
-    std::fs::remove_file(&socket_path).expect("stale socket");
-
-    let retry = spawn_operation_backend(
-        &fixture.home,
-        &fixture.config_home,
-        &fixture.workspace,
-        &socket_path,
-        Some(mutation_result(true)),
-        false,
-    );
-    let second = fixture.apply("retry-key");
-    assert!(
-        second.status.success(),
-        "retry failed: {}",
-        String::from_utf8_lossy(&second.stdout)
-    );
-    let stdout: Value = serde_json::from_slice(&second.stdout).expect("retry result");
-    assert_eq!(stdout["result"]["execution"]["outcome"], "SUCCEEDED");
-    assert_eq!(stdout["result"]["execution"]["deduplicated"], true);
-    retry.join().expect("retry backend");
-}
-
-#[test]
-fn runtime_replacement_blocks_ambiguous_retry() {
-    let fixture = MutationFixture::new();
-    let first_socket = fixture.temp.path().join("idea-1.sock");
-    fixture.begin();
-    let lost = spawn_operation_backend(
-        &fixture.home,
-        &fixture.config_home,
-        &fixture.workspace,
-        &first_socket,
-        None,
-        false,
-    );
-    assert!(!fixture.apply("ambiguous-key").status.success());
-    lost.join().expect("lost response backend");
-
-    let replacement = spawn_operation_backend(
-        &fixture.home,
-        &fixture.config_home,
-        &fixture.workspace,
-        &fixture.temp.path().join("idea-2.sock"),
-        Some(mutation_result(true)),
-        false,
-    );
-    let retry = fixture.apply("ambiguous-key");
-    assert!(!retry.status.success(), "ambiguous retry must fail closed");
-    let stdout: Value = serde_json::from_slice(&retry.stdout).expect("ambiguity result");
-    assert_eq!(stdout["error"]["code"], "SEMANTIC_MUTATION_OUTCOME_MISSING");
-    assert!(fixture.task("abort").status.success());
-    assert!(fixture.task("begin").status.success());
-    drop(replacement);
-}
-
-#[test]
-fn terminal_failure_blocks_finish_until_abort_and_begin() {
-    let fixture = MutationFixture::new();
-    fixture.begin();
-    let backend = spawn_operation_backend(
-        &fixture.home,
-        &fixture.config_home,
-        &fixture.workspace,
-        &fixture.temp.path().join("idea.sock"),
-        Some(json!({
-            "type": "FAILED",
-            "failure": {
-                "type": "THROWN_FAILURE",
-                "error": {
-                    "requestId": "failure-request",
-                    "code": "SEMANTIC_EDIT_REJECTED",
-                    "message": "The edit was rejected.",
-                    "retryable": false,
-                    "details": {}
-                }
-            },
-            "deduplicated": false
-        })),
-        false,
-    );
-    let failed = fixture.apply("failure-key");
-    assert!(
-        !failed.status.success(),
-        "terminal failure must fail the command"
-    );
-    backend.join().expect("failure backend");
-
-    let finish = fixture.task("finish");
-    assert!(
-        !finish.status.success(),
-        "mutation failure must block finish"
-    );
-    let finish: Value = serde_json::from_slice(&finish.stdout).expect("finish blocker");
-    assert_eq!(finish["error"]["code"], "SEMANTIC_EDIT_REJECTED");
-    assert!(fixture.task("abort").status.success());
-    assert!(fixture.task("begin").status.success());
-}
-
-#[test]
 fn dependent_symbol_command_observes_the_completed_edit() {
     let fixture = MutationFixture::new();
-    fixture.begin();
     let backend = spawn_operation_backend(
         &fixture.home,
         &fixture.config_home,
@@ -394,24 +258,6 @@ impl MutationFixture {
             workspace,
             content_file,
         }
-    }
-
-    fn begin(&self) {
-        let begin = self.task("begin");
-        assert!(
-            begin.status.success(),
-            "begin failed: {}",
-            String::from_utf8_lossy(&begin.stdout)
-        );
-    }
-
-    fn task(&self, operation: &str) -> std::process::Output {
-        kast(&self.home, &self.config_home)
-            .args(["--output", "json", "agent", "task", operation])
-            .arg("--workspace-root")
-            .arg(&self.workspace)
-            .output()
-            .expect("task command")
     }
 
     fn apply(&self, key: &str) -> std::process::Output {

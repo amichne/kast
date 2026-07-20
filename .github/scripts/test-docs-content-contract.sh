@@ -191,7 +191,7 @@ require_contains "$macos_install_doc" "workspace setup is owned by the IntelliJ 
 require_contains "$macos_install_doc" "kast machine activate" "macOS install guide must document machine activation"
 require_contains "$macos_install_doc" "kast machine reconcile" "macOS install guide must document synchronous reconciliation"
 require_contains "$macos_install_doc" "installs no LaunchAgent" "macOS install guide must document the processless boundary"
-require_contains "$macos_install_doc" "Skills, hooks" "macOS install guide must keep agent resources machine scoped"
+require_contains "$macos_install_doc" "Skills and" "macOS install guide must keep agent resources machine scoped"
 require_not_contains "$macos_install_doc" 'Enter `y` to close the detected editor and continue' "macOS install guide must retire interactive editor closure"
 require_not_contains "$macos_install_doc" 'kill -TERM <pid>' "macOS install guide must retire installer-owned editor termination"
 
@@ -210,10 +210,8 @@ require_contains "$demo_doc" 'kast demo --workspace-root "$PWD"' "Demo docs must
 require_contains "$demo_doc" "read-only" "Demo docs must state the mutation boundary"
 require_contains "$demo_doc" '--symbol' "Demo docs must cover explicit symbol selection"
 require_contains "$demo_doc" '--output toon' "Demo docs must cover structured TOON output"
-require_contains "$automate_doc" 'kast-agent-task begin' "Agent automation guide must begin the exact-root task lifecycle"
-require_contains "$automate_doc" 'kast-agent-task finish' "Agent automation guide must finish through the proof gate"
-require_contains "$agent_ref" '## Task Lifecycle' "Agent reference must describe the task lifecycle"
-require_contains "$agent_ref" '`ACTIVE`, `VALIDATING`, `COMPLETE`, `BLOCKED`, and' "Agent reference must list the closed task states"
+require_contains "$automate_doc" "execute synchronously" "Agent automation guide must describe terminal mutation execution"
+require_not_contains "$agent_ref" "Task Lifecycle" "Agent reference must omit the retired task lifecycle"
 require_contains "$demo_doc" '`backendOnly`' "Demo docs must explain backend-only degradation"
 
 require_contains "$evidence_doc" "Identity Comes Before Text" "Evidence explanation must explain identity"
@@ -230,9 +228,7 @@ require_contains "$safe_edits_doc" "Every public mutation path is plan-first" "S
 require_contains "$safe_edits_doc" "Local-variable rename is not part of the current public dialect" "Safe edits guide must document local rename boundary"
 require_contains "$safe_edits_doc" "??? info \"Mutation command examples\"" "Safe edits guide must collapse mutation commands"
 require_contains "$automate_doc" "Keep automation on the public command dialect" "Agent automation guide must reject raw workflow"
-require_contains "$automate_doc" "Put Every Delivery Inside A Task" "Agent automation guide must teach the task lifecycle"
 require_contains "$automate_doc" "Agent commands default to TOON" "Agent automation guide must teach TOON-first output"
-require_contains "$automate_doc" "??? info \"Agent bootstrap commands\"" "Agent automation guide must collapse bootstrap commands"
 
 require_contains "$commands_ref" "Root Commands" "Command reference must document root commands"
 require_contains "$commands_ref" '`kast demo`' "Command reference must document the public repository demo"

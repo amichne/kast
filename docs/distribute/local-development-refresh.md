@@ -49,7 +49,7 @@ kast agent verify --workspace-root "$PWD"
 ```
 
 Each worktree must be opened as its own IDEA project. The plugin writes only
-`.kast/setup/workspace.json`; skills, hooks, Codex files, and CLI versions are
+`.kast/setup/workspace.json`; skills, Codex files, and CLI versions are
 machine resources, not worktree projections.
 
 ## Worktree leases

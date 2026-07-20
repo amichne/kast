@@ -165,8 +165,6 @@ pub struct ManifestRoots {
 pub struct ManifestEntrypoints {
     pub shim: String,
     pub active_binary: String,
-    #[serde(default)]
-    pub task_launcher: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -204,7 +202,6 @@ pub struct ResolvedKastPaths {
     pub config_file: PathBuf,
     pub shim_path: PathBuf,
     pub active_binary: PathBuf,
-    pub task_launcher: PathBuf,
     pub headless_runtime_libs_dir: PathBuf,
     pub headless_idea_home: Option<PathBuf>,
 }
@@ -213,24 +210,18 @@ pub fn resolve_paths() -> Result<ResolvedKastPaths> {
     #[cfg(target_os = "macos")]
     if let Some(receipt) = crate::install::read_macos_homebrew_receipt()? {
         let mut paths = default_resolved_paths();
-        let bin_dir = receipt
-            .cli
-            .binary
-            .parent()
-            .ok_or_else(|| {
-                CliError::new(
-                    "MACOS_HOMEBREW_RECEIPT_INVALID",
-                    format!(
-                        "macOS Homebrew receipt CLI has no parent directory: {}",
-                        receipt.cli.binary.display()
-                    ),
-                )
-            })?
-            .to_path_buf();
-        paths.bin_dir = bin_dir.clone();
+        let bin_dir = receipt.cli.binary.parent().ok_or_else(|| {
+            CliError::new(
+                "MACOS_HOMEBREW_RECEIPT_INVALID",
+                format!(
+                    "macOS Homebrew receipt CLI has no parent directory: {}",
+                    receipt.cli.binary.display()
+                ),
+            )
+        })?;
+        paths.bin_dir = bin_dir.to_path_buf();
         paths.shim_path = receipt.cli.binary.clone();
         paths.active_binary = receipt.cli.binary;
-        paths.task_launcher = bin_dir.join("kast-agent-task");
         return Ok(paths);
     }
     let manifest_path = default_install_manifest_path();
@@ -267,7 +258,6 @@ pub fn default_resolved_paths() -> ResolvedKastPaths {
         config_root,
         shim_path: bin_dir.join("kast"),
         active_binary: current.join("bin/kast"),
-        task_launcher: bin_dir.join("kast-agent-task"),
         headless_runtime_libs_dir: lib_dir.join("backends/headless/current/runtime-libs"),
         headless_idea_home: None,
     }
@@ -334,7 +324,6 @@ pub fn manifest_from_paths(
         entrypoints: ManifestEntrypoints {
             shim: paths.shim_path.display().to_string(),
             active_binary: paths.active_binary.display().to_string(),
-            task_launcher: paths.task_launcher.display().to_string(),
         },
         schemas: ManifestSchemas::default(),
         version,
@@ -385,11 +374,6 @@ pub fn paths_from_manifest(manifest: &KastInstallManifest) -> Result<ResolvedKas
         config_root,
         shim_path: normalize(PathBuf::from(&manifest.entrypoints.shim)),
         active_binary: normalize(PathBuf::from(&manifest.entrypoints.active_binary)),
-        task_launcher: if manifest.entrypoints.task_launcher.is_empty() {
-            normalize(PathBuf::from(&manifest.roots.bin).join("kast-agent-task"))
-        } else {
-            normalize(PathBuf::from(&manifest.entrypoints.task_launcher))
-        },
         headless_runtime_libs_dir: headless
             .map(|backend| normalize(PathBuf::from(&backend.runtime_libs_dir)))
             .unwrap_or_else(|| lib_dir.join("backends/headless/current/runtime-libs")),
@@ -439,14 +423,6 @@ pub fn install_current_executable() -> Result<KastInstallManifest> {
         fs::create_dir_all(staged.join("bin"))?;
         fs::copy(env::current_exe()?, staged.join("bin/kast"))?;
         make_executable(&staged.join("bin/kast"))?;
-        fs::write(
-            staged.join("bin/kast-agent-task"),
-            include_bytes!(concat!(
-                env!("CARGO_MANIFEST_DIR"),
-                "/resources/agent-task/kast-agent-task"
-            )),
-        )?;
-        make_executable(&staged.join("bin/kast-agent-task"))?;
         remove_path(&version_dir)?;
         fs::rename(&staged, &version_dir)?;
         replace_symlink_or_copy(&version_dir, &paths.install_root.join("current"))?;
@@ -457,10 +433,6 @@ pub fn install_current_executable() -> Result<KastInstallManifest> {
             }
         }
         write_shim(&paths.shim_path, &paths.active_binary)?;
-        replace_symlink_or_copy(
-            &version_dir.join("bin/kast-agent-task"),
-            &paths.task_launcher,
-        )?;
         write_manifest_atomic(&paths.manifest_file, &manifest)?;
         Ok(())
     })?;
@@ -629,7 +601,6 @@ fn copy_dir(source: &Path, target: &Path) -> Result<()> {
 pub(crate) fn owned_paths(paths: &ResolvedKastPaths) -> Vec<String> {
     vec![
         paths.shim_path.clone(),
-        paths.task_launcher.clone(),
         paths.install_root.join("current"),
         paths.install_root.join("previous"),
         paths.install_root.join("versions"),

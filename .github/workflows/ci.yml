@@ -372,9 +372,8 @@ jobs:
           set -euo pipefail
           mkdir -p dist cli-rs/target/package/kast-v0.0.0-ci-linux-x64
           cp cli-rs/target/release/kast cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
-          cp cli-rs/resources/agent-task/kast-agent-task cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast-agent-task
-          chmod 755 cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast-agent-task
-          (cd cli-rs/target/package/kast-v0.0.0-ci-linux-x64 && zip -9 -q "$GITHUB_WORKSPACE/dist/kast-v0.0.0-ci-linux-x64.zip" kast kast-agent-task)
+          chmod 755 cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
+          (cd cli-rs/target/package/kast-v0.0.0-ci-linux-x64 && zip -9 -q "$GITHUB_WORKSPACE/dist/kast-v0.0.0-ci-linux-x64.zip" kast)
           scripts/verify-ci-artifact-ledger.py record \
             --output dist/ci-ledgers/rust-cli-linux-x64.json \
             --git-sha "$GITHUB_SHA" \
@@ -385,18 +384,6 @@ jobs:
             --artifact-path dist/kast-v0.0.0-ci-linux-x64.zip \
             --producer-job source-bound-cli \
             --build-command-id ci-rust-cli-release-build
-
-      - name: Test packaged selector handle workflow
-        shell: bash
-        run: |
-          set -euo pipefail
-          extracted_cli="$RUNNER_TEMP/kast-source-bound-cli"
-          scripts/extract-safe-zip.py \
-            dist/kast-v0.0.0-ci-linux-x64.zip \
-            "$extracted_cli"
-          KAST_INSTALLED_SELECTOR_WORKFLOW_BINARY="$extracted_cli/kast" \
-            KAST_INSTALLED_SELECTOR_WORKFLOW_LAUNCHER="$extracted_cli/kast-agent-task" \
-            .github/scripts/test-selector-handle-installed-workflow.sh
 
       - name: Upload Rust CLI CI asset
         uses: actions/upload-artifact@v6

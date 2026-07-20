@@ -18,30 +18,21 @@ rustup_home="${RUSTUP_HOME:-${original_home}/.rustup}"
 gradle_user_home="${GRADLE_USER_HOME:-${original_home}/.gradle}"
 home_dir="${tmp_root}/home"
 config_home="${tmp_root}/config"
-mkdir -p "$home_dir" "$config_home"
+install_bin_dir="${tmp_root}/bin"
+mkdir -p "$home_dir" "$config_home" "$install_bin_dir"
 
-if [[ -n "${KAST_INSTALLED_SELECTOR_WORKFLOW_BINARY:-}" || -n "${KAST_INSTALLED_SELECTOR_WORKFLOW_LAUNCHER:-}" ]]; then
-  [[ -n "${KAST_INSTALLED_SELECTOR_WORKFLOW_BINARY:-}" ]] || die "Packaged workflow requires KAST_INSTALLED_SELECTOR_WORKFLOW_BINARY"
-  [[ -n "${KAST_INSTALLED_SELECTOR_WORKFLOW_LAUNCHER:-}" ]] || die "Packaged workflow requires KAST_INSTALLED_SELECTOR_WORKFLOW_LAUNCHER"
-  installed_cli="$KAST_INSTALLED_SELECTOR_WORKFLOW_BINARY"
-  installed_launcher="$KAST_INSTALLED_SELECTOR_WORKFLOW_LAUNCHER"
-else
-  HOME="$home_dir" \
-    CARGO_HOME="$cargo_home" \
-    RUSTUP_HOME="$rustup_home" \
-    GRADLE_USER_HOME="$gradle_user_home" \
-    KAST_CONFIG_HOME="$config_home" \
-    "${repo_root}/gradlew" -q activateDevelopmentMachine
+HOME="$home_dir" \
+  CARGO_HOME="$cargo_home" \
+  RUSTUP_HOME="$rustup_home" \
+  GRADLE_USER_HOME="$gradle_user_home" \
+  KAST_CONFIG_HOME="$config_home" \
+  KAST_BIN_DIR="$install_bin_dir" \
+  "${repo_root}/gradlew" -q installDevelopmentCli
 
-  machine_bin="${home_dir}/Library/Application Support/Kast/machine/bin"
-  installed_cli="${machine_bin}/kast"
-  installed_launcher="${machine_bin}/kast-agent-task"
-fi
-[[ -x "$installed_cli" ]] || die "Expected installed CLI at ${installed_cli}"
-[[ -x "$installed_launcher" ]] || die "Expected installed task launcher at ${installed_launcher}"
+installed_cli="${install_bin_dir}/kast-dev"
+[[ -x "$installed_cli" ]] || die "Expected installed development CLI at ${installed_cli}"
 
 KAST_INSTALLED_SELECTOR_WORKFLOW_BINARY="$installed_cli" \
-  KAST_INSTALLED_SELECTOR_WORKFLOW_LAUNCHER="$installed_launcher" \
   "$cargo_bin" test \
     --manifest-path "${repo_root}/cli-rs/Cargo.toml" \
     --locked \
