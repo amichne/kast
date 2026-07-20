@@ -37,10 +37,11 @@ fn evaluate(event: CodexHookEvent) -> Result<Value> {
         return Ok(json!({}));
     }
     let input = read_input()?;
-    let workspace = input.cwd.clone().unwrap_or(std::env::current_dir()?);
+    let cwd = input.cwd.clone().unwrap_or(std::env::current_dir()?);
+    let workspace = crate::config::resolve_workspace_root_from(&cwd);
     Ok(match event {
         CodexHookEvent::SessionStart => session_start(&workspace),
-        CodexHookEvent::PostToolUse => post_tool_use(&input, &workspace),
+        CodexHookEvent::PostToolUse => post_tool_use(&input, &workspace, &cwd),
     })
 }
 
@@ -81,8 +82,8 @@ fn session_start(workspace: &Path) -> Value {
     )
 }
 
-fn post_tool_use(input: &HookInput, workspace: &Path) -> Value {
-    let paths = qualifying_kotlin_paths(input, workspace);
+fn post_tool_use(input: &HookInput, workspace: &Path, cwd: &Path) -> Value {
+    let paths = qualifying_kotlin_paths(input, workspace, cwd);
     if paths.is_empty() {
         return json!({});
     }
@@ -203,7 +204,7 @@ fn status_is_healthy(status: &str, workspace: &Path) -> bool {
             == root
 }
 
-fn qualifying_kotlin_paths(input: &HookInput, workspace: &Path) -> BTreeSet<String> {
+fn qualifying_kotlin_paths(input: &HookInput, workspace: &Path, cwd: &Path) -> BTreeSet<String> {
     let Some(tool_name) = input.tool_name.as_deref() else {
         return BTreeSet::new();
     };
@@ -214,7 +215,7 @@ fn qualifying_kotlin_paths(input: &HookInput, workspace: &Path) -> BTreeSet<Stri
     {
         return BTreeSet::new();
     }
-    kotlin_paths(&input.tool_input.to_string(), workspace)
+    kotlin_paths(&input.tool_input.to_string(), workspace, cwd)
 }
 
 fn response_is_failure(value: &Value) -> bool {
@@ -236,7 +237,7 @@ fn find_field<'a>(value: &'a Value, keys: &[&str]) -> Option<&'a Value> {
     }
 }
 
-fn kotlin_paths(value: &str, workspace: &Path) -> BTreeSet<String> {
+fn kotlin_paths(value: &str, workspace: &Path, cwd: &Path) -> BTreeSet<String> {
     value
         .split(|character: char| {
             character.is_whitespace()
@@ -260,11 +261,12 @@ fn kotlin_paths(value: &str, workspace: &Path) -> BTreeSet<String> {
                 return None;
             }
             let path = Path::new(&token[..index + extension_length]);
-            let relative = if path.is_absolute() {
-                path.strip_prefix(workspace).ok()?.to_path_buf()
+            let absolute = if path.is_absolute() {
+                path.to_path_buf()
             } else {
-                path.components().collect()
+                cwd.join(path)
             };
+            let relative = absolute.strip_prefix(workspace).ok()?.to_path_buf();
             Some(
                 relative
                     .to_string_lossy()
@@ -315,7 +317,7 @@ mod tests {
         );
 
         assert_eq!(
-            qualifying_kotlin_paths(&input, Path::new("/workspace")),
+            qualifying_kotlin_paths(&input, Path::new("/workspace"), Path::new("/workspace")),
             BTreeSet::from(["build.gradle.kts".to_string(), "src/A.kt".to_string()])
         );
     }
@@ -353,8 +355,40 @@ mod tests {
             json!({"success": true}),
         );
 
-        assert!(qualifying_kotlin_paths(&failed, Path::new("/workspace")).is_empty());
-        assert!(qualifying_kotlin_paths(&non_kotlin, Path::new("/workspace")).is_empty());
+        assert!(
+            qualifying_kotlin_paths(&failed, Path::new("/workspace"), Path::new("/workspace"))
+                .is_empty()
+        );
+        assert!(
+            qualifying_kotlin_paths(
+                &non_kotlin,
+                Path::new("/workspace"),
+                Path::new("/workspace")
+            )
+            .is_empty()
+        );
+    }
+
+    #[test]
+    fn nested_session_resolves_root_relative_kotlin_paths() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let workspace = temp.path().join("workspace");
+        let nested = workspace.join("module");
+        std::fs::create_dir_all(&nested).expect("nested workspace");
+        std::fs::write(workspace.join("settings.gradle.kts"), "").expect("workspace marker");
+        let input = input(
+            "Write",
+            json!({"file_path": "src/A.kt"}),
+            json!({"success": true}),
+        );
+
+        let resolved = crate::config::resolve_workspace_root_from(&nested);
+
+        assert_eq!(resolved, workspace);
+        assert_eq!(
+            qualifying_kotlin_paths(&input, &resolved, &nested),
+            BTreeSet::from(["module/src/A.kt".to_string()])
+        );
     }
 
     #[test]
