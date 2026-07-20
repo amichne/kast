@@ -64,7 +64,6 @@ assertSameJson(
   manifest.entrypoints,
   {
     lsp: "lsp.json",
-    extensions: ["extensions/kast/extension.mjs"],
     manifest: "primitive-manifest.json",
   },
   "plugin manifest entrypoints",
