@@ -4,6 +4,7 @@ struct PartialConfig {
     server: Option<PartialServer>,
     runtime: Option<PartialRuntime>,
     project_open: Option<PartialProjectOpen>,
+    codex: Option<PartialCodex>,
     indexing: Option<PartialIndexing>,
     cache: Option<PartialCache>,
     watcher: Option<PartialWatcher>,
@@ -44,6 +45,19 @@ struct PartialProjectOpen {
     profile: Option<ProjectOpenProfile>,
     auto_exclude_git: Option<bool>,
     gradle_load_enabled: Option<bool>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+struct PartialCodex {
+    hooks: Option<PartialCodexHooks>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialCodexHooks {
+    enabled: Option<bool>,
+    session_start: Option<bool>,
+    post_tool_use: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]

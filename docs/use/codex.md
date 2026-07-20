@@ -36,32 +36,24 @@ key.
 
 ## Finish With Current Diagnostics
 
-After any Kotlin change, Codex runs diagnostics for every affected `.kt` or
-`.kts` file. The evidence is tied to the current file hash, so diagnostics from
-before a later edit do not satisfy the workflow.
+After a successful generic write, the plugin checks exact-root Kast status. If
+healthy, it runs one diagnostics request per `.kt` or `.kts` path in that tool
+input. The result is advisory context; it never blocks the edit or turn.
 
-When Kast cannot perform a requested edit, Codex reports the typed blocker. A
-generic filesystem fallback is available only after a recorded unsupported or
-typed-failure outcome for the same target. The fallback still requires current
-diagnostics before the task can finish.
+Typed Kast mutations still return their own synchronous diagnostics result.
 
 ## Understand The Guardrails
 
-The plugin skill routes requests to typed Kast commands.
+The plugin skill routes requests to typed Kast commands, while two hooks add
+best-effort local context.
 
 | Moment | Guardrail |
 | --- | --- |
-| Task start | Checks the active Kast/plugin release, exact workspace, preparation evidence, and baseline Kotlin hashes |
-| Delegation | Carries the exact root and linked-worktree identity into the delegated task |
-| Before a tool | Denies a known generic Kotlin mutation until the target-bound typed route has failed |
-| After a tool | Records structured Kast outcomes, affected files, in-flight mutation keys, typed failures, and diagnostics evidence |
-| Task stop | Continues work when newly changed Kotlin lacks current diagnostics or an explicit typed blocker |
+| Session startup | Opens the exact worktree through Kast's existing IDEA or Android Studio launch fallback and reports readiness problems |
+| After a successful Kotlin write | Runs diagnostics separately for each path when exact-root IDEA status is healthy |
 
-Compaction rehydrates the same session state and preserves the original
-baseline. Pre-existing dirty files remain outside the plugin's claim about
-what the current task changed.
-
-Kast runs readiness checks only when explicitly invoked.
+The hooks keep no session state and add no pre-write or turn-stop gate.
+Use the IntelliJ Kast settings page to disable all Codex hooks globally or disable either event independently.
 
 Use the [Codex plugin contract](../reference/codex-plugin.md) for the exact
 visible command set and state boundary.

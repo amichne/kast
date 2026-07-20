@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$PLUGIN_ROOT/scripts/kast-codex-hook\" session-start",
+            "timeout": 70,
+            "statusMessage": "Opening this worktree for Kast"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$PLUGIN_ROOT/scripts/kast-codex-hook\" post-tool-use",
+            "timeout": 70,
+            "statusMessage": "Checking changed Kotlin files with Kast"
+          }
+        ]
+      }
+    ]
+  }
+}

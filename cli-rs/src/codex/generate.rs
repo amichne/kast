@@ -12,6 +12,8 @@ const SKILL: &str =
 const OPENAI_YAML: &str =
     include_str!("../../resources/codex-plugin/plugins/kast/skills/kast-codex/agents/openai.yaml");
 const KAST_SVG: &[u8] = include_bytes!("../../resources/codex-plugin/plugins/kast/assets/kast.svg");
+const HOOK_LAUNCHER: &str =
+    include_str!("../../resources/codex-plugin/plugins/kast/scripts/kast-codex-hook");
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -35,6 +37,7 @@ struct ExposureAsset {
     version: &'static str,
     schema_version: u32,
     semantic_commands: Vec<CodexCommandDescriptor>,
+    hook_only: Vec<&'static str>,
     not_exposed: Vec<&'static str>,
 }
 
@@ -78,6 +81,7 @@ fn generated_files() -> Result<Vec<GeneratedFile>> {
         version: crate::cli::version(),
         schema_version: 1,
         semantic_commands: descriptors.clone(),
+        hook_only: vec!["developer codex hook session-start|post-tool-use"],
         not_exposed: vec![
             "setup",
             "repair --apply",
@@ -96,6 +100,12 @@ fn generated_files() -> Result<Vec<GeneratedFile>> {
         json_file("marketplace.json", marketplace())?,
         json_file(".agents/plugins/marketplace.json", marketplace())?,
         json_file("plugins/kast/.codex-plugin/plugin.json", manifest())?,
+        json_file("plugins/kast/hooks/hooks.json", hooks())?,
+        text_file(
+            "plugins/kast/scripts/kast-codex-hook",
+            HOOK_LAUNCHER.to_string(),
+            true,
+        ),
         text_file(
             "plugins/kast/assets/codex-exposure.toon",
             toon_format::encode_default(&exposure)
@@ -166,6 +176,31 @@ fn manifest() -> serde_json::Value {
             "composerIcon": "./assets/kast.svg",
             "logo": "./assets/kast.svg",
             "logoDark": "./assets/kast.svg"
+        }
+    })
+}
+
+fn hooks() -> serde_json::Value {
+    json!({
+        "hooks": {
+            "SessionStart": [{
+                "matcher": "startup",
+                "hooks": [{
+                    "type": "command",
+                    "command": "\"$PLUGIN_ROOT/scripts/kast-codex-hook\" session-start",
+                    "timeout": 70,
+                    "statusMessage": "Opening this worktree for Kast"
+                }]
+            }],
+            "PostToolUse": [{
+                "matcher": "apply_patch|Edit|Write",
+                "hooks": [{
+                    "type": "command",
+                    "command": "\"$PLUGIN_ROOT/scripts/kast-codex-hook\" post-tool-use",
+                    "timeout": 70,
+                    "statusMessage": "Checking changed Kotlin files with Kast"
+                }]
+            }]
         }
     })
 }

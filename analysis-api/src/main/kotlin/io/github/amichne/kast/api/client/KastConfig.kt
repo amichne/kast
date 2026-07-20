@@ -20,6 +20,7 @@ data class KastConfig(
     val backends: BackendsConfig,
     val paths: PathsConfig,
     val cli: CliConfig,
+    val codex: CodexConfig = CodexConfig(),
 ) {
     fun toServerLimits(): ServerLimits = ServerLimits(
         maxResults = server.maxResults.value,
@@ -64,6 +65,13 @@ data class KastConfig(
                     profile = ProjectOpenProfile(ProjectOpenProfile.JETBRAINS_PLUGIN),
                     autoExcludeGit = ProjectOpenAutoExcludeGit(true),
                     gradleLoadEnabled = ProjectOpenGradleLoadEnabled(true),
+                ),
+                codex = CodexConfig(
+                    hooks = CodexHooksConfig(
+                        enabled = CodexHooksEnabled(true),
+                        sessionStart = CodexSessionStartEnabled(true),
+                        postToolUse = CodexPostToolUseEnabled(true),
+                    ),
                 ),
                 indexing = IndexingConfig(
                     phase2Enabled = IndexingPhase2Enabled(true),
@@ -127,6 +135,14 @@ data class KastConfig(
             ).filter(Files::isRegularFile)
             val loaded = loadConfigOverrides(configFiles)
             return defaults().merge(loaded).merge(overrides)
+        }
+
+        fun loadGlobal(
+            configHome: () -> Path = { kastConfigHome() },
+            overrides: KastConfigOverride = KastConfigOverride(),
+        ): KastConfig {
+            val configFiles = listOf(configHome().resolve("config.toml")).filter(Files::isRegularFile)
+            return defaults().merge(loadConfigOverrides(configFiles)).merge(overrides)
         }
 
         /**
@@ -532,6 +548,7 @@ private fun Map<String, String>.toKastConfigOverride(): KastConfigOverride = Kas
     server = serverOverride(),
     runtime = runtimeOverride(),
     projectOpen = projectOpenOverride(),
+    codex = codexOverride(),
     indexing = indexingOverride(),
     cache = cacheOverride(),
     watcher = watcherOverride(),
@@ -540,6 +557,16 @@ private fun Map<String, String>.toKastConfigOverride(): KastConfigOverride = Kas
     profiling = profilingOverride(),
     backends = backendsOverride(),
 )
+
+private fun Map<String, String>.codexOverride(): CodexConfigOverride? {
+    val enabled = booleanValue("codex.hooks.enabled")?.let(::CodexHooksEnabled)
+    val sessionStart = booleanValue("codex.hooks.sessionstart")?.let(::CodexSessionStartEnabled)
+    val postToolUse = booleanValue("codex.hooks.posttooluse")?.let(::CodexPostToolUseEnabled)
+    val hooks = takeIfAny(enabled, sessionStart, postToolUse) {
+        CodexHooksConfigOverride(enabled, sessionStart, postToolUse)
+    }
+    return hooks?.let(::CodexConfigOverride)
+}
 
 private fun Map<String, String>.runtimeOverride(): RuntimeConfigOverride? {
     val defaultBackend = stringValue("runtime.defaultbackend")?.let(::RuntimeDefaultBackend)
@@ -766,6 +793,16 @@ data class IdeaBackendConfig(
     val enabled: IdeaBackendEnabled,
 )
 
+data class CodexConfig(
+    val hooks: CodexHooksConfig = CodexHooksConfig(),
+)
+
+data class CodexHooksConfig(
+    val enabled: CodexHooksEnabled = CodexHooksEnabled(true),
+    val sessionStart: CodexSessionStartEnabled = CodexSessionStartEnabled(true),
+    val postToolUse: CodexPostToolUseEnabled = CodexPostToolUseEnabled(true),
+)
+
 data class PathsConfig(
     val installRoot: PathsInstallRoot,
     val binDir: PathsBinDir,
@@ -785,6 +822,7 @@ data class KastConfigOverride(
     val server: ServerConfigOverride? = null,
     val runtime: RuntimeConfigOverride? = null,
     val projectOpen: ProjectOpenConfigOverride? = null,
+    val codex: CodexConfigOverride? = null,
     val indexing: IndexingConfigOverride? = null,
     val cache: CacheConfigOverride? = null,
     val watcher: WatcherConfigOverride? = null,
@@ -794,6 +832,16 @@ data class KastConfigOverride(
     val backends: BackendsConfigOverride? = null,
     val paths: PathsConfigOverride? = null,
     val cli: CliConfigOverride? = null,
+)
+
+data class CodexConfigOverride(
+    val hooks: CodexHooksConfigOverride? = null,
+)
+
+data class CodexHooksConfigOverride(
+    val enabled: CodexHooksEnabled? = null,
+    val sessionStart: CodexSessionStartEnabled? = null,
+    val postToolUse: CodexPostToolUseEnabled? = null,
 )
 
 data class ProjectOpenConfigOverride(
@@ -899,6 +947,7 @@ private fun KastConfig.merge(override: KastConfigOverride): KastConfig {
         server = server.merge(override.server),
         runtime = runtime.merge(override.runtime),
         projectOpen = projectOpen.merge(override.projectOpen),
+        codex = codex.merge(override.codex),
         indexing = indexing.merge(override.indexing),
         cache = cache.merge(override.cache),
         watcher = watcher.merge(override.watcher),
@@ -913,6 +962,16 @@ private fun KastConfig.merge(override: KastConfigOverride): KastConfig {
 
 private fun KastConfig.mergeResolved(override: ResolvedRuntimeConfigOverride): KastConfig = copy(
     backends = backends.mergeResolved(override.backends),
+)
+
+private fun CodexConfig.merge(override: CodexConfigOverride?): CodexConfig = copy(
+    hooks = hooks.merge(override?.hooks),
+)
+
+private fun CodexHooksConfig.merge(override: CodexHooksConfigOverride?): CodexHooksConfig = copy(
+    enabled = override?.enabled ?: enabled,
+    sessionStart = override?.sessionStart ?: sessionStart,
+    postToolUse = override?.postToolUse ?: postToolUse,
 )
 
 private fun KastConfigOverride.ideaWorkspaceOverride(): KastConfigOverride = KastConfigOverride(

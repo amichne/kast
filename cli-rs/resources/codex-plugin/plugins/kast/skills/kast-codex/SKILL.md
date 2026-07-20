@@ -1,6 +1,6 @@
 ---
 name: kast-codex
-description: Use Kast for compiler-backed Kotlin and Gradle discovery, mutations, diagnostics, and validation.
+description: Use when Kotlin or Gradle work needs compiler-backed discovery, mutations, diagnostics, or validation through Kast.
 ---
 
 # Kast for Codex

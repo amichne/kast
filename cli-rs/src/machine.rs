@@ -413,6 +413,20 @@ fn write_codex_marketplace(target: &Path) -> Result<()> {
             )),
         ),
         (
+            "plugins/kast/hooks/hooks.json",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/plugins/kast/hooks/hooks.json"
+            )),
+        ),
+        (
+            "plugins/kast/scripts/kast-codex-hook",
+            include_bytes!(concat!(
+                env!("CARGO_MANIFEST_DIR"),
+                "/resources/codex-plugin/plugins/kast/scripts/kast-codex-hook"
+            )),
+        ),
+        (
             "plugins/kast/skills/kast-codex/SKILL.md",
             include_bytes!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
@@ -431,6 +445,11 @@ fn write_codex_marketplace(target: &Path) -> Result<()> {
         let path = target.join(relative);
         fs::create_dir_all(path.parent().expect("Codex resource parent"))?;
         fs::write(&path, contents)?;
+        #[cfg(unix)]
+        if *relative == "plugins/kast/scripts/kast-codex-hook" {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&path, fs::Permissions::from_mode(0o755))?;
+        }
     }
     Ok(())
 }

@@ -132,4 +132,27 @@ class KastSettingsConfigurableTest {
         assertEquals(KastTelemetryDetailLevel.BASIC, KastTelemetryDetailLevel.fromConfigValue("BaSiC"))
         assertEquals(KastTelemetryDetailLevel.VERBOSE, KastTelemetryDetailLevel.fromConfigValue(" verbose "))
     }
+
+    @Test
+    fun `global hook settings preserve unrelated config and omit enabled defaults`() {
+        val state = KastSettingsState().apply {
+            loadFromConfig(KastConfig.defaults())
+            codexHooksEnabled = false
+            codexPostToolUseEnabled = false
+        }
+
+        val toml = mergeGlobalCodexHooksToml(
+            """
+                [telemetry]
+                enabled = true
+            """.trimIndent() + "\n",
+            state,
+        )
+
+        assertTrue(toml.contains("[telemetry]"))
+        assertTrue(toml.contains("[codex.hooks]"))
+        assertTrue(toml.contains("enabled = false"))
+        assertTrue(toml.contains("postToolUse = false"))
+        assertFalse(toml.contains("sessionStart"))
+    }
 }

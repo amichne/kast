@@ -1,0 +1,16 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -ne 1 ]; then
+  printf '%s\n' '{"continue":true,"systemMessage":"Kast hook skipped: expected one event."}'
+  exit 0
+fi
+
+: "${HOME:?HOME must be set}"
+kast_binary=$HOME/.local/bin/kast
+if [ ! -x "$kast_binary" ]; then
+  printf '%s\n' '{"continue":true,"systemMessage":"Kast hook skipped: ~/.local/bin/kast is unavailable; run kast machine reconcile."}'
+  exit 0
+fi
+
+exec "$kast_binary" developer codex hook "$1"
