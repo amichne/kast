@@ -44,6 +44,18 @@ class KastSettingsConfigurableTest {
     }
 
     @Test
+    fun `strict plugin matching setting persists to workspace toml`() {
+        val state = KastSettingsState().apply {
+            loadFromConfig(KastConfig.defaults())
+            runtimeStrictPluginMatching = false
+        }
+
+        val toml = state.toWorkspaceToml()
+
+        assertTrue(toml.contains("strictPluginMatching = false"))
+    }
+
+    @Test
     fun `public settings merge preserves cli binary path as manually edited toml`() {
         val existingToml = """
             [server]

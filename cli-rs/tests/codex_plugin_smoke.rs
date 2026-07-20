@@ -11,6 +11,8 @@ fn generated_codex_plugin_has_only_advisory_session_and_write_hooks() {
     )
     .expect("manifest JSON");
     assert!(manifest.get("hooks").is_none());
+    assert!(manifest["interface"].get("privacyPolicyURL").is_none());
+    assert!(manifest["interface"].get("termsOfServiceURL").is_none());
     assert!(
         root.join("plugins/kast/skills/kast-codex/SKILL.md")
             .is_file()

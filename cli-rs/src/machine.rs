@@ -42,7 +42,6 @@ struct MachineManifest {
     manifest_type: String,
     cli_sha256: String,
     idea_plugin_sha256: String,
-    skill_sha256: String,
     codex_sha256: String,
     schema_version: u32,
 }
@@ -55,7 +54,6 @@ pub(crate) struct MachineActivation {
     state: &'static str,
     pub(crate) cli: String,
     idea_plugin: String,
-    skill: String,
     schema_version: u32,
 }
 
@@ -66,7 +64,8 @@ pub(crate) struct MachineReconciliation {
     reconciliation_type: &'static str,
     state: &'static str,
     pub(crate) idea_plugin: String,
-    pub(crate) skill: String,
+    #[serde(skip)]
+    pub(crate) skill: &'static str,
     pub(crate) codex: Option<String>,
     quarantined_plugin: Option<String>,
     schema_version: u32,
@@ -130,7 +129,6 @@ pub(crate) fn activate(args: MachineActivateArgs) -> Result<MachineActivation> {
     let backup = parent.join(format!(".machine-backup-{transaction}"));
     fs::create_dir_all(staging.join("bin"))?;
     fs::create_dir_all(staging.join("idea"))?;
-    fs::create_dir_all(staging.join("resources/kast-skill"))?;
     fs::create_dir_all(staging.join("resources/codex-marketplace"))?;
 
     let installed_cli = staging.join("bin/kast");
@@ -138,23 +136,14 @@ pub(crate) fn activate(args: MachineActivateArgs) -> Result<MachineActivation> {
     fs::set_permissions(&installed_cli, fs::metadata(&source_cli)?.permissions())?;
     let installed_plugin = staging.join("idea/kast.zip");
     fs::copy(&args.idea_plugin, &installed_plugin)?;
-    let installed_skill = staging.join("resources/kast-skill/SKILL.md");
-    fs::write(
-        &installed_skill,
-        include_bytes!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/resources/kast-skill/SKILL.md"
-        )),
-    )?;
     let installed_codex = staging.join("resources/codex-marketplace");
     write_codex_marketplace(&installed_codex)?;
     let manifest = MachineManifest {
         manifest_type: "KAST_MACHINE_MANIFEST".to_string(),
         cli_sha256: crate::manifest::sha256_file(&installed_cli)?,
         idea_plugin_sha256: crate::manifest::sha256_file(&installed_plugin)?,
-        skill_sha256: crate::manifest::sha256_file(&installed_skill)?,
         codex_sha256: directory_sha256(&installed_codex)?,
-        schema_version: 1,
+        schema_version: 2,
     };
     fs::write(
         staging.join("machine.json"),
@@ -180,10 +169,6 @@ pub(crate) fn activate(args: MachineActivateArgs) -> Result<MachineActivation> {
         state: "ACTIVATED",
         cli: root.join("bin/kast").display().to_string(),
         idea_plugin: root.join("idea/kast.zip").display().to_string(),
-        skill: root
-            .join("resources/kast-skill/SKILL.md")
-            .display()
-            .to_string(),
         schema_version: 1,
     })
 }
@@ -225,13 +210,13 @@ pub(crate) fn reconcile(args: MachineReconcileArgs) -> Result<MachineReconciliat
         }
         return Err(error.into());
     }
-    let skill = reconcile_global_skill(&root, transaction)?;
     let codex = reconcile_codex(&root)?;
+    remove_legacy_global_skill(&root)?;
     Ok(MachineReconciliation {
         reconciliation_type: "KAST_MACHINE_RECONCILIATION",
         state: "RECONCILED",
         idea_plugin: installed_plugin.display().to_string(),
-        skill: skill.display().to_string(),
+        skill: "not installed",
         codex: codex.map(|path| path.display().to_string()),
         quarantined_plugin: quarantined_plugin.map(|path| path.display().to_string()),
         schema_version: 1,
@@ -356,12 +341,10 @@ fn validate_machine_install(root: &Path) -> Result<MachineManifest> {
             format!("Cannot read {}: {error}", path.display()),
         )
     })?)?;
-    if manifest.schema_version != 1
+    if manifest.schema_version != 2
         || manifest.manifest_type != "KAST_MACHINE_MANIFEST"
         || crate::manifest::sha256_file(&root.join("bin/kast"))? != manifest.cli_sha256
         || crate::manifest::sha256_file(&root.join("idea/kast.zip"))? != manifest.idea_plugin_sha256
-        || crate::manifest::sha256_file(&root.join("resources/kast-skill/SKILL.md"))?
-            != manifest.skill_sha256
         || directory_sha256(&root.join("resources/codex-marketplace"))? != manifest.codex_sha256
     {
         return Err(CliError::new(
@@ -571,32 +554,17 @@ fn extract_plugin_zip(source: &Path, target: &Path) -> Result<()> {
     Ok(())
 }
 
-fn reconcile_global_skill(root: &Path, transaction: uuid::Uuid) -> Result<PathBuf> {
-    #[cfg(unix)]
+fn remove_legacy_global_skill(root: &Path) -> Result<()> {
+    let skill = crate::config::home_dir().join(".agents/skills/kast");
+    let Ok(metadata) = fs::symlink_metadata(&skill) else {
+        return Ok(());
+    };
+    if metadata.file_type().is_symlink()
+        && fs::read_link(&skill)? == root.join("resources/kast-skill")
     {
-        use std::os::unix::fs::symlink;
-        let skill = crate::config::home_dir().join(".agents/skills/kast");
-        if let Ok(metadata) = fs::symlink_metadata(&skill) {
-            if metadata.file_type().is_symlink() {
-                fs::remove_file(&skill)?;
-            } else {
-                let quarantine = root.join("quarantine").join(format!("{transaction}-skill"));
-                fs::create_dir_all(quarantine.parent().expect("quarantine parent"))?;
-                fs::rename(&skill, quarantine)?;
-            }
-        }
-        fs::create_dir_all(skill.parent().expect("skill parent"))?;
-        symlink(root.join("resources/kast-skill"), &skill)?;
-        Ok(skill)
+        fs::remove_file(skill)?;
     }
-    #[cfg(not(unix))]
-    {
-        let _ = (root, transaction);
-        Err(CliError::new(
-            "MACHINE_PLATFORM_UNSUPPORTED",
-            "Machine resource reconciliation requires macOS or another Unix host.",
-        ))
-    }
+    Ok(())
 }
 
 fn default_idea_plugins_dir() -> Result<PathBuf> {

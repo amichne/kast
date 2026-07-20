@@ -27,6 +27,7 @@ struct PartialServer {
 #[serde(rename_all = "camelCase")]
 struct PartialRuntime {
     default_backend: Option<RuntimeDefaultBackend>,
+    strict_plugin_matching: Option<bool>,
     idea_launch: Option<PartialIdeaLaunch>,
 }
 

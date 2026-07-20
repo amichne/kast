@@ -54,6 +54,7 @@ data class KastConfig(
                 ),
                 runtime = RuntimeConfig(
                     defaultBackend = RuntimeDefaultBackend("auto"),
+                    strictPluginMatching = RuntimeStrictPluginMatching(true),
                     ideaLaunch = IdeaLaunchConfig(
                         enabled = IdeaLaunchEnabled(false),
                         command = IdeaLaunchCommand("idea"),
@@ -250,10 +251,12 @@ private data class ResolvedHeadlessBackendConfigOverride(
 @Serializable
 private data class RuntimeRuntimeConfig(
     val defaultBackend: String? = null,
+    val strictPluginMatching: Boolean? = null,
     val ideaLaunch: RuntimeIdeaLaunchConfig? = null,
 ) {
     fun toOverride(): RuntimeConfigOverride = RuntimeConfigOverride(
         defaultBackend = defaultBackend?.let(::RuntimeDefaultBackend),
+        strictPluginMatching = strictPluginMatching?.let(::RuntimeStrictPluginMatching),
         ideaLaunch = ideaLaunch?.toOverride(),
     )
 }
@@ -570,9 +573,10 @@ private fun Map<String, String>.codexOverride(): CodexConfigOverride? {
 
 private fun Map<String, String>.runtimeOverride(): RuntimeConfigOverride? {
     val defaultBackend = stringValue("runtime.defaultbackend")?.let(::RuntimeDefaultBackend)
+    val strictPluginMatching = booleanValue("runtime.strictpluginmatching")?.let(::RuntimeStrictPluginMatching)
     val ideaLaunch = ideaLaunchOverride()
-    return takeIfAny(defaultBackend, ideaLaunch) {
-        RuntimeConfigOverride(defaultBackend, ideaLaunch)
+    return takeIfAny(defaultBackend, strictPluginMatching, ideaLaunch) {
+        RuntimeConfigOverride(defaultBackend, strictPluginMatching, ideaLaunch)
     }
 }
 
@@ -717,6 +721,7 @@ data class ServerConfig(
 
 data class RuntimeConfig(
     val defaultBackend: RuntimeDefaultBackend,
+    val strictPluginMatching: RuntimeStrictPluginMatching,
     val ideaLaunch: IdeaLaunchConfig,
 )
 
@@ -853,6 +858,7 @@ data class ProjectOpenConfigOverride(
 
 data class RuntimeConfigOverride(
     val defaultBackend: RuntimeDefaultBackend? = null,
+    val strictPluginMatching: RuntimeStrictPluginMatching? = null,
     val ideaLaunch: IdeaLaunchConfigOverride? = null,
 )
 
@@ -975,7 +981,12 @@ private fun CodexHooksConfig.merge(override: CodexHooksConfigOverride?): CodexHo
 )
 
 private fun KastConfigOverride.ideaWorkspaceOverride(): KastConfigOverride = KastConfigOverride(
-    runtime = runtime?.let { RuntimeConfigOverride(defaultBackend = it.defaultBackend) },
+    runtime = runtime?.let {
+        RuntimeConfigOverride(
+            defaultBackend = it.defaultBackend,
+            strictPluginMatching = it.strictPluginMatching,
+        )
+    },
     projectOpen = projectOpen,
     backends = BackendsConfigOverride(idea = backends?.idea).takeIf { it.idea != null },
 )
@@ -988,6 +999,7 @@ private fun ServerConfig.merge(override: ServerConfigOverride?): ServerConfig = 
 
 private fun RuntimeConfig.merge(override: RuntimeConfigOverride?): RuntimeConfig = copy(
     defaultBackend = override?.defaultBackend ?: defaultBackend,
+    strictPluginMatching = override?.strictPluginMatching ?: strictPluginMatching,
     ideaLaunch = ideaLaunch.merge(override?.ideaLaunch),
 )
 

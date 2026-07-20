@@ -2,6 +2,7 @@ mod support;
 
 use support::*;
 
+#[cfg(not(target_os = "macos"))]
 #[test]
 fn missing_expected_skill_reports_install_repair_instead_of_quarantine() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -50,7 +51,7 @@ fn missing_expected_skill_reports_install_repair_instead_of_quarantine() {
 
 #[cfg(target_os = "macos")]
 #[test]
-fn agent_ready_uses_only_the_machine_skill() {
+fn agent_ready_uses_the_idea_plugin_without_a_global_skill() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -96,7 +97,7 @@ fn agent_ready_uses_only_the_machine_skill() {
 
     assert!(
         ready.status.success(),
-        "machine-scoped resources must ignore provider and worktree copies: stdout={}, stderr={}",
+        "IDEA-backed readiness must ignore provider and worktree skills: stdout={}, stderr={}",
         String::from_utf8_lossy(&ready.stdout),
         String::from_utf8_lossy(&ready.stderr),
     );
@@ -104,19 +105,10 @@ fn agent_ready_uses_only_the_machine_skill() {
     let candidates = payload["agentEnvironment"]["skills"]["candidates"]
         .as_array()
         .expect("skill candidates");
-    assert_eq!(candidates.len(), 1, "{payload:#}");
-    assert_eq!(
-        candidates[0]["path"],
-        home.join(".agents/skills/kast/SKILL.md")
-            .display()
-            .to_string(),
-    );
-    assert_eq!(candidates[0]["source"], "machine");
-    assert_eq!(candidates[0]["state"], "managed");
-    assert_eq!(candidates[0]["compatible"], true);
+    assert!(candidates.is_empty(), "{payload:#}");
     assert_eq!(
         payload["agentEnvironment"]["guidance"]["source"],
-        "machine-skill",
+        "idea-plugin",
     );
 }
 

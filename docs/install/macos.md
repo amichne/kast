@@ -1,71 +1,76 @@
 ---
-title: macOS Developer Machine
-description: Install and reconcile one matched Kast CLI, JetBrains plugin, and agent-resource bundle.
-icon: lucide/apple
+type: How-to Guide
+title: Install Kast on a Developer Workstation
+description: Install the matched Kast, IDEA, and Codex bundle on macOS.
+tags: [install, macos, idea, codex]
+code_sources:
+  - path: install.sh
+  - path: cli-rs/src/machine.rs
+    symbols: [activate, reconcile, reconcile_codex]
+  - path: packaging/jetbrains/updatePlugins.xml
 ---
 
-# macOS Developer Machine
+# Install Kast on a Developer Workstation
 
-Use this path when you work on a local macOS project with IntelliJ IDEA or
-Android Studio. The active Kast CLI owns one matched machine bundle containing
-the CLI, JetBrains plugin, skill, and Codex adapter.
+This guide installs Kast for a local Kotlin or Gradle project used through
+Codex. You need macOS, Codex, and IntelliJ IDEA or Android Studio.
 
-## Install The Matched Pair
+## 1. Close the IDE
 
-Quit the IDE first. Kast refuses to replace a loaded plugin.
+Quit every IntelliJ IDEA and Android Studio process. The installer refuses to
+replace a loaded plugin.
 
-```console title="Install Kast"
+## 2. Run the installer
+
+Run the single workstation entrypoint:
+
+```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The installer taps `amichne/kast`, installs the formula, downloads the exact
-matching IDEA plugin ZIP, and runs:
+Review the displayed plan and press Return. The installer taps the Kast
+Homebrew repository, installs the CLI, downloads the release-matched IDEA
+plugin, activates the machine bundle, and selects `kast@kast` when Codex is
+installed.
 
-```console title="IDE-owned plugin installation"
-kast machine activate --idea-plugin <downloaded-zip>
-kast machine reconcile
+The completed bundle contains no global Kast skill, resident service, watcher,
+or background JVM.
+
+## 3. Add IDEA update discovery
+
+In IDEA or Android Studio, open **Settings → Plugins → Manage Plugin
+Repositories** and add:
+
+```text
+https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml
 ```
 
-Activation atomically selects one strict machine manifest. Reconciliation
-verifies every digest, replaces the closed IDE's plugin, and selects the global
-agent resources. It installs no LaunchAgent, plist, socket, or background
-process.
+The feed lets the IDE discover Kast plugin releases through its native plugin
+UI. The installer remains the authority for selecting a matched workstation
+bundle.
 
-Open the exact project after installation. The plugin writes revisioned
-compatibility metadata for that root.
+## 4. Open the exact root
 
-??? question "What the IDE and agents handle"
-    On macOS, workspace setup is owned by the IntelliJ plugin. It prepares
-    exact-root compatibility metadata when the project opens. Skills and
-    provider adapters remain machine scoped.
+Open the exact project or linked worktree you will give to Codex. The IDEA
+plugin prepares compatibility metadata for that root and starts its semantic
+runtime. A different checkout has different state and must be opened
+separately.
 
-## Update And Verify
+## 5. Start a new Codex task
 
-??? info "Advanced installer controls"
-    The `update` and `verify` modes exist for automation, mirrors, and support.
-    Pass `--tap` with `--tap-url` for an internal CLI tap and release mirror.
+Start a new task after installation or update. Codex loads `kast@kast` at task
+startup; an already-running task does not reload the new plugin generation.
 
-Update the selected machine bundle:
+Continue with [use Kast in Codex](../use/codex.md).
 
-```console title="Update the CLI"
+## Update the bundle
+
+Quit the IDE and run:
+
+```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- update
 ```
 
-The command installs the updated CLI, downloads its exact plugin, and performs
-the same activation/reconciliation transaction.
-
-After opening the exact project, validate the machine bundle, plugin metadata,
-backend identity, protocol, and capabilities on demand:
-
-```console title="Verify the active IDEA pair"
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- \
-  verify
-```
-
-This delegates to `kast agent verify --backend idea`. Typed admission rejects
-an unsupported pair instead of assuming matching version text is enough.
-
-Use `NONINTERACTIVE=1` only to accept the installer plan in automation. Keep
-the IDE closed through reconciliation.
-
-Continue with [how Kast thinks about evidence](../learn/evidence-model.md).
+Open the exact root again and start a new Codex task. If the IDE feed updates
+the IDEA plugin independently, rerun this update before working so the CLI,
+IDEA plugin, and Codex plugin return to one release generation.

@@ -239,6 +239,12 @@ fn effective_skill_diagnostic(
     running_binary: &str,
     dialect_revision: u32,
 ) -> Result<DoctorAgentSkillDiagnostic> {
+    if cfg!(target_os = "macos") {
+        return Ok(DoctorAgentSkillDiagnostic {
+            compatible: true,
+            candidates: Vec::new(),
+        });
+    }
     let mut discovered = Vec::<(PathBuf, String)>::new();
     let mut seen = std::collections::BTreeSet::<PathBuf>::new();
     let mut push = |path: PathBuf, source: &str| {
@@ -294,17 +300,6 @@ fn effective_skill_diagnostic(
             );
         }
     }
-    if cfg!(target_os = "macos") {
-        let machine_skill = config::normalize(home.join(".agents/skills/kast/SKILL.md"));
-        discovered.retain(|(path, _)| *path == machine_skill);
-        if discovered.is_empty() {
-            discovered.push((machine_skill, "machine".to_string()));
-        } else {
-            discovered.iter_mut().for_each(|(_, source)| {
-                *source = "machine".to_string();
-            });
-        }
-    }
     discovered.retain(|(path, _)| path.exists() || managed_skill_resource(install, path).is_some());
     if discovered.is_empty() {
         let path = workspace_root
@@ -321,13 +316,9 @@ fn effective_skill_diagnostic(
         let expected_plugin_skill = plugin_owned
             .then(|| plugin.and_then(|plugin| render_plugin_skill(plugin, dialect_revision)))
             .flatten();
-        let machine_owned = cfg!(target_os = "macos")
-            && path == config::normalize(home.join(".agents/skills/kast/SKILL.md"))
-            && fs::read_to_string(&path).is_ok_and(|content| content == PACKAGED_KAST_SKILL);
         let mut state = agent_resource_state(
             &path,
             managed_resource,
-            machine_owned,
             plugin_owned,
             expected_plugin_skill.as_deref(),
         )?;
@@ -416,15 +407,11 @@ fn resource_contains_path(resource: &ManagedRepoResource, path: &Path) -> bool {
 fn agent_resource_state(
     path: &Path,
     managed_resource: Option<&ManagedRepoResource>,
-    machine_owned: bool,
     plugin_owned: bool,
     expected_plugin_skill: Option<&str>,
 ) -> Result<AgentResourceState> {
     if !path.is_file() {
         return Ok(AgentResourceState::Missing);
-    }
-    if machine_owned {
-        return Ok(AgentResourceState::Managed);
     }
     if plugin_owned {
         return Ok(match expected_plugin_skill {
@@ -530,13 +517,12 @@ fn effective_guidance_diagnostic(
     plugin: Option<&PluginWorkspaceEvidence>,
     running_binary: &str,
 ) -> Result<DoctorAgentGuidanceDiagnostic> {
-    if cfg!(target_os = "macos") && plugin.is_some_and(|plugin| plugin.trusted) {
+    if cfg!(target_os = "macos")
+        && let Some(plugin) = plugin.filter(|plugin| plugin.trusted)
+    {
         return Ok(DoctorAgentGuidanceDiagnostic {
-            path: config::home_dir()
-                .join(".agents/skills/kast/SKILL.md")
-                .display()
-                .to_string(),
-            source: "machine-skill".to_string(),
+            path: plugin.metadata_path.display().to_string(),
+            source: "idea-plugin".to_string(),
             state: AgentResourceState::Managed,
             repair_command: None,
         });

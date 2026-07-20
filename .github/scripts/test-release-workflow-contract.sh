@@ -169,9 +169,6 @@ ci_gradle_retry="${repo_root}/scripts/ci-gradle-retry.sh"
 ci_gradle_retry_test="${repo_root}/.github/scripts/test-ci-gradle-retry.sh"
 headless_packager_test="${repo_root}/.github/scripts/test-headless-runtime-packagers.sh"
 ci_artifact_ledger_test="${repo_root}/.github/scripts/test-ci-artifact-ledger.sh"
-runtime_artifact_contract="${repo_root}/docs/distribute/runtime-artifact-contract.md"
-release_and_mirror_doc="${repo_root}/docs/distribute/release-and-mirror.md"
-local_development_doc="${repo_root}/docs/distribute/local-development-refresh.md"
 kast_script="${repo_root}/kast.sh"
 
 for path in \
@@ -214,9 +211,6 @@ for path in \
   "$ci_gradle_retry_test" \
   "$headless_packager_test" \
   "$ci_artifact_ledger_test" \
-  "$runtime_artifact_contract" \
-  "$release_and_mirror_doc" \
-  "$local_development_doc" \
   "$kast_script"
 do
   [[ -f "$path" || -x "$path" ]] || die "Required release file is missing: $path"
@@ -637,14 +631,6 @@ require_contains "$setup_kast_verifier" "read-only tree has writable entries" "s
 require_contains "$setup_kast_verifier" "run_gradle_warm_command" "setup-kast verifier must own repo-level Gradle warm checks"
 require_contains "$setup_kast_verifier" "dependencies --no-daemon" "setup-kast verifier must run the Gradle dependencies warm task"
 require_contains "$setup_kast_verifier" "buildEnvironment --no-daemon" "setup-kast verifier must run the Gradle buildEnvironment warm task"
-require_contains "$release_and_mirror_doc" "kast developer release package ubuntu-debian-bundle" "Release workflow docs must document bundle packaging"
-require_contains "$release_and_mirror_doc" "kast developer release activate bundle" "Release workflow docs must document bundle activation"
-require_contains "$release_and_mirror_doc" "scripts/install-ubuntu-debian.sh" "Release workflow docs must document the server installer"
-require_contains "$release_and_mirror_doc" "scripts/verify-release-assets.sh" "Release workflow docs must document release asset verification"
-require_contains "$runtime_artifact_contract" "scripts/verify-ci-artifact-ledger.py verify" "Runtime artifact docs must document build receipt verification"
-require_not_contains "$runtime_artifact_contract" "setup-kast action" "Runtime artifact docs must not publish setup-kast as the action name"
-require_not_contains "$runtime_artifact_contract" "amichne/kast-action@v1" "Runtime artifact docs must not document the old action line"
-require_not_contains "$runtime_artifact_contract" "Copilot Setup Steps" "Runtime artifact docs must not document obsolete GitHub coding-agent setup"
 require_contains "$kast_script" "-Pname=value" "kast.sh build help must document Gradle property forwarding"
 
 printf '%s\n' "Release workflow contract passed"

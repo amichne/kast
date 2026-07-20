@@ -497,6 +497,9 @@ struct MacosPluginWorkspaceMetadata {
 #[cfg(target_os = "macos")]
 pub fn validate_macos_plugin_workspace(workspace_root: &Path) -> Result<()> {
     let workspace_root = config::normalize(workspace_root.to_path_buf());
+    let strict_plugin_matching = config::KastConfig::load(&workspace_root)?
+        .runtime
+        .strict_plugin_matching;
     let metadata_path = workspace_root.join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
     let raw = fs::read_to_string(&metadata_path).map_err(|error| {
         macos_plugin_workspace_error(format!(
@@ -510,7 +513,12 @@ pub fn validate_macos_plugin_workspace(workspace_root: &Path) -> Result<()> {
             metadata_path.display(),
         ))
     })?;
-    validate_macos_plugin_workspace_metadata(&workspace_root, &metadata_path, metadata)
+    validate_macos_plugin_workspace_metadata(
+        &workspace_root,
+        &metadata_path,
+        metadata,
+        strict_plugin_matching,
+    )
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -523,6 +531,7 @@ fn validate_macos_plugin_workspace_metadata(
     workspace_root: &Path,
     metadata_path: &Path,
     metadata: MacosPluginWorkspaceMetadata,
+    strict_plugin_matching: bool,
 ) -> Result<()> {
     if metadata.schema_version != MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION {
         return Err(macos_plugin_workspace_error(format!(
@@ -540,7 +549,7 @@ fn validate_macos_plugin_workspace_metadata(
             metadata_path.display()
         )));
     }
-    validate_prepared_compatibility_metadata(metadata_path, &metadata)?;
+    validate_prepared_compatibility_metadata(metadata_path, &metadata, strict_plugin_matching)?;
     let current_version = cli::version();
     if metadata.compatibility.cli_version != current_version {
         return Err(macos_plugin_workspace_error(format!(
@@ -580,6 +589,7 @@ fn validate_macos_plugin_workspace_metadata(
 fn validate_prepared_compatibility_metadata(
     metadata_path: &Path,
     metadata: &MacosPluginWorkspaceMetadata,
+    strict_plugin_matching: bool,
 ) -> Result<()> {
     let facts = &metadata.compatibility;
     if facts.workspace_metadata_revision.0.get() != metadata.schema_version {
@@ -628,7 +638,11 @@ fn validate_prepared_compatibility_metadata(
             metadata_path.display(),
         )));
     }
-    match runtime::assess_runtime_compatibility(facts, None)? {
+    match runtime::assess_runtime_compatibility_with_plugin_matching(
+        facts,
+        None,
+        strict_plugin_matching,
+    )? {
         runtime::RuntimeCompatibilityAssessment::Compatible => Ok(()),
         runtime::RuntimeCompatibilityAssessment::UpdateRequired {
             requirement,
@@ -1086,6 +1100,7 @@ mod tests {
                 },
                 required_artifacts: vec![PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE)],
             },
+            true,
         )
         .expect("resolved config socket path should be accepted");
     }

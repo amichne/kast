@@ -23,6 +23,7 @@ internal class KastSettingsConfigurable(
     private var panel: DialogPanel? = null
 
     private lateinit var runtimeDefaultBackend: ComboBox<KastRuntimeDefaultBackendOption>
+    private lateinit var runtimeStrictPluginMatching: JBCheckBox
     private lateinit var backendsIdeaEnabled: JBCheckBox
     private lateinit var projectOpenProfileAutoInit: JBCheckBox
     private lateinit var projectOpenAutoExcludeGit: JBCheckBox
@@ -39,6 +40,7 @@ internal class KastSettingsConfigurable(
         ensurePanel()
         val state = KastSettingsState.getInstance(project)
         return selectedRuntimeDefaultBackend().configValue != state.runtimeDefaultBackend ||
+            runtimeStrictPluginMatching.isSelected != (state.runtimeStrictPluginMatching ?: true) ||
             backendsIdeaEnabled.isSelected != (state.backendsIdeaEnabled ?: false) ||
             projectOpenProfileAutoInit.isSelected != (state.projectOpenProfileAutoInit ?: false) ||
             projectOpenAutoExcludeGit.isSelected != (state.projectOpenAutoExcludeGit ?: true) ||
@@ -88,6 +90,9 @@ internal class KastSettingsConfigurable(
                 runtimeDefaultBackend = comboBox(KastRuntimeDefaultBackendOption.entries.toList()).component
             }
             row {
+                runtimeStrictPluginMatching = checkBox("Require matching Kast plugin version").component
+            }
+            row {
                 backendsIdeaEnabled = checkBox("IDEA backend enabled").component
             }
         }
@@ -127,6 +132,7 @@ internal class KastSettingsConfigurable(
         val state = KastSettingsState.getInstance(project)
         runtimeDefaultBackend.selectedItem =
             KastRuntimeDefaultBackendOption.fromConfigValue(state.runtimeDefaultBackend)
+        runtimeStrictPluginMatching.isSelected = state.runtimeStrictPluginMatching ?: true
         backendsIdeaEnabled.isSelected = state.backendsIdeaEnabled ?: false
         projectOpenProfileAutoInit.isSelected = state.projectOpenProfileAutoInit ?: false
         projectOpenAutoExcludeGit.isSelected = state.projectOpenAutoExcludeGit ?: true
@@ -138,6 +144,7 @@ internal class KastSettingsConfigurable(
 
     private fun updateStateFromFields(state: KastSettingsState) {
         state.runtimeDefaultBackend = selectedRuntimeDefaultBackend().configValue
+        state.runtimeStrictPluginMatching = runtimeStrictPluginMatching.isSelected
         state.backendsIdeaEnabled = backendsIdeaEnabled.isSelected
         state.projectOpenProfileAutoInit = projectOpenProfileAutoInit.isSelected
         state.projectOpenProfile = io.github.amichne.kast.api.client.fields.ProjectOpenProfile.JETBRAINS_PLUGIN

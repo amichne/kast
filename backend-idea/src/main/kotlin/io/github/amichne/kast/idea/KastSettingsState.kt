@@ -19,11 +19,13 @@ import io.github.amichne.kast.api.client.fields.ProjectOpenGradleLoadEnabled
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileAutoInit
 import io.github.amichne.kast.api.client.fields.RuntimeDefaultBackend
+import io.github.amichne.kast.api.client.fields.RuntimeStrictPluginMatching
 
 @State(name = "KastSettings", storages = [Storage("kast.xml")])
 @Service(Service.Level.PROJECT)
 internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
     var runtimeDefaultBackend: String? = null
+    var runtimeStrictPluginMatching: Boolean? = null
     var backendsIdeaEnabled: Boolean? = null
     var projectOpenProfileAutoInit: Boolean? = null
     var projectOpenProfile: String? = null
@@ -39,6 +41,7 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
 
     fun loadFromConfig(config: KastConfig) {
         runtimeDefaultBackend = config.runtime.defaultBackend.value
+        runtimeStrictPluginMatching = config.runtime.strictPluginMatching.value
         backendsIdeaEnabled = config.backends.idea.enabled.value
         projectOpenProfileAutoInit = config.projectOpen.profileAutoInit.value
         projectOpenProfile = config.projectOpen.profile.value
@@ -52,6 +55,7 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
     fun toOverride(): KastConfigOverride = KastConfigOverride(
         runtime = RuntimeConfigOverride(
             defaultBackend = runtimeDefaultBackend?.takeIf(String::isNotBlank)?.let(::RuntimeDefaultBackend),
+            strictPluginMatching = runtimeStrictPluginMatching?.let(::RuntimeStrictPluginMatching),
         ).takeIfAny(),
         projectOpen = ProjectOpenConfigOverride(
             profileAutoInit = projectOpenProfileAutoInit?.let(::ProjectOpenProfileAutoInit),
@@ -70,7 +74,7 @@ internal class KastSettingsState : PersistentStateComponent<KastSettingsState> {
 }
 
 private fun RuntimeConfigOverride.takeIfAny(): RuntimeConfigOverride? =
-    takeIf { defaultBackend != null || ideaLaunch != null }
+    takeIf { defaultBackend != null || strictPluginMatching != null || ideaLaunch != null }
 
 private fun ProjectOpenConfigOverride.takeIfAny(): ProjectOpenConfigOverride? =
     takeIf { profileAutoInit != null || profile != null || autoExcludeGit != null || gradleLoadEnabled != null }

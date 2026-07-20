@@ -122,7 +122,8 @@ fn activation_installs_one_processless_machine_bundle() {
         std::fs::read(machine.join("idea/kast.zip")).expect("installed plugin"),
         b"idea-plugin",
     );
-    assert!(machine.join("resources/kast-skill/SKILL.md").is_file());
+    assert!(!machine.join("resources/kast-skill").exists());
+    assert!(activation.get("skill").is_none());
     assert!(
         machine
             .join("resources/codex-marketplace/marketplace.json")
@@ -165,7 +166,7 @@ fn activation_installs_one_processless_machine_bundle() {
 }
 
 #[test]
-fn reconciliation_replaces_only_the_closed_ide_plugin_and_global_skill() {
+fn reconciliation_replaces_the_closed_ide_plugin_and_selects_codex() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -199,6 +200,15 @@ fn reconciliation_replaces_only_the_closed_ide_plugin_and_global_skill() {
         .expect("activation");
     assert!(activation.status.success());
 
+    let legacy_skill = home.join(".agents/skills/kast");
+    std::fs::create_dir_all(legacy_skill.parent().expect("legacy skill parent"))
+        .expect("legacy skill parent");
+    std::os::unix::fs::symlink(
+        home.join("Library/Application Support/Kast/machine/resources/kast-skill"),
+        &legacy_skill,
+    )
+    .expect("legacy machine skill link");
+
     let reconciliation = kast(&home, &config_home)
         .env_remove("CODEX_HOME")
         .env("KAST_MACHINE_IDE_STATE", "closed")
@@ -231,6 +241,7 @@ fn reconciliation_replaces_only_the_closed_ide_plugin_and_global_skill() {
         serde_json::from_slice(&reconciliation.stdout).expect("reconciliation JSON");
     assert_eq!(reconciliation["type"], "KAST_MACHINE_RECONCILIATION");
     assert_eq!(reconciliation["state"], "RECONCILED");
+    assert!(reconciliation.get("skill").is_none());
     assert_eq!(
         std::fs::read(plugins.join("kast/lib/kast-plugin.jar")).expect("new plugin"),
         b"plugin",
@@ -245,12 +256,9 @@ fn reconciliation_replaces_only_the_closed_ide_plugin_and_global_skill() {
         std::fs::read(quarantine.join("old.jar")).expect("quarantined plugin"),
         b"old",
     );
-    assert_eq!(
-        std::fs::read_link(home.join(".agents/skills/kast")).expect("global skill link"),
-        home.join("Library/Application Support/Kast/machine/resources/kast-skill"),
-    );
+    assert!(!legacy_skill.exists());
     assert!(!home.join("Library/LaunchAgents").exists());
-    let codex_calls = std::fs::read_to_string(codex_log).expect("Codex calls");
+    let codex_calls = std::fs::read_to_string(&codex_log).expect("Codex calls");
     assert!(codex_calls.contains("plugin list --json"), "{codex_calls}");
     assert!(
         codex_calls.contains("plugin marketplace list --json"),
@@ -263,6 +271,36 @@ fn reconciliation_replaces_only_the_closed_ide_plugin_and_global_skill() {
     assert!(
         codex_calls.contains("plugin add kast@kast --json"),
         "{codex_calls}"
+    );
+
+    std::fs::create_dir_all(&legacy_skill).expect("user-owned skill");
+    std::fs::write(legacy_skill.join("SKILL.md"), "user-owned").expect("user-owned skill");
+    let second_reconciliation = kast(&home, &config_home)
+        .env_remove("CODEX_HOME")
+        .env("KAST_MACHINE_IDE_STATE", "closed")
+        .env("KAST_TEST_CODEX_LOG", &codex_log)
+        .env(
+            "PATH",
+            format!(
+                "{}:{}",
+                fake_bin.display(),
+                std::env::var("PATH").unwrap_or_default()
+            ),
+        )
+        .args([
+            "--output",
+            "json",
+            "machine",
+            "reconcile",
+            "--idea-plugins-dir",
+            plugins.to_str().expect("plugins path"),
+        ])
+        .output()
+        .expect("second reconciliation");
+    assert!(second_reconciliation.status.success());
+    assert_eq!(
+        std::fs::read_to_string(legacy_skill.join("SKILL.md")).expect("preserved skill"),
+        "user-owned",
     );
 }
 

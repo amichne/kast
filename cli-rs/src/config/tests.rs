@@ -219,6 +219,25 @@ defaultBackend = "auto"
     }
 
     #[test]
+    fn parses_runtime_strict_plugin_matching() {
+        let temp = tempfile::tempdir().unwrap();
+        let config_file = temp.path().join("config.toml");
+        fs::write(
+            &config_file,
+            r#"[runtime]
+strictPluginMatching = false
+"#,
+        )
+        .unwrap();
+
+        let mut config = KastConfig::defaults();
+        assert!(config.runtime.strict_plugin_matching);
+        config.apply(read_partial_config(&config_file).unwrap());
+
+        assert!(!config.runtime.strict_plugin_matching);
+    }
+
+    #[test]
     fn codex_hooks_default_enabled_and_parse_independently() {
         let temp = tempfile::tempdir().unwrap();
         let config_file = temp.path().join("config.toml");
