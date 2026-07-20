@@ -1,5 +1,7 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.idea.backend.KastPluginBackend
+
 import com.intellij.openapi.diagnostic.Logger
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileKind

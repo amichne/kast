@@ -1,5 +1,7 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.idea.backend.KastPluginBackend
+
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.query.CallHierarchyQuery

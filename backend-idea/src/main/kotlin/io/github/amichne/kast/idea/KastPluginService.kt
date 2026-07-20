@@ -1,5 +1,7 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.idea.diagnostics.*
+
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service

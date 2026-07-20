@@ -1,5 +1,7 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.idea.diagnostics.*
+
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
