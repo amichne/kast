@@ -11,14 +11,10 @@ import java.io.OutputStreamWriter
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.AsynchronousCloseException
-import java.nio.channels.Channels
 import java.nio.channels.ClosedChannelException
-import java.nio.channels.ServerSocketChannel
-import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 import kotlin.io.path.deleteIfExists
@@ -29,73 +25,30 @@ internal interface LocalRpcServer : Closeable {
 
 internal class UnixDomainSocketRpcServer(
     private val socketPath: Path,
-    private val dispatcher: RpcAnalysisDispatcher,
+    dispatcher: RpcAnalysisDispatcher,
 ) : LocalRpcServer {
     private val closed = AtomicBoolean(false)
-    private val handlers = Collections.synchronizedList(mutableListOf<Thread>())
-    private val serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
-    private val acceptThread = thread(
-        start = false,
-        isDaemon = true,
-        name = "kast-uds-rpc-accept",
-    ) {
-        acceptLoop()
-    }
+    private val server = ChannelRpcServer(
+        protocolFamily = StandardProtocolFamily.UNIX,
+        dispatcher = dispatcher,
+        threadNamePrefix = "kast-uds-rpc",
+    )
 
     fun start(): UnixDomainSocketRpcServer {
         Files.createDirectories(checkNotNull(socketPath.parent))
         socketPath.deleteIfExists()
-        serverChannel.bind(UnixDomainSocketAddress.of(socketPath))
-        acceptThread.start()
+        server.start(UnixDomainSocketAddress.of(socketPath))
         return this
     }
 
-    override fun await() {
-        acceptThread.join()
-    }
+    override fun await() = server.await()
 
     override fun close() {
         if (!closed.compareAndSet(false, true)) {
             return
         }
-        runCatching { serverChannel.close() }
-        val currentThread = Thread.currentThread()
-        handlers.toList().forEach { handler ->
-            if (handler != currentThread) {
-                handler.join(1_000)
-            }
-        }
+        server.close()
         socketPath.deleteIfExists()
-    }
-
-    private fun acceptLoop() {
-        while (!closed.get()) {
-            val client = runCatching { serverChannel.accept() }.getOrNull() ?: break
-            val handler = thread(
-                start = true,
-                isDaemon = true,
-                name = "kast-uds-rpc-client",
-            ) {
-                client.use(::handleClient)
-            }
-            handlers += handler
-        }
-    }
-
-    private fun handleClient(channel: SocketChannel) {
-        val reader = Channels.newReader(channel, StandardCharsets.UTF_8.name())
-        val writer = Channels.newWriter(channel, StandardCharsets.UTF_8.name())
-        runCatching {
-            processRpcStream(
-                dispatcher = dispatcher,
-                reader = reader.buffered(),
-                writer = writer.buffered(),
-            )
-        }.getOrElse { error ->
-            if (!isExpectedClientDisconnect(error)) {
-                throw error
-            }
-        }
     }
 }
 

@@ -35,8 +35,6 @@ import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.contract.MutationCapability
-import io.github.amichne.kast.api.contract.PageInfo
-import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.query.RefreshQuery
@@ -63,6 +61,7 @@ import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.KSerializer
+import kotlinx.serialization.serializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -71,8 +70,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import java.util.UUID
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.api.contract.skill.*
-import io.github.amichne.kast.api.contract.mutation.KastMutationExecutionResult
-import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
 import io.github.amichne.kast.server.mutation.MutationExecutionService
 import io.github.amichne.kast.api.contract.NormalizedPath
 import kotlinx.coroutines.TimeoutCancellationException
@@ -92,7 +89,8 @@ class RpcAnalysisDispatcher(
         prettyPrint = false
     },
 ) : Closeable {
-    private val skillRpc = SkillRpcOrchestrator(backend, config, json)
+    private val capabilityGate = BackendCapabilityGate(backend)
+    private val skillRpc = SkillRpcOrchestrator(backend, config, json, capabilityGate)
     private val mutationRpc = MutationExecutionService(skillRpc)
     private val workspaceFilesContinuation = WorkspaceFilesContinuationService(
         capacity = config.typedContinuationCapacity,
@@ -356,89 +354,22 @@ class RpcAnalysisDispatcher(
                 ),
             )
 
-            "symbol/resolve" -> encode(
-                KastResolveResponse.serializer(),
-                skillRpc.resolve(decodeParams(KastResolveRequest.serializer(), params)),
-            )
-
-            "selector/identity" -> encode(
-                KastSelectorIdentityResponse.serializer(),
-                skillRpc.selectorIdentity(
-                    decodeParams(KastSelectorIdentityRequest.serializer(), params),
-                ),
-            )
-
-            "symbol/discover" -> encode(
-                KastDiscoverResponse.serializer(),
-                skillRpc.discover(decodeParams(KastDiscoverRequest.serializer(), params)),
-            )
-
-            "symbol/references" -> encode(
-                KastReferencesResponse.serializer(),
-                skillRpc.references(decodeParams(KastReferencesRequest.serializer(), params)),
-            )
-
-            "symbol/callers" -> encode(
-                KastCallersResponse.serializer(),
-                skillRpc.callers(decodeParams(KastCallersRequest.serializer(), params)),
-            )
-
-            "symbol/implementations" -> encode(
-                KastImplementationsResponse.serializer(),
-                skillRpc.implementations(
-                    decodeParams(KastImplementationsRequest.serializer(), params),
-                ),
-            )
-
-            "symbol/hierarchy" -> encode(
-                KastHierarchyResponse.serializer(),
-                skillRpc.hierarchy(decodeParams(KastHierarchyRequest.serializer(), params)),
-            )
-
-            "symbol/scaffold" -> encode(
-                KastScaffoldResponse.serializer(),
-                skillRpc.scaffold(decodeParams(KastScaffoldRequest.serializer(), params)),
-            )
-
-            "symbol/rename" -> encode(
-                KastRenameResponse.serializer(),
-                skillRpc.rename(decodeParams(KastRenameRequest.serializer(), params)),
-            )
-
-            "symbol/write-and-validate" -> encode(
-                KastWriteAndValidateResponse.serializer(),
-                skillRpc.writeAndValidate(decodeParams(KastWriteAndValidateRequest.serializer(), params)),
-            )
-
-            "symbol/add-file" -> encode(
-                KastScopeMutationResponse.serializer(),
-                skillRpc.addFile(decodeParams(KastAddFileRequest.serializer(), params)),
-            )
-
-            "symbol/add-declaration" -> encode(
-                KastScopeMutationResponse.serializer(),
-                skillRpc.addDeclaration(decodeParams(KastAddDeclarationRequest.serializer(), params)),
-            )
-
-            "symbol/add-implementation" -> encode(
-                KastScopeMutationResponse.serializer(),
-                skillRpc.addImplementation(decodeParams(KastAddImplementationRequest.serializer(), params)),
-            )
-
-            "symbol/add-statement" -> encode(
-                KastScopeMutationResponse.serializer(),
-                skillRpc.addStatement(decodeParams(KastAddStatementRequest.serializer(), params)),
-            )
-
-            "symbol/replace-declaration" -> encode(
-                KastScopeMutationResponse.serializer(),
-                skillRpc.replaceDeclaration(decodeParams(KastReplaceDeclarationRequest.serializer(), params)),
-            )
-
-            "mutation/submit" -> encode(
-                KastMutationExecutionResult.serializer(),
-                mutationRpc.submit(decodeParams(KastSemanticMutation.serializer(), params)),
-            )
+            "symbol/resolve" -> dispatchTyped(params, skillRpc::resolve)
+            "selector/identity" -> dispatchTyped(params, skillRpc::selectorIdentity)
+            "symbol/discover" -> dispatchTyped(params, skillRpc::discover)
+            "symbol/references" -> dispatchTyped(params, skillRpc::references)
+            "symbol/callers" -> dispatchTyped(params, skillRpc::callers)
+            "symbol/implementations" -> dispatchTyped(params, skillRpc::implementations)
+            "symbol/hierarchy" -> dispatchTyped(params, skillRpc::hierarchy)
+            "symbol/scaffold" -> dispatchTyped(params, skillRpc::scaffold)
+            "symbol/rename" -> dispatchTyped(params, skillRpc::rename)
+            "symbol/write-and-validate" -> dispatchTyped(params, skillRpc::writeAndValidate)
+            "symbol/add-file" -> dispatchTyped(params, skillRpc::addFile)
+            "symbol/add-declaration" -> dispatchTyped(params, skillRpc::addDeclaration)
+            "symbol/add-implementation" -> dispatchTyped(params, skillRpc::addImplementation)
+            "symbol/add-statement" -> dispatchTyped(params, skillRpc::addStatement)
+            "symbol/replace-declaration" -> dispatchTyped(params, skillRpc::replaceDeclaration)
+            "mutation/submit" -> dispatchTyped(params, mutationRpc::submit)
 
             "raw/implementations" -> encode(
                 ImplementationsResult.serializer(),
@@ -516,25 +447,17 @@ class RpcAnalysisDispatcher(
         )
     }
 
-    private suspend fun requireReadCapability(capability: ReadCapability) {
-        val capabilities = backend.capabilities()
-        if (!capabilities.readCapabilities.contains(capability)) {
-            throw CapabilityNotSupportedException(
-                capability = capability.name,
-                message = "The backend does not advertise $capability",
-            )
-        }
-    }
+    private suspend fun requireReadCapability(capability: ReadCapability) = capabilityGate.requireRead(capability)
 
-    private suspend fun requireMutationCapability(capability: MutationCapability) {
-        val capabilities = backend.capabilities()
-        if (!capabilities.mutationCapabilities.contains(capability)) {
-            throw CapabilityNotSupportedException(
-                capability = capability.name,
-                message = "The backend does not advertise $capability",
-            )
-        }
-    }
+    private suspend fun requireMutationCapability(capability: MutationCapability) = capabilityGate.requireMutation(capability)
+
+    private suspend inline fun <reified P, reified R> dispatchTyped(
+        params: JsonElement?,
+        operation: suspend (P) -> R,
+    ): JsonElement = encode(
+        serializer<R>(),
+        operation(decodeParams(serializer<P>(), params)),
+    )
 
     private fun <T> decodeParams(
         serializer: KSerializer<T>,
@@ -588,24 +511,4 @@ private fun requestId(id: JsonElement): String {
     } ?: UUID.randomUUID().toString()
 }
 
-private fun workspaceSymbolPageToken(limit: Int): String = limit.toString()
-
 private const val REQUEST_TIMEOUT_STATUS_CODE = 504
-
-@Suppress("UNCHECKED_CAST")
-private fun <T, R : PageableResult<T>> R.withLimit(
-    limit: Int,
-    nextPageToken: (T) -> String,
-): R {
-    if (items.size <= limit) {
-        return this
-    }
-
-    return withItems(
-        items = items.take(limit),
-        page = PageInfo(
-            truncated = true,
-            nextPageToken = nextPageToken(items[limit - 1]),
-        ),
-    ) as R
-}

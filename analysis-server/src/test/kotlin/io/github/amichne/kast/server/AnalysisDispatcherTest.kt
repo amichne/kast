@@ -50,6 +50,8 @@ import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.RelationCursorInvalidReason
+import io.github.amichne.kast.api.contract.result.RelationCursorStaleReason
 import io.github.amichne.kast.api.contract.result.RelationTraversalPageInfo
 import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
 import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
@@ -606,6 +608,77 @@ class AnalysisDispatcherTest {
 
         assertInstanceOf(KastImplementationsUnsupportedSubjectKindResponse::class.java, result)
         assertEquals(0, backend.implementationRelationCalls)
+    }
+
+    @Test
+    fun `call relationship generation conflict is a typed stale outcome`() {
+        val symbol = lookupSymbol("sample.Service.run", SymbolKind.FUNCTION, "Service.kt")
+        val backend = RecordingPagedRelationshipsBackend(
+            delegate = ExactLookupBackend(
+                delegate = FakeAnalysisBackend.sample(tempDir),
+                symbols = listOf(symbol),
+            ),
+            callFailure = ConflictException(
+                message = "generation changed",
+                details = mapOf("continuationFailure" to "generationChanged"),
+            ),
+        )
+
+        val result = dispatchSuccessWithBackend<KastCallersResponse>(
+            backend = backend,
+            method = "symbol/callers",
+            params = json.encodeToJsonElement(
+                KastCallersRequest.serializer(),
+                KastCallersRequest(
+                    workspaceRoot = tempDir.toString(),
+                    selector = symbol.exactSelector(),
+                    direction = WrapperCallDirection.INCOMING,
+                ),
+            ),
+        )
+
+        val stale = assertInstanceOf(KastCallersCursorStaleResponse::class.java, result)
+        assertEquals(RelationCursorStaleReason.GENERATION_CHANGED, stale.reason)
+        assertEquals(
+            listOf(RelationshipSearchLimitation.GENERATION_CHANGED),
+            stale.evidence.coverage.limitations,
+        )
+        assertEquals(1, backend.callRelationCalls)
+    }
+
+    @Test
+    fun `implementation relationship query conflict is a typed invalid outcome`() {
+        val symbol = lookupSymbol("sample.Service", SymbolKind.CLASS, "Service.kt")
+        val backend = RecordingPagedRelationshipsBackend(
+            delegate = ExactLookupBackend(
+                delegate = FakeAnalysisBackend.sample(tempDir),
+                symbols = listOf(symbol),
+            ),
+            implementationFailure = ConflictException(
+                message = "query mismatch",
+                details = mapOf("continuationFailure" to "queryMismatch"),
+            ),
+        )
+
+        val result = dispatchSuccessWithBackend<KastImplementationsResponse>(
+            backend = backend,
+            method = "symbol/implementations",
+            params = json.encodeToJsonElement(
+                KastImplementationsRequest.serializer(),
+                KastImplementationsRequest(
+                    workspaceRoot = tempDir.toString(),
+                    selector = symbol.exactSelector(),
+                ),
+            ),
+        )
+
+        val invalid = assertInstanceOf(KastImplementationsCursorInvalidResponse::class.java, result)
+        assertEquals(RelationCursorInvalidReason.QUERY_MISMATCH, invalid.reason)
+        assertEquals(
+            listOf(RelationshipSearchLimitation.CONTINUATION_INVALID),
+            invalid.evidence.coverage.limitations,
+        )
+        assertEquals(1, backend.implementationRelationCalls)
     }
 
     @Test
@@ -2640,6 +2713,8 @@ private class ExactLookupBackend(
 private class RecordingPagedRelationshipsBackend(
     private val delegate: AnalysisBackend,
     private val missingCapability: ReadCapability? = null,
+    private val callFailure: ConflictException? = null,
+    private val implementationFailure: ConflictException? = null,
     private val hierarchyFailure: ConflictException? = null,
 ) : AnalysisBackend by delegate {
     var callRelationCalls: Int = 0
@@ -2660,6 +2735,7 @@ private class RecordingPagedRelationshipsBackend(
 
     override suspend fun callRelations(query: KastCallersQuery): CallRelationsResult {
         callRelationCalls += 1
+        callFailure?.let { throw it }
         return CallRelationsResult.Available(emptyList(), emptyRelationPage())
     }
 
@@ -2667,6 +2743,7 @@ private class RecordingPagedRelationshipsBackend(
         query: KastImplementationsQuery,
     ): ImplementationRelationsResult {
         implementationRelationCalls += 1
+        implementationFailure?.let { throw it }
         return ImplementationRelationsResult.Available(emptyList(), emptyRelationPage())
     }
 

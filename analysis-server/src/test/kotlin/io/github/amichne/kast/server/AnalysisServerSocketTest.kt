@@ -34,6 +34,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.net.InetSocketAddress
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
 import java.nio.channels.Channels
@@ -92,6 +93,39 @@ class AnalysisServerSocketTest {
         }
 
         assertFalse(socketPath.exists())
+    }
+
+    @Test
+    fun `tcp transport serves rpc`() {
+        val server = TcpRpcServer(
+            host = "127.0.0.1",
+            port = 0,
+            dispatcher = RpcAnalysisDispatcher(
+                backend = FakeAnalysisBackend.sample(tempDir),
+                config = AnalysisServerConfig(transport = AnalysisTransport.Tcp("127.0.0.1", 0)),
+            ),
+        ).start()
+
+        server.use {
+            val response = SocketChannel.open(StandardProtocolFamily.INET).use { channel ->
+                channel.connect(InetSocketAddress("127.0.0.1", server.boundPort()))
+                val writer = Channels.newWriter(channel, StandardCharsets.UTF_8.name()).buffered()
+                val reader = Channels.newReader(channel, StandardCharsets.UTF_8.name()).buffered()
+                writer.write(
+                    json.encodeToString(
+                        JsonRpcRequest.serializer(),
+                        JsonRpcRequest(id = JsonPrimitive(1), method = "runtime/status"),
+                    ),
+                )
+                writer.newLine()
+                writer.flush()
+                checkNotNull(reader.readLine())
+            }
+            val success = json.decodeFromString(JsonRpcSuccessResponse.serializer(), response)
+            val status = json.decodeFromJsonElement(RuntimeStatusResponse.serializer(), success.result)
+
+            assertEquals("fake", status.backendName)
+        }
     }
 
     @Test

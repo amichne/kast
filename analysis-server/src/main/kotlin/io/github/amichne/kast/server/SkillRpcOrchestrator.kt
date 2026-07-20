@@ -1,13 +1,11 @@
 package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.contract.AnalysisBackend
-import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.FileOperation
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.PageInfo
-import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.OutlineSymbol
 import io.github.amichne.kast.api.contract.ReadCapability
@@ -122,6 +120,7 @@ internal class SkillRpcOrchestrator(
     private val backend: AnalysisBackend,
     private val config: AnalysisServerConfig,
     private val json: Json,
+    private val capabilityGate: BackendCapabilityGate,
 ) {
     private companion object {
         const val DEFAULT_DISCOVERY_SEARCH_LIMIT = 100
@@ -961,16 +960,6 @@ internal class SkillRpcOrchestrator(
                     offset = resolved.offset,
                 )
             },
-            failureQueryBuilder = {
-                KastRenameFailureQuery(
-                    workspaceRoot = workspaceRoot,
-                    symbol = request.symbol,
-                    fileHint = request.fileHint,
-                    kind = request.kind,
-                    containingType = request.containingType,
-                    newName = request.newName,
-                )
-            },
         )
     }
 
@@ -983,14 +972,6 @@ internal class SkillRpcOrchestrator(
             newName = request.newName,
             queryBuilder = {
                 KastRenameByOffsetQuery(
-                    workspaceRoot = workspaceRoot,
-                    filePath = filePath,
-                    offset = request.offset,
-                    newName = request.newName,
-                )
-            },
-            failureQueryBuilder = {
-                KastRenameFailureQuery(
                     workspaceRoot = workspaceRoot,
                     filePath = filePath,
                     offset = request.offset,
@@ -1028,15 +1009,6 @@ internal class SkillRpcOrchestrator(
                     offset = selector.declarationStartOffset,
                 )
             },
-            failureQueryBuilder = {
-                KastRenameFailureQuery(
-                    type = "RENAME_BY_SELECTOR_HANDLE_REQUEST",
-                    workspaceRoot = workspaceRoot,
-                    filePath = selector.declarationFile,
-                    offset = selector.declarationStartOffset,
-                    newName = request.newName,
-                )
-            },
         )
     }
 
@@ -1045,7 +1017,6 @@ internal class SkillRpcOrchestrator(
         offset: Int,
         newName: String,
         queryBuilder: () -> KastRenameQuery,
-        failureQueryBuilder: () -> KastRenameFailureQuery,
     ): KastRenameResponse {
         requireMutationCapability(MutationCapability.RENAME)
         val renameResult = backend.rename(
@@ -1960,225 +1931,103 @@ internal class SkillRpcOrchestrator(
         selector: KastExactSymbolSelector,
         subject: SymbolIdentity,
         failure: ConflictException,
-    ): KastCallersResponse = when (failure.details["continuationFailure"]) {
-        "generationChanged" -> KastCallersCursorStaleResponse(
-            selector = selector,
-            reason = RelationCursorStaleReason.GENERATION_CHANGED,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.GENERATION_CHANGED,
-            ),
-        )
-        "expired" -> KastCallersCursorStaleResponse(
-            selector = selector,
-            reason = RelationCursorStaleReason.EXPIRED,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CONTINUATION_EXPIRED,
-            ),
-        )
-        "familyMismatch" -> KastCallersCursorInvalidResponse(
-            selector = selector,
-            reason = RelationCursorInvalidReason.FAMILY_MISMATCH,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CONTINUATION_INVALID,
-            ),
-        )
-        "queryMismatch" -> KastCallersCursorInvalidResponse(
-            selector = selector,
-            reason = RelationCursorInvalidReason.QUERY_MISMATCH,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CONTINUATION_INVALID,
-            ),
-        )
-        "unknown" -> KastCallersCursorInvalidResponse(
-            selector = selector,
-            reason = RelationCursorInvalidReason.UNKNOWN_HANDLE,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CONTINUATION_INVALID,
-            ),
-        )
-        "candidateBudgetReached" -> KastCallersDegradedResponse(
-            selector = selector,
-            subject = subject,
-            reason = KastCallDegradedReason.CANDIDATE_BUDGET_REACHED,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CANDIDATE_BUDGET_REACHED,
-            ),
-        )
-        "traversalStateBudgetReached" -> KastCallersDegradedResponse(
-            selector = selector,
-            subject = subject,
-            reason = KastCallDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.TRAVERSAL_STATE_BUDGET_REACHED,
-            ),
-        )
-        "timeout" -> KastCallersDegradedResponse(
-            selector = selector,
-            subject = subject,
-            reason = KastCallDegradedReason.TIMEOUT,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.TIMED_OUT,
-            ),
-        )
-        else -> throw failure
+    ): KastCallersResponse {
+        val continuationFailure = failure.relationContinuationFailureOrNull() ?: throw failure
+        val evidence = limitedRelationshipEvidence(0, continuationFailure.limitation)
+        return when (continuationFailure) {
+            is RelationContinuationFailure.Stale -> KastCallersCursorStaleResponse(
+                selector = selector,
+                reason = continuationFailure.reason,
+                evidence = evidence,
+            )
+            is RelationContinuationFailure.Invalid -> KastCallersCursorInvalidResponse(
+                selector = selector,
+                reason = continuationFailure.reason,
+                evidence = evidence,
+            )
+            is RelationContinuationFailure.Degraded -> KastCallersDegradedResponse(
+                selector = selector,
+                subject = subject,
+                reason = continuationFailure.reason.toCallDegradedReason(),
+                evidence = evidence,
+            )
+        }
     }
 
     private fun implementationContinuationOutcome(
         selector: KastExactSymbolSelector,
         subject: SymbolIdentity,
         failure: ConflictException,
-    ): KastImplementationsResponse = when (failure.details["continuationFailure"]) {
-        "generationChanged" -> KastImplementationsCursorStaleResponse(
-            selector = selector,
-            reason = RelationCursorStaleReason.GENERATION_CHANGED,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.GENERATION_CHANGED,
-            ),
-        )
-        "expired" -> KastImplementationsCursorStaleResponse(
-            selector = selector,
-            reason = RelationCursorStaleReason.EXPIRED,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CONTINUATION_EXPIRED,
-            ),
-        )
-        "familyMismatch" -> KastImplementationsCursorInvalidResponse(
-            selector = selector,
-            reason = RelationCursorInvalidReason.FAMILY_MISMATCH,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CONTINUATION_INVALID,
-            ),
-        )
-        "queryMismatch" -> KastImplementationsCursorInvalidResponse(
-            selector = selector,
-            reason = RelationCursorInvalidReason.QUERY_MISMATCH,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CONTINUATION_INVALID,
-            ),
-        )
-        "unknown" -> KastImplementationsCursorInvalidResponse(
-            selector = selector,
-            reason = RelationCursorInvalidReason.UNKNOWN_HANDLE,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CONTINUATION_INVALID,
-            ),
-        )
-        "candidateBudgetReached" -> KastImplementationsDegradedResponse(
-            selector = selector,
-            subject = subject,
-            reason = KastImplementationsDegradedReason.CANDIDATE_BUDGET_REACHED,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CANDIDATE_BUDGET_REACHED,
-            ),
-        )
-        "traversalStateBudgetReached" -> KastImplementationsDegradedResponse(
-            selector = selector,
-            subject = subject,
-            reason = KastImplementationsDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.TRAVERSAL_STATE_BUDGET_REACHED,
-            ),
-        )
-        "timeout" -> KastImplementationsDegradedResponse(
-            selector = selector,
-            subject = subject,
-            reason = KastImplementationsDegradedReason.TIMEOUT,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.TIMED_OUT,
-            ),
-        )
-        else -> throw failure
+    ): KastImplementationsResponse {
+        val continuationFailure = failure.relationContinuationFailureOrNull() ?: throw failure
+        val evidence = limitedRelationshipEvidence(0, continuationFailure.limitation)
+        return when (continuationFailure) {
+            is RelationContinuationFailure.Stale -> KastImplementationsCursorStaleResponse(
+                selector = selector,
+                reason = continuationFailure.reason,
+                evidence = evidence,
+            )
+            is RelationContinuationFailure.Invalid -> KastImplementationsCursorInvalidResponse(
+                selector = selector,
+                reason = continuationFailure.reason,
+                evidence = evidence,
+            )
+            is RelationContinuationFailure.Degraded -> KastImplementationsDegradedResponse(
+                selector = selector,
+                subject = subject,
+                reason = continuationFailure.reason.toImplementationsDegradedReason(),
+                evidence = evidence,
+            )
+        }
     }
 
     private fun hierarchyContinuationOutcome(
         selector: KastExactSymbolSelector,
         subject: SymbolIdentity,
         failure: ConflictException,
-    ): KastHierarchyResponse = when (failure.details["continuationFailure"]) {
-        "generationChanged" -> KastHierarchyCursorStaleResponse(
-            selector = selector,
-            reason = RelationCursorStaleReason.GENERATION_CHANGED,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.GENERATION_CHANGED,
-            ),
-        )
-        "expired" -> KastHierarchyCursorStaleResponse(
-            selector = selector,
-            reason = RelationCursorStaleReason.EXPIRED,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CONTINUATION_EXPIRED,
-            ),
-        )
-        "familyMismatch" -> KastHierarchyCursorInvalidResponse(
-            selector = selector,
-            reason = RelationCursorInvalidReason.FAMILY_MISMATCH,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CONTINUATION_INVALID,
-            ),
-        )
-        "queryMismatch" -> KastHierarchyCursorInvalidResponse(
-            selector = selector,
-            reason = RelationCursorInvalidReason.QUERY_MISMATCH,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CONTINUATION_INVALID,
-            ),
-        )
-        "unknown" -> KastHierarchyCursorInvalidResponse(
-            selector = selector,
-            reason = RelationCursorInvalidReason.UNKNOWN_HANDLE,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CONTINUATION_INVALID,
-            ),
-        )
-        "candidateBudgetReached" -> KastHierarchyDegradedResponse(
-            selector = selector,
-            subject = subject,
-            reason = KastHierarchyDegradedReason.CANDIDATE_BUDGET_REACHED,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.CANDIDATE_BUDGET_REACHED,
-            ),
-        )
-        "traversalStateBudgetReached" -> KastHierarchyDegradedResponse(
-            selector = selector,
-            subject = subject,
-            reason = KastHierarchyDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.TRAVERSAL_STATE_BUDGET_REACHED,
-            ),
-        )
-        "timeout" -> KastHierarchyDegradedResponse(
-            selector = selector,
-            subject = subject,
-            reason = KastHierarchyDegradedReason.TIMEOUT,
-            evidence = limitedRelationshipEvidence(
-                0,
-                RelationshipSearchLimitation.TIMED_OUT,
-            ),
-        )
-        else -> throw failure
+    ): KastHierarchyResponse {
+        val continuationFailure = failure.relationContinuationFailureOrNull() ?: throw failure
+        val evidence = limitedRelationshipEvidence(0, continuationFailure.limitation)
+        return when (continuationFailure) {
+            is RelationContinuationFailure.Stale -> KastHierarchyCursorStaleResponse(
+                selector = selector,
+                reason = continuationFailure.reason,
+                evidence = evidence,
+            )
+            is RelationContinuationFailure.Invalid -> KastHierarchyCursorInvalidResponse(
+                selector = selector,
+                reason = continuationFailure.reason,
+                evidence = evidence,
+            )
+            is RelationContinuationFailure.Degraded -> KastHierarchyDegradedResponse(
+                selector = selector,
+                subject = subject,
+                reason = continuationFailure.reason.toHierarchyDegradedReason(),
+                evidence = evidence,
+            )
+        }
+    }
+
+    private fun RelationContinuationDegradedReason.toCallDegradedReason(): KastCallDegradedReason = when (this) {
+        RelationContinuationDegradedReason.CANDIDATE_BUDGET_REACHED -> KastCallDegradedReason.CANDIDATE_BUDGET_REACHED
+        RelationContinuationDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED -> KastCallDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED
+        RelationContinuationDegradedReason.TIMEOUT -> KastCallDegradedReason.TIMEOUT
+    }
+
+    private fun RelationContinuationDegradedReason.toImplementationsDegradedReason(): KastImplementationsDegradedReason =
+        when (this) {
+            RelationContinuationDegradedReason.CANDIDATE_BUDGET_REACHED ->
+                KastImplementationsDegradedReason.CANDIDATE_BUDGET_REACHED
+            RelationContinuationDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED ->
+                KastImplementationsDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED
+            RelationContinuationDegradedReason.TIMEOUT -> KastImplementationsDegradedReason.TIMEOUT
+        }
+
+    private fun RelationContinuationDegradedReason.toHierarchyDegradedReason(): KastHierarchyDegradedReason = when (this) {
+        RelationContinuationDegradedReason.CANDIDATE_BUDGET_REACHED -> KastHierarchyDegradedReason.CANDIDATE_BUDGET_REACHED
+        RelationContinuationDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED ->
+            KastHierarchyDegradedReason.TRAVERSAL_STATE_BUDGET_REACHED
+        RelationContinuationDegradedReason.TIMEOUT -> KastHierarchyDegradedReason.TIMEOUT
     }
 
     private fun KastExactSymbolSelector.normalizedFor(
@@ -2307,38 +2156,14 @@ internal class SkillRpcOrchestrator(
     private suspend fun workspaceRootFor(explicit: String?): String =
         explicit?.takeIf(String::isNotBlank)?.normalizedAbsolutePath() ?: backend.runtimeStatus().workspaceRoot
 
-    private suspend fun requireReadCapability(capability: ReadCapability) {
-        requireCapabilities(readCapabilities = setOf(capability))
-    }
+    private suspend fun requireReadCapability(capability: ReadCapability) = capabilityGate.requireRead(capability)
 
-    private suspend fun requireMutationCapability(capability: MutationCapability) {
-        requireCapabilities(mutationCapabilities = setOf(capability))
-    }
+    private suspend fun requireMutationCapability(capability: MutationCapability) = capabilityGate.requireMutation(capability)
 
     private suspend fun requireCapabilities(
         readCapabilities: Set<ReadCapability> = emptySet(),
         mutationCapabilities: Set<MutationCapability> = emptySet(),
-    ) {
-        val capabilities = backend.capabilities()
-        val missingReadCapability = readCapabilities.firstOrNull { capability ->
-            capability !in capabilities.readCapabilities
-        }
-        if (missingReadCapability != null) {
-            throw CapabilityNotSupportedException(
-                capability = missingReadCapability.name,
-                message = "The backend does not advertise $missingReadCapability",
-            )
-        }
-        val missingMutationCapability = mutationCapabilities.firstOrNull { capability ->
-            capability !in capabilities.mutationCapabilities
-        }
-        if (missingMutationCapability != null) {
-            throw CapabilityNotSupportedException(
-                capability = missingMutationCapability.name,
-                message = "The backend does not advertise $missingMutationCapability",
-            )
-        }
-    }
+    ) = capabilityGate.requireCapabilities(readCapabilities, mutationCapabilities)
 
     private fun resolveContent(content: String?, contentFile: String?): String {
         if (content != null) {
@@ -2407,11 +2232,6 @@ private fun String.tokens(): Set<String> =
         .filter { it.length >= 2 }
         .toSet()
 
-private fun WrapperCallDirection.toCallDirection(): CallDirection = when (this) {
-    WrapperCallDirection.INCOMING -> CallDirection.INCOMING
-    WrapperCallDirection.OUTGOING -> CallDirection.OUTGOING
-}
-
 private fun WrapperScaffoldMode.toInsertionTarget(): SemanticInsertionTarget = when (this) {
     WrapperScaffoldMode.IMPLEMENT -> SemanticInsertionTarget.CLASS_BODY_END
     WrapperScaffoldMode.REPLACE -> SemanticInsertionTarget.CLASS_BODY_START
@@ -2420,22 +2240,3 @@ private fun WrapperScaffoldMode.toInsertionTarget(): SemanticInsertionTarget = w
 }
 
 private fun placeholderLogFile(): String = "/dev/null"
-
-private fun workspaceSymbolPageToken(limit: Int): String = limit.toString()
-
-@Suppress("UNCHECKED_CAST")
-private fun <T, R : PageableResult<T>> R.withLimit(
-    limit: Int,
-    nextPageToken: (T) -> String,
-): R {
-    if (items.size <= limit) {
-        return this
-    }
-    return withItems(
-        items = items.take(limit),
-        page = PageInfo(
-            truncated = true,
-            nextPageToken = nextPageToken(items[limit - 1]),
-        ),
-    ) as R
-}
