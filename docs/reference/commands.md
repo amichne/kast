@@ -20,7 +20,7 @@ agent work.
 | --- | --- |
 | `kast help` | Browse command-tree help |
 | `kast version` | Print the packaged CLI version |
-| `kast context` | Print compact workspace context for agents and hooks |
+| `kast context` | Print compact workspace context for agents |
 | `kast ready` | Verify that Kast is ready for a task |
 | `kast repair` | Plan or apply safe repair when support workflows need it |
 | `kast status` | Check current workspace status |
@@ -103,7 +103,7 @@ Setup installs only:
 - one managed `<kast>...</kast>` guidance region in the selected context file
 
 It does not install Copilot package files, portable instruction packages,
-session hooks, generated catalog copies, workflow helper assets, or public raw
+generated catalog copies, workflow helper assets, or public raw
 transport.
 
 ## Source And Validation

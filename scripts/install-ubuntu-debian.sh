@@ -120,7 +120,7 @@ try:
 except Exception:
     raise SystemExit(1)
 
-if payload.get("schemaVersion") != 3:
+if payload.get("schemaVersion") != 2:
     raise SystemExit(1)
 if payload.get("kind") != "KAST_INSTALL_BUNDLE":
     raise SystemExit(1)
@@ -246,7 +246,6 @@ run_bundle_activation() {
   local verify_only="$2"
   local bundled_kast="${bundle_source_dir}/bin/kast"
   [[ -x "$bundled_kast" ]] || die "Bundle source missing executable bin/kast"
-  [[ -x "${bundle_source_dir}/bin/kast-agent-task" ]] || die "Bundle source missing executable bin/kast-agent-task"
 
   local activation_args=(
     developer release activate bundle
@@ -299,8 +298,6 @@ if payload.get("roots", {}).get("install") != install_root:
     fail("install.json roots.install does not match the requested install root")
 if payload.get("entrypoints", {}).get("activeBinary") != f"{install_home}/bin/kast":
     fail("install.json activeBinary does not match the requested version")
-if payload.get("entrypoints", {}).get("taskLauncher") != f"{payload.get('roots', {}).get('bin')}/kast-agent-task":
-    fail("install.json taskLauncher does not match the requested bin root")
 
 backends = payload.get("backends")
 if not isinstance(backends, list):

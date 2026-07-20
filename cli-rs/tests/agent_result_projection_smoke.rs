@@ -933,24 +933,6 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
     std::fs::create_dir_all(&workspace).expect("workspace");
     write_gradle_marker(&workspace);
     write_current_cli_install_manifest_for_test(&home, &config_home);
-    let task = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "task",
-            "begin",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("begin workspace task");
-    assert!(
-        task.status.success(),
-        "{}",
-        String::from_utf8_lossy(&task.stdout)
-    );
-    let task: Value = serde_json::from_slice(&task.stdout).expect("task JSON");
     let backend = spawn_scripted_idea_backend(
         &home,
         &config_home,
@@ -959,46 +941,27 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
         vec![(
             "mutation/submit",
             json!({
-                "operation": {
-                    "operationId": "00000000-0000-0000-0000-000000000337",
-                    "idempotencyKey": "issue-337-rename",
-                    "mutationKind": "RENAME",
-                    "state": {
-                        "type": "COMPLETED",
-                        "trace": {
-                            "enteredStages": ["EDIT_APPLICATION", "DIAGNOSTICS"],
-                            "editApplicationState": "COMPLETED",
-                            "verboseTrace": "mutation trace ".repeat(200)
+                "type": "SUCCEEDED",
+                "result": {
+                    "type": "RENAME_RESULT",
+                    "response": {
+                        "ok": true,
+                        "editCount": 1,
+                        "affectedFiles": [file.display().to_string()],
+                        "applyResult": {
+                            "applied": [{
+                                "filePath": file.display().to_string(),
+                                "startOffset": 0,
+                                "endOffset": 5,
+                                "newText": "Renamed"
+                            }],
+                            "affectedFiles": [file.display().to_string()],
+                            "createdFiles": [],
+                            "deletedFiles": []
                         },
-                        "cancellationRequested": false,
-                        "result": {
-                            "type": "RENAME_RESULT",
-                            "response": {
-                                "ok": true,
-                                "editCount": 1,
-                                "affectedFiles": [file.display().to_string()],
-                                "applyResult": {
-                                    "applied": [{
-                                        "filePath": file.display().to_string(),
-                                        "startOffset": 0,
-                                        "endOffset": 5,
-                                        "newText": "Renamed"
-                                    }],
-                                    "affectedFiles": [file.display().to_string()],
-                                    "createdFiles": [],
-                                    "deletedFiles": []
-                                },
-                                "diagnostics": {
-                                    "clean": true,
-                                    "errorCount": 0,
-                                    "warningCount": 1,
-                                    "semanticOutcome": "COMPLETE",
-                                    "requestedFileCount": 1,
-                                    "analyzedFileCount": 1,
-                                    "skippedFileCount": 0,
-                                    "errors": []
-                                }
-                            }
+                        "diagnostics": {
+                            "errorCount": 0,
+                            "warningCount": 1
                         }
                     }
                 },
@@ -1029,24 +992,13 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
         "{}",
         String::from_utf8_lossy(&output.stdout)
     );
-    let requests = backend.join().expect("mutation backend");
-    let submitted = requests
-        .iter()
-        .find(|request| request["method"] == "mutation/submit")
-        .expect("mutation submission");
-    assert_eq!(
-        submitted["params"]["workspaceTaskId"],
-        task["result"]["taskId"],
-    );
+    backend.join().expect("mutation backend");
     let raw = String::from_utf8(output.stdout).expect("utf8");
     let stdout: Value = serde_json::from_str(&raw).expect("mutation json");
 
     assert_eq!(stdout["result"]["type"], "KAST_AGENT_MUTATION_RESULT");
-    assert_eq!(stdout["result"]["operation"]["state"], "COMPLETED");
-    assert_eq!(
-        stdout["result"]["operation"]["editApplicationState"],
-        "COMPLETED"
-    );
+    assert_eq!(stdout["result"]["execution"]["outcome"], "SUCCEEDED");
+    assert_eq!(stdout["result"]["execution"]["deduplicated"], false);
     assert_eq!(stdout["result"]["appliedEditCount"], 1);
     assert_eq!(
         stdout["result"]["files"],

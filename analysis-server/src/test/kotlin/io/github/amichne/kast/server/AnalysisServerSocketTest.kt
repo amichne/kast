@@ -5,14 +5,9 @@ import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.mutation.KastMutationExecutionResult
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
-import io.github.amichne.kast.api.contract.mutation.KastMutationOperationId
-import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSelector
-import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSnapshot
-import io.github.amichne.kast.api.contract.mutation.KastMutationOperationState
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
-import io.github.amichne.kast.api.contract.mutation.KastSemanticMutationKind
-import io.github.amichne.kast.api.contract.mutation.KastWorkspaceTaskId
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
@@ -53,8 +48,6 @@ import kotlin.io.path.exists
 class AnalysisServerSocketTest {
     @TempDir
     lateinit var tempDir: Path
-
-    private val testWorkspaceTaskId = KastWorkspaceTaskId("00000000-0000-0000-0000-000000000420")
 
     private val json = Json {
         encodeDefaults = true
@@ -218,15 +211,14 @@ class AnalysisServerSocketTest {
     }
 
     @Test
-    fun `mutation status remains retrievable by idempotency key after client disconnect`() {
-        val socketPath = tempDir.resolve("run").resolve("m.sock")
-        val target = tempDir.resolve("src/Reconnected.kt")
-        val contentFile = tempDir.resolve("reconnected-content.kt")
-        Files.writeString(contentFile, "package sample\n\nclass Reconnected\n")
-        val idempotencyKey = KastMutationIdempotencyKey("issue-333-reconnect")
+    fun `mutation retry joins its terminal result without reapplying`() {
+        val socketPath = tempDir.resolve("run").resolve("mutation-retry.sock")
+        val target = tempDir.resolve("src/Retried.kt")
+        val contentFile = tempDir.resolve("retried-content.kt")
+        Files.writeString(contentFile, "package sample\n\nclass Retried\n")
+        val applyStarted = CompletableDeferred<Unit>()
         val mutation = KastSemanticMutation.AddFile(
-            workspaceTaskId = testWorkspaceTaskId,
-            idempotencyKey = idempotencyKey,
+            idempotencyKey = KastMutationIdempotencyKey("issue-333-reconnect"),
             request = KastAddFileRequest(
                 workspaceRoot = tempDir.toString(),
                 filePath = target.toString(),
@@ -235,15 +227,12 @@ class AnalysisServerSocketTest {
         )
 
         AnalysisServer(
-            backend = FakeAnalysisBackend.sample(tempDir),
+            backend = AdmittedApplyBackend(FakeAnalysisBackend.sample(tempDir), applyStarted),
             config = AnalysisServerConfig(
                 transport = AnalysisTransport.UnixDomainSocket(socketPath),
-                descriptorDirectory = tempDir.resolve("instances"),
+                descriptorDirectory = tempDir.resolve("mutation-retry-instances"),
             ),
         ).start().use {
-            val selector = KastMutationOperationSelector.ByIdempotencyKey(idempotencyKey)
-            val preAdmission = pollMutationStatus(socketPath, selector)
-            assertEquals(MutationStatusPoll.NotAdmitted, preAdmission)
             sendWithoutReadingResponse(
                 socketPath = socketPath,
                 request = JsonRpcRequest(
@@ -252,134 +241,23 @@ class AnalysisServerSocketTest {
                     params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
                 ),
             )
-            val terminal = awaitMutationTerminal(socketPath, selector, preAdmission)
+            runBlocking { withTimeout(1_000) { applyStarted.await() } }
 
-            assertTrue(terminal.state is KastMutationOperationState.Completed)
-            assertEquals("package sample\n\nclass Reconnected\n", Files.readString(target))
+            val response = callSocket(
+                socketPath = socketPath,
+                request = JsonRpcRequest(
+                    id = JsonPrimitive(2),
+                    method = "mutation/submit",
+                    params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
+                ),
+            )
+            val success = json.decodeFromString(JsonRpcSuccessResponse.serializer(), response)
+            val terminal = json.decodeFromJsonElement(KastMutationExecutionResult.serializer(), success.result)
+
+            assertTrue(terminal is KastMutationExecutionResult.Succeeded)
+            assertTrue(terminal.deduplicated)
+            assertEquals("package sample\n\nclass Retried\n", Files.readString(target))
         }
-    }
-
-    @Test
-    fun `mutation status polling rejects registry loss after admission`() {
-        val idempotencyKey = KastMutationIdempotencyKey("issue-333-registry-loss")
-        val selector = KastMutationOperationSelector.ByIdempotencyKey(idempotencyKey)
-        val available = MutationStatusPoll.Available(
-            KastMutationOperationSnapshot(
-                operationId = KastMutationOperationId.random(),
-                idempotencyKey = idempotencyKey,
-                mutationKind = KastSemanticMutationKind.ADD_FILE,
-                state = KastMutationOperationState.Queued(),
-            ),
-        )
-        val admitted = MutationStatusAwaitPhase.AwaitingAdmission.observe(available)
-        val matchingNotFound = decodeMutationStatus(
-            mutationNotFoundResponse(mapOf("idempotencyKey" to idempotencyKey.value)),
-            selector,
-        )
-        assertEquals(MutationStatusAwaitPhase.Admitted, admitted)
-        assertEquals(MutationStatusPoll.NotAdmitted, matchingNotFound)
-
-        org.junit.jupiter.api.assertThrows<IllegalStateException> {
-            admitted.observe(matchingNotFound)
-        }
-    }
-
-    @Test
-    fun `mutation status polling rejects wrong and extra not found selector details`() {
-        val idempotencyKey = KastMutationIdempotencyKey("issue-333-closed-error-shape")
-        val selector = KastMutationOperationSelector.ByIdempotencyKey(idempotencyKey)
-        val expectedDetails = mapOf("idempotencyKey" to idempotencyKey.value)
-        val invalidDetails = listOf(
-            mapOf("idempotencyKey" to "another-operation"),
-            expectedDetails + ("operationId" to KastMutationOperationId.random().value),
-        )
-
-        invalidDetails.forEach { details ->
-            org.junit.jupiter.api.assertThrows<IllegalStateException> {
-                decodeMutationStatus(mutationNotFoundResponse(details), selector)
-            }
-        }
-    }
-
-    @Test
-    fun `mutation status polling does not fetch an uninspected response beyond its bound`() {
-        val poll = MutationStatusPoll.Available(
-            KastMutationOperationSnapshot(
-                operationId = KastMutationOperationId.random(),
-                idempotencyKey = KastMutationIdempotencyKey("issue-333-poll-bound"),
-                mutationKind = KastSemanticMutationKind.ADD_FILE,
-                state = KastMutationOperationState.Queued(),
-            ),
-        )
-        var subsequentPolls = 0
-
-        org.junit.jupiter.api.assertThrows<IllegalStateException> {
-            awaitMutationTerminal(poll) {
-                subsequentPolls += 1
-                poll
-            }
-        }
-
-        assertEquals(MAX_MUTATION_STATUS_POLLS - 1, subsequentPolls)
-    }
-
-    @Test
-    fun `server close cancels and joins mutation before removing descriptor authority`() {
-        val socketPath = tempDir.resolve("run").resolve("c.sock")
-        val descriptorDirectory = tempDir.resolve("close-instances")
-        val descriptorFile = descriptorDirectory.resolve("daemons.json")
-        val target = tempDir.resolve("src/AfterClose.kt")
-        val contentFile = tempDir.resolve("after-close-content.kt")
-        Files.writeString(contentFile, "package sample\n\nclass AfterClose\n")
-        val applyStarted = CompletableDeferred<Unit>()
-        val applyStopped = CompletableDeferred<Unit>()
-        val descriptorRetainedDuringStop = AtomicBoolean(false)
-        val backend = ClosingApplyBackend(
-            delegate = FakeAnalysisBackend.sample(tempDir),
-            applyStarted = applyStarted,
-            applyStopped = applyStopped,
-            descriptorFile = descriptorFile,
-            descriptorIdentity = socketPath.toString(),
-            descriptorRetainedDuringStop = descriptorRetainedDuringStop,
-        )
-        val server = AnalysisServer(
-            backend = backend,
-            config = AnalysisServerConfig(
-                transport = AnalysisTransport.UnixDomainSocket(socketPath),
-                descriptorDirectory = descriptorDirectory,
-            ),
-        ).start()
-        val mutation = KastSemanticMutation.AddFile(
-            workspaceTaskId = testWorkspaceTaskId,
-            idempotencyKey = KastMutationIdempotencyKey("issue-333-server-close"),
-            request = KastAddFileRequest(
-                workspaceRoot = tempDir.toString(),
-                filePath = target.toString(),
-                contentFile = contentFile.toString(),
-            ),
-        )
-        callSocket(
-            socketPath = socketPath,
-            request = JsonRpcRequest(
-                id = JsonPrimitive(1),
-                method = "mutation/submit",
-                params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
-            ),
-        )
-        runBlocking { withTimeout(1_000) { applyStarted.await() } }
-
-        server.close()
-        runBlocking { withTimeout(1_000) { applyStopped.await() } }
-        Thread.sleep(300)
-
-        assertFalse(Files.exists(target), "mutation wrote after server authority closed")
-        assertTrue(
-            descriptorRetainedDuringStop.get(),
-            "descriptor authority was removed before the mutation worker stopped",
-        )
-        assertFalse(
-            Files.exists(descriptorFile) && Files.readString(descriptorFile).contains(socketPath.toString()),
-        )
     }
 
     @Test
@@ -415,142 +293,10 @@ class AnalysisServerSocketTest {
         }
     }
 
-    private fun awaitMutationTerminal(
-        socketPath: Path,
-        selector: KastMutationOperationSelector,
-        initialPoll: MutationStatusPoll,
-    ): KastMutationOperationSnapshot = awaitMutationTerminal(initialPoll) {
-        Thread.sleep(MUTATION_STATUS_POLL_INTERVAL_MILLIS)
-        pollMutationStatus(socketPath, selector)
-    }
-
-    private fun awaitMutationTerminal(
-        initialPoll: MutationStatusPoll,
-        nextPoll: () -> MutationStatusPoll,
-    ): KastMutationOperationSnapshot {
-        var poll = initialPoll
-        var phase: MutationStatusAwaitPhase = MutationStatusAwaitPhase.AwaitingAdmission
-        repeat(MAX_MUTATION_STATUS_POLLS) { pollIndex ->
-            phase = phase.observe(poll)
-            when (val current = poll) {
-                MutationStatusPoll.NotAdmitted -> Unit
-                is MutationStatusPoll.Available -> {
-                    val snapshot = current.snapshot
-                    if (
-                        snapshot.state is KastMutationOperationState.Completed ||
-                        snapshot.state is KastMutationOperationState.Failed ||
-                        snapshot.state is KastMutationOperationState.Cancelled
-                    ) {
-                        return snapshot
-                    }
-                }
-            }
-            if (pollIndex < MAX_MUTATION_STATUS_POLLS - 1) {
-                poll = nextPoll()
-            }
-        }
-        error("Mutation operation did not become terminal after reconnect")
-    }
-
-    private fun pollMutationStatus(
-        socketPath: Path,
-        selector: KastMutationOperationSelector,
-    ): MutationStatusPoll {
-        val response = callSocket(
-            socketPath = socketPath,
-            request = JsonRpcRequest(
-                id = JsonPrimitive(2),
-                method = "mutation/status",
-                params = json.encodeToJsonElement(KastMutationOperationSelector.serializer(), selector),
-            ),
-        )
-        return decodeMutationStatus(response, selector)
-    }
-
-    private fun decodeMutationStatus(
-        response: String,
-        selector: KastMutationOperationSelector,
-    ): MutationStatusPoll {
-        val responseObject = json.parseToJsonElement(response).jsonObject
-        responseObject["result"]?.let {
-            val success = json.decodeFromJsonElement(JsonRpcSuccessResponse.serializer(), responseObject)
-            return MutationStatusPoll.Available(
-                json.decodeFromJsonElement(KastMutationOperationSnapshot.serializer(), success.result),
-            )
-        }
-
-        val failure = json.decodeFromJsonElement(JsonRpcErrorResponse.serializer(), responseObject)
-        val errorData = failure.error.data
-        check(
-            failure.error.code == JSON_RPC_SERVER_ERROR_BASE - HTTP_NOT_FOUND_STATUS &&
-                errorData?.code == NOT_FOUND_ERROR_CODE &&
-                errorData.details == selector.expectedNotFoundDetails(),
-        ) {
-            "Unexpected mutation/status failure while awaiting admission: $response"
-        }
-        return MutationStatusPoll.NotAdmitted
-    }
-
-    private fun mutationNotFoundResponse(details: Map<String, String>): String = json.encodeToString(
-        JsonRpcErrorResponse.serializer(),
-        JsonRpcErrorResponse(
-            id = JsonPrimitive(2),
-            error = JsonRpcErrorObject(
-                code = JSON_RPC_SERVER_ERROR_BASE - HTTP_NOT_FOUND_STATUS,
-                message = "Mutation operation was not found",
-                data = ApiErrorResponse(
-                    requestId = "2",
-                    code = NOT_FOUND_ERROR_CODE,
-                    message = "Mutation operation was not found",
-                    retryable = false,
-                    details = details,
-                ),
-            ),
-        ),
-    )
-
-    private fun KastMutationOperationSelector.expectedNotFoundDetails(): Map<String, String> = when (this) {
-        is KastMutationOperationSelector.ByOperationId -> mapOf("operationId" to operationId.value)
-        is KastMutationOperationSelector.ByIdempotencyKey -> mapOf("idempotencyKey" to idempotencyKey.value)
-    }
-
-    private sealed interface MutationStatusPoll {
-        data object NotAdmitted : MutationStatusPoll
-
-        data class Available(
-            val snapshot: KastMutationOperationSnapshot,
-        ) : MutationStatusPoll
-    }
-
-    private sealed interface MutationStatusAwaitPhase {
-        data object AwaitingAdmission : MutationStatusAwaitPhase
-
-        data object Admitted : MutationStatusAwaitPhase
-    }
-
-    private fun MutationStatusAwaitPhase.observe(poll: MutationStatusPoll): MutationStatusAwaitPhase = when (this) {
-        MutationStatusAwaitPhase.AwaitingAdmission -> when (poll) {
-            MutationStatusPoll.NotAdmitted -> this
-            is MutationStatusPoll.Available -> MutationStatusAwaitPhase.Admitted
-        }
-
-        MutationStatusAwaitPhase.Admitted -> when (poll) {
-            MutationStatusPoll.NotAdmitted -> error("Mutation status disappeared after admission")
-            is MutationStatusPoll.Available -> this
-        }
-    }
-
     private fun awaitClientHandlerCompletion() {
         repeat(50) {
             Thread.sleep(10)
         }
-    }
-
-    private companion object {
-        const val HTTP_NOT_FOUND_STATUS = 404
-        const val MAX_MUTATION_STATUS_POLLS = 200
-        const val MUTATION_STATUS_POLL_INTERVAL_MILLIS = 5L
-        const val NOT_FOUND_ERROR_CODE = "NOT_FOUND"
     }
 
     @Test
@@ -659,6 +405,17 @@ private class ClosingApplyBackend(
             )
             applyStopped.complete(Unit)
         }
+    }
+}
+
+private class AdmittedApplyBackend(
+    private val delegate: CloseableAnalysisBackend,
+    private val applyStarted: CompletableDeferred<Unit>,
+) : CloseableAnalysisBackend by delegate {
+    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
+        applyStarted.complete(Unit)
+        delay(100)
+        return delegate.applyEdits(query)
     }
 }
 

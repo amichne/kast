@@ -292,7 +292,7 @@ fn prepared_linked_worktree_never_attaches_primary_checkout_descriptor() {
 
 #[cfg(target_os = "macos")]
 #[test]
-fn missing_workspace_task_rejects_every_explicit_headless_mutation_before_rpc() {
+fn missing_workspace_authority_rejects_every_explicit_headless_mutation_before_rpc() {
     let fixture = tempfile::tempdir().expect("mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
@@ -313,7 +313,7 @@ fn missing_workspace_task_rejects_every_explicit_headless_mutation_before_rpc() 
 
     let cases = applied_mutation_cases(&target_file, &content_file);
 
-    let views: [&[&str]; 3] = [&[], &["--fields", "state"], &["--count"]];
+    let views: [&[&str]; 3] = [&[], &["--fields", "outcome"], &["--count"]];
     for view in views {
         for mut args in cases.clone() {
             args.extend(view.iter().map(|argument| (*argument).to_string()));
@@ -337,7 +337,7 @@ fn missing_workspace_task_rejects_every_explicit_headless_mutation_before_rpc() 
             let output: serde_json::Value =
                 serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
             assert_eq!(
-                output["error"]["code"], "AGENT_TASK_NOT_FOUND",
+                output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
                 "view={view:?}: {output:#}",
             );
         }
@@ -350,7 +350,7 @@ fn missing_workspace_task_rejects_every_explicit_headless_mutation_before_rpc() 
 
 #[cfg(target_os = "macos")]
 #[test]
-fn automatic_applied_mutation_checks_workspace_task_before_backend_discovery() {
+fn automatic_applied_mutation_checks_workspace_authority_before_backend_discovery() {
     let fixture = tempfile::tempdir().expect("automatic mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
@@ -401,7 +401,7 @@ fn automatic_applied_mutation_checks_workspace_task_before_backend_discovery() {
     let output: serde_json::Value =
         serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
     assert_eq!(
-        output["error"]["code"], "AGENT_TASK_NOT_FOUND",
+        output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
         "{output:#}"
     );
     assert!(idea.finish().is_empty(), "IDEA must not be contacted");
@@ -413,7 +413,7 @@ fn automatic_applied_mutation_checks_workspace_task_before_backend_discovery() {
 
 #[cfg(target_os = "macos")]
 #[test]
-fn default_applied_mutation_maps_every_public_family_to_missing_workspace_task() {
+fn default_applied_mutation_maps_every_public_family_to_missing_workspace_authority() {
     let fixture = tempfile::tempdir().expect("default mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
@@ -442,7 +442,7 @@ fn default_applied_mutation_maps_every_public_family_to_missing_workspace_task()
         let output: serde_json::Value =
             serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
         assert_eq!(
-            output["error"]["code"], "AGENT_TASK_NOT_FOUND",
+            output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
             "{output:#}"
         );
     }
@@ -1235,17 +1235,20 @@ impl ObservedSemanticBackend {
                         "schemaVersion": 3
                     }),
                     "mutation/submit" => serde_json::json!({
-                        "operation": {
-                            "operationId": "00000000-0000-0000-0000-000000000001",
-                            "idempotencyKey": request["params"]["idempotencyKey"],
-                            "mutationKind": request["params"]["type"],
-                            "state": {
-                                "type": "QUEUED",
-                                "trace": {
-                                    "enteredStages": [],
-                                    "editApplicationState": "NOT_STARTED"
+                        "type": "SUCCEEDED",
+                        "result": {
+                            "type": "RENAME_RESULT",
+                            "response": {
+                                "ok": true,
+                                "editCount": 0,
+                                "affectedFiles": [],
+                                "applyResult": {
+                                    "applied": [],
+                                    "affectedFiles": [],
+                                    "createdFiles": [],
+                                    "deletedFiles": []
                                 },
-                                "cancellationRequested": false
+                                "diagnostics": {"errorCount": 0, "warningCount": 0}
                             }
                         },
                         "deduplicated": false

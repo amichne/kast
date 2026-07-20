@@ -1,5 +1,8 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.idea.backend.KastPluginBackend
+import io.github.amichne.kast.idea.diagnostics.*
+
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbService

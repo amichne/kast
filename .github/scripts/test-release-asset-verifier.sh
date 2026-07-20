@@ -44,12 +44,11 @@ def write_entry(archive, name, data, mode=0o644):
     archive.writestr(info, data)
 
 asset_path.parent.mkdir(parents=True, exist_ok=True)
-if kind in {"cli", "cli-missing-launcher", "cli-non-executable-launcher"}:
+if kind in {"cli", "cli-missing-kast", "cli-non-executable-kast"}:
     with zipfile.ZipFile(asset_path, "w") as archive:
-        write_entry(archive, "kast", b"cli", 0o755)
-        if kind != "cli-missing-launcher":
-            launcher_mode = 0o644 if kind == "cli-non-executable-launcher" else 0o755
-            write_entry(archive, "kast-agent-task", b"launcher", launcher_mode)
+        if kind != "cli-missing-kast":
+            mode = 0o644 if kind == "cli-non-executable-kast" else 0o755
+            write_entry(archive, "kast", b"cli", mode)
 elif kind == "idea":
     with zipfile.ZipFile(asset_path, "w") as archive:
         write_entry(archive, "backend-idea/lib/backend-idea.jar", b"plugin")
@@ -77,38 +76,18 @@ elif kind == "codex":
             "termsOfServiceURL": "https://kast.michne.com/terms/",
         },
     }
-    hook_events = {
-        "SessionStart": "session-start",
-        "PreToolUse": "pre-tool-use",
-        "PostToolUse": "post-tool-use",
-        "Stop": "stop",
-    }
-    hooks = {
-        "hooks": {
-            codex_event: [{
-                "hooks": [{
-                    "type": "command",
-                    "command": f'"$PLUGIN_ROOT/scripts/kast-codex-hook" {rust_event}',
-                }]
-            }]
-            for codex_event, rust_event in hook_events.items()
-        }
-    }
     files = {
         "marketplace.json": json.dumps(marketplace).encode(),
         ".agents/plugins/marketplace.json": json.dumps(marketplace).encode(),
         "plugins/kast/.codex-plugin/plugin.json": json.dumps(manifest).encode(),
-        "plugins/kast/hooks/hooks.json": json.dumps(hooks).encode(),
-        "plugins/kast/scripts/kast-codex-hook": b"#!/bin/sh\ntask_launcher=${KAST_AGENT_TASK_LAUNCHER:-$HOME/.local/bin/kast-agent-task}\nkast_binary=$(dirname \"$task_launcher\")/kast\nexec \"$kast_binary\" developer codex hook \"$1\"\n",
-        "plugins/kast/skills/kast-codex/SKILL.md": b"---\nname: kast-codex\ndescription: \"Fixture skill.\"\n---\n\n# Kast Codex\n",
+        "plugins/kast/skills/kast-codex/SKILL.md": b"---\nname: kast-codex\ndescription: \"Fixture skill.\"\n---\n\n# Kast Codex\n\nMutations run synchronously.\n",
         "plugins/kast/skills/kast-codex/agents/openai.yaml": b"interface:\n  display_name: \"Kast\"\n  short_description: \"Kast fixture\"\n  default_prompt: \"Use $kast-codex.\"\n\npolicy:\n  allow_implicit_invocation: true\n",
         "plugins/kast/assets/codex-exposure.toon": b"version: 9.8.7\n",
-        "plugins/kast/assets/hook-recovery-messages.toon": b"messages[0]:\n",
         "plugins/kast/assets/kast.svg": b"<svg/>\n",
     }
     with zipfile.ZipFile(asset_path, "w") as archive:
         for name, contents in files.items():
-            write_entry(archive, name, contents, 0o755 if name.endswith("kast-codex-hook") else 0o644)
+            write_entry(archive, name, contents, 0o644)
 else:
     raise SystemExit(f"unknown asset kind: {kind}")
 PY
@@ -238,7 +217,7 @@ assert_cli_archive_rejected() {
     die "$description unexpectedly verified"
   fi
   grep -Fq "$expected_error" "${scratch_dir}/cli-archive.err" \
-    || die "$description failure did not report: $expected_error"
+    || die "$description failure did not mention $expected_error"
 }
 
 repo_root="$(resolve_repo_root)"
@@ -274,13 +253,9 @@ write_provenance
 
 "$verifier" --release-dir "$release_dir" --tag "$tag"
 
-assert_cli_archive_rejected cli-missing-launcher kast-agent-task "CLI archive without kast-agent-task"
-assert_cli_archive_rejected cli-non-executable-launcher "executable kast-agent-task" "CLI archive with non-executable kast-agent-task"
+assert_cli_archive_rejected cli-missing-kast "regular kast" "CLI archive without kast"
+assert_cli_archive_rejected cli-non-executable-kast "executable kast" "CLI archive with non-executable kast"
 assert_cli_archive_rejected invalid "invalid CLI archive" "Invalid CLI archive"
-
-write_expected_assets
-write_sha256sums "$release_dir" "${assets[@]}"
-write_provenance
 
 python3 - "${release_dir}/build-provenance.json" <<'PY'
 import json

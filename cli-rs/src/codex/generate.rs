@@ -11,8 +11,6 @@ const SKILL: &str =
     include_str!("../../resources/codex-plugin/plugins/kast/skills/kast-codex/SKILL.md");
 const OPENAI_YAML: &str =
     include_str!("../../resources/codex-plugin/plugins/kast/skills/kast-codex/agents/openai.yaml");
-const LAUNCHER: &str =
-    include_str!("../../resources/codex-plugin/plugins/kast/scripts/kast-codex-hook");
 const KAST_SVG: &[u8] = include_bytes!("../../resources/codex-plugin/plugins/kast/assets/kast.svg");
 
 #[derive(Debug, Serialize)]
@@ -37,23 +35,7 @@ struct ExposureAsset {
     version: &'static str,
     schema_version: u32,
     semantic_commands: Vec<CodexCommandDescriptor>,
-    hook_only: [&'static str; 9],
-    not_exposed: [&'static str; 10],
-}
-
-#[derive(Serialize)]
-struct RecoveryAsset {
-    version: &'static str,
-    schema_version: u32,
-    messages: Vec<RecoveryMessage>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RecoveryMessage {
-    code: &'static str,
-    message: &'static str,
-    next_step: &'static str,
+    not_exposed: Vec<&'static str>,
 }
 
 pub(crate) fn run(args: CodexGenerateArgs) -> Result<CodexGenerationReport> {
@@ -96,18 +78,7 @@ fn generated_files() -> Result<Vec<GeneratedFile>> {
         version: crate::cli::version(),
         schema_version: 1,
         semantic_commands: descriptors.clone(),
-        hook_only: [
-            "version",
-            "context",
-            "ready",
-            "repair (plan only)",
-            "status",
-            "agent",
-            "agent task begin|status|finish|abort",
-            "agent verify",
-            "developer codex hook <event>",
-        ],
-        not_exposed: [
+        not_exposed: vec![
             "setup",
             "repair --apply",
             "agent lsp",
@@ -120,53 +91,14 @@ fn generated_files() -> Result<Vec<GeneratedFile>> {
             "agent workflow",
         ],
     };
-    let recovery = RecoveryAsset {
-        version: crate::cli::version(),
-        schema_version: 1,
-        messages: vec![
-            RecoveryMessage {
-                code: "KAST_AGENT_TASK_LAUNCHER_MISSING",
-                message: "The generation-bound Kast agent-task launcher is unavailable to the Codex plugin.",
-                next_step: "Install or repair Kast's attested launcher pair, then start a new task.",
-            },
-            RecoveryMessage {
-                code: "KAST_CODEX_GENERATION_MISMATCH",
-                message: "The Codex adapter and active Kast task generation do not match.",
-                next_step: "Repair Kast resources and reinstall kast@kast from the selected generation.",
-            },
-            RecoveryMessage {
-                code: "HOOK_TRUST_REQUIRED",
-                message: "Kast cannot prove that Codex trusts the installed lifecycle hooks.",
-                next_step: "Approve the kast@kast hooks in Codex, then start a new session.",
-            },
-            RecoveryMessage {
-                code: "KAST_TYPED_ROUTE_REQUIRED",
-                message: "Try the corresponding typed Kast mutation before a generic Kotlin edit.",
-                next_step: "Run the plan-first kast --output toon agent mutation and preserve its typed outcome.",
-            },
-            RecoveryMessage {
-                code: "KAST_DIAGNOSTICS_REQUIRED",
-                message: "New Kotlin changes do not have diagnostics for their current contents.",
-                next_step: "Run kast --output toon agent diagnostics for each changed Kotlin file.",
-            },
-        ],
-    };
 
     Ok(vec![
         json_file("marketplace.json", marketplace())?,
         json_file(".agents/plugins/marketplace.json", marketplace())?,
         json_file("plugins/kast/.codex-plugin/plugin.json", manifest())?,
-        json_file("plugins/kast/hooks/hooks.json", hooks())?,
         text_file(
             "plugins/kast/assets/codex-exposure.toon",
             toon_format::encode_default(&exposure)
-                .map_err(|error| CliError::new("CODEX_GENERATION_ERROR", error.to_string()))?
-                + "\n",
-            false,
-        ),
-        text_file(
-            "plugins/kast/assets/hook-recovery-messages.toon",
-            toon_format::encode_default(&recovery)
                 .map_err(|error| CliError::new("CODEX_GENERATION_ERROR", error.to_string()))?
                 + "\n",
             false,
@@ -180,11 +112,6 @@ fn generated_files() -> Result<Vec<GeneratedFile>> {
             "plugins/kast/skills/kast-codex/agents/openai.yaml",
             OPENAI_YAML.to_string(),
             false,
-        ),
-        text_file(
-            "plugins/kast/scripts/kast-codex-hook",
-            LAUNCHER.to_string(),
-            true,
         ),
         GeneratedFile {
             relative_path: "plugins/kast/assets/kast.svg",
@@ -211,7 +138,7 @@ fn manifest() -> serde_json::Value {
     json!({
         "name": "kast",
         "version": crate::cli::version(),
-        "description": "Compiler-backed Kotlin and Gradle task proof for Codex through Kast.",
+        "description": "Compiler-backed Kotlin and Gradle semantic operations for Codex through Kast.",
         "author": {
             "name": "Austin Michne",
             "email": "austin@michne.com",
@@ -224,8 +151,8 @@ fn manifest() -> serde_json::Value {
         "skills": "./skills/",
         "interface": {
             "displayName": "Kast",
-            "shortDescription": "Compiler-backed Kotlin and Gradle task proof.",
-            "longDescription": "Begin, inspect, and finish Kotlin or Gradle work through Kast's typed task lifecycle.",
+            "shortDescription": "Compiler-backed Kotlin and Gradle operations.",
+            "longDescription": "Inspect and change Kotlin or Gradle code through compiler-backed Kast operations.",
             "developerName": "Austin Michne",
             "category": "Productivity",
             "capabilities": ["Read", "Write"],
@@ -233,34 +160,14 @@ fn manifest() -> serde_json::Value {
             "privacyPolicyURL": "https://kast.michne.com/privacy/",
             "termsOfServiceURL": "https://kast.michne.com/terms/",
             "defaultPrompt": [
-                "Begin a Kast task and inspect a Kotlin symbol.",
-                "Finish this Kotlin change with diagnostics and Gradle proof.",
-                "Report the typed blocker preventing Kast task completion."
+                "Inspect a Kotlin symbol with compiler-backed evidence.",
+                "Apply this Kotlin change and return its terminal diagnostics outcome."
             ],
             "composerIcon": "./assets/kast.svg",
             "logo": "./assets/kast.svg",
             "logoDark": "./assets/kast.svg"
         }
     })
-}
-
-fn hooks() -> serde_json::Value {
-    let mut events = serde_json::Map::new();
-    for (codex, event) in [
-        ("SessionStart", "session-start"),
-        ("PreToolUse", "pre-tool-use"),
-        ("PostToolUse", "post-tool-use"),
-        ("Stop", "stop"),
-    ] {
-        events.insert(
-            codex.to_string(),
-            json!([{"hooks": [{
-                "type": "command",
-                "command": format!("\"$PLUGIN_ROOT/scripts/kast-codex-hook\" {event}")
-            }]}]),
-        );
-    }
-    json!({"hooks": events})
 }
 
 fn json_file(relative_path: &'static str, value: serde_json::Value) -> Result<GeneratedFile> {

@@ -28,13 +28,11 @@ mutation. Broad text search is not a substitute for semantic identity.
 
 Kast mutation commands plan by default. Codex should review the selected
 declaration, write set, conflicts, and diagnostics before applying a plan.
-Every apply uses a stable idempotency key so an interrupted operation can be
-queried instead of resubmitted.
-
-If an operation yields or disconnects, Codex uses `operation status` with the
-same key. It uses `operation cancel` only when the operation should stop. A new
-key must not be used to repeat an outcome that may already have changed the
-filesystem.
+Every apply uses a stable idempotency key and waits for one terminal result. If
+the waiting process disconnects, Codex reruns the exact command with the same
+key against the same runtime. A replaced runtime or terminal failure blocks the
+task for `abort` followed by `begin`; Codex does not replay the edit under a new
+key.
 
 ## Finish With Current Diagnostics
 
@@ -49,23 +47,21 @@ diagnostics before the task can finish.
 
 ## Understand The Guardrails
 
-The plugin hooks keep workflow evidence across tool calls without introducing
-another semantic API.
+The plugin skill routes requests to typed Kast commands.
 
 | Moment | Guardrail |
 | --- | --- |
 | Task start | Checks the active Kast/plugin release, exact workspace, preparation evidence, and baseline Kotlin hashes |
 | Delegation | Carries the exact root and linked-worktree identity into the delegated task |
 | Before a tool | Denies a known generic Kotlin mutation until the target-bound typed route has failed |
-| After a tool | Records structured Kast outcomes, affected files, operation IDs, typed failures, and diagnostics evidence |
+| After a tool | Records structured Kast outcomes, affected files, in-flight mutation keys, typed failures, and diagnostics evidence |
 | Task stop | Continues work when newly changed Kotlin lacks current diagnostics or an explicit typed blocker |
 
 Compaction rehydrates the same session state and preserves the original
 baseline. Pre-existing dirty files remain outside the plugin's claim about
 what the current task changed.
 
-Hooks may run read-only readiness checks and prepare repair guidance. They do
-not apply setup, repair, IDE, installation, or source mutations on their own.
+Kast runs readiness checks only when explicitly invoked.
 
 Use the [Codex plugin contract](../reference/codex-plugin.md) for the exact
 visible command set and state boundary.

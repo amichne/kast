@@ -35,7 +35,7 @@ pub enum Command {
     },
     /// Print the packaged CLI version.
     Version,
-    /// Print compact workspace context for agents and hooks.
+    /// Print compact workspace context for agents.
     Context(RuntimeArgs),
     /// Set up Kast for this repository.
     #[cfg_attr(target_os = "macos", command(hide = true))]

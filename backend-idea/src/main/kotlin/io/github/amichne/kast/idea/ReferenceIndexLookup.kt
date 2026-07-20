@@ -1,5 +1,7 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.idea.diagnostics.*
+
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget

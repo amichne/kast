@@ -210,7 +210,7 @@ fn agent_rename_plan_is_read_only_until_apply() {
         "{output:#}"
     );
     assert_eq!(
-        output["result"]["operation"]["state"], "PLANNED",
+        output["result"]["execution"]["outcome"], "PLANNED_RENAME",
         "{output:#}"
     );
     assert_eq!(

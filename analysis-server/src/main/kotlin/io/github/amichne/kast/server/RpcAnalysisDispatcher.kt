@@ -71,16 +71,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import java.util.UUID
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.api.contract.skill.*
-import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSelector
-import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSnapshot
-import io.github.amichne.kast.api.contract.mutation.KastMutationSubmissionReceipt
+import io.github.amichne.kast.api.contract.mutation.KastMutationExecutionResult
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
-import io.github.amichne.kast.api.contract.mutation.KastWorkspaceTaskId
-import io.github.amichne.kast.server.mutation.MutationOperationService
+import io.github.amichne.kast.server.mutation.MutationExecutionService
 import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.server.mutation.coordination.MutationFinishBarrierRequest
-import io.github.amichne.kast.server.mutation.coordination.MutationFinishBarrierResult
-import io.github.amichne.kast.server.mutation.coordination.MutationFinishCoordinationToken
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
@@ -99,9 +93,7 @@ class RpcAnalysisDispatcher(
     },
 ) : Closeable {
     private val skillRpc = SkillRpcOrchestrator(backend, config, json)
-    private val mutationRpc = MutationOperationService(skillRpc, json) {
-        NormalizedPath.of(java.nio.file.Path.of(backend.capabilities().workspaceRoot))
-    }
+    private val mutationRpc = MutationExecutionService(skillRpc)
     private val workspaceFilesContinuation = WorkspaceFilesContinuationService(
         capacity = config.typedContinuationCapacity,
         timeToLive = config.typedContinuationTtl,
@@ -444,31 +436,9 @@ class RpcAnalysisDispatcher(
             )
 
             "mutation/submit" -> encode(
-                KastMutationSubmissionReceipt.serializer(),
+                KastMutationExecutionResult.serializer(),
                 mutationRpc.submit(decodeParams(KastSemanticMutation.serializer(), params)),
             )
-
-            "mutation/status" -> encode(
-                KastMutationOperationSnapshot.serializer(),
-                mutationRpc.status(decodeParams(KastMutationOperationSelector.serializer(), params)),
-            )
-
-            "mutation/cancel" -> encode(
-                KastMutationOperationSnapshot.serializer(),
-                mutationRpc.cancel(decodeParams(KastMutationOperationSelector.serializer(), params)),
-            )
-
-            "mutation/finish-barrier/acquire" ->
-                mutationRpc.acquireFinishBarrier(decodeMutationFinishBarrier(params)).toJson()
-
-            "mutation/finish-barrier/reopen" ->
-                mutationRpc.reopenAfterFinish(decodeMutationFinishBarrier(params)).toJson()
-
-            "mutation/finish-barrier/repair" ->
-                mutationRpc.repairAfterInterruptedFinish(decodeMutationFinishBarrier(params)).toJson()
-
-            "mutation/finish-barrier/complete" ->
-                mutationRpc.completeAfterFinish(decodeMutationFinishBarrier(params)).toJson()
 
             "raw/implementations" -> encode(
                 ImplementationsResult.serializer(),
@@ -513,7 +483,6 @@ class RpcAnalysisDispatcher(
     override fun close() {
         var firstFailure: Throwable? = null
         listOf<() -> Unit>(
-            mutationRpc::close,
             workspaceFilesContinuation::close,
         ).forEach { closePhase ->
             try {
@@ -573,36 +542,11 @@ class RpcAnalysisDispatcher(
     ): T = params?.let { json.decodeFromJsonElement(serializer, it) }
         ?: throw ValidationException("The JSON-RPC request is missing params")
 
-    private fun decodeMutationFinishBarrier(params: JsonElement?): MutationFinishBarrierRequest {
-        val values = params as? JsonObject
-            ?: throw ValidationException("The finish barrier request must be an object")
-        fun requiredString(name: String): String = (values[name] as? JsonPrimitive)
-            ?.content
-            ?.takeIf(String::isNotBlank)
-            ?: throw ValidationException("The finish barrier request is missing $name")
-        return try {
-            MutationFinishBarrierRequest(
-                workspaceTaskId = KastWorkspaceTaskId(requiredString("workspaceTaskId")),
-                coordinationToken = MutationFinishCoordinationToken(requiredString("coordinationToken")),
-            )
-        } catch (error: IllegalArgumentException) {
-            throw ValidationException(error.message ?: "The finish barrier request is invalid")
-        }
-    }
-
     private fun <T> encode(
         serializer: KSerializer<T>,
         value: T,
     ): JsonElement = json.encodeToJsonElement(serializer, value)
 }
-
-private fun MutationFinishBarrierResult.toJson(): JsonObject = JsonObject(
-    mapOf(
-        "workspaceTaskId" to JsonPrimitive(workspaceTaskId.value),
-        "coordinationToken" to JsonPrimitive(coordinationToken.value),
-        "state" to JsonPrimitive(state.name),
-    ),
-)
 
 private class UnknownRpcMethodException(
     method: String,

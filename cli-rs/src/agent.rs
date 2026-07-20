@@ -7,17 +7,16 @@ use crate::cli::{
     AgentDiagnosticsViewArgs, AgentExactSymbolSelectorArgs, AgentHierarchyArgs,
     AgentHierarchyDirection, AgentImpactArgs, AgentImpactField, AgentImpactPageToken,
     AgentImpactViewArgs, AgentImplementationsArgs, AgentLeaseArgs, AgentLeaseCommand,
-    AgentMutationApplyArgs, AgentMutationField, AgentMutationViewArgs, AgentOperationArgs,
-    AgentOperationCommand, AgentOperationSelectorArgs, AgentReferencesArgs, AgentRelationField,
-    AgentRelationPageToken, AgentRelationViewArgs, AgentRenameArgs, AgentReplaceDeclarationArgs,
-    AgentReusableSymbolSelector, AgentReusableSymbolSelectorArgs, AgentRuntimeArgs,
-    AgentScopedMutationArgs, AgentSelectorHandle, AgentStatementMutationArgs, AgentSymbolArgs,
-    AgentSymbolField, AgentSymbolMode, AgentSymbolViewArgs, AgentTaskArgs, AgentTaskCommand,
-    AgentTaskWorkspaceArgs, AgentVerifyArgs, AgentVerifyField, AgentVerifyViewArgs,
-    AgentWorkspaceFilesArgs, AgentWorkspaceFilesField, AgentWorkspaceFilesViewArgs, BackendName,
-    WorkspaceDirtyFilter, WorkspaceDriftFilter, WorkspaceFileKindFilter,
-    WorkspaceFilesPublicPageToken, WorkspaceModuleSelector, WorkspacePackageSelector,
-    WorkspaceRelativeGlob, WorkspaceRelativePathPrefix, WorkspaceSourceSetName,
+    AgentMutationApplyArgs, AgentMutationField, AgentMutationViewArgs, AgentReferencesArgs,
+    AgentRelationField, AgentRelationPageToken, AgentRelationViewArgs, AgentRenameArgs,
+    AgentReplaceDeclarationArgs, AgentReusableSymbolSelector, AgentReusableSymbolSelectorArgs,
+    AgentRuntimeArgs, AgentScopedMutationArgs, AgentSelectorHandle, AgentStatementMutationArgs,
+    AgentSymbolArgs, AgentSymbolField, AgentSymbolMode, AgentSymbolViewArgs, AgentVerifyArgs,
+    AgentVerifyField, AgentVerifyViewArgs, AgentWorkspaceFilesArgs, AgentWorkspaceFilesField,
+    AgentWorkspaceFilesViewArgs, BackendName, WorkspaceDirtyFilter, WorkspaceDriftFilter,
+    WorkspaceFileKindFilter, WorkspaceFilesPublicPageToken, WorkspaceModuleSelector,
+    WorkspacePackageSelector, WorkspaceRelativeGlob, WorkspaceRelativePathPrefix,
+    WorkspaceSourceSetName,
 };
 use crate::error::{CliError, Result};
 use crate::metrics_database::ImpactSubjectKind;
@@ -41,19 +40,9 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path, PathBuf};
 
-const AGENT_TASK_GUIDANCE: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/resources/agent-task/guidance.md"
-));
-
-pub(crate) fn agent_task_guidance() -> &'static str {
-    AGENT_TASK_GUIDANCE.trim()
-}
-
 include!("agent/types.rs");
 include!("agent/path.rs");
 include!("agent/public_capabilities.rs");
-include!("agent/task.rs");
 include!("agent/workspace_files.rs");
 include!("agent/relations.rs");
 include!("agent/dispatch.rs");

@@ -51,8 +51,8 @@ enum CodexExposure {
 }
 ```
 
-The classifiers over `Command`, `AgentCommand`, `AgentOperationCommand`, and
-developer subcommands use exhaustive matches without wildcard arms. Adding a
+The classifiers over `Command`, `AgentCommand`, and developer subcommands use
+exhaustive matches without wildcard arms. Adding a
 CLI variant therefore causes a compiler error until its Codex exposure is
 chosen deliberately.
 
@@ -64,8 +64,7 @@ chosen deliberately.
   `impact`;
 - `diagnostics`;
 - `rename`, `add-file`, `add-declaration`, `add-implementation`,
-  `add-statement`, and `replace-declaration`; and
-- `operation status` and `operation cancel`.
+  `add-statement`, and `replace-declaration`.
 
 Typed descriptors bind every visible command to its command path, read or
 mutation mode, plan/apply behavior, required evidence, and examples. Those
@@ -121,7 +120,7 @@ Hook state is atomic, owner-readable JSON under
 `$PLUGIN_DATA/sessions/<session-id>.json`. It records the schema and release
 identity, resolved binary, canonical workspace and linked-worktree identity,
 baseline Kotlin hashes, typed command attempts and outcomes, affected files,
-operation IDs, target-bound fallback eligibility, current-hash diagnostics,
+in-flight mutation keys and runtime identities, current-hash diagnostics,
 and explicit blockers. Pre-existing Kotlin dirt is baseline evidence, not a
 change made by the current task.
 

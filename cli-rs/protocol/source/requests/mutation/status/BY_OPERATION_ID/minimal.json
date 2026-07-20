@@ -1,9 +1,0 @@
-{
-  "id": 1,
-  "jsonrpc": "2.0",
-  "method": "mutation/status",
-  "params": {
-    "operationId": "example-operationId",
-    "type": "BY_OPERATION_ID"
-  }
-}

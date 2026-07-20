@@ -542,9 +542,8 @@ jobs:
           rm -rf "$staging_dir" dist
           mkdir -p "$staging_dir" dist
           cp "cli-rs/target/${{ matrix.target }}/release/kast" "$staging_dir/kast"
-          cp cli-rs/resources/agent-task/kast-agent-task "$staging_dir/kast-agent-task"
-          chmod 755 "$staging_dir/kast" "$staging_dir/kast-agent-task"
-          (cd "$staging_dir" && zip -9 -q "$GITHUB_WORKSPACE/dist/${asset_name}" kast kast-agent-task)
+          chmod 755 "$staging_dir/kast"
+          (cd "$staging_dir" && zip -9 -q "$GITHUB_WORKSPACE/dist/${asset_name}" kast)
           python3 - "$GITHUB_WORKSPACE/dist/${asset_name}" "dist/build-provenance-cli-${{ matrix.asset_id }}.json" <<'PY'
           import hashlib
           import json
@@ -660,8 +659,8 @@ jobs:
           }
           (cd "$staging_dir" && zip -X -9 -q -r "$GITHUB_WORKSPACE/dist/${asset_name}" marketplace.json .agents/plugins/marketplace.json plugins/kast)
           .github/scripts/verify-codex-plugin-package.py \
-            --archive "dist/${asset_name}" \
-            --version "$version"
+            "dist/${asset_name}" \
+            "$version"
           python3 - "dist/${asset_name}" dist/build-provenance-codex-plugin.json "$release_sha" "$tag" <<'PY'
           import hashlib
           import json
@@ -1136,7 +1135,6 @@ jobs:
           (cd dist && sha256sum -c kast-headless-linux-x64.sha256)
           (cd dist && sha256sum -c gradle-ro-dep-cache.sha256)
           tar --zstd -tf dist/kast-headless-linux-x64.tar.zst | grep -F './bin/kast'
-          tar --zstd -tf dist/kast-headless-linux-x64.tar.zst | grep -F './bin/kast-agent-task'
           rm -rf "$RUNNER_TEMP/gradle-ro-release-check"
           mkdir -p "$RUNNER_TEMP/gradle-ro-release-check"
           tar --zstd -xf dist/gradle-ro-dep-cache.tar.zst -C "$RUNNER_TEMP/gradle-ro-release-check"

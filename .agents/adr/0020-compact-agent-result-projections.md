@@ -70,11 +70,11 @@ stale tokens fail with a typed conflict. Snapshot construction and PSI
 generation capture share one IDEA read epoch, so a concurrent write cannot be
 misattributed to the snapshot. Diagnostic continuation state follows the same
 expiry and backend/project shutdown lifecycle as reference continuation state.
-Mutation results expose operation state, edit
-application state, affected files and edits when available, and a diagnostic
-summary. Failed, cancelled, and applied-invalid states retain their typed
-failure, cancellation, protocol request identity and details, and exact
-already-applied edit evidence including replacement text. Verification exposes
+Mutation results expose one terminal result, deduplication evidence, affected
+files and edits when available, and a diagnostic summary. Failed and
+applied-invalid results retain their typed failure, protocol request identity
+and details, and exact already-applied edit evidence including replacement
+text. Verification exposes
 backend/runtime health and capability evidence without its raw step envelopes.
 Impact exposes a bounded source-index node set, query identity, confidence
 summary, and total/returned/truncated cardinality.
@@ -90,8 +90,8 @@ with `--fields`, `--verbose`, and `--explain`.
 Symbol counts report result or candidate cardinality and a relationship
 known-minimum aggregate with an explicit exactness flag. Impact fields are `query`, `summary`, `nodes`, and `confidence`; impact
 counts retain total, returned, and truncated cardinality. Diagnostics counts retain requested, analyzed, and skipped file counts
-plus exact full-set diagnostic severities and diagnostic cardinality. Mutation counts retain operation and edit
-application state plus edit, file, and diagnostic counts. Verification counts
+plus exact full-set diagnostic severities and diagnostic cardinality. Mutation counts retain terminal result
+plus edit, file, and diagnostic counts. Verification counts
 report checks, failures, and read and mutation capability counts.
 
 `--verbose` preserves the complete validated command envelope. `--explain`

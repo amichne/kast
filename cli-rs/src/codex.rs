@@ -1,6 +1,5 @@
 mod exposure;
 mod generate;
-mod hook;
 
 use crate::cli::{CodexCommand, OutputFormat};
 use crate::error::Result;
@@ -14,6 +13,5 @@ pub(crate) fn run(command: CodexCommand, output_format: OutputFormat) -> Result<
             crate::output::print_structured(&report, output_format)?;
             Ok(0)
         }
-        CodexCommand::Hook(args) => hook::run(args.event),
     }
 }

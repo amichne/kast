@@ -11,7 +11,7 @@ class ReadActionBatchingTest {
         var batchReadCalls = 0
         val processedItems = mutableListOf<Int>()
 
-        val (snapshot, results) = collectInShortReadActions(
+        val (snapshot, results) = io.github.amichne.kast.idea.backend.references.collectInShortReadActions(
             collectSnapshot = { "snapshot" to listOf(1, 2, 3) },
             processItem = { item: Int ->
                 processedItems += item
@@ -43,7 +43,7 @@ class ReadActionBatchingTest {
         var batchReadCalls = 0
         val items = (1..120).toList()
 
-        val (_, results) = collectInShortReadActions(
+        val (_, results) = io.github.amichne.kast.idea.backend.references.collectInShortReadActions(
             collectSnapshot = { "snap" to items },
             processItem = { item: Int -> "v-$item" },
             runInitialReadAction = { action: () -> Pair<String, Collection<Int>> -> action() },

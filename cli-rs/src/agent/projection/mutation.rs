@@ -1,9 +1,8 @@
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum AgentMutationProjectionInput {
-    Plan(AgentMutationPlanProjectionInput),
-    Receipt(AgentMutationReceiptProjectionInput),
-    Snapshot(AgentMutationOperationProjectionInput),
+    Plan(Box<AgentMutationPlanProjectionInput>),
+    Execution(AgentMutationExecutionProjectionInput),
 }
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -102,42 +101,16 @@ impl AgentMutationPlanStatementAnchorInput {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentMutationReceiptProjectionInput {
-    operation: AgentMutationOperationProjectionInput,
-    deduplicated: bool,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentMutationOperationProjectionInput {
-    operation_id: String,
-    idempotency_key: String,
-    mutation_kind: String,
-    state: AgentMutationStateProjectionInput,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentMutationStateProjectionInput {
-    #[serde(rename = "type")]
-    state_type: String,
-    trace: AgentMutationTraceProjectionInput,
-    cancellation_requested: bool,
-    #[serde(default)]
-    stage: Option<String>,
-    #[serde(default)]
-    result: Option<AgentMutationAppliedResultProjectionInput>,
-    #[serde(default)]
-    failure: Option<AgentMutationFailureProjectionInput>,
-    #[serde(default)]
-    message: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentMutationTraceProjectionInput {
-    edit_application_state: String,
+#[serde(tag = "type", rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentMutationExecutionProjectionInput {
+    Succeeded {
+        result: AgentMutationAppliedResultProjectionInput,
+        deduplicated: bool,
+    },
+    Failed {
+        failure: Box<AgentMutationFailureProjectionInput>,
+        deduplicated: bool,
+    },
 }
 
 #[derive(Debug, Deserialize)]
@@ -281,24 +254,12 @@ struct AgentMutationFailureProjection {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct AgentMutationOperationProjection {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    operation_id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    idempotency_key: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    mutation_kind: Option<String>,
-    state: String,
-    edit_application_state: String,
-    cancellation_requested: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    stage: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    failure: Option<AgentMutationFailureProjection>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    message: Option<String>,
+struct AgentMutationExecutionProjection {
+    outcome: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     deduplicated: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    failure: Option<AgentMutationFailureProjection>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -333,7 +294,7 @@ struct AgentMutationPlanProjection {
 
 #[derive(Debug)]
 struct AgentMutationProjection {
-    operation: AgentMutationOperationProjection,
+    execution: AgentMutationExecutionProjection,
     plan: Option<AgentMutationPlanProjection>,
     edit_count: usize,
     edits: Vec<AgentAppliedEditProjection>,
@@ -377,6 +338,7 @@ impl TryFrom<AgentMutationProjectionInput> for AgentMutationProjection {
     fn try_from(input: AgentMutationProjectionInput) -> std::result::Result<Self, Self::Error> {
         match input {
             AgentMutationProjectionInput::Plan(plan) => {
+                let plan = *plan;
                 if !matches!(
                     plan.result_type.as_str(),
                     "KAST_AGENT_MUTATION_PLAN" | "KAST_AGENT_RENAME_PLAN"
@@ -393,17 +355,10 @@ impl TryFrom<AgentMutationProjectionInput> for AgentMutationProjection {
                 let file_path = params.file_path.or(inside_file);
                 let mutation_kind = mutation_kind_from_method(&method);
                 Ok(Self {
-                    operation: AgentMutationOperationProjection {
-                        operation_id: None,
-                        idempotency_key: None,
-                        mutation_kind: Some(mutation_kind),
-                        state: "PLANNED".to_string(),
-                        edit_application_state: "NOT_STARTED".to_string(),
-                        cancellation_requested: false,
-                        stage: None,
-                        failure: None,
-                        message: None,
+                    execution: AgentMutationExecutionProjection {
+                        outcome: format!("PLANNED_{mutation_kind}"),
                         deduplicated: None,
+                        failure: None,
                     },
                     plan: Some(AgentMutationPlanProjection {
                         method,
@@ -435,86 +390,33 @@ impl TryFrom<AgentMutationProjectionInput> for AgentMutationProjection {
                     },
                 })
             }
-            AgentMutationProjectionInput::Receipt(receipt) => {
-                Self::from_operation(receipt.operation, Some(receipt.deduplicated))
-            }
-            AgentMutationProjectionInput::Snapshot(operation) => {
-                Self::from_operation(operation, None)
-            }
+            AgentMutationProjectionInput::Execution(execution) => Self::from_execution(execution),
         }
     }
 }
 
 impl AgentMutationProjection {
-    fn from_operation(
-        operation: AgentMutationOperationProjectionInput,
-        deduplicated: Option<bool>,
+    fn from_execution(
+        execution: AgentMutationExecutionProjectionInput,
     ) -> std::result::Result<Self, String> {
-        if operation.operation_id.trim().is_empty()
-            || operation.idempotency_key.trim().is_empty()
-            || operation.mutation_kind.trim().is_empty()
-            || operation.state.state_type.trim().is_empty()
-            || operation
-                .state
-                .trace
-                .edit_application_state
-                .trim()
-                .is_empty()
-        {
-            return Err("mutation operation identity or state was empty".to_string());
-        }
-        let AgentMutationStateProjectionInput {
-            state_type,
-            trace,
-            cancellation_requested,
-            stage,
-            result,
-            failure,
-            message,
-        } = operation.state;
-        let (result, failure, message) = match state_type.as_str() {
-            "COMPLETED" => {
-                let result = result
-                    .ok_or_else(|| "completed mutation omitted its typed result".to_string())?;
-                (result.into_projection()?, None, None)
+        let (outcome, deduplicated, result, failure) = match execution {
+            AgentMutationExecutionProjectionInput::Succeeded {
+                result,
+                deduplicated,
+            } => ("SUCCEEDED", deduplicated, result.into_projection()?, None),
+            AgentMutationExecutionProjectionInput::Failed {
+                failure,
+                deduplicated,
+            } => {
+                let failure = (*failure).into_projection()?;
+                ("FAILED", deduplicated, failure.result, Some(failure.failure))
             }
-            "FAILED" => {
-                let failure = failure
-                    .ok_or_else(|| "failed mutation omitted its typed failure".to_string())?;
-                let failure = failure.into_projection()?;
-                (failure.result, Some(failure.failure), None)
-            }
-            "CANCELLED" => {
-                let message = message
-                    .filter(|message| !message.trim().is_empty())
-                    .ok_or_else(|| "cancelled mutation omitted its message".to_string())?;
-                if !cancellation_requested {
-                    return Err("cancelled mutation did not retain its cancellation request".into());
-                }
-                (AgentMutationResultEvidence::empty(), None, Some(message))
-            }
-            "QUEUED" | "APPLYING" | "VALIDATING" => {
-                if matches!(state_type.as_str(), "APPLYING" | "VALIDATING")
-                    && stage.as_ref().is_none_or(|stage| stage.trim().is_empty())
-                {
-                    return Err("active mutation state omitted its progress stage".to_string());
-                }
-                (AgentMutationResultEvidence::empty(), None, None)
-            }
-            other => return Err(format!("unknown mutation operation state {other}")),
         };
         Ok(Self {
-            operation: AgentMutationOperationProjection {
-                operation_id: Some(operation.operation_id),
-                idempotency_key: Some(operation.idempotency_key),
-                mutation_kind: Some(operation.mutation_kind),
-                state: state_type,
-                edit_application_state: trace.edit_application_state,
-                cancellation_requested,
-                stage,
+            execution: AgentMutationExecutionProjection {
+                outcome: outcome.to_string(),
+                deduplicated: Some(deduplicated),
                 failure,
-                message,
-                deduplicated,
             },
             plan: None,
             edit_count: result.edit_count,
@@ -683,7 +585,7 @@ struct AgentMutationCompactResult {
     #[serde(rename = "type")]
     result_type: &'static str,
     ok: bool,
-    operation: AgentMutationOperationProjection,
+    execution: AgentMutationExecutionProjection,
     #[serde(skip_serializing_if = "Option::is_none")]
     plan: Option<AgentMutationPlanProjection>,
     applied_edit_count: usize,
@@ -701,11 +603,11 @@ struct AgentMutationSelectedResult {
     result_type: &'static str,
     ok: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    operation: Option<AgentMutationOperationProjection>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     plan: Option<AgentMutationPlanProjection>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    state: Option<AgentMutationOperationProjection>,
+    outcome: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    deduplicated: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     edits: Option<Vec<AgentAppliedEditProjection>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -721,7 +623,7 @@ struct AgentMutationCountResult {
     #[serde(rename = "type")]
     result_type: &'static str,
     ok: bool,
-    operation: AgentMutationOperationProjection,
+    execution: AgentMutationExecutionProjection,
     applied_edit_count: usize,
     file_count: usize,
     diagnostics: AgentDiagnosticSeverityCounts,
@@ -761,7 +663,7 @@ fn project_mutation_envelope(
             AgentMutationCompactResult {
                 result_type: "KAST_AGENT_MUTATION_RESULT",
                 ok,
-                operation: projection.operation,
+                execution: projection.execution,
                 plan: projection.plan,
                 applied_edit_count: projection.edit_count,
                 edits: projection.edits,
@@ -780,13 +682,12 @@ fn project_mutation_envelope(
                 AgentMutationSelectedResult {
                     result_type: "KAST_AGENT_MUTATION_SELECTION",
                     ok,
-                    operation: selected(AgentMutationField::Operation)
-                        .then_some(projection.operation.clone()),
-                    plan: selected(AgentMutationField::Operation)
-                        .then_some(projection.plan)
+                    plan: projection.plan,
+                    outcome: selected(AgentMutationField::Outcome)
+                        .then_some(projection.execution.outcome),
+                    deduplicated: selected(AgentMutationField::Deduplicated)
+                        .then_some(projection.execution.deduplicated)
                         .flatten(),
-                    state: selected(AgentMutationField::State)
-                        .then_some(projection.operation),
                     edits: selected(AgentMutationField::Edits).then_some(projection.edits),
                     files: selected(AgentMutationField::Files).then_some(projection.files),
                     diagnostics: selected(AgentMutationField::Diagnostics)
@@ -802,7 +703,7 @@ fn project_mutation_envelope(
             AgentMutationCountResult {
                 result_type: "KAST_AGENT_MUTATION_COUNT",
                 ok,
-                operation: projection.operation,
+                execution: projection.execution,
                 applied_edit_count: projection.edit_count,
                 file_count: projection.files.len(),
                 diagnostics: projection.diagnostics,

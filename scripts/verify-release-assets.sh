@@ -184,12 +184,11 @@ for platform_id, asset_name in supported.items():
         if extraction.returncode != 0:
             detail = extraction.stderr.strip() or extraction.stdout.strip()
             fail(f"invalid CLI archive {asset_name}: {detail}")
-        for entry_name in ("kast", "kast-agent-task"):
-            entry = Path(output) / entry_name
-            if not entry.is_file():
-                fail(f"CLI archive {asset_name} must contain regular {entry_name} at its root")
-            if not os.access(entry, os.X_OK):
-                fail(f"CLI archive {asset_name} must contain executable {entry_name} at its root")
+        entry = Path(output) / "kast"
+        if not entry.is_file():
+            fail(f"CLI archive {asset_name} must contain regular kast at its root")
+        if not os.access(entry, os.X_OK):
+            fail(f"CLI archive {asset_name} must contain executable kast at its root")
 
 actual_sidecars = {path.name for path in release_dir.glob("*.sha256")}
 expected_sidecars = {}
@@ -276,9 +275,7 @@ codex_asset = release_dir / supported["codex-plugin"]
 subprocess.run(
     [
         str(repo_root / ".github" / "scripts" / "verify-codex-plugin-package.py"),
-        "--archive",
         str(codex_asset),
-        "--version",
         tag.removeprefix("v"),
     ],
     check=True,

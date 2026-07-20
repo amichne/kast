@@ -36,7 +36,7 @@ The record may include:
 - the plugin and Kast versions and resolved binary path;
 - canonical workspace, Git, linked-worktree, and commit identity;
 - paths and SHA-256 fingerprints for relevant Kotlin files;
-- typed command outcomes, affected paths, operation IDs, and failures; and
+- typed command outcomes, affected paths, in-flight mutation keys, and failures; and
 - diagnostics evidence and explicitly reported blockers.
 
 The plugin does not use this state as a source-code mirror or source index.
@@ -49,9 +49,7 @@ is removed by the local user or by Codex's plugin-data lifecycle. Removing a
 session record prevents later evidence checks until the next `SessionStart`,
 which establishes a new baseline.
 
-Uninstalling or disabling the plugin stops its hooks from creating new session
-records. Check the local plugin data directory separately if you also want to
-remove retained state.
+Uninstalling or disabling the plugin removes its packaged skill.
 
 ## Network And Third Parties
 

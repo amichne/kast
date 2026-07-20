@@ -1,6 +1,6 @@
 version: "0.1.0"
 schema_version: 1
-semantic_commands[20]{command,path,mode,planApply,evidence,example}:
+semantic_commands[18]{command,path,mode,planApply,evidence,example}:
   "lease-acquire",agent lease acquire,lifecycle,false,"READY exact-root runtime and install-generation lease","kast --output toon agent lease acquire --workspace-root <root> --backend <backend>"
   "lease-status",agent lease status,lifecycle,false,authenticated lease lifecycle and exact runtime identity,"kast --output toon agent lease status --workspace-root <root> --backend <backend> --lease-id <id>"
   "lease-release",agent lease release,lifecycle,false,idempotent release receipt and exact ownership cleanup,"kast --output toon agent lease release --workspace-root <root> --backend <backend> --lease-id <id>"
@@ -19,7 +19,4 @@ semantic_commands[20]{command,path,mode,planApply,evidence,example}:
   "add-implementation","agent add-implementation","plan-first-mutation",true,typed plan or applied operation with idempotency evidence,"kast --output toon agent add-implementation --workspace-root <root> --inside-file <path> --at file-bottom --content-file <file>"
   "add-statement","agent add-statement","plan-first-mutation",true,typed plan or applied operation with idempotency evidence,"kast --output toon agent add-statement --workspace-root <root> --inside-scope <fq-name> --at body-end --content-file <file>"
   "replace-declaration","agent replace-declaration","plan-first-mutation",true,typed plan or applied operation with idempotency evidence,"kast --output toon agent replace-declaration --workspace-root <root> --symbol <fq-name> --content-file <file>"
-  "operation-status",agent operation status,"operation-control",false,latest retained operation state,"kast --output toon agent operation status --workspace-root <root> --idempotency-key <key>"
-  "operation-cancel",agent operation cancel,"operation-control",false,cooperative cancellation outcome,"kast --output toon agent operation cancel --workspace-root <root> --operation-id <id>"
-hook_only[9]: version,context,ready,repair (plan only),status,agent,agent task begin|status|finish|abort,agent verify,developer codex hook <event>
 not_exposed[10]: setup,"repair --apply",agent lsp,developer runtime,demo,doctor,developer codex generate,agent tools,agent call,agent workflow

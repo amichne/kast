@@ -42,14 +42,10 @@
             "type": {
               "const": "ADD_DECLARATION",
               "type": "string"
-            },
-            "workspaceTaskId": {
-              "type": "string"
             }
           },
           "required": [
             "type",
-            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -68,14 +64,10 @@
             "type": {
               "const": "ADD_FILE",
               "type": "string"
-            },
-            "workspaceTaskId": {
-              "type": "string"
             }
           },
           "required": [
             "type",
-            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -94,14 +86,10 @@
             "type": {
               "const": "ADD_IMPLEMENTATION",
               "type": "string"
-            },
-            "workspaceTaskId": {
-              "type": "string"
             }
           },
           "required": [
             "type",
-            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -120,14 +108,10 @@
             "type": {
               "const": "ADD_STATEMENT",
               "type": "string"
-            },
-            "workspaceTaskId": {
-              "type": "string"
             }
           },
           "required": [
             "type",
-            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -146,14 +130,10 @@
             "type": {
               "const": "RENAME",
               "type": "string"
-            },
-            "workspaceTaskId": {
-              "type": "string"
             }
           },
           "required": [
             "type",
-            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],
@@ -172,14 +152,10 @@
             "type": {
               "const": "REPLACE_DECLARATION",
               "type": "string"
-            },
-            "workspaceTaskId": {
-              "type": "string"
             }
           },
           "required": [
             "type",
-            "workspaceTaskId",
             "idempotencyKey",
             "request"
           ],

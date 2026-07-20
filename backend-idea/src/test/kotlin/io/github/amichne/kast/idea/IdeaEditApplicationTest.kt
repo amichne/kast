@@ -1,5 +1,9 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.idea.backend.KastPluginBackend
+import io.github.amichne.kast.idea.edit.IdeaEditApplier
+import io.github.amichne.kast.idea.mutation.*
+
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.application.writeAction
 import com.intellij.openapi.fileEditor.FileDocumentManager

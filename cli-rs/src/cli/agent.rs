@@ -11,8 +11,6 @@ pub enum AgentCommand {
     Lsp(LspArgs),
     /// Acquire, inspect, or release an exact-root semantic workspace lease.
     Lease(AgentLeaseArgs),
-    /// Begin, inspect, finish, or abort one deterministic agent task.
-    Task(AgentTaskArgs),
     /// Verify backend health, runtime state, and capabilities.
     Verify(AgentVerifyArgs),
     /// Discover Kotlin source and script files with typed workspace evidence.
@@ -45,8 +43,6 @@ pub enum AgentCommand {
     AddStatement(AgentStatementMutationArgs),
     /// Replace a named declaration by symbol identity.
     ReplaceDeclaration(AgentReplaceDeclarationArgs),
-    /// Query or cancel an observable semantic mutation operation.
-    Operation(AgentOperationArgs),
     /// List catalog-backed tools for CLI-capable agent hosts.
     #[command(hide = true)]
     Tools(RemovedAgentCommandArgs),
@@ -131,33 +127,6 @@ pub enum AgentLeaseCommand {
     Status(AgentLeaseAccessArgs),
     /// Release a lease and stop only the exact runtime it started.
     Release(AgentLeaseAccessArgs),
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct AgentTaskArgs {
-    #[command(subcommand)]
-    pub command: AgentTaskCommand,
-}
-
-#[derive(Debug, Subcommand, Clone)]
-pub enum AgentTaskCommand {
-    /// Begin or join the shared task for one exact workspace root.
-    Begin(AgentTaskWorkspaceArgs),
-    /// Inspect current task proof and blockers without changing the receipt.
-    Status(AgentTaskWorkspaceArgs),
-    /// Validate relevant changes and complete only with current proof.
-    Finish(AgentTaskWorkspaceArgs),
-    /// Repair interrupted coordination without changing workspace files.
-    Repair(AgentTaskWorkspaceArgs),
-    /// Close the shared task without claiming completion.
-    Abort(AgentTaskWorkspaceArgs),
-}
-
-#[derive(Debug, Args, Clone, Default)]
-pub struct AgentTaskWorkspaceArgs {
-    /// Exact workspace root. Defaults to the nearest Gradle workspace from the current directory.
-    #[arg(long)]
-    pub workspace_root: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -1448,39 +1417,6 @@ pub struct AgentReplaceDeclarationArgs {
     pub mutation: AgentMutationApplyArgs,
 }
 
-#[derive(Debug, Args, Clone)]
-pub struct AgentOperationArgs {
-    #[command(subcommand)]
-    pub command: AgentOperationCommand,
-}
-
-#[derive(Debug, Subcommand, Clone)]
-pub enum AgentOperationCommand {
-    /// Retrieve the latest retained operation state.
-    Status(AgentOperationSelectorArgs),
-    /// Request cooperative cancellation and return the latest retained state.
-    Cancel(AgentOperationSelectorArgs),
-}
-
-#[derive(Debug, Args, Clone)]
-#[command(group(
-    clap::ArgGroup::new("selector")
-        .required(true)
-        .multiple(false)
-        .args(["operation_id", "idempotency_key"])
-))]
-pub struct AgentOperationSelectorArgs {
-    #[command(flatten)]
-    pub runtime: AgentRuntimeArgs,
-    /// Server-issued semantic mutation operation UUID.
-    #[arg(long)]
-    pub operation_id: Option<String>,
-    /// Caller-owned mutation idempotency key.
-    #[arg(long)]
-    pub idempotency_key: Option<String>,
-    #[command(flatten)]
-    pub view: AgentMutationViewArgs,
-}
 
 #[derive(Debug, Args, Clone, Default)]
 #[command(group(
@@ -1679,8 +1615,8 @@ pub struct AgentMutationViewArgs {
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum AgentMutationField {
-    Operation,
-    State,
+    Outcome,
+    Deduplicated,
     Edits,
     Files,
     Diagnostics,

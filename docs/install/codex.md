@@ -61,7 +61,7 @@ codex plugin list
 ```
 
 Confirm that `kast@kast` is listed. Then start a **new Codex task**. Existing
-tasks do not reload plugin skills and hooks after installation.
+tasks do not reload plugin skills after installation.
 
 ## Update The Plugin
 

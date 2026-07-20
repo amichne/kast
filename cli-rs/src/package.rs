@@ -1,6 +1,6 @@
 use crate::SCHEMA_VERSION;
 use crate::bundle::{
-    AGENT_TASK_LAUNCHER, BundleVersion, HEADLESS_BACKEND_ARCHIVE_ROOT, HEADLESS_BACKEND_LAUNCHER,
+    BundleVersion, HEADLESS_BACKEND_ARCHIVE_ROOT, HEADLESS_BACKEND_LAUNCHER,
     UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT, UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID,
     ubuntu_debian_headless_manifest,
 };
@@ -88,18 +88,11 @@ pub fn package_ubuntu_debian_bundle(
 
     let cli_bin = cli_extract.join("kast");
     require_file(&cli_bin, "CLI archive root kast binary")?;
-    let task_launcher = cli_extract.join(AGENT_TASK_LAUNCHER);
-    require_file(&task_launcher, "CLI archive root kast-agent-task launcher")?;
     let backend_root = backend_extract.join(HEADLESS_BACKEND_ARCHIVE_ROOT);
     validate_backend_archive_root(&backend_root)?;
 
     fs::copy(&cli_bin, staging_root.join("bin/kast"))?;
     make_executable(&staging_root.join("bin/kast"))?;
-    fs::copy(
-        &task_launcher,
-        staging_root.join("bin").join(AGENT_TASK_LAUNCHER),
-    )?;
-    make_executable(&staging_root.join("bin").join(AGENT_TASK_LAUNCHER))?;
     let backend_install_name = format!("headless-{}", version.as_str());
     let backend_install_dir = staging_root
         .join("lib/backends")
@@ -117,12 +110,10 @@ pub fn package_ubuntu_debian_bundle(
     copy_license(&repo_root, &staging_root)?;
 
     let cli_sha = file_sha256(&cli_archive)?;
-    let task_launcher_sha = file_sha256(&task_launcher)?;
     let backend_sha = file_sha256(&backend_archive)?;
     let manifest = ubuntu_debian_headless_manifest(
         version.as_str(),
         cli_sha,
-        task_launcher_sha,
         backend_sha,
         build_commit(&repo_root),
     );

@@ -41,30 +41,6 @@ fn rename_preview(workspace: &Path, new_name: &str) -> Value {
         "schemaVersion": 3,
     })
 }
-
-fn begin_workspace_task(home: &Path, config_home: &Path, workspace: &Path) -> Value {
-    write_current_cli_install_manifest_for_test(home, config_home);
-    let output = kast(home, config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "task",
-            "begin",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("begin workspace task");
-    assert!(
-        output.status.success(),
-        "task begin failed: stdout={} stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr),
-    );
-    serde_json::from_slice(&output.stdout).expect("task begin JSON")
-}
-
 fn run_agent_symbol(
     home: &Path,
     config_home: &Path,
@@ -621,7 +597,6 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
         "package io.example\nclass OrderService { fun process() = Unit }\n",
     )
     .expect("Kotlin rename fixture");
-    let task = begin_workspace_task(&home, &config_home, &workspace);
     let selector_handle = "ksh1.rename-handle";
     let plan_backend = spawn_scripted_idea_backend(
         &home,
@@ -744,17 +719,20 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
         vec![(
             "mutation/submit",
             json!({
-                "operation": {
-                    "operationId": "00000000-0000-0000-0000-000000000392",
-                    "idempotencyKey": "issue-392-rename",
-                    "mutationKind": "RENAME",
-                    "state": {
-                        "type": "QUEUED",
-                        "trace": {
-                            "enteredStages": [],
-                            "editApplicationState": "NOT_STARTED"
+                "type": "SUCCEEDED",
+                "result": {
+                    "type": "RENAME_RESULT",
+                    "response": {
+                        "ok": true,
+                        "editCount": 0,
+                        "affectedFiles": [],
+                        "applyResult": {
+                            "applied": [],
+                            "affectedFiles": [],
+                            "createdFiles": [],
+                            "deletedFiles": []
                         },
-                        "cancellationRequested": false
+                        "diagnostics": {"errorCount": 0, "warningCount": 0}
                     }
                 },
                 "deduplicated": false
@@ -791,10 +769,6 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
         .find(|request| request["method"] == "mutation/submit")
         .expect("mutation submission");
     assert_eq!(submit["params"]["type"], "RENAME");
-    assert_eq!(
-        submit["params"]["workspaceTaskId"],
-        task["result"]["taskId"]
-    );
     assert_eq!(submit["params"]["idempotencyKey"], "issue-392-rename");
     assert_eq!(
         submit["params"]["request"]["type"],
@@ -1009,7 +983,15 @@ fn agent_scope_mutations_without_apply_return_typed_request_plans() {
             "{stdout}"
         );
         assert_eq!(
-            stdout["result"]["operation"]["state"], "PLANNED",
+            stdout["result"]["execution"]["outcome"],
+            format!(
+                "PLANNED_{}",
+                request_method
+                    .strip_prefix("symbol/")
+                    .unwrap()
+                    .replace('-', "_")
+                    .to_ascii_uppercase()
+            ),
             "{stdout}"
         );
         assert_eq!(
@@ -1038,7 +1020,6 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
     )
     .expect("Gradle workspace marker");
     std::fs::write(&content_file, "fun greet() = \"replacement\"\n").expect("replacement");
-    let task = begin_workspace_task(&home, &config_home, &workspace);
     let selector_handle = "ksh1.replace-handle";
 
     let plan = kast(&home, &config_home)
@@ -1064,10 +1045,9 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
     );
     let plan: Value = serde_json::from_slice(&plan.stdout).expect("replace plan json");
     assert_eq!(plan["result"]["type"], "KAST_AGENT_MUTATION_RESULT");
-    assert_eq!(plan["result"]["operation"]["state"], "PLANNED");
     assert_eq!(
-        plan["result"]["operation"]["mutationKind"],
-        "REPLACE_DECLARATION",
+        plan["result"]["execution"]["outcome"],
+        "PLANNED_REPLACE_DECLARATION",
     );
     assert_eq!(
         plan["result"]["plan"]["type"],
@@ -1112,17 +1092,14 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
         vec![(
             "mutation/submit",
             json!({
-                "operation": {
-                    "operationId": "00000000-0000-0000-0000-000000000393",
-                    "idempotencyKey": "issue-392-replace",
-                    "mutationKind": "REPLACE_DECLARATION",
-                    "state": {
-                        "type": "QUEUED",
-                        "trace": {
-                            "enteredStages": [],
-                            "editApplicationState": "NOT_STARTED"
-                        },
-                        "cancellationRequested": false
+                "type": "SUCCEEDED",
+                "result": {
+                    "type": "SCOPE_MUTATION_RESULT",
+                    "response": {
+                        "editCount": 0,
+                        "affectedFiles": [],
+                        "createdFiles": [],
+                        "diagnostics": {"errorCount": 0, "warningCount": 0}
                     }
                 },
                 "deduplicated": false
@@ -1159,10 +1136,6 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
         .find(|request| request["method"] == "mutation/submit")
         .expect("mutation submission");
     assert_eq!(submit["params"]["type"], "REPLACE_DECLARATION");
-    assert_eq!(
-        submit["params"]["workspaceTaskId"],
-        task["result"]["taskId"]
-    );
     assert_eq!(submit["params"]["idempotencyKey"], "issue-392-replace",);
     assert_eq!(
         submit["params"]["request"]["type"],

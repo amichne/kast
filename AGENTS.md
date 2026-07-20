@@ -75,23 +75,6 @@ Command:
 - No files outside Allowed Writes changed.
 - No Non-Goal work was performed.
 
-## Execution Limits
-
-Maximum tool or shell calls: 12.
-
-When the limit is reached, stop and report the remaining concrete blocker. Do not broaden the investigation.
-
-## Execution State
-
-Status: not-started
-
-Changed files:
-
-- None
-
-Verification:
-
-- Not run
 
 ## Out-of-Scope Findings
 
@@ -100,8 +83,6 @@ Verification:
 
 <kast>
 ## Kast routing
-Start Kotlin or Gradle work with `kast-agent-task begin --workspace-root "$PWD"`.
-Discover the current task and available semantic operations with `kast agent` and scoped `--help`.
-Finish with `kast-agent-task finish --workspace-root "$PWD"`.
-Report typed blockers exactly as returned; do not bypass task ownership, diagnostics, or Gradle proof.
+Use `kast agent` and scoped `--help` for compiler-backed Kotlin and Gradle work.
+Mutations plan, apply, and validate diagnostics synchronously; report only structured, actionable failures.
 </kast>
