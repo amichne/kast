@@ -659,8 +659,8 @@ jobs:
           }
           (cd "$staging_dir" && zip -X -9 -q -r "$GITHUB_WORKSPACE/dist/${asset_name}" marketplace.json .agents/plugins/marketplace.json plugins/kast)
           .github/scripts/verify-codex-plugin-package.py \
-            --archive "dist/${asset_name}" \
-            --version "$version"
+            "dist/${asset_name}" \
+            "$version"
           python3 - "dist/${asset_name}" dist/build-provenance-codex-plugin.json "$release_sha" "$tag" <<'PY'
           import hashlib
           import json

@@ -51,18 +51,18 @@ class MacosMachineManifestLoaderTest {
     private fun writeMachineManifest(): Path {
         val root = tempDir.resolve("Library/Application Support/Kast/machine")
         val binary = root.resolve("bin/kast")
-        val taskLauncher = root.resolve("bin/kast-agent-task")
         val plugin = root.resolve("idea/kast.zip")
         val skill = root.resolve("resources/kast-skill/SKILL.md")
+        val codex = root.resolve("resources/codex-marketplace/marketplace.json")
         Files.createDirectories(binary.parent)
         Files.createDirectories(plugin.parent)
         Files.createDirectories(skill.parent)
+        Files.createDirectories(codex.parent)
         Files.writeString(binary, "binary")
         check(binary.toFile().setExecutable(true))
-        Files.writeString(taskLauncher, "launcher")
-        check(taskLauncher.toFile().setExecutable(true))
         Files.writeString(plugin, "plugin")
         Files.writeString(skill, "skill")
+        Files.writeString(codex, "codex")
         return root.resolve("machine.json").also { manifest ->
             Files.writeString(
                 manifest,
@@ -70,10 +70,10 @@ class MacosMachineManifestLoaderTest {
                 {
                   "type": "KAST_MACHINE_MANIFEST",
                   "cliSha256": "${sha256(binary)}",
-                  "taskLauncherSha256": "${sha256(taskLauncher)}",
                   "ideaPluginSha256": "${sha256(plugin)}",
-                  "resourcesSha256": "${directorySha256(root.resolve("resources"))}",
-                  "schemaVersion": 2
+                  "skillSha256": "${sha256(skill)}",
+                  "codexSha256": "${directorySha256(codex.parent)}",
+                  "schemaVersion": 1
                 }
                 """.trimIndent(),
             )

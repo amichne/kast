@@ -339,8 +339,8 @@ jobs:
             --output-dir "$staging_dir"
           (cd "$staging_dir" && zip -X -9 -q -r "$GITHUB_WORKSPACE/dist/${asset_name}" marketplace.json .agents/plugins/marketplace.json plugins/kast)
           .github/scripts/verify-codex-plugin-package.py \
-            --archive "dist/${asset_name}" \
-            --version 0.0.0-ci
+            "dist/${asset_name}" \
+            0.0.0-ci
           scripts/verify-ci-artifact-ledger.py record \
             --output dist/ci-ledgers/codex-plugin.json \
             --git-sha "$GITHUB_SHA" \

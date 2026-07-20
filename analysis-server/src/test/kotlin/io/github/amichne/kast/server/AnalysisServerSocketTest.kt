@@ -211,6 +211,56 @@ class AnalysisServerSocketTest {
     }
 
     @Test
+    fun `mutation retry joins its terminal result without reapplying`() {
+        val socketPath = tempDir.resolve("run").resolve("mutation-retry.sock")
+        val target = tempDir.resolve("src/Retried.kt")
+        val contentFile = tempDir.resolve("retried-content.kt")
+        Files.writeString(contentFile, "package sample\n\nclass Retried\n")
+        val applyStarted = CompletableDeferred<Unit>()
+        val mutation = KastSemanticMutation.AddFile(
+            idempotencyKey = KastMutationIdempotencyKey("issue-333-reconnect"),
+            request = KastAddFileRequest(
+                workspaceRoot = tempDir.toString(),
+                filePath = target.toString(),
+                contentFile = contentFile.toString(),
+            ),
+        )
+
+        AnalysisServer(
+            backend = AdmittedApplyBackend(FakeAnalysisBackend.sample(tempDir), applyStarted),
+            config = AnalysisServerConfig(
+                transport = AnalysisTransport.UnixDomainSocket(socketPath),
+                descriptorDirectory = tempDir.resolve("mutation-retry-instances"),
+            ),
+        ).start().use {
+            sendWithoutReadingResponse(
+                socketPath = socketPath,
+                request = JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "mutation/submit",
+                    params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
+                ),
+            )
+            runBlocking { withTimeout(1_000) { applyStarted.await() } }
+
+            val response = callSocket(
+                socketPath = socketPath,
+                request = JsonRpcRequest(
+                    id = JsonPrimitive(2),
+                    method = "mutation/submit",
+                    params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
+                ),
+            )
+            val success = json.decodeFromString(JsonRpcSuccessResponse.serializer(), response)
+            val terminal = json.decodeFromJsonElement(KastMutationExecutionResult.serializer(), success.result)
+
+            assertTrue(terminal is KastMutationExecutionResult.Succeeded)
+            assertTrue(terminal.deduplicated)
+            assertEquals("package sample\n\nclass Retried\n", Files.readString(target))
+        }
+    }
+
+    @Test
     fun `expected client disconnects include macOS disconnected socket errors`() {
         assertTrue(isExpectedClientDisconnect(IOException("Socket is not connected")))
     }

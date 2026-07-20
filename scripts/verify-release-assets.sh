@@ -49,9 +49,11 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 - "$release_dir" "$tag" "$repo_root" <<'PY'
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 release_dir = Path(sys.argv[1])
@@ -166,6 +168,28 @@ for asset_name in expected_assets:
     if actual_digest != expected_digest:
         fail(f"checksum mismatch for {asset_name}: expected {expected_digest}, got {actual_digest}")
 
+for platform_id, asset_name in supported.items():
+    if not platform_id.startswith("cli-") or platform_id not in by_platform:
+        continue
+    with tempfile.TemporaryDirectory(prefix="kast-release-cli-") as output:
+        extraction = subprocess.run(
+            [
+                str(repo_root / "scripts" / "extract-safe-zip.py"),
+                str(release_dir / asset_name),
+                output,
+            ],
+            capture_output=True,
+            text=True,
+        )
+        if extraction.returncode != 0:
+            detail = extraction.stderr.strip() or extraction.stdout.strip()
+            fail(f"invalid CLI archive {asset_name}: {detail}")
+        entry = Path(output) / "kast"
+        if not entry.is_file():
+            fail(f"CLI archive {asset_name} must contain regular kast at its root")
+        if not os.access(entry, os.X_OK):
+            fail(f"CLI archive {asset_name} must contain executable kast at its root")
+
 actual_sidecars = {path.name for path in release_dir.glob("*.sha256")}
 expected_sidecars = {}
 for asset_name in expected_assets:
@@ -251,9 +275,7 @@ codex_asset = release_dir / supported["codex-plugin"]
 subprocess.run(
     [
         str(repo_root / ".github" / "scripts" / "verify-codex-plugin-package.py"),
-        "--archive",
         str(codex_asset),
-        "--version",
         tag.removeprefix("v"),
     ],
     check=True,
