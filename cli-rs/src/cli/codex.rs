@@ -9,9 +9,6 @@ pub struct CodexArgs {
 pub enum CodexCommand {
     /// Generate or verify the repository-owned Codex plugin.
     Generate(CodexGenerateArgs),
-    /// Run one plugin hook event over stdin.
-    #[command(hide = true)]
-    Hook(CodexHookArgs),
 }
 
 #[derive(Debug, Args, Clone)]
@@ -25,30 +22,4 @@ pub struct CodexGenerateArgs {
     /// Marketplace root to render. Defaults to the checked-in source tree.
     #[arg(long)]
     pub output_dir: Option<PathBuf>,
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct CodexHookArgs {
-    #[arg(value_enum)]
-    pub event: CodexHookEvent,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum CodexHookEvent {
-    SessionStart,
-    PreToolUse,
-    PostToolUse,
-    Stop,
-}
-
-impl CodexHookEvent {
-    pub(crate) fn codex_name(self) -> &'static str {
-        match self {
-            Self::SessionStart => "SessionStart",
-            Self::PreToolUse => "PreToolUse",
-            Self::PostToolUse => "PostToolUse",
-            Self::Stop => "Stop",
-        }
-    }
 }

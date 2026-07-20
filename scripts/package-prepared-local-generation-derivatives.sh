@@ -97,21 +97,18 @@ done < <(find "$prepared_parent" -mindepth 1 -maxdepth 1 -type d -print)
   || die 'Prepared archive must contain exactly one generation directory'
 
 prepared_cli="${prepared_generation}/bin/kast"
-prepared_task_launcher="${prepared_generation}/bin/kast-agent-task"
 prepared_backend="${prepared_generation}/backend-headless"
 [[ -x "$prepared_cli" ]] || die 'Prepared generation does not contain executable bin/kast'
-[[ -x "$prepared_task_launcher" ]] || die 'Prepared generation does not contain executable bin/kast-agent-task'
 [[ -d "$prepared_backend" ]] || die 'Prepared generation does not contain backend-headless/'
 cli_staging="${scratch_dir}/cli"
 backend_staging="${scratch_dir}/backend"
 mkdir -p "$cli_staging" "${backend_staging}/backend-headless"
 cp "$prepared_cli" "${cli_staging}/kast"
-cp "$prepared_task_launcher" "${cli_staging}/kast-agent-task"
-chmod 755 "${cli_staging}/kast" "${cli_staging}/kast-agent-task"
+chmod 755 "${cli_staging}/kast"
 cp -R "${prepared_backend}/." "${backend_staging}/backend-headless/"
 cli_archive="${scratch_dir}/kast-v0.0.0-ci-linux-x64.zip"
 backend_archive="${scratch_dir}/kast-local-source-bound-backend.zip"
-(cd "$cli_staging" && zip -X -0 -q "$cli_archive" kast kast-agent-task)
+(cd "$cli_staging" && zip -X -0 -q "$cli_archive" kast)
 (cd "$backend_staging" && zip -X -0 -q -r "$backend_archive" backend-headless)
 
 case "$package_kind" in

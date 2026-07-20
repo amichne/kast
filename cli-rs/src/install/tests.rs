@@ -14,36 +14,13 @@ mod tests {
     }
 
     #[test]
-    fn setup_guidance_renders_the_embedded_task_lifecycle_once() {
-        let guidance = render_agents_md_guidance_block();
-
-        assert_eq!(
-            guidance
-                .matches(crate::agent::agent_task_guidance())
-                .count(),
-            1,
-            "{guidance}"
-        );
-        for forbidden in [
-            "--output json",
-            "agent lease acquire",
-            "agent verify",
-            "agent symbol",
-            "agent diagnostics",
-            "agent rename",
-        ] {
-            assert!(
-                !guidance.contains(forbidden),
-                "found {forbidden}: {guidance}"
-            );
-        }
-    }
-
-    #[test]
     fn macos_homebrew_cli_receipt_round_trips_without_plugin_authority() {
         let (temp, formula_prefix, binary) = executable_formula();
-        let receipt =
-            MacosHomebrewInstallReceipt::new(binary, formula_prefix, cli::version().to_string());
+        let receipt = MacosHomebrewInstallReceipt::new(
+            binary,
+            formula_prefix,
+            cli::version().to_string(),
+        );
         let receipt_path = macos_homebrew_receipt_path(temp.path());
 
         write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write receipt");
@@ -67,11 +44,8 @@ mod tests {
         .expect("receipt value");
         document["plugin"] = serde_json::json!({"version": cli::version()});
         fs::create_dir_all(receipt_path.parent().expect("receipt parent")).expect("receipt dir");
-        fs::write(
-            &receipt_path,
-            serde_json::to_vec(&document).expect("receipt json"),
-        )
-        .expect("receipt");
+        fs::write(&receipt_path, serde_json::to_vec(&document).expect("receipt json"))
+            .expect("receipt");
 
         let error = read_macos_homebrew_receipt_at(&receipt_path).expect_err("unknown field");
 
@@ -88,8 +62,11 @@ mod tests {
         fs::write(&binary, "#!/usr/bin/env sh\n").expect("binary");
         crate::manifest::make_executable(&binary).expect("executable binary");
         let receipt_path = macos_homebrew_receipt_path(temp.path());
-        let receipt =
-            MacosHomebrewInstallReceipt::new(binary, formula_prefix, cli::version().to_string());
+        let receipt = MacosHomebrewInstallReceipt::new(
+            binary,
+            formula_prefix,
+            cli::version().to_string(),
+        );
         write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write receipt");
 
         let error = read_macos_homebrew_receipt_at(&receipt_path).expect_err("version drift");
@@ -105,8 +82,11 @@ mod tests {
         let formula_prefix = temp.path().join(format!("Cellar/kast/{stale_version}"));
         let binary = formula_prefix.join("bin/kast");
         let receipt_path = macos_homebrew_receipt_path(temp.path());
-        let receipt =
-            MacosHomebrewInstallReceipt::new(binary, formula_prefix, stale_version.to_string());
+        let receipt = MacosHomebrewInstallReceipt::new(
+            binary,
+            formula_prefix,
+            stale_version.to_string(),
+        );
         write_macos_homebrew_receipt_at(&receipt_path, &receipt).expect("write stale receipt");
 
         let state = classify_existing_macos_homebrew_receipt_for_repair(&receipt_path)
@@ -214,7 +194,9 @@ mod tests {
     fn legacy_cleanup_apply_backs_up_exact_links_is_idempotent_and_fails_closed() {
         let temp = tempfile::tempdir().expect("tempdir");
         let backup_root = temp.path().join("backups");
-        let target = temp.path().join("Caskroom/kast-plugin/0.12.9/backend-idea");
+        let target = temp
+            .path()
+            .join("Caskroom/kast-plugin/0.12.9/backend-idea");
         let link = temp.path().join("JetBrains/IdeaIC2026.1/plugins/kast");
         fs::create_dir_all(link.parent().expect("link parent")).expect("profile");
         std::os::unix::fs::symlink(&target, &link).expect("legacy link");
@@ -258,18 +240,23 @@ mod tests {
             fs::read_link(&result.backups[0]).expect("backup symlink evidence"),
             target,
         );
-        apply_owned_legacy_idea_plugin_cleanup(vec![], &backup_root, &mut result, || {
-            panic!("an idempotent no-op must not run the IDE preflight")
-        })
+        apply_owned_legacy_idea_plugin_cleanup(
+            vec![],
+            &backup_root,
+            &mut result,
+            || panic!("an idempotent no-op must not run the IDE preflight"),
+        )
         .expect("idempotent cleanup");
         assert_eq!(result.backups.len(), 1);
 
         std::os::unix::fs::symlink(&target, &link).expect("restored legacy link");
-        let error =
-            apply_owned_legacy_idea_plugin_cleanup(vec![owned], &backup_root, &mut result, || {
-                Err(CliError::new("JETBRAINS_IDE_OPEN", "IDE open"))
-            })
-            .expect_err("failed preflight must preserve state");
+        let error = apply_owned_legacy_idea_plugin_cleanup(
+            vec![owned],
+            &backup_root,
+            &mut result,
+            || Err(CliError::new("JETBRAINS_IDE_OPEN", "IDE open")),
+        )
+        .expect_err("failed preflight must preserve state");
         assert_eq!(error.code, "JETBRAINS_IDE_OPEN");
         assert!(link.is_symlink());
         assert_eq!(result.backups.len(), 1);
@@ -396,7 +383,7 @@ mod tests {
         )));
         assert!(is_generated_resource_cache_file(Path::new(".DS_Store")));
         assert!(!is_generated_resource_cache_file(Path::new(
-            "kast-agent-task"
+            "scripts/verify-kast-state.py"
         )));
     }
 }

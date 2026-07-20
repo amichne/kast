@@ -87,7 +87,6 @@ impl AgentProjectionRequest {
             | AgentCommand::Hierarchy(_)
             | AgentCommand::Lsp(_)
             | AgentCommand::Lease(_)
-            | AgentCommand::Task(_)
             | AgentCommand::Tools(_)
             | AgentCommand::Call(_)
             | AgentCommand::Workflow(_) => Self::Passthrough,

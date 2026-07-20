@@ -7,7 +7,6 @@
     "request": {
       "example": true
     },
-    "type": "ADD_FILE",
-    "workspaceTaskId": "00000000-0000-0000-0000-000000000420"
+    "type": "ADD_FILE"
   }
 }

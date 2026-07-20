@@ -8,7 +8,6 @@ import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.mutation.KastMutationExecutionResult
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
-import io.github.amichne.kast.api.contract.mutation.KastWorkspaceTaskId
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
@@ -49,8 +48,6 @@ import kotlin.io.path.exists
 class AnalysisServerSocketTest {
     @TempDir
     lateinit var tempDir: Path
-
-    private val testWorkspaceTaskId = KastWorkspaceTaskId("00000000-0000-0000-0000-000000000420")
 
     private val json = Json {
         encodeDefaults = true
@@ -211,116 +208,6 @@ class AnalysisServerSocketTest {
         } finally {
             Thread.setDefaultUncaughtExceptionHandler(previousHandler)
         }
-    }
-
-    @Test
-    fun `mutation worker survives client disconnect and retry joins its terminal result`() {
-        val socketPath = tempDir.resolve("run").resolve("m.sock")
-        val target = tempDir.resolve("src/Reconnected.kt")
-        val contentFile = tempDir.resolve("reconnected-content.kt")
-        Files.writeString(contentFile, "package sample\n\nclass Reconnected\n")
-        val applyStarted = CompletableDeferred<Unit>()
-        val idempotencyKey = KastMutationIdempotencyKey("issue-333-reconnect")
-        val mutation = KastSemanticMutation.AddFile(
-            workspaceTaskId = testWorkspaceTaskId,
-            idempotencyKey = idempotencyKey,
-            request = KastAddFileRequest(
-                workspaceRoot = tempDir.toString(),
-                filePath = target.toString(),
-                contentFile = contentFile.toString(),
-            ),
-        )
-
-        AnalysisServer(
-            backend = AdmittedApplyBackend(FakeAnalysisBackend.sample(tempDir), applyStarted),
-            config = AnalysisServerConfig(
-                transport = AnalysisTransport.UnixDomainSocket(socketPath),
-                descriptorDirectory = tempDir.resolve("instances"),
-            ),
-        ).start().use {
-            sendWithoutReadingResponse(
-                socketPath = socketPath,
-                request = JsonRpcRequest(
-                    id = JsonPrimitive(1),
-                    method = "mutation/submit",
-                    params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
-                ),
-            )
-            runBlocking { withTimeout(1_000) { applyStarted.await() } }
-            val response = callSocket(
-                socketPath = socketPath,
-                request = JsonRpcRequest(
-                    id = JsonPrimitive(2),
-                    method = "mutation/submit",
-                    params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
-                ),
-            )
-            val success = json.decodeFromString(JsonRpcSuccessResponse.serializer(), response)
-            val terminal = json.decodeFromJsonElement(KastMutationExecutionResult.serializer(), success.result)
-
-            assertTrue(terminal is KastMutationExecutionResult.Succeeded)
-            assertTrue(terminal.deduplicated)
-            assertEquals("package sample\n\nclass Reconnected\n", Files.readString(target))
-        }
-    }
-
-    @Test
-    fun `server close drains mutation before removing descriptor authority`() {
-        val socketPath = tempDir.resolve("run").resolve("c.sock")
-        val descriptorDirectory = tempDir.resolve("close-instances")
-        val descriptorFile = descriptorDirectory.resolve("daemons.json")
-        val target = tempDir.resolve("src/AfterClose.kt")
-        val contentFile = tempDir.resolve("after-close-content.kt")
-        Files.writeString(contentFile, "package sample\n\nclass AfterClose\n")
-        val applyStarted = CompletableDeferred<Unit>()
-        val applyStopped = CompletableDeferred<Unit>()
-        val descriptorRetainedDuringStop = AtomicBoolean(false)
-        val backend = ClosingApplyBackend(
-            delegate = FakeAnalysisBackend.sample(tempDir),
-            applyStarted = applyStarted,
-            applyStopped = applyStopped,
-            descriptorFile = descriptorFile,
-            descriptorIdentity = socketPath.toString(),
-            descriptorRetainedDuringStop = descriptorRetainedDuringStop,
-        )
-        val server = AnalysisServer(
-            backend = backend,
-            config = AnalysisServerConfig(
-                transport = AnalysisTransport.UnixDomainSocket(socketPath),
-                descriptorDirectory = descriptorDirectory,
-            ),
-        ).start()
-        val mutation = KastSemanticMutation.AddFile(
-            workspaceTaskId = testWorkspaceTaskId,
-            idempotencyKey = KastMutationIdempotencyKey("issue-333-server-close"),
-            request = KastAddFileRequest(
-                workspaceRoot = tempDir.toString(),
-                filePath = target.toString(),
-                contentFile = contentFile.toString(),
-            ),
-        )
-        sendWithoutReadingResponse(
-            socketPath = socketPath,
-            request = JsonRpcRequest(
-                id = JsonPrimitive(1),
-                method = "mutation/submit",
-                params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
-            ),
-        )
-        runBlocking { withTimeout(1_000) { applyStarted.await() } }
-
-        server.close()
-        runBlocking { withTimeout(1_000) { applyStopped.await() } }
-        Thread.sleep(300)
-
-        assertTrue(Files.exists(target), "mutation did not drain before server authority closed")
-        assertTrue(
-            descriptorRetainedDuringStop.get(),
-            "descriptor authority was removed before the mutation worker stopped",
-        )
-        assertFalse(
-            Files.exists(descriptorFile) && Files.readString(descriptorFile).contains(socketPath.toString()),
-        )
     }
 
     @Test

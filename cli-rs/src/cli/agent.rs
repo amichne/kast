@@ -11,8 +11,6 @@ pub enum AgentCommand {
     Lsp(LspArgs),
     /// Acquire, inspect, or release an exact-root semantic workspace lease.
     Lease(AgentLeaseArgs),
-    /// Begin, inspect, finish, or abort one deterministic agent task.
-    Task(AgentTaskArgs),
     /// Verify backend health, runtime state, and capabilities.
     Verify(AgentVerifyArgs),
     /// Discover Kotlin source and script files with typed workspace evidence.
@@ -129,33 +127,6 @@ pub enum AgentLeaseCommand {
     Status(AgentLeaseAccessArgs),
     /// Release a lease and stop only the exact runtime it started.
     Release(AgentLeaseAccessArgs),
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct AgentTaskArgs {
-    #[command(subcommand)]
-    pub command: AgentTaskCommand,
-}
-
-#[derive(Debug, Subcommand, Clone)]
-pub enum AgentTaskCommand {
-    /// Begin or join the shared task for one exact workspace root.
-    Begin(AgentTaskWorkspaceArgs),
-    /// Inspect current task proof and blockers without changing the receipt.
-    Status(AgentTaskWorkspaceArgs),
-    /// Validate relevant changes and complete only with current proof.
-    Finish(AgentTaskWorkspaceArgs),
-    /// Repair interrupted coordination without changing workspace files.
-    Repair(AgentTaskWorkspaceArgs),
-    /// Close the shared task without claiming completion.
-    Abort(AgentTaskWorkspaceArgs),
-}
-
-#[derive(Debug, Args, Clone, Default)]
-pub struct AgentTaskWorkspaceArgs {
-    /// Exact workspace root. Defaults to the nearest Gradle workspace from the current directory.
-    #[arg(long)]
-    pub workspace_root: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]

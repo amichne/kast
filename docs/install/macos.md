@@ -36,8 +36,8 @@ compatibility metadata for that root.
 
 ??? question "What the IDE and agents handle"
     On macOS, workspace setup is owned by the IntelliJ plugin. It prepares
-    exact-root compatibility metadata when the project opens. Skills, hooks,
-    and provider adapters remain machine scoped.
+    exact-root compatibility metadata when the project opens. Skills and
+    provider adapters remain machine scoped.
 
 ## Update And Verify
 

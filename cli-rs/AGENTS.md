@@ -56,10 +56,6 @@ resources.
   schemas and request samples; `protocol/maintenance/` contains routing and
   format evaluation fixtures. Other `protocol/` outputs serve release and
   integration consumers.
-- `resources/agent-task/` owns the sibling-only `kast-agent-task` launcher,
-  strict workflow schema, Gradle model/receipt init script, and compact
-  provider-neutral task guidance. These files participate in machine and
-  release bundle digests.
 
 The broader public product surface, workflows, and AXI contract live in
 `.agents/adr/0006-forward-system-definition-and-audit-scope.md`. IDEA runtime

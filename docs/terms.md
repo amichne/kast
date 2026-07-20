@@ -22,15 +22,9 @@ license.
 ## Local Authority
 
 The plugin invokes the active Kast CLI and local semantic backend under your
-user account. Its hooks may deny a proposed generic Kotlin mutation or continue
-a Codex turn when required diagnostics are missing. Those guardrails are
-workflow controls, not a security boundary and not a substitute for repository
-permissions, code review, backups, or sandboxing.
+user account. Mutations return terminal structured results to the caller.
 
-Hooks may perform read-only readiness checks and produce repair plans. They do
-not have authority to apply setup, repair, IDE, installation, or source
-mutations without the explicit action required by the relevant Kast command
-and the user's task.
+Kast may perform read-only readiness checks when explicitly invoked.
 
 ## No Hosted Kast Service
 

@@ -5,27 +5,31 @@ use support::*;
 #[cfg(not(target_os = "macos"))]
 fn assert_compact_kast_guidance(content: &str) {
     assert!(content.contains("<kast>"), "{content}");
-    for required in [
-        "kast-agent-task begin --workspace-root \"$PWD\"",
-        "`kast agent` and scoped `--help`",
-        "kast-agent-task finish --workspace-root \"$PWD\"",
-        "Report typed blockers exactly as returned",
-    ] {
-        assert!(content.contains(required), "missing {required}: {content}");
-    }
-    for forbidden in [
-        "--output json",
-        "agent lease acquire",
-        "agent verify",
-        "agent symbol",
-        "agent diagnostics",
-        "agent rename",
-        "kast ready",
-        "kast repair",
-        "SKILL.md` before",
-    ] {
-        assert!(!content.contains(forbidden), "found {forbidden}: {content}");
-    }
+    assert!(
+        content.contains("SKILL.md` before Kotlin or Gradle semantic work"),
+        "{content}"
+    );
+    assert!(
+        content.contains("`kast agent verify --workspace-root \"$PWD\"`"),
+        "{content}"
+    );
+    assert!(
+        content.contains("`kast agent symbol --query <name>`"),
+        "{content}"
+    );
+    assert!(
+        content.contains("`kast agent rename --symbol <fq-name> --new-name <name> --apply`"),
+        "{content}"
+    );
+    assert!(content.contains("`kast repair --apply`"), "{content}");
+    assert!(
+        !content.contains("When a user or agent asks for anything regarding Kotlin code"),
+        "{content}"
+    );
+    assert!(
+        !content.contains("grep, ripgrep, regex search, raw text search"),
+        "{content}"
+    );
     let managed = content
         .split_once("<kast>")
         .and_then(|(_, rest)| rest.split_once("</kast>").map(|(managed, _)| managed))
@@ -40,8 +44,8 @@ fn assert_compact_kast_guidance(content: &str) {
         })
         .count();
     assert!(
-        managed_lines == 5,
-        "Kast guidance should stay a five-line lifecycle aid, got {managed_lines}: {content}"
+        (4..=5).contains(&managed_lines),
+        "Kast guidance should stay a 4-5 line routing aid, got {managed_lines}: {content}"
     );
 }
 
@@ -381,7 +385,7 @@ fn agent_setup_backs_up_and_repairs_modified_managed_region() {
     );
     let repaired = std::fs::read_to_string(&agents_path).expect("repaired agents");
     assert!(
-        repaired.contains("Kast routing") && repaired.contains("`kast-agent-task begin"),
+        repaired.contains("Kast routing") && repaired.contains("`kast agent verify"),
         "{repaired}"
     );
     let backup_exists = std::fs::read_dir(&repo)
