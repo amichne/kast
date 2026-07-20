@@ -94,6 +94,10 @@ by explicit release layers. `source-bound-cli` and
 their required Rust and Kotlin validation jobs run independently.
 Downstream Ubuntu/Debian and `kast-action` packaging consumes the verified
 release components without creating a developer-machine generation.
+Raw CLI archives contain the revision-matched `kast` and `kast-agent-task`
+siblings. Release and pull-request producers must copy the authored launcher
+from `cli-rs/resources/agent-task/`, preserve its executable bit, and keep both
+files in the same archive root so provider hooks never resolve through PATH.
 
 ## Copilot Package Source
 

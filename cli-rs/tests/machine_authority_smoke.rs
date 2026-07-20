@@ -46,6 +46,37 @@ fn machine_status_is_a_definitive_read_only_empty_state() {
 }
 
 #[test]
+fn machine_status_rejects_an_incompatible_manifest_with_a_typed_code() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let machine = home.join("Library/Application Support/Kast/machine");
+    std::fs::create_dir_all(&machine).expect("machine root");
+    std::fs::write(
+        machine.join("machine.json"),
+        serde_json::to_vec(&serde_json::json!({
+            "type": "KAST_MACHINE_MANIFEST",
+            "cliSha256": "0".repeat(64),
+            "ideaPluginSha256": "1".repeat(64),
+            "skillSha256": "2".repeat(64),
+            "codexSha256": "3".repeat(64),
+            "schemaVersion": 1
+        }))
+        .expect("legacy manifest JSON"),
+    )
+    .expect("legacy manifest");
+
+    let status = kast(&home, &config_home)
+        .args(["--output", "json", "machine", "status"])
+        .output()
+        .expect("machine status");
+    assert!(!status.status.success());
+    let status: serde_json::Value =
+        serde_json::from_slice(&status.stdout).expect("invalid machine JSON");
+    assert_eq!(status["code"], "MACHINE_INSTALL_INVALID", "{status:#}");
+}
+
+#[test]
 fn macos_workspace_leases_are_idea_only() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -115,14 +146,37 @@ fn activation_installs_one_processless_machine_bundle() {
         serde_json::from_slice(&activation.stdout).expect("activation JSON");
     assert_eq!(activation["type"], "KAST_MACHINE_ACTIVATION");
     assert_eq!(activation["state"], "ACTIVATED");
+    assert_eq!(activation["schemaVersion"], 2);
+    assert!(
+        activation["taskLauncher"]
+            .as_str()
+            .is_some_and(|path| path.ends_with("/bin/kast-agent-task")),
+        "{activation:#}",
+    );
 
     let machine = home.join("Library/Application Support/Kast/machine");
     assert!(machine.join("bin/kast").is_file());
+    assert!(machine.join("bin/kast-agent-task").is_file());
     assert_eq!(
         std::fs::read(machine.join("idea/kast.zip")).expect("installed plugin"),
         b"idea-plugin",
     );
     assert!(machine.join("resources/kast-skill/SKILL.md").is_file());
+    assert!(
+        machine
+            .join("resources/agent-task/gradle-receipt.init.gradle")
+            .is_file()
+    );
+    assert!(
+        machine
+            .join("resources/agent-task/workflow.schema.json")
+            .is_file()
+    );
+    assert!(
+        machine
+            .join("resources/copilot-plugin/extensions/kast/extension.mjs")
+            .is_file()
+    );
     assert!(
         machine
             .join("resources/codex-marketplace/marketplace.json")
@@ -133,10 +187,26 @@ fn activation_installs_one_processless_machine_bundle() {
             .join("resources/codex-marketplace/plugins/kast/hooks/hooks.json")
             .is_file()
     );
+    for executable in [
+        machine.join("bin/kast"),
+        machine.join("bin/kast-agent-task"),
+        machine.join("resources/agent-task/kast-agent-task"),
+        machine.join("resources/codex-marketplace/plugins/kast/scripts/kast-codex-hook"),
+    ] {
+        assert!(
+            is_executable_for_test(&executable),
+            "{}",
+            executable.display()
+        );
+    }
     assert!(machine.join("machine.json").is_file());
     assert_eq!(
         std::fs::read_link(home.join(".local/bin/kast")).expect("stable command"),
         machine.join("bin/kast"),
+    );
+    assert_eq!(
+        std::fs::read_link(home.join(".local/bin/kast-agent-task")).expect("stable task launcher"),
+        machine.join("bin/kast-agent-task"),
     );
     assert!(
         !home
@@ -167,6 +237,75 @@ fn activation_installs_one_processless_machine_bundle() {
         serde_json::from_slice(&active_status.stdout).expect("active machine status JSON");
     assert_eq!(active_status["state"], "INSTALLED");
     assert_eq!(active_status["active"], true);
+
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("repository root");
+    let readiness = Command::new(machine.join("bin/kast"))
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
+        .args([
+            "--output",
+            "json",
+            "ready",
+            "--for",
+            "agent",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+        ])
+        .output()
+        .expect("active machine readiness");
+    let readiness: serde_json::Value =
+        serde_json::from_slice(&readiness.stdout).expect("active machine readiness JSON");
+    assert_eq!(
+        readiness["agentEnvironment"]["hookTrust"]["code"], "HOOK_TRUST_REQUIRED",
+        "missing trust state must fail closed: {readiness:#}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn active_machine_rejects_resource_executable_mode_drift() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let plugin = temp.path().join("kast-idea.zip");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::write(&plugin, b"idea-plugin").expect("plugin fixture");
+
+    let activation = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "machine",
+            "activate",
+            "--idea-plugin",
+            plugin.to_str().expect("plugin path"),
+        ])
+        .output()
+        .expect("machine activation");
+    assert!(activation.status.success());
+
+    let machine = home.join("Library/Application Support/Kast/machine");
+    let launcher = machine.join("resources/agent-task/kast-agent-task");
+    let mut permissions = std::fs::metadata(&launcher)
+        .expect("launcher metadata")
+        .permissions();
+    permissions.set_mode(0o644);
+    std::fs::set_permissions(&launcher, permissions).expect("remove executable mode");
+
+    let status = Command::new(machine.join("bin/kast"))
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", &config_home)
+        .args(["--output", "json", "machine", "status"])
+        .output()
+        .expect("active machine status");
+    assert!(!status.status.success());
+    let status: serde_json::Value =
+        serde_json::from_slice(&status.stdout).expect("invalid machine status JSON");
+    assert_eq!(status["code"], "MACHINE_INSTALL_INVALID", "{status:#}");
 }
 
 #[test]
@@ -236,6 +375,16 @@ fn reconciliation_replaces_only_the_closed_ide_plugin_and_global_skill() {
         serde_json::from_slice(&reconciliation.stdout).expect("reconciliation JSON");
     assert_eq!(reconciliation["type"], "KAST_MACHINE_RECONCILIATION");
     assert_eq!(reconciliation["state"], "RECONCILED");
+    assert_eq!(reconciliation["hookTrust"]["code"], "HOOK_TRUST_REQUIRED");
+    assert_eq!(reconciliation["hookTrust"]["trusted"], false);
+    assert_eq!(reconciliation["schemaVersion"], 2);
+    let hook_state: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(home.join("Library/Application Support/Kast/machine/state/codex-hook.json"))
+            .expect("Codex hook trust state"),
+    )
+    .expect("Codex hook trust JSON");
+    assert_eq!(hook_state["type"], "KAST_CODEX_HOOK_STATE");
+    assert_eq!(hook_state["trusted"], false);
     assert_eq!(
         std::fs::read(plugins.join("kast/lib/kast-plugin.jar")).expect("new plugin"),
         b"plugin",

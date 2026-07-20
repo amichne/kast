@@ -172,7 +172,7 @@ pub fn print_capabilities(value: &Value) -> Result<()> {
     mdln!(document);
     mdln!(
         document,
-        "Use `kast --output json capabilities ...` for the full payload."
+        "Use `kast --output toon capabilities ...` for the full payload."
     );
     print_markdown(&document.into_string())
 }

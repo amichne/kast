@@ -1,6 +1,6 @@
 ---
 title: Codex Plugin Contract
-description: Reference for Kast's fixed Codex command exposure, hooks, state, and package boundary.
+description: Reference for Kast's task lifecycle, hooks, state, and package boundary in Codex.
 icon: lucide/file-lock-2
 ---
 
@@ -13,11 +13,11 @@ exposure contract, and the plugin does not contain a second semantic service.
 
 | Surface | Contract |
 | --- | --- |
-| Skill | One implicitly invokable `kast-codex` skill for semantic Kotlin work |
-| Hooks | Default `hooks/hooks.json` discovery with one local launcher |
-| Binary | Resolves the active `kast` installation; no binary is bundled |
-| Semantic transport | Typed `kast agent` commands and structured CLI results |
-| Generated material | Manifest, marketplace metadata, command reference, examples, hook messages, and fixtures |
+| Skill | One compact `kast-codex` skill for task admission, command discovery, and completion |
+| Hooks | `SessionStart`, `PreToolUse`, `PostToolUse`, and `Stop` through one local launcher |
+| Binary | Resolves an attested `kast-agent-task` and sibling `kast`; no binary is bundled |
+| Semantic transport | The shared task core plus typed `kast agent` commands and TOON results |
+| Generated material | Manifest, marketplace metadata, hook configuration, exposure metadata, and fixtures |
 | Excluded material | MCP configuration or server, app connector, custom agent profile, raw RPC surface, and copied command catalog |
 
 The plugin release version matches the Kast CLI release version. The IDEA
@@ -26,33 +26,20 @@ shared version string does not bypass exact-worktree admission.
 
 ## Agent-Visible Commands
 
-The following list is closed. A new Kast command is unavailable to Codex until
-Rust classifies it deliberately and regeneration updates the package.
-
-| Family | Commands | Behavior |
-| --- | --- | --- |
-| Lifecycle | `lease acquire`, `lease status`, `lease release` | Authenticate one exact root/backend/runtime/install-generation session and release only its owned resource |
-| Workspace | `workspace-files` | Read-only, bounded discovery for the exact root |
-| Identity | `symbol` | Read-only exact symbol resolution |
-| Relationships | `references`, `callers`, `callees`, `implementations`, `hierarchy`, `impact` | Read-only semantic navigation and impact evidence |
-| Diagnostics | `diagnostics` | Read-only diagnostics bound to the analyzed file state |
-| Mutation | `rename`, `add-file`, `add-declaration`, `add-implementation`, `add-statement`, `replace-declaration` | Plan by default; apply only through each typed command's explicit gate and stable idempotency key |
-| Operation | `operation status`, `operation cancel` | Observe or request cancellation of an admitted mutation |
-
-Setup, readiness, repair, verification, LSP, developer runtime management,
-commands, and retired catalog/workflow calls are absent from normal
-`kast-codex` routing. Internal hooks may use the read-only or plan-only subset
-needed to establish readiness and recovery evidence.
+The skill teaches only `kast-agent-task begin`, `kast agent` discovery, scoped
+`--help`, and `kast-agent-task finish`. Rust still classifies the typed semantic
+surface deliberately, but generated tutorials and copied command inventories
+are not part of the plugin. See the [agent command
+reference](agent-commands.md) for lifecycle and semantic contracts.
 
 ## Hook Events
 
 | Event | Input purpose | Possible control effect |
 | --- | --- | --- |
-| `SessionStart` | Establish or recover one session and exact workspace baseline | Adds readiness, coherence, or recovery context |
-| `SubagentStart` | Bind delegated work to its exact root and linked worktree | Adds verification context |
-| `PreToolUse` | Examine a proposed generic Kotlin mutation | Denies only when the typed target route has not produced fallback evidence |
-| `PostToolUse` | Examine the completed tool request and result | Records typed command and diagnostics evidence |
-| `Stop` | Compare current Kotlin changes with stored proof | Continues the turn when current diagnostics or a reported blocker is missing |
+| `SessionStart` | Begin or recover the exact-root task | Adds the typed task receipt as context |
+| `PreToolUse` | Check task ownership and examine a proposed generic Kotlin mutation | Denies when task status is unavailable or the typed route has not produced safe fallback evidence |
+| `PostToolUse` | Record a typed mutation attempt and refresh task status | Adds current task evidence as context |
+| `Stop` | Finish through the shared diagnostics and Gradle proof core | Continues the turn with the typed blocker when completion proof is missing |
 
 The launcher forwards standard input to one hidden Rust hook entrypoint. Rust
 owns input parsing, decisions, session state, and the JSON hook control
@@ -66,28 +53,21 @@ State is stored atomically with owner-only permissions at:
 $PLUGIN_DATA/sessions/<session-id>.json
 ```
 
-One session record may contain:
+The provider record contains only its schema, session ID, exact workspace root,
+and typed mutation attempts with path-scoped fallback eligibility. Baselines,
+diagnostics, Gradle policy, task outcomes, reports, and final hashes belong to
+the shared task receipt, not provider state.
 
-- schema, plugin, and Kast versions;
-- resolved binary path;
-- canonical workspace root, Git common directory, linked worktree, and commit;
-- baseline dirty Kotlin paths and SHA-256 fingerprints;
-- typed command attempts, outcomes, affected paths, and operation IDs;
-- typed failures and path-scoped fallback eligibility; and
-- diagnostics evidence tied to current file hashes and explicitly reported
-  blockers.
-
-The state is recovery and guardrail evidence. It is not a source index, a copy
-of the workspace, an installation receipt, or a remote synchronization store.
+Provider state is guardrail evidence. It is not a source index, task receipt,
+copy of the workspace, installation receipt, or remote synchronization store.
 See the [privacy notice](../privacy.md) for data handling.
 
 ## Ownership And Regeneration
 
-The Rust exposure types and descriptors are the authority for generated
-command material. `SKILL.md`, skill presentation metadata, the launcher, and
-the canonical logo are authored plugin sources. Marketplace and plugin
-metadata, hook configuration, command examples, exposure assets, recovery
-messages, and contract fixtures are generator-owned.
+Rust owns the hook translation and exposure metadata. `SKILL.md`, skill
+presentation metadata, the launcher, and the canonical logo are authored
+plugin sources. Marketplace and plugin metadata, hook configuration, exposure
+assets, recovery messages, and contract fixtures are generator-owned.
 
 Published archives are named `kast-codex-plugin-<tag>.zip` and contain root
 `marketplace.json`, its byte-identical `.agents/plugins/marketplace.json`

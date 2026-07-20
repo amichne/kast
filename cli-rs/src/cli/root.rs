@@ -6,7 +6,7 @@
     disable_help_subcommand = true
 )]
 pub struct Cli {
-    /// Select readable text or machine-readable JSON for operator command output.
+    /// Select readable text, TOON, or deprecated JSON compatibility output.
     #[arg(long, value_enum, global = true)]
     pub output: Option<OutputFormat>,
     #[command(subcommand)]

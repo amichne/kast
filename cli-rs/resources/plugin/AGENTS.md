@@ -9,8 +9,9 @@ development packaging.
 The package provides repository-local editor integration material:
 
 - `lsp.json` starts `kast agent lsp --stdio`.
-- `extensions/kast/extension.mjs` injects runtime tooling guidance for the typed
-  `kast`, `kast help`, `kast ready`, and public `kast agent` command dialect.
+- `extensions/kast/extension.mjs` translates Copilot session and tool events
+  into the shared `kast-agent-task` lifecycle and records the non-blocking
+  session-end audit.
 - `primitive-manifest.json` defines the package artifact shape.
 
 The current source-of-truth contract for public workflows and command dialect
@@ -25,8 +26,12 @@ is `.agents/adr/0006-forward-system-definition-and-audit-scope.md`.
 - Keep installed output paths relative and under the target `.github`
   package shape.
 - Generated `.github` package copies come from this source tree.
-- Keep package behavior aligned with `kast agent lsp --stdio`, `kast ready`,
-  `kast repair`, and typed `kast agent` commands.
+- Resolve only an absolute attested task launcher or the stable installed
+  launcher pair. Do not search `PATH`, build output, or standalone `kast`
+  candidates.
+- Keep provider hooks thin: begin on session start, inspect status around tool
+  events, and audit status on session end. Explicit finish stays user-directed
+  and task policy stays in Rust.
 - Public package shape changes begin with a superseding ADR.
 
 ## Downstream surfaces

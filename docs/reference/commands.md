@@ -28,8 +28,9 @@ agent work.
 | `kast developer ...` | Run operator, inspection, machine, and release commands |
 | `kast agent ...` | Run typed agent, semantic, and LSP commands |
 
-Human-facing output is readable. Scripts and CI can request JSON when they need
-a stable parser contract.
+Human-facing output is readable. Agent commands default to compact,
+deterministic TOON; scripts and CI should consume that public structured
+result. Explicit JSON is temporarily compatible but deprecated.
 
 ## Public Command Groups
 
@@ -53,8 +54,8 @@ not public reader paths.
 
 ## Readiness Evidence
 
-Agent and Kotlin readiness includes an `agentEnvironment` object in JSON and
-an equivalent **Effective agent environment** section in human output. The
+Agent and Kotlin readiness includes an `agentEnvironment` object in structured
+output and an equivalent **Effective agent environment** section in human output. The
 verdict is read-only and covers the resources the agent can actually discover.
 
 | Field | Evidence |

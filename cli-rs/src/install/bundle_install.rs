@@ -44,6 +44,16 @@ fn install_validated_bundle(
             &targets.resolved.config_root,
             &bundle.manifest.activation.shim.java_opts,
         )?;
+        let installed_task_launcher = targets
+            .version_dir
+            .join(&bundle.task_launcher_relative);
+        manifest::make_executable(&installed_task_launcher)?;
+        if installed_task_launcher != targets.resolved.task_launcher {
+            manifest::replace_symlink_or_copy(
+                &installed_task_launcher,
+                &targets.resolved.task_launcher,
+            )?;
+        }
         write_headless_config(&targets.resolved.config_file)?;
         manifest::write_manifest_atomic(&targets.resolved.manifest_file, &install_manifest)?;
         Ok(())
@@ -88,6 +98,7 @@ fn project_install_manifest(
         entrypoints: manifest::ManifestEntrypoints {
             shim: targets.resolved.shim_path.display().to_string(),
             active_binary: targets.resolved.active_binary.display().to_string(),
+            task_launcher: targets.resolved.task_launcher.display().to_string(),
         },
         schemas: manifest::ManifestSchemas::default(),
         version: normalized_version.clone(),
@@ -96,6 +107,7 @@ fn project_install_manifest(
         platform: bundle.manifest.platform.clone(),
         components: vec![
             "cli".to_string(),
+            "agent-task-launcher".to_string(),
             "headless-backend".to_string(),
             "manifest".to_string(),
         ],
@@ -125,6 +137,10 @@ fn verify_activated_bundle(
 ) -> Result<()> {
     require_file(&targets.resolved.manifest_file, "install manifest")?;
     require_executable(&targets.resolved.shim_path, "kast shim")?;
+    require_executable(
+        &targets.resolved.task_launcher,
+        "kast agent task launcher",
+    )?;
     require_directory(&targets.version_dir, "installed bundle version")?;
     require_file(
         &targets
@@ -158,6 +174,12 @@ fn verify_activated_bundle(
         return Err(CliError::new(
             "BUNDLE_INSTALL_MISMATCH",
             "Install manifest activeBinary does not match the projected bundle activation path.",
+        ));
+    }
+    if manifest.entrypoints.task_launcher != targets.resolved.task_launcher.display().to_string() {
+        return Err(CliError::new(
+            "BUNDLE_INSTALL_MISMATCH",
+            "Install manifest taskLauncher does not match the projected bundle task launcher path.",
         ));
     }
     let shim = fs::read_to_string(&targets.resolved.shim_path)?;
@@ -225,6 +247,7 @@ fn activate_bundle_result(
         manifest: targets.resolved.manifest_file.display().to_string(),
         active_binary: targets.resolved.active_binary.display().to_string(),
         shim: targets.resolved.shim_path.display().to_string(),
+        task_launcher: targets.resolved.task_launcher.display().to_string(),
         skipped,
         verify_only,
         schema_version: SCHEMA_VERSION,

@@ -53,7 +53,7 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     let stdout: serde_json::Value = serde_json::from_slice(&package.stdout).expect("package json");
     assert_eq!(stdout["version"], "v9.8.7");
     assert_eq!(stdout["platform"], "ubuntu-debian-headless-x86_64");
-    assert_eq!(stdout["manifestSchemaVersion"], 2);
+    assert_eq!(stdout["manifestSchemaVersion"], 3);
     assert_eq!(stdout["output"], output.display().to_string());
     assert_eq!(
         stdout["sha256Sidecar"],
@@ -75,6 +75,7 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     );
     let bundle_root = extract_dir.join("kast-ubuntu-debian-headless-x86_64-v9.8.7");
     assert!(bundle_root.join("bin/kast").is_file());
+    assert!(bundle_root.join("bin/kast-agent-task").is_file());
     assert!(
         bundle_root
             .join("lib/backends/headless-v9.8.7/kast-headless")
@@ -90,13 +91,17 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
         &std::fs::read_to_string(bundle_root.join("manifest.json")).expect("manifest"),
     )
     .expect("manifest json");
-    assert_eq!(manifest["schemaVersion"], 2);
+    assert_eq!(manifest["schemaVersion"], 3);
     assert_eq!(manifest["kind"], "KAST_INSTALL_BUNDLE");
     assert_eq!(manifest["profile"], "ubuntu-debian-headless");
     assert_eq!(manifest["version"], "v9.8.7");
     assert_eq!(manifest["platform"], "ubuntu-debian-headless-x86_64");
     assert_eq!(manifest["entrypoint"], "scripts/install-ubuntu-debian.sh");
     assert_eq!(manifest["activation"]["cli"]["path"], "bin/kast");
+    assert_eq!(
+        manifest["activation"]["taskLauncher"]["path"],
+        "bin/kast-agent-task"
+    );
     assert_eq!(manifest["activation"]["backend"]["kind"], "headless");
     assert_eq!(manifest["activation"]["backend"]["name"], "headless");
     assert_eq!(manifest["activation"]["backend"]["version"], "9.8.7");
@@ -113,11 +118,12 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
         "-Didea.force.use.core.classloader=true"
     );
     assert_eq!(manifest["artifacts"][0]["role"], "cli");
-    assert_eq!(manifest["artifacts"][1]["role"], "headless-backend");
+    assert_eq!(manifest["artifacts"][1]["role"], "agent-task-launcher");
+    assert_eq!(manifest["artifacts"][2]["role"], "headless-backend");
 }
 
 #[test]
-fn activate_bundle_installs_from_v2_manifest_projection() {
+fn activate_bundle_installs_from_v3_manifest_projection() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -173,6 +179,10 @@ fn activate_bundle_installs_from_v2_manifest_projection() {
         installed_home.join("bin/kast").display().to_string()
     );
     assert_eq!(
+        manifest["entrypoints"]["taskLauncher"],
+        bin_dir.join("kast-agent-task").display().to_string()
+    );
+    assert_eq!(
         manifest["backends"][0]["runtimeLibsDir"],
         installed_home
             .join("lib/backends/headless/current/runtime-libs")
@@ -181,6 +191,7 @@ fn activate_bundle_installs_from_v2_manifest_projection() {
     );
     assert!(install_root.join("current").exists());
     assert!(bin_dir.join("kast").is_file());
+    assert!(bin_dir.join("kast-agent-task").is_file());
     let shim = std::fs::read_to_string(bin_dir.join("kast")).expect("shim");
     assert!(shim.contains("KAST_INSTALL_ROOT"));
     assert!(shim.contains("KAST_CONFIG_HOME"));
@@ -258,6 +269,7 @@ fn activate_bundle_installs_from_tarball_source() {
     );
     assert!(install_root.join("install.json").is_file());
     assert!(bin_dir.join("kast").is_file());
+    assert!(bin_dir.join("kast-agent-task").is_file());
 }
 
 #[test]

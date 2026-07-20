@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 sealed interface KastSemanticMutation {
+    val workspaceTaskId: KastWorkspaceTaskId
     val idempotencyKey: KastMutationIdempotencyKey
     val kind: KastSemanticMutationKind
     val symbolMethod: String
@@ -18,6 +19,7 @@ sealed interface KastSemanticMutation {
     @Serializable
     @SerialName("RENAME")
     data class Rename(
+        override val workspaceTaskId: KastWorkspaceTaskId,
         override val idempotencyKey: KastMutationIdempotencyKey,
         val request: KastRenameRequest,
     ) : KastSemanticMutation {
@@ -30,6 +32,7 @@ sealed interface KastSemanticMutation {
     @Serializable
     @SerialName("ADD_FILE")
     data class AddFile(
+        override val workspaceTaskId: KastWorkspaceTaskId,
         override val idempotencyKey: KastMutationIdempotencyKey,
         val request: KastAddFileRequest,
     ) : KastSemanticMutation {
@@ -42,6 +45,7 @@ sealed interface KastSemanticMutation {
     @Serializable
     @SerialName("ADD_DECLARATION")
     data class AddDeclaration(
+        override val workspaceTaskId: KastWorkspaceTaskId,
         override val idempotencyKey: KastMutationIdempotencyKey,
         val request: KastAddDeclarationRequest,
     ) : KastSemanticMutation {
@@ -54,6 +58,7 @@ sealed interface KastSemanticMutation {
     @Serializable
     @SerialName("ADD_IMPLEMENTATION")
     data class AddImplementation(
+        override val workspaceTaskId: KastWorkspaceTaskId,
         override val idempotencyKey: KastMutationIdempotencyKey,
         val request: KastAddImplementationRequest,
     ) : KastSemanticMutation {
@@ -66,6 +71,7 @@ sealed interface KastSemanticMutation {
     @Serializable
     @SerialName("ADD_STATEMENT")
     data class AddStatement(
+        override val workspaceTaskId: KastWorkspaceTaskId,
         override val idempotencyKey: KastMutationIdempotencyKey,
         val request: KastAddStatementRequest,
     ) : KastSemanticMutation {
@@ -78,6 +84,7 @@ sealed interface KastSemanticMutation {
     @Serializable
     @SerialName("REPLACE_DECLARATION")
     data class ReplaceDeclaration(
+        override val workspaceTaskId: KastWorkspaceTaskId,
         override val idempotencyKey: KastMutationIdempotencyKey,
         val request: KastReplaceDeclarationRequest,
     ) : KastSemanticMutation {

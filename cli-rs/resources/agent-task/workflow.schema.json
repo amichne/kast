@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://kast.michne.com/schemas/workflow-v1.schema.json",
+  "title": "Kast workflow policy",
+  "description": "Strict schema for .kast/workflow.toml after TOML decoding.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "gradle"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "gradle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "validation"
+      ],
+      "properties": {
+        "validation": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/gradleValidation"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "gradleValidation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "build_root",
+        "project_path",
+        "build_tasks",
+        "test_tasks"
+      ],
+      "properties": {
+        "build_root": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project_path": {
+          "type": "string",
+          "pattern": "^:(?:[A-Za-z0-9_.-]+(?::[A-Za-z0-9_.-]+)*)?$"
+        },
+        "source_sets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(?!\\s)(?!.*\\s$)[^/\\\\:#\\u0000-\\u001F]+$"
+          }
+        },
+        "build_tasks": {
+          "$ref": "#/$defs/gradleTasks"
+        },
+        "test_tasks": {
+          "$ref": "#/$defs/gradleTasks"
+        }
+      }
+    },
+    "gradleTasks": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^:(?:[A-Za-z0-9_.-]+:)*[A-Za-z0-9_.-]+$"
+      }
+    }
+  }
+}

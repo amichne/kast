@@ -16,6 +16,7 @@ names.
 
 | Agent need | Kast capability | Why it matters |
 | --- | --- | --- |
+| Bind work and completion proof to one exact root | Agent task lifecycle | Preserves baseline, generation, diagnostics, Gradle outcomes, reports, and final hashes in one receipt |
 | Bind one worker to one semantic runtime | Exact-root workspace lease | Prevents cross-worktree, backend, runtime, generation, and session drift |
 | Confirm semantic readiness | Backend verification | Avoids acting on stale IDE or headless state |
 | Discover owned Kotlin files | Workspace file discovery | Composes compiler/project-model and source-index evidence without recursive search |
@@ -28,18 +29,40 @@ names.
 | Stop an in-flight edit | Typed operation cancellation | Requests cooperative cancellation without inventing a rollback |
 | Serve editor integrations | LSP bridge | Lets editors reuse the same backend |
 
-## Output For Humans And Automation
+## Task Lifecycle
 
-Interactive use should stay readable. Automation that needs a parser contract
-should request JSON explicitly. The public docs only describe those two output
-shapes.
+`kast agent task begin|status|finish|abort` owns task admission and completion.
+The `kast-agent-task` companion is a policy-free launcher for the same commands;
+it resolves only its sibling attested CLI.
+
+| Command | Contract |
+| --- | --- |
+| `begin` | Resolves the exact root and effective generation, claims one task lease, records relevant baseline hashes, and resolves Gradle validation evidence |
+| `status` | Reports the current state, proof, and blockers without mutation |
+| `finish` | Validates changed relevant inputs, rehashes them, and completes only with current diagnostics, accepted Gradle outcomes, and test-report digests |
+| `abort` | Releases the owned task without a completion claim |
+
+States are closed: `ACTIVE`, `VALIDATING`, `COMPLETE`, `BLOCKED`, and
+`ABORTED`. Repeated `begin` is idempotent for the same owner and exact root;
+another live owner fails closed. A blocked finish retains the task for a retry.
+An unrelated change set completes explicitly as a no-op.
+
+```console
+kast-agent-task begin --workspace-root "$PWD"
+kast-agent-task status --workspace-root "$PWD"
+kast-agent-task finish --workspace-root "$PWD"
+```
+
+`kast agent` without a subcommand returns the compact task/readiness home view.
+Agent output defaults to TOON. Explicit JSON remains temporarily compatible but
+is deprecated and warns on stderr; provider guidance and examples use TOON.
 
 ## Exact-Root Workspace Leases
 
 Acquire a lease before a coordinated semantic-work session:
 
 ```console
-kast --output json agent lease acquire --workspace-root "$PWD"
+kast --output toon agent lease acquire --workspace-root "$PWD"
 ```
 
 The `READY` result contains an opaque `leaseId`, canonical `workspaceRoot`,
@@ -256,7 +279,7 @@ Use `--verbose` to preserve the complete validated command envelope. Use
 evidence is needed; the command requests that extra evidence only for the
 detailed view.
 
-JSON consumers can select a family-specific field set with `--fields` or request
+TOON consumers can select a family-specific field set with `--fields` or request
 aggregates with `--count`:
 
 | Command family | `--fields` values | `--count` retains |
@@ -272,11 +295,11 @@ Unknown or cross-family fields fail during argument parsing. `--fields` and
 `--count` cannot be combined with each other or with a detailed view.
 
 ```console
-kast --output json agent symbol \
+kast --output toon agent symbol \
   --query OrderService \
   --fields identity,location \
   --workspace-root "$PWD"
-kast --output json agent diagnostics \
+kast --output toon agent diagnostics \
   --file-path src/main/kotlin/App.kt \
   --count \
   --workspace-root "$PWD"

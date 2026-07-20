@@ -2063,6 +2063,10 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/FileAnalysisStatus"
+        fileHashes:
+          type: array
+          items:
+            "$ref": "#/components/schemas/FileHash"
         semanticOutcome:
           "$ref": "#/components/schemas/SemanticAnalysisOutcome"
         requestedFileCount:
@@ -2089,6 +2093,7 @@ components:
       required:
         - diagnostics
         - fileStatuses
+        - fileHashes
         - semanticOutcome
         - requestedFileCount
         - analyzedFileCount

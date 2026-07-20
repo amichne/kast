@@ -4,6 +4,10 @@ fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
     validate_bundle_artifacts(&manifest)?;
 
     let cli_relative = bundle_manifest_path(&manifest.activation.cli.path, "activation.cli.path")?;
+    let task_launcher_relative = bundle_manifest_path(
+        &manifest.activation.task_launcher.path,
+        "activation.taskLauncher.path",
+    )?;
     let backend_install_relative = bundle_manifest_path(
         &manifest.activation.backend.install_dir,
         "activation.backend.installDir",
@@ -28,6 +32,7 @@ fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
     validate_headless_activation(&manifest)?;
 
     let cli_path = root.join(&cli_relative);
+    let task_launcher_path = root.join(&task_launcher_relative);
     let backend_install_dir = root.join(&backend_install_relative);
     let backend_launcher = backend_install_dir.join(&launcher_relative);
     let runtime_libs_dir = backend_install_dir.join(&runtime_libs_relative);
@@ -35,6 +40,7 @@ fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
     let required_plugin = backend_install_dir.join(&required_plugin_relative);
 
     require_executable(&cli_path, "bundle CLI")?;
+    require_executable(&task_launcher_path, "bundle agent task launcher")?;
     require_directory(&backend_install_dir, "headless backend install directory")?;
     require_executable(&backend_launcher, "headless backend launcher")?;
     require_file(
@@ -56,6 +62,7 @@ fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
         manifest,
         version,
         cli_relative,
+        task_launcher_relative,
         backend_install_relative,
     })
 }
@@ -141,7 +148,7 @@ fn validate_bundle_artifacts(manifest: &BundleManifest) -> Result<()> {
         }
         roles.insert(artifact.role.as_str());
     }
-    for role in ["cli", "headless-backend"] {
+    for role in ["cli", "agent-task-launcher", "headless-backend"] {
         if !roles.contains(role) {
             return Err(CliError::new(
                 "BUNDLE_MANIFEST_INVALID",
@@ -236,6 +243,7 @@ fn activation_target_paths(
         config_root,
         shim_path: bin_dir.join("kast"),
         active_binary: version_dir.join(&bundle.cli_relative),
+        task_launcher: bin_dir.join("kast-agent-task"),
         headless_runtime_libs_dir: headless_current_dir.join("runtime-libs"),
         headless_idea_home: Some(headless_current_dir.join("idea-home")),
     };

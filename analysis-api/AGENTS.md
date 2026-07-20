@@ -29,6 +29,9 @@ Keep this unit small, stable, and reusable across every runtime host.
 - Treat `SCHEMA_VERSION`, serialized field changes, and descriptor transport
   fields as protocol changes. Update callers, tests, and docs together when
   the wire contract moves.
+- `DiagnosticsResult.fileHashes` owns one ordered hash for every analyzed file.
+  A complete diagnostics result is invalid when a requested file lacks its
+  same-read-epoch hash; continuation pages retain that immutable hash set.
 - Keep materially edited public skill request and query models in matching
   files under `contract/skill`; direct sealed response variants stay with
   their sealed response root in its matching file.

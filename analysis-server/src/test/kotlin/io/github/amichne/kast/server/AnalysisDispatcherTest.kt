@@ -2578,7 +2578,11 @@ private class IncompleteDiagnosticsBackend(
                 code = "ANALYSIS_FAILURE",
             )
         }
-        return DiagnosticsResult.of(diagnostics = diagnostics, fileStatuses = fileStatuses)
+        return DiagnosticsResult.of(
+            diagnostics = diagnostics,
+            fileStatuses = fileStatuses,
+            fileHashes = emptyList(),
+        )
     }
 }
 
@@ -2610,6 +2614,9 @@ private class CompilerDiagnosticsBeyondLimitBackend(
                 diagnostic(DiagnosticSeverity.ERROR, 1, "LATE_COMPILER_ERROR"),
             ),
             fileStatuses = listOf(FileAnalysisStatus.analyzed(filePath)),
+            fileHashes = listOf(
+                FileHash(filePath.value, FileHashing.sha256(Files.readString(Path.of(filePath.value)))),
+            ),
         )
     }
 }

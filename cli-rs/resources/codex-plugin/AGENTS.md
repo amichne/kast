@@ -14,14 +14,14 @@ Edit these files directly when their behavior or presentation changes:
   rules;
 - `plugins/kast/skills/kast-codex/agents/openai.yaml` owns skill presentation
   and implicit invocation;
-- `plugins/kast/scripts/kast-codex-hook` owns only active-binary resolution and
-  stdin forwarding; and
+- `plugins/kast/scripts/kast-codex-hook` owns only attested-launcher and sibling
+  CLI resolution plus stdin forwarding; and
 - `plugins/kast/assets/kast.svg` is the canonical copied brand asset.
 
-The routing skill teaches only the fixed semantic commands classified as
-agent-visible by Rust. Do not add setup, readiness, repair, verification, LSP,
-developer commands, raw RPC names, hook commands, or generated catalogs to the
-skill.
+The routing skill teaches only shared task begin, discovery through `kast
+agent` and scoped help, explicit finish, compact recovery, and exact reporting
+of typed blockers. Do not add command inventories, setup, LSP, developer
+commands, raw RPC names, or hook commands to the skill.
 
 ## Generated sources
 
@@ -31,8 +31,6 @@ Do not hand-edit these files to change the contract:
 - `.agents/plugins/marketplace.json`, the byte-identical Codex discovery copy;
 - `plugins/kast/.codex-plugin/plugin.json`;
 - `plugins/kast/hooks/hooks.json`;
-- `plugins/kast/skills/kast-codex/references/commands.md`;
-- `plugins/kast/skills/kast-codex/references/examples.md`;
 - `plugins/kast/assets/codex-exposure.toon`;
 - `plugins/kast/assets/hook-recovery-messages.toon`; and
 - Codex package and routing fixtures named by the generator.
@@ -48,15 +46,18 @@ generated metadata/assets. It must not contain `.mcp.json`, `.app.json`, MCP
 server code, an app connector, a custom agent profile, raw RPC payloads, or a
 copy of the internal command catalog.
 
-The launcher accepts only the generated hook event, resolves an executable
-absolute `KAST_CODEX_BINARY` override or `kast` from `PATH`, and executes the
-hidden Rust hook entrypoint with stdin unchanged. It must not parse events,
-make workflow decisions, write session state, or transform output.
+The launcher accepts only the generated hook event. It resolves an absolute
+`KAST_AGENT_TASK_LAUNCHER` override or the stable user launcher, verifies that
+launcher and its sibling `kast` are executable, and executes the hidden Rust
+hook entrypoint with stdin unchanged. It never searches `PATH` or build output.
+It must not parse events, make workflow decisions, write session state, or
+transform output.
 
-Rust writes atomic owner-readable session evidence only under
-`$PLUGIN_DATA/sessions/<session-id>.json`. Hooks may perform read-only
-readiness checks and produce repair plans. They never apply setup, repair, IDE,
-installation, or source mutations.
+Rust translates Codex host envelopes into the shared `kast agent task`
+lifecycle. The task core owns compact current state, finish coordination,
+transient validation, and completion decisions; the Codex adapter retains only
+its typed-mutation guardrail and host response mapping. Hooks never apply setup,
+repair, IDE, installation, or source mutations.
 
 ## Metadata and release
 

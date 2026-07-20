@@ -10,16 +10,6 @@
         ]
       }
     ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "\"$PLUGIN_ROOT/scripts/kast-codex-hook\" subagent-start"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "hooks": [

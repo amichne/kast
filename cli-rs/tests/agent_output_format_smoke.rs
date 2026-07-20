@@ -100,6 +100,10 @@ fn agent_rename_plan_default_toon_matches_explicit_json() {
         String::from_utf8_lossy(&json.stdout),
         String::from_utf8_lossy(&json.stderr)
     );
+    assert_eq!(
+        String::from_utf8(json.stderr.clone()).expect("agent rename stderr"),
+        "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.\n"
+    );
     let json_value: serde_json::Value =
         serde_json::from_slice(&json.stdout).expect("agent rename json");
     json_backend.join().expect("JSON rename backend");

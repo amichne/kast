@@ -3,9 +3,6 @@ package io.github.amichne.kast.api.validation
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.protocol.ValidationException
 
-import java.nio.charset.StandardCharsets
-import java.security.MessageDigest
-
 data class ValidatedFileEdits(
     val filePath: String,
     val expectedHash: String,
@@ -130,14 +127,6 @@ object EditPlanValidator {
 
             lastEnd = edit.endOffset
         }
-    }
-}
-
-object FileHashing {
-    fun sha256(content: String): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val bytes = digest.digest(content.toByteArray(StandardCharsets.UTF_8))
-        return bytes.joinToString(separator = "") { byte -> "%02x".format(byte) }
     }
 }
 

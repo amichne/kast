@@ -15,6 +15,9 @@ Keep this unit focused on transport concerns around the backend interface.
   descriptor directory; shutdown removes them.
 - Keep capability checks, truncation, and request-limit handling aligned with
   backend responses.
+- Forward diagnostics file hashes losslessly on the initial response and every
+  continuation page. Transport tests must reject missing or reordered
+  same-epoch hash evidence instead of synthesizing hashes after dispatch.
 - `RunningAnalysisServer` is the single backend and continuation close owner
   after start. Stop transport admission, drain dispatcher-owned continuation
   state, close the explicit `CloseableAnalysisBackend` once, and clean up

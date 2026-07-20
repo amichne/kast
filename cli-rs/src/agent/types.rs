@@ -215,6 +215,7 @@ impl AgentResultCardinality {
 struct AgentDiagnosticsResult {
     diagnostics: Vec<AgentDiagnostic>,
     file_statuses: Vec<AgentFileAnalysisStatus>,
+    file_hashes: Vec<AgentDiagnosticsFileHash>,
     severity_counts: AgentDiagnosticSeverityCounts,
     cardinality: AgentExactCardinality,
     page: Option<AgentDiagnosticsPage>,
@@ -222,6 +223,23 @@ struct AgentDiagnosticsResult {
     requested_file_count: usize,
     analyzed_file_count: usize,
     skipped_file_count: usize,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentDiagnosticsFileHash {
+    file_path: String,
+    hash: String,
+}
+
+impl AgentDiagnosticsFileHash {
+    fn has_valid_digest(&self) -> bool {
+        self.hash.len() == 64
+            && self
+                .hash
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || matches!(byte, b'a'..=b'f'))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -257,6 +275,7 @@ impl AgentDiagnosticsResult {
         let status_file_paths_match = status_file_paths == requested_file_paths;
         let exact_total = self.cardinality.total_count();
         if !status_file_paths_match
+            || !self.has_valid_file_hashes()
             || !self.severity_counts.is_valid()
             || self.severity_counts.total != exact_total
             || self.diagnostics.len() > exact_total
@@ -301,6 +320,26 @@ impl AgentDiagnosticsResult {
             return None;
         }
         Some(summary)
+    }
+
+    fn has_valid_file_hashes(&self) -> bool {
+        let analyzed_status_file_paths = self
+            .file_statuses
+            .iter()
+            .filter(|status| status.state == AgentFileAnalysisState::Analyzed)
+            .map(|status| normalized_absolute_path(&status.file_path))
+            .collect::<Option<Vec<_>>>();
+        let hash_file_paths = self
+            .file_hashes
+            .iter()
+            .map(|file_hash| normalized_absolute_path(&file_hash.file_path))
+            .collect::<Option<Vec<_>>>();
+        analyzed_status_file_paths.is_some()
+            && hash_file_paths == analyzed_status_file_paths
+            && self
+                .file_hashes
+                .iter()
+                .all(AgentDiagnosticsFileHash::has_valid_digest)
     }
 }
 

@@ -859,6 +859,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             |-----------|-------------|
             | `#!kotlin diagnostics: List<Diagnostic>` | List of compilation diagnostics found in the requested files. |
             | `#!kotlin fileStatuses: List<FileAnalysisStatus>` | Typed semantic terminal state for every requested file. |
+            | `#!kotlin fileHashes: List<FileHash>` | SHA-256 content evidence for every successfully analyzed file. |
             | `#!kotlin semanticOutcome: SemanticAnalysisOutcome` | Whether semantic evidence is complete for every requested file. |
             | `#!kotlin requestedFileCount: Int` | Number of files requested for semantic analysis. |
             | `#!kotlin analyzedFileCount: Int` | Number of requested files successfully analyzed. |
@@ -898,6 +899,12 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         {
                             "filePath": "/workspace/src/Sample.kt",
                             "state": "ANALYZED"
+                        }
+                    ],
+                    "fileHashes": [
+                        {
+                            "filePath": "/workspace/src/Sample.kt",
+                            "hash": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
                         }
                     ],
                     "semanticOutcome": "COMPLETE",

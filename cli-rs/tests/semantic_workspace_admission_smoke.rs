@@ -292,7 +292,7 @@ fn prepared_linked_worktree_never_attaches_primary_checkout_descriptor() {
 
 #[cfg(target_os = "macos")]
 #[test]
-fn unprepared_headless_route_rejects_every_public_applied_mutation() {
+fn missing_workspace_task_rejects_every_explicit_headless_mutation_before_rpc() {
     let fixture = tempfile::tempdir().expect("mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
@@ -337,12 +337,7 @@ fn unprepared_headless_route_rejects_every_public_applied_mutation() {
             let output: serde_json::Value =
                 serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
             assert_eq!(
-                output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
-                "view={view:?}: {output:#}",
-            );
-            assert_eq!(
-                output["error"]["details"]["semanticWorkspace"]["workspaceRoot"],
-                workspace.display().to_string(),
+                output["error"]["code"], "AGENT_TASK_NOT_FOUND",
                 "view={view:?}: {output:#}",
             );
         }
@@ -355,7 +350,7 @@ fn unprepared_headless_route_rejects_every_public_applied_mutation() {
 
 #[cfg(target_os = "macos")]
 #[test]
-fn automatic_applied_mutation_checks_authority_before_backend_discovery() {
+fn automatic_applied_mutation_checks_workspace_task_before_backend_discovery() {
     let fixture = tempfile::tempdir().expect("automatic mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
@@ -406,7 +401,7 @@ fn automatic_applied_mutation_checks_authority_before_backend_discovery() {
     let output: serde_json::Value =
         serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
     assert_eq!(
-        output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
+        output["error"]["code"], "AGENT_TASK_NOT_FOUND",
         "{output:#}"
     );
     assert!(idea.finish().is_empty(), "IDEA must not be contacted");
@@ -418,7 +413,7 @@ fn automatic_applied_mutation_checks_authority_before_backend_discovery() {
 
 #[cfg(target_os = "macos")]
 #[test]
-fn default_applied_mutation_maps_every_public_family_to_authority_required() {
+fn default_applied_mutation_maps_every_public_family_to_missing_workspace_task() {
     let fixture = tempfile::tempdir().expect("default mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
@@ -447,12 +442,8 @@ fn default_applied_mutation_maps_every_public_family_to_authority_required() {
         let output: serde_json::Value =
             serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
         assert_eq!(
-            output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
+            output["error"]["code"], "AGENT_TASK_NOT_FOUND",
             "{output:#}"
-        );
-        assert_eq!(
-            output["error"]["details"]["semanticWorkspace"]["backendName"],
-            "idea"
         );
     }
 }
@@ -1409,6 +1400,10 @@ fn spawn_verify_backend(
                         "fileStatuses": file_paths.iter().map(|file_path| serde_json::json!({
                             "filePath": file_path,
                             "state": "ANALYZED"
+                        })).collect::<Vec<_>>(),
+                        "fileHashes": file_paths.iter().map(|file_path| serde_json::json!({
+                            "filePath": file_path,
+                            "hash": "a".repeat(64)
                         })).collect::<Vec<_>>(),
                         "semanticOutcome": "COMPLETE",
                         "requestedFileCount": file_paths.len(),

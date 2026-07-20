@@ -308,10 +308,10 @@
         "manual skill source override install",
         "kast agent workflow package-verify"
       ],
-      "recoveryExpectation": "Run the emitted setup or repair recovery, then rerun the verifier or readiness gate.",
+      "recoveryExpectation": "Run the emitted setup or repair recovery, then rerun readiness and task status.",
       "verificationEvidence": [
-        "verify-kast-state.py emits root kast setup recovery commands for stale skill targets.",
-        "package_verifier_smoke covers recovery for tampered manifest-backed skills through the root setup surface."
+        "Typed agent readiness emits root kast setup recovery commands for stale skill targets.",
+        "Agent setup and readiness smoke tests cover recovery for tampered manifest-backed skills through the root setup surface."
       ],
       "notes": "This case keeps stale installed skill recovery tied to the verified source tree."
     },

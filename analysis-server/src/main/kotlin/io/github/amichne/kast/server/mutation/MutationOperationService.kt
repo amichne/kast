@@ -6,12 +6,15 @@ import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSnapsho
 import io.github.amichne.kast.api.contract.mutation.KastMutationSubmissionReceipt
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutationResult
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.skill.KastRenameFailureResponse
 import io.github.amichne.kast.api.contract.skill.KastRenameSuccessResponse
 import io.github.amichne.kast.api.contract.skill.KastSelectorHandleRejectedResponse
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationFailureResponse
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationSuccessResponse
 import io.github.amichne.kast.server.SkillRpcOrchestrator
+import io.github.amichne.kast.server.mutation.coordination.MutationFinishBarrierRequest
+import io.github.amichne.kast.server.mutation.coordination.MutationFinishBarrierResult
 import kotlinx.coroutines.CompletableJob
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,10 +31,12 @@ import java.security.MessageDigest
 internal class MutationOperationService(
     private val skillRpc: SkillRpcOrchestrator,
     private val json: Json,
+    workspaceRoot: suspend () -> NormalizedPath,
 ) : Closeable {
     private val operationJob: CompletableJob = SupervisorJob()
     private val registry = MutationOperationRegistry(
-        CoroutineScope(operationJob + Dispatchers.Default),
+        scope = CoroutineScope(operationJob + Dispatchers.Default),
+        workspaceRoot = workspaceRoot,
     )
 
     fun submit(mutation: KastSemanticMutation): KastMutationSubmissionReceipt = registry.submit(
@@ -51,6 +56,18 @@ internal class MutationOperationService(
     fun status(selector: KastMutationOperationSelector): KastMutationOperationSnapshot = registry.status(selector)
 
     fun cancel(selector: KastMutationOperationSelector): KastMutationOperationSnapshot = registry.cancel(selector)
+
+    suspend fun acquireFinishBarrier(request: MutationFinishBarrierRequest): MutationFinishBarrierResult =
+        registry.acquireFinishBarrier(request)
+
+    fun reopenAfterFinish(request: MutationFinishBarrierRequest): MutationFinishBarrierResult =
+        registry.reopenAfterFinish(request)
+
+    fun repairAfterInterruptedFinish(request: MutationFinishBarrierRequest): MutationFinishBarrierResult =
+        registry.repairAfterInterruptedFinish(request)
+
+    fun completeAfterFinish(request: MutationFinishBarrierRequest): MutationFinishBarrierResult =
+        registry.completeAfterFinish(request)
 
     override fun close() {
         registry.close()

@@ -11,6 +11,6 @@ import kotlinx.serialization.Serializable
 data class FileHash(
     @DocField(description = "Absolute path of the file.")
     val filePath: String,
-    @DocField(description = "SHA-256 hex digest of the file content at plan time.")
+    @DocField(description = "SHA-256 hex digest of the exact file content observed by the producing operation.")
     val hash: String,
 )

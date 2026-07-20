@@ -46,7 +46,14 @@ require("kast developer machine plugin" not in docs + kast, "retired plugin comm
 require("PLUGIN_CASK" not in kast, "formula must not name a plugin cask")
 require("HOMEBREW_KAST_CLI_RELEASE_ROOT" in kast, "formula must support a CLI artifact mirror")
 require("on_linux" not in kast, "formula must remain macOS-only")
-require('bin.install "kast"' in kast, "formula must install only the Rust CLI")
+require(
+    'bin.install "kast"' in kast,
+    "formula must install the Rust CLI",
+)
+require(
+    'bin.install "kast-agent-task" if buildpath.join("kast-agent-task").exist?' in kast,
+    "formula must install the policy-free task launcher only from archives that contain it",
+)
 require("def post_install" not in kast, "formula must not mutate user profiles")
 require("sudo" not in kast, "formula must not recommend sudo")
 

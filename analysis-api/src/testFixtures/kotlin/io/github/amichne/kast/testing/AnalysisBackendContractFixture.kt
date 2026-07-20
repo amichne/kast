@@ -385,6 +385,18 @@ object AnalysisBackendContractAssertions {
             result.fileStatuses.map { it.state },
             "diagnostics file states",
         )
+        expectEquals(
+            fixture.diagnosticsQuery.filePaths,
+            result.fileHashes.map { fileHash -> fileHash.filePath },
+            "diagnostics hash paths",
+        )
+        expectEquals(
+            fixture.diagnosticsQuery.filePaths.map { filePath ->
+                FileHashing.sha256(Files.readString(Path.of(filePath)))
+            },
+            result.fileHashes.map { fileHash -> fileHash.hash },
+            "diagnostics current content hashes",
+        )
         check(result.diagnostics.any { it.code == "FAKE_PARSE_ERROR" }) {
             "ordinary compiler diagnostics must remain analyzed evidence"
         }

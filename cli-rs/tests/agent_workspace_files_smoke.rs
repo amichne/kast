@@ -1878,6 +1878,10 @@ fn discovered_file_path_composes_with_diagnostics_and_exact_symbol_lookup() {
                 serde_json::json!({
                     "diagnostics": [],
                     "fileStatuses": [{"filePath": discovered_file_path, "state": "ANALYZED"}],
+                    "fileHashes": [{
+                        "filePath": discovered_file_path,
+                        "hash": "a".repeat(64)
+                    }],
                     "semanticOutcome": "COMPLETE",
                     "requestedFileCount": 1,
                     "analyzedFileCount": 1,

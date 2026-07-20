@@ -57,7 +57,9 @@ case "${1:-}" in
 esac
 SH
   chmod 755 "${root}/kast"
-  (cd "$root" && zip -9 -q "$output" kast)
+  cp "${repo_root}/cli-rs/resources/agent-task/kast-agent-task" "${root}/kast-agent-task"
+  chmod 755 "${root}/kast-agent-task"
+  (cd "$root" && zip -9 -q "$output" kast kast-agent-task)
 }
 
 write_fixture_backend_zip() {
@@ -158,6 +160,8 @@ fi
   "${scratch_dir}/safe-cli-extract"
 [[ -x "${scratch_dir}/safe-cli-extract/kast" ]] \
   || die "safe ZIP extractor must preserve the CLI executable bit"
+[[ -x "${scratch_dir}/safe-cli-extract/kast-agent-task" ]] \
+  || die "safe ZIP extractor must preserve the task launcher executable bit"
 grep -Fq "unsafe zip member type" "${scratch_dir}/unsafe-symlink.err" || die "unsafe symlink zip failure did not mention unsafe type"
 
 runtime_artifact="${scratch_dir}/kast-headless-linux-x64.tar.zst"
@@ -174,6 +178,7 @@ runtime_manifest="${scratch_dir}/kast-runtime-manifest.json"
 [[ -f "$runtime_manifest" ]] || die "runtime manifest was not written"
 verify_sidecar "${scratch_dir}/kast-headless-linux-x64.sha256"
 tar --zstd -tf "$runtime_artifact" | grep -Fq './bin/kast' || die "runtime artifact missing bin/kast"
+tar --zstd -tf "$runtime_artifact" | grep -Fq './bin/kast-agent-task' || die "runtime artifact missing bin/kast-agent-task"
 tar --zstd -tf "$runtime_artifact" | grep -Fq './lib/runtime-libs/classpath.txt' || die "runtime artifact missing runtime libs"
 python3 - "$runtime_manifest" "$runtime_artifact" <<'PY'
 import hashlib

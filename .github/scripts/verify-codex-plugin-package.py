@@ -20,18 +20,21 @@ REQUIRED_FILES = {
     "plugins/kast/scripts/kast-codex-hook",
     "plugins/kast/skills/kast-codex/SKILL.md",
     "plugins/kast/skills/kast-codex/agents/openai.yaml",
-    "plugins/kast/skills/kast-codex/references/commands.md",
-    "plugins/kast/skills/kast-codex/references/examples.md",
     "plugins/kast/assets/codex-exposure.toon",
     "plugins/kast/assets/hook-recovery-messages.toon",
     "plugins/kast/assets/kast.svg",
 }
-FORBIDDEN_FILE_NAMES = {".mcp.json", ".app.json", "commands.json"}
+FORBIDDEN_FILE_NAMES = {
+    ".mcp.json",
+    ".app.json",
+    "commands.json",
+    "commands.md",
+    "examples.md",
+}
 FORBIDDEN_MANIFEST_KEYS = {"agents", "apps", "hooks", "mcpServers"}
 LAUNCHER = "plugins/kast/scripts/kast-codex-hook"
 HOOKS = {
     "SessionStart": "session-start",
-    "SubagentStart": "subagent-start",
     "PreToolUse": "pre-tool-use",
     "PostToolUse": "post-tool-use",
     "Stop": "stop",
@@ -130,6 +133,8 @@ def validate_skill(archive: zipfile.ZipFile) -> None:
         fail("kast-codex SKILL.md frontmatter must declare name: kast-codex")
     if not isinstance(description, str) or not description.strip():
         fail("kast-codex SKILL.md frontmatter must declare a non-empty description")
+    if "--output json" in skill:
+        fail("kast-codex SKILL.md must teach TOON-first commands")
     metadata_match = re.fullmatch(
         r'interface:\n'
         r'  display_name:\s*("(?:[^"\\]|\\.)*")\n'
@@ -243,6 +248,17 @@ def validate_archive(path: str, expected_version: str) -> None:
         launcher_mode = launcher.external_attr >> 16
         if not stat.S_ISREG(launcher_mode) or launcher_mode & 0o111 == 0:
             fail("kast-codex-hook must be a regular executable file")
+        launcher_source = archive.read(LAUNCHER).decode("utf-8")
+        for required in [
+            "KAST_AGENT_TASK_LAUNCHER",
+            ".local/bin/kast-agent-task",
+            "developer codex hook",
+        ]:
+            if required not in launcher_source:
+                fail(f"kast-codex-hook is missing attested launcher route {required!r}")
+        for forbidden in ["KAST_CODEX_BINARY", "command -v kast", "target/debug", "target/release"]:
+            if forbidden in launcher_source:
+                fail(f"kast-codex-hook contains forbidden fallback {forbidden!r}")
 
     print(f"Verified Kast Codex plugin package {path} at version {expected_version}")
 

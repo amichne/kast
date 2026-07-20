@@ -6,25 +6,29 @@ if [ "$#" -ne 1 ] || [ -z "$1" ]; then
   exit 2
 fi
 
-if [ -n "${KAST_CODEX_BINARY:-}" ]; then
-  case "$KAST_CODEX_BINARY" in
+if [ -n "${KAST_AGENT_TASK_LAUNCHER:-}" ]; then
+  case "$KAST_AGENT_TASK_LAUNCHER" in
     /*) ;;
     *)
-      echo "KAST_CODEX_BINARY must be an absolute path" >&2
+      echo "KAST_AGENT_TASK_LAUNCHER must be an absolute path" >&2
       exit 1
       ;;
   esac
-  kast_binary=$KAST_CODEX_BINARY
+  task_launcher=$KAST_AGENT_TASK_LAUNCHER
 else
-  kast_binary=$(command -v kast || true)
-  if [ -z "$kast_binary" ]; then
-    echo "kast is not installed or is not on PATH" >&2
-    exit 1
-  fi
+  : "${HOME:?HOME must be set when KAST_AGENT_TASK_LAUNCHER is unset}"
+  task_launcher=$HOME/.local/bin/kast-agent-task
 fi
 
+if [ ! -x "$task_launcher" ]; then
+  echo "kast-agent-task launcher is not executable: $task_launcher" >&2
+  exit 1
+fi
+
+launcher_dir=$(CDPATH= cd -P "$(dirname "$task_launcher")" && pwd)
+kast_binary=$launcher_dir/kast
 if [ ! -x "$kast_binary" ]; then
-  echo "kast binary is not executable: $kast_binary" >&2
+  echo "attested sibling kast is not executable: $kast_binary" >&2
   exit 1
 fi
 

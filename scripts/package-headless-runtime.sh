@@ -115,6 +115,7 @@ mkdir -p "$cli_extract" "$backend_extract" "$staging_root" \
 
 backend_root="${backend_extract}/backend-headless"
 [[ -f "${cli_extract}/kast" ]] || die "CLI archive must contain kast at its root"
+[[ -f "${cli_extract}/kast-agent-task" ]] || die "CLI archive must contain kast-agent-task at its root"
 [[ -d "$backend_root" ]] || die "Backend archive must contain backend-headless/"
 [[ -f "${backend_root}/runtime-libs/classpath.txt" ]] || die "Backend archive missing runtime-libs/classpath.txt"
 [[ -f "${backend_root}/idea-home/lib/nio-fs.jar" ]] || die "Backend archive missing idea-home/lib/nio-fs.jar"
@@ -123,7 +124,8 @@ backend_root="${backend_extract}/backend-headless"
 
 mkdir -p "${staging_root}/bin" "${staging_root}/lib" "${staging_root}/plugins"
 cp "${cli_extract}/kast" "${staging_root}/bin/kast"
-chmod 755 "${staging_root}/bin/kast"
+cp "${cli_extract}/kast-agent-task" "${staging_root}/bin/kast-agent-task"
+chmod 755 "${staging_root}/bin/kast" "${staging_root}/bin/kast-agent-task"
 cp -R "${backend_root}/runtime-libs" "${staging_root}/lib/runtime-libs"
 cp -R "${backend_root}/idea-home" "${staging_root}/idea"
 cp -R "${backend_root}/idea-home/plugins/." "${staging_root}/plugins/"

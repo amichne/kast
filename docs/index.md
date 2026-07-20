@@ -103,7 +103,7 @@ Use reference pages when you need lookup accuracy rather than a task flow.
 - [Mutation selectors](reference/mutation-selectors.md) describes edit targets
   and anchors.
 - [Runtime and output](reference/runtime-and-output.md) covers backend
-  selection and readable or JSON output.
+  selection and readable or TOON output.
 - [Runtime artifact contract](distribute/runtime-artifact-contract.md) records
   bundle, manifest, checksum, and ledger facts.
 
@@ -118,7 +118,7 @@ should start with the visible symptom, not the internal command sequence.
     semantic operation.
 
     ```console
-    kast --output json ready --for agent --workspace-root "$PWD"
-    kast --output json agent verify --workspace-root "$PWD"
-    kast --output json status --workspace-root "$PWD"
+    kast --output toon ready --for agent --workspace-root "$PWD"
+    kast --output toon agent verify --workspace-root "$PWD"
+    kast --output toon status --workspace-root "$PWD"
     ```

@@ -11,14 +11,14 @@ import java.nio.file.Path
 import java.security.MessageDigest
 
 internal object MacosMachineManifestLoader {
-    private const val schemaVersion = 1
+    private const val schemaVersion = 2
     private const val manifestType = "KAST_MACHINE_MANIFEST"
     private val keys = setOf(
         "type",
         "cliSha256",
+        "taskLauncherSha256",
         "ideaPluginSha256",
-        "skillSha256",
-        "codexSha256",
+        "resourcesSha256",
         "schemaVersion",
     )
     private val canonicalKeyPatterns = keys.associateWith { key ->
@@ -52,7 +52,7 @@ internal object MacosMachineManifestLoader {
             manifest.int("schemaVersion") != schemaVersion ||
             manifest.string("type") != manifestType
         ) {
-            return invalid(path, "invalid schema-1 machine manifest")
+            return invalid(path, "invalid schema-2 machine manifest")
         }
         val root = path.toAbsolutePath().normalize().parent
             ?: return invalid(path, "manifest has no machine root")
@@ -70,6 +70,17 @@ internal object MacosMachineManifestLoader {
             validateComponent(
                 root = root,
                 canonicalRoot = canonicalRoot,
+                relative = "bin/kast-agent-task",
+                expectedSha256 = manifest.string("taskLauncherSha256"),
+                executable = true,
+            ) == null
+        ) {
+            return modified(path, "agent task launcher")
+        }
+        if (
+            validateComponent(
+                root = root,
+                canonicalRoot = canonicalRoot,
                 relative = "idea/kast.zip",
                 expectedSha256 = manifest.string("ideaPluginSha256"),
             ) == null
@@ -77,20 +88,10 @@ internal object MacosMachineManifestLoader {
             return modified(path, "IDEA plugin")
         }
         if (
-            validateComponent(
-                root = root,
-                canonicalRoot = canonicalRoot,
-                relative = "resources/kast-skill/SKILL.md",
-                expectedSha256 = manifest.string("skillSha256"),
-            ) == null
+            directorySha256(root.resolve("resources")) !=
+            manifest.string("resourcesSha256")
         ) {
-            return modified(path, "Kast skill")
-        }
-        if (
-            directorySha256(root.resolve("resources/codex-marketplace")) !=
-            manifest.string("codexSha256")
-        ) {
-            return modified(path, "Codex resources")
+            return modified(path, "agent resources")
         }
         val version = loadCliVersion(binary)
             ?: return rejected(

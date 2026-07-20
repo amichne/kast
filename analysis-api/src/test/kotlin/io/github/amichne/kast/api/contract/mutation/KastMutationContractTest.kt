@@ -1,6 +1,7 @@
 package io.github.amichne.kast.api.contract.mutation
 
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
 import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.skill.KastAddDeclarationRequest
@@ -18,6 +19,7 @@ import io.github.amichne.kast.api.contract.skill.KastScopeMutationOperation
 import io.github.amichne.kast.api.contract.skill.KastScopeMutationSuccessResponse
 import io.github.amichne.kast.api.contract.skill.KastStatementPlacementAnchor
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
+import io.github.amichne.kast.api.validation.FileHashing
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -31,6 +33,12 @@ import java.nio.file.Path
 import java.util.UUID
 
 class KastMutationContractTest {
+    @Test
+    fun `workspace task IDs require canonical UUID spelling`() {
+        assertThrows<IllegalArgumentException> {
+            KastWorkspaceTaskId("1-1-1-1-1")
+        }
+    }
     private val json = Json {
         encodeDefaults = true
         explicitNulls = false
@@ -51,16 +59,19 @@ class KastMutationContractTest {
     @Test
     fun `all public semantic mutation variants have stable wire identities`() {
         val key = KastMutationIdempotencyKey("issue-333")
+        val taskId = KastWorkspaceTaskId("00000000-0000-0000-0000-000000000420")
         val placement = KastPlacementSelector(
             scope = KastFilePlacementScope("/workspace/Sample.kt"),
             anchor = KastAtPlacementAnchor(KastPlacementAnchor.FILE_BOTTOM),
         )
         val mutations = listOf(
             "RENAME" to KastSemanticMutation.Rename(
+                workspaceTaskId = taskId,
                 idempotencyKey = key,
                 request = KastRenameBySymbolRequest(symbol = "sample.greet", newName = "welcome"),
             ),
             "ADD_FILE" to KastSemanticMutation.AddFile(
+                workspaceTaskId = taskId,
                 idempotencyKey = key,
                 request = KastAddFileRequest(
                     filePath = "/workspace/Added.kt",
@@ -68,14 +79,17 @@ class KastMutationContractTest {
                 ),
             ),
             "ADD_DECLARATION" to KastSemanticMutation.AddDeclaration(
+                workspaceTaskId = taskId,
                 idempotencyKey = key,
                 request = KastAddDeclarationRequest(placement = placement, contentFile = "/tmp/declaration.kt"),
             ),
             "ADD_IMPLEMENTATION" to KastSemanticMutation.AddImplementation(
+                workspaceTaskId = taskId,
                 idempotencyKey = key,
                 request = KastAddImplementationRequest(placement = placement, contentFile = "/tmp/implementation.kt"),
             ),
             "ADD_STATEMENT" to KastSemanticMutation.AddStatement(
+                workspaceTaskId = taskId,
                 idempotencyKey = key,
                 request = KastAddStatementRequest(
                     insideScope = "sample.greet",
@@ -84,6 +98,7 @@ class KastMutationContractTest {
                 ),
             ),
             "REPLACE_DECLARATION" to KastSemanticMutation.ReplaceDeclaration(
+                workspaceTaskId = taskId,
                 idempotencyKey = key,
                 request = KastReplaceDeclarationBySymbolRequest(
                     symbol = "sample.greet",
@@ -95,6 +110,7 @@ class KastMutationContractTest {
         mutations.forEach { (expectedType, mutation) ->
             val encoded = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation).jsonObject
             assertEquals(JsonPrimitive(expectedType), encoded["type"])
+            assertEquals(JsonPrimitive(taskId.value), encoded["workspaceTaskId"])
             assertEquals(JsonPrimitive(key.value), encoded["idempotencyKey"])
             assertTrue(encoded["request"] != null)
             assertEquals(mutation, json.decodeFromJsonElement(KastSemanticMutation.serializer(), encoded))
@@ -243,6 +259,9 @@ class KastMutationContractTest {
                             FileAnalysisStatus.analyzed(
                                 NormalizedPath.ofAbsolute(Path.of("/workspace/Added.kt")),
                             ),
+                        ),
+                        fileHashes = listOf(
+                            FileHash("/workspace/Added.kt", FileHashing.sha256("added")),
                         ),
                     ),
                 ),

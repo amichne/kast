@@ -37,10 +37,13 @@ use std::io::{self, IsTerminal};
 use std::path::{Path, PathBuf};
 
 const SCHEMA_VERSION: u32 = 3;
+const AGENT_JSON_DEPRECATION_WARNING: &str =
+    "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.";
 
 fn main() {
     let exit_code = match parse_cli() {
         Ok(Some(cli)) => {
+            warn_for_deprecated_agent_json(&cli);
             let output_format = effective_output_format(cli.output, cli.command.as_ref());
             match run(cli, output_format) {
                 Ok(code) => code,
@@ -93,12 +96,21 @@ fn requested_output_format() -> OutputFormat {
 
 fn effective_output_format(
     requested: Option<OutputFormat>,
-    _command: Option<&Command>,
+    command: Option<&Command>,
 ) -> OutputFormat {
     if let Some(requested) = requested {
         return requested;
     }
+    if matches!(command, Some(Command::Agent(_))) {
+        return OutputFormat::Toon;
+    }
     implicit_output_format()
+}
+
+fn warn_for_deprecated_agent_json(cli: &Cli) {
+    if cli.output == Some(OutputFormat::Json) && matches!(cli.command, Some(Command::Agent(_))) {
+        eprintln!("{AGENT_JSON_DEPRECATION_WARNING}");
+    }
 }
 
 fn implicit_output_format() -> OutputFormat {
@@ -253,7 +265,7 @@ fn run_context(args: cli::RuntimeArgs, output_format: OutputFormat) -> Result<i3
         bin: display_current_executable(),
         description: "Compiler-backed Kotlin semantic navigation, editing, diagnostics, and repository agent setup.",
         workspace_root: workspace_root.display().to_string(),
-        output_default: "Kast defaults to TOON outside interactive human terminals; pass --output json when a JSON consumer requires it.",
+        output_default: "Kast agent commands always default to TOON; JSON remains deprecated compatibility output.",
         commands: context_command_hints(),
         help: vec![
             "Run `kast --help` for command reference.".to_string(),
@@ -439,8 +451,9 @@ fn run_repair(args: cli::RepairArgs, output_format: OutputFormat) -> Result<i32>
 
 fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
     match args.command {
-        cli::AgentCommand::Lsp(args) => lsp::run(args),
-        command => agent::run(command, output_format),
+        None => agent::run_agent_home(output_format),
+        Some(cli::AgentCommand::Lsp(args)) => lsp::run(args),
+        Some(command) => agent::run(command, output_format),
     }
 }
 
@@ -858,5 +871,19 @@ mod tests {
         ] {
             assert!(!environment.allows_human_output(), "{environment:?}");
         }
+    }
+
+    #[test]
+    fn agent_commands_default_to_toon_even_in_an_interactive_terminal() {
+        let cli = Cli::try_parse_from(["kast", "agent"]).expect("parse agent home");
+
+        assert_eq!(
+            effective_output_format(None, cli.command.as_ref()),
+            OutputFormat::Toon
+        );
+        assert_eq!(
+            effective_output_format(Some(OutputFormat::Json), cli.command.as_ref()),
+            OutputFormat::Json
+        );
     }
 }

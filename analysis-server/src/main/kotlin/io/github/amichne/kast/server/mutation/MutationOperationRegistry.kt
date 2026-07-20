@@ -1,5 +1,6 @@
 package io.github.amichne.kast.server.mutation
 
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.mutation.KastMutationExecutionTrace
 import io.github.amichne.kast.api.contract.mutation.KastMutationFailure
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
@@ -11,11 +12,18 @@ import io.github.amichne.kast.api.contract.mutation.KastMutationProgressStage
 import io.github.amichne.kast.api.contract.mutation.KastMutationSubmissionReceipt
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutationResult
+import io.github.amichne.kast.api.contract.mutation.KastWorkspaceTaskId
 import io.github.amichne.kast.api.protocol.AnalysisException
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.NotFoundException
+import io.github.amichne.kast.server.mutation.coordination.MutationFinishBarrierRequest
+import io.github.amichne.kast.server.mutation.coordination.MutationFinishBarrierResult
+import io.github.amichne.kast.server.mutation.coordination.MutationFinishBarrierState
+import io.github.amichne.kast.server.mutation.coordination.MutationFinishCoordinationToken
+import io.github.amichne.kast.server.mutation.coordination.MutationPathScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -28,11 +36,16 @@ import java.io.Closeable
 
 internal class MutationOperationRegistry(
     private val scope: CoroutineScope,
+    private val workspaceRoot: suspend () -> NormalizedPath,
     private val operationIdFactory: () -> KastMutationOperationId = KastMutationOperationId::random,
 ) : Closeable {
     private val lock = Any()
     private val operationsById = mutableMapOf<KastMutationOperationId, OperationEntry>()
-    private val operationsByKey = mutableMapOf<KastMutationIdempotencyKey, OperationEntry>()
+    private val operationsByTaskKey = mutableMapOf<TaskIdempotencyKey, OperationEntry>()
+    private val latestOperationsByKey = mutableMapOf<KastMutationIdempotencyKey, OperationEntry>()
+    private var nextSequence = 0L
+    private var finishBarrier: FinishBarrier? = null
+    private val closedTaskTokens = mutableMapOf<KastWorkspaceTaskId, MutationFinishCoordinationToken>()
     private var closed = false
 
     fun submit(
@@ -44,7 +57,8 @@ internal class MutationOperationRegistry(
             if (closed) {
                 throw ConflictException("Mutation operation registry is shutting down")
             }
-            operationsByKey[mutation.idempotencyKey]?.let { existing ->
+            val taskKey = TaskIdempotencyKey(mutation.workspaceTaskId, mutation.idempotencyKey)
+            operationsByTaskKey[taskKey]?.let { existing ->
                 if (existing.fingerprint != fingerprint) {
                     throw ConflictException(
                         message = "Mutation idempotency key is already bound to another request",
@@ -58,12 +72,19 @@ internal class MutationOperationRegistry(
                     KastMutationSubmissionReceipt(operation = existing.snapshot(), deduplicated = true),
                 )
             }
+            if (mutation.workspaceTaskId in closedTaskTokens) {
+                throw WorkspaceTaskClosedException(mutation.workspaceTaskId.value)
+            }
+            finishBarrier?.let { barrier ->
+                throw TaskFinishInProgressException(barrier.request.workspaceTaskId.value)
+            }
 
             lateinit var entry: OperationEntry
             val job = scope.launch(start = CoroutineStart.LAZY) {
                 runOperation(entry, execute)
             }
             entry = OperationEntry(
+                sequence = nextSequence++,
                 operationId = uniqueOperationId(),
                 mutation = mutation,
                 fingerprint = fingerprint,
@@ -73,11 +94,14 @@ internal class MutationOperationRegistry(
                 if (cause is CancellationException) {
                     synchronized(lock) {
                         entry.transitionToCancelledAfterStop()
+                        admitReadyOperations()
+                        completeFinishBarrierIfDrained()
                     }
                 }
             }
             operationsById[entry.operationId] = entry
-            operationsByKey[mutation.idempotencyKey] = entry
+            operationsByTaskKey[taskKey] = entry
+            latestOperationsByKey[mutation.idempotencyKey] = entry
             Submission.New(
                 receipt = KastMutationSubmissionReceipt(operation = entry.snapshot(), deduplicated = false),
                 job = job,
@@ -104,6 +128,73 @@ internal class MutationOperationRegistry(
         job.cancel(CancellationException("Semantic mutation cancellation requested"))
         return snapshot
     }
+
+    suspend fun acquireFinishBarrier(request: MutationFinishBarrierRequest): MutationFinishBarrierResult {
+        val drained = synchronized(lock) {
+            val existing = finishBarrier
+            if (existing != null) {
+                if (existing.request != request) {
+                    throw ConflictException("Another finish barrier is already active")
+                }
+                return@synchronized existing.drained
+            }
+            if (request.workspaceTaskId in closedTaskTokens) {
+                return MutationFinishBarrierResult(
+                    workspaceTaskId = request.workspaceTaskId,
+                    coordinationToken = request.coordinationToken,
+                    state = MutationFinishBarrierState.COMPLETE,
+                )
+            }
+            if (operationsById.values.any {
+                    !it.state.isTerminal() && it.mutation.workspaceTaskId != request.workspaceTaskId
+                }
+            ) {
+                throw ConflictException("A nonterminal mutation belongs to another workspace task")
+            }
+            FinishBarrier(request).also { barrier ->
+                finishBarrier = barrier
+                completeFinishBarrierIfDrained()
+            }.drained
+        }
+        drained.await()
+        return MutationFinishBarrierResult(
+            workspaceTaskId = request.workspaceTaskId,
+            coordinationToken = request.coordinationToken,
+            state = MutationFinishBarrierState.DRAINED,
+        )
+    }
+
+    fun reopenAfterFinish(request: MutationFinishBarrierRequest): MutationFinishBarrierResult =
+        releaseFinishBarrier(request, completed = false)
+
+    fun repairAfterInterruptedFinish(request: MutationFinishBarrierRequest): MutationFinishBarrierResult = synchronized(lock) {
+        val barrier = finishBarrier
+        if (barrier == null) {
+            val closedToken = closedTaskTokens[request.workspaceTaskId]
+            if (closedToken != null && closedToken != request.coordinationToken) {
+                throw ConflictException("Finish barrier token does not name the closed task")
+            }
+            val reopened = closedTaskTokens.remove(request.workspaceTaskId, request.coordinationToken)
+            return@synchronized MutationFinishBarrierResult(
+                workspaceTaskId = request.workspaceTaskId,
+                coordinationToken = request.coordinationToken,
+                state = if (reopened) MutationFinishBarrierState.REOPENED else MutationFinishBarrierState.ABSENT,
+            )
+        }
+        if (barrier.request != request) {
+            throw ConflictException("Finish barrier token does not name the active barrier")
+        }
+        finishBarrier = null
+        barrier.drained.complete(Unit)
+        MutationFinishBarrierResult(
+            workspaceTaskId = request.workspaceTaskId,
+            coordinationToken = request.coordinationToken,
+            state = MutationFinishBarrierState.REOPENED,
+        )
+    }
+
+    fun completeAfterFinish(request: MutationFinishBarrierRequest): MutationFinishBarrierResult =
+        releaseFinishBarrier(request, completed = true)
 
     override fun close() {
         val jobs = synchronized(lock) {
@@ -149,6 +240,8 @@ internal class MutationOperationRegistry(
                         cancellationRequested = cancellationRequested,
                     )
                 }
+                admitReadyOperations()
+                completeFinishBarrierIfDrained()
             }
         } catch (exception: CancellationException) {
             throw exception
@@ -159,25 +252,89 @@ internal class MutationOperationRegistry(
                     trace = entry.state.trace,
                     cancellationRequested = entry.state.cancellationRequested,
                 )
+                admitReadyOperations()
+                completeFinishBarrierIfDrained()
             }
         }
     }
 
-    private fun reporterFor(entry: OperationEntry): MutationProgressReporter = MutationProgressReporter { event ->
-        synchronized(lock) {
-            if (entry.state.isTerminal()) {
-                return@synchronized
-            }
-            entry.state = when (event) {
-                is MutationProgressEvent.StageEntered -> entry.state.entering(event.stage)
-                MutationProgressEvent.EditApplicationCompleted -> entry.state.editApplicationCompleted()
+    private fun reporterFor(entry: OperationEntry): MutationProgressReporter = object : MutationProgressReporter {
+        override fun report(event: MutationProgressEvent) {
+            synchronized(lock) {
+                if (entry.state.isTerminal()) {
+                    return@synchronized
+                }
+                entry.state = when (event) {
+                    is MutationProgressEvent.StageEntered -> entry.state.entering(event.stage)
+                    MutationProgressEvent.EditApplicationCompleted -> entry.state.editApplicationCompleted()
+                }
             }
         }
+
+        override suspend fun awaitPathAdmission(paths: Collection<String>) {
+            if (paths.isEmpty()) {
+                return
+            }
+            val scope = MutationPathScope.parse(workspaceRoot(), paths)
+            val admission = synchronized(lock) {
+                entry.resolvePathScope(scope)
+                admitReadyOperations()
+                entry.pathAdmission
+            }
+            admission.await()
+        }
+    }
+
+    private fun admitReadyOperations() {
+        operationsById.values
+            .asSequence()
+            .filterNot { it.state.isTerminal() || it.pathScope == null || it.pathAdmitted }
+            .sortedBy(OperationEntry::sequence)
+            .forEach { candidate ->
+                val candidateScope = candidate.pathScope ?: return@forEach
+                val blocked = operationsById.values.any { earlier ->
+                    val earlierScope = earlier.pathScope
+                    earlier.sequence < candidate.sequence &&
+                        !earlier.state.isTerminal() &&
+                        (earlierScope == null || earlierScope.overlaps(candidateScope))
+                }
+                if (!blocked) {
+                    candidate.pathAdmitted = true
+                    candidate.pathAdmission.complete(Unit)
+                }
+            }
+    }
+
+    private fun completeFinishBarrierIfDrained() {
+        val barrier = finishBarrier ?: return
+        if (operationsById.values.none { !it.state.isTerminal() }) {
+            barrier.drained.complete(Unit)
+        }
+    }
+
+    private fun releaseFinishBarrier(
+        request: MutationFinishBarrierRequest,
+        completed: Boolean,
+    ): MutationFinishBarrierResult = synchronized(lock) {
+        val barrier = finishBarrier
+            ?: throw ConflictException("No finish barrier is active")
+        if (barrier.request != request || !barrier.drained.isCompleted) {
+            throw ConflictException("Finish barrier token does not name the drained barrier")
+        }
+        if (completed) {
+            closedTaskTokens[request.workspaceTaskId] = request.coordinationToken
+        }
+        finishBarrier = null
+        MutationFinishBarrierResult(
+            workspaceTaskId = request.workspaceTaskId,
+            coordinationToken = request.coordinationToken,
+            state = if (completed) MutationFinishBarrierState.COMPLETE else MutationFinishBarrierState.REOPENED,
+        )
     }
 
     private fun requireEntry(selector: KastMutationOperationSelector): OperationEntry = when (selector) {
         is KastMutationOperationSelector.ByOperationId -> operationsById[selector.operationId]
-        is KastMutationOperationSelector.ByIdempotencyKey -> operationsByKey[selector.idempotencyKey]
+        is KastMutationOperationSelector.ByIdempotencyKey -> latestOperationsByKey[selector.idempotencyKey]
     } ?: throw NotFoundException(
         message = "Mutation operation was not found",
         details = when (selector) {
@@ -220,12 +377,26 @@ internal class MutationOperationRegistry(
     }
 
     private class OperationEntry(
+        val sequence: Long,
         val operationId: KastMutationOperationId,
         val mutation: KastSemanticMutation,
         val fingerprint: MutationFingerprint,
         var state: KastMutationOperationState = KastMutationOperationState.Queued(),
         val job: Job,
     ) {
+        var pathScope: MutationPathScope? = null
+            private set
+        var pathAdmitted: Boolean = false
+        val pathAdmission = CompletableDeferred<Unit>()
+
+        fun resolvePathScope(scope: MutationPathScope) {
+            val existing = pathScope
+            check(existing == null || existing == scope) {
+                "Mutation operation path scope was resolved more than once"
+            }
+            pathScope = scope
+        }
+
         fun snapshot(): KastMutationOperationSnapshot = KastMutationOperationSnapshot(
             operationId = operationId,
             idempotencyKey = mutation.idempotencyKey,
@@ -245,10 +416,35 @@ internal class MutationOperationRegistry(
         }
     }
 
+    private class FinishBarrier(
+        val request: MutationFinishBarrierRequest,
+        val drained: CompletableDeferred<Unit> = CompletableDeferred(),
+    )
+
+    private data class TaskIdempotencyKey(
+        val workspaceTaskId: KastWorkspaceTaskId,
+        val idempotencyKey: KastMutationIdempotencyKey,
+    )
+
     private companion object {
         const val MAX_OPERATION_ID_ATTEMPTS = 8
     }
 }
+
+private class TaskFinishInProgressException(taskId: String) : AnalysisException(
+    statusCode = 409,
+    errorCode = "TASK_FINISH_IN_PROGRESS",
+    message = "The shared workspace task is finishing; retry after it completes or reopens.",
+    retryable = true,
+    details = mapOf("workspaceTaskId" to taskId),
+)
+
+private class WorkspaceTaskClosedException(taskId: String) : AnalysisException(
+    statusCode = 409,
+    errorCode = "AGENT_TASK_CLOSED",
+    message = "The shared workspace task is complete; begin a new task before mutating.",
+    details = mapOf("workspaceTaskId" to taskId),
+)
 
 private fun KastMutationOperationState.isTerminal(): Boolean =
     this is KastMutationOperationState.Completed ||

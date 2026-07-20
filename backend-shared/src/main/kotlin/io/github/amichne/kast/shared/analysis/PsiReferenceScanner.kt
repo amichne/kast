@@ -50,8 +50,10 @@ class PsiReferenceScanner(
                             ProgressManager.checkCanceled()
                             recoverRuntimePsiFailure { element.references }.orEmpty().forEach { reference ->
                                 try {
-                                    val resolved = reference.resolve() ?: return@forEach
-                                    val (fqName, _) = resolved.targetFqNameAndPackage() ?: return@forEach
+                                    val resolved = recoverRuntimePsiFailure { reference.resolve() } ?: return@forEach
+                                    val (fqName, _) = recoverRuntimePsiFailure {
+                                        resolved.targetFqNameAndPackage()
+                                    } ?: return@forEach
                                     val targetPath = recoverRuntimePsiFailure { resolved.resolvedFilePath().value }
                                     val targetOffset = recoverRuntimePsiFailure {
                                         resolved.declarationIdentityOffset()
@@ -64,7 +66,9 @@ class PsiReferenceScanner(
                                     rows += SymbolReferenceRow(
                                         sourcePath = sourceFilePath,
                                         sourceOffset = sourceOffset,
-                                        sourceFqName = reference.element.enclosingDeclarationFqName(),
+                                        sourceFqName = recoverRuntimePsiFailure {
+                                            reference.element.enclosingDeclarationFqName()
+                                        },
                                         targetFqName = fqName.value,
                                         targetPath = targetPath,
                                         targetOffset = targetOffset,
@@ -107,7 +111,9 @@ class PsiReferenceScanner(
                             return
                         }
                         ProgressManager.checkCanceled()
-                        element.declarationRow(sourceFilePath, modulePath, sourceSet)?.let(rows::add)
+                        recoverRuntimePsiFailure {
+                            element.declarationRow(sourceFilePath, modulePath, sourceSet)
+                        }?.let(rows::add)
                         super.visitElement(element)
                     }
                 },
@@ -187,14 +193,18 @@ class PsiReferenceScanner(
         }
     }
 
-    private inline fun <T> recoverRuntimePsiFailure(action: () -> T): T? =
-        try {
-            action()
-        } catch (error: ProcessCanceledException) {
-            throw error
-        } catch (error: CancellationException) {
-            throw error
-        } catch (_: Exception) {
-            null
-        }
 }
+
+internal inline fun <T> recoverRuntimePsiFailure(action: () -> T): T? =
+    try {
+        action()
+    } catch (error: ProcessCanceledException) {
+        throw error
+    } catch (error: CancellationException) {
+        throw error
+    } catch (_: StackOverflowError) {
+        // ponytail: K2/FIR can recurse on one bad PSI reference; skip that element unless the platform fixes it.
+        null
+    } catch (_: Exception) {
+        null
+    }

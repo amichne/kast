@@ -7,6 +7,7 @@
     "request": {
       "example": true
     },
-    "type": "ADD_STATEMENT"
+    "type": "ADD_STATEMENT",
+    "workspaceTaskId": "00000000-0000-0000-0000-000000000420"
   }
 }

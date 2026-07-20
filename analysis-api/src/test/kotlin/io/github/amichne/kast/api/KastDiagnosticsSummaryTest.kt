@@ -2,6 +2,7 @@ package io.github.amichne.kast.api
 
 import io.github.amichne.kast.api.contract.Diagnostic
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
+import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.result.DiagnosticsResult
@@ -15,6 +16,7 @@ import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
 import io.github.amichne.kast.api.contract.skill.KastDiagnosticsSummary
+import io.github.amichne.kast.api.validation.FileHashing
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Test
@@ -22,6 +24,7 @@ import java.nio.file.Path
 
 class KastDiagnosticsSummaryTest {
     private val filePath = NormalizedPath.ofAbsolute(Path.of("/workspace/Sample.kt"))
+    private val fileHash = FileHash(filePath.value, FileHashing.sha256("sample"))
 
     @Test
     fun `incomplete evidence is not clean even without compiler errors`() {
@@ -34,6 +37,7 @@ class KastDiagnosticsSummaryTest {
                     "IDEA is indexing",
                 ),
             ),
+            fileHashes = emptyList(),
         )
 
         val summary = KastDiagnosticsSummary.from(result)
@@ -51,6 +55,7 @@ class KastDiagnosticsSummaryTest {
         val result = DiagnosticsResult.of(
             diagnostics = listOf(compilerError()),
             fileStatuses = listOf(FileAnalysisStatus.analyzed(filePath)),
+            fileHashes = listOf(fileHash),
         )
 
         val summary = KastDiagnosticsSummary.from(result)
@@ -68,6 +73,7 @@ class KastDiagnosticsSummaryTest {
         val result = DiagnosticsResult.of(
             diagnostics = listOf(compilerError()),
             fileStatuses = listOf(FileAnalysisStatus.analyzed(filePath)),
+            fileHashes = listOf(fileHash),
         )
 
         val first = KastDiagnosticsSummary.from(result)

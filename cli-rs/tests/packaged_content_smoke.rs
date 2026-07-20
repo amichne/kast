@@ -48,190 +48,235 @@ fn packaged_skill_stays_usage_first_and_public_agent_only() {
         .unwrap_or_else(|error| panic!("read {}: {error}", skill_path.display()));
 
     assert!(
-        skill.contains("kast-cli-dialect-revision: \"2\""),
+        skill.contains("kast-cli-dialect-revision: \"3\""),
         "packaged skill must identify the CLI dialect it teaches: {skill}"
     );
+    for required in [
+        "kast-agent-task begin --workspace-root \"$PWD\"",
+        "Run `kast agent`",
+        "scoped `--help`",
+        "kast-agent-task finish --workspace-root \"$PWD\"",
+        "Kast returns `COMPLETE`",
+        "returns `BLOCKED`",
+    ] {
+        assert!(
+            skill.contains(required),
+            "skill is missing {required}: {skill}"
+        );
+    }
+    for forbidden in [
+        "--output json",
+        "agent lease acquire",
+        "agent symbol --query",
+        "agent workspace-files",
+        "agent rename",
+        "--idempotency-key",
+        "kast ready",
+        "kast repair",
+        "references/",
+        "| Need | Use |",
+    ] {
+        assert!(
+            !skill.contains(forbidden),
+            "lifecycle skill must discover rather than inventory {forbidden}: {skill}"
+        );
+    }
     assert!(
-        skill.contains("Use `kast agent` before generic file reads"),
-        "{skill}"
-    );
-    assert!(
-        skill.contains("`kast agent symbol --query <name> --workspace-root \"$PWD\"`"),
-        "{skill}"
-    );
-    assert!(
-        skill.contains("`kast agent workspace-files --workspace-root \"$PWD\"`")
-            && skill.contains("Then pass its `filePath`"),
-        "packaged guidance must route file discovery into direct semantic composition: {skill}"
-    );
-    assert!(
-        skill.contains("exact lookup is the default") && skill.contains("--mode discovery"),
-        "packaged guidance must separate exact lookup from fuzzy discovery: {skill}"
-    );
-    assert!(
-        skill.contains(
-            "`kast agent rename --symbol <fq-name> --new-name <name> --workspace-root \"$PWD\"`"
-        ),
-        "{skill}"
-    );
-    assert!(
-        skill.contains("`kast ready --for agent --workspace-root \"$PWD\"`")
-            && skill.contains("`kast repair --for agent --workspace-root \"$PWD\"`")
-            && !skill.contains("--for agent|"),
-        "{skill}"
-    );
-    assert!(
-        skill.contains("`--output json` for JSON-only parsed scripts"),
-        "{skill}"
-    );
-    assert!(
-        skill.contains("--apply --idempotency-key <stable-key>"),
-        "{skill}"
-    );
-    assert!(
-        skill.contains("kast agent operation status --idempotency-key <stable-key>"),
-        "{skill}"
-    );
-    assert!(skill.contains("edit application never started"), "{skill}");
-    assert!(skill.contains("read-only readiness"), "{skill}");
-    assert!(
-        skill.contains("agent lease acquire")
-            && skill.contains("agent lease status")
-            && skill.contains("agent lease release")
-            && skill.contains("--lease-id <id>"),
-        "packaged skill must teach the complete exact-root lease lifecycle: {skill}"
-    );
-    assert!(
-        skill.contains("Do not teach `kast agent tools`, `kast agent call`, `kast agent workflow`"),
-        "{skill}"
-    );
-    assert!(
-        !skill.contains("Use `kast agent workflow"),
-        "workflow should not be a positive route: {skill}"
-    );
-    assert!(
-        !skill.contains("Use `kast agent call"),
-        "agent call should not be a positive route: {skill}"
-    );
-    assert!(
-        !skill.contains("`kast agent scaffold`"),
-        "hidden aliases should not be installed as the primary skill route: {skill}"
-    );
-    assert!(
-        !skill.contains("`kast agent raw-"),
-        "raw hidden aliases should not be installed as the primary skill route: {skill}"
-    );
-    assert!(
-        !skill.contains("`kast runtime "),
-        "retired top-level runtime alias should not be installed as skill guidance: {skill}"
-    );
-    assert!(
-        !skill.contains("| Need | Use |"),
-        "installed skill should stay thin instead of shipping a bulky route table: {skill}"
-    );
-    assert!(
-        skill.lines().count() <= 70,
+        skill.lines().count() <= 40,
         "installed skill should stay thin: {} lines",
         skill.lines().count()
     );
 }
 
 #[test]
-fn packaged_workspace_file_guidance_teaches_only_the_public_typed_route() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let sources = [
-        "resources/kast-skill/SKILL.md",
-        "resources/kast-skill/references/quickstart.md",
-    ];
-    let guidance = sources
-        .iter()
-        .map(|source| {
-            let path = root.join(source);
-            std::fs::read_to_string(&path)
-                .unwrap_or_else(|error| panic!("read {}: {error}", path.display()))
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-
-    for expected in [
-        "--kind source|script",
-        "--module backend:<name>|gradle:<build-root>#<project-path>",
-        "--package root|named:<fq-name>",
-        "--page-token '<nextPageToken>'",
-        "KNOWN_MINIMUM",
-        "`.kts` files are not read from the Kotlin source index",
-    ] {
-        assert!(
-            guidance.contains(expected),
-            "packaged guidance should contain {expected}: {guidance}"
-        );
+fn first_party_agent_guidance_never_requests_json_output() {
+    fn check(path: &Path) {
+        if path.is_dir() {
+            for entry in std::fs::read_dir(path).expect("guidance directory") {
+                check(&entry.expect("guidance entry").path());
+            }
+            return;
+        }
+        let should_scan = path
+            .extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| matches!(extension, "md" | "toon" | "mjs" | "yaml"));
+        if !should_scan {
+            return;
+        }
+        let content = std::fs::read_to_string(path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", path.display()));
+        for forbidden in ["--output json", "--output=json"] {
+            assert!(
+                !content.contains(forbidden),
+                "first-party agent guidance requests deprecated JSON output in {}: {forbidden}",
+                path.display(),
+            );
+        }
     }
-    assert!(
-        !guidance.contains("kast agent call raw/workspace-files")
-            && !guidance.contains("kast agent raw-workspace-files"),
-        "packaged guidance must not promote internal raw workspace paging: {guidance}"
-    );
+
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    for relative in [
+        "resources/kast-skill",
+        "resources/codex-plugin/plugins/kast/skills",
+        "resources/codex-plugin/plugins/kast/assets",
+        "resources/plugin/extensions",
+    ] {
+        check(&root.join(relative));
+    }
+    check(&root.join("resources/agent-task/guidance.md"));
 }
 
 #[test]
-fn packaged_workflow_reference_uses_current_runtime_surface() {
+fn agent_task_workflow_schema_is_strict() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let workflows_path = root.join("resources/kast-skill/references/workflows.md");
-    let workflows = std::fs::read_to_string(&workflows_path)
-        .unwrap_or_else(|error| panic!("read {}: {error}", workflows_path.display()));
+    for relative in [
+        "resources/agent-task/kast-agent-task",
+        "resources/agent-task/guidance.md",
+        "resources/agent-task/gradle-receipt.init.gradle",
+        "resources/agent-task/workflow.schema.json",
+    ] {
+        assert!(
+            root.join(relative).is_file(),
+            "missing agent-task resource {relative}"
+        );
+    }
+    let init_script =
+        std::fs::read_to_string(root.join("resources/agent-task/gradle-receipt.init.gradle"))
+            .expect("Gradle receipt init script");
+    for required in [
+        "KAST_AGENT_TASK_GRADLE_RECEIPT",
+        "KAST_AGENT_TASK_INPUT_SHA256",
+        "KAST_AGENT_TASK_GRADLE_MODEL_RECEIPT",
+        "KAST_AGENT_TASK_WORKSPACE_ROOT",
+        "StandardCopyOption.ATOMIC_MOVE",
+        "FROM_CACHE",
+        "testReportDirectories",
+    ] {
+        assert!(
+            init_script.contains(required),
+            "init script missing {required}"
+        );
+    }
+    let schema_path = root.join("resources/agent-task/workflow.schema.json");
+    let schema: Value = serde_json::from_slice(
+        &std::fs::read(&schema_path)
+            .unwrap_or_else(|error| panic!("read {}: {error}", schema_path.display())),
+    )
+    .expect("workflow schema JSON");
+    let validator = jsonschema::validator_for(&schema).expect("workflow schema");
+    let valid = serde_json::json!({
+        "schema_version": 1,
+        "gradle": {"validation": [{
+            "build_root": ".",
+            "project_path": ":app",
+            "source_sets": ["main"],
+            "build_tasks": [":app:classes"],
+            "test_tasks": [":app:test"]
+        }]}
+    });
+    assert!(
+        validator.is_valid(&valid),
+        "valid workflow policy: {valid:#}"
+    );
 
-    assert!(
-        workflows.contains("`kast agent lease acquire|status|release`")
-            && workflows.contains("--lease-id <id>"),
-        "{workflows}"
-    );
-    assert!(
-        workflows.contains("--mode discovery")
-            && workflows.contains("indexed-exact")
-            && workflows.contains("compiler"),
-        "{workflows}"
-    );
-    assert!(
-        !workflows.contains("`kast runtime "),
-        "workflow reference should not teach retired top-level runtime aliases: {workflows}"
-    );
+    for invalid in [
+        serde_json::json!({"schema_version": 2, "gradle": {"validation": []}}),
+        serde_json::json!({"schema_version": 1, "unknown": true, "gradle": {"validation": []}}),
+        serde_json::json!({"schema_version": 1, "gradle": {"validation": [{
+            "build_root": ".", "project_path": ":app", "build_tasks": [], "test_tasks": []
+        }]}}),
+        serde_json::json!({"schema_version": 1, "gradle": {"validation": [{
+            "build_root": ".", "project_path": ":app", "build_tasks": ["build"], "test_tasks": [":app:test"]
+        }]}}),
+    ] {
+        assert!(
+            !validator.is_valid(&invalid),
+            "invalid workflow was accepted: {invalid:#}"
+        );
+    }
 }
 
 #[test]
-fn packaged_guidance_prefers_workspace_relative_kotlin_targets() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
-    let sources = [
-        "resources/kast-skill/SKILL.md",
-        "resources/kast-skill/references/quickstart.md",
-        "resources/kast-skill/references/runbook.md",
-        "resources/kast-skill/references/workflows.md",
-    ];
-    let guidance = sources
-        .iter()
-        .map(|source| {
-            let path = root.join(source);
-            std::fs::read_to_string(&path)
-                .unwrap_or_else(|error| panic!("read {}: {error}", path.display()))
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
+fn agent_task_launcher_forwards_only_to_its_sibling_kast() {
+    use std::os::unix::fs::PermissionsExt;
+    use std::process::Stdio;
 
-    for expected in [
-        "kast agent diagnostics --file-path src/main/kotlin/App.kt --workspace-root \"$PWD\"",
-        "kast agent add-file --file-path src/main/kotlin/NewType.kt",
-        "kast agent add-declaration --inside-file src/main/kotlin/App.kt",
-    ] {
-        assert!(
-            guidance.contains(expected),
-            "packaged guidance should contain {expected}: {guidance}"
-        );
-    }
-    for obsolete in ["$PWD/src/main/kotlin/App.kt", "<absolute.kt>"] {
-        assert!(
-            !guidance.contains(obsolete),
-            "packaged guidance should not require {obsolete}: {guidance}"
-        );
-    }
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let temp = tempfile::tempdir().expect("tempdir");
+    let prefix = temp.path().join("relocated prefix with spaces/bin");
+    let decoy = temp.path().join("decoy");
+    std::fs::create_dir_all(&prefix).expect("prefix");
+    std::fs::create_dir_all(&decoy).expect("decoy");
+    let launcher = prefix.join("kast-agent-task");
+    std::fs::copy(root.join("resources/agent-task/kast-agent-task"), &launcher)
+        .expect("copy launcher");
+    let sibling = prefix.join("kast");
+    let args_log = temp.path().join("args.log");
+    let stdin_log = temp.path().join("stdin.log");
+    std::fs::write(
+        &sibling,
+        "#!/bin/sh\nset -eu\nprintf '%s\\n' \"$@\" >\"$KAST_TEST_ARGS\"\ncat >\"$KAST_TEST_STDIN\"\nprintf 'sibling-kast\\n'\n",
+    )
+    .expect("sibling kast");
+    std::fs::set_permissions(&sibling, std::fs::Permissions::from_mode(0o755))
+        .expect("sibling permissions");
+    let decoy_marker = temp.path().join("decoy-used");
+    let decoy_kast = decoy.join("kast");
+    std::fs::write(
+        &decoy_kast,
+        format!("#!/bin/sh\ntouch '{}'\nexit 99\n", decoy_marker.display()),
+    )
+    .expect("decoy kast");
+    std::fs::set_permissions(&decoy_kast, std::fs::Permissions::from_mode(0o755))
+        .expect("decoy permissions");
+
+    let mut child = Command::new(&launcher)
+        .args(["begin", "--workspace-root", "/workspace with spaces"])
+        .env("KAST_TEST_ARGS", &args_log)
+        .env("KAST_TEST_STDIN", &stdin_log)
+        .env("PATH", format!("{}:/usr/bin:/bin", decoy.display()))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("run launcher");
+    child
+        .stdin
+        .take()
+        .expect("launcher stdin")
+        .write_all(b"provider envelope\n")
+        .expect("write stdin");
+    let output = child.wait_with_output().expect("launcher output");
+    assert!(
+        output.status.success(),
+        "launcher: stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "sibling-kast\n");
+    assert_eq!(
+        std::fs::read_to_string(args_log).expect("args log"),
+        "agent\ntask\nbegin\n--workspace-root\n/workspace with spaces\n"
+    );
+    assert_eq!(
+        std::fs::read_to_string(stdin_log).expect("stdin log"),
+        "provider envelope\n"
+    );
+    assert!(
+        !decoy_marker.exists(),
+        "launcher must never select PATH kast"
+    );
+
+    std::fs::remove_file(sibling).expect("remove sibling");
+    let missing = Command::new(&launcher)
+        .arg("status")
+        .output()
+        .expect("missing sibling");
+    assert_eq!(missing.status.code(), Some(126));
+    assert!(
+        String::from_utf8_lossy(&missing.stderr).contains("attested sibling CLI is not executable")
+    );
 }
 
 #[test]

@@ -35,6 +35,7 @@ class Kast < Formula
   end
   def install
     bin.install "kast"
+    bin.install "kast-agent-task" if buildpath.join("kast-agent-task").exist?
   end
 
   def caveats

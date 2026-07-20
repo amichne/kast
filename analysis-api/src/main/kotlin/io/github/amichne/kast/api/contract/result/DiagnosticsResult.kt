@@ -3,6 +3,7 @@
 package io.github.amichne.kast.api.contract.result
 
 import io.github.amichne.kast.api.contract.Diagnostic
+import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.PageableResult
 import io.github.amichne.kast.api.docs.DocField
@@ -20,6 +21,8 @@ class DiagnosticsResult private constructor(
     val diagnostics: List<Diagnostic>,
     @DocField(description = "Typed semantic terminal state for every requested file.")
     val fileStatuses: List<FileAnalysisStatus>,
+    @DocField(description = "SHA-256 content evidence for every successfully analyzed file.")
+    val fileHashes: List<FileHash>,
     @DocField(description = "Whether semantic evidence is complete for every requested file.")
     val semanticOutcome: SemanticAnalysisOutcome,
     @DocField(description = "Number of files requested for semantic analysis.")
@@ -48,6 +51,16 @@ class DiagnosticsResult private constructor(
         require(skippedFileCount == requestedFileCount - analyzedFileCount) {
             "skippedFileCount must match non-analyzed file statuses"
         }
+        require(
+            fileHashes.map(FileHash::filePath) == fileStatuses
+                .filter { status -> status.state == FileAnalysisState.ANALYZED }
+                .map(FileAnalysisStatus::filePath),
+        ) {
+            "fileHashes must bind every analyzed file, in request order, and no skipped files"
+        }
+        require(fileHashes.all { fileHash -> fileHash.hash.isSha256HexDigest() }) {
+            "Diagnostic file hashes must be lowercase SHA-256 hex digests"
+        }
         require(severityCounts.total == cardinality.totalCount) {
             "Diagnostic severity total must match exact cardinality"
         }
@@ -69,6 +82,7 @@ class DiagnosticsResult private constructor(
         DiagnosticsResult(
             diagnostics = items,
             fileStatuses = fileStatuses,
+            fileHashes = fileHashes,
             semanticOutcome = semanticOutcome,
             requestedFileCount = requestedFileCount,
             analyzedFileCount = analyzedFileCount,
@@ -81,10 +95,12 @@ class DiagnosticsResult private constructor(
 
     companion object {
         private const val ANALYSIS_FAILURE_CODE = "ANALYSIS_FAILURE"
+        private const val SHA_256_HEX_LENGTH = 64
 
         fun of(
             diagnostics: List<Diagnostic>,
             fileStatuses: List<FileAnalysisStatus>,
+            fileHashes: List<FileHash>,
             page: PageInfo? = null,
         ): DiagnosticsResult {
             val analyzedFileCount = fileStatuses.count { it.state == FileAnalysisState.ANALYZED }
@@ -99,6 +115,7 @@ class DiagnosticsResult private constructor(
             return DiagnosticsResult(
                 diagnostics = diagnostics,
                 fileStatuses = fileStatuses,
+                fileHashes = fileHashes,
                 semanticOutcome = semanticOutcome,
                 requestedFileCount = fileStatuses.size,
                 analyzedFileCount = analyzedFileCount,
@@ -112,6 +129,7 @@ class DiagnosticsResult private constructor(
         fun paged(
             diagnostics: List<Diagnostic>,
             fileStatuses: List<FileAnalysisStatus>,
+            fileHashes: List<FileHash>,
             pageOffset: Int,
             maxResults: Int,
             nextPageToken: String?,
@@ -142,6 +160,7 @@ class DiagnosticsResult private constructor(
             return DiagnosticsResult(
                 diagnostics = pageDiagnostics,
                 fileStatuses = fileStatuses,
+                fileHashes = fileHashes,
                 semanticOutcome = semanticOutcome,
                 requestedFileCount = fileStatuses.size,
                 analyzedFileCount = analyzedFileCount,
@@ -151,6 +170,9 @@ class DiagnosticsResult private constructor(
                 page = page,
             )
         }
+
+        private fun String.isSha256HexDigest(): Boolean =
+            length == SHA_256_HEX_LENGTH && all { character -> character in '0'..'9' || character in 'a'..'f' }
     }
 }
 

@@ -81,25 +81,221 @@ assert(server.initializationTimeoutMs >= 120000, "LSP timeout must allow startup
 assert(server.initializationOptions.failOnStaleIndex === true, "LSP must fail on stale indexes");
 
 const extension = readText("extensions/kast/extension.mjs");
-assert(extension.includes("RECOVERABLE_WARMUP_CODES"), "extension must classify warmup errors");
-assert(extension.includes('"INDEX_UNAVAILABLE"'), "extension must recover missing source indexes");
-assert(extension.includes("kast agent symbol") && extension.includes("kast agent diagnostics"), "extension must guide typed agent commands");
-assert(extension.includes("kast agent impact") && extension.includes("kast agent rename"), "extension must guide impact and rename commands");
 assert(extension.includes("createTraceEmitter"), "extension must wire structured tracing");
-assert(!extension.includes('"call"'), "extension must not use removed kast agent call");
-assert(!extension.includes('"workflow"'), "extension must not use removed kast agent workflow");
-assert(!extension.includes("isKastAgentToolsEnvelope"), "extension must not validate removed KAST_AGENT_TOOLS envelopes");
-assert(!extension.includes("bundled-catalog-fallback"), "extension must not fall back to reconstructed tool specs");
-assert(!extension.includes("bundledKastToolSpecs"), "extension must not import reconstructed tool specs");
-assert(!extension.includes("rpcArgs("), "extension must not route tools through raw kast rpc");
-assert(extension.includes("KAST_TOOLING_CONTEXT"), "extension must own runtime tooling guidance");
-assert(extension.includes("onUserPromptSubmitted"), "extension must inject prompt-time tooling guidance");
-assert(extension.includes("additionalContext"), "extension hooks must pass tooling guidance as context");
+for (const hook of [
+  "onSessionStart",
+  "onPreToolUse",
+  "onPostToolUse",
+  "onPostToolUseFailure",
+  "onSessionEnd",
+]) {
+  assert(extension.includes(hook), `extension must register ${hook}`);
+}
+assert(!extension.includes("onUserPromptSubmitted"), "static prompt tutorials must be retired");
+for (const operation of ['runLifecycle("begin"', 'runLifecycle("status"']) {
+  assert(extension.includes(operation), `extension must route lifecycle operation ${operation}`);
+}
+assert(!extension.includes('runLifecycle("finish"'), "Copilot session end must not run finish");
+assert(extension.includes("KAST_AGENT_TASK_LAUNCHER"), "extension must accept an absolute launcher override");
+assert(extension.includes("entrypoints?.taskLauncher"), "extension must consume the attested install entrypoint");
+assert(extension.includes('join(homedir(), ".local", "bin", "kast-agent-task")'), "extension must use the stable launcher path");
+assert(extension.includes("isExecutable(candidate)"), "extension must require an executable launcher");
+assert(extension.includes('join(dirname(candidate), "kast")'), "extension must require the launcher's sibling kast");
+assert(extension.includes("KAST_AGENT_SESSION_ID: sessionId"), "extension must preserve Copilot session context");
+assert(extension.includes("invocation?.sessionId"), "extension must use the SDK hook invocation identity");
+assert(!extension.includes("permissionDecision: \"deny\""), "Copilot status reporting must not gate tools");
+assert(extension.includes("kast extension audit:"), "session end must record its non-blocking status audit");
+for (const forbidden of [
+  "findOnPath",
+  "process.env.PATH",
+  "target/debug",
+  "target/release",
+  "KAST_TOOLING_CONTEXT",
+  "RECOVERABLE_WARMUP_CODES",
+  "kast agent symbol",
+  "kast agent diagnostics",
+  "--output json",
+  "--workspace-root",
+]) {
+  assert(!extension.includes(forbidden), `extension contains forbidden fallback or tutorial ${forbidden}`);
+}
 assert(extension.includes("tools: []"), "extension must not register dynamic Copilot tools");
 assert(
   !extension.includes("customAgents") && !extension.includes("makeKastCustomAgents"),
   "extension must register tools without custom agents",
 );
+NODE
+
+node --input-type=module - "$plugin_root" "$tmp_dir" <<'NODE'
+import {
+  chmodSync,
+  copyFileSync,
+  mkdirSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const pluginRoot = process.argv[2];
+const testRoot = resolve(process.argv[3], "copilot callback proof");
+const extensionRoot = join(testRoot, "extension");
+const workspaceRoot = join(testRoot, "workspace");
+const pairRoot = join(testRoot, "attested pair");
+const sdkRoot = join(extensionRoot, "node_modules/@github/copilot-sdk");
+const copiedExtension = join(extensionRoot, "extensions/kast/extension.mjs");
+const copiedTrace = join(extensionRoot, "extensions/kast/_shared/kast-trace.mjs");
+const taskLauncher = join(pairRoot, "kast-agent-task");
+const siblingKast = join(pairRoot, "kast");
+const callsPath = join(testRoot, "calls.tsv");
+
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+mkdirSync(join(extensionRoot, "extensions/kast/_shared"), { recursive: true });
+mkdirSync(workspaceRoot, { recursive: true });
+const canonicalWorkspaceRoot = realpathSync(workspaceRoot);
+mkdirSync(pairRoot, { recursive: true });
+mkdirSync(sdkRoot, { recursive: true });
+copyFileSync(join(pluginRoot, "extensions/kast/extension.mjs"), copiedExtension);
+copyFileSync(join(pluginRoot, "extensions/kast/_shared/kast-trace.mjs"), copiedTrace);
+writeFileSync(
+  join(sdkRoot, "package.json"),
+  JSON.stringify({
+    name: "@github/copilot-sdk",
+    type: "module",
+    exports: { "./extension": "./extension.mjs" },
+  }),
+);
+writeFileSync(
+  join(sdkRoot, "extension.mjs"),
+  [
+    "export const testState = { options: null, logs: [] };",
+    "export async function joinSession(options) {",
+    "  testState.options = options;",
+    "  return {",
+    "    async log(message, options = {}) {",
+    "      testState.logs.push({ message, options });",
+    "    },",
+    "  };",
+    "}",
+  ].join("\n"),
+);
+writeFileSync(
+  taskLauncher,
+  [
+    "#!/bin/sh",
+    "set -eu",
+    "printf '%s\\t%s\\t%s\\n' \"${KAST_AGENT_SESSION_ID:-}\" \"$1\" \"$PWD\" >> \"$KAST_TEST_CALLS\"",
+    "if [ \"${KAST_TEST_FAIL_OPERATION:-}\" = \"$1\" ]; then",
+    "  printf 'typed-%s-blocker\\n' \"$1\" >&2",
+    "  exit 42",
+    "fi",
+    "printf 'operation: %s\\nstate: ACTIVE\\n' \"$1\"",
+  ].join("\n"),
+);
+writeFileSync(siblingKast, "#!/bin/sh\nexit 0\n");
+chmodSync(taskLauncher, 0o755);
+chmodSync(siblingKast, 0o755);
+
+process.env.KAST_AGENT_TASK_LAUNCHER = taskLauncher;
+process.env.KAST_EXTENSION_REPO_ROOT = workspaceRoot;
+process.env.KAST_TEST_CALLS = callsPath;
+
+const sdk = await import(pathToFileURL(join(sdkRoot, "extension.mjs")));
+await import(pathToFileURL(copiedExtension));
+const hooks = sdk.testState.options?.hooks;
+assert(hooks, "extension did not register hooks");
+assert(
+  JSON.stringify(Object.keys(hooks).sort()) === JSON.stringify([
+    "onPostToolUse",
+    "onPostToolUseFailure",
+    "onPreToolUse",
+    "onSessionEnd",
+    "onSessionStart",
+  ]),
+  `unexpected hook set: ${Object.keys(hooks)}`,
+);
+assert(sdk.testState.options.tools.length === 0, "extension must not register tools");
+assert(
+  JSON.stringify(sdk.testState.options.disabledSkills) === JSON.stringify(["kast"]),
+  "extension must disable the copied Kast skill",
+);
+sdk.testState.logs.length = 0;
+
+const started = await hooks.onSessionStart(
+  { source: "startup" },
+  { sessionId: "session-start" },
+);
+assert(started.additionalContext.includes("operation: begin"), `begin context: ${JSON.stringify(started)}`);
+
+const allowed = await hooks.onPreToolUse(
+  { toolName: "read" },
+  { sessionId: "pre-success" },
+);
+assert(allowed.additionalContext.includes("operation: status"), `pre context: ${JSON.stringify(allowed)}`);
+assert(!("permissionDecision" in allowed), `successful pre hook denied: ${JSON.stringify(allowed)}`);
+
+const postSuccess = await hooks.onPostToolUse(
+  { toolName: "edit" },
+  { sessionId: "post-success" },
+);
+assert(postSuccess.additionalContext.includes("operation: status"), `post context: ${JSON.stringify(postSuccess)}`);
+
+const postFailure = await hooks.onPostToolUseFailure(
+  { toolName: "edit" },
+  { sessionId: "post-failure" },
+);
+assert(postFailure.additionalContext.includes("operation: status"), `failed post context: ${JSON.stringify(postFailure)}`);
+
+await hooks.onSessionEnd({ reason: "complete" }, { sessionId: "end-success" });
+let audit = sdk.testState.logs.at(-1);
+assert(audit.message.includes("kast extension audit: operation: status"), `success audit: ${JSON.stringify(audit)}`);
+assert(audit.options.level === "info" && audit.options.ephemeral === true, `success audit options: ${JSON.stringify(audit)}`);
+
+process.env.KAST_TEST_FAIL_OPERATION = "status";
+const reported = await hooks.onPreToolUse(
+  { toolName: "edit" },
+  { sessionId: "pre-failure" },
+);
+assert(!("permissionDecision" in reported), `status report denied a tool: ${JSON.stringify(reported)}`);
+assert(reported.additionalContext.includes("typed-status-blocker"), `status context: ${JSON.stringify(reported)}`);
+delete process.env.KAST_TEST_FAIL_OPERATION;
+
+process.env.KAST_TEST_FAIL_OPERATION = "status";
+await hooks.onSessionEnd({ reason: "blocked" }, { sessionId: "end-failure" });
+audit = sdk.testState.logs.at(-1);
+assert(audit.message.includes("Kast agent task status failed"), `failure audit: ${JSON.stringify(audit)}`);
+assert(audit.message.includes("typed-status-blocker"), `failure context: ${JSON.stringify(audit)}`);
+assert(audit.options.level === "warning" && audit.options.ephemeral === false, `failure audit options: ${JSON.stringify(audit)}`);
+delete process.env.KAST_TEST_FAIL_OPERATION;
+
+const calls = readFileSync(callsPath, "utf8")
+  .trim()
+  .split("\n")
+  .map((line) => line.split("\t"));
+const expectedCalls = [
+  ["session-start", "begin"],
+  ["pre-success", "status"],
+  ["post-success", "status"],
+  ["post-failure", "status"],
+  ["end-success", "status"],
+  ["pre-failure", "status"],
+  ["end-failure", "status"],
+];
+assert(calls.length === expectedCalls.length, `unexpected calls: ${JSON.stringify(calls)}`);
+for (const [index, [sessionId, operation]] of expectedCalls.entries()) {
+  assert(
+    JSON.stringify(calls[index]) === JSON.stringify([
+      sessionId,
+      operation,
+      canonicalWorkspaceRoot,
+    ]),
+    `call ${index} did not preserve session identity and argv: ${JSON.stringify(calls[index])}`,
+  );
+}
 NODE
 
 ensure_kast_bin() {

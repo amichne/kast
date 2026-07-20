@@ -1115,6 +1115,7 @@ internal class SkillRpcOrchestrator(
                 }
             },
         )
+        progress.awaitPathAdmission(renameResult.affectedFiles)
         progress.enter(KastMutationProgressStage.EDIT_APPLICATION)
         val applyResult = backend.applyEdits(
             ApplyEditsQuery(
@@ -1163,6 +1164,7 @@ internal class SkillRpcOrchestrator(
                 MutationCapability.OPTIMIZE_IMPORTS,
             ),
         )
+        progress.awaitPathAdmission(listOf(filePath))
         progress.enter(KastMutationProgressStage.EDIT_APPLICATION)
         val applyResult = backend.applyEdits(
             ApplyEditsQuery(
@@ -1262,6 +1264,7 @@ internal class SkillRpcOrchestrator(
                 MutationCapability.OPTIMIZE_IMPORTS,
             ),
         )
+        progress.awaitPathAdmission(listOf(filePath))
         progress.enter(KastMutationProgressStage.EDIT_APPLICATION)
         val applyResult = backend.applyEdits(
             ApplyEditsQuery(

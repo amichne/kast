@@ -101,7 +101,18 @@ pub struct DoctorAgentEnvironmentDiagnostic {
     pub backend: DoctorAgentBackendDiagnostic,
     pub skills: DoctorAgentSkillDiagnostic,
     pub guidance: DoctorAgentGuidanceDiagnostic,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hook_trust: Option<DoctorAgentHookTrustDiagnostic>,
     pub ok: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoctorAgentHookTrustDiagnostic {
+    pub code: &'static str,
+    pub trusted: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<&'static str>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -147,6 +158,20 @@ pub(super) fn agent_environment_diagnostic(
         plugin.as_ref(),
         &binary.running_binary,
     )?;
+    let hook_trust = if install_authority == InstallAuthority::Machine {
+        crate::machine::codex_hook_trust_proven()?.map(|trusted| DoctorAgentHookTrustDiagnostic {
+            code: if trusted {
+                "HOOK_TRUST_PROVEN"
+            } else {
+                "HOOK_TRUST_REQUIRED"
+            },
+            trusted,
+            action: (!trusted)
+                .then_some("Review and trust the native kast@kast hooks when Codex prompts."),
+        })
+    } else {
+        None
+    };
     if backend.state != AgentResourceState::Managed {
         issues.push(
             "Agent readiness could not identify one managed effective semantic backend".to_string(),
@@ -181,9 +206,16 @@ pub(super) fn agent_environment_diagnostic(
             guidance.path, guidance.state.as_str(), repair
         ));
     }
+    if hook_trust.as_ref().is_some_and(|trust| !trust.trusted) {
+        issues.push(
+            "HOOK_TRUST_REQUIRED: Review and trust the native kast@kast hooks when Codex prompts; Kast will not bypass provider trust."
+                .to_string(),
+        );
+    }
     let ok = backend.state == AgentResourceState::Managed
         && skills.compatible
-        && guidance.state == AgentResourceState::Managed;
+        && guidance.state == AgentResourceState::Managed
+        && hook_trust.as_ref().is_none_or(|trust| trust.trusted);
     Ok(DoctorAgentEnvironmentDiagnostic {
         install_authority,
         binary: DoctorAgentBinaryDiagnostic {
@@ -196,6 +228,7 @@ pub(super) fn agent_environment_diagnostic(
         backend,
         skills,
         guidance,
+        hook_trust,
         ok,
     })
 }
@@ -585,8 +618,7 @@ fn effective_guidance_diagnostic(
         .map(manifest::verify_managed_resource_outputs)
         .transpose()?
         .map(|verification| verification.ok);
-    let expected_plugin_region =
-        plugin_owned.then(|| render_plugin_guidance_region(workspace_root));
+    let expected_plugin_region = plugin_owned.then(render_plugin_guidance_region);
     let state = guidance_resource_state(
         &path,
         managed_resource_matches,
@@ -652,25 +684,16 @@ fn guidance_resource_state(
     }
 }
 
-fn render_plugin_guidance_region(workspace_root: &Path) -> String {
-    let skill_path = workspace_root.join(WORKSPACE_SKILL_RELATIVES[0]);
+fn render_plugin_guidance_region() -> String {
     [
-        "<kast>".to_string(),
-        "## Kast routing".to_string(),
-        format!(
-            "Use `{}` before Kotlin or Gradle semantic work.",
-            skill_path.display()
-        ),
-        "Acquire with `kast agent lease acquire --workspace-root \"$PWD\" --backend idea`; preserve its lease ID and release it when the worker finishes."
-            .to_string(),
-        "Pass `--workspace-root \"$PWD\" --backend idea --lease-id <id>` to typed commands such as `kast agent symbol`, `kast agent diagnostics`, and `kast agent rename`.".to_string(),
-        "Do not run `kast setup` on macOS; the IntelliJ plugin owns workspace bootstrap."
-            .to_string(),
-        "Before each linked worker starts, open the exact worktree root as its own IDE project and acquire its lease from that worktree.".to_string(),
-        "Never reuse another worktree's Kast runtime, metadata, or semantic evidence."
-            .to_string(),
-        "Keep the IDE project open while active; close its exact IDE project or window before removing the worktree.".to_string(),
-        "</kast>".to_string(),
+        "<kast>",
+        "## Kast routing",
+        crate::agent::agent_task_guidance(),
+        "Do not run `kast setup` on macOS; the IntelliJ plugin owns workspace bootstrap.",
+        "Before each linked worker starts, open the exact worktree root as its own IDE project and wait for `.kast/setup/workspace.json` before beginning the task.",
+        "Never reuse another worktree's Kast runtime, metadata, or semantic evidence.",
+        "Keep the IDE project open while active; close its exact IDE project or window before removing the worktree.",
+        "</kast>",
     ]
     .join("\n")
 }
@@ -679,8 +702,9 @@ fn render_plugin_skill(plugin: &PluginWorkspaceEvidence, dialect_revision: u32) 
     let plugin_version = plugin.plugin_version.as_deref()?;
     let cli_version = plugin.cli_version.as_deref()?;
     let cli_binary = plugin.cli_binary.as_deref()?;
+    let task_guidance = crate::agent::agent_task_guidance();
     Some(format!(
-        "---\nname: kast\ndescription: Kotlin semantic work and linked-worktree lifecycle in Gradle repositories prepared by the Kast IntelliJ plugin.\nmetadata:\n  kast-cli-dialect-revision: \"{dialect_revision}\"\n---\n\n# Kast\n\nThis workspace was prepared by the Kast IntelliJ plugin. JetBrains owns plugin installation and updates; Homebrew owns only the CLI.\n\nAcquire with `kast agent lease acquire --workspace-root \"$PWD\" --backend idea`; pass its `leaseId` to every typed semantic command and release it when the worker finishes.\nUse typed commands such as `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, and `kast agent rename` under that exact-root lease.\nDo not run `kast setup` or install runtime resources separately on macOS; update the CLI and plugin, reopen this exact project, and refresh metadata when compatibility fails.\n\n## Linked Worktrees\n\nFor every delegated worker using a linked Git worktree:\n\n1. Before the worker starts, open the exact worktree root as its own IntelliJ IDEA or Android Studio project with the Kast plugin enabled.\n2. Wait for `.kast/setup/workspace.json`, then acquire an IDEA lease for `\"$PWD\"` from that worktree.\n3. Never reuse another worktree's Kast runtime, metadata, or semantic evidence.\n4. Keep that IDE project open while the worker and worktree are active.\n5. Before retiring or deleting the worktree, close that exact IDE project or window before removing the worktree.\n\nPrepared plugin version: {plugin_version}\nCLI version: {cli_version}\nCLI invocation: `{cli_binary}`\n"
+        "---\nname: kast\ndescription: Kotlin semantic work and linked-worktree lifecycle in Gradle repositories prepared by the Kast IntelliJ plugin.\nmetadata:\n  kast-cli-dialect-revision: \"{dialect_revision}\"\n---\n\n# Kast\n\nThis workspace was prepared by the Kast IntelliJ plugin. JetBrains owns plugin installation and updates; Homebrew owns only the CLI.\n\n{task_guidance}\n\nDo not run `kast setup` or install runtime resources separately on macOS; update the CLI and plugin, reopen this exact project, and refresh metadata when compatibility fails.\n\n## Linked Worktrees\n\nFor every delegated worker using a linked Git worktree:\n\n1. Before the worker starts, open the exact worktree root as its own IntelliJ IDEA or Android Studio project with the Kast plugin enabled.\n2. Wait for `.kast/setup/workspace.json` before beginning the task in that worktree.\n3. Never reuse another worktree's Kast runtime, metadata, or semantic evidence.\n4. Keep that IDE project open while the worker and worktree are active.\n5. Before retiring or deleting the worktree, close that exact IDE project or window before removing the worktree.\n\nPrepared plugin version: {plugin_version}\nCLI version: {cli_version}\nCLI invocation: `{cli_binary}`\n"
     ))
 }
 
@@ -801,6 +825,55 @@ fn workspace_relative(workspace_root: Option<&Path>, path: &Path) -> Option<Path
 #[cfg(test)]
 mod agent_readiness_tests {
     use super::*;
+
+    #[test]
+    fn plugin_renderers_reuse_the_task_lifecycle_without_a_command_inventory() {
+        let plugin = PluginWorkspaceEvidence {
+            metadata_path: PathBuf::from("workspace.json"),
+            required_artifacts: Vec::new(),
+            trusted: true,
+            cli_binary: Some("/opt/kast/bin/kast".to_string()),
+            cli_version: Some("1.2.3".to_string()),
+            plugin_version: Some("1.2.3".to_string()),
+            backend_kind: Some("idea".to_string()),
+            backend_version: Some("1.2.3".to_string()),
+            protocol_revision: Some("1".to_string()),
+        };
+        let region = render_plugin_guidance_region();
+        let skill = render_plugin_skill(&plugin, 3).expect("plugin skill");
+
+        for rendered in [&region, &skill] {
+            assert_eq!(
+                rendered
+                    .matches(crate::agent::agent_task_guidance())
+                    .count(),
+                1,
+                "shared lifecycle guidance must appear once: {rendered}"
+            );
+            for required in [
+                ".kast/setup/workspace.json",
+                "Never reuse another worktree's Kast runtime",
+                "exact IDE project or window",
+            ] {
+                assert!(
+                    rendered.contains(required),
+                    "missing {required}: {rendered}"
+                );
+            }
+            for forbidden in [
+                "--output json",
+                "agent lease acquire",
+                "agent symbol",
+                "agent diagnostics",
+                "agent rename",
+            ] {
+                assert!(
+                    !rendered.contains(forbidden),
+                    "found {forbidden}: {rendered}"
+                );
+            }
+        }
+    }
 
     #[test]
     fn trusted_plugin_guidance_ignores_inactive_manifest_checksum() {

@@ -26,7 +26,8 @@ The task builds the Rust CLI and IDEA plugin, then performs two synchronous
 steps:
 
 1. `kast machine activate` stages and atomically selects a strict bundle of the
-   CLI, IDEA plugin ZIP, provider-neutral skill, and Codex adapter.
+   CLI, task launcher, IDEA plugin ZIP, provider-neutral skill, task proof
+   resources, and Codex and Copilot adapters.
 2. `kast machine reconcile` verifies every selected digest, replaces the
    closed IDE's Kast plugin, selects the global Kast skill, and asks Codex's
    native plugin command to select the bundled adapter when Codex is installed.
@@ -37,7 +38,7 @@ plist, socket, watcher, or background process.
 ## Verify the machine authority
 
 ```console
-kast --output json machine status
+kast --output toon machine status
 ```
 
 A healthy result reports the selected machine bundle as active. After opening

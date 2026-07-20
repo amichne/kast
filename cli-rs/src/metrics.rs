@@ -315,7 +315,7 @@ fn print_human_metrics_response(request: &MetricsRequest, response: &Value) -> R
     markdown.push('\n');
     push_markdown_line(
         &mut markdown,
-        format_args!("Use `kast --output json metrics ...` for the structured metrics payload."),
+        format_args!("Use `kast --output toon metrics ...` for the structured metrics payload."),
     );
     output::print_markdown(&markdown)?;
     Ok(0)
