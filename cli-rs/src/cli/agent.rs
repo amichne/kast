@@ -45,8 +45,6 @@ pub enum AgentCommand {
     AddStatement(AgentStatementMutationArgs),
     /// Replace a named declaration by symbol identity.
     ReplaceDeclaration(AgentReplaceDeclarationArgs),
-    /// Query or cancel an observable semantic mutation operation.
-    Operation(AgentOperationArgs),
     /// List catalog-backed tools for CLI-capable agent hosts.
     #[command(hide = true)]
     Tools(RemovedAgentCommandArgs),
@@ -1448,39 +1446,6 @@ pub struct AgentReplaceDeclarationArgs {
     pub mutation: AgentMutationApplyArgs,
 }
 
-#[derive(Debug, Args, Clone)]
-pub struct AgentOperationArgs {
-    #[command(subcommand)]
-    pub command: AgentOperationCommand,
-}
-
-#[derive(Debug, Subcommand, Clone)]
-pub enum AgentOperationCommand {
-    /// Retrieve the latest retained operation state.
-    Status(AgentOperationSelectorArgs),
-    /// Request cooperative cancellation and return the latest retained state.
-    Cancel(AgentOperationSelectorArgs),
-}
-
-#[derive(Debug, Args, Clone)]
-#[command(group(
-    clap::ArgGroup::new("selector")
-        .required(true)
-        .multiple(false)
-        .args(["operation_id", "idempotency_key"])
-))]
-pub struct AgentOperationSelectorArgs {
-    #[command(flatten)]
-    pub runtime: AgentRuntimeArgs,
-    /// Server-issued semantic mutation operation UUID.
-    #[arg(long)]
-    pub operation_id: Option<String>,
-    /// Caller-owned mutation idempotency key.
-    #[arg(long)]
-    pub idempotency_key: Option<String>,
-    #[command(flatten)]
-    pub view: AgentMutationViewArgs,
-}
 
 #[derive(Debug, Args, Clone, Default)]
 #[command(group(
@@ -1679,8 +1644,8 @@ pub struct AgentMutationViewArgs {
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum AgentMutationField {
-    Operation,
-    State,
+    Outcome,
+    Deduplicated,
     Edits,
     Files,
     Diagnostics,

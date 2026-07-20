@@ -15,6 +15,13 @@ pub fn raw_request_passthrough(
 pub struct RawRpcSession {
     socket_path: PathBuf,
     response_timeout: Duration,
+    identity: String,
+}
+
+impl RawRpcSession {
+    pub(crate) fn identity(&self) -> &str {
+        &self.identity
+    }
 }
 
 pub fn raw_rpc_session(
@@ -64,9 +71,13 @@ fn raw_rpc_session_with_auto_start(
         profile_duration: None,
         profile_otlp_endpoint: None,
     })?;
+    let identity = crate::manifest::sha256_bytes(
+        serde_json::to_string(&ensure.selected.descriptor)?.as_bytes(),
+    );
     Ok(RawRpcSession {
         socket_path: PathBuf::from(&ensure.selected.descriptor.socket_path),
         response_timeout,
+        identity,
     })
 }
 

@@ -1235,17 +1235,20 @@ impl ObservedSemanticBackend {
                         "schemaVersion": 3
                     }),
                     "mutation/submit" => serde_json::json!({
-                        "operation": {
-                            "operationId": "00000000-0000-0000-0000-000000000001",
-                            "idempotencyKey": request["params"]["idempotencyKey"],
-                            "mutationKind": request["params"]["type"],
-                            "state": {
-                                "type": "QUEUED",
-                                "trace": {
-                                    "enteredStages": [],
-                                    "editApplicationState": "NOT_STARTED"
+                        "type": "SUCCEEDED",
+                        "result": {
+                            "type": "RENAME_RESULT",
+                            "response": {
+                                "ok": true,
+                                "editCount": 0,
+                                "affectedFiles": [],
+                                "applyResult": {
+                                    "applied": [],
+                                    "affectedFiles": [],
+                                    "createdFiles": [],
+                                    "deletedFiles": []
                                 },
-                                "cancellationRequested": false
+                                "diagnostics": {"errorCount": 0, "warningCount": 0}
                             }
                         },
                         "deduplicated": false

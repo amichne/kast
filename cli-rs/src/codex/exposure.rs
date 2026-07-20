@@ -1,7 +1,7 @@
 use crate::cli::{
-    AgentCommand, AgentLeaseCommand, AgentOperationCommand, CodexCommand, CodexHookEvent, Command,
-    DeveloperCommand, GenerateCommand, InspectCommand, MachineCommand, MetricsCommand,
-    PackageCommand, ReleaseActivateCommand, ReleaseCommand, RuntimeCommand,
+    AgentCommand, AgentLeaseCommand, CodexCommand, CodexHookEvent, Command, DeveloperCommand,
+    GenerateCommand, InspectCommand, MachineCommand, MetricsCommand, PackageCommand,
+    ReleaseActivateCommand, ReleaseCommand, RuntimeCommand,
 };
 use serde::Serialize;
 
@@ -33,8 +33,6 @@ pub(crate) enum CodexSemanticCommand {
     AddImplementation,
     AddStatement,
     ReplaceDeclaration,
-    OperationStatus,
-    OperationCancel,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,7 +54,6 @@ pub(crate) enum CodexCommandMode {
     Read,
     Lifecycle,
     PlanFirstMutation,
-    OperationControl,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -71,7 +68,7 @@ pub(crate) struct CodexCommandDescriptor {
 }
 
 impl CodexSemanticCommand {
-    pub(crate) const ALL: [Self; 20] = [
+    pub(crate) const ALL: [Self; 18] = [
         Self::LeaseAcquire,
         Self::LeaseStatus,
         Self::LeaseRelease,
@@ -90,8 +87,6 @@ impl CodexSemanticCommand {
         Self::AddImplementation,
         Self::AddStatement,
         Self::ReplaceDeclaration,
-        Self::OperationStatus,
-        Self::OperationCancel,
     ];
 
     pub(crate) fn descriptor(self) -> CodexCommandDescriptor {
@@ -211,22 +206,6 @@ impl CodexSemanticCommand {
                 self,
                 "agent replace-declaration",
                 "kast --output toon agent replace-declaration --workspace-root <root> --symbol <fq-name> --content-file <file>",
-            ),
-            Self::OperationStatus => descriptor(
-                self,
-                "agent operation status",
-                CodexCommandMode::OperationControl,
-                false,
-                "latest retained operation state",
-                "kast --output toon agent operation status --workspace-root <root> --idempotency-key <key>",
-            ),
-            Self::OperationCancel => descriptor(
-                self,
-                "agent operation cancel",
-                CodexCommandMode::OperationControl,
-                false,
-                "cooperative cancellation outcome",
-                "kast --output toon agent operation cancel --workspace-root <root> --operation-id <id>",
             ),
         }
     }
@@ -411,17 +390,9 @@ fn classify_agent(command: Option<&AgentCommand>) -> CodexExposure {
         Some(AgentCommand::ReplaceDeclaration(_)) => {
             visible(CodexSemanticCommand::ReplaceDeclaration)
         }
-        Some(AgentCommand::Operation(args)) => classify_operation(&args.command),
         Some(AgentCommand::Tools(_)) => CodexExposure::NotExposed,
         Some(AgentCommand::Call(_)) => CodexExposure::NotExposed,
         Some(AgentCommand::Workflow(_)) => CodexExposure::NotExposed,
-    }
-}
-
-fn classify_operation(command: &AgentOperationCommand) -> CodexExposure {
-    match command {
-        AgentOperationCommand::Status(_) => visible(CodexSemanticCommand::OperationStatus),
-        AgentOperationCommand::Cancel(_) => visible(CodexSemanticCommand::OperationCancel),
     }
 }
 
@@ -462,8 +433,6 @@ mod tests {
                 "agent add-implementation",
                 "agent add-statement",
                 "agent replace-declaration",
-                "agent operation status",
-                "agent operation cancel",
             ]
         );
     }
@@ -515,10 +484,6 @@ mod tests {
         assert_eq!(
             parsed_exposure(&["developer", "codex", "hook", "stop"]),
             CodexExposure::HookOnly(CodexHookCommand::Event(CodexHookEvent::Stop))
-        );
-        assert_eq!(
-            parsed_exposure(&["agent", "operation", "status", "--operation-id", "id"]),
-            CodexExposure::AgentVisible(CodexSemanticCommand::OperationStatus)
         );
     }
 

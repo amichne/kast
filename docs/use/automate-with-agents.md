@@ -81,33 +81,15 @@ kast agent add-file \
 
 ## Recover An Interrupted Mutation
 
-If the submitting process yields or disconnects, query with the same key. Do
-not submit a new key for the same intended edit.
+If the waiting process disconnects, rerun the exact command with the same key.
+The same runtime joins active execution or returns its cached terminal result.
+Do not use a new key for the same intended edit.
 
-```console
-kast agent operation status \
-  --idempotency-key add-example-file \
-  --workspace-root "$PWD"
-```
-
-If the operation should stop, request cancellation and poll status until the
-state is terminal:
-
-```console
-kast agent operation cancel \
-  --idempotency-key add-example-file \
-  --workspace-root "$PWD"
-kast agent operation status \
-  --idempotency-key add-example-file \
-  --workspace-root "$PWD"
-```
-
-Use a direct filesystem fallback only when a successfully retrieved terminal
-state reports `editApplicationState: NOT_STARTED`. `STARTED` and `COMPLETED`
-both mean the filesystem may already have changed. If the backend daemon
-restarted and no retained state can be retrieved, the outcome is ambiguous;
-inspect and reconcile the workspace instead of applying a fallback or retrying
-under a new key.
+If the runtime was replaced before the task observed a terminal result, Kast
+records `SEMANTIC_MUTATION_OUTCOME_MISSING` and blocks the task. A terminal
+mutation failure also blocks further mutations and `finish`. Recover either
+case explicitly with `abort` followed by `begin`; do not replay the edit or use
+a direct filesystem fallback.
 
 Use [agent commands](../reference/agent-commands.md) for the high-level command
 surface and [plan safe edits](plan-safe-edits.md) for mutation behavior.

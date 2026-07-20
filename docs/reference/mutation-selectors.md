@@ -19,26 +19,11 @@ scope target, then apply only after the plan matches the requested change.
 | Scope selector | A named declaration or executable body that receives content |
 | Placement anchor | A supported location inside the selected file or scope |
 | Content file | The Kotlin content the agent asks Kast to insert or replace |
-| Operation ID | The stable backend-issued identity of one applied mutation |
-| Idempotency key | The stable caller-issued identity used to submit and recover one mutation |
+| Idempotency key | The stable caller-issued identity used to submit and retry one mutation |
 
 Local-variable rename is not part of the current public dialect. Agents should
 use named declaration identities until Kast has a typed non-offset selector for
 locals.
-
-## Operation Selectors
-
-`kast agent operation status` and `kast agent operation cancel` accept exactly
-one operation selector:
-
-| Selector | Flag | Source |
-| --- | --- | --- |
-| Operation ID | `--operation-id <uuid>` | Returned by mutation submission |
-| Idempotency key | `--idempotency-key <stable-key>` | Chosen by the submitting caller |
-
-Status and cancellation requests are idempotent. A cancellation response can
-show `cancellationRequested` while the operation remains active; `CANCELLED` is
-terminal only after execution has cooperatively stopped.
 
 ## Plan Review
 

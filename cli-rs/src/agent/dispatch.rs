@@ -100,7 +100,6 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         ),
         AgentCommand::AddStatement(args) => execute_agent_add_statement(args),
         AgentCommand::ReplaceDeclaration(args) => execute_agent_replace_declaration(args),
-        AgentCommand::Operation(args) => execute_agent_operation(args),
     }
 }
 
@@ -122,11 +121,6 @@ fn agent_command_runtime(command: &AgentCommand) -> Option<&AgentRuntimeArgs> {
         }
         AgentCommand::AddStatement(args) => Some(&args.runtime),
         AgentCommand::ReplaceDeclaration(args) => Some(&args.runtime),
-        AgentCommand::Operation(args) => match &args.command {
-            AgentOperationCommand::Status(args) | AgentOperationCommand::Cancel(args) => {
-                Some(&args.runtime)
-            }
-        },
         AgentCommand::Lsp(_)
         | AgentCommand::Lease(_)
         | AgentCommand::Task(_)
@@ -864,41 +858,6 @@ fn applied_idempotency_key(
         ));
     }
     Ok(key)
-}
-
-fn execute_agent_operation(args: AgentOperationArgs) -> AgentEnvelope {
-    match args.command {
-        AgentOperationCommand::Status(selector) => {
-            execute_agent_operation_request("mutation/status", selector)
-        }
-        AgentOperationCommand::Cancel(selector) => {
-            execute_agent_operation_request("mutation/cancel", selector)
-        }
-    }
-}
-
-fn execute_agent_operation_request(
-    method: &'static str,
-    args: AgentOperationSelectorArgs,
-) -> AgentEnvelope {
-    let selector = match (args.operation_id, args.idempotency_key) {
-        (Some(operation_id), None) => json!({
-            "type": "BY_OPERATION_ID",
-            "operationId": operation_id,
-        }),
-        (None, Some(idempotency_key)) => json!({
-            "type": "BY_IDEMPOTENCY_KEY",
-            "idempotencyKey": idempotency_key,
-        }),
-        _ => unreachable!("clap requires exactly one operation selector"),
-    };
-    execute_request(AgentRequest {
-        method: method.to_string(),
-        request: json_rpc_request(method, selector),
-        runtime: args.runtime,
-        full_response: true,
-        operation: AgentOperation::ReadOnly,
-    })
 }
 
 fn mutation_plan_envelope(

@@ -423,38 +423,32 @@ mod result_projection_tests {
     fn mutation_selected_view_emits_only_compatible_selected_fields() {
         let projected = project_mutation_envelope(
             result_envelope(
-                "mutation/status".to_string(),
+                "mutation/submit".to_string(),
                 json!({
-                    "operationId": "00000000-0000-0000-0000-000000000337",
-                    "idempotencyKey": "issue-337",
-                    "mutationKind": "RENAME",
-                    "state": {
-                        "type": "COMPLETED",
-                        "trace": {"editApplicationState": "COMPLETED"},
-                        "cancellationRequested": false,
-                        "result": {
-                            "type": "SCOPE_MUTATION_RESULT",
-                            "response": {
-                                "editCount": 1,
-                                "affectedFiles": ["/workspace/App.kt"],
-                                "createdFiles": [],
-                                "diagnostics": {"errorCount": 0, "warningCount": 0}
-                            }
+                    "type": "SUCCEEDED",
+                    "deduplicated": false,
+                    "result": {
+                        "type": "SCOPE_MUTATION_RESULT",
+                        "response": {
+                            "editCount": 1,
+                            "affectedFiles": ["/workspace/App.kt"],
+                            "createdFiles": [],
+                            "diagnostics": {"errorCount": 0, "warningCount": 0}
                         }
                     }
                 }),
             ),
             AgentResultView::Fields(vec![
-                AgentMutationField::State,
+                AgentMutationField::Outcome,
                 AgentMutationField::Files,
             ]),
         );
         let result = projected.result.expect("mutation selection");
 
         assert_eq!(result["type"], "KAST_AGENT_MUTATION_SELECTION");
-        assert_eq!(result["state"]["state"], "COMPLETED");
+        assert_eq!(result["outcome"], "SUCCEEDED");
         assert_eq!(result["files"], json!(["/workspace/App.kt"]));
-        assert!(result.get("operation").is_none(), "{result}");
+        assert!(result.get("deduplicated").is_none(), "{result}");
         assert!(result.get("edits").is_none(), "{result}");
         assert!(result.get("diagnostics").is_none(), "{result}");
     }
@@ -463,26 +457,20 @@ mod result_projection_tests {
     fn mutation_failure_retains_typed_failure_evidence_without_the_raw_snapshot() {
         let projected = project_mutation_envelope(
             result_envelope(
-                "mutation/status".to_string(),
+                "mutation/submit".to_string(),
                 json!({
-                    "operationId": "00000000-0000-0000-0000-000000000337",
-                    "idempotencyKey": "issue-337-failure",
-                    "mutationKind": "RENAME",
-                    "state": {
-                        "type": "FAILED",
-                        "trace": {"editApplicationState": "NOT_STARTED"},
-                        "cancellationRequested": false,
-                        "failure": {
-                            "type": "THROWN_FAILURE",
-                            "error": {
-                                "requestId": "request-337",
-                                "code": "MUTATION_BACKEND_FAILED",
-                                "message": "Backend unavailable",
-                                "retryable": true,
-                                "details": {
-                                    "backendName": "idea",
-                                    "operation": "rename"
-                                }
+                    "type": "FAILED",
+                    "deduplicated": true,
+                    "failure": {
+                        "type": "THROWN_FAILURE",
+                        "error": {
+                            "requestId": "request-337",
+                            "code": "MUTATION_BACKEND_FAILED",
+                            "message": "Backend unavailable",
+                            "retryable": true,
+                            "details": {
+                                "backendName": "idea",
+                                "operation": "rename"
                             }
                         }
                     }
@@ -492,26 +480,27 @@ mod result_projection_tests {
         );
         let result = projected.result.expect("mutation failure result");
 
-        assert_eq!(result["operation"]["state"], "FAILED");
+        assert_eq!(result["execution"]["outcome"], "FAILED");
+        assert_eq!(result["execution"]["deduplicated"], true);
         assert_eq!(
-            result["operation"]["failure"]["kind"],
+            result["execution"]["failure"]["kind"],
             "THROWN_FAILURE"
         );
         assert_eq!(
-            result["operation"]["failure"]["code"],
+            result["execution"]["failure"]["code"],
             "MUTATION_BACKEND_FAILED"
         );
-        assert_eq!(result["operation"]["failure"]["retryable"], true);
+        assert_eq!(result["execution"]["failure"]["retryable"], true);
         assert_eq!(
-            result["operation"]["failure"]["requestId"],
+            result["execution"]["failure"]["requestId"],
             "request-337"
         );
         assert_eq!(
-            result["operation"]["failure"]["details"]["backendName"],
+            result["execution"]["failure"]["details"]["backendName"],
             "idea"
         );
         assert_eq!(
-            result["operation"]["failure"]["details"]["operation"],
+            result["execution"]["failure"]["details"]["operation"],
             "rename"
         );
     }
@@ -520,33 +509,27 @@ mod result_projection_tests {
     fn applied_invalid_mutation_retains_edits_files_and_diagnostic_counts() {
         let projected = project_mutation_envelope(
             result_envelope(
-                "mutation/status".to_string(),
+                "mutation/submit".to_string(),
                 json!({
-                    "operationId": "00000000-0000-0000-0000-000000000338",
-                    "idempotencyKey": "issue-337-invalid",
-                    "mutationKind": "RENAME",
-                    "state": {
-                        "type": "FAILED",
-                        "trace": {"editApplicationState": "COMPLETED"},
-                        "cancellationRequested": false,
-                        "failure": {
-                            "type": "APPLIED_INVALID_RENAME",
-                            "response": {
-                                "editCount": 1,
-                                "affectedFiles": ["/workspace/App.kt"],
-                                "applyResult": {
-                                    "applied": [{
-                                        "filePath": "/workspace/App.kt",
-                                        "startOffset": 1,
-                                        "endOffset": 4,
-                                        "newText": "Renamed"
-                                    }],
-                                    "affectedFiles": ["/workspace/App.kt"]
-                                },
-                                "diagnostics": {
-                                    "errorCount": 2,
-                                    "warningCount": 1
-                                }
+                    "type": "FAILED",
+                    "deduplicated": false,
+                    "failure": {
+                        "type": "APPLIED_INVALID_RENAME",
+                        "response": {
+                            "editCount": 1,
+                            "affectedFiles": ["/workspace/App.kt"],
+                            "applyResult": {
+                                "applied": [{
+                                    "filePath": "/workspace/App.kt",
+                                    "startOffset": 1,
+                                    "endOffset": 4,
+                                    "newText": "Renamed"
+                                }],
+                                "affectedFiles": ["/workspace/App.kt"]
+                            },
+                            "diagnostics": {
+                                "errorCount": 2,
+                                "warningCount": 1
                             }
                         }
                     }

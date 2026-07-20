@@ -109,9 +109,6 @@ import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.validation.parsed
-import io.github.amichne.kast.api.contract.mutation.KastMutationProgressStage
-import io.github.amichne.kast.server.mutation.MutationProgressEvent
-import io.github.amichne.kast.server.mutation.MutationProgressReporter
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
@@ -754,16 +751,10 @@ internal class SkillRpcOrchestrator(
         )
     }
 
-    suspend fun rename(
-        request: KastRenameRequest,
-        progress: MutationProgressReporter = MutationProgressReporter.NONE,
-    ): KastRenameResponse {
-        progress.enter(KastMutationProgressStage.IDENTITY_RESOLUTION)
-        return when (request) {
-            is KastRenameBySymbolRequest -> renameBySymbol(request, progress)
-            is KastRenameByOffsetRequest -> renameByOffset(request, progress)
-            is KastRenameBySelectorHandleRequest -> renameBySelectorHandle(request, progress)
-        }
+    suspend fun rename(request: KastRenameRequest): KastRenameResponse = when (request) {
+        is KastRenameBySymbolRequest -> renameBySymbol(request)
+        is KastRenameByOffsetRequest -> renameByOffset(request)
+        is KastRenameBySelectorHandleRequest -> renameBySelectorHandle(request)
     }
 
     suspend fun writeAndValidate(request: KastWriteAndValidateRequest): KastWriteAndValidateResponse = when (request) {
@@ -772,10 +763,7 @@ internal class SkillRpcOrchestrator(
         is KastWriteAndValidateReplaceRangeRequest -> writeAndValidateReplace(request)
     }
 
-    suspend fun addFile(
-        request: KastAddFileRequest,
-        progress: MutationProgressReporter = MutationProgressReporter.NONE,
-    ): KastScopeMutationResponse {
+    suspend fun addFile(request: KastAddFileRequest): KastScopeMutationResponse {
         val filePath = request.targetFilePath.value
         return writeAndValidateCreate(
             KastWriteAndValidateCreateFileRequest(
@@ -783,7 +771,6 @@ internal class SkillRpcOrchestrator(
                 filePath = filePath,
                 contentFile = request.contentFilePath.value,
             ),
-            progress,
         ).toScopeMutationResponse(
             operation = request.operation,
             affectedFiles = listOf(filePath),
@@ -792,20 +779,11 @@ internal class SkillRpcOrchestrator(
         )
     }
 
-    suspend fun addDeclaration(
-        request: KastAddDeclarationRequest,
-        progress: MutationProgressReporter = MutationProgressReporter.NONE,
-    ): KastScopeMutationResponse = addPlacedContent(request, progress)
+    suspend fun addDeclaration(request: KastAddDeclarationRequest): KastScopeMutationResponse = addPlacedContent(request)
 
-    suspend fun addImplementation(
-        request: KastAddImplementationRequest,
-        progress: MutationProgressReporter = MutationProgressReporter.NONE,
-    ): KastScopeMutationResponse = addPlacedContent(request, progress)
+    suspend fun addImplementation(request: KastAddImplementationRequest): KastScopeMutationResponse = addPlacedContent(request)
 
-    suspend fun addStatement(
-        request: KastAddStatementRequest,
-        progress: MutationProgressReporter = MutationProgressReporter.NONE,
-    ): KastScopeMutationResponse {
+    suspend fun addStatement(request: KastAddStatementRequest): KastScopeMutationResponse {
         val placement = KastPlacementSelector(
             scope = KastNamedPlacementScope(
                 insideScope = request.requestedInsideScope.value,
@@ -819,25 +797,19 @@ internal class SkillRpcOrchestrator(
             placement = placement,
             contentFile = request.contentFilePath.value,
             statementBody = true,
-            progress = progress,
         )
     }
 
-    suspend fun replaceDeclaration(
-        request: KastReplaceDeclarationRequest,
-        progress: MutationProgressReporter = MutationProgressReporter.NONE,
-    ): KastScopeMutationResponse = when (request) {
-        is KastReplaceDeclarationBySymbolRequest -> replaceDeclarationBySymbol(request, progress)
-        is KastReplaceDeclarationBySelectorHandleRequest -> replaceDeclarationBySelectorHandle(request, progress)
+    suspend fun replaceDeclaration(request: KastReplaceDeclarationRequest): KastScopeMutationResponse = when (request) {
+        is KastReplaceDeclarationBySymbolRequest -> replaceDeclarationBySymbol(request)
+        is KastReplaceDeclarationBySelectorHandleRequest -> replaceDeclarationBySelectorHandle(request)
     }
 
     private suspend fun replaceDeclarationBySymbol(
         request: KastReplaceDeclarationBySymbolRequest,
-        progress: MutationProgressReporter,
     ): KastScopeMutationResponse {
         val workspaceRoot = workspaceRootFor(request.requestedWorkspaceRoot?.value)
         val symbol = request.requestedSymbol.value
-        progress.enter(KastMutationProgressStage.IDENTITY_RESOLUTION)
         val resolved = resolveNamedSymbol(
             symbolName = symbol,
             fileHint = request.fileHint,
@@ -857,16 +829,13 @@ internal class SkillRpcOrchestrator(
             subject = symbol,
             filePath = resolved.filePath,
             symbol = resolved.symbol,
-            progress = progress,
         )
     }
 
     private suspend fun replaceDeclarationBySelectorHandle(
         request: KastReplaceDeclarationBySelectorHandleRequest,
-        progress: MutationProgressReporter,
     ): KastScopeMutationResponse {
         val workspaceRoot = workspaceRootFor(request.requestedWorkspaceRoot?.value)
-        progress.enter(KastMutationProgressStage.IDENTITY_RESOLUTION)
         val selected = when (
             val selection = selectSelector(
                 explicitSelector = null,
@@ -914,7 +883,6 @@ internal class SkillRpcOrchestrator(
             subject = selector.fqName,
             filePath = selector.declarationFile,
             symbol = resolved,
-            progress = progress,
         )
     }
 
@@ -925,7 +893,6 @@ internal class SkillRpcOrchestrator(
         subject: String,
         filePath: String,
         symbol: Symbol,
-        progress: MutationProgressReporter,
     ): KastScopeMutationResponse {
         val declarationScope = symbol.declarationScope ?: return KastScopeMutationFailureResponse(
             operation = operation,
@@ -950,7 +917,6 @@ internal class SkillRpcOrchestrator(
                 startOffset = declarationScope.startOffset,
                 endOffset = declarationScope.endOffset,
             ),
-            progress = progress,
         )
         return response.toScopeMutationResponse(
             operation = operation,
@@ -959,10 +925,7 @@ internal class SkillRpcOrchestrator(
         )
     }
 
-    private suspend fun renameBySymbol(
-        request: KastRenameBySymbolRequest,
-        progress: MutationProgressReporter,
-    ): KastRenameResponse {
+    private suspend fun renameBySymbol(request: KastRenameBySymbolRequest): KastRenameResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
         val resolved = resolveNamedSymbol(
             symbolName = request.symbol,
@@ -1008,14 +971,10 @@ internal class SkillRpcOrchestrator(
                     newName = request.newName,
                 )
             },
-            progress = progress,
         )
     }
 
-    private suspend fun renameByOffset(
-        request: KastRenameByOffsetRequest,
-        progress: MutationProgressReporter,
-    ): KastRenameResponse {
+    private suspend fun renameByOffset(request: KastRenameByOffsetRequest): KastRenameResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
         val filePath = request.filePath.normalizedAbsolutePath()
         return performRename(
@@ -1038,14 +997,10 @@ internal class SkillRpcOrchestrator(
                     newName = request.newName,
                 )
             },
-            progress = progress,
         )
     }
 
-    private suspend fun renameBySelectorHandle(
-        request: KastRenameBySelectorHandleRequest,
-        progress: MutationProgressReporter,
-    ): KastRenameResponse {
+    private suspend fun renameBySelectorHandle(request: KastRenameBySelectorHandleRequest): KastRenameResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
         val selected = when (
             val selection = selectSelector(
@@ -1082,7 +1037,6 @@ internal class SkillRpcOrchestrator(
                     newName = request.newName,
                 )
             },
-            progress = progress,
         )
     }
 
@@ -1092,7 +1046,6 @@ internal class SkillRpcOrchestrator(
         newName: String,
         queryBuilder: () -> KastRenameQuery,
         failureQueryBuilder: () -> KastRenameFailureQuery,
-        progress: MutationProgressReporter,
     ): KastRenameResponse {
         requireMutationCapability(MutationCapability.RENAME)
         val renameResult = backend.rename(
@@ -1115,23 +1068,18 @@ internal class SkillRpcOrchestrator(
                 }
             },
         )
-        progress.awaitPathAdmission(renameResult.affectedFiles)
-        progress.enter(KastMutationProgressStage.EDIT_APPLICATION)
         val applyResult = backend.applyEdits(
             ApplyEditsQuery(
                 edits = renameResult.edits,
                 fileHashes = renameResult.fileHashes,
             ).parsed(),
         )
-        progress.editApplicationCompleted()
         currentCoroutineContext().ensureActive()
-        progress.enter(KastMutationProgressStage.WORKSPACE_REFRESH)
         val diagnosticsSummary = if (renameResult.affectedFiles.isEmpty()) {
             KastDiagnosticsSummary.completeWithoutFiles()
         } else {
             val admission = awaitSemanticAdmission(renameResult.affectedFiles)
             if (admission.clean) {
-                progress.enter(KastMutationProgressStage.DIAGNOSTICS)
                 validateFiles(renameResult.affectedFiles)
             } else {
                 admission
@@ -1150,7 +1098,6 @@ internal class SkillRpcOrchestrator(
 
     private suspend fun writeAndValidateCreate(
         request: KastWriteAndValidateCreateFileRequest,
-        progress: MutationProgressReporter = MutationProgressReporter.NONE,
     ): KastWriteAndValidateResponse {
         val workspaceRoot = workspaceRootFor(request.workspaceRoot)
         val filePath = request.filePath.normalizedAbsolutePath()
@@ -1164,8 +1111,6 @@ internal class SkillRpcOrchestrator(
                 MutationCapability.OPTIMIZE_IMPORTS,
             ),
         )
-        progress.awaitPathAdmission(listOf(filePath))
-        progress.enter(KastMutationProgressStage.EDIT_APPLICATION)
         val applyResult = backend.applyEdits(
             ApplyEditsQuery(
                 edits = emptyList(),
@@ -1173,9 +1118,7 @@ internal class SkillRpcOrchestrator(
                 fileOperations = listOf(FileOperation.CreateFile(filePath = filePath, content = content)),
             ).parsed(),
         )
-        progress.editApplicationCompleted()
         currentCoroutineContext().ensureActive()
-        progress.enter(KastMutationProgressStage.WORKSPACE_REFRESH)
         val admission = awaitSemanticAdmission(listOf(filePath))
         if (!admission.clean) {
             return KastWriteAndValidateSuccessResponse(
@@ -1190,9 +1133,7 @@ internal class SkillRpcOrchestrator(
                 logFile = placeholderLogFile(),
             )
         }
-        progress.enter(KastMutationProgressStage.IMPORT_OPTIMIZATION)
         val optimized = optimizeImports(filePath)
-        progress.enter(KastMutationProgressStage.DIAGNOSTICS)
         val diagnostics = validateFiles(listOf(filePath))
         return KastWriteAndValidateSuccessResponse(
             ok = diagnostics.clean,
@@ -1254,7 +1195,6 @@ internal class SkillRpcOrchestrator(
         filePath: String,
         edits: List<TextEdit>,
         query: KastWriteAndValidateQuery,
-        progress: MutationProgressReporter = MutationProgressReporter.NONE,
     ): KastWriteAndValidateResponse {
         requireCapabilities(
             readCapabilities = setOf(ReadCapability.DIAGNOSTICS),
@@ -1264,17 +1204,13 @@ internal class SkillRpcOrchestrator(
                 MutationCapability.OPTIMIZE_IMPORTS,
             ),
         )
-        progress.awaitPathAdmission(listOf(filePath))
-        progress.enter(KastMutationProgressStage.EDIT_APPLICATION)
         val applyResult = backend.applyEdits(
             ApplyEditsQuery(
                 edits = edits,
                 fileHashes = currentFileHashes(edits.map(TextEdit::filePath)),
             ).parsed(),
         )
-        progress.editApplicationCompleted()
         currentCoroutineContext().ensureActive()
-        progress.enter(KastMutationProgressStage.WORKSPACE_REFRESH)
         val admission = awaitSemanticAdmission(listOf(filePath))
         if (!admission.clean) {
             return KastWriteAndValidateSuccessResponse(
@@ -1286,9 +1222,7 @@ internal class SkillRpcOrchestrator(
                 logFile = placeholderLogFile(),
             )
         }
-        progress.enter(KastMutationProgressStage.IMPORT_OPTIMIZATION)
         val optimized = optimizeImports(filePath)
-        progress.enter(KastMutationProgressStage.DIAGNOSTICS)
         val diagnostics = validateFiles(listOf(filePath))
         return KastWriteAndValidateSuccessResponse(
             ok = diagnostics.clean,
@@ -1302,7 +1236,6 @@ internal class SkillRpcOrchestrator(
 
     private suspend fun addPlacedContent(
         request: KastPlacedScopeMutationRequest,
-        progress: MutationProgressReporter,
     ): KastScopeMutationResponse =
         addContentAtPlacement(
             operation = request.operation,
@@ -1310,7 +1243,6 @@ internal class SkillRpcOrchestrator(
             placement = request.placement,
             contentFile = request.contentFilePath.value,
             statementBody = false,
-            progress = progress,
         )
 
     private suspend fun addContentAtPlacement(
@@ -1319,10 +1251,8 @@ internal class SkillRpcOrchestrator(
         placement: KastPlacementSelector,
         contentFile: String,
         statementBody: Boolean,
-        progress: MutationProgressReporter,
     ): KastScopeMutationResponse {
         workspaceRootFor(workspaceRoot)
-        progress.enter(KastMutationProgressStage.IDENTITY_RESOLUTION)
         val resolvedPlacement = resolvePlacement(placement, statementBody)
         val content = resolveContent(null, contentFile)
         val response = applyEditsAndValidate(
@@ -1340,7 +1270,6 @@ internal class SkillRpcOrchestrator(
                 filePath = resolvedPlacement.filePath,
                 offset = resolvedPlacement.offset,
             ),
-            progress = progress,
         )
         return response.toScopeMutationResponse(
             operation = operation,
@@ -2439,14 +2368,6 @@ internal class SkillRpcOrchestrator(
         val reasons: List<String>,
     )
 
-}
-
-private fun MutationProgressReporter.enter(stage: KastMutationProgressStage) {
-    report(MutationProgressEvent.StageEntered(stage))
-}
-
-private fun MutationProgressReporter.editApplicationCompleted() {
-    report(MutationProgressEvent.EditApplicationCompleted)
 }
 
 private fun String.normalizedAbsolutePath(): String = Path.of(this).toAbsolutePath().normalize().toString()

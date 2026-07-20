@@ -36,7 +36,7 @@ The record may include:
 - the plugin and Kast versions and resolved binary path;
 - canonical workspace, Git, linked-worktree, and commit identity;
 - paths and SHA-256 fingerprints for relevant Kotlin files;
-- typed command outcomes, affected paths, operation IDs, and failures; and
+- typed command outcomes, affected paths, in-flight mutation keys, and failures; and
 - diagnostics evidence and explicitly reported blockers.
 
 The plugin does not use this state as a source-code mirror or source index.

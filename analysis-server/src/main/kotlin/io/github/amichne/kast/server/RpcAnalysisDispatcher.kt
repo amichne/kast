@@ -71,12 +71,10 @@ import kotlinx.serialization.json.JsonPrimitive
 import java.util.UUID
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.api.contract.skill.*
-import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSelector
-import io.github.amichne.kast.api.contract.mutation.KastMutationOperationSnapshot
-import io.github.amichne.kast.api.contract.mutation.KastMutationSubmissionReceipt
+import io.github.amichne.kast.api.contract.mutation.KastMutationExecutionResult
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
 import io.github.amichne.kast.api.contract.mutation.KastWorkspaceTaskId
-import io.github.amichne.kast.server.mutation.MutationOperationService
+import io.github.amichne.kast.server.mutation.MutationExecutionService
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.server.mutation.coordination.MutationFinishBarrierRequest
 import io.github.amichne.kast.server.mutation.coordination.MutationFinishBarrierResult
@@ -99,9 +97,7 @@ class RpcAnalysisDispatcher(
     },
 ) : Closeable {
     private val skillRpc = SkillRpcOrchestrator(backend, config, json)
-    private val mutationRpc = MutationOperationService(skillRpc, json) {
-        NormalizedPath.of(java.nio.file.Path.of(backend.capabilities().workspaceRoot))
-    }
+    private val mutationRpc = MutationExecutionService(skillRpc, json)
     private val workspaceFilesContinuation = WorkspaceFilesContinuationService(
         capacity = config.typedContinuationCapacity,
         timeToLive = config.typedContinuationTtl,
@@ -444,18 +440,8 @@ class RpcAnalysisDispatcher(
             )
 
             "mutation/submit" -> encode(
-                KastMutationSubmissionReceipt.serializer(),
+                KastMutationExecutionResult.serializer(),
                 mutationRpc.submit(decodeParams(KastSemanticMutation.serializer(), params)),
-            )
-
-            "mutation/status" -> encode(
-                KastMutationOperationSnapshot.serializer(),
-                mutationRpc.status(decodeParams(KastMutationOperationSelector.serializer(), params)),
-            )
-
-            "mutation/cancel" -> encode(
-                KastMutationOperationSnapshot.serializer(),
-                mutationRpc.cancel(decodeParams(KastMutationOperationSelector.serializer(), params)),
             )
 
             "mutation/finish-barrier/acquire" ->

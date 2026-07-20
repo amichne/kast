@@ -744,17 +744,20 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
         vec![(
             "mutation/submit",
             json!({
-                "operation": {
-                    "operationId": "00000000-0000-0000-0000-000000000392",
-                    "idempotencyKey": "issue-392-rename",
-                    "mutationKind": "RENAME",
-                    "state": {
-                        "type": "QUEUED",
-                        "trace": {
-                            "enteredStages": [],
-                            "editApplicationState": "NOT_STARTED"
+                "type": "SUCCEEDED",
+                "result": {
+                    "type": "RENAME_RESULT",
+                    "response": {
+                        "ok": true,
+                        "editCount": 0,
+                        "affectedFiles": [],
+                        "applyResult": {
+                            "applied": [],
+                            "affectedFiles": [],
+                            "createdFiles": [],
+                            "deletedFiles": []
                         },
-                        "cancellationRequested": false
+                        "diagnostics": {"errorCount": 0, "warningCount": 0}
                     }
                 },
                 "deduplicated": false
@@ -1009,7 +1012,15 @@ fn agent_scope_mutations_without_apply_return_typed_request_plans() {
             "{stdout}"
         );
         assert_eq!(
-            stdout["result"]["operation"]["state"], "PLANNED",
+            stdout["result"]["execution"]["outcome"],
+            format!(
+                "PLANNED_{}",
+                request_method
+                    .strip_prefix("symbol/")
+                    .unwrap()
+                    .replace('-', "_")
+                    .to_ascii_uppercase()
+            ),
             "{stdout}"
         );
         assert_eq!(
@@ -1064,10 +1075,9 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
     );
     let plan: Value = serde_json::from_slice(&plan.stdout).expect("replace plan json");
     assert_eq!(plan["result"]["type"], "KAST_AGENT_MUTATION_RESULT");
-    assert_eq!(plan["result"]["operation"]["state"], "PLANNED");
     assert_eq!(
-        plan["result"]["operation"]["mutationKind"],
-        "REPLACE_DECLARATION",
+        plan["result"]["execution"]["outcome"],
+        "PLANNED_REPLACE_DECLARATION",
     );
     assert_eq!(
         plan["result"]["plan"]["type"],
@@ -1112,17 +1122,14 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
         vec![(
             "mutation/submit",
             json!({
-                "operation": {
-                    "operationId": "00000000-0000-0000-0000-000000000393",
-                    "idempotencyKey": "issue-392-replace",
-                    "mutationKind": "REPLACE_DECLARATION",
-                    "state": {
-                        "type": "QUEUED",
-                        "trace": {
-                            "enteredStages": [],
-                            "editApplicationState": "NOT_STARTED"
-                        },
-                        "cancellationRequested": false
+                "type": "SUCCEEDED",
+                "result": {
+                    "type": "SCOPE_MUTATION_RESULT",
+                    "response": {
+                        "editCount": 0,
+                        "affectedFiles": [],
+                        "createdFiles": [],
+                        "diagnostics": {"errorCount": 0, "warningCount": 0}
                     }
                 },
                 "deduplicated": false

@@ -37,8 +37,8 @@ reference](agent-commands.md) for lifecycle and semantic contracts.
 | Event | Input purpose | Possible control effect |
 | --- | --- | --- |
 | `SessionStart` | Begin or recover the exact-root task | Adds the typed task receipt as context |
-| `PreToolUse` | Check task ownership and examine a proposed generic Kotlin mutation | Denies when task status is unavailable or the typed route has not produced safe fallback evidence |
-| `PostToolUse` | Record a typed mutation attempt and refresh task status | Adds current task evidence as context |
+| `PreToolUse` | Check task ownership and examine a proposed generic Kotlin mutation | Denies generic Kotlin writes; applied edits must use the typed synchronous route |
+| `PostToolUse` | Refresh task status after a tool call | Adds current task evidence as context |
 | `Stop` | Finish through the shared diagnostics and Gradle proof core | Continues the turn with the typed blocker when completion proof is missing |
 
 The launcher forwards standard input to one hidden Rust hook entrypoint. Rust
@@ -53,10 +53,10 @@ State is stored atomically with owner-only permissions at:
 $PLUGIN_DATA/sessions/<session-id>.json
 ```
 
-The provider record contains only its schema, session ID, exact workspace root,
-and typed mutation attempts with path-scoped fallback eligibility. Baselines,
-diagnostics, Gradle policy, task outcomes, reports, and final hashes belong to
-the shared task receipt, not provider state.
+The provider record contains only its schema, session ID, and exact workspace
+root. In-flight mutation identity, blockers, baselines, diagnostics, Gradle
+policy, task outcomes, reports, and final hashes belong to the shared task
+receipt, not provider state.
 
 Provider state is guardrail evidence. It is not a source index, task receipt,
 copy of the workspace, installation receipt, or remote synchronization store.

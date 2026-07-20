@@ -90,38 +90,28 @@ fn applied_mutation_requires_idempotency_key_before_runtime_discovery() {
 }
 
 #[test]
-fn operation_selector_requires_exactly_one_identity() {
+fn asynchronous_operation_commands_are_absent() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
 
-    for args in [
-        vec!["agent", "operation", "status"],
-        vec![
-            "agent",
-            "operation",
-            "cancel",
-            "--operation-id",
-            "00000000-0000-0000-0000-000000000001",
-            "--idempotency-key",
-            "issue-333",
-        ],
-    ] {
-        let output = kast(&home, &config_home)
-            .args(args)
-            .output()
-            .expect("operation selector parse");
-        assert!(!output.status.success(), "invalid selector must fail");
-        let diagnostic = format!(
-            "{}{}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr),
-        );
-        assert!(
-            diagnostic.contains("required") || diagnostic.contains("cannot be used"),
-            "{diagnostic}"
-        );
-    }
+    let output = kast(&home, &config_home)
+        .args(["agent", "operation", "status"])
+        .output()
+        .expect("removed operation command");
+    assert!(
+        !output.status.success(),
+        "removed operation command must fail"
+    );
+    let diagnostic = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        diagnostic.contains("unrecognized subcommand 'operation'"),
+        "{diagnostic}"
+    );
 }
 
 #[test]
@@ -170,7 +160,8 @@ fn applied_add_file_submits_typed_mutation_request() {
         &config_home,
         &workspace,
         &socket_path,
-        "mutation/submit",
+        Some(mutation_result(false)),
+        false,
     );
 
     let output = kast(&home, &config_home)
@@ -198,6 +189,9 @@ fn applied_add_file_submits_typed_mutation_request() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),
     );
+    let stdout: Value = serde_json::from_slice(&output.stdout).expect("terminal mutation result");
+    assert_eq!(stdout["result"]["execution"]["outcome"], "SUCCEEDED");
+    assert_eq!(stdout["result"]["execution"]["deduplicated"], false);
     let requests = backend.join().expect("backend");
     let submit = requests
         .iter()
@@ -220,65 +214,218 @@ fn applied_add_file_submits_typed_mutation_request() {
 }
 
 #[test]
-fn operation_status_and_cancel_preserve_typed_backend_snapshots() {
-    let cases = [
-        (
-            "status",
-            "mutation/status",
-            vec!["--operation-id", "00000000-0000-0000-0000-000000000001"],
-            "BY_OPERATION_ID",
-        ),
-        (
-            "cancel",
-            "mutation/cancel",
-            vec!["--idempotency-key", "issue-333-add-file"],
-            "BY_IDEMPOTENCY_KEY",
-        ),
-    ];
+fn lost_response_retries_same_key_on_same_runtime_with_deduplicated_result() {
+    let fixture = MutationFixture::new();
+    let socket_path = fixture.temp.path().join("idea.sock");
+    fixture.begin();
+    let lost = spawn_operation_backend(
+        &fixture.home,
+        &fixture.config_home,
+        &fixture.workspace,
+        &socket_path,
+        None,
+        false,
+    );
+    let first = fixture.apply("retry-key");
+    assert!(!first.status.success(), "lost response must fail locally");
+    lost.join().expect("lost response backend");
+    std::fs::remove_file(&socket_path).expect("stale socket");
 
-    for (command, method, selector_args, selector_type) in cases {
+    let retry = spawn_operation_backend(
+        &fixture.home,
+        &fixture.config_home,
+        &fixture.workspace,
+        &socket_path,
+        Some(mutation_result(true)),
+        false,
+    );
+    let second = fixture.apply("retry-key");
+    assert!(
+        second.status.success(),
+        "retry failed: {}",
+        String::from_utf8_lossy(&second.stdout)
+    );
+    let stdout: Value = serde_json::from_slice(&second.stdout).expect("retry result");
+    assert_eq!(stdout["result"]["execution"]["outcome"], "SUCCEEDED");
+    assert_eq!(stdout["result"]["execution"]["deduplicated"], true);
+    retry.join().expect("retry backend");
+}
+
+#[test]
+fn runtime_replacement_blocks_ambiguous_retry() {
+    let fixture = MutationFixture::new();
+    let first_socket = fixture.temp.path().join("idea-1.sock");
+    fixture.begin();
+    let lost = spawn_operation_backend(
+        &fixture.home,
+        &fixture.config_home,
+        &fixture.workspace,
+        &first_socket,
+        None,
+        false,
+    );
+    assert!(!fixture.apply("ambiguous-key").status.success());
+    lost.join().expect("lost response backend");
+
+    let replacement = spawn_operation_backend(
+        &fixture.home,
+        &fixture.config_home,
+        &fixture.workspace,
+        &fixture.temp.path().join("idea-2.sock"),
+        Some(mutation_result(true)),
+        false,
+    );
+    let retry = fixture.apply("ambiguous-key");
+    assert!(!retry.status.success(), "ambiguous retry must fail closed");
+    let stdout: Value = serde_json::from_slice(&retry.stdout).expect("ambiguity result");
+    assert_eq!(stdout["error"]["code"], "SEMANTIC_MUTATION_OUTCOME_MISSING");
+    assert!(fixture.task("abort").status.success());
+    assert!(fixture.task("begin").status.success());
+    drop(replacement);
+}
+
+#[test]
+fn terminal_failure_blocks_finish_until_abort_and_begin() {
+    let fixture = MutationFixture::new();
+    fixture.begin();
+    let backend = spawn_operation_backend(
+        &fixture.home,
+        &fixture.config_home,
+        &fixture.workspace,
+        &fixture.temp.path().join("idea.sock"),
+        Some(json!({
+            "type": "FAILED",
+            "failure": {
+                "type": "THROWN_FAILURE",
+                "error": {
+                    "requestId": "failure-request",
+                    "code": "SEMANTIC_EDIT_REJECTED",
+                    "message": "The edit was rejected.",
+                    "retryable": false,
+                    "details": {}
+                }
+            },
+            "deduplicated": false
+        })),
+        false,
+    );
+    let failed = fixture.apply("failure-key");
+    assert!(
+        !failed.status.success(),
+        "terminal failure must fail the command"
+    );
+    backend.join().expect("failure backend");
+
+    let finish = fixture.task("finish");
+    assert!(
+        !finish.status.success(),
+        "mutation failure must block finish"
+    );
+    let finish: Value = serde_json::from_slice(&finish.stdout).expect("finish blocker");
+    assert_eq!(finish["error"]["code"], "SEMANTIC_EDIT_REJECTED");
+    assert!(fixture.task("abort").status.success());
+    assert!(fixture.task("begin").status.success());
+}
+
+#[test]
+fn dependent_symbol_command_observes_the_completed_edit() {
+    let fixture = MutationFixture::new();
+    fixture.begin();
+    let backend = spawn_operation_backend(
+        &fixture.home,
+        &fixture.config_home,
+        &fixture.workspace,
+        &fixture.temp.path().join("idea.sock"),
+        Some(mutation_result(false)),
+        true,
+    );
+    assert!(fixture.apply("dependent-key").status.success());
+    let symbol = kast(&fixture.home, &fixture.config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "symbol",
+            "--query",
+            "Added",
+            "--workspace-root",
+        ])
+        .arg(&fixture.workspace)
+        .output()
+        .expect("dependent symbol command");
+    assert!(
+        symbol.status.success(),
+        "dependent symbol failed: {}",
+        String::from_utf8_lossy(&symbol.stdout)
+    );
+    let symbol: Value = serde_json::from_slice(&symbol.stdout).expect("symbol result");
+    assert_eq!(symbol["result"]["outcome"], "RESOLVED", "{symbol}");
+    assert_eq!(symbol["result"]["identity"]["fqName"], "sample.Added");
+    backend.join().expect("dependent backend");
+}
+
+struct MutationFixture {
+    temp: tempfile::TempDir,
+    home: std::path::PathBuf,
+    config_home: std::path::PathBuf,
+    workspace: std::path::PathBuf,
+    content_file: std::path::PathBuf,
+}
+
+impl MutationFixture {
+    fn new() -> Self {
         let temp = tempfile::tempdir().expect("tempdir");
         let home = temp.path().join("home");
         let config_home = temp.path().join("config");
         let workspace = temp.path().join("workspace");
-        let socket_path = temp.path().join("idea.sock");
+        let content_file = temp.path().join("Added.kt");
         std::fs::create_dir_all(&workspace).expect("workspace");
-        let backend =
-            spawn_operation_backend(&home, &config_home, &workspace, &socket_path, method);
-        let mut args = vec![
-            "--output",
-            "json",
-            "agent",
-            "operation",
-            command,
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ];
-        args.extend(selector_args);
+        std::fs::write(
+            workspace.join("settings.gradle.kts"),
+            "rootProject.name = \"mutation-fixture\"\n",
+        )
+        .expect("settings");
+        std::fs::write(&content_file, "class Added\n").expect("content");
+        write_current_cli_install_manifest_for_test(&home, &config_home);
+        Self {
+            temp,
+            home,
+            config_home,
+            workspace,
+            content_file,
+        }
+    }
 
-        let output = kast(&home, &config_home)
-            .args(args)
-            .output()
-            .expect("operation command");
-
+    fn begin(&self) {
+        let begin = self.task("begin");
         assert!(
-            output.status.success(),
-            "{command} should succeed: stdout={}, stderr={}",
-            String::from_utf8_lossy(&output.stdout),
-            String::from_utf8_lossy(&output.stderr),
+            begin.status.success(),
+            "begin failed: {}",
+            String::from_utf8_lossy(&begin.stdout)
         );
-        let stdout: Value = serde_json::from_slice(&output.stdout).expect("operation output");
-        assert_eq!(
-            stdout["result"]["operation"]["operationId"],
-            "00000000-0000-0000-0000-000000000001"
-        );
-        assert_eq!(stdout["result"]["operation"]["state"], "QUEUED");
-        let requests = backend.join().expect("backend");
-        let terminal = requests
-            .iter()
-            .find(|request| request["method"] == method)
-            .expect("operation request");
-        assert_eq!(terminal["params"]["type"], selector_type, "{terminal}");
+    }
+
+    fn task(&self, operation: &str) -> std::process::Output {
+        kast(&self.home, &self.config_home)
+            .args(["--output", "json", "agent", "task", operation])
+            .arg("--workspace-root")
+            .arg(&self.workspace)
+            .output()
+            .expect("task command")
+    }
+
+    fn apply(&self, key: &str) -> std::process::Output {
+        kast(&self.home, &self.config_home)
+            .args(["--output", "json", "agent", "add-file"])
+            .arg("--workspace-root")
+            .arg(&self.workspace)
+            .arg("--file-path")
+            .arg(self.workspace.join("src/Added.kt"))
+            .arg("--content-file")
+            .arg(&self.content_file)
+            .args(["--apply", "--idempotency-key", key])
+            .output()
+            .expect("apply mutation")
     }
 }
 
@@ -287,7 +434,8 @@ fn spawn_operation_backend(
     config_home: &std::path::Path,
     workspace: &std::path::Path,
     socket_path: &std::path::Path,
-    terminal_method: &'static str,
+    terminal_result: Option<Value>,
+    dependent_symbol: bool,
 ) -> std::thread::JoinHandle<Vec<Value>> {
     let descriptor_dir = default_descriptor_dir(home);
     std::fs::create_dir_all(config_home).expect("config home");
@@ -320,10 +468,14 @@ fn spawn_operation_backend(
     let workspace = workspace.to_path_buf();
     std::thread::spawn(move || {
         let mut requests = Vec::new();
-        while requests
-            .iter()
-            .all(|request: &Value| request["method"] != terminal_method)
-        {
+        while requests.iter().all(|request: &Value| {
+            request["method"]
+                != if dependent_symbol {
+                    "symbol/resolve"
+                } else {
+                    "mutation/submit"
+                }
+        }) {
             let (mut stream, _) = listener.accept().expect("accept client");
             let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
             let mut line = String::new();
@@ -354,8 +506,42 @@ fn spawn_operation_backend(
                     },
                     "schemaVersion": 3
                 }),
-                "mutation/submit" => mutation_snapshot(true),
-                "mutation/status" | "mutation/cancel" => mutation_snapshot(false),
+                "mutation/submit" => match terminal_result.as_ref() {
+                    Some(result) => {
+                        let added = workspace.join("src/Added.kt");
+                        std::fs::create_dir_all(added.parent().expect("source parent"))
+                            .expect("source directory");
+                        std::fs::write(&added, "package sample\nclass Added\n")
+                            .expect("applied edit");
+                        result.clone()
+                    }
+                    None => {
+                        let added = workspace.join("src/Added.kt");
+                        std::fs::create_dir_all(added.parent().expect("source parent"))
+                            .expect("source directory");
+                        std::fs::write(&added, "package sample\nclass Added\n")
+                            .expect("server-owned edit");
+                        requests.push(request);
+                        return requests;
+                    }
+                },
+                "symbol/resolve" => json!({
+                    "type": "RESOLVE_SUCCESS",
+                    "ok": true,
+                    "source": "compiler",
+                    "symbol": {
+                        "fqName": "sample.Added",
+                        "kind": "CLASS",
+                        "location": {
+                            "filePath": workspace.join("src/Added.kt").display().to_string(),
+                            "startOffset": 21,
+                            "endOffset": 26,
+                            "startLine": 2,
+                            "startColumn": 7,
+                            "preview": "class Added"
+                        }
+                    }
+                }),
                 other => panic!("unexpected method {other}"),
             };
             requests.push(request.clone());
@@ -370,16 +556,18 @@ fn spawn_operation_backend(
     })
 }
 
-fn mutation_snapshot(receipt: bool) -> Value {
-    let operation = json!({
-        "operationId": "00000000-0000-0000-0000-000000000001",
-        "idempotencyKey": "issue-333-add-file",
-        "mutationKind": "ADD_FILE",
-        "state": {"type": "QUEUED", "trace": {"enteredStages": [], "editApplicationState": "NOT_STARTED"}, "cancellationRequested": false}
-    });
-    if receipt {
-        json!({"operation": operation, "deduplicated": false})
-    } else {
-        operation
-    }
+fn mutation_result(deduplicated: bool) -> Value {
+    json!({
+        "type": "SUCCEEDED",
+        "result": {
+            "type": "SCOPE_MUTATION_RESULT",
+            "response": {
+                "editCount": 0,
+                "affectedFiles": [],
+                "createdFiles": [],
+                "diagnostics": {"errorCount": 0, "warningCount": 0}
+            }
+        },
+        "deduplicated": deduplicated
+    })
 }

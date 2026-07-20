@@ -96,6 +96,13 @@ struct AgentTaskFinishExecutor {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct AgentTaskInFlightMutation {
+    idempotency_key: String,
+    runtime_identity: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct AgentTaskBlocker {
     pub(crate) code: String,
     pub(crate) message: String,
@@ -104,7 +111,7 @@ pub(crate) struct AgentTaskBlocker {
 }
 
 impl AgentTaskBlocker {
-    fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
+    pub(crate) fn new(code: impl Into<String>, message: impl Into<String>) -> Self {
         Self {
             code: code.into(),
             message: message.into(),
@@ -112,7 +119,7 @@ impl AgentTaskBlocker {
         }
     }
 
-    fn detail(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
+    pub(crate) fn detail(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.details.insert(key.into(), value.into());
         self
     }
@@ -132,6 +139,8 @@ pub(crate) struct AgentTaskReceipt {
     baseline_sha256: String,
     current_sha256: String,
     pub(crate) blockers: Vec<AgentTaskBlocker>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    in_flight_mutation: Option<AgentTaskInFlightMutation>,
     #[serde(skip_serializing_if = "Option::is_none")]
     finish_executor: Option<AgentTaskFinishExecutor>,
     started_at: String,
@@ -468,6 +477,7 @@ fn begin_agent_task_core(workspace_root: PathBuf) -> Result<AgentTaskExecution> 
             baseline_sha256: baseline.sha256.clone(),
             current_sha256: baseline.sha256,
             blockers: Vec::new(),
+            in_flight_mutation: None,
             finish_executor: None,
             started_at: now.clone(),
             updated_at: now,
@@ -638,6 +648,7 @@ fn repair_legacy_agent_task_receipt(
         baseline_sha256: current.sha256.clone(),
         current_sha256: current.sha256,
         blockers: Vec::new(),
+        in_flight_mutation: None,
         finish_executor: None,
         started_at: object
             .get("startedAt")
@@ -675,6 +686,7 @@ fn abort_agent_task_core(workspace_root: PathBuf) -> Result<AgentTaskExecution> 
         receipt.current_sha256 = capture_agent_task_snapshot(&workspace_root)?.sha256;
         receipt.state = AgentTaskState::Aborted;
         receipt.blockers.clear();
+        receipt.in_flight_mutation = None;
         receipt.finish_executor = None;
         let now = crate::manifest::current_timestamp();
         receipt.updated_at = now.clone();
@@ -704,6 +716,22 @@ fn finish_agent_task_core(workspace_root: PathBuf) -> Result<AgentTaskExecution>
                 "AGENT_TASK_ABORTED",
                 "An aborted task cannot claim completion; begin a new task.",
             ));
+        }
+        if receipt.in_flight_mutation.is_some() {
+            return Err(CliError::new(
+                "SEMANTIC_MUTATION_IN_FLIGHT",
+                "Retry the in-flight mutation with the same idempotency key before finishing the task.",
+            ));
+        }
+        if receipt.state == AgentTaskState::Blocked
+            && receipt.blockers.iter().any(|blocker| {
+                blocker.details.get("source").map(String::as_str) == Some("semanticMutation")
+            })
+        {
+            return Ok(AgentTaskFinishStart::Existing(AgentTaskExecution {
+                receipt,
+                ok: false,
+            }));
         }
         if matches!(receipt.state, AgentTaskState::Draining | AgentTaskState::Validating) {
             return Ok(AgentTaskFinishStart::Existing(AgentTaskExecution {
@@ -969,6 +997,7 @@ fn persist_blocked_agent_task(
 ) -> Result<AgentTaskExecution> {
     receipt.state = AgentTaskState::Blocked;
     receipt.blockers = blockers;
+    receipt.in_flight_mutation = None;
     receipt.finish_executor = None;
     receipt.finished_at = None;
     receipt.updated_at = crate::manifest::current_timestamp();
@@ -1053,7 +1082,20 @@ pub(crate) fn agent_task_id_for_mutation(workspace_root: Option<PathBuf>) -> Res
     })?;
     require_agent_task_generation(&receipt, &agent_task_effective_generation()?)?;
     match receipt.state {
-        AgentTaskState::Active | AgentTaskState::Blocked => Ok(receipt.task_id),
+        AgentTaskState::Active => Ok(receipt.task_id),
+        AgentTaskState::Blocked => {
+            let blocker = receipt
+                .blockers
+                .into_iter()
+                .next()
+                .expect("blocked task has blocker");
+            let mut error = CliError::new("AGENT_TASK_BLOCKED", blocker.message);
+            error
+                .details
+                .insert("blockerCode".to_string(), blocker.code);
+            error.details = blocker.details;
+            Err(error)
+        }
         AgentTaskState::Draining | AgentTaskState::Validating => Err(CliError::new(
             "TASK_FINISH_IN_PROGRESS",
             "The shared workspace task is finishing; retry the mutation after it completes or reopens.",
@@ -1063,6 +1105,97 @@ pub(crate) fn agent_task_id_for_mutation(workspace_root: Option<PathBuf>) -> Res
             "The shared workspace task is closed; run task begin before applying a mutation.",
         )),
     }
+}
+
+pub(crate) fn prepare_agent_task_mutation(
+    workspace_root: Option<PathBuf>,
+    idempotency_key: &str,
+    runtime_identity: &str,
+) -> Result<()> {
+    let workspace_root = match workspace_root {
+        Some(declared) => validate_agent_task_workspace(&declared)?,
+        None => resolve_agent_task_start_path(&std::env::current_dir()?)?,
+    };
+    let paths = AgentTaskPaths::resolve(&workspace_root)?;
+    with_agent_task_lock(&paths, || {
+        let mut receipt = required_agent_task_receipt(&paths.receipt, &workspace_root)?;
+        require_agent_task_generation(&receipt, &agent_task_effective_generation()?)?;
+        if receipt.state != AgentTaskState::Active {
+            return Err(CliError::new(
+                "AGENT_TASK_MUTATION_REJECTED",
+                "The current task does not admit semantic mutations.",
+            ));
+        }
+        match &receipt.in_flight_mutation {
+            Some(in_flight)
+                if in_flight.idempotency_key == idempotency_key
+                    && in_flight.runtime_identity == runtime_identity =>
+            {
+                Ok(())
+            }
+            Some(in_flight) if in_flight.idempotency_key == idempotency_key => {
+                let blocker = AgentTaskBlocker::new(
+                    "SEMANTIC_MUTATION_OUTCOME_MISSING",
+                    "The runtime changed before the in-flight mutation outcome was observed; abort and begin a new task.",
+                )
+                .detail("idempotencyKey", idempotency_key)
+                .detail("source", "semanticMutation")
+                .detail("expectedRuntimeIdentity", in_flight.runtime_identity.clone())
+                .detail("actualRuntimeIdentity", runtime_identity);
+                persist_blocked_agent_task(&paths, receipt, vec![blocker.clone()])?;
+                let mut error = CliError::new(
+                    "SEMANTIC_MUTATION_OUTCOME_MISSING",
+                    blocker.message,
+                );
+                error.details = blocker.details;
+                Err(error)
+            }
+            Some(_) => Err(CliError::new(
+                "SEMANTIC_MUTATION_IN_FLIGHT",
+                "Retry the in-flight mutation with its original idempotency key.",
+            )),
+            None => {
+                receipt.in_flight_mutation = Some(AgentTaskInFlightMutation {
+                    idempotency_key: idempotency_key.to_string(),
+                    runtime_identity: runtime_identity.to_string(),
+                });
+                receipt.updated_at = crate::manifest::current_timestamp();
+                write_agent_task_receipt(&paths.receipt, &receipt)
+            }
+        }
+    })
+}
+
+pub(crate) fn complete_agent_task_mutation(
+    workspace_root: Option<PathBuf>,
+    idempotency_key: &str,
+    failure: Option<AgentTaskBlocker>,
+) -> Result<()> {
+    let workspace_root = match workspace_root {
+        Some(declared) => validate_agent_task_workspace(&declared)?,
+        None => resolve_agent_task_start_path(&std::env::current_dir()?)?,
+    };
+    let paths = AgentTaskPaths::resolve(&workspace_root)?;
+    with_agent_task_lock(&paths, || {
+        let mut receipt = required_agent_task_receipt(&paths.receipt, &workspace_root)?;
+        if receipt
+            .in_flight_mutation
+            .as_ref()
+            .is_none_or(|mutation| mutation.idempotency_key != idempotency_key)
+        {
+            return Err(CliError::new(
+                "SEMANTIC_MUTATION_OUTCOME_MISSING",
+                "The terminal result did not match the persisted in-flight mutation.",
+            ));
+        }
+        receipt.in_flight_mutation = None;
+        if let Some(blocker) = failure {
+            persist_blocked_agent_task(&paths, receipt, vec![blocker]).map(|_| ())
+        } else {
+            receipt.updated_at = crate::manifest::current_timestamp();
+            write_agent_task_receipt(&paths.receipt, &receipt)
+        }
+    })
 }
 
 pub(crate) fn resolve_agent_task_start_path(start: &Path) -> Result<PathBuf> {

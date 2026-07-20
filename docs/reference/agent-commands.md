@@ -25,8 +25,7 @@ names.
 | Check a touched file | Diagnostics | Confirms the backend sees the same source state |
 | Rename safely | Identity-first rename planning | Surfaces target identity, conflicts, and write set before mutation |
 | Add or replace Kotlin | Plan-first mutations | Places content using a typed file, scope, or declaration target |
-| Recover an interrupted edit | Mutation operation status | Retrieves retained progress and terminal results after disconnects |
-| Stop an in-flight edit | Typed operation cancellation | Requests cooperative cancellation without inventing a rollback |
+| Recover an interrupted edit | Same-key retry | Joins or retrieves the terminal result from the same runtime |
 | Serve editor integrations | LSP bridge | Lets editors reuse the same backend |
 
 ## Task Lifecycle
@@ -267,8 +266,8 @@ Agent results are compact by default. Symbol results retain identity, location,
 lookup mode, ambiguity, and only the relationships the command requested.
 Diagnostics retain semantic completeness, exact full-set severity/cardinality,
 and a bounded actionable page with explicit message/preview truncation flags.
-Mutation results retain operation and edit-application state, changed files and
-edits when available, diagnostic counts, and failure or cancellation evidence.
+Mutation results retain the terminal result, deduplication evidence, changed
+files and edits when available, diagnostic counts, and typed failure evidence.
 Verification retains backend, runtime, and capability evidence. Raw
 request/response and multi-step envelopes are not part of the default result.
 Impact retains its query, bounded source paths, confidence summary, and explicit
@@ -289,7 +288,7 @@ aggregates with `--count`:
 | `symbol` | `identity,location,mode,outcome,source,ambiguity,relationships` | result, candidate, and exact-or-known-minimum relationship cardinality |
 | `impact` | `query,summary,nodes,confidence` | total, returned, and truncated node counts |
 | `diagnostics` | `analysis,diagnostics,severity-counts` | analyzed/skipped, exact severity counts, and cardinality |
-| mutations and `operation` | `operation,state,edits,files,diagnostics` | lifecycle state and edit/file/diagnostic counts |
+| mutations | `result,edits,files,diagnostics` | terminal result and edit/file/diagnostic counts |
 
 Unknown or cross-family fields fail during argument parsing. `--fields` and
 `--count` cannot be combined with each other or with a detailed view.
@@ -310,12 +309,11 @@ kast --output toon agent diagnostics \
 Agent edits are plan-first. Kast reports the selected target, planned write set,
 diagnostics, and conflicts before any write. The agent applies the operation
 only after the plan matches the requested change. Every applied mutation
-requires `--idempotency-key <stable-key>` and returns one stable operation ID.
-Repeating the same key and request retrieves the same operation; binding the key
-to another request fails before mutation.
-
-Operation state is retained for the lifetime of the backend daemon. Retention
-does not survive a daemon restart.
+requires `--idempotency-key <stable-key>` and waits for one terminal result.
+Repeating the same key and request against the same runtime joins active work or
+retrieves the cached terminal result; binding the key to another request fails
+before mutation. If the runtime changes before a terminal response is observed,
+Kast blocks the task instead of replaying the edit.
 
 On macOS, every applied public mutation requires valid plugin preparation for
 the exact root. The read-only unprepared/headless route cannot authorize
@@ -398,8 +396,6 @@ cardinality only.
     - `kast agent add-implementation`
     - `kast agent add-statement`
     - `kast agent replace-declaration`
-    - `kast agent operation status`
-    - `kast agent operation cancel`
     - `kast agent lsp`
 
 ??? info "Example agent execution"
@@ -432,9 +428,6 @@ cardinality only.
       --symbol com.example.OrderService \
       --new-name Orders \
       --apply \
-      --idempotency-key rename-order-service \
-      --workspace-root "$PWD"
-    kast agent operation status \
       --idempotency-key rename-order-service \
       --workspace-root "$PWD"
     kast agent lease release --workspace-root "$PWD" --lease-id <id>

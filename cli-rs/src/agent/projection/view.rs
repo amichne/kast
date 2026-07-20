@@ -81,11 +81,6 @@ impl AgentProjectionRequest {
             AgentCommand::ReplaceDeclaration(args) => {
                 Self::Mutation(mutation_result_view(&args.mutation.view))
             }
-            AgentCommand::Operation(args) => match &args.command {
-                AgentOperationCommand::Status(args) | AgentOperationCommand::Cancel(args) => {
-                    Self::Mutation(mutation_result_view(&args.view))
-                }
-            },
             AgentCommand::Callers(_)
             | AgentCommand::Callees(_)
             | AgentCommand::Implementations(_)

@@ -4,8 +4,6 @@ categories:
   - database/metrics
   mutation:
   - mutation/submit
-  - mutation/status
-  - mutation/cancel
   raw:
   - raw/resolve
   - raw/references
@@ -141,62 +139,6 @@ commands:
       fields: {}
     responseType: HealthResponse
     summary: Basic health check
-  mutation/cancel:
-    category: mutation
-    dataSource: backend
-    method: mutation/cancel
-    request:
-      fields:
-        type:
-          enum:
-          - BY_OPERATION_ID
-          - BY_IDEMPOTENCY_KEY
-          type: string
-      required:
-      - type
-    responseType: KastMutationOperationSnapshot
-    summary: Request cooperative cancellation and retrieve the latest semantic mutation state
-    variants:
-      BY_IDEMPOTENCY_KEY:
-        fields:
-          idempotencyKey:
-            type: string
-        required:
-        - idempotencyKey
-      BY_OPERATION_ID:
-        fields:
-          operationId:
-            type: string
-        required:
-        - operationId
-  mutation/status:
-    category: mutation
-    dataSource: backend
-    method: mutation/status
-    request:
-      fields:
-        type:
-          enum:
-          - BY_OPERATION_ID
-          - BY_IDEMPOTENCY_KEY
-          type: string
-      required:
-      - type
-    responseType: KastMutationOperationSnapshot
-    summary: Retrieve retained semantic mutation state by operation identity or idempotency key
-    variants:
-      BY_IDEMPOTENCY_KEY:
-        fields:
-          idempotencyKey:
-            type: string
-        required:
-        - idempotencyKey
-      BY_OPERATION_ID:
-        fields:
-          operationId:
-            type: string
-        required:
-        - operationId
   mutation/submit:
     category: mutation
     dataSource: backend
@@ -219,8 +161,8 @@ commands:
       required:
       - type
       - workspaceTaskId
-    responseType: KastMutationSubmissionReceipt
-    summary: Submit an idempotent semantic mutation and return its stable operation identity
+    responseType: KastMutationExecutionResult
+    summary: Execute an idempotent semantic mutation and return its terminal result
     variants:
       ADD_DECLARATION:
         fields:

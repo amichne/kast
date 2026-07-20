@@ -8,8 +8,8 @@ strict workflow policy schema, and Gradle receipt adapter for `kast agent task`.
   parsing either.
 - `kast-agent-task` is not a singleton and owns no lock. Multiple invocations,
   sessions, installations, and exact workspaces may run concurrently; only
-  overlapping mutation scopes and an explicit finish barrier coordinate
-  execution.
+  the serialized runtime mutation lane and explicit finish barrier coordinate
+  execution within one workspace.
 - `workflow.schema.json` describes `.kast/workflow.toml` after TOML decoding.
   Keep it strict, versioned, and aligned with the typed Rust policy model.
 - `guidance.md` owns the compact lifecycle wording embedded by setup and

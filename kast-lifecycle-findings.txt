@@ -1,0 +1,12 @@
+[P0] Task `finish` returned `COMPLETE` with no blockers while the requested declarations were absent, diagnostics proved the touched file was empty, and accepted semantic mutation operations had not reported terminal outcomes.
+  Effect: Agents cannot use `COMPLETE` as sufficient proof that requested semantic mutations took effect, so absent changes can be handed off as successfully validated.
+[P0] An applied `add-file` accepted `/dev/stdin` content, completed with one edit, and produced a zero-byte file whose diagnostic hash was SHA-256 `e3b0c442…b855` instead of the supplied Kotlin source.
+  Effect: Agents using ephemeral content sources can silently create empty files while receiving a successful completion result, making mutating workflows unsafe without independent content verification.
+[P1] Applied `add-declaration`, `add-implementation`, `add-statement`, and `replace-declaration` submissions returned `ok: true` in `QUEUED` state with zero edits and zero files, so submission output did not expose their eventual effect.
+  Effect: Agents must poll every submitted operation to a terminal state before interpreting `ok: true`, increasing command count and making one-shot mutation calls unreliable.
+[P1] Immediate exact symbol lookup after those successful mutation submissions returned compiler-backed `NOT_FOUND`, demonstrating that back-to-back mutating commands have no observable causal ordering without explicit operation polling.
+  Effect: Agents cannot safely compose dependent semantic commands without synchronization, so otherwise valid scripted workflows can race and fail target resolution.
+[P1] `kast agent` reported READY while workspace discovery exposed zero indexed Gradle projects, unavailable source sets, unknown index/drift evidence, and `SOURCE_INDEX_INCOMPATIBLE` across a known minimum of 1,125 Kotlin files.
+  Effect: Agents cannot treat READY as assurance that workspace discovery and index-backed routing are usable, forcing them to inspect limitations before relying on semantic coverage.
+[P2] Command help presents `--verbose` and `--explain` as independent options, but using both returns `CLI_USAGE` because their undocumented mutual exclusion is enforced only by the parser.
+  Effect: Agents following scoped help can issue an avoidable failing command and cannot request complete envelopes and explanatory evidence together.
