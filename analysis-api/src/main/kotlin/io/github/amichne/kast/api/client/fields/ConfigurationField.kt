@@ -35,6 +35,7 @@ sealed class ConfigurationField<T> {
             ProfilingOtlpEndpoint(OptionalConfigString.Unset),
             ProfilingEmitManifest(true),
             RuntimeDefaultBackend("auto"),
+            RuntimeStrictPluginMatching(true),
             IdeaLaunchEnabled(false),
             IdeaLaunchCommand("idea"),
             IdeaLaunchWaitTimeoutMillis(90_000L),

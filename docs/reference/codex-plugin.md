@@ -1,21 +1,51 @@
-# Codex Plugin
+---
+type: API Contract
+title: Codex Plugin Reference
+description: The installed kast@kast surface, lifecycle, settings, and boundaries.
+tags: [codex, reference, hooks]
+code_sources:
+  - path: cli-rs/resources/codex-plugin/plugins/kast/.codex-plugin/plugin.json
+  - path: cli-rs/resources/codex-plugin/plugins/kast/hooks/hooks.json
+  - path: cli-rs/src/codex/exposure.rs
+  - path: cli-rs/src/codex/hook.rs
+---
 
-The `kast@kast` Codex plugin teaches compiler-backed `kast agent` commands and installs two default-discovered advisory hooks through one local launcher.
+# Codex Plugin Reference
 
-- `SessionStart` on `startup` asks Kast to open the exact `cwd` with its configured IntelliJ IDEA or Android Studio fallback. Missing, outdated, or unhealthy tooling is reported as context.
-- `PostToolUse` after a successful `apply_patch`, `Edit`, or `Write` checks exact-root IDEA status. When healthy, it runs a separate diagnostics request for every `.kt` and `.kts` path from that tool input.
+`kast@kast` is the sole agent-facing component in the macOS workstation bundle.
+It contains one routing skill, two advisory hooks, generated command metadata,
+and a launcher for the selected Kast binary.
 
-Hook failures never deny an edit or stop a turn. The plugin does not persist session state, baselines, changed-file ledgers, or diagnostics evidence. Repeated qualifying writes may run diagnostics again.
+## Installed components
 
-The IntelliJ Kast settings page controls the hooks globally. The same values can be edited in the global Kast config:
+| Component | Contract |
+| --- | --- |
+| Routing skill | Exposes compiler-backed inspection, relationships, impact, diagnostics, and plan-first Kotlin mutations to Codex. |
+| `SessionStart` hook | Requests the configured IDEA application for the task's exact root and reports launch failures as context. |
+| `PostToolUse` hook | Requests diagnostics after successful Kotlin writes when the exact-root IDEA runtime is healthy. |
+| Launcher | Resolves the selected Kast binary and forwards the hook event without maintaining its own state. |
 
-```toml
-[codex.hooks]
-enabled = true
-sessionStart = true
-postToolUse = true
-```
+The plugin contains no MCP server, app connector, independent semantic
+protocol, or global Kast skill.
 
-The master switch disables both hooks; each event switch can also be disabled independently. All three default to `true`.
+## Hook settings
 
-Mutations are plan-first and synchronous: Kast applies the edit, runs diagnostics for the resulting contents, and returns exit code 0 only for a green terminal result. Failures expose a compact structured code, message, and actionable details.
+The IntelliJ Kast settings page controls the hooks globally. Both hooks are
+enabled by default. The master switch disables both; each event can also be
+disabled independently.
+
+## Runtime boundary
+
+IDEA owns compiler state and workspace indexing. The plugin uses only the exact
+root supplied by the Codex task. Another clone or linked worktree is not a
+compatible substitute.
+
+Hooks are advisory. Typed semantic mutations remain plan-first and return only
+after the resulting diagnostics reach a terminal outcome.
+
+## Release identity
+
+The installer selects CLI, IDEA plugin, and Codex plugin artifacts from one
+release. The IDEA update feed can discover a newer plugin independently, but
+runtime compatibility—not matching display text—decides whether a pair may
+operate. Rerunning the installer restores the matched generation.

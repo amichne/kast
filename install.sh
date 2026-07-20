@@ -14,7 +14,7 @@ Usage:
 macOS-only Kast developer-machine installer.
 
 Commands:
-  install   Install one release-matched CLI, IDEA plugin, and agent-resource bundle.
+  install   Install one release-matched CLI, IDEA plugin, and Codex plugin bundle.
   update    Replace that bundle with the latest Homebrew release.
   verify    Run typed CLI/plugin/workspace admission against the IDEA backend.
 
@@ -166,14 +166,14 @@ print_mutation_plan() {
       log_note "  - tap Homebrew repository ${tap_target}"
       log_note "  - install the Homebrew formula kast"
       log_note "  - download the release-matched IDEA plugin"
-      log_note "  - activate and reconcile one processless machine bundle"
+      log_note "  - activate and reconcile one processless CLI, IDEA, and Codex bundle"
       ;;
     update)
       log_note "  - tap Homebrew repository ${tap_target}"
       log_note "  - run brew update"
       log_note "  - upgrade or reinstall the Homebrew formula kast"
       log_note "  - download the release-matched IDEA plugin"
-      log_note "  - activate and reconcile one processless machine bundle"
+      log_note "  - activate and reconcile one processless CLI, IDEA, and Codex bundle"
       ;;
     *)
       die "No mutation plan for command: ${command_name}"

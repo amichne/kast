@@ -70,6 +70,19 @@ class KastConfigTest {
     }
 
     @Test
+    fun `strict plugin matching defaults enabled and parses runtime config`() {
+        tempDir.resolve("config.toml").writeText(
+            """
+                [runtime]
+                strictPluginMatching = false
+            """.trimIndent(),
+        )
+
+        assertTrue(KastConfig.defaults().runtime.strictPluginMatching.value)
+        assertEquals(false, KastConfig.loadGlobal(configHome = { tempDir }).runtime.strictPluginMatching.value)
+    }
+
+    @Test
     fun `defaults expose project open field defaults`() {
         val config = KastConfig.defaults()
 
@@ -172,6 +185,7 @@ class KastConfigTest {
             "profiling" to "otlpEndpoint",
             "profiling" to "emitManifest",
             "runtime" to "defaultBackend",
+            "runtime" to "strictPluginMatching",
             "runtime.ideaLaunch" to "enabled",
             "runtime.ideaLaunch" to "command",
             "runtime.ideaLaunch" to "waitTimeoutMillis",

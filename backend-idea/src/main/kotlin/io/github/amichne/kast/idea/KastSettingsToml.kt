@@ -8,6 +8,7 @@ internal fun KastSettingsState.toWorkspaceToml(defaults: KastConfig = KastConfig
             tomlSection(
                 "runtime",
                 "defaultBackend" to runtimeDefaultBackend.changedFrom(defaults.runtime.defaultBackend.value),
+                "strictPluginMatching" to runtimeStrictPluginMatching.changedFrom(defaults.runtime.strictPluginMatching.value),
             ),
         )
         add(
@@ -87,6 +88,7 @@ private fun tomlValue(value: Any): String = when (value) {
 
 private val managedPublicKeys = setOf(
     "runtime.defaultbackend",
+    "runtime.strictpluginmatching",
     "projectopen.profileautoinit",
     "projectopen.profile",
     "projectopen.autoexcludegit",

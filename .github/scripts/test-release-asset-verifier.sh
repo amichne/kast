@@ -72,10 +72,7 @@ elif kind == "codex":
         "repository": "https://github.com/amichne/kast",
         "license": "MIT",
         "skills": "./skills/",
-        "interface": {
-            "privacyPolicyURL": "https://kast.michne.com/privacy/",
-            "termsOfServiceURL": "https://kast.michne.com/terms/",
-        },
+        "interface": {},
     }
     files = {
         "marketplace.json": json.dumps(marketplace).encode(),

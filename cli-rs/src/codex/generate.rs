@@ -167,8 +167,6 @@ fn manifest() -> serde_json::Value {
             "category": "Productivity",
             "capabilities": ["Read", "Write"],
             "websiteURL": "https://kast.michne.com/",
-            "privacyPolicyURL": "https://kast.michne.com/privacy/",
-            "termsOfServiceURL": "https://kast.michne.com/terms/",
             "defaultPrompt": [
                 "Inspect a Kotlin symbol with compiler-backed evidence.",
                 "Apply this Kotlin change and return its terminal diagnostics outcome."

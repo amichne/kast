@@ -1,8 +1,6 @@
 [project]
 site_name = "Kast"
-site_description = """
-IDE-grade Kotlin code intelligence for terminals, CI, and IDEs.
-"""
+site_description = "Compiler-backed Kotlin work through Codex and IntelliJ IDEA."
 site_author = "amichne"
 site_url = "https://kast.michne.com/"
 repo_url = "https://github.com/amichne/kast"
@@ -10,46 +8,14 @@ repo_name = "amichne/kast"
 edit_uri = "edit/main/docs"
 docs_dir = "docs"
 site_dir = "site"
-copyright = """
-Copyright &copy; 2026 amichne
-"""
+copyright = "Copyright &copy; 2026 amichne"
 nav = [
   { "Start" = "index.md" },
-  { "Install" = [
-    { "macOS developer machine" = "install/macos.md" },
-    { "Headless Linux and hosted agents" = "install/headless-linux.md" },
-    { "Codex plugin" = "install/codex.md" },
-  ]},
-  { "Learn" = [
-    { "First semantic workflow" = "learn/first-semantic-workflow.md" },
-    { "Repository demo" = "learn/repository-demo.md" },
-    { "How Kast thinks about evidence" = "learn/evidence-model.md" },
-  ]},
-  { "Use Kast" = [
-    { "Choose a command" = "use/choose-a-command.md" },
-    { "Inspect Kotlin" = "use/inspect-kotlin.md" },
-    { "Plan safe edits" = "use/plan-safe-edits.md" },
-    { "Automate with agents" = "use/automate-with-agents.md" },
-    { "Use Kast in Codex" = "use/codex.md" },
-  ]},
-  { "Reference" = [
-    { "Command surface" = "reference/commands.md" },
-    { "Agent commands" = "reference/agent-commands.md" },
-    { "Mutation selectors" = "reference/mutation-selectors.md" },
-    { "Runtime and output modes" = "reference/runtime-and-output.md" },
-    { "Codex plugin contract" = "reference/codex-plugin.md" },
-    { "Codex plugin privacy" = "privacy.md" },
-    { "Codex plugin terms" = "terms.md" },
-  ]},
+  { "Install" = [{ "macOS developer workstation" = "install/macos.md" }] },
+  { "Use" = [{ "Use Kast in Codex" = "use/codex.md" }] },
+  { "Reference" = [{ "Codex plugin" = "reference/codex-plugin.md" }] },
   { "Troubleshoot" = "troubleshoot.md" },
-  { "Distribute" = [
-    { "Refresh a development machine" = "distribute/local-development-refresh.md" },
-    { "Release and mirror workflow" = "distribute/release-and-mirror.md" },
-    { "Runtime artifact contract" = "distribute/runtime-artifact-contract.md" },
-  ]},
-  { "Design Notes" = [
-    { "Operating model" = "design/operating-model.md" },
-  ]},
+  { "Understand" = [{ "Workstation model" = "design/operating-model.md" }] },
 ]
 
 [project.markdown_extensions.admonition]
@@ -63,18 +29,15 @@ alternate_style = true
 [project.markdown_extensions.pymdownx.tabbed.slugify]
 object = "pymdownx.slugs.slugify"
 kwds = { case = "lower" }
-
 [project.markdown_extensions.pymdownx.highlight]
 anchor_linenums = true
 line_spans = "__span"
 pygments_lang_class = true
-
 [project.markdown_extensions.pymdownx.inlinehilite]
 [project.markdown_extensions.pymdownx.snippets]
 [project.markdown_extensions.pymdownx.emoji]
 emoji_index = "material.extensions.emoji.twemoji"
 emoji_generator = "material.extensions.emoji.to_svg"
-
 [project.markdown_extensions.attr_list]
 [project.markdown_extensions.md_in_html]
 [project.markdown_extensions.tables]
@@ -85,15 +48,11 @@ features = [
   "content.action.edit",
   "content.action.view",
   "content.code.copy",
-  "content.tabs.link",
-  "content.tooltips",
   "navigation.footer",
   "navigation.instant",
-  "navigation.instant.prefetch",
   "navigation.path",
   "navigation.sections",
   "navigation.top",
-  "navigation.tracking",
   "search.highlight",
 ]
 

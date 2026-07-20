@@ -157,6 +157,14 @@ pub(crate) fn assess_runtime_compatibility(
     facts: &RuntimeCompatibilityFacts,
     operation_capability: Option<RuntimeCapability>,
 ) -> Result<RuntimeCompatibilityAssessment> {
+    assess_runtime_compatibility_with_plugin_matching(facts, operation_capability, true)
+}
+
+pub(crate) fn assess_runtime_compatibility_with_plugin_matching(
+    facts: &RuntimeCompatibilityFacts,
+    operation_capability: Option<RuntimeCapability>,
+    strict_plugin_matching: bool,
+) -> Result<RuntimeCompatibilityAssessment> {
     let source: RuntimeCompatibilitySource = serde_json::from_str(include_str!(
         "../../../packaging/jetbrains/runtime-compatibility.json"
     ))
@@ -171,8 +179,9 @@ pub(crate) fn assess_runtime_compatibility(
         .supported_pairs
         .iter()
         .filter(|pair| {
-        resolve_release_version(&pair.plugin_version) == facts.plugin_version
-            && resolve_release_version(&pair.cli_version) == facts.cli_version
+            (!strict_plugin_matching
+                || resolve_release_version(&pair.plugin_version) == facts.plugin_version)
+                && resolve_release_version(&pair.cli_version) == facts.cli_version
         })
         .collect::<Vec<_>>();
     if release_rows.is_empty() {
@@ -222,7 +231,12 @@ pub(crate) fn assess_runtime_compatibility(
     let runtime_rows = metadata_rows
         .iter()
         .copied()
-        .filter(|pair| resolved_runtime_identity(&pair.runtime) == facts.runtime_identity)
+        .filter(|pair| {
+            pair.runtime.backend_kind == facts.runtime_identity.backend_kind
+                && (!strict_plugin_matching
+                    || resolve_release_version(&pair.runtime.implementation_version)
+                        == facts.runtime_identity.implementation_version)
+        })
         .collect::<Vec<_>>();
     let Some(pair) = runtime_rows.first().copied() else {
         return Ok(RuntimeCompatibilityAssessment::UpdateRequired {

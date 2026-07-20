@@ -32,13 +32,15 @@ pub struct ServerConfig {
 pub struct RuntimeConfig {
     #[serde(skip_serializing_if = "RuntimeDefaultBackend::is_auto")]
     pub default_backend: RuntimeDefaultBackend,
+    #[serde(skip_serializing_if = "is_true")]
+    pub strict_plugin_matching: bool,
     #[serde(skip_serializing_if = "IdeaLaunchConfig::is_default")]
     pub idea_launch: IdeaLaunchConfig,
 }
 
 impl RuntimeConfig {
     fn is_default(&self) -> bool {
-        self.default_backend.is_auto() && self.idea_launch.is_default()
+        self.default_backend.is_auto() && self.strict_plugin_matching && self.idea_launch.is_default()
     }
 }
 
@@ -46,9 +48,14 @@ impl Default for RuntimeConfig {
     fn default() -> Self {
         Self {
             default_backend: RuntimeDefaultBackend::Auto,
+            strict_plugin_matching: true,
             idea_launch: IdeaLaunchConfig::default(),
         }
     }
+}
+
+fn is_true(value: &bool) -> bool {
+    *value
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

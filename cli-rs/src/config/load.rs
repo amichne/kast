@@ -134,6 +134,9 @@ impl KastConfig {
             if let Some(value) = runtime.default_backend {
                 self.runtime.default_backend = value;
             }
+            if let Some(value) = runtime.strict_plugin_matching {
+                self.runtime.strict_plugin_matching = value;
+            }
             if let Some(idea_launch) = runtime.idea_launch {
                 if let Some(value) = idea_launch.enabled {
                     self.runtime.idea_launch.enabled = value;

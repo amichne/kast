@@ -1,124 +1,47 @@
----
-title: Kast
-description: Journey-first documentation for the Kast CLI and semantic command surface.
-icon: lucide/network
-hide:
-  - toc
----
-
 # Kast
 
-Kast gives agents compiler-backed Kotlin and Gradle evidence while keeping the
-developer path simple: install the machine support, open the project, and let
-the agent use Kast when a task needs semantic confidence.
-
-## Start By Reader Job
-
-Choose the path by what you are trying to do. Every path converges on the same
-typed `kast` command surface.
-
-<div class="grid cards" markdown>
-
--   :octicons-download-24:{ .lg .middle } **Install on macOS**
-
-    ---
-
-    Install the Homebrew CLI and initial release-matched GitHub plugin through
-    JetBrains, then use the native custom feed for updates.
-
-    [:octicons-arrow-right-24: macOS install](install/macos.md)
-
--   :octicons-server-24:{ .lg .middle } **Install on Linux**
-
-    ---
-
-    Install the headless bundle for CI, hosted agents, server images, or
-    mirrored artifact stores.
-
-    [:octicons-arrow-right-24: Headless install](install/headless-linux.md)
-
--   :octicons-play-24:{ .lg .middle } **Try it on your code**
-
-    ---
-
-    Open a read-only semantic story built from symbols, relationships, impact,
-    and diagnostics in the repository you already have open.
-
-    [:octicons-arrow-right-24: Run the repository demo](learn/repository-demo.md)
-
--   :octicons-zap-24:{ .lg .middle } **Run the first workflow**
-
-    ---
-
-    See the semantic workflow agents run behind the scenes.
-
-    [:octicons-arrow-right-24: First semantic workflow](learn/first-semantic-workflow.md)
-
--   :octicons-terminal-24:{ .lg .middle } **Choose a command**
-
-    ---
-
-    Pick the high-level command family for inspection, editing, automation, or
-    release work.
-
-    [:octicons-arrow-right-24: Choose a command](use/choose-a-command.md)
-
-</div>
-
-## Operating Model
-
-Kast separates the visible install path from the agent-facing semantic work.
-That keeps setup foolproof for developers while still giving agents typed,
-compiler-backed operations when they need evidence.
+Kast connects Codex to the Kotlin compiler running in IntelliJ IDEA or Android
+Studio. The public workflow has one setup path and one working interface.
 
 ```mermaid
 flowchart LR
-    distribution["Distribution<br/>CLI, GitHub plugin, bundle"]
-    setup["Workspace setup<br/>skill, guidance, metadata"]
-    runtime["Runtime backend<br/>IDEA or headless"]
-    commands["Typed commands<br/>kast agent ..."]
-    evidence["Evidence<br/>symbols, diagnostics, plans"]
-
-    distribution --> setup
-    distribution --> runtime
-    setup --> commands
-    runtime --> commands
-    commands --> evidence
+    installer["Workstation installer"] --> idea["IDEA plugin"]
+    idea --> workspace["Exact project or worktree"]
+    workspace --> codex["Codex task"]
+    codex --> evidence["Compiler-backed evidence"]
 ```
 
-| Layer | Reader question | First page |
-| --- | --- | --- |
-| Distribution | How do I install Kast? | [Install](install/macos.md) |
-| Workspace setup | What prepares a project for agents? | [Automate with agents](use/automate-with-agents.md) |
-| Runtime backend | What answers semantic requests? | [Runtime and output](reference/runtime-and-output.md) |
-| Semantic commands | What does the agent ask Kast to do? | [Agent commands](reference/agent-commands.md) |
-| Evidence | What does Kast prove that text search cannot? | [How Kast thinks about evidence](learn/evidence-model.md) |
+<div class="grid cards" markdown>
 
-## Reference Paths
+-   :octicons-download-24:{ .lg .middle } **Install Kast**
 
-Use reference pages when you need lookup accuracy rather than a task flow.
+    ---
 
-- [Command surface](reference/commands.md) lists curated public command groups.
-- [Agent commands](reference/agent-commands.md) lists typed semantic commands.
-- [Mutation selectors](reference/mutation-selectors.md) describes edit targets
-  and anchors.
-- [Runtime and output](reference/runtime-and-output.md) covers backend
-  selection and readable or TOON output.
-- [Runtime artifact contract](distribute/runtime-artifact-contract.md) records
-  bundle, manifest, checksum, and ledger facts.
+    Select the matched workstation bundle and prepare IDEA update discovery.
 
-## When Something Fails
+    [:octicons-arrow-right-24: Install on macOS](install/macos.md)
 
-Use the [troubleshooting matrix](troubleshoot.md) to separate install issues,
-backend state, indexing, semantic failures, and mutation planning. Most readers
-should start with the visible symptom, not the internal command sequence.
+-   :octicons-comment-discussion-24:{ .lg .middle } **Work in Codex**
 
-??? info "Agent checks"
-    Agents and support scripts can use read-only checks before retrying a
-    semantic operation.
+    ---
 
-    ```console
-    kast --output toon ready --for agent --workspace-root "$PWD"
-    kast --output toon agent verify --workspace-root "$PWD"
-    kast --output toon status --workspace-root "$PWD"
-    ```
+    Ask for Kotlin work normally; the plugin supplies semantic routing.
+
+    [:octicons-arrow-right-24: Use Kast in Codex](use/codex.md)
+
+-   :octicons-tools-24:{ .lg .middle } **Recover a task**
+
+    ---
+
+    Start from the visible symptom and return to the matched workstation path.
+
+    [:octicons-arrow-right-24: Troubleshoot Kast](troubleshoot.md)
+
+</div>
+
+## What Runs Where
+
+The installer owns the machine bundle. IDEA owns the compiler-backed runtime
+for the exact open root. Codex is the only user-facing work surface. Read the
+[operating model](design/operating-model.md) for the boundaries or consult the
+[Codex plugin reference](reference/codex-plugin.md) for exact behavior.
