@@ -1,9 +1,8 @@
 use crate::agent::{
     AgentTaskHookOperation, AgentTaskHookResult, AgentTaskState, run_agent_task_hook,
 };
-use crate::cli::{AgentCommand, Cli, CodexHookEvent, Command as CliCommand};
+use crate::cli::CodexHookEvent;
 use crate::error::{CliError, Result};
-use clap::Parser;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::BTreeSet;
@@ -312,29 +311,6 @@ fn write_state(path: &Path, state: &SessionState) -> Result<()> {
     result
 }
 
-fn parsed_agent_command(command: &str) -> Option<AgentCommand> {
-    let arguments = shlex::split(command)?;
-    let executable = arguments.first()?;
-    if Path::new(executable).file_name()?.to_str()? != "kast" {
-        return None;
-    }
-    let cli = Cli::try_parse_from(arguments).ok()?;
-    match cli.command? {
-        CliCommand::Agent(args) => args.command,
-        CliCommand::Help { .. }
-        | CliCommand::Version
-        | CliCommand::Context(_)
-        | CliCommand::Setup(_)
-        | CliCommand::Ready(_)
-        | CliCommand::Repair(_)
-        | CliCommand::Status(_)
-        | CliCommand::Machine(_)
-        | CliCommand::Demo(_)
-        | CliCommand::Developer(_)
-        | CliCommand::Doctor(_) => None,
-    }
-}
-
 fn is_generic_mutation(tool_name: &str, serialized_input: &str) -> bool {
     let normalized = tool_name.to_ascii_lowercase();
     if matches!(
@@ -402,14 +378,6 @@ fn print_json(value: &Value) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn machine_entrypoint_is_recognized_as_a_typed_agent_command() {
-        assert!(matches!(
-            parsed_agent_command("/tmp/machine/bin/kast agent verify"),
-            Some(AgentCommand::Verify(_)),
-        ));
-    }
 
     #[test]
     fn kotlin_path_parser_ignores_bare_extensions_and_globs() {
