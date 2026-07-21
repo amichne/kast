@@ -1,39 +1,33 @@
 ---
-type: Playbook
-title: Troubleshoot Kast
-description: Recover the macOS IDEA and Codex workstation flow from visible symptoms.
-tags: [troubleshooting, macos, codex]
+type: How-to Guide
+title: Troubleshoot Kast Setup
+description: Recover a Kast installation by rerunning its atomic setup transaction.
+tags: [troubleshooting, setup]
 code_sources:
   - path: install.sh
-  - path: cli-rs/src/machine.rs
-  - path: cli-rs/src/codex/hook.rs
+  - path: cli-rs/src/install/bundle_install.rs
 ---
 
-# Troubleshoot Kast
+# Troubleshoot Kast Setup
 
-Start with the visible symptom. Recovery returns to the same supported path:
-close the IDE, reconcile through the installer, open the exact root, and start
-a new Codex task.
-
-## Diagnostic matrix
-
-| Symptom | Cause | Recovery |
-| --- | --- | --- |
-| The installer says the IDE is open | A loaded plugin cannot be replaced safely. | Quit every IDEA and Android Studio process, then rerun the installer. |
-| The installer cannot find an IDE profile | IDEA or Android Studio has not created its user profile. | Start the IDE once, quit it, then rerun the installer. |
-| Codex does not load Kast | The task started before `kast@kast` was selected. | Finish installation and start a new Codex task. |
-| Codex reports no prepared workspace | The exact task root has not been opened by the IDEA plugin. | Open that project or worktree in the IDE, wait for loading, then start a new task. |
-| Codex reports an incompatible release pair | IDEA updated the plugin independently or installation was interrupted. | Close the IDE and run the installer in update mode. |
-| A startup or diagnostics hook reports a failure | Advisory launch or diagnostics context was unavailable. | Confirm the exact project is open; continue if the task does not need semantic evidence, otherwise reinstall and start a new task. |
-
-## Restore the matched bundle
-
-Quit the IDE and run:
+Rerun the same setup operation for every installation or readiness failure:
 
 ```console
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)" -- update
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-Open the exact root again and start a new Codex task. The installer does not
-replace user-owned files at the former global-skill location; it removes only
-the obsolete Kast-owned symlink from earlier workstation bundles.
+For a local or pinned bundle:
+
+```console
+./install.sh --source /path/to/kast-platform-vX.Y.Z.tar.gz
+```
+
+Setup reports the failed phase, release and manifest digests, verified artifact
+paths, backup location, and exact rerun command. Do not edit `current`, receipts,
+or individual artifacts by hand.
+
+If setup reports a checksum or shape failure, download or rebuild the bundle
+again. If it reports active-root verification failure, the prior release has
+already been restored. If another setup is running, let the lock holder finish
+and rerun the same command. Stale staging directories are discarded
+automatically on the next invocation.

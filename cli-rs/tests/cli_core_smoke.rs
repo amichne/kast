@@ -9,510 +9,96 @@ fn help_lists_command(stdout: &str, command: &str) -> bool {
 }
 
 #[test]
-fn smoke_core_cli_commands() {
+fn public_cli_exposes_setup_and_no_retired_install_mutators() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
-    let workspace = temp.path().join("workspace");
     std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&workspace).expect("workspace");
-
-    let version = kast(&home, &config_home)
-        .arg("version")
-        .output()
-        .expect("version");
-    assert!(version.status.success());
-    assert!(String::from_utf8_lossy(&version.stdout).contains("Kast CLI"));
 
     let help = kast(&home, &config_home)
         .arg("--help")
         .output()
         .expect("help");
     assert!(help.status.success());
-    let help_stdout = String::from_utf8_lossy(&help.stdout);
-    assert!(help_stdout.contains("Usage: kast"));
-    let expected_commands = if cfg!(target_os = "macos") {
-        vec![
-            "help",
-            "version",
-            "ready",
-            "repair",
-            "status",
-            "machine",
-            "developer",
-            "agent",
-        ]
-    } else {
-        vec![
-            "help",
-            "version",
-            "setup",
-            "ready",
-            "repair",
-            "status",
-            "machine",
-            "developer",
-            "agent",
-        ]
-    };
-    for command in expected_commands {
-        assert!(
-            help_lists_command(&help_stdout, command),
-            "top-level help should show {command}: {help_stdout}"
-        );
-    }
-    for hidden in [
-        "runtime", "inspect", "release", "rpc", "doctor", "install", "paths", "up", "package",
+    let stdout = String::from_utf8_lossy(&help.stdout);
+    for command in [
+        "help",
+        "version",
+        "setup",
+        "ready",
+        "status",
+        "developer",
+        "agent",
     ] {
         assert!(
-            !help_lists_command(&help_stdout, hidden),
-            "hidden or legacy top-level command {hidden} should not appear in public help: {help_stdout}"
+            help_lists_command(&stdout, command),
+            "missing {command}: {stdout}"
         );
     }
-    for hidden_topic in ["runtime", "inspect", "release", "rpc", "doctor"] {
-        let topic = kast(&home, &config_home)
-            .args(["help", hidden_topic])
-            .output()
-            .unwrap_or_else(|error| panic!("help {hidden_topic}: {error}"));
+    for retired in ["repair", "machine", "install"] {
         assert!(
-            !topic.status.success(),
-            "hidden help topic {hidden_topic} should not resolve"
+            !help_lists_command(&stdout, retired),
+            "retired {retired}: {stdout}"
         );
     }
 
-    let agent_help = kast(&home, &config_home)
+    let setup = kast(&home, &config_home)
+        .args(["setup", "--help"])
+        .output()
+        .expect("setup help");
+    assert!(setup.status.success());
+    let setup_stdout = String::from_utf8_lossy(&setup.stdout);
+    assert!(setup_stdout.contains("--source"), "{setup_stdout}");
+    for retired in ["--workspace-root", "--dry-run", "--target-dir", "--backend"] {
+        assert!(
+            !setup_stdout.contains(retired),
+            "retired {retired}: {setup_stdout}"
+        );
+    }
+
+    for retired in [
+        ["repair", "--help"].as_slice(),
+        ["machine", "--help"].as_slice(),
+        ["developer", "machine", "--help"].as_slice(),
+        ["developer", "release", "activate", "--help"].as_slice(),
+        ["agent", "setup", "--help"].as_slice(),
+    ] {
+        let output = kast(&home, &config_home)
+            .args(retired)
+            .output()
+            .expect("retired command");
+        assert!(
+            !output.status.success(),
+            "retired command remained callable: {retired:?}"
+        );
+    }
+}
+
+#[test]
+fn agent_surface_keeps_semantic_commands_and_rejects_raw_call() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let help = kast(&home, &config_home)
         .args(["agent", "--help"])
         .output()
         .expect("agent help");
-    assert!(agent_help.status.success());
-    let agent_help_stdout = String::from_utf8_lossy(&agent_help.stdout);
-    for command in [
-        "lsp",
-        "verify",
-        "workspace-files",
-        "symbol",
-        "references",
-        "callers",
-        "callees",
-        "implementations",
-        "hierarchy",
-        "impact",
-        "diagnostics",
-        "rename",
-    ] {
+    assert!(help.status.success());
+    let stdout = String::from_utf8_lossy(&help.stdout);
+    for command in ["verify", "symbol", "diagnostics", "impact", "rename"] {
         assert!(
-            help_lists_command(&agent_help_stdout, command),
-            "agent help should show {command}: {agent_help_stdout}"
-        );
-    }
-    for hidden in [
-        "up",
-        "ready",
-        "setup",
-        "tools",
-        "call",
-        "workflow",
-        "health",
-        "runtime-status",
-        "raw-resolve",
-        "resolve",
-        "metrics",
-    ] {
-        assert!(
-            !help_lists_command(&agent_help_stdout, hidden),
-            "hidden agent command {hidden} should not appear in agent help: {agent_help_stdout}"
-        );
-    }
-    for retired_alias in [
-        "health",
-        "runtime-status",
-        "capabilities",
-        "resolve",
-        "raw-resolve",
-        "raw-diagnostics",
-        "metrics",
-    ] {
-        let alias_help = kast(&home, &config_home)
-            .args(["agent", retired_alias, "--help"])
-            .output()
-            .unwrap_or_else(|error| panic!("agent {retired_alias} --help: {error}"));
-        assert!(
-            !alias_help.status.success(),
-            "retired agent alias {retired_alias} should not be callable"
+            help_lists_command(&stdout, command),
+            "missing {command}: {stdout}"
         );
     }
 
-    let agent_tools = kast(&home, &config_home)
-        .args(["--output", "json", "agent", "tools", "--full"])
-        .output()
-        .expect("removed agent tools");
-    assert!(
-        !agent_tools.status.success(),
-        "agent tools should be removed from the public surface"
-    );
-    let agent_tools_json: serde_json::Value =
-        serde_json::from_slice(&agent_tools.stdout).expect("agent tools removal json");
-    assert_eq!(agent_tools_json["ok"], false);
-    assert_eq!(agent_tools_json["method"], "agent/tools");
-    assert_eq!(agent_tools_json["error"]["code"], "AGENT_COMMAND_REMOVED");
-    assert!(
-        agent_tools_json["error"]["details"]["replacements"]
-            .as_array()
-            .expect("replacement commands")
-            .iter()
-            .any(|command| command == "kast help agent"),
-        "{agent_tools_json:#}"
-    );
-
-    if cfg!(target_os = "macos") {
-        let setup = kast(&home, &config_home)
-            .args([
-                "--output",
-                "json",
-                "setup",
-                "--workspace-root",
-                workspace.to_str().expect("workspace path"),
-            ])
-            .output()
-            .expect("setup macos refusal");
-        assert!(
-            !setup.status.success(),
-            "setup should fail closed on macOS: stdout={}, stderr={}",
-            String::from_utf8_lossy(&setup.stdout),
-            String::from_utf8_lossy(&setup.stderr)
-        );
-        let setup_json: serde_json::Value =
-            serde_json::from_slice(&setup.stdout).expect("setup refusal json");
-        assert_eq!(setup_json["ok"], false);
-        assert_eq!(setup_json["method"], "setup");
-        assert_eq!(setup_json["error"]["code"], "AGENT_COMMAND_REMOVED");
-    } else {
-        let setup_help = kast(&home, &config_home)
-            .args(["setup", "--help"])
-            .output()
-            .expect("setup help");
-        assert!(setup_help.status.success());
-        let setup_help_stdout = String::from_utf8_lossy(&setup_help.stdout);
-        for flag in [
-            "--workspace-root",
-            "--skill-target-dir",
-            "--context-file",
-            "--dry-run",
-        ] {
-            assert!(
-                setup_help_stdout.contains(flag),
-                "setup help should expose {flag}: {setup_help_stdout}"
-            );
-        }
-        assert!(
-            !setup_help_stdout.contains("--backend"),
-            "setup should not expose backend/runtime selection: {setup_help_stdout}"
-        );
-        let setup_plan = kast(&home, &config_home)
-            .args([
-                "--output",
-                "json",
-                "setup",
-                "--workspace-root",
-                workspace.to_str().expect("workspace path"),
-                "--dry-run",
-            ])
-            .output()
-            .expect("setup dry-run");
-        assert!(
-            setup_plan.status.success(),
-            "setup dry-run should plan without requiring installed backend: stdout={}, stderr={}",
-            String::from_utf8_lossy(&setup_plan.stdout),
-            String::from_utf8_lossy(&setup_plan.stderr)
-        );
-        let setup_plan_json: serde_json::Value =
-            serde_json::from_slice(&setup_plan.stdout).expect("setup plan json");
-        assert_eq!(setup_plan_json["type"], "AGENT_SETUP_PLAN");
-        assert_eq!(setup_plan_json["dryRun"], true);
-        assert_eq!(
-            setup_plan_json["installCommand"][1], "setup",
-            "root setup dry-run should advertise root setup, not hidden agent setup: {setup_plan_json:#}"
-        );
-        assert!(
-            setup_plan_json.get("runtimeCommand").is_none(),
-            "setup without --backend should not plan runtime warmup: {setup_plan_json:#}"
-        );
-    }
-    assert!(
-        !install_manifest_path(&home).exists(),
-        "setup --dry-run must not run readiness repair or write install state"
-    );
-
-    for removed_root in ["runtime", "inspect", "release", "rpc"] {
-        let direct = kast(&home, &config_home)
-            .args([removed_root, "--help"])
-            .output()
-            .unwrap_or_else(|error| panic!("{removed_root} --help: {error}"));
-        assert!(
-            !direct.status.success(),
-            "removed root command {removed_root} should not be directly callable"
-        );
-    }
-
-    let invalid_agent_call = kast(&home, &config_home)
+    let call = kast(&home, &config_home)
         .args(["--output", "json", "agent", "call", "symbol/resolve"])
         .output()
-        .expect("agent call removal");
-    assert!(
-        !invalid_agent_call.status.success(),
-        "agent call should be removed from the public surface"
-    );
-    let invalid_agent_json: serde_json::Value =
-        serde_json::from_slice(&invalid_agent_call.stdout).expect("agent call removal json");
-    assert_eq!(invalid_agent_json["ok"], false);
-    assert_eq!(invalid_agent_json["method"], "agent/call");
-    assert_eq!(invalid_agent_json["error"]["code"], "AGENT_COMMAND_REMOVED");
-
-    let escaped_agent_call = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "call",
-            "symbol/resolve",
-            "--params",
-            r#"{"symbol":"Widget"}"#,
-        ])
-        .env("KAST_INTERNAL_TEST_ALLOW_AGENT_CALL", "1")
-        .output()
-        .expect("agent call removal with stale internal env");
-    assert!(
-        !escaped_agent_call.status.success(),
-        "agent call should stay removed even when the old internal escape env is set"
-    );
-    let escaped_agent_json: serde_json::Value =
-        serde_json::from_slice(&escaped_agent_call.stdout).expect("agent call escape removal json");
-    assert_eq!(escaped_agent_json["ok"], false);
-    assert_eq!(escaped_agent_json["method"], "agent/call");
-    assert_eq!(escaped_agent_json["error"]["code"], "AGENT_COMMAND_REMOVED");
-
-    let activate_bundle_help = kast(&home, &config_home)
-        .args(["developer", "release", "activate", "bundle", "--help"])
-        .output()
-        .expect("developer release activate bundle help");
-    assert!(activate_bundle_help.status.success());
-    let activate_bundle_stdout = String::from_utf8_lossy(&activate_bundle_help.stdout);
-    assert!(
-        activate_bundle_stdout.contains("--verify-only"),
-        "release activate bundle help should expose read-only verification: {activate_bundle_stdout}"
-    );
-
-    let agent_setup_help = kast(&home, &config_home)
-        .args(["agent", "setup", "--help"])
-        .output()
-        .expect("hidden agent setup help");
-    assert!(
-        !agent_setup_help.status.success()
-            || !String::from_utf8_lossy(&agent_setup_help.stdout).contains("copilot"),
-        "agent setup should not expose portable asset installers: stdout={}, stderr={}",
-        String::from_utf8_lossy(&agent_setup_help.stdout),
-        String::from_utf8_lossy(&agent_setup_help.stderr)
-    );
-    let shell_help = kast(&home, &config_home)
-        .args(["developer", "machine", "shell", "--help"])
-        .output()
-        .expect("developer machine shell help");
-    assert!(shell_help.status.success());
-    let shell_help_stdout = String::from_utf8_lossy(&shell_help.stdout);
-    assert!(
-        shell_help_stdout.contains("--shell"),
-        "machine shell help should expose --shell: {shell_help_stdout}"
-    );
-
-    let lsp_help = kast(&home, &config_home)
-        .args(["agent", "lsp", "--help"])
-        .output()
-        .expect("agent lsp help");
-    assert!(lsp_help.status.success());
-    let lsp_help_stdout = String::from_utf8_lossy(&lsp_help.stdout);
-    for visible in [
-        "--stdio",
-        "--workspace-root",
-        "--backend",
-        "--request-timeout-ms",
-    ] {
-        assert!(
-            lsp_help_stdout.contains(visible),
-            "lsp help should expose {visible}: {lsp_help_stdout}"
-        );
-    }
-
-    let lsp_without_stdio = kast(&home, &config_home)
-        .args(["agent", "lsp"])
-        .output()
-        .expect("lsp without stdio");
-    assert!(
-        !lsp_without_stdio.status.success(),
-        "lsp without --stdio should fail closed"
-    );
-    assert!(
-        String::from_utf8_lossy(&lsp_without_stdio.stdout).contains("kast agent lsp --stdio"),
-        "lsp usage error should name the supported command: stdout={}, stderr={}",
-        String::from_utf8_lossy(&lsp_without_stdio.stdout),
-        String::from_utf8_lossy(&lsp_without_stdio.stderr)
-    );
-    assert!(
-        shell_help_stdout.contains("--profile"),
-        "machine shell help should expose --profile: {shell_help_stdout}"
-    );
-    let demo_help = kast(&home, &config_home)
-        .args(["demo", "--help"])
-        .output()
-        .expect("public demo help");
-    assert!(demo_help.status.success());
-    let demo_help_stdout = String::from_utf8_lossy(&demo_help.stdout);
-    assert!(demo_help_stdout.contains("--workspace-root"));
-    assert!(demo_help_stdout.contains("--backend"));
-    assert!(demo_help_stdout.contains("--symbol"));
-
-    let repair_plan = kast(&home, &config_home)
-        .args(["--output", "json", "repair"])
-        .output()
-        .expect("repair plan");
-    assert!(
-        !repair_plan.status.success(),
-        "repair without --apply should plan but still report not ready before manifest exists"
-    );
-    assert!(!install_manifest_path(&home).exists());
-
-    let doctor = kast(&home, &config_home)
-        .args(["--output", "json", "doctor"])
-        .output()
-        .expect("legacy doctor alias");
-    assert!(
-        !doctor.status.success(),
-        "doctor should still fail before machine installation exists"
-    );
-    let doctor_json: serde_json::Value =
-        serde_json::from_slice(&doctor.stdout).expect("doctor json");
-    assert_eq!(doctor_json["target"], "machine", "{doctor_json:#}");
-    assert!(
-        doctor_json["agentEnvironment"].is_null(),
-        "the kast-action compatibility alias must verify machine installation, not agent resources: {doctor_json:#}"
-    );
-
-    let repair = kast(&home, &config_home)
-        .args(["--output", "json", "repair", "--apply"])
-        .output()
-        .expect("repair apply");
-    assert!(
-        !repair.status.success(),
-        "install-state repair must not claim agent readiness without effective agent resources"
-    );
-    let repair_json: serde_json::Value =
-        serde_json::from_slice(&repair.stdout).expect("repair json");
-    assert_eq!(repair_json["type"], "KAST_REPAIR");
-    assert_eq!(repair_json["applied"], true);
-    assert_eq!(repair_json["ready"]["agentEnvironment"]["ok"], false);
-    #[cfg(not(target_os = "macos"))]
-    {
-        assert!(
-            repair_json["ready"]["issues"]
-                .as_array()
-                .expect("ready issues")
-                .iter()
-                .any(|issue| {
-                    issue.as_str().is_some_and(|issue| {
-                        issue.contains("Kast skill") && issue.contains("missing")
-                    })
-                }),
-            "{repair_json:#}"
-        );
-    }
-    #[cfg(target_os = "macos")]
-    {
-        assert!(
-            repair_json["ready"]["issues"]
-                .as_array()
-                .expect("ready issues")
-                .iter()
-                .any(|issue| issue
-                    .as_str()
-                    .is_some_and(|issue| issue.contains("plugin-prepared workspace metadata"))),
-            "{repair_json:#}"
-        );
-    }
-    assert!(install_manifest_path(&home).is_file());
-
-    let skill_dir = temp.path().join("skills");
-    let skill = kast(&home, &config_home)
-        .args([
-            "setup",
-            "--target-dir",
-            skill_dir.to_str().expect("skill path"),
-            "--force",
-        ])
-        .output()
-        .expect("setup target-dir rejected");
-    assert!(
-        !skill.status.success(),
-        "root setup should not accept legacy --target-dir asset installs"
-    );
-    let agents_md = kast(&home, &config_home)
-        .args([
-            "setup",
-            "--agents-md",
-            workspace.join("AGENTS.md").to_str().expect("agents path"),
-        ])
-        .output()
-        .expect("setup agents-md rejected");
-    assert!(
-        !agents_md.status.success(),
-        "root setup should not accept legacy --agents-md context aliases"
-    );
-    let setup_backend = kast(&home, &config_home)
-        .args(["setup", "--backend", "idea"])
-        .output()
-        .expect("setup backend rejected");
-    assert!(
-        !setup_backend.status.success(),
-        "root setup should not accept hidden runtime warmup flags"
-    );
-    let no_open_ide = kast(&home, &config_home)
-        .args(["setup", "--no-open-ide"])
-        .output()
-        .expect("setup no-open-ide rejected");
-    assert!(
-        !no_open_ide.status.success(),
-        "root setup should not accept hidden IDE-opening suppression flags"
-    );
-    let no_onboard = kast(&home, &config_home)
-        .args(["setup", "--no-onboard"])
-        .output()
-        .expect("setup no-onboard rejected");
-    assert!(
-        !no_onboard.status.success(),
-        "root setup should not accept legacy --no-onboard aliases"
-    );
-
-    let status = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "status",
-            "--workspace-root",
-            workspace.to_str().expect("workspace path"),
-        ])
-        .output()
-        .expect("status");
-    #[cfg(not(target_os = "macos"))]
-    {
-        assert!(status.status.success());
-        assert!(String::from_utf8_lossy(&status.stdout).contains("\"candidates\": []"));
-    }
-    #[cfg(target_os = "macos")]
-    {
-        assert!(
-            !status.status.success(),
-            "macOS status should fail without plugin-prepared workspace metadata"
-        );
-        let status_json: serde_json::Value =
-            serde_json::from_slice(&status.stdout).expect("status json");
-        assert_eq!(status_json["code"], "MACOS_PLUGIN_WORKSPACE_REQUIRED");
-    }
+        .expect("removed call");
+    assert!(!call.status.success());
+    let payload: serde_json::Value = serde_json::from_slice(&call.stdout).expect("call JSON");
+    assert_eq!(payload["error"]["code"], "AGENT_COMMAND_REMOVED");
 }

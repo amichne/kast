@@ -313,7 +313,6 @@ pub struct PathResolutionEntry {
 pub enum PathResolutionSource {
     Default,
     Env,
-    HomebrewReceipt,
     Manifest,
 }
 
@@ -322,7 +321,6 @@ impl fmt::Display for PathResolutionSource {
         let value = match self {
             Self::Default => "default",
             Self::Env => "env",
-            Self::HomebrewReceipt => "homebrew-receipt",
             Self::Manifest => "manifest",
         };
         formatter.write_str(value)
@@ -352,11 +350,9 @@ impl PathResolutionEntryContext {
     fn from_environment(
         workspace_root: Option<&Path>,
         install_manifest_exists: bool,
-        homebrew_receipt_exists: bool,
     ) -> Self {
         Self::from_states(
             install_manifest_exists,
-            homebrew_receipt_exists,
             env_present("KAST_INSTALL_ROOT"),
             env_present("KAST_CACHE_HOME"),
             workspace_root.is_some() && env_present("KAST_CACHE_HOME"),
@@ -365,12 +361,11 @@ impl PathResolutionEntryContext {
 
     fn from_states(
         install_manifest_exists: bool,
-        homebrew_receipt_exists: bool,
         install_root_env: bool,
         cache_home_env: bool,
         workspace_cache_environment: bool,
     ) -> Self {
-        let install_manifest_active = install_manifest_exists && !homebrew_receipt_exists;
+        let install_manifest_active = install_manifest_exists;
         let install_root_source =
             source_for_manifest_or_env_state(install_manifest_active, install_root_env);
         let runtime_dir_source = if install_manifest_active {
@@ -385,9 +380,7 @@ impl PathResolutionEntryContext {
         };
         Self {
             install_root_source,
-            bin_dir_source: if homebrew_receipt_exists {
-                PathResolutionSource::HomebrewReceipt
-            } else if install_manifest_active {
+            bin_dir_source: if install_manifest_active {
                 PathResolutionSource::Manifest
             } else {
                 PathResolutionSource::Default

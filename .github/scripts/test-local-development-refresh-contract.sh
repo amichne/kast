@@ -1,66 +1,30 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-die() {
-  printf 'error: %s\n' "$*" >&2
-  exit 1
-}
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-resolve_repo_root() {
-  local script_dir
-  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-  cd -- "${script_dir}/../.." && pwd
-}
+[[ ! -e "$repo_root/cli-rs/src/local_development.rs" ]]
+[[ ! -d "$repo_root/cli-rs/src/local_development" ]]
 
-repo_root="$(resolve_repo_root)"
-if [[ -e "${repo_root}/cli-rs/src/local_development.rs" ]] \
-  || [[ -d "${repo_root}/cli-rs/src/local_development" ]]; then
-  die 'retired local-generation authority must not remain compiled into the CLI'
-fi
-task_list="$("${repo_root}/gradlew" -q tasks --all)"
-for retired in \
-  refreshDevelopmentLocal \
-  prepareDevelopmentLocalGeneration \
-  activateDevelopmentLocal \
-  rollbackDevelopmentLocal \
-  removeDevelopmentLocal \
-  installDevelopmentLocal \
-  localHeadlessPluginImplementationJar; do
-  if grep -Fq "$retired" <<<"$task_list"; then
-    die "retired developer-machine authority is still exposed: ${retired}"
-  fi
-done
+help="$($repo_root/gradlew -q help --task refreshDevelopmentMachine)"
+grep -Fq 'Replaces the active installation through the sole setup transaction.' <<<"$help"
 
-machine_help="$("${repo_root}/gradlew" -q help --task refreshDevelopmentMachine)"
-grep -Fq 'Refreshes one processless machine bundle from the current checkout.' <<<"$machine_help" \
-  || die 'refreshDevelopmentMachine must describe the processless machine boundary'
-
-dry_run="$("${repo_root}/gradlew" -m refreshDevelopmentMachine --no-daemon)"
-for required in \
+dry_run="$($repo_root/gradlew -m refreshDevelopmentMachine --no-daemon)"
+for task in \
   ':buildDevelopmentCli' \
+  ':packageDevelopmentCli' \
+  ':backend-headless:portableDistZip' \
   ':backend-idea:buildPlugin' \
-  ':activateDevelopmentMachine' \
-  ':reconcileDevelopmentMachine' \
+  ':packageDevelopmentSetupBundle' \
   ':refreshDevelopmentMachine'; do
-  grep -Fq "$required" <<<"$dry_run" \
-    || die "refreshDevelopmentMachine must include ${required}"
+  grep -Fq "$task" <<<"$dry_run" || { printf 'error: missing development setup task %s\n' "$task" >&2; exit 1; }
 done
-if grep -Fq ':backend-headless:' <<<"$dry_run"; then
-  die 'developer-machine refresh must not build or start the headless backend'
-fi
 
-developer_help="$(
-  cargo run \
-    --quiet \
-    --manifest-path "${repo_root}/cli-rs/Cargo.toml" \
-    --locked \
-    --bin kast \
-    -- \
-    developer --help
-)"
-if grep -Eq '^  local([[:space:]]|$)' <<<"$developer_help"; then
-  die 'developer local must not remain a public command'
-fi
+for retired in ':activateDevelopmentMachine' ':reconcileDevelopmentMachine'; do
+  ! grep -Fq "$retired" <<<"$dry_run" || { printf 'error: retired task remains: %s\n' "$retired" >&2; exit 1; }
+done
 
-bash -n "${BASH_SOURCE[0]}"
-printf '%s\n' 'processless development machine contract passed'
+grep -Fq '"setup",' "$repo_root/build.gradle.kts"
+grep -Fq '"--source",' "$repo_root/build.gradle.kts"
+
+printf '%s\n' 'local setup refresh contract passed'

@@ -55,28 +55,6 @@ pub enum AgentCommand {
 }
 
 #[derive(Debug, Args, Clone, Default)]
-pub struct AgentGuidanceSetupArgs {
-    /// Absolute workspace root for harness-agnostic agent resource setup.
-    #[arg(long)]
-    pub workspace_root: Option<PathBuf>,
-    /// Packaged skill target root. Defaults to configured setup, then .agents/skills.
-    #[arg(long = "skill-target-dir")]
-    pub skill_target_dir: Option<PathBuf>,
-    /// Repository context file to patch with Kast managed guidance.
-    #[arg(long = "context-file")]
-    pub context_files: Vec<PathBuf>,
-    /// Overwrite modified Kast managed regions.
-    #[arg(short = 'f', long)]
-    pub force: bool,
-    /// Do not add the managed skill path to Git info/exclude.
-    #[arg(long)]
-    pub no_auto_exclude_git: bool,
-    /// Explain setup without writing files.
-    #[arg(long)]
-    pub dry_run: bool,
-}
-
-#[derive(Debug, Args, Clone, Default)]
 pub struct AgentRuntimeArgs {
     /// Absolute workspace root for daemon lifecycle and RPC commands.
     #[arg(long)]

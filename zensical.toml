@@ -11,7 +11,7 @@ site_dir = "site"
 copyright = "Copyright &copy; 2026 amichne"
 nav = [
   { "Start" = "index.md" },
-  { "Install" = [{ "macOS developer workstation" = "install/macos.md" }] },
+  { "Install" = [{ "Install or update Kast" = "install/setup.md" }] },
   { "Use" = [{ "Use Kast in Codex" = "use/codex.md" }] },
   { "Reference" = [{ "Codex plugin" = "reference/codex-plugin.md" }] },
   { "Troubleshoot" = "troubleshoot.md" },

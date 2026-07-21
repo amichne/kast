@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 
 pub(crate) const BUNDLE_MANIFEST_FILE: &str = "manifest.json";
-pub(crate) const BUNDLE_MANIFEST_SCHEMA_VERSION: u32 = 2;
+pub(crate) const BUNDLE_MANIFEST_SCHEMA_VERSION: u32 = 3;
 pub(crate) const BUNDLE_MANIFEST_KIND: &str = "KAST_INSTALL_BUNDLE";
 pub(crate) const UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID: &str = "ubuntu-debian-headless-x86_64";
 pub(crate) const UBUNTU_DEBIAN_HEADLESS_PROFILE: &str = "ubuntu-debian-headless";
-pub(crate) const UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT: &str = "scripts/install-ubuntu-debian.sh";
+pub(crate) const UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT: &str = "install.sh";
 pub(crate) const HEADLESS_BACKEND_KIND: &str = "headless";
 pub(crate) const HEADLESS_BACKEND_NAME: &str = "headless";
 pub(crate) const HEADLESS_BACKEND_ROLE: &str = "headless-backend";
@@ -108,23 +108,29 @@ pub(crate) struct BundleShimActivation {
 pub(crate) struct BundleArtifact {
     pub(crate) role: String,
     pub(crate) path: String,
-    #[serde(default)]
-    pub(crate) source_sha256: String,
+    pub(crate) sha256: String,
 }
 
 pub(crate) fn ubuntu_debian_headless_manifest(
     version: &str,
-    cli_sha256: String,
-    backend_sha256: String,
+    platform: &str,
+    artifact_sha256: [String; 5],
     build_commit: String,
 ) -> BundleManifest {
+    let [
+        cli_sha256,
+        backend_sha256,
+        plugin_sha256,
+        skill_sha256,
+        guidance_sha256,
+    ] = artifact_sha256;
     let backend_install_name = format!("headless-{version}");
     BundleManifest {
         schema_version: BUNDLE_MANIFEST_SCHEMA_VERSION,
         kind: BUNDLE_MANIFEST_KIND.to_string(),
         profile: UBUNTU_DEBIAN_HEADLESS_PROFILE.to_string(),
         version: version.to_string(),
-        platform: UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID.to_string(),
+        platform: platform.to_string(),
         entrypoint: UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT.to_string(),
         java_requirement: "Java 21 or newer available on PATH, or KAST_JAVA_CMD set".to_string(),
         build_commit,
@@ -152,12 +158,27 @@ pub(crate) fn ubuntu_debian_headless_manifest(
             BundleArtifact {
                 role: "cli".to_string(),
                 path: "bin/kast".to_string(),
-                source_sha256: cli_sha256,
+                sha256: cli_sha256,
             },
             BundleArtifact {
                 role: HEADLESS_BACKEND_ROLE.to_string(),
                 path: format!("lib/backends/{backend_install_name}"),
-                source_sha256: backend_sha256,
+                sha256: backend_sha256,
+            },
+            BundleArtifact {
+                role: "plugin".to_string(),
+                path: "plugins/kast.zip".to_string(),
+                sha256: plugin_sha256,
+            },
+            BundleArtifact {
+                role: "skill".to_string(),
+                path: "skills/kast".to_string(),
+                sha256: skill_sha256,
+            },
+            BundleArtifact {
+                role: "guidance".to_string(),
+                path: "guidance".to_string(),
+                sha256: guidance_sha256,
             },
         ],
     }

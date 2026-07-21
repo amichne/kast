@@ -1,3 +1,10 @@
+pub fn print_paths(result: &PathResolutionReport) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast paths");
+    print_path_resolution(&mut document, result);
+    print_markdown(&document.into_string())
+}
+
 pub fn print_ready(result: &SelfDoctorResult) -> Result<()> {
     print_self_check("Kast ready", result)
 }
@@ -45,47 +52,12 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
         "- Minimum backend version: `{}`",
         result.minimum_backend_version
     );
-    if let Some(receipt) = &result.homebrew_install {
-        mdln!(document);
-        mdln!(document, "## macOS Homebrew authority");
-        mdln!(
-            document,
-            "- Receipt: `{}`",
-            compact_path_for_output(
-                &crate::install::default_macos_homebrew_receipt_path().display().to_string()
-            )
-        );
-        mdln!(
-            document,
-            "- CLI: `{}` (`{}`)",
-            compact_path_for_output(&receipt.cli.binary.display().to_string()),
-            receipt.cli.version
-        );
-    }
-    if let Some(shadow) = &result.legacy_shadow {
-        mdln!(document);
-        mdln!(document, "## Legacy PATH shadow");
-        mdln!(document, "- Path: `{}`", compact_path_for_output(&shadow.path));
-        mdln!(document, "- Kast-managed: {}", yes_no(shadow.managed));
-        mdln!(document, "- Writable: {}", yes_no(shadow.writable));
-        if let Some(command) = &shadow.cleanup_command {
-            mdln!(document, "- Safe cleanup: `{command}`");
-        }
-    }
     if let Some(environment) = &result.agent_environment {
         print_agent_environment(&mut document, environment);
     }
     print_path_resolution(&mut document, &result.path_resolution);
     print_messages(&mut document, "Issues", &result.issues);
     print_warnings(&mut document, &result.warnings);
-    if let Some(repair) = &result.repair {
-        mdln!(document);
-        mdln!(document, "## Repair");
-        mdln!(document, "- Applied changes: {}", yes_no(repair.applied));
-        mdln!(document, "- Actions: {}", repair.actions.len());
-        print_messages(&mut document, "Backups", &repair.backups);
-        print_warnings(&mut document, &repair.warnings);
-    }
     if let Some(install) = &result.install {
         mdln!(document);
         mdln!(document, "## Installed versions");
@@ -198,9 +170,7 @@ fn agent_resource_state_label(
 
 fn install_authority_label(authority: crate::self_mgmt::InstallAuthority) -> &'static str {
     match authority {
-        crate::self_mgmt::InstallAuthority::Machine => "machine",
-        crate::self_mgmt::InstallAuthority::MacosHomebrew => "macos-homebrew",
-        crate::self_mgmt::InstallAuthority::ManagedLocal => "managed-local",
+        crate::self_mgmt::InstallAuthority::ActiveRelease => "active-release",
         crate::self_mgmt::InstallAuthority::Missing => "missing",
     }
 }

@@ -1,7 +1,6 @@
 use crate::cli::{
     AgentCommand, AgentLeaseCommand, CodexCommand, Command, DeveloperCommand, GenerateCommand,
-    InspectCommand, MachineCommand, MetricsCommand, PackageCommand, ReleaseActivateCommand,
-    ReleaseCommand, RuntimeCommand,
+    InspectCommand, MetricsCommand, PackageCommand, ReleaseCommand, RuntimeCommand,
 };
 use serde::Serialize;
 
@@ -253,10 +252,7 @@ pub(crate) fn classify_command(command: &Command) -> CodexExposure {
         Command::Context(_) => CodexExposure::NotExposed,
         Command::Setup(_) => CodexExposure::NotExposed,
         Command::Ready(_) => CodexExposure::NotExposed,
-        Command::Repair(args) if args.apply => CodexExposure::NotExposed,
-        Command::Repair(_) => CodexExposure::NotExposed,
         Command::Status(_) => CodexExposure::NotExposed,
-        Command::Machine(_) => CodexExposure::NotExposed,
         Command::Demo(_) => CodexExposure::NotExposed,
         Command::Developer(args) => classify_developer(&args.command),
         Command::Doctor(_) => CodexExposure::NotExposed,
@@ -268,7 +264,6 @@ pub(crate) fn classify_developer(command: &DeveloperCommand) -> CodexExposure {
     match command {
         DeveloperCommand::Runtime(args) => classify_runtime(&args.command),
         DeveloperCommand::Inspect(args) => classify_inspect(&args.command),
-        DeveloperCommand::Machine(args) => classify_machine(&args.command),
         DeveloperCommand::Release(args) => classify_release(&args.command),
         DeveloperCommand::Codex(args) => match &args.command {
             CodexCommand::Generate(_) => CodexExposure::NotExposed,
@@ -306,21 +301,9 @@ fn classify_metrics(command: &MetricsCommand) -> CodexExposure {
     }
 }
 
-fn classify_machine(command: &MachineCommand) -> CodexExposure {
-    match command {
-        MachineCommand::Status
-        | MachineCommand::Activate(_)
-        | MachineCommand::Reconcile(_)
-        | MachineCommand::Defaults(_)
-        | MachineCommand::Shell(_)
-        | MachineCommand::Completion(_) => CodexExposure::NotExposed,
-    }
-}
-
 fn classify_release(command: &ReleaseCommand) -> CodexExposure {
     match command {
         ReleaseCommand::Package(args) => classify_package(&args.command),
-        ReleaseCommand::Activate(args) => classify_release_activate(&args.command),
         ReleaseCommand::Generate(args) => classify_generate(&args.command),
         ReleaseCommand::Validate(_) => CodexExposure::NotExposed,
     }
@@ -329,12 +312,6 @@ fn classify_release(command: &ReleaseCommand) -> CodexExposure {
 fn classify_package(command: &PackageCommand) -> CodexExposure {
     match command {
         PackageCommand::UbuntuDebianBundle(_) => CodexExposure::NotExposed,
-    }
-}
-
-fn classify_release_activate(command: &ReleaseActivateCommand) -> CodexExposure {
-    match command {
-        ReleaseActivateCommand::Bundle(_) => CodexExposure::NotExposed,
     }
 }
 

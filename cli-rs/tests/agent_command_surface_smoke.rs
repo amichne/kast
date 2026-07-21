@@ -397,7 +397,7 @@ fn assert_removed_agent_workflow(stdout: &serde_json::Value) {
     assert!(
         replacements
             .iter()
-            .any(|replacement| replacement == "kast repair --apply"),
+            .any(|replacement| replacement == "kast setup --source <bundle>"),
         "{stdout}"
     );
 }

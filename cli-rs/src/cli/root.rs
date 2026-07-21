@@ -37,17 +37,12 @@ pub enum Command {
     Version,
     /// Print compact workspace context for agents.
     Context(RuntimeArgs),
-    /// Set up Kast for this repository.
-    #[cfg_attr(target_os = "macos", command(hide = true))]
+    /// Install or refresh one verified Kast release.
     Setup(SetupArgs),
     /// Verify that Kast is ready for a task.
     Ready(ReadyArgs),
-    /// Plan or apply safe repair of Kast install state.
-    Repair(RepairArgs),
     /// Check the current workspace status.
     Status(RuntimeArgs),
-    /// Inspect or manage the one developer-machine Kast installation.
-    Machine(MachineArgs),
     /// Explore a guided semantic story from this Kotlin repository.
     Demo(PublicDemoArgs),
     /// Developer and release-engineering commands.
@@ -61,24 +56,19 @@ pub enum Command {
 
 #[derive(Debug, Args, Clone)]
 pub struct SetupArgs {
-    /// Absolute workspace root for repository guidance setup.
+    /// Extracted bundle directory or bundle .tar.gz archive.
+    #[arg(long)]
+    pub source: PathBuf,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct PathsArgs {
+    /// Absolute workspace root for workspace-local config inspection.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
-    /// Packaged skill target root. Defaults to configured setup, then .agents/skills.
-    #[arg(long = "skill-target-dir")]
-    pub skill_target_dir: Option<PathBuf>,
-    /// Repository context file to patch with Kast managed guidance.
-    #[arg(long = "context-file")]
-    pub context_files: Vec<PathBuf>,
-    /// Overwrite existing managed resources.
-    #[arg(short = 'f', long)]
-    pub force: bool,
-    /// Do not add managed resource paths to Git info/exclude.
+    /// Show the IDEA host path view.
     #[arg(long)]
-    pub no_auto_exclude_git: bool,
-    /// Explain repository setup without writing files.
-    #[arg(long)]
-    pub dry_run: bool,
+    pub idea: bool,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -106,21 +96,6 @@ impl From<DoctorArgs> for ReadyArgs {
             target: args.target,
         }
     }
-}
-
-#[derive(Debug, Args, Clone)]
-pub struct RepairArgs {
-    #[command(flatten)]
-    pub runtime: RuntimeArgs,
-    /// Task surface to repair toward.
-    #[arg(long = "for", value_enum, default_value = "agent")]
-    pub target: ReadyTarget,
-    /// Apply the planned install-state repairs.
-    #[arg(long)]
-    pub apply: bool,
-    /// JetBrains config root containing IDE profile directories to audit.
-    #[arg(long)]
-    pub jetbrains_config_root: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum, Serialize, Deserialize)]

@@ -60,11 +60,10 @@ fn agent_ready_uses_the_idea_plugin_without_a_global_skill() {
     let nested_workspace = workspace.join("module");
     std::fs::create_dir_all(&nested_workspace).expect("nested workspace");
 
-    let homebrew_binary = write_homebrew_kast_for_test(temp.path());
-    write_macos_homebrew_receipt_for_test(&home, &homebrew_binary);
+    let active_binary = write_active_kast_for_test(&home, &config_home);
     write_macos_plugin_workspace_metadata_for_cli(
         &workspace,
-        &homebrew_binary,
+        &active_binary,
         env!("CARGO_PKG_VERSION"),
     );
     let stale_skill = codex_home.join("skills/kast/SKILL.md");
@@ -80,7 +79,7 @@ fn agent_ready_uses_the_idea_plugin_without_a_global_skill() {
         .expect("workspace skill parent");
     std::fs::write(&workspace_skill, "workspace-owned").expect("workspace skill");
 
-    let ready = kast_at(&homebrew_binary, &home, &config_home)
+    let ready = kast_at(&active_binary, &home, &config_home)
         .env("CODEX_HOME", &codex_home)
         .current_dir(&nested_workspace)
         .args([
@@ -121,11 +120,10 @@ fn workspace_resources_do_not_affect_machine_readiness() {
     let workspace = temp.path().join("workspace");
     std::fs::create_dir_all(&workspace).expect("workspace");
 
-    let homebrew_binary = write_homebrew_kast_for_test(temp.path());
-    write_macos_homebrew_receipt_for_test(&home, &homebrew_binary);
+    let active_binary = write_active_kast_for_test(&home, &config_home);
     write_macos_plugin_workspace_metadata_for_cli(
         &workspace,
-        &homebrew_binary,
+        &active_binary,
         env!("CARGO_PKG_VERSION"),
     );
     let guidance = workspace.join("AGENTS.local.md");
@@ -134,7 +132,7 @@ fn workspace_resources_do_not_affect_machine_readiness() {
     std::fs::write(&guidance, "user guidance").expect("guidance");
     std::fs::write(&skill, "user skill").expect("skill");
 
-    let ready = kast_at(&homebrew_binary, &home, &config_home)
+    let ready = kast_at(&active_binary, &home, &config_home)
         .env_remove("CODEX_HOME")
         .args([
             "--output",

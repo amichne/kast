@@ -7,9 +7,10 @@ if [ "$#" -ne 1 ]; then
 fi
 
 : "${HOME:?HOME must be set}"
-kast_binary=$HOME/.local/bin/kast
+kast_home=${KAST_HOME:-$HOME/.local/share/kast}
+kast_binary=$kast_home/current/bin/kast
 if [ ! -x "$kast_binary" ]; then
-  printf '%s\n' '{"continue":true,"systemMessage":"Kast hook skipped: ~/.local/bin/kast is unavailable; run kast machine reconcile."}'
+  printf '%s\n' '{"continue":true,"systemMessage":"Kast hook skipped: the active setup release is unavailable; rerun kast setup --source <bundle>."}'
   exit 0
 fi
 

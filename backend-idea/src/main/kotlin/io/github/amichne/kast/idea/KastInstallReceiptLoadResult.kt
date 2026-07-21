@@ -3,11 +3,11 @@ package io.github.amichne.kast.idea
 import io.github.amichne.kast.api.contract.compatibility.CliImplementationVersion
 import java.nio.file.Path
 
-internal sealed interface MacosMachineManifestLoadResult {
+internal sealed interface KastInstallReceiptLoadResult {
     data class Loaded(
         val binary: Path,
         val version: CliImplementationVersion,
-    ) : MacosMachineManifestLoadResult
+    ) : KastInstallReceiptLoadResult
 
-    data class Rejected(val message: String) : MacosMachineManifestLoadResult
+    data class Rejected(val message: String) : KastInstallReceiptLoadResult
 }

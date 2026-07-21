@@ -20,42 +20,37 @@ pub(crate) fn kast_at(binary: &Path, home: &Path, config_home: &Path) -> Command
     command
 }
 
-pub(crate) fn write_homebrew_kast_for_test(root: &Path) -> PathBuf {
-    let binary = root
-        .join("Cellar/kast")
-        .join(env!("CARGO_PKG_VERSION"))
-        .join("bin/kast");
-    std::fs::create_dir_all(binary.parent().expect("Homebrew bin")).expect("Homebrew formula");
-    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &binary).expect("Homebrew Kast binary");
-    binary
-}
-
 pub(crate) fn default_install_root(home: &Path) -> PathBuf {
     home.join(".local/share/kast")
 }
 
 pub(crate) fn default_descriptor_dir(home: &Path) -> PathBuf {
-    default_install_root(home).join("runtime/daemons")
+    default_install_root(home).join("state/runtime/daemons")
 }
 
 pub(crate) fn default_bin_dir(home: &Path) -> PathBuf {
-    home.join(".local/bin")
+    default_install_root(home).join("current/bin")
 }
 
 pub(crate) fn install_manifest_path(home: &Path) -> PathBuf {
-    default_install_root(home).join("install.json")
+    default_install_root(home).join("current/receipt.json")
 }
 
-pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, config_home: &Path) {
+pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_home: &Path) {
     let install_root = default_install_root(home);
-    let binary = Path::new(env!("CARGO_BIN_EXE_kast"));
+    let binary = default_bin_dir(home).join("kast");
+    let config_root = install_root.join("current/config");
     std::fs::create_dir_all(default_bin_dir(home)).expect("bin directory");
     std::fs::create_dir_all(&install_root).expect("install root");
+    std::fs::create_dir_all(&config_root).expect("config root");
+    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &binary).expect("active Kast binary");
     std::fs::write(
         install_manifest_path(home),
         serde_json::to_vec_pretty(&serde_json::json!({
             "tool": "kast",
             "installId": "current-cli-test-install",
+            "releaseDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "manifestDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "profile": "user-local",
             "activeVersion": env!("CARGO_PKG_VERSION"),
             "createdAt": "unix:1",
@@ -63,12 +58,12 @@ pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, config_ho
             "roots": {
                 "install": install_root.display().to_string(),
                 "bin": default_bin_dir(home).display().to_string(),
-                "config": config_home.display().to_string(),
+                "config": config_root.display().to_string(),
                 "data": install_root.join("state").display().to_string(),
-                "cache": home.join(".cache/kast").display().to_string(),
-                "runtime": install_root.join("runtime").display().to_string(),
-                "logs": home.join(".local/state/kast/logs").display().to_string(),
-                "locks": install_root.join("locks").display().to_string()
+                "cache": install_root.join("state/cache").display().to_string(),
+                "runtime": install_root.join("state/runtime").display().to_string(),
+                "logs": install_root.join("state/logs").display().to_string(),
+                "locks": install_root.display().to_string()
             },
             "entrypoints": {
                 "shim": binary.display().to_string(),
@@ -84,34 +79,14 @@ pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, config_ho
     .expect("install manifest");
 }
 
-pub(crate) fn write_macos_homebrew_receipt_for_test(home: &Path, cli_binary: &Path) -> PathBuf {
-    let receipt = home.join("Library/Application Support/Kast/homebrew-install.json");
-    std::fs::create_dir_all(receipt.parent().expect("receipt parent")).expect("receipt dir");
-    std::fs::write(
-        &receipt,
-        serde_json::to_vec_pretty(&serde_json::json!({
-            "schemaVersion": 2,
-            "authority": "macos-homebrew",
-            "cli": {
-                "binary": cli_binary.display().to_string(),
-                "formulaPrefix": cli_binary.parent().expect("formula bin").parent().expect("formula prefix").display().to_string(),
-                "version": env!("CARGO_PKG_VERSION")
-            },
-            "updatedAt": "unix:1"
-        }))
-        .expect("receipt json"),
-    )
-    .expect("receipt");
-    let skill = home.join(".agents/skills/kast/SKILL.md");
-    std::fs::create_dir_all(skill.parent().expect("skill parent")).expect("skill dir");
-    std::fs::write(skill, include_bytes!("../../resources/kast-skill/SKILL.md"))
-        .expect("machine skill");
-    receipt
+pub(crate) fn write_active_kast_for_test(home: &Path, config_home: &Path) -> PathBuf {
+    write_current_cli_install_manifest_for_test(home, config_home);
+    default_bin_dir(home).join("kast")
 }
 
 pub(crate) fn write_legacy_local_install_for_test(home: &Path, config_home: &Path) -> PathBuf {
     let install_root = default_install_root(home);
-    let shim = default_bin_dir(home).join("kast");
+    let shim = home.join(".local/bin/kast");
     let active_binary = install_root.join("versions/0.12.3/bin/kast");
     std::fs::create_dir_all(active_binary.parent().expect("active binary parent"))
         .expect("active binary dir");
@@ -132,7 +107,7 @@ pub(crate) fn write_legacy_local_install_for_test(home: &Path, config_home: &Pat
     }
     std::fs::create_dir_all(&install_root).expect("install root");
     std::fs::write(
-        install_manifest_path(home),
+        install_root.join("install.json"),
         serde_json::to_vec_pretty(&serde_json::json!({
             "tool": "kast",
             "installId": "legacy-test-install",
@@ -142,7 +117,7 @@ pub(crate) fn write_legacy_local_install_for_test(home: &Path, config_home: &Pat
             "updatedAt": "unix:1",
             "roots": {
                 "install": install_root.display().to_string(),
-                "bin": default_bin_dir(home).display().to_string(),
+                "bin": home.join(".local/bin").display().to_string(),
                 "config": config_home.display().to_string(),
                 "data": install_root.join("state").display().to_string(),
                 "cache": home.join(".cache/kast").display().to_string(),
@@ -360,7 +335,9 @@ fn spawn_scripted_backend(
         let mut scripted_results = scripted_results.into_iter();
         let expected_requests = 2 * invocation_count + scripted_results.len();
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
-        while requests.len() < expected_requests && std::time::Instant::now() < deadline {
+        while (requests.len() < expected_requests || scripted_results.len() > 0)
+            && std::time::Instant::now() < deadline
+        {
             let (mut stream, _) = match listener.accept() {
                 Ok(connection) => connection,
                 Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
@@ -575,7 +552,9 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
     let bundle = root.join(format!("kast-{platform}-{version}"));
     let backend_dir = bundle.join(format!("lib/backends/headless-{version}"));
     std::fs::create_dir_all(bundle.join("bin")).expect("bundle bin");
-    std::fs::create_dir_all(bundle.join("scripts")).expect("bundle scripts");
+    std::fs::create_dir_all(bundle.join("plugins")).expect("bundle plugins");
+    std::fs::create_dir_all(bundle.join("skills/kast")).expect("bundle skills");
+    std::fs::create_dir_all(bundle.join("guidance")).expect("bundle guidance");
     std::fs::create_dir_all(backend_dir.join("runtime-libs")).expect("runtime libs");
     std::fs::create_dir_all(backend_dir.join("idea-home/lib")).expect("idea lib");
     std::fs::create_dir_all(backend_dir.join("idea-home/modules")).expect("idea modules");
@@ -597,25 +576,24 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
         b"modules",
     )
     .expect("module descriptors");
-    std::fs::write(
-        bundle.join("scripts/install-ubuntu-debian.sh"),
-        "#!/usr/bin/env bash\n",
-    )
-    .expect("bootstrap script");
+    std::fs::write(bundle.join("install.sh"), "#!/usr/bin/env bash\n").expect("bootstrap script");
+    std::fs::write(bundle.join("plugins/kast.zip"), b"plugin").expect("plugin");
+    std::fs::write(bundle.join("skills/kast/SKILL.md"), b"skill").expect("skill");
+    std::fs::write(bundle.join("guidance/AGENTS.md"), b"guidance").expect("guidance");
     set_executable_for_test(&bundled_kast);
     set_executable_for_test(&backend_dir.join("kast-headless"));
-    set_executable_for_test(&bundle.join("scripts/install-ubuntu-debian.sh"));
+    set_executable_for_test(&bundle.join("install.sh"));
 
     let normalized_version = version.trim_start_matches('v');
     std::fs::write(
         bundle.join("manifest.json"),
         serde_json::to_string_pretty(&serde_json::json!({
-            "schemaVersion": 2,
+            "schemaVersion": 3,
             "kind": "KAST_INSTALL_BUNDLE",
             "profile": "ubuntu-debian-headless",
             "version": version,
             "platform": platform,
-            "entrypoint": "scripts/install-ubuntu-debian.sh",
+            "entrypoint": "install.sh",
             "javaRequirement": "Java 21 or newer available on PATH, or KAST_JAVA_CMD set",
             "buildCommit": "test",
             "activation": {
@@ -640,12 +618,27 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
                 {
                     "role": "cli",
                     "path": "bin/kast",
-                    "sourceSha256": "test-cli-sha"
+                    "sha256": test_path_sha256(&bundled_kast)
                 },
                 {
                     "role": "headless-backend",
                     "path": format!("lib/backends/headless-{version}"),
-                    "sourceSha256": "test-backend-sha"
+                    "sha256": test_path_sha256(&backend_dir)
+                },
+                {
+                    "role": "plugin",
+                    "path": "plugins/kast.zip",
+                    "sha256": test_path_sha256(&bundle.join("plugins/kast.zip"))
+                },
+                {
+                    "role": "skill",
+                    "path": "skills/kast",
+                    "sha256": test_path_sha256(&bundle.join("skills/kast"))
+                },
+                {
+                    "role": "guidance",
+                    "path": "guidance",
+                    "sha256": test_path_sha256(&bundle.join("guidance"))
                 }
             ]
         }))
@@ -653,6 +646,41 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
     )
     .expect("write manifest");
     bundle
+}
+
+pub(crate) fn test_path_sha256(path: &Path) -> String {
+    use sha2::{Digest, Sha256};
+
+    if path.is_file() {
+        return hex::encode(Sha256::digest(std::fs::read(path).expect("artifact bytes")));
+    }
+    let mut files = Vec::new();
+    fn collect(root: &Path, directory: &Path, files: &mut Vec<PathBuf>) {
+        for entry in std::fs::read_dir(directory).expect("artifact directory") {
+            let entry = entry.expect("artifact entry");
+            if entry.path().is_dir() {
+                collect(root, &entry.path(), files);
+            } else {
+                files.push(
+                    entry
+                        .path()
+                        .strip_prefix(root)
+                        .expect("relative artifact")
+                        .to_path_buf(),
+                );
+            }
+        }
+    }
+    collect(path, path, &mut files);
+    files.sort();
+    let mut digest = Sha256::new();
+    for relative in files {
+        digest.update(relative.to_string_lossy().as_bytes());
+        digest.update(b"\n");
+        digest.update(test_path_sha256(&path.join(&relative)).as_bytes());
+        digest.update(b"\n");
+    }
+    hex::encode(digest.finalize())
 }
 
 pub(crate) fn write_bundle_tarball(root: &Path, bundle: &Path) -> PathBuf {

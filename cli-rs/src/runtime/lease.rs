@@ -20,19 +20,7 @@ pub enum WorkspaceLeaseOwnership {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "kebab-case")]
 pub enum WorkspaceLeaseInstallAuthority {
-    Machine,
-    MacosHomebrew,
-    ManagedLocal,
-}
-
-impl WorkspaceLeaseInstallAuthority {
-    fn canonical(self) -> &'static str {
-        match self {
-            Self::Machine => "machine",
-            Self::MacosHomebrew => "macos-homebrew",
-            Self::ManagedLocal => "managed-local",
-        }
-    }
+    ActiveRelease,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -444,7 +432,7 @@ fn lease_installation_identity(
     workspace_root: &Path,
     backend_name: BackendName,
 ) -> Result<WorkspaceLeaseInstallationIdentity> {
-    let doctor = self_mgmt::doctor(false, crate::cli::ReadyTarget::Agent, Some(workspace_root))?;
+    let doctor = self_mgmt::doctor(crate::cli::ReadyTarget::Agent, Some(workspace_root))?;
     let environment = doctor.agent_environment.as_ref().ok_or_else(|| {
         CliError::new(
             "WORKSPACE_LEASE_ENVIRONMENT_NOT_READY",
@@ -474,23 +462,12 @@ fn lease_installation_identity(
     let serialized = serde_json::to_vec(environment)?;
     let environment_sha256 = crate::manifest::sha256_bytes(&serialized);
     let (authority, generation) = match doctor.install_authority {
-        self_mgmt::InstallAuthority::Machine => (
-            WorkspaceLeaseInstallAuthority::Machine,
-            crate::machine::active_machine_identity()?,
-        ),
-        self_mgmt::InstallAuthority::MacosHomebrew => (
-            WorkspaceLeaseInstallAuthority::MacosHomebrew,
-            doctor
-                .homebrew_install
-                .as_ref()
-                .map(|receipt| receipt.cli.version.clone()),
-        ),
-        self_mgmt::InstallAuthority::ManagedLocal => (
-            WorkspaceLeaseInstallAuthority::ManagedLocal,
+        self_mgmt::InstallAuthority::ActiveRelease => (
+            WorkspaceLeaseInstallAuthority::ActiveRelease,
             doctor
                 .install
                 .as_ref()
-                .map(|install| install.install_id.clone()),
+                .map(|install| install.release_digest.clone()),
         ),
         self_mgmt::InstallAuthority::Missing => {
             return Err(CliError::new(
@@ -966,16 +943,6 @@ fn validate_token_environment(
     claims: &WorkspaceLeaseTokenClaims,
     installation: &WorkspaceLeaseInstallationIdentity,
 ) -> Result<()> {
-    if claims.authority != installation.authority {
-        return Err(CliError::new(
-            "WORKSPACE_LEASE_FOREIGN_AUTHORITY",
-            format!(
-                "Workspace lease authority {} is not the effective authority {}.",
-                claims.authority.canonical(),
-                installation.authority.canonical()
-            ),
-        ));
-    }
     if claims.environment_sha256 != installation.environment_sha256 {
         return Err(stale_environment_error(
             "Workspace lease was issued for a different effective generation.",
@@ -1340,7 +1307,7 @@ mod workspace_lease_tests {
     #[test]
     fn signed_token_rejects_tampering() {
         let claims = WorkspaceLeaseTokenClaims {
-            authority: WorkspaceLeaseInstallAuthority::ManagedLocal,
+            authority: WorkspaceLeaseInstallAuthority::ActiveRelease,
             generation: "generation-1".to_string(),
             environment_sha256: "a".repeat(64),
             workspace_root: PathBuf::from("/workspace"),
@@ -1420,9 +1387,9 @@ mod workspace_lease_tests {
     }
 
     #[test]
-    fn token_environment_distinguishes_foreign_authority_from_stale_generation() {
+    fn token_environment_rejects_a_stale_active_release() {
         let claims = WorkspaceLeaseTokenClaims {
-            authority: WorkspaceLeaseInstallAuthority::Machine,
+            authority: WorkspaceLeaseInstallAuthority::ActiveRelease,
             generation: "generation-1".to_string(),
             environment_sha256: "a".repeat(64),
             workspace_root: PathBuf::from("/workspace"),
@@ -1430,18 +1397,6 @@ mod workspace_lease_tests {
             binding_sha256: "b".repeat(64),
             record_id: uuid::Uuid::new_v4(),
         };
-        let foreign = WorkspaceLeaseInstallationIdentity {
-            authority: WorkspaceLeaseInstallAuthority::ManagedLocal,
-            generation: claims.generation.clone(),
-            environment_sha256: claims.environment_sha256.clone(),
-        };
-        assert_eq!(
-            validate_token_environment(&claims, &foreign)
-                .expect_err("foreign authority")
-                .code,
-            "WORKSPACE_LEASE_FOREIGN_AUTHORITY"
-        );
-
         let stale = WorkspaceLeaseInstallationIdentity {
             authority: claims.authority,
             generation: "generation-2".to_string(),

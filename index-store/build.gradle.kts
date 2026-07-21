@@ -3,10 +3,10 @@ plugins {
     kotlin("plugin.serialization")
 }
 
-val sourceIndexReleaseStateFile = rootProject.layout.projectDirectory.file("packaging/homebrew/release-state.json")
+val sourceIndexSchemaVersionFile = rootProject.layout.projectDirectory.file("cli-rs/protocol/source-index-schema-version.txt")
 val generatedSourceIndexSchemaDir = layout.buildDirectory.dir("generated/source-index-schema/kotlin")
 val generateSourceIndexSchema by tasks.registering(WriteSourceIndexSchemaVersionTask::class) {
-    releaseStateFile.set(sourceIndexReleaseStateFile)
+    schemaVersionFile.set(sourceIndexSchemaVersionFile)
     outputDirectory.set(generatedSourceIndexSchemaDir)
 }
 

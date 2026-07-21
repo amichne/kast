@@ -10,16 +10,16 @@ class WriteSourceIndexSchemaVersionTaskTest {
     lateinit var temporaryDirectory: Path
 
     @Test
-    fun `release state version eight generates the Kotlin schema authority`() {
-        val releaseState = temporaryDirectory.resolve("release-state.json")
-        Files.writeString(releaseState, """{"source_index_schema_version": 8}""")
+    fun `protocol version eight generates the Kotlin schema authority`() {
+        val schemaVersion = temporaryDirectory.resolve("source-index-schema-version.txt")
+        Files.writeString(schemaVersion, "8\n")
         val outputDirectory = temporaryDirectory.resolve("generated")
         val project = ProjectBuilder.builder().withProjectDir(temporaryDirectory.toFile()).build()
         val task = project.tasks.register(
             "writeSourceIndexSchemaVersionUnderTest",
             WriteSourceIndexSchemaVersionTask::class.java,
         ).get().apply {
-            releaseStateFile.set(releaseState.toFile())
+            schemaVersionFile.set(schemaVersion.toFile())
             this.outputDirectory.set(outputDirectory.toFile())
         }
 
@@ -33,7 +33,7 @@ class WriteSourceIndexSchemaVersionTaskTest {
             package io.github.amichne.kast.indexstore.store
 
             /**
-             * SQLite source-index schema version declared by the release state.
+             * SQLite source-index schema version declared by the shared protocol.
              */
             const val SOURCE_INDEX_SCHEMA_VERSION: Int = 8
             """.trimIndent() + "\n",
