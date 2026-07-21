@@ -20,8 +20,8 @@ fi
 
 [[ -x "${bundle_root}/bin/kast" ]] || { printf 'bundle CLI is missing\n' >&2; exit 1; }
 first="$(${bundle_root}/bin/kast --output json setup --source "$bundle_root")"
-grep -Fq '"status":"ACTIVATED"' <<<"$first"
+grep -Eq '"status"[[:space:]]*:[[:space:]]*"ACTIVATED"' <<<"$first"
 second="$(${KAST_HOME}/current/bin/kast --output json setup --source "$bundle_root")"
-grep -Fq '"status":"CURRENT"' <<<"$second"
+grep -Eq '"status"[[:space:]]*:[[:space:]]*"CURRENT"' <<<"$second"
 "${KAST_HOME}/current/bin/kast" ready --for machine >/dev/null
 printf 'setup bundle verification passed\n'

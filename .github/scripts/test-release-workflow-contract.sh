@@ -7,6 +7,7 @@ release="$repo_root/.github/workflows/release.yml"
 build="$repo_root/build.gradle.kts"
 verify_assets="$repo_root/scripts/verify-release-assets.sh"
 verify_state="$repo_root/scripts/verify-release-state.sh"
+verify_setup="$repo_root/scripts/verify-setup-bundle.sh"
 
 require() {
   local file="$1" text="$2" message="$3"
@@ -34,6 +35,8 @@ require "$verify_state" 'verify-setup-bundle.sh' 'published release verification
 require "$verify_state" 'verify-maven-central.sh' 'published release verification must check Maven Central'
 require "$verify_state" '--attempts "$maven_attempts"' 'published Maven verification must retain its retry count'
 require "$verify_state" '--delay-seconds "$maven_delay_seconds"' 'published Maven verification must retain its retry delay'
+require "$verify_setup" '"status"[[:space:]]*:[[:space:]]*"ACTIVATED"' 'setup verification must accept pretty-printed activation JSON'
+require "$verify_setup" '"status"[[:space:]]*:[[:space:]]*"CURRENT"' 'setup verification must accept pretty-printed current JSON'
 
 for file in "$ci" "$release" "$verify_state"; do
   reject "$file" 'homebrew' 'retired Homebrew authority remains in release flow'

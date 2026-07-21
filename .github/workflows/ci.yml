@@ -852,7 +852,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          runtime_version="$(git describe --tags --match 'v*' --abbrev=0 | sed 's/^v//')"
+          runtime_version="0.0.0-ci"
           scripts/package-prepared-local-generation-derivatives.sh \
             --kind kast-action-runtime \
             --source-root "$GITHUB_WORKSPACE" \
@@ -892,7 +892,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          runtime_version="$(git describe --tags --match 'v*' --abbrev=0 | sed 's/^v//')"
+          runtime_version="0.0.0-ci"
           scripts/verify-ci-artifact-ledger.py verify \
             --ledger dist/ci-ledgers/kast-action-runtime/ci-headless-runtime.json \
             --ledger dist/ci-ledgers/kast-action-runtime/ci-headless-runtime-manifest.json \
