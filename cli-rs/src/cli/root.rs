@@ -57,8 +57,18 @@ pub enum Command {
 #[derive(Debug, Args, Clone)]
 pub struct SetupArgs {
     /// Extracted bundle directory or bundle .tar.gz archive.
-    #[arg(long)]
-    pub source: PathBuf,
+    #[arg(
+        long,
+        required_unless_present = "idea_plugin",
+        conflicts_with = "idea_plugin"
+    )]
+    pub source: Option<PathBuf>,
+    /// IDEA plugin ZIP to install with the running native CLI.
+    #[arg(long, required_unless_present = "source", conflicts_with = "source")]
+    pub idea_plugin: Option<PathBuf>,
+    /// IntelliJ IDEA or Android Studio plugins directory.
+    #[arg(long, requires = "idea_plugin")]
+    pub idea_plugins_dir: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]

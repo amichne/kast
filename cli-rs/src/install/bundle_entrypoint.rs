@@ -1,7 +1,18 @@
 pub fn setup(args: SetupArgs) -> Result<SetupResult> {
+    match (args.source, args.idea_plugin) {
+        (Some(source), None) => setup_bundle(source),
+        (None, Some(idea_plugin)) => setup_idea_plugin(idea_plugin, args.idea_plugins_dir),
+        _ => Err(CliError::new(
+            "CLI_USAGE",
+            "Pass exactly one of --source or --idea-plugin.",
+        )),
+    }
+}
+
+fn setup_bundle(source: PathBuf) -> Result<SetupResult> {
     let kast_home = env_path("KAST_HOME")
         .unwrap_or_else(|| manifest::home_dir().join(".local/share/kast"));
-    let source = config::normalize(args.source);
+    let source = config::normalize(source);
     let scratch = ScratchDir::new("kast-setup")?;
     let bundle_root = bundle_source_root(&source, scratch.path())?;
     let bundle = validate_bundle(&bundle_root)?;

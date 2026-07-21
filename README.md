@@ -7,17 +7,17 @@ IDEA, Android Studio, or the packaged headless backend.
 
 ## Install or update
 
-One command installs, replaces, repairs, upgrades, or downgrades the complete
-release on macOS and Linux:
+One command installs, replaces, repairs, upgrades, or downgrades Kast. On macOS
+it installs the native CLI and matching IDEA plugin; on Linux it installs the
+complete headless release:
 
 ```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The bootstrap delegates to `kast setup`. A successful invocation atomically
-activates one checksum-verified CLI, backend, IDEA plugin, skill, guidance set,
-config, and receipt under `KAST_HOME` (default `~/.local/share/kast`). A failed
-invocation leaves the prior active release usable.
+The bootstrap delegates to `kast setup`. A successful invocation activates the
+platform release and receipt under `KAST_HOME` (default
+`~/.local/share/kast`). A failed invocation leaves the prior active release usable.
 
 For a local bundle:
 
