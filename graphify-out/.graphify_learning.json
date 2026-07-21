@@ -1,0 +1,166 @@
+{
+  "generated_at": "2026-07-21T21:59:29.580839+00:00",
+  "nodes": {
+    "analysis_api_src_main_kotlin_io_github_amichne_kast_api_client_fields_configurationdefault_configurationdefault": {
+      "code_fingerprint": "ebee4d41c76c4bd0a68603259b51b030f69333490c5533d8cd9e85e24377e5a8",
+      "label": "ConfigurationDefault",
+      "last": "2026-07-21T03:06:10.943355+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-21T03:06:10.943355+00:00",
+          "outcome": "useful",
+          "q": "Help me understand where we have residual complexity in the system that we would be best served by attempting to trim"
+        }
+      ],
+      "score": 0.98198028,
+      "source_file": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/client/fields/ConfigurationDefault.kt",
+      "status": "tentative",
+      "uses": 1
+    },
+    "analysis_api_src_main_kotlin_io_github_amichne_kast_api_continuation_serverheldcontinuationstore_serverheldcontinuationstore": {
+      "code_fingerprint": "fba1670d0948c608cccac7240001c8a81f8955a1b9e587b6cdda51c2492ead2c",
+      "label": "ServerHeldContinuationStore",
+      "last": "2026-07-21T03:06:10.943355+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-21T03:06:10.943355+00:00",
+          "outcome": "useful",
+          "q": "Help me understand where we have residual complexity in the system that we would be best served by attempting to trim"
+        }
+      ],
+      "score": 0.98198028,
+      "source_file": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ServerHeldContinuationStore.kt",
+      "status": "tentative",
+      "uses": 1
+    },
+    "analysis_server_src_main_kotlin_io_github_amichne_kast_server_skillrpcorchestrator_skillrpcorchestrator": {
+      "code_fingerprint": "69cbf6073213d81d711dfda88f6ac09f72eb289df9c4d9a89e1ec4c9fd646f56",
+      "label": "SkillRpcOrchestrator",
+      "last": "2026-07-21T03:06:10.943355+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-21T03:06:10.943355+00:00",
+          "outcome": "useful",
+          "q": "Help me understand where we have residual complexity in the system that we would be best served by attempting to trim"
+        }
+      ],
+      "score": 0.98198028,
+      "source_file": "analysis-server/src/main/kotlin/io/github/amichne/kast/server/SkillRpcOrchestrator.kt",
+      "status": "tentative",
+      "uses": 1
+    },
+    "cli_rs_src_agent_types_agentenvelope": {
+      "code_fingerprint": "66bcba1bb96587d55ecbdba92a2d828f5709e35b18c80f28fcd3f43309d33d36",
+      "label": "AgentEnvelope",
+      "last": "2026-07-21T03:06:10.943355+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-21T03:06:10.943355+00:00",
+          "outcome": "useful",
+          "q": "Help me understand where we have residual complexity in the system that we would be best served by attempting to trim"
+        }
+      ],
+      "score": 0.98198028,
+      "source_file": "cli-rs/src/agent/types.rs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "cli_rs_src_codex_hook": {
+      "code_fingerprint": "52a77e5c0b608354d154bf6158dbba0cfb6eb55921bec79498bbcb7d58f94acd",
+      "label": "hook.rs",
+      "last": "2026-07-21T20:23:33.680615+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-21T20:23:33.680615+00:00",
+          "outcome": "useful",
+          "q": "Split Kast Codex tooling into a separately published fast-forward marketplace, remove plugin digest/version coupling, and delegate daemon/runtime concerns to the CLI"
+        }
+      ],
+      "score": 0.998461953,
+      "source_file": "cli-rs/src/codex/hook.rs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "cli_rs_src_daemon": {
+      "code_fingerprint": "2667cd2b06268d55c4c5fa47045443838396c7a8e27519fdca0c857aefbebbf6",
+      "label": "daemon.rs",
+      "last": "2026-07-21T20:23:33.680615+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-21T20:23:33.680615+00:00",
+          "outcome": "useful",
+          "q": "Split Kast Codex tooling into a separately published fast-forward marketplace, remove plugin digest/version coupling, and delegate daemon/runtime concerns to the CLI"
+        }
+      ],
+      "score": 0.998461953,
+      "source_file": "cli-rs/src/daemon.rs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "cli_rs_tests_setup_smoke": {
+      "code_fingerprint": "",
+      "label": "setup_smoke.rs",
+      "last": "2026-07-21T12:57:41.509982+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-21T12:57:41.509982+00:00",
+          "outcome": "useful",
+          "q": "Which files define the failing kast-action setup runtime contract?"
+        }
+      ],
+      "score": 0.991344437,
+      "source_file": "cli-rs/tests/setup_smoke.rs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "index_store_src_main_kotlin_io_github_amichne_kast_indexstore_store_sqlitesourceindexstore_sqlitesourceindexstore": {
+      "code_fingerprint": "6af29beea89cbcbb0db14c03b8c9e78c879a48eaf5946935e5ee21468128d9c0",
+      "label": "SqliteSourceIndexStore",
+      "last": "2026-07-21T03:06:10.943355+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-21T03:06:10.943355+00:00",
+          "outcome": "useful",
+          "q": "Help me understand where we have residual complexity in the system that we would be best served by attempting to trim"
+        }
+      ],
+      "score": 0.98198028,
+      "source_file": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt",
+      "status": "tentative",
+      "uses": 1
+    },
+    "install": {
+      "code_fingerprint": "eb4bbad89219d153c82a748325b77089602225c684f919213c7f3fded8b0d8c6",
+      "label": "install.sh",
+      "last": "2026-07-21T12:57:41.509982+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-21T12:57:41.509982+00:00",
+          "outcome": "useful",
+          "q": "Which files define the failing kast-action setup runtime contract?"
+        }
+      ],
+      "score": 0.991344437,
+      "source_file": "install.sh",
+      "status": "tentative",
+      "uses": 1
+    },
+    "scripts_verify_setup_kast_install": {
+      "code_fingerprint": "13257c70ec743f009a29e5e8e82935d4e92bf9109f314faa3c4196319952666d",
+      "label": "verify-setup-kast-install.sh",
+      "last": "2026-07-21T12:57:41.509982+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-21T12:57:41.509982+00:00",
+          "outcome": "useful",
+          "q": "Which files define the failing kast-action setup runtime contract?"
+        }
+      ],
+      "score": 0.991344437,
+      "source_file": "scripts/verify-setup-kast-install.sh",
+      "status": "tentative",
+      "uses": 1
+    }
+  },
+  "version": 1
+}

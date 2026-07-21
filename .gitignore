@@ -165,3 +165,17 @@ kast-copilot-plugin/
 .agents/skills/kotlin-gradle-loop/
 .agents/skills/kotlin-standards/
 /.claude/skills/grill-with-docs/**
+
+# Share Graphify's canonical map; keep local and redundant output out of Git.
+/graphify-out/*
+!/graphify-out/graph.json
+!/graphify-out/graph.html
+!/graphify-out/GRAPH_REPORT.md
+!/graphify-out/manifest.json
+!/graphify-out/.graphify_labels.json
+!/graphify-out/.graphify_learning.json
+!/graphify-out/memory/
+!/graphify-out/memory/**
+!/graphify-out/reflections/
+!/graphify-out/reflections/**
+/cli-rs/graphify-out/
