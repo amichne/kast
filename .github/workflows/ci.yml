@@ -804,8 +804,25 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - prepared-generation
+      - prepared-ubuntu-debian-bundle
     steps:
       - uses: actions/checkout@v5
+
+      - name: Download setup bundle
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-ubuntu-debian-ci-bundle
+          path: ${{ runner.temp }}/kast-action-bundle
+
+      - name: Verify setup bundle input
+        id: verify-setup-bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$RUNNER_TEMP/kast-action-bundle/kast-ubuntu-debian-headless-x86_64-v0.7.11-ci.tar.gz"
+          test -f "$bundle"
+          printf 'bundle=%s\n' "$bundle" >> "$GITHUB_OUTPUT"
+          printf 'bundle_sha=%s\n' "$(sha256sum "$bundle" | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-java@v5
         with:
@@ -913,10 +930,9 @@ jobs:
       - name: Install packaged runtime with kast-action
         uses: amichne/kast-action@v2
         with:
-          version: ${{ steps.verify-runtime.outputs.runtime_version }}
-          artifact-url: file://${{ github.workspace }}/dist/kast-headless-linux-x64.tar.zst
-          artifact-sha256: ${{ steps.verify-runtime.outputs.runtime_sha }}
-          manifest-url: file://${{ github.workspace }}/dist/kast-runtime-manifest.json
+          version: v0.7.11-ci
+          artifact-url: file://${{ steps.verify-setup-bundle.outputs.bundle }}
+          artifact-sha256: ${{ steps.verify-setup-bundle.outputs.bundle_sha }}
           gradle-ro-cache-url: file://${{ github.workspace }}/dist/gradle-ro-dep-cache.tar.zst
           gradle-ro-cache-sha256: ${{ steps.verify-runtime.outputs.gradle_cache_sha }}
           install-dir: ${{ runner.temp }}/kast-install
