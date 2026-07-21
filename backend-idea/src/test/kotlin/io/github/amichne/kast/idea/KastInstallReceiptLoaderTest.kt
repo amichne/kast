@@ -41,6 +41,19 @@ class KastInstallReceiptLoaderTest {
     }
 
     @Test
+    fun `CLI drift rejects the complete active release`() {
+        val receipt = writeActiveInstallReceipt()
+        Files.writeString(receipt.parent.resolve("bin/kast"), "modified")
+
+        val rejected = assertInstanceOf(
+            KastInstallReceiptLoadResult.Rejected::class.java,
+            KastInstallReceiptLoader.load(receipt) { CliImplementationVersion("1.2.3") },
+        )
+
+        assertTrue(rejected.message.contains("CLI"), rejected.message)
+    }
+
+    @Test
     fun `default receipt path is rooted in KAST_HOME current`() {
         assertEquals(
             tempDir.resolve(".local/share/kast/current/receipt.json"),
@@ -55,7 +68,16 @@ class KastInstallReceiptLoaderTest {
         Files.createDirectories(binary.parent)
         Files.writeString(binary, "binary")
         check(binary.toFile().setExecutable(true))
-        Files.writeString(manifest, "manifest")
+        Files.writeString(
+            manifest,
+            """
+            {
+              "artifacts": [
+                {"role": "cli", "path": "bin/kast", "sha256": "${sha256(binary)}"}
+              ]
+            }
+            """.trimIndent(),
+        )
         return current.resolve("receipt.json").also { receipt ->
             Files.writeString(
                 receipt,

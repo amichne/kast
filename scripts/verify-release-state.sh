@@ -3,11 +3,14 @@ set -Eeuo pipefail
 
 tag=""
 repository="${GITHUB_REPOSITORY:-amichne/kast}"
+maven_attempts=1
+maven_delay_seconds=0
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --tag) tag="$2"; shift 2 ;;
     --repository) repository="$2"; shift 2 ;;
-    --maven-attempts|--maven-delay-seconds) shift 2 ;;
+    --maven-attempts) maven_attempts="$2"; shift 2 ;;
+    --maven-delay-seconds) maven_delay_seconds="$2"; shift 2 ;;
     *) printf 'unknown argument: %s\n' "$1" >&2; exit 2 ;;
   esac
 done
@@ -19,4 +22,8 @@ asset="kast-linux-x64-${tag}.tar.gz"
 gh release download "$tag" --repo "$repository" --dir "$work" --pattern "$asset" --pattern "${asset}.sha256"
 (cd "$work" && sha256sum -c "${asset}.sha256")
 "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/verify-setup-bundle.sh" "$work/$asset"
+"$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/verify-maven-central.sh" \
+  --version "${tag#v}" \
+  --attempts "$maven_attempts" \
+  --delay-seconds "$maven_delay_seconds"
 printf 'release setup verification passed for %s\n' "$tag"

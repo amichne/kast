@@ -31,6 +31,9 @@ done
 require "$release" '--plugin-archive "$work/kast-idea-${tag}.zip"' 'release bundles must include the release-matched IDEA plugin'
 require "$release" 'scripts/verify-setup-bundle.sh' 'release validation must enter through kast setup'
 require "$verify_state" 'verify-setup-bundle.sh' 'published release verification must enter through kast setup'
+require "$verify_state" 'verify-maven-central.sh' 'published release verification must check Maven Central'
+require "$verify_state" '--attempts "$maven_attempts"' 'published Maven verification must retain its retry count'
+require "$verify_state" '--delay-seconds "$maven_delay_seconds"' 'published Maven verification must retain its retry delay'
 
 for file in "$ci" "$release" "$verify_state"; do
   reject "$file" 'homebrew' 'retired Homebrew authority remains in release flow'

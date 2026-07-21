@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.contract.compatibility.CliImplementationVersio
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.nio.file.Files
@@ -64,16 +65,39 @@ internal object KastInstallReceiptLoader {
         ) {
             return modified(path, "bundle manifest")
         }
+        val manifestDocument = runCatching {
+            Json.parseToJsonElement(Files.readString(manifest)).jsonObject
+        }.getOrElse { error ->
+            return invalid(path, error.message)
+        }
+        val cliArtifact = runCatching {
+            manifestDocument.getValue("artifacts").jsonArray
+                .map { element -> element.jsonObject }
+                .singleOrNull { artifact -> artifact.string("role") == "cli" }
+        }.getOrNull()
+        val cliPath = cliArtifact?.string("path")
+            ?.takeIf { value -> value == "bin/kast" }
+            ?: return invalid(path, "bundle manifest CLI path is missing or invalid")
+        val cliDigest = cliArtifact.string("sha256")
+            ?.takeIf { value -> value.matches(digestPattern) }
+            ?: return invalid(path, "bundle manifest CLI digest is missing or invalid")
         val binary = receipt.objectValue("entrypoints")?.string("activeBinary")
             ?.let { value -> runCatching { Path.of(value).toAbsolutePath().normalize() }.getOrNull() }
             ?: return invalid(path, "entrypoints.activeBinary is missing or invalid")
-        if (!binary.startsWith(current) || !Files.isRegularFile(binary) || !Files.isExecutable(binary)) {
+        if (
+            binary != current.resolve(cliPath).normalize() ||
+            !Files.isRegularFile(binary) ||
+            !Files.isExecutable(binary)
+        ) {
             return modified(path, "CLI")
         }
         val canonicalBinary = runCatching { binary.toRealPath() }.getOrElse { error ->
             return invalid(path, error.message)
         }
         if (!canonicalBinary.startsWith(canonicalCurrent)) {
+            return modified(path, "CLI")
+        }
+        if (sha256(canonicalBinary) != cliDigest) {
             return modified(path, "CLI")
         }
         val version = loadCliVersion(canonicalBinary)
