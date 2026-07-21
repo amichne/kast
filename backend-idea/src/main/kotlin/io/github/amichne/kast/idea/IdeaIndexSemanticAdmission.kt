@@ -1,6 +1,7 @@
 package io.github.amichne.kast.idea
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleManager
@@ -14,6 +15,7 @@ import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import org.jetbrains.kotlin.psi.KtFile
 import java.util.concurrent.CancellationException
+import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
@@ -39,7 +41,11 @@ internal class IdeaIndexSemanticAdmission(
                 if (cancelled() || project.isDisposed || Thread.currentThread().isInterrupted) {
                     throw InterruptedException("Kast source-index semantic admission was cancelled")
                 }
-                val pending = when (val inspection = inspectProject()) {
+                val inspection = ReadAction
+                    .nonBlocking(Callable(inspectProject))
+                    .expireWhen(cancelled)
+                    .executeSynchronously()
+                val pending = when (inspection) {
                     Inspection.Ready -> {
                         status.set(Status.Ready)
                         return
