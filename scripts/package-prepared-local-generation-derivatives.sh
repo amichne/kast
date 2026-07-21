@@ -8,7 +8,7 @@ die() {
 
 usage() {
   printf '%s\n' \
-    'Usage: scripts/package-prepared-local-generation-derivatives.sh --kind <ubuntu-debian-bundle|kast-action-runtime> --source-root <checkout> --prepared-generation-archive <tar.zst> --dist-directory <directory> [--bundle-version <version>] [--runtime-version <version>]' \
+    'Usage: scripts/package-prepared-local-generation-derivatives.sh --kind <ubuntu-debian-bundle|kast-action-runtime> --source-root <checkout> --prepared-generation-archive <tar.zst> --dist-directory <directory> [--plugin-archive <zip>] [--bundle-version <version>] [--runtime-version <version>]' \
     >&2
 }
 
@@ -24,6 +24,7 @@ prepared_generation_archive=""
 dist_directory=""
 bundle_version=""
 runtime_version=""
+plugin_archive=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --kind)
@@ -44,6 +45,9 @@ while [[ $# -gt 0 ]]; do
     --runtime-version)
       [[ $# -ge 2 ]] || die 'Missing value for --runtime-version'
       runtime_version="$2"; shift 2 ;;
+    --plugin-archive)
+      [[ $# -ge 2 ]] || die 'Missing value for --plugin-archive'
+      plugin_archive="$2"; shift 2 ;;
     --help|-h)
       usage; exit 0 ;;
     *)
@@ -55,6 +59,8 @@ done
 case "$package_kind" in
   ubuntu-debian-bundle)
     [[ -n "$bundle_version" ]] || { usage; die '--bundle-version is required for ubuntu-debian-bundle'; }
+    [[ -n "$plugin_archive" ]] || { usage; die '--plugin-archive is required for ubuntu-debian-bundle'; }
+    [[ -f "$plugin_archive" ]] || die "IDEA plugin archive not found: $plugin_archive"
     [[ -z "$runtime_version" ]] || die '--runtime-version is not valid for ubuntu-debian-bundle'
     ;;
   kast-action-runtime)
@@ -118,6 +124,7 @@ case "$package_kind" in
       --repo-root "$source_root" \
       --cli-archive "$cli_archive" \
       --backend-archive "$backend_archive" \
+      --plugin-archive "$plugin_archive" \
       --version "$bundle_version" \
       --bundle-output "$bundle_asset"
     ;;

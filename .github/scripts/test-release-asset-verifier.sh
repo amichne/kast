@@ -100,6 +100,18 @@ PY
     "gradle-ro-dep-cache.tar.zst" \
     > "${release_dir}/gradle-ro-dep-cache.sha256"
   write_text_asset "${release_dir}/openapi.yaml"
+  local setup_asset
+  for setup_asset in \
+    "kast-linux-arm64-${tag}.tar.gz" \
+    "kast-linux-x64-${tag}.tar.gz" \
+    "kast-macos-arm64-${tag}.tar.gz" \
+    "kast-macos-x64-${tag}.tar.gz"; do
+    write_text_asset "${release_dir}/${setup_asset}"
+    printf '%s  %s\n' \
+      "$(compute_sha256 "${release_dir}/${setup_asset}")" \
+      "$setup_asset" \
+      > "${release_dir}/${setup_asset}.sha256"
+  done
   write_text_asset "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
   printf '%s  %s\n' \
     "$(compute_sha256 "${release_dir}/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz")" \
@@ -136,6 +148,10 @@ entries = [
     ("headless-linux-x64", "kast-headless-linux-x64.tar.zst"),
     ("openapi", "openapi.yaml"),
     ("runtime-manifest", "kast-runtime-manifest.json"),
+    ("setup-linux-arm64", f"kast-linux-arm64-{tag}.tar.gz"),
+    ("setup-linux-x64", f"kast-linux-x64-{tag}.tar.gz"),
+    ("setup-macos-arm64", f"kast-macos-arm64-{tag}.tar.gz"),
+    ("setup-macos-x64", f"kast-macos-x64-{tag}.tar.gz"),
     ("ubuntu-debian-headless-x86_64", f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz"),
 ]
 builds = [
@@ -196,6 +212,10 @@ assets=(
   "kast-headless-linux-x64.tar.zst"
   "openapi.yaml"
   "kast-runtime-manifest.json"
+  "kast-linux-arm64-${tag}.tar.gz"
+  "kast-linux-x64-${tag}.tar.gz"
+  "kast-macos-arm64-${tag}.tar.gz"
+  "kast-macos-x64-${tag}.tar.gz"
   "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
 )
 
@@ -220,6 +240,10 @@ core_assets=(
   "kast-headless-linux-x64.tar.zst"
   "openapi.yaml"
   "kast-runtime-manifest.json"
+  "kast-linux-arm64-${tag}.tar.gz"
+  "kast-linux-x64-${tag}.tar.gz"
+  "kast-macos-arm64-${tag}.tar.gz"
+  "kast-macos-x64-${tag}.tar.gz"
 )
 write_expected_assets
 rm -f \

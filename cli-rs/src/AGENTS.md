@@ -19,4 +19,4 @@ the checked-in typed compatibility matrix compiled through
 `runtime/compatibility.rs`; unsupported protocol, metadata, runtime, version
 pair, or required capability facts fail closed with update, reopen, and refresh
 guidance. Do not restore exact CLI/plugin version equality or infer plugin
-installation from a profile, link, receipt, or Homebrew state.
+installation from an IDE profile, link, or other external state.

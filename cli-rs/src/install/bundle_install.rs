@@ -1,7 +1,7 @@
 fn install_validated_bundle(
     bundle: &ValidatedBundle,
     targets: &ActivationTargetPaths,
-) -> Result<()> {
+) -> Result<(Option<PathBuf>, Option<PathBuf>)> {
     if bundle.root.starts_with(&targets.resolved.install_root) {
         return Err(CliError::new(
             "BUNDLE_SOURCE_UNSAFE",
@@ -13,49 +13,93 @@ fn install_validated_bundle(
         ));
     }
     let install_manifest = project_install_manifest(bundle, targets)?;
-    manifest::with_install_lock(&targets.resolved, || {
-        manifest::ensure_install_directories(&targets.resolved)?;
-        let staged = targets.resolved.install_root.join("versions").join(format!(
-            "{}.tmp-{}",
-            bundle.version.as_str(),
-            std::process::id()
-        ));
-        manifest::remove_path(&staged)?;
-        copy_bundle_tree(&bundle.root, &staged)?;
-        manifest::remove_path(&targets.version_dir)?;
-        fs::rename(&staged, &targets.version_dir)?;
-        link_active_headless_backend(bundle, targets)?;
-        manifest::replace_symlink_or_copy(&targets.version_dir, &targets.current_link)?;
-        if let Some(previous) = &install_manifest.previous_version {
-            let previous_dir = targets
-                .resolved
-                .install_root
-                .join("versions")
-                .join(previous);
-            if previous_dir.exists() {
-                manifest::replace_symlink_or_copy(&previous_dir, &targets.previous_link)?;
-            }
+    for directory in [
+        targets.resolved.install_root.join("releases"),
+        targets.resolved.install_root.join("backups"),
+        targets.resolved.install_root.join("staging"),
+        targets.resolved.install_root.join("state/cache"),
+        targets.resolved.install_root.join("state/data"),
+        targets.resolved.install_root.join("state/logs"),
+        targets.resolved.install_root.join("state/runtime"),
+    ] {
+        fs::create_dir_all(directory)?;
+    }
+    let staged = targets
+        .resolved
+        .install_root
+        .join("staging")
+        .join(format!("{}-{}", bundle.release_digest, std::process::id()));
+    manifest::remove_path(&staged)?;
+    copy_bundle_tree(&bundle.root, &staged)?;
+    link_active_headless_backend(bundle, &staged)?;
+    manifest::make_executable(&staged.join(&bundle.cli_relative))?;
+    write_headless_config(&staged.join("config/config.toml"))?;
+    manifest::write_manifest_atomic(
+        &staged.join(manifest::INSTALL_MANIFEST_FILE),
+        &install_manifest,
+    )?;
+
+    let (previous, backup) = archive_current_activation(targets)?;
+    manifest::remove_path(&targets.version_dir)?;
+    fs::rename(&staged, &targets.version_dir)?;
+    if let Some(previous) = &previous {
+        manifest::replace_symlink_or_copy(previous, &targets.previous_link)?;
+    }
+    manifest::replace_symlink_or_copy(&targets.version_dir, &targets.current_link)?;
+    Ok((previous, backup))
+}
+
+fn archive_current_activation(
+    targets: &ActivationTargetPaths,
+) -> Result<(Option<PathBuf>, Option<PathBuf>)> {
+    let backups = targets.resolved.install_root.join("backups");
+    fs::create_dir_all(&backups)?;
+    if let Ok(mut previous) = fs::read_link(&targets.current_link) {
+        if previous.is_relative() {
+            previous = targets.resolved.install_root.join(previous);
         }
-        let active_binary = ensure_active_cli_path(bundle, targets)?;
-        write_headless_kast_shim(
-            &targets.resolved.shim_path,
-            &active_binary,
-            &targets.resolved.install_root,
-            &targets.resolved.config_root,
-            &bundle.manifest.activation.shim.java_opts,
-        )?;
-        write_headless_config(&targets.resolved.config_file)?;
-        manifest::write_manifest_atomic(&targets.resolved.manifest_file, &install_manifest)?;
-        Ok(())
-    })
+        let digest = previous
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("previous");
+        if previous == targets.version_dir && previous.exists() {
+            let backup = backups.join(format!("{digest}-replaced-{}", std::process::id()));
+            manifest::remove_path(&backup)?;
+            fs::rename(&previous, &backup)?;
+            return Ok((Some(backup.clone()), Some(backup)));
+        }
+        let backup = backups.join(digest);
+        manifest::replace_symlink_or_copy(&previous, &backup)?;
+        return Ok((Some(previous), Some(backup)));
+    }
+    if targets.current_link.exists() {
+        let backup = backups.join(format!("legacy-current-{}", std::process::id()));
+        manifest::remove_path(&backup)?;
+        fs::rename(&targets.current_link, &backup)?;
+        return Ok((Some(backup.clone()), Some(backup)));
+    }
+    Ok((None, None))
+}
+
+fn rollback_activated_bundle(
+    targets: &ActivationTargetPaths,
+    previous: Option<&Path>,
+) -> Result<()> {
+    if let Some(previous) = previous {
+        manifest::replace_symlink_or_copy(previous, &targets.current_link)?;
+    } else {
+        manifest::remove_path(&targets.current_link)?;
+    }
+    manifest::remove_path(&targets.version_dir)
 }
 
 fn project_install_manifest(
     bundle: &ValidatedBundle,
     targets: &ActivationTargetPaths,
 ) -> Result<manifest::KastInstallManifest> {
-    let previous = if targets.resolved.manifest_file.is_file() {
-        let manifest = manifest_from_file(&targets.resolved.manifest_file)?;
+    let active_receipt = targets.current_link.join(manifest::INSTALL_MANIFEST_FILE);
+    let previous = if active_receipt.is_file() {
+        let manifest = manifest_from_file(&active_receipt)?;
         BundleVersion::parse(&manifest.active_version)
             .ok()
             .filter(|version| version.as_str() != bundle.version.as_str())
@@ -70,6 +114,8 @@ fn project_install_manifest(
     Ok(manifest::KastInstallManifest {
         tool: "kast".to_string(),
         install_id,
+        release_digest: bundle.release_digest.clone(),
+        manifest_digest: bundle.manifest_digest.clone(),
         profile: bundle.manifest.profile.clone(),
         active_version: bundle.version.as_str().to_string(),
         previous_version: previous,
@@ -106,12 +152,12 @@ fn project_install_manifest(
             runtime_libs_dir: headless_root.join("runtime-libs").display().to_string(),
             idea_home: Some(headless_root.join("idea-home").display().to_string()),
         }],
-        managed_paths: vec![
-            "bin".to_string(),
-            "lib".to_string(),
-            "cache".to_string(),
-            "logs".to_string(),
-        ],
+        managed_paths: bundle
+            .manifest
+            .artifacts
+            .iter()
+            .map(|artifact| artifact.path.clone())
+            .collect(),
         owned_paths: manifest::owned_paths(&targets.resolved),
         shell_rc_patches: vec![],
         repos: vec![],
@@ -123,8 +169,10 @@ fn verify_activated_bundle(
     bundle: &ValidatedBundle,
     targets: &ActivationTargetPaths,
 ) -> Result<()> {
-    require_file(&targets.resolved.manifest_file, "install manifest")?;
-    require_executable(&targets.resolved.shim_path, "kast shim")?;
+    let receipt = targets.current_link.join(manifest::INSTALL_MANIFEST_FILE);
+    let active_binary = targets.current_link.join(&bundle.cli_relative);
+    require_file(&receipt, "install receipt")?;
+    require_executable(&active_binary, "kast CLI")?;
     require_directory(&targets.version_dir, "installed bundle version")?;
     require_file(
         &targets
@@ -143,7 +191,7 @@ fn verify_activated_bundle(
             "installed IDEA module descriptors",
         )?;
     }
-    let manifest = manifest_from_file(&targets.resolved.manifest_file)?;
+    let manifest = manifest_from_file(&receipt)?;
     if manifest.active_version != bundle.version.as_str() {
         return Err(CliError::new(
             "BUNDLE_INSTALL_MISMATCH",
@@ -154,33 +202,17 @@ fn verify_activated_bundle(
             ),
         ));
     }
-    if manifest.entrypoints.active_binary != targets.resolved.active_binary.display().to_string() {
+    if manifest.entrypoints.active_binary != active_binary.display().to_string() {
         return Err(CliError::new(
             "BUNDLE_INSTALL_MISMATCH",
             "Install manifest activeBinary does not match the projected bundle activation path.",
         ));
     }
-    let shim = fs::read_to_string(&targets.resolved.shim_path)?;
-    for java_opt in &bundle.manifest.activation.shim.java_opts {
-        if !shim.contains(java_opt) {
-            return Err(CliError::new(
-                "BUNDLE_INSTALL_MISMATCH",
-                format!("Installed shim does not include required JVM option `{java_opt}`."),
-            ));
-        }
-    }
-    if !shim.contains("KAST_INSTALL_ROOT") || !shim.contains("KAST_CONFIG_HOME") {
-        return Err(CliError::new(
-            "BUNDLE_INSTALL_MISMATCH",
-            "Installed shim does not export KAST_INSTALL_ROOT and KAST_CONFIG_HOME.",
-        ));
-    }
-    let output = ProcessCommand::new(&targets.resolved.shim_path)
+    let output = ProcessCommand::new(&active_binary)
         .arg("ready")
         .arg("--for")
         .arg("machine")
-        .env("KAST_INSTALL_ROOT", &targets.resolved.install_root)
-        .env("KAST_CONFIG_HOME", &targets.resolved.config_root)
+        .env("KAST_HOME", &targets.resolved.install_root)
         .output()
         .map_err(|error| {
             CliError::new(
@@ -207,26 +239,4 @@ fn manifest_from_file(path: &Path) -> Result<manifest::KastInstallManifest> {
             format!("Invalid install manifest at {}: {error}", path.display()),
         )
     })
-}
-
-fn activate_bundle_result(
-    bundle: &ValidatedBundle,
-    targets: &ActivationTargetPaths,
-    skipped: bool,
-    verify_only: bool,
-) -> ActivateBundleResult {
-    ActivateBundleResult {
-        installed_at: targets.version_dir.display().to_string(),
-        version: bundle.version.as_str().to_string(),
-        platform: bundle.manifest.platform.clone(),
-        profile: bundle.manifest.profile.clone(),
-        install_root: targets.resolved.install_root.display().to_string(),
-        current: targets.current_link.display().to_string(),
-        manifest: targets.resolved.manifest_file.display().to_string(),
-        active_binary: targets.resolved.active_binary.display().to_string(),
-        shim: targets.resolved.shim_path.display().to_string(),
-        skipped,
-        verify_only,
-        schema_version: SCHEMA_VERSION,
-    }
 }

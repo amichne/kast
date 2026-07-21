@@ -150,7 +150,7 @@ version = sys.argv[3].removeprefix("v")
 java_version = sys.argv[4]
 artifact_sha = sys.argv[5]
 catalog = (repo_root / "gradle" / "libs.versions.toml").read_text(encoding="utf-8")
-release_state = json.loads((repo_root / "packaging" / "homebrew" / "release-state.json").read_text(encoding="utf-8"))
+index_schema_version = (repo_root / "cli-rs" / "protocol" / "source-index-schema-version.txt").read_text(encoding="utf-8").strip()
 
 def version_value(name: str) -> str:
     match = re.search(rf'^{re.escape(name)}\s*=\s*"([^"]+)"$', catalog, re.MULTILINE)
@@ -168,7 +168,7 @@ payload = {
     "javaVersion": java_version,
     "intellijBuild": version_value("idea"),
     "kotlinPluginVersion": version_value("kotlin"),
-    "kastIndexSchemaVersion": str(release_state["source_index_schema_version"]),
+    "kastIndexSchemaVersion": index_schema_version,
     "artifactSha256": artifact_sha,
 }
 manifest_output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")

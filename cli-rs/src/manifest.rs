@@ -1,5 +1,4 @@
 use crate::SCHEMA_VERSION;
-use crate::cli;
 use crate::error::{CliError, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -13,7 +12,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const INSTALL_MANIFEST_FILE: &str = "install.json";
+pub const INSTALL_MANIFEST_FILE: &str = "receipt.json";
 const TOOL_NAME: &str = "kast";
 const DEFAULT_PROFILE: &str = "user-local";
 
@@ -24,6 +23,10 @@ pub struct KastInstallManifest {
     pub tool: String,
     #[serde(default)]
     pub install_id: String,
+    #[serde(default)]
+    pub release_digest: String,
+    #[serde(default)]
+    pub manifest_digest: String,
     #[serde(default = "default_profile")]
     pub profile: String,
     #[serde(default)]
@@ -188,7 +191,6 @@ impl Default for ManifestSchemas {
 #[derive(Debug, Clone)]
 pub struct ResolvedKastPaths {
     pub install_root: PathBuf,
-    pub manifest_file: PathBuf,
     pub bin_dir: PathBuf,
     pub lib_dir: PathBuf,
     pub data_dir: PathBuf,
@@ -207,23 +209,6 @@ pub struct ResolvedKastPaths {
 }
 
 pub fn resolve_paths() -> Result<ResolvedKastPaths> {
-    #[cfg(target_os = "macos")]
-    if let Some(receipt) = crate::install::read_macos_homebrew_receipt()? {
-        let mut paths = default_resolved_paths();
-        let bin_dir = receipt.cli.binary.parent().ok_or_else(|| {
-            CliError::new(
-                "MACOS_HOMEBREW_RECEIPT_INVALID",
-                format!(
-                    "macOS Homebrew receipt CLI has no parent directory: {}",
-                    receipt.cli.binary.display()
-                ),
-            )
-        })?;
-        paths.bin_dir = bin_dir.to_path_buf();
-        paths.shim_path = receipt.cli.binary.clone();
-        paths.active_binary = receipt.cli.binary;
-        return Ok(paths);
-    }
     let manifest_path = default_install_manifest_path();
     if manifest_path.is_file() {
         return paths_from_manifest(&read_manifest_at(&manifest_path)?);
@@ -234,17 +219,17 @@ pub fn resolve_paths() -> Result<ResolvedKastPaths> {
 pub fn default_resolved_paths() -> ResolvedKastPaths {
     let install_root = default_install_root();
     let config_root = default_config_root();
-    let bin_dir = home_dir().join(".local/bin");
     let current = install_root.join("current");
+    let bin_dir = current.join("bin");
     let lib_dir = current.join("lib");
-    let cache_dir = env_path("KAST_CACHE_HOME").unwrap_or_else(|| home_dir().join(".cache/kast"));
-    let data_dir = install_root.join("state");
-    let runtime_dir = install_root.join("runtime");
-    let logs_dir = home_dir().join(".local/state/kast/logs");
-    let locks_dir = install_root.join("locks");
+    let state_dir = install_root.join("state");
+    let cache_dir = state_dir.join("cache");
+    let data_dir = state_dir.join("data");
+    let runtime_dir = state_dir.join("runtime");
+    let logs_dir = state_dir.join("logs");
+    let locks_dir = install_root.clone();
     ResolvedKastPaths {
         install_root: install_root.clone(),
-        manifest_file: install_root.join(INSTALL_MANIFEST_FILE),
         bin_dir: bin_dir.clone(),
         lib_dir: lib_dir.clone(),
         data_dir,
@@ -256,7 +241,7 @@ pub fn default_resolved_paths() -> ResolvedKastPaths {
         socket_dir: runtime_dir,
         config_file: config_root.join("config.toml"),
         config_root,
-        shim_path: bin_dir.join("kast"),
+        shim_path: current.join("bin/kast"),
         active_binary: current.join("bin/kast"),
         headless_runtime_libs_dir: lib_dir.join("backends/headless/current/runtime-libs"),
         headless_idea_home: None,
@@ -264,15 +249,17 @@ pub fn default_resolved_paths() -> ResolvedKastPaths {
 }
 
 pub fn default_install_root() -> PathBuf {
-    env_path("KAST_INSTALL_ROOT").unwrap_or_else(|| home_dir().join(".local/share/kast"))
+    env_path("KAST_HOME").unwrap_or_else(|| home_dir().join(".local/share/kast"))
 }
 
 pub fn default_install_manifest_path() -> PathBuf {
-    default_install_root().join(INSTALL_MANIFEST_FILE)
+    default_install_root()
+        .join("current")
+        .join(INSTALL_MANIFEST_FILE)
 }
 
 pub fn default_config_root() -> PathBuf {
-    env_path("KAST_CONFIG_HOME").unwrap_or_else(|| home_dir().join(".config/kast"))
+    default_install_root().join("current/config")
 }
 
 pub fn read_install_manifest() -> Result<Option<KastInstallManifest>> {
@@ -281,63 +268,6 @@ pub fn read_install_manifest() -> Result<Option<KastInstallManifest>> {
         return Ok(None);
     }
     read_manifest_at(&path).map(Some)
-}
-
-pub fn write_install_manifest(manifest: &KastInstallManifest) -> Result<PathBuf> {
-    let paths = paths_from_manifest(manifest)?;
-    with_install_lock(&paths, || {
-        write_manifest_atomic(&paths.manifest_file, manifest)
-    })?;
-    Ok(paths.manifest_file)
-}
-
-pub fn fresh_manifest() -> KastInstallManifest {
-    let paths = default_resolved_paths();
-    manifest_from_paths(paths, None, vec!["cli".to_string(), "config".to_string()])
-}
-
-pub fn manifest_from_paths(
-    paths: ResolvedKastPaths,
-    previous_version: Option<String>,
-    components: Vec<String>,
-) -> KastInstallManifest {
-    let now = current_timestamp();
-    let version = cli::version().to_string();
-    KastInstallManifest {
-        tool: TOOL_NAME.to_string(),
-        install_id: uuid::Uuid::new_v4().to_string(),
-        profile: DEFAULT_PROFILE.to_string(),
-        active_version: version.clone(),
-        previous_version,
-        created_at: now.clone(),
-        updated_at: now.clone(),
-        roots: ManifestRoots {
-            install: paths.install_root.display().to_string(),
-            bin: paths.bin_dir.display().to_string(),
-            config: paths.config_root.display().to_string(),
-            data: paths.data_dir.display().to_string(),
-            cache: paths.cache_dir.display().to_string(),
-            runtime: paths.runtime_dir.display().to_string(),
-            logs: paths.logs_dir.display().to_string(),
-            locks: paths.locks_dir.display().to_string(),
-        },
-        entrypoints: ManifestEntrypoints {
-            shim: paths.shim_path.display().to_string(),
-            active_binary: paths.active_binary.display().to_string(),
-        },
-        schemas: ManifestSchemas::default(),
-        version,
-        backend_version: String::new(),
-        installed_at: now,
-        platform: format!("{}-{}", env::consts::OS, env::consts::ARCH),
-        components,
-        backends: vec![],
-        managed_paths: vec![],
-        owned_paths: owned_paths(&paths),
-        shell_rc_patches: vec![],
-        repos: vec![],
-        schema_version: SCHEMA_VERSION,
-    }
 }
 
 pub fn paths_from_manifest(manifest: &KastInstallManifest) -> Result<ResolvedKastPaths> {
@@ -360,7 +290,6 @@ pub fn paths_from_manifest(manifest: &KastInstallManifest) -> Result<ResolvedKas
         .find(|backend| backend.name == "headless");
     Ok(ResolvedKastPaths {
         install_root: install_root.clone(),
-        manifest_file: install_root.join(INSTALL_MANIFEST_FILE),
         bin_dir: normalize(PathBuf::from(&manifest.roots.bin)),
         lib_dir: lib_dir.clone(),
         data_dir: normalize(PathBuf::from(&manifest.roots.data)),
@@ -381,62 +310,6 @@ pub fn paths_from_manifest(manifest: &KastInstallManifest) -> Result<ResolvedKas
             .and_then(|backend| backend.idea_home.as_ref())
             .map(|path| normalize(PathBuf::from(path))),
     })
-}
-
-pub fn ensure_install_directories(paths: &ResolvedKastPaths) -> Result<()> {
-    for directory in [
-        &paths.install_root,
-        &paths.bin_dir,
-        &paths.data_dir,
-        &paths.cache_dir,
-        &paths.runtime_dir,
-        &paths.logs_dir,
-        &paths.locks_dir,
-        &paths.config_root,
-        &paths.install_root.join("versions"),
-    ] {
-        fs::create_dir_all(directory)?;
-    }
-    Ok(())
-}
-
-pub fn install_current_executable() -> Result<KastInstallManifest> {
-    let mut paths = default_resolved_paths();
-    let previous = read_install_manifest()?.map(|manifest| manifest.active_version);
-    let mut manifest = manifest_from_paths(
-        paths.clone(),
-        previous,
-        vec!["cli".to_string(), "config".to_string()],
-    );
-    let version_dir = paths.install_root.join("versions").join(cli::version());
-    paths.active_binary = version_dir.join("bin/kast");
-    manifest.entrypoints.active_binary = paths.active_binary.display().to_string();
-    manifest.owned_paths = owned_paths(&paths);
-
-    with_install_lock(&paths, || {
-        ensure_install_directories(&paths)?;
-        let staged = paths
-            .install_root
-            .join("versions")
-            .join(format!("{}.tmp", cli::version()));
-        remove_path(&staged)?;
-        fs::create_dir_all(staged.join("bin"))?;
-        fs::copy(env::current_exe()?, staged.join("bin/kast"))?;
-        make_executable(&staged.join("bin/kast"))?;
-        remove_path(&version_dir)?;
-        fs::rename(&staged, &version_dir)?;
-        replace_symlink_or_copy(&version_dir, &paths.install_root.join("current"))?;
-        if let Some(previous) = &manifest.previous_version {
-            let previous_dir = paths.install_root.join("versions").join(previous);
-            if previous_dir.exists() {
-                replace_symlink_or_copy(&previous_dir, &paths.install_root.join("previous"))?;
-            }
-        }
-        write_shim(&paths.shim_path, &paths.active_binary)?;
-        write_manifest_atomic(&paths.manifest_file, &manifest)?;
-        Ok(())
-    })?;
-    Ok(manifest)
 }
 
 fn read_manifest_at(path: &Path) -> Result<KastInstallManifest> {
@@ -469,7 +342,7 @@ pub(crate) fn with_install_lock<T>(
     action: impl FnOnce() -> Result<T>,
 ) -> Result<T> {
     fs::create_dir_all(&paths.locks_dir)?;
-    let lock_path = paths.locks_dir.join("install.lock");
+    let lock_path = paths.install_root.join("setup.lock");
     let lock_file = OpenOptions::new()
         .create(true)
         .truncate(false)
@@ -514,32 +387,6 @@ fn unlock(_file: &fs::File) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn write_shim(shim_path: &Path, active_binary: &Path) -> Result<()> {
-    if let Some(parent) = shim_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let content = render_shim(active_binary);
-    fs::write(shim_path, content)?;
-    make_executable(shim_path)
-}
-
-pub(crate) fn is_managed_shim_for(shim_path: &Path, active_binary: &Path) -> bool {
-    if fs::read_link(shim_path)
-        .ok()
-        .is_some_and(|target| normalize(target) == normalize(active_binary.to_path_buf()))
-    {
-        return true;
-    }
-    fs::read_to_string(shim_path).is_ok_and(|content| content == render_shim(active_binary))
-}
-
-fn render_shim(active_binary: &Path) -> String {
-    format!(
-        "#!/usr/bin/env bash\nset -euo pipefail\nexec {} \"$@\"\n",
-        shell_quote(&active_binary.display().to_string())
-    )
-}
-
 #[cfg(unix)]
 pub(crate) fn make_executable(path: &Path) -> Result<()> {
     use std::os::unix::fs::PermissionsExt;
@@ -555,17 +402,25 @@ pub(crate) fn make_executable(_path: &Path) -> Result<()> {
 }
 
 pub(crate) fn replace_symlink_or_copy(target: &Path, link: &Path) -> Result<()> {
-    remove_path(link)?;
     if let Some(parent) = link.parent() {
         fs::create_dir_all(parent)?;
     }
     #[cfg(unix)]
     {
-        std::os::unix::fs::symlink(target, link)?;
+        let temporary = link.with_extension(format!("tmp-{}", std::process::id()));
+        remove_path(&temporary)?;
+        if fs::symlink_metadata(link)
+            .is_ok_and(|metadata| metadata.is_dir() && !metadata.file_type().is_symlink())
+        {
+            remove_path(link)?;
+        }
+        std::os::unix::fs::symlink(target, &temporary)?;
+        fs::rename(&temporary, link)?;
         Ok(())
     }
     #[cfg(not(unix))]
     {
+        remove_path(link)?;
         copy_dir(target, link)
     }
 }
@@ -603,7 +458,8 @@ pub(crate) fn owned_paths(paths: &ResolvedKastPaths) -> Vec<String> {
         paths.shim_path.clone(),
         paths.install_root.join("current"),
         paths.install_root.join("previous"),
-        paths.install_root.join("versions"),
+        paths.install_root.join("releases"),
+        paths.install_root.join("staging"),
         paths.runtime_dir.clone(),
         paths.locks_dir.clone(),
     ]
@@ -707,10 +563,6 @@ pub fn verify_managed_resource_outputs(
         ok: issues.is_empty(),
         issues,
     })
-}
-
-fn shell_quote(value: &str) -> String {
-    format!("'{}'", value.replace('\'', "'\"'\"'"))
 }
 
 fn tool_name() -> String {

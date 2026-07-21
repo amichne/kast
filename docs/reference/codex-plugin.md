@@ -5,7 +5,7 @@ description: The separately published kast@kast surface and runtime boundary.
 tags: [codex, reference, hooks]
 code_sources:
   - path: cli-rs/src/codex/hook.rs
-  - path: cli-rs/src/machine.rs
+  - path: install.sh
 ---
 
 # Codex Plugin Reference
@@ -32,7 +32,7 @@ IDEA owns compiler state and workspace indexing. The CLI owns daemon,
 compatibility, command execution, and structured result concerns. The Codex
 plugin only supplies hooks and invocation guidance.
 
-Machine receipts hash the CLI and IDEA plugin only. Marketplace contents and
+Setup receipts hash the CLI and IDEA plugin only. Marketplace contents and
 plugin versions are not coupled to Kast release digests. Reconciliation
 re-registers `amichne/kast-marketplace --ref main` and installs `kast@kast`.
 

@@ -14,6 +14,10 @@ REQUIRED_PLATFORMS = {
     "headless-linux-x64",
     "openapi",
     "runtime-manifest",
+    "setup-linux-arm64",
+    "setup-linux-x64",
+    "setup-macos-arm64",
+    "setup-macos-x64",
     "ubuntu-debian-headless-x86_64",
 }
 OPTIONAL_PLATFORMS: set[str] = set()

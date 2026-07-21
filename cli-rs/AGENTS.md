@@ -3,13 +3,12 @@
 This file applies to `cli-rs/` and descendants. Deeper `AGENTS.md` files narrow
 the rules for their subtrees. This tree owns the Rust AXI CLI, typed agent
 command surface, installer, manifest-backed resource trust, runtime lifecycle
-orchestration, source-index CLI reads, release packaging, and bundled agent
-resources.
+orchestration, source-index CLI reads, and release packaging.
 
 ## Local purpose
 
 - `src/cli/root.rs` and `src/main.rs` define the root AXI CLI: compact context,
-  setup, readiness, repair, status, and developer operations.
+  transactional setup, readiness, status, and developer operations.
 - `src/cli/agent.rs` and `src/agent/` own typed compiler-backed agent commands:
   the cross-provider `task begin|status|finish|abort` proof lifecycle plus
   `lease`, `verify`, `workspace-files`, `symbol`, `diagnostics`, `impact`,
@@ -17,9 +16,9 @@ resources.
   distinct from the IDEA runtime lease used by individual semantic requests.
 - `src/runtime/` owns IDEA lifecycle inspection and exact-root leases on macOS,
   plus release headless lifecycle on supported non-macOS hosts.
-- `src/install/` owns repository setup, managed guidance, CLI machine receipts,
-  repair, bundle activation, shell integration, and bounded legacy cleanup. It
-  does not install or update IDEA plugins.
+- `src/install/` owns the sole persistent setup transaction: bundle validation,
+  staging, atomic activation, rollback, active-root verification, receipts, and
+  bounded legacy backup.
 - `src/symbol_query/` and `src/metrics_database/` own operational source-index
   reads for the Rust CLI.
 - `src/workspace_inventory.rs` and `src/workspace_inventory/` own uncapped
@@ -31,12 +30,8 @@ resources.
   limitations used by `agent workspace-files` and Gradle DSL consumers.
 - `src/install.rs`, `src/manifest.rs`, `src/self_mgmt.rs`, and
   `src/self_mgmt/agent_readiness.rs` own install state, managed resource
-  records, doctor checks, effective binary/backend evidence, and repair
+  records, doctor checks, effective binary/backend evidence, and readiness
   behavior.
-- `src/machine.rs` and `src/cli/machine.rs` own one processless machine bundle:
-  strict digest validation, atomic CLI/IDE-plugin activation, closed-IDE plugin
-  reconciliation, and remote Codex marketplace selection. They must not add a
-  launchd plist, resident daemon, socket, watcher, or worktree resource copy.
 - `src/self_mgmt.rs` parses revision-3 exact-root compatibility facts strictly
   and delegates active admission to the authored typed compatibility matrix.
   Unknown fields, capabilities, revisions, unsupported rows, and missing
@@ -58,20 +53,20 @@ in `.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`;
 `.agents/adr/0028-unsigned-github-idea-plugin-distribution.md` supersedes its
 plugin distribution decisions. Exact-root agent lease identity, ownership,
 recovery, and release authority live in
-`.agents/adr/0028-exact-root-agent-workspace-leases.md`. The external Codex
-marketplace and CLI hook boundary live in
-`.agents/adr/0031-external-codex-marketplace-authority.md`.
-The processless development-machine boundary and IDEA-only leases live in
-`.agents/adr/0029-processless-development-machine-authority.md`.
+`.agents/adr/0028-exact-root-agent-workspace-leases.md`. The Codex CLI-only
+plugin, exhaustive Rust exposure classifier, hook state, and
+release coupling live in
+`.agents/adr/0026-codex-cli-plugin-and-rust-exposure-authority.md`.
+The sole installation boundary lives in
+`.agents/adr/0031-sole-transactional-setup-authority.md`.
 
 ## Edit rules
 
 - Keep command invariants in typed Rust structures. Clap, serde, and catalog
   schema validation own command parsing and structured data boundaries.
-- Keep Codex hook parsing, decisions, and output schemas in Rust. Marketplace
-  wiring must remain in `amichne/kast-marketplace`.
-  Hooks may inspect readiness and produce repair plans but must never apply
-  setup or repair mutations.
+- Keep Codex hook parsing, decisions, state, and output schemas in Rust. The
+  launcher may only resolve the active binary and forward the event and stdin.
+  Hooks may inspect readiness but must never invoke setup mutations.
 - Keep task completion evidence in the typed task core. Provider adapters may
   supply a session identity and render provider-native allow/block decisions,
   but must not duplicate changed-file, diagnostics-hash, Gradle-outcome, or
@@ -103,17 +98,14 @@ The processless development-machine boundary and IDEA-only leases live in
   The package selector is closed: `root` matches only proven-root evidence and
   `named:<canonical-kotlin-package-fq-name>` matches only equal proven-named
   evidence.
-- `packaging/homebrew/release-state.json` is the schema-version source consumed
-  by `build.rs`. Keep its generated Rust value aligned with build-logic's Kotlin
+- `protocol/source-index-schema-version.txt` is the schema-version source
+  consumed by `build.rs`. Keep its generated Rust value aligned with build-logic's Kotlin
   value and fail closed on an older/malformed source-index schema.
 - Captured or agent-run commands default to compact structured output. Public
-  mutations are plan-first and gated: repair and rename require `--apply`;
-  setup supports `--dry-run`; forceful replacement requires `--force`.
+  semantic mutations are plan-first and gated. Setup always replaces the
+  complete Kast-owned release from one verified bundle.
 - Treat generated or installed resource copies as outputs. Edit the authored
-  resource source, then regenerate or reinstall from the active binary.
-- Treat `AGENTS.md` files as authored guidance. Repository setup writes one
-  managed `<kast>...</kast>` guidance region to the selected context file and
-  records one manifest-backed packaged skill install.
+  resource source, then regenerate or rerun `kast setup --source <bundle>`.
 - When install output shape changes, update manifest resource recording,
   doctor verification, package scripts, docs, and smoke tests in the same
   change.
@@ -154,7 +146,6 @@ relevant package, LSP, generated-contract, and docs gates below:
 ```console
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
-python3 packaging/homebrew/scripts/test-formulas.py
 .github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-lsp-pivot-gates.sh
 .github/scripts/test-docs-content-contract.sh

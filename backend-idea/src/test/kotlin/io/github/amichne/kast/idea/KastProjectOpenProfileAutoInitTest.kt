@@ -68,7 +68,7 @@ class KastProjectOpenProfileAutoInitTest {
         val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = binary),
-            loadMachineManifest = matchingMachineManifest(binary),
+            loadInstallReceipt = matchingInstallReceipt(binary),
         )
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
@@ -105,19 +105,19 @@ class KastProjectOpenProfileAutoInitTest {
     }
 
     @Test
-    fun `macOS project-open setup uses machine manifest binary instead of config binary`() {
+    fun `macOS project-open setup uses active install receipt binary instead of config binary`() {
         val workspace = gradleWorkspace()
         val legacyBinary = fakeKastBinary()
-        val machineBinary = fakeKastBinary()
+        val activeBinary = fakeKastBinary()
         val requests = mutableListOf<PluginWorkspaceBootstrapRequest>()
 
         val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = legacyBinary),
-            loadMachineManifest = {
-                MacosMachineManifestLoadResult.Loaded(
-                    binary = machineBinary,
-                    version = CliImplementationVersion("machine-cli-version"),
+            loadInstallReceipt = {
+                KastInstallReceiptLoadResult.Loaded(
+                    binary = activeBinary,
+                    version = CliImplementationVersion("active-cli-version"),
                 )
             },
             prepareWorkspace = { request ->
@@ -130,8 +130,8 @@ class KastProjectOpenProfileAutoInitTest {
         )
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
-        assertEquals(machineBinary, requests.single().cliBinary)
-        assertEquals("machine-cli-version", requests.single().cliVersion.value)
+        assertEquals(activeBinary, requests.single().cliBinary)
+        assertEquals("active-cli-version", requests.single().cliVersion.value)
     }
 
     @Test
@@ -172,7 +172,7 @@ class KastProjectOpenProfileAutoInitTest {
         val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = binary),
-            loadMachineManifest = matchingMachineManifest(binary),
+            loadInstallReceipt = matchingInstallReceipt(binary),
         )
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
@@ -190,7 +190,7 @@ class KastProjectOpenProfileAutoInitTest {
         val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = workspace.resolve("missing-kast")),
-            loadMachineManifest = matchingMachineManifest(workspace.resolve("missing-kast")),
+            loadInstallReceipt = matchingInstallReceipt(workspace.resolve("missing-kast")),
         )
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Failed)
@@ -227,10 +227,10 @@ class KastProjectOpenProfileAutoInitTest {
             cli = CliConfig(CliBinaryPath(binaryPath.toString())),
         )
 
-    private fun matchingMachineManifest(
+    private fun matchingInstallReceipt(
         binary: Path,
-    ): () -> MacosMachineManifestLoadResult = {
-        MacosMachineManifestLoadResult.Loaded(
+    ): () -> KastInstallReceiptLoadResult = {
+        KastInstallReceiptLoadResult.Loaded(
             binary = binary,
             version = CliImplementationVersion("0.13.0"),
         )

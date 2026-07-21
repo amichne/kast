@@ -5,7 +5,7 @@ description: Ask Codex for Kotlin work backed by the open IDEA project.
 tags: [codex, kotlin, workflow]
 code_sources:
   - path: cli-rs/src/codex/hook.rs
-  - path: cli-rs/src/machine.rs
+  - path: install.sh
 ---
 
 # Use Kast in Codex

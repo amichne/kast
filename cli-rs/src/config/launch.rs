@@ -15,7 +15,7 @@ pub fn backend_runtime_libs_dir(
     override_dir.map(normalize).or(configured).ok_or_else(|| {
         CliError::new(
             "DAEMON_START_ERROR",
-            "Cannot locate backend runtime-libs. Install or repair the manifest-backed headless runtime with `kast repair --apply`, or pass --runtime-libs-dir for this launch.",
+            "Cannot locate backend runtime-libs. Rerun `kast setup --source <bundle>`, or pass --runtime-libs-dir for this launch.",
         )
     })
 }

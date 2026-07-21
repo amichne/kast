@@ -141,6 +141,8 @@ __pycache__/
 # Agent-tool-specific files (not part of kast product)
 .claude/
 skills-lock.json
+graphify-out/
+cli-rs/graphify-out/
 
 # Generated Kast Copilot plugin install outputs. Source lives in cli-rs/resources/plugin/.
 kast-copilot-plugin/

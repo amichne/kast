@@ -20,22 +20,18 @@ path is the headless runtime plus the published `kast-action` contract smoke.
 Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
 For release workflow changes, run `.github/scripts/test-release-workflow-contract.sh`.
-Homebrew publication owns only the CLI formula and must delete the retired
-plugin cask from the tap. The release workflow owns the unsigned IDEA ZIP and
-its adjacent `updatePlugins.xml` feed asset; neither participates in the
-non-IDEA checksum or provenance system.
+The release workflow owns the IDEA ZIP and the four platform setup bundles.
+Every bundle carries the verified plugin and enters validation through
+`kast setup`.
 For CLI terminal command or executable example changes, run
 `.github/scripts/test-terminal-command-contract.sh`.
-The release-free processless machine authority gate lives in
+The local transactional setup gate lives in
 `.github/scripts/test-local-development-refresh-contract.sh`. Keep it wired in
 the independent `local-authority-contracts` CI job whenever refresh
-orchestration, machine manifest activation, closed-IDE reconciliation, local
-readiness, or remote Codex marketplace routing changes. Its Gradle graph must build
-the IDEA plugin, must not build or start `backend-headless`, and must not
-install launchd state.
-Umbrella source contracts must not rerun focused owners. The processless
-machine authority contract owns source presence, absence, activation, and
-reconciliation assertions; the runtime compatibility contract owns
+orchestration or bundle activation changes. Its Gradle graph packages one
+complete development bundle and invokes `kast setup --source`.
+Umbrella source contracts must not rerun focused owners. The setup contract
+owns source presence, activation, rollback, and retired-path assertions; the runtime compatibility contract owns
 deterministic source and manifest rendering only. Rust unit and integration tests run in `rust-cli`, Kotlin and
 IDEA tests run in their Gradle owners, documentation rendering runs in the
 documentation workflow, and installer, release, provenance, and asset
@@ -47,8 +43,8 @@ The Linux build-and-test job exclusively owns the JVM backend test suite and
 its reports. The source-bound Linux backend job is the sole pull-request
 portable-distribution producer and owns its no-fat-jar assertion, artifact,
 and ledger. Do not add a platform build for an archive that is neither shipped
-nor consumed. Production macOS authority remains the GitHub-hosted IDEA plugin
-installed by JetBrains and the separate Homebrew CLI.
+nor consumed. Production macOS and Linux installation authority is the active
+setup receipt under `KAST_HOME`.
 
 The `workflow-contracts` job is the static CI fanout gate. It must not install
 Java, initialize Gradle, install Rust, or execute an installed-development
@@ -68,8 +64,8 @@ they remain in the output inventory without inflating the required
 pull-request critical path. Run `.github/scripts/test-ci-workflow-model.sh`
 whenever jobs, `needs` edges, proof owners, canary classification, or timing
 evidence change.
-Developer-machine semantic proof runs through an open IDEA project and the
-selected machine CLI. Do not add a local headless semantic fixture or canary.
+Workstation semantic proof runs through an open IDEA project and the active
+setup CLI. Do not create a second installation authority for that proof.
 Linux release headless packaging and action-runtime contracts remain separate
 CI/release concerns and must not be described as developer-machine authority.
 
@@ -125,12 +121,12 @@ For terminal commands and executable examples, run:
 .github/scripts/test-terminal-command-contract.sh
 ```
 
-For development-machine authority changes, run:
+For setup authority changes, run:
 
 ```console
 .github/scripts/test-ci-workflow-model.sh
 .github/scripts/test-local-development-refresh-contract.sh
-.github/scripts/test-selector-handle-installed-workflow.sh
+.github/scripts/test-setup-contract.sh
 ```
 
 For IDEA GitHub Release distribution changes, run:

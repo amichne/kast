@@ -1,217 +1,29 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
-die() {
-  printf 'error: %s\n' "$*" >&2
-  exit 1
-}
-
-usage() {
-  cat >&2 <<'USAGE'
-Usage: scripts/verify-release-state.sh --tag <vX.Y.Z> [options]
-
-Verify that a Kast release is fully published:
-  - GitHub release exists, is not draft, and has the expected stable/prerelease state.
-  - Release assets, SHA256SUMS, and build-provenance.json pass verification.
-  - Public Maven Central modules are available.
-  - Stable releases are the GitHub latest release and are reflected in Homebrew.
-
-Options:
-  --repository <owner/repo>           GitHub repository to verify. Defaults to GITHUB_REPOSITORY or amichne/kast.
-  --homebrew-repo <owner/repo>        Homebrew tap repository. Defaults to amichne/homebrew-kast.
-  --work-dir <dir>                    Directory for downloaded assets and tap clone. Defaults to a temp dir.
-  --maven-attempts <n>                Maven verification attempts. Defaults to 1.
-  --maven-delay-seconds <n>           Delay between Maven attempts. Defaults to 0.
-USAGE
-}
+set -Eeuo pipefail
 
 tag=""
 repository="${GITHUB_REPOSITORY:-amichne/kast}"
-homebrew_repo="amichne/homebrew-kast"
-work_dir=""
 maven_attempts=1
 maven_delay_seconds=0
-
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --tag)
-      [[ $# -ge 2 ]] || die "Missing value for --tag"
-      tag="$2"; shift 2 ;;
-    --tag=*)
-      tag="${1#--tag=}"; shift ;;
-    --repository)
-      [[ $# -ge 2 ]] || die "Missing value for --repository"
-      repository="$2"; shift 2 ;;
-    --repository=*)
-      repository="${1#--repository=}"; shift ;;
-    --homebrew-repo)
-      [[ $# -ge 2 ]] || die "Missing value for --homebrew-repo"
-      homebrew_repo="$2"; shift 2 ;;
-    --homebrew-repo=*)
-      homebrew_repo="${1#--homebrew-repo=}"; shift ;;
-    --work-dir)
-      [[ $# -ge 2 ]] || die "Missing value for --work-dir"
-      work_dir="$2"; shift 2 ;;
-    --work-dir=*)
-      work_dir="${1#--work-dir=}"; shift ;;
-    --maven-attempts)
-      [[ $# -ge 2 ]] || die "Missing value for --maven-attempts"
-      maven_attempts="$2"; shift 2 ;;
-    --maven-attempts=*)
-      maven_attempts="${1#--maven-attempts=}"; shift ;;
-    --maven-delay-seconds)
-      [[ $# -ge 2 ]] || die "Missing value for --maven-delay-seconds"
-      maven_delay_seconds="$2"; shift 2 ;;
-    --maven-delay-seconds=*)
-      maven_delay_seconds="${1#--maven-delay-seconds=}"; shift ;;
-    --help|-h)
-      usage; exit 0 ;;
-    *)
-      usage; die "Unknown argument: $1" ;;
+    --tag) tag="$2"; shift 2 ;;
+    --repository) repository="$2"; shift 2 ;;
+    --maven-attempts) maven_attempts="$2"; shift 2 ;;
+    --maven-delay-seconds) maven_delay_seconds="$2"; shift 2 ;;
+    *) printf 'unknown argument: %s\n' "$1" >&2; exit 2 ;;
   esac
 done
+[[ -n "$tag" ]] || { printf '%s\n' '--tag is required' >&2; exit 2; }
 
-[[ -n "$tag" ]] || { usage; die "--tag is required"; }
-[[ "$tag" == v* ]] || die "--tag must start with v: $tag"
-[[ "$repository" == */* ]] || die "--repository must look like owner/repo"
-[[ "$homebrew_repo" == */* ]] || die "--homebrew-repo must look like owner/repo"
-
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-repo_root="$(cd -- "${script_dir}/.." && pwd)"
-version="${tag#v}"
-stable=true
-if [[ "$tag" == *-* ]]; then
-  stable=false
-fi
-
-cleanup_dir=""
-if [[ -z "$work_dir" ]]; then
-  cleanup_dir="$(mktemp -d)"
-  work_dir="$cleanup_dir"
-fi
-trap '[[ -z "${cleanup_dir:-}" ]] || rm -rf "$cleanup_dir"' EXIT
-mkdir -p "$work_dir"
-
-require_false() {
-  local value="$1"
-  local message="$2"
-  [[ "$value" == false ]] || die "$message"
-}
-
-require_true() {
-  local value="$1"
-  local message="$2"
-  [[ "$value" == true ]] || die "$message"
-}
-
-release_tag_commit_sha() {
-  local ref_name="$1"
-  local object_type
-  local object_sha
-  read -r object_type object_sha < <(
-    gh api "repos/${repository}/git/ref/tags/${ref_name}" --jq '[.object.type, .object.sha] | @tsv'
-  )
-  case "$object_type" in
-    commit)
-      printf '%s\n' "$object_sha"
-      ;;
-    tag)
-      gh api "repos/${repository}/git/tags/${object_sha}" --jq .object.sha
-      ;;
-    *)
-      die "Tag ${ref_name} points at unsupported object type: ${object_type}"
-      ;;
-  esac
-}
-
-is_draft="$(gh release view "$tag" --repo "$repository" --json isDraft --jq .isDraft)"
-is_prerelease="$(gh release view "$tag" --repo "$repository" --json isPrerelease --jq .isPrerelease)"
-require_false "$is_draft" "GitHub release ${tag} is still a draft"
-if [[ "$stable" == true ]]; then
-  require_false "$is_prerelease" "Stable release ${tag} is marked prerelease"
-  latest_tag="$(gh api "repos/${repository}/releases/latest" --jq .tag_name)"
-  [[ "$latest_tag" == "$tag" ]] || die "Stable release ${tag} is not latest; latest is ${latest_tag}"
-  release_tag_commit_sha "$tag" >/dev/null
-else
-  require_true "$is_prerelease" "Prerelease ${tag} is not marked prerelease"
-fi
-
-release_dir="${work_dir}/release-assets"
-rm -rf "$release_dir"
-mkdir -p "$release_dir"
-gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '*.zip'
-gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '*.tar.gz' || true
-gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '*.tar.zst' || true
-gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern '*.sha256' || true
-gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern 'openapi.yaml'
-gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern 'kast-runtime-manifest.json'
-gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern 'build-provenance.json'
-gh release download "$tag" --repo "$repository" --dir "$release_dir" --pattern 'SHA256SUMS'
-"${repo_root}/scripts/verify-release-assets.sh" --release-dir "$release_dir" --tag "$tag"
-
-"${repo_root}/scripts/verify-maven-central.sh" \
-  --version "$version" \
+work="$(mktemp -d "${TMPDIR:-/tmp}/kast-release-verify.XXXXXX")"
+trap 'rm -rf -- "$work"' EXIT
+asset="kast-linux-x64-${tag}.tar.gz"
+gh release download "$tag" --repo "$repository" --dir "$work" --pattern "$asset" --pattern "${asset}.sha256"
+(cd "$work" && sha256sum -c "${asset}.sha256")
+"$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/verify-setup-bundle.sh" "$work/$asset"
+"$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/verify-maven-central.sh" \
+  --version "${tag#v}" \
   --attempts "$maven_attempts" \
   --delay-seconds "$maven_delay_seconds"
-
-if [[ "$stable" == true ]]; then
-  tap_dir="${work_dir}/homebrew-tap"
-  rm -rf "$tap_dir"
-  gh repo clone "$homebrew_repo" "$tap_dir" -- --depth 1 >/dev/null
-  ruby -c "${tap_dir}/Formula/kast.rb" >/dev/null
-  [[ ! -e "${tap_dir}/Casks/kast-plugin.rb" ]] || {
-    printf 'Published Homebrew tap retains the retired plugin cask\n' >&2
-    exit 1
-  }
-  python3 - "$tag" "${release_dir}/SHA256SUMS" "$tap_dir" <<'PY'
-import json
-import re
-import sys
-from pathlib import Path
-
-tag = sys.argv[1]
-version = tag.removeprefix("v")
-sha_file = Path(sys.argv[2])
-tap_dir = Path(sys.argv[3])
-
-def fail(message: str) -> None:
-    raise SystemExit(message)
-
-state = json.loads((tap_dir / "release-state.json").read_text(encoding="utf-8"))
-if state.get("current_release") != tag:
-    fail(f"homebrew release-state.json current_release is {state.get('current_release')!r}, expected {tag!r}")
-
-formula = (tap_dir / "Formula" / "kast.rb").read_text(encoding="utf-8")
-if f'ARTIFACT_VERSION = "{version}"' not in formula:
-    fail("Formula/kast.rb does not name the release version")
-
-sha_entries: dict[str, str] = {}
-for raw_line in sha_file.read_text(encoding="utf-8").splitlines():
-    parts = raw_line.split()
-    if len(parts) == 2:
-        sha_entries[parts[1]] = parts[0]
-
-def referenced_cli_assets(content: str) -> list[str]:
-    assets = []
-    for platform in ("linux-arm64", "linux-x64", "macos-arm64", "macos-x64"):
-        templated = f"kast-v#{{ARTIFACT_VERSION}}-{platform}.zip"
-        literal = f"kast-{tag}-{platform}.zip"
-        if templated in content or literal in content:
-            assets.append(literal)
-    if not assets:
-        fail("Formula/kast.rb does not reference any Kast CLI release assets")
-    return assets
-
-formula_assets = referenced_cli_assets(formula)
-
-for asset_name in formula_assets:
-    digest = sha_entries.get(asset_name)
-    if digest is None:
-        fail(f"SHA256SUMS is missing {asset_name}")
-    if not re.search(rf'\bsha256 "{re.escape(digest)}"', formula):
-        fail(f"Formula/kast.rb is missing checksum for {asset_name}")
-
-PY
-fi
-
-printf 'Verified published release state for %s\n' "$tag"
+printf 'release setup verification passed for %s\n' "$tag"

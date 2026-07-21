@@ -1,12 +1,12 @@
 # Kast
 
-Kast connects Codex to the Kotlin compiler running in IntelliJ IDEA or Android
-Studio. The public workflow has one setup path and one working interface.
+Kast gives agents compiler-backed Kotlin context through IntelliJ IDEA, Android
+Studio, or the packaged headless backend. Every host uses one setup path.
 
 ```mermaid
 flowchart LR
-    installer["Workstation installer"] --> idea["IDEA plugin"]
-    idea --> workspace["Exact project or worktree"]
+    installer["kast setup"] --> release["Verified active release"]
+    release --> workspace["IDEA or headless workspace"]
     workspace --> codex["Codex task"]
     codex --> evidence["Compiler-backed evidence"]
 ```
@@ -17,9 +17,9 @@ flowchart LR
 
     ---
 
-    Select the matched workstation bundle and prepare IDEA update discovery.
+    Atomically install or replace the complete platform bundle.
 
-    [:octicons-arrow-right-24: Install on macOS](install/macos.md)
+    [:octicons-arrow-right-24: Install or update Kast](install/setup.md)
 
 -   :octicons-comment-discussion-24:{ .lg .middle } **Work in Codex**
 
@@ -33,7 +33,7 @@ flowchart LR
 
     ---
 
-    Start from the visible symptom and return to the matched workstation path.
+    Start from the failed phase and rerun the same setup transaction.
 
     [:octicons-arrow-right-24: Troubleshoot Kast](troubleshoot.md)
 
@@ -41,7 +41,7 @@ flowchart LR
 
 ## What Runs Where
 
-The installer owns the machine bundle. IDEA owns the compiler-backed runtime
-for the exact open root. Codex is the only user-facing work surface. Read the
-[operating model](design/operating-model.md) for the boundaries or consult the
-[Codex plugin reference](reference/codex-plugin.md) for exact behavior.
+`kast setup` owns the active release. IDEA owns compiler state for an exact open
+root; the headless backend owns compiler state on non-IDE hosts. Read the
+[operating model](design/operating-model.md) or consult the [Codex plugin
+reference](reference/codex-plugin.md).

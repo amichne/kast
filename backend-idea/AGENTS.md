@@ -19,8 +19,8 @@ N-to-N-plus-one lifecycle probe on the named IDE build.
 `KastProjectOpenProfileAutoInit` owns revisioned exact-root workspace metadata.
 It serializes the shared `analysis-api` compatibility facts for the plugin,
 CLI, protocol, metadata, capability, and IDEA runtime identity alongside the
-existing fields. The CLI version comes from the strict CLI-only Homebrew
-receipt; the plugin and runtime versions come from the installed plugin. Do not
+existing fields. The CLI version comes from the strict active setup receipt;
+the plugin and runtime versions come from the installed plugin. Do not
 reintroduce duplicate top-level versions or exact plugin/CLI equality.
 
 `IdeaProjectModelWorkspaceFileInventory` owns complete raw `.kt` and `.kts`

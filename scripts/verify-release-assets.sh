@@ -69,6 +69,10 @@ required = {
     "headless-linux-x64": "kast-headless-linux-x64.tar.zst",
     "openapi": "openapi.yaml",
     "runtime-manifest": "kast-runtime-manifest.json",
+    "setup-linux-arm64": f"kast-linux-arm64-{tag}.tar.gz",
+    "setup-linux-x64": f"kast-linux-x64-{tag}.tar.gz",
+    "setup-macos-arm64": f"kast-macos-arm64-{tag}.tar.gz",
+    "setup-macos-x64": f"kast-macos-x64-{tag}.tar.gz",
     "ubuntu-debian-headless-x86_64": f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz",
 }
 optional = {}

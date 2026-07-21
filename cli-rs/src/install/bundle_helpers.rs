@@ -128,11 +128,50 @@ fn copy_bundle_tree(source: &Path, target: &Path) -> Result<()> {
     Ok(())
 }
 
+fn directory_sha256(root: &Path) -> Result<String> {
+    fn collect(root: &Path, directory: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+        for entry in fs::read_dir(directory)? {
+            let entry = entry?;
+            let metadata = fs::symlink_metadata(entry.path())?;
+            if metadata.file_type().is_symlink() {
+                return Err(CliError::new(
+                    "BUNDLE_SOURCE_UNSAFE",
+                    format!("Bundle source contains a symlink: {}", entry.path().display()),
+                ));
+            }
+            if metadata.is_dir() {
+                collect(root, &entry.path(), files)?;
+            } else if metadata.is_file() {
+                files.push(
+                    entry
+                        .path()
+                        .strip_prefix(root)
+                        .expect("bundle child")
+                        .to_path_buf(),
+                );
+            }
+        }
+        Ok(())
+    }
+
+    let mut files = Vec::new();
+    collect(root, root, &mut files)?;
+    files.sort();
+    let mut digest = Sha256::new();
+    for relative in files {
+        digest.update(relative.to_string_lossy().as_bytes());
+        digest.update(b"\n");
+        digest.update(manifest::sha256_file(&root.join(&relative))?.as_bytes());
+        digest.update(b"\n");
+    }
+    Ok(hex::encode(digest.finalize()))
+}
+
 fn link_active_headless_backend(
     bundle: &ValidatedBundle,
-    targets: &ActivationTargetPaths,
+    release_root: &Path,
 ) -> Result<()> {
-    let stable_backend_dir = targets.version_dir.join("lib/backends/headless");
+    let stable_backend_dir = release_root.join("lib/backends/headless");
     fs::create_dir_all(&stable_backend_dir)?;
     let current = stable_backend_dir.join("current");
     manifest::remove_path(&current)?;
@@ -148,61 +187,10 @@ fn link_active_headless_backend(
     }
     #[cfg(not(unix))]
     {
-        let backend_dir = targets.version_dir.join(&bundle.backend_install_relative);
+        let backend_dir = release_root.join(&bundle.backend_install_relative);
         copy_bundle_tree(&backend_dir, &current)?;
     }
     Ok(())
-}
-
-fn ensure_active_cli_path(
-    bundle: &ValidatedBundle,
-    targets: &ActivationTargetPaths,
-) -> Result<PathBuf> {
-    let active_binary = targets.version_dir.join(&bundle.cli_relative);
-    if targets.resolved.shim_path == active_binary {
-        let renamed = active_binary.with_file_name("kast-cli");
-        manifest::remove_path(&renamed)?;
-        fs::rename(&active_binary, &renamed)?;
-        manifest::make_executable(&renamed)?;
-        return Ok(renamed);
-    }
-    manifest::make_executable(&active_binary)?;
-    Ok(active_binary)
-}
-
-fn write_headless_kast_shim(
-    shim_path: &Path,
-    active_binary: &Path,
-    install_root: &Path,
-    config_home: &Path,
-    java_opts: &[String],
-) -> Result<()> {
-    if let Some(parent) = shim_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let mut content = String::new();
-    content.push_str("#!/usr/bin/env bash\nset -euo pipefail\n\n");
-    content.push_str(&format!(
-        "export KAST_INSTALL_ROOT={}\n",
-        shell_quote(&install_root.display().to_string())
-    ));
-    content.push_str(&format!(
-        "export KAST_CONFIG_HOME={}\n\n",
-        shell_quote(&config_home.display().to_string())
-    ));
-    for java_opt in java_opts {
-        content.push_str(&format!(
-            "case \" ${{JAVA_OPTS:-}} \" in\n  *\" {} \"*) ;;\n  *) export JAVA_OPTS=\"${{JAVA_OPTS:+${{JAVA_OPTS}} }}{}\" ;;\nesac\n",
-            java_opt, java_opt
-        ));
-    }
-    content.push('\n');
-    content.push_str(&format!(
-        "exec {} \"$@\"\n",
-        shell_quote(&active_binary.display().to_string())
-    ));
-    fs::write(shim_path, content)?;
-    manifest::make_executable(shim_path)
 }
 
 fn write_headless_config(config_file: &Path) -> Result<()> {

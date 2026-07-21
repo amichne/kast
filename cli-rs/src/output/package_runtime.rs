@@ -4,6 +4,18 @@ pub fn print_package_result(result: &PackageResult) -> Result<()> {
     }
 }
 
+fn print_ubuntu_debian_bundle_package(result: &UbuntuDebianBundlePackageResult) -> Result<()> {
+    let mut document = MarkdownDocument::default();
+    mdln!(document, "# Kast install bundle");
+    mdln!(document);
+    mdln!(document, "- Output: `{}`", result.output);
+    mdln!(document, "- SHA-256 sidecar: `{}`", result.sha256_sidecar);
+    mdln!(document, "- Version: `{}`", result.version);
+    mdln!(document, "- Platform: `{}`", result.platform);
+    mdln!(document, "- Bundle SHA-256: `{}`", result.bundle_sha256);
+    print_markdown(&document.into_string())
+}
+
 pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     mdln!(document, "# Kast status");
@@ -29,7 +41,7 @@ pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
         );
         mdln!(
             document,
-            "- For headless use, install the Linux headless tarball; for macOS IDE use, install Kast through Homebrew."
+            "- Install or replace the complete release with `kast setup --source <bundle>`."
         );
     }
     if result.selected.is_some() && result.candidates.len() > 1 {

@@ -63,7 +63,7 @@ fn create_workspace_index(
     source_count: usize,
 ) -> workspace_files::WorkspaceIndexFixture {
     let workspace = workspace.canonicalize().expect("canonical workspace");
-    let workspaces_data = default_install_root(home).join("state/workspaces");
+    let workspaces_data = default_install_root(home).join("state/data/workspaces");
     std::fs::create_dir_all(workspaces_data.join("local")).expect("local workspace data");
     std::fs::write(
         workspaces_data.join("local-workspaces.json"),
