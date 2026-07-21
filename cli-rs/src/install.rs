@@ -14,6 +14,7 @@ use sha2::{Digest, Sha256};
 use std::collections::BTreeSet;
 use std::env;
 use std::fs;
+use std::io;
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command as ProcessCommand, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -24,6 +25,7 @@ include!("install/bundle_source.rs");
 include!("install/bundle_validation.rs");
 include!("install/bundle_install.rs");
 include!("install/bundle_helpers.rs");
+include!("install/idea_plugin.rs");
 
 fn command_error(code: &'static str, message: &str, args: &[String], output: &Output) -> CliError {
     let mut error = CliError::new(

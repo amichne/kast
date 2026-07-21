@@ -1,7 +1,22 @@
 mod support;
 
+use std::io::Write;
 use std::process::Stdio;
 use support::*;
+
+fn write_idea_plugin_zip(root: &Path) -> PathBuf {
+    let archive = root.join("kast-idea.zip");
+    let file = std::fs::File::create(&archive).expect("plugin archive");
+    let mut zip = zip::ZipWriter::new(file);
+    zip.start_file(
+        "kast/lib/plugin.jar",
+        zip::write::SimpleFileOptions::default(),
+    )
+    .expect("plugin entry");
+    zip.write_all(b"plugin").expect("plugin contents");
+    zip.finish().expect("plugin archive");
+    archive
+}
 
 fn setup_command(home: &Path, kast_home: &Path, source: &Path) -> Command {
     let mut command = kast(home, &kast_home.join("unused-config"));
@@ -24,6 +39,55 @@ fn setup(home: &Path, kast_home: &Path, source: &Path) -> std::process::Output {
     setup_command(home, kast_home, source)
         .output()
         .expect("kast setup")
+}
+
+#[test]
+fn setup_installs_native_cli_and_idea_plugin() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let plugins = temp.path().join("plugins");
+    let plugin = write_idea_plugin_zip(temp.path());
+    std::fs::create_dir_all(&home).expect("home");
+
+    let output = kast(&home, &kast_home.join("unused-config"))
+        .env_remove("KAST_CONFIG_HOME")
+        .env("KAST_HOME", &kast_home)
+        .env("KAST_MACHINE_IDE_STATE", "closed")
+        .args([
+            "--output",
+            "json",
+            "setup",
+            "--idea-plugin",
+            plugin.to_str().expect("plugin path"),
+            "--idea-plugins-dir",
+            plugins.to_str().expect("plugins path"),
+        ])
+        .output()
+        .expect("kast setup");
+
+    assert!(
+        output.status.success(),
+        "setup should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert!(kast_home.join("current/bin/kast").is_file());
+    assert!(plugins.join("kast/lib/plugin.jar").is_file());
+    let receipt: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(kast_home.join("current/receipt.json")).expect("setup receipt"),
+    )
+    .expect("setup receipt JSON");
+    assert_eq!(
+        receipt["components"],
+        serde_json::json!(["cli", "idea-plugin"])
+    );
+    let platform = match std::env::consts::ARCH {
+        "aarch64" => "macos-arm64".to_string(),
+        "x86_64" => "macos-x64".to_string(),
+        arch => format!("macos-{arch}"),
+    };
+    assert_eq!(receipt["platform"], platform);
 }
 
 #[test]
