@@ -22,10 +22,6 @@ pub use agent_readiness::{AgentResourceState, DoctorAgentEnvironmentDiagnostic};
 
 pub use crate::manifest::{KastInstallManifest as InstallState, ManagedRepo, ManagedResourceKind};
 
-fn shell_quote_for_remediation(value: &str) -> String {
-    format!("'{}'", value.replace('\'', "'\\''"))
-}
-
 #[cfg(target_os = "macos")]
 const MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE: &str = ".kast/setup/workspace.json";
 #[cfg(target_os = "macos")]
