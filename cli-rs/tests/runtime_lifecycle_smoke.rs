@@ -215,29 +215,12 @@ fn stop_requests_reachable_idea_backend_shutdown() {
     .expect("descriptors");
 
     let listener = UnixListener::bind(&socket_path).expect("bind fake idea socket");
-    listener
-        .set_nonblocking(true)
-        .expect("make fake idea socket nonblocking");
     let server_workspace = workspace.clone();
     let server_descriptor_file = descriptor_file.clone();
     let handle = thread::spawn(move || {
         let mut methods = Vec::new();
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
-        while methods.len() < 3 && std::time::Instant::now() < deadline {
-            let (mut stream, _) = match listener.accept() {
-                Ok(connection) => connection,
-                Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                    thread::sleep(std::time::Duration::from_millis(10));
-                    continue;
-                }
-                Err(error) => panic!("accept fake idea client: {error}"),
-            };
-            stream
-                .set_nonblocking(false)
-                .expect("make fake idea client blocking");
-            stream
-                .set_read_timeout(Some(std::time::Duration::from_secs(5)))
-                .expect("set fake idea client read timeout");
+        for _ in 0..3 {
+            let (mut stream, _) = listener.accept().expect("accept fake idea client");
             let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
             let mut request_line = String::new();
             reader
@@ -313,6 +296,8 @@ fn stop_requests_reachable_idea_backend_shutdown() {
             "stop",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
+            "--backend",
+            "idea",
         ])
         .output()
         .expect("stop");
