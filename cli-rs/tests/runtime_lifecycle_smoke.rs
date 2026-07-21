@@ -296,6 +296,8 @@ fn stop_requests_reachable_idea_backend_shutdown() {
             "stop",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
+            "--backend",
+            "idea",
         ])
         .output()
         .expect("stop");
