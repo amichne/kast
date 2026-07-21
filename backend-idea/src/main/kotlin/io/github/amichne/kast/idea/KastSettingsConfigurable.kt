@@ -99,7 +99,7 @@ internal class KastSettingsConfigurable(
 
         group("Project Open") {
             row {
-                projectOpenProfileAutoInit = checkBox("Install Kast agent guidance for Gradle projects").component
+                projectOpenProfileAutoInit = checkBox("Prepare Kast workspaces when Gradle projects open").component
             }
             row {
                 projectOpenGradleLoadEnabled = checkBox("Load Gradle project model on open").component

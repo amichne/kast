@@ -19,8 +19,9 @@ Use the same operation for a first install, an update, a downgrade, or recovery.
 
 The bootstrap downloads the bundle for the current macOS or Linux platform and
 delegates to `kast setup`. Success means the CLI, headless backend, IDEA plugin,
-skill, guidance, config, and receipt all resolve from one verified release under
-`KAST_HOME` (default `~/.local/share/kast`).
+config, and receipt resolve from one verified release under `KAST_HOME`
+(default `~/.local/share/kast`). When Codex is installed, the bootstrap also
+fast-forwards the separate `amichne/kast-marketplace` and installs `kast@kast`.
 
 To install a downloaded or locally built bundle instead:
 

@@ -18,21 +18,6 @@ write_provenance() {
   local asset="$3"
 
   mkdir -p "$(dirname -- "$path")"
-  if [[ "$platform" == "codex-plugin" ]]; then
-    cat > "$path" <<JSON
-{
-  "platformId": "${platform}",
-  "assetName": "${asset}",
-  "assetDigest": "sha256:$(printf '%064d' 1)",
-  "sha": "0123456789abcdef0123456789abcdef01234567",
-  "ref": "refs/tags/v9.8.7",
-  "pluginVersion": "9.8.7",
-  "generatorCommand": "kast developer codex generate --release"
-}
-JSON
-    return
-  fi
-
   cat > "$path" <<JSON
 {
   "platformId": "${platform}",
@@ -69,10 +54,6 @@ write_provenance \
   "${scratch_dir}/provenance-cli-macos-arm64/dist/build-provenance-cli-macos-arm64.json" \
   "cli-macos-arm64" \
   "kast-${tag}-macos-arm64.zip"
-write_provenance \
-  "${scratch_dir}/provenance-codex-plugin/dist/build-provenance-codex-plugin.json" \
-  "codex-plugin" \
-  "kast-codex-plugin-${tag}.zip"
 write_provenance \
   "${scratch_dir}/provenance-gradle-ro-cache/dist/build-provenance-gradle-ro-cache.json" \
   "gradle-ro-cache" \
@@ -126,7 +107,6 @@ expected = [
     "cli-linux-x64",
     "cli-macos-arm64",
     "cli-macos-x64",
-    "codex-plugin",
     "gradle-ro-cache",
     "headless-linux-x64",
     "openapi",
@@ -142,27 +122,6 @@ if platforms != expected:
 PY
 
 "$assembler" --output "$output" --tag "$tag" "${provenance_roots[@]}"
-
-python3 - "${scratch_dir}/provenance-codex-plugin/dist/build-provenance-codex-plugin.json" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-path = Path(sys.argv[1])
-payload = json.loads(path.read_text(encoding="utf-8"))
-payload["pluginVersion"] = "9.8.8"
-path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-PY
-if "$assembler" --output "$output" --tag "$tag" "$scratch_dir" \
-  >"${scratch_dir}/codex-version.out" 2>"${scratch_dir}/codex-version.err"; then
-  die "assembler unexpectedly passed mismatched Codex plugin provenance"
-fi
-grep -Fq "pluginVersion must match" "${scratch_dir}/codex-version.err" \
-  || die "Codex plugin provenance failure did not name pluginVersion"
-write_provenance \
-  "${scratch_dir}/provenance-codex-plugin/dist/build-provenance-codex-plugin.json" \
-  "codex-plugin" \
-  "kast-codex-plugin-${tag}.zip"
 
 rm "${scratch_dir}/provenance-openapi/dist/build-provenance-openapi.json"
 if "$assembler" --output "$output" --tag "$tag" "${provenance_roots[@]}" \

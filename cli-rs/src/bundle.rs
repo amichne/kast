@@ -114,16 +114,10 @@ pub(crate) struct BundleArtifact {
 pub(crate) fn ubuntu_debian_headless_manifest(
     version: &str,
     platform: &str,
-    artifact_sha256: [String; 5],
+    artifact_sha256: [String; 3],
     build_commit: String,
 ) -> BundleManifest {
-    let [
-        cli_sha256,
-        backend_sha256,
-        plugin_sha256,
-        skill_sha256,
-        guidance_sha256,
-    ] = artifact_sha256;
+    let [cli_sha256, backend_sha256, plugin_sha256] = artifact_sha256;
     let backend_install_name = format!("headless-{version}");
     BundleManifest {
         schema_version: BUNDLE_MANIFEST_SCHEMA_VERSION,
@@ -169,16 +163,6 @@ pub(crate) fn ubuntu_debian_headless_manifest(
                 role: "plugin".to_string(),
                 path: "plugins/kast.zip".to_string(),
                 sha256: plugin_sha256,
-            },
-            BundleArtifact {
-                role: "skill".to_string(),
-                path: "skills/kast".to_string(),
-                sha256: skill_sha256,
-            },
-            BundleArtifact {
-                role: "guidance".to_string(),
-                path: "guidance".to_string(),
-                sha256: guidance_sha256,
             },
         ],
     }

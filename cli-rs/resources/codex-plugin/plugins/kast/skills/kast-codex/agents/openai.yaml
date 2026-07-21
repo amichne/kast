@@ -1,7 +1,0 @@
-interface:
-  display_name: "Kast for Codex"
-  short_description: "Run Kotlin and Gradle work through Kast task proof"
-  default_prompt: "Use $kast-codex for compiler-backed Kotlin or Gradle discovery and synchronous mutations."
-
-policy:
-  allow_implicit_invocation: true

@@ -576,128 +576,6 @@ jobs:
           path: dist/
           if-no-files-found: warn
 
-  build-codex-plugin:
-    name: Build Codex plugin
-    needs: [prepare-release]
-    if: always() && needs.prepare-release.result == 'success'
-    runs-on: ubuntu-22.04
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Verify committed Codex plugin generation
-        working-directory: cli-rs
-        shell: bash
-        run: cargo run --locked --bin kast -- developer codex generate --check
-
-      - name: Build release-coupled Kast generator
-        working-directory: cli-rs
-        shell: bash
-        run: |
-          set -euo pipefail
-          KAST_VERSION="${{ needs.prepare-release.outputs.release_version }}" \
-            cargo build --release --locked
-
-      - name: Generate and verify Codex plugin package
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          version="${{ needs.prepare-release.outputs.release_version }}"
-          release_sha="$(git rev-parse HEAD)"
-          tag_sha="$(git rev-list -n1 "$tag")"
-          [[ "$release_sha" == "$tag_sha" ]] || {
-            echo "Checked-out HEAD ${release_sha} does not match ${tag} target ${tag_sha}" >&2
-            exit 1
-          }
-          staging_dir="$RUNNER_TEMP/kast-codex-plugin"
-          asset_name="kast-codex-plugin-${tag}.zip"
-          rm -rf "$staging_dir" dist
-          mkdir -p "$staging_dir" dist
-          cli-rs/target/release/kast developer codex generate \
-            --release \
-            --output-dir "$staging_dir"
-          [[ -f "$staging_dir/marketplace.json" ]] || {
-            echo "Generated Codex marketplace is missing marketplace.json" >&2
-            exit 1
-          }
-          [[ -d "$staging_dir/plugins/kast" ]] || {
-            echo "Generated Codex marketplace is missing plugins/kast" >&2
-            exit 1
-          }
-          (cd "$staging_dir" && zip -X -9 -q -r "$GITHUB_WORKSPACE/dist/${asset_name}" marketplace.json .agents/plugins/marketplace.json plugins/kast)
-          .github/scripts/verify-codex-plugin-package.py \
-            "dist/${asset_name}" \
-            "$version"
-          python3 - "dist/${asset_name}" dist/build-provenance-codex-plugin.json "$release_sha" "$tag" <<'PY'
-          import hashlib
-          import json
-          import os
-          import sys
-          from pathlib import Path
-          asset = Path(sys.argv[1])
-          output = Path(sys.argv[2])
-          release_sha = sys.argv[3]
-          tag = sys.argv[4]
-          payload = {
-              "runId": os.environ["GITHUB_RUN_ID"],
-              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
-              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
-              "sha": release_sha,
-              "ref": f"refs/tags/{tag}",
-              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
-              "actor": os.environ["GITHUB_ACTOR"],
-              "platformId": "codex-plugin",
-              "assetName": asset.name,
-              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
-              "pluginVersion": tag.removeprefix("v"),
-              "generatorCommand": "kast developer codex generate --release",
-          }
-          output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-          PY
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/build-ledger-codex-plugin.json \
-            --git-sha "$release_sha" \
-            --source-ref "refs/tags/${tag}" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-codex-plugin \
-            --artifact-name "$asset_name" \
-            --artifact-path "dist/${asset_name}" \
-            --producer-job build-codex-plugin \
-            --build-command-id release-codex-plugin-generate
-
-      - name: Upload immutable Codex plugin asset
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          release_sha="$(git rev-parse HEAD)"
-          asset_name="kast-codex-plugin-${tag}.zip"
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger dist/build-ledger-codex-plugin.json \
-            --git-sha "$release_sha" \
-            --require-kind release-codex-plugin \
-            --artifact "release-codex-plugin=dist/${asset_name}"
-          .github/scripts/upload-immutable-release-asset.sh \
-            --tag "$tag" \
-            --asset "dist/${asset_name}"
-
-      - name: Upload Codex plugin build artifact
-        if: always()
-        uses: actions/upload-artifact@v6
-        with:
-          name: codex-plugin-${{ github.run_id }}
-          path: dist/
-          if-no-files-found: error
-
   build-idea-plugin:
     name: Build IDEA plugin
     needs: [prepare-release]
@@ -1182,11 +1060,10 @@ jobs:
       - validate-jvm
       - build-openapi-spec
       - build-cli
-      - build-codex-plugin
       - build-idea-plugin
       - build-headless-backend
       - build-linux-headless-tarball
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-codex-plugin.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success'
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -1198,13 +1075,6 @@ jobs:
         with:
           path: provenance-cli
           pattern: rust-cli-*-${{ github.run_id }}
-          merge-multiple: true
-
-      - name: Download Codex plugin provenance
-        uses: actions/download-artifact@v7
-        with:
-          path: provenance-codex-plugin
-          pattern: codex-plugin-*
           merge-multiple: true
 
       - name: Download Linux headless tarball provenance
@@ -1231,7 +1101,6 @@ jobs:
             --ledger provenance-cli/build-ledger-cli-linux-arm64.json \
             --ledger provenance-cli/build-ledger-cli-macos-x64.json \
             --ledger provenance-cli/build-ledger-cli-macos-arm64.json \
-            --ledger provenance-codex-plugin/build-ledger-codex-plugin.json \
             --ledger provenance-linux-headless/build-ledger-ubuntu-debian-headless.json \
             --ledger provenance-linux-headless/build-ledger-headless-linux-x64.json \
             --ledger provenance-linux-headless/build-ledger-runtime-manifest.json \
@@ -1242,7 +1111,6 @@ jobs:
             --require-kind release-cli-linux-arm64 \
             --require-kind release-cli-macos-x64 \
             --require-kind release-cli-macos-arm64 \
-            --require-kind release-codex-plugin \
             --require-kind release-ubuntu-debian-headless-x86_64 \
             --require-kind release-headless-linux-x64 \
             --require-kind release-runtime-manifest \
@@ -1252,7 +1120,6 @@ jobs:
             --artifact "release-cli-linux-arm64=provenance-cli/kast-${tag}-linux-arm64.zip" \
             --artifact "release-cli-macos-x64=provenance-cli/kast-${tag}-macos-x64.zip" \
             --artifact "release-cli-macos-arm64=provenance-cli/kast-${tag}-macos-arm64.zip" \
-            --artifact "release-codex-plugin=provenance-codex-plugin/kast-codex-plugin-${tag}.zip" \
             --artifact "release-ubuntu-debian-headless-x86_64=provenance-linux-headless/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz" \
             --artifact "release-headless-linux-x64=provenance-linux-headless/kast-headless-linux-x64.tar.zst" \
             --artifact "release-runtime-manifest=provenance-linux-headless/kast-runtime-manifest.json" \
@@ -1337,7 +1204,6 @@ jobs:
             --output dist/build-provenance.json \
             --tag "${{ needs.prepare-release.outputs.release_tag }}" \
             provenance-cli \
-            provenance-codex-plugin \
             provenance-linux-headless \
             provenance-openapi \
             dist/provenance

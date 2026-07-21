@@ -18,6 +18,8 @@ complete headless release:
 The bootstrap delegates to `kast setup`. A successful invocation activates the
 platform release and receipt under `KAST_HOME` (default
 `~/.local/share/kast`). A failed invocation leaves the prior active release usable.
+When Codex is installed, the bootstrap independently fast-forwards the public
+`amichne/kast-marketplace` and installs `kast@kast`.
 
 For a local bundle:
 

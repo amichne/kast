@@ -208,7 +208,6 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
     let command = cli
         .command
         .unwrap_or_else(|| Command::Context(default_runtime_args()));
-    let _exposure = codex::classify_command(&command);
     match command {
         Command::Help { topic } => {
             if topic.is_empty() {

@@ -1,6 +1,6 @@
 # ADR 0026: Codex CLI plugin and Rust exposure authority
 
-Status: Accepted
+Status: Superseded by ADR 0031
 
 Date: 2026-07-17
 

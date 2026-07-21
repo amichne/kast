@@ -13,7 +13,7 @@ pub enum DeveloperCommand {
     Inspect(InspectArgs),
     /// Build, activate, and validate release artifacts.
     Release(ReleaseArgs),
-    /// Generate and run the Codex plugin contract.
+    /// Run the Codex plugin hook bridge.
     Codex(CodexArgs),
 }
 

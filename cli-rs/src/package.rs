@@ -86,8 +86,6 @@ pub fn package_ubuntu_debian_bundle(
     fs::create_dir_all(staging_root.join("bin"))?;
     fs::create_dir_all(staging_root.join("lib/backends"))?;
     fs::create_dir_all(staging_root.join("plugins"))?;
-    fs::create_dir_all(staging_root.join("skills"))?;
-    fs::create_dir_all(staging_root.join("guidance"))?;
     if let Some(parent) = output.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -110,14 +108,6 @@ pub fn package_ubuntu_debian_bundle(
     make_executable(&backend_install_dir.join(HEADLESS_BACKEND_LAUNCHER))?;
 
     fs::copy(&plugin_archive, staging_root.join("plugins/kast.zip"))?;
-    copy_dir_recursive(
-        &repo_root.join("cli-rs/resources/kast-skill"),
-        &staging_root.join("skills/kast"),
-    )?;
-    copy_dir_recursive(
-        &repo_root.join("cli-rs/resources/codex-plugin"),
-        &staging_root.join("guidance/codex-plugin"),
-    )?;
 
     let installer = repo_root.join(UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT);
     require_file(&installer, "setup bootstrap installer")?;
@@ -131,12 +121,10 @@ pub fn package_ubuntu_debian_bundle(
     let cli_sha = path_sha256(&staging_root.join("bin/kast"))?;
     let backend_sha = path_sha256(&backend_install_dir)?;
     let plugin_sha = path_sha256(&staging_root.join("plugins/kast.zip"))?;
-    let skill_sha = path_sha256(&staging_root.join("skills/kast"))?;
-    let guidance_sha = path_sha256(&staging_root.join("guidance"))?;
     let manifest = ubuntu_debian_headless_manifest(
         version.as_str(),
         platform,
-        [cli_sha, backend_sha, plugin_sha, skill_sha, guidance_sha],
+        [cli_sha, backend_sha, plugin_sha],
         build_commit(&repo_root),
     );
     fs::write(

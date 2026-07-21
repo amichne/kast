@@ -9,7 +9,6 @@ die() {
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 docs_root="${repo_root}/docs"
 readme="${repo_root}/README.md"
-manifest="${repo_root}/cli-rs/resources/codex-plugin/plugins/kast/.codex-plugin/plugin.json"
 
 require_contains() {
   grep -Fq -- "$2" "$1" || die "missing '$2' in $1"
@@ -49,11 +48,12 @@ installer='/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/
 require_contains "$readme" "$installer"
 require_contains "$readme" "kast setup"
 require_contains "$readme" "prior active release usable"
+require_contains "$readme" "amichne/kast-marketplace"
 require_contains "${docs_root}/install/setup.md" "$installer"
 require_contains "${docs_root}/install/setup.md" "./gradlew refreshDevelopmentMachine"
 require_contains "${docs_root}/install/setup.md" "current/bin/kast"
 require_contains "${docs_root}/use/codex.md" "without operating Kast"
-require_contains "${docs_root}/reference/codex-plugin.md" "sole agent-facing component"
+require_contains "${docs_root}/reference/codex-plugin.md" "sole Kast agent-guidance surface"
 require_contains "${docs_root}/design/operating-model.md" "one installation authority"
 require_contains "${docs_root}/troubleshoot.md" 'Do not edit `current`'
 
@@ -64,8 +64,6 @@ require_not_contains "$docs_root" "codex plugin marketplace add"
 require_not_contains "$docs_root" "Homebrew"
 require_not_contains "$docs_root" "kast repair"
 require_not_contains "$docs_root" "kast machine"
-! grep -Fq 'privacyPolicyURL' "$manifest" || die "Codex manifest still publishes a policy page"
-! grep -Fq 'termsOfServiceURL' "$manifest" || die "Codex manifest still publishes a service page"
 
 python3 - "$docs_root" "${expected_pages[@]}" <<'PY'
 import sys

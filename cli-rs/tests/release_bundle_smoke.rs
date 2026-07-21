@@ -11,22 +11,10 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     let output = temp
         .path()
         .join("dist/kast-ubuntu-debian-headless-x86_64-v9.8.7.tar.gz");
-    std::fs::create_dir_all(repo_root.join("cli-rs/resources/kast-skill")).expect("skill source");
-    std::fs::create_dir_all(repo_root.join("cli-rs/resources/codex-plugin"))
-        .expect("guidance source");
+    std::fs::create_dir_all(&repo_root).expect("repo root");
     std::fs::write(repo_root.join("install.sh"), "#!/usr/bin/env bash\n")
         .expect("bootstrap script");
     set_executable_for_test(&repo_root.join("install.sh"));
-    std::fs::write(
-        repo_root.join("cli-rs/resources/kast-skill/SKILL.md"),
-        "skill",
-    )
-    .expect("skill");
-    std::fs::write(
-        repo_root.join("cli-rs/resources/codex-plugin/plugin.json"),
-        "guidance",
-    )
-    .expect("guidance");
 
     let cli_archive = write_cli_archive(temp.path());
     let backend_archive = write_backend_archive(temp.path(), "headless", "v9.8.7");
@@ -124,6 +112,8 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     assert_eq!(manifest["artifacts"][0]["role"], "cli");
     assert_eq!(manifest["artifacts"][1]["role"], "headless-backend");
     assert_eq!(manifest["artifacts"][2]["role"], "plugin");
-    assert_eq!(manifest["artifacts"][3]["role"], "skill");
-    assert_eq!(manifest["artifacts"][4]["role"], "guidance");
+    assert_eq!(
+        manifest["artifacts"].as_array().expect("artifacts").len(),
+        3
+    );
 }

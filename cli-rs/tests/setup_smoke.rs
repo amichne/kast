@@ -240,7 +240,7 @@ fn setup_rejects_a_modified_artifact_before_activation() {
     let active = std::fs::canonicalize(kast_home.join("current")).expect("active release");
 
     let modified = write_install_bundle_source(temp.path(), "v4.1.0");
-    std::fs::write(modified.join("skills/kast/SKILL.md"), "modified").expect("drift");
+    std::fs::write(modified.join("plugins/kast.zip"), "modified").expect("drift");
     let rejected = setup(&home, &kast_home, &modified);
     assert!(!rejected.status.success());
     let rejected: serde_json::Value = serde_json::from_slice(&rejected.stdout).expect("error JSON");

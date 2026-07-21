@@ -10,7 +10,8 @@ trap cleanup EXIT
 
 bundle="$scratch/bundle"
 log="$scratch/setup.log"
-mkdir -p "$bundle/bin"
+codex_log="$scratch/codex.log"
+mkdir -p "$bundle/bin" "$scratch/bin"
 bundle="$(cd -- "$bundle" && pwd -P)"
 cat >"$bundle/bin/kast" <<'SH'
 #!/usr/bin/env bash
@@ -19,10 +20,19 @@ printf '%s\n' "$*" >"${KAST_INSTALL_TEST_LOG:?}"
 SH
 chmod +x "$bundle/bin/kast"
 
-KAST_INSTALL_TEST_LOG="$log" KAST_HOME="$scratch/home" \
+cat >"$scratch/bin/codex" <<'SH'
+#!/usr/bin/env bash
+printf '%s\n' "$*" >>"${KAST_INSTALL_TEST_CODEX_LOG:?}"
+SH
+chmod +x "$scratch/bin/codex"
+
+PATH="$scratch/bin:$PATH" KAST_INSTALL_TEST_LOG="$log" \
+  KAST_INSTALL_TEST_CODEX_LOG="$codex_log" KAST_HOME="$scratch/home" \
   "$repo_root/install.sh" --source "$bundle" >/dev/null
 
 grep -Fqx -- "setup --source $bundle" "$log"
+grep -Fqx -- "plugin marketplace add amichne/kast-marketplace --ref main --json" "$codex_log"
+grep -Fqx -- "plugin add kast@kast --json" "$codex_log"
 grep -Fq -- 'kast setup --source <bundle>' "$repo_root/install.sh"
 ! grep -Eiq -- 'homebrew|\bbrew\b|kast machine|kast repair|\.local/bin' "$repo_root/install.sh"
 bash -n "$repo_root/install.sh"

@@ -86,6 +86,14 @@ latest_version() {
   printf '%s\n' "${effective##*/}"
 }
 
+reconcile_codex() {
+  command -v codex >/dev/null 2>&1 || return 0
+  codex plugin remove kast@kast --json >/dev/null 2>&1 || true
+  codex plugin marketplace remove kast --json >/dev/null 2>&1 || true
+  codex plugin marketplace add amichne/kast-marketplace --ref main --json >/dev/null
+  codex plugin add kast@kast --json >/dev/null
+}
+
 main() {
   local source="" version="" bundle_root="" bundle_archive="" platform_id=""
   local cli_archive="" cli_url="" plugin_archive="" plugin_url=""
@@ -121,6 +129,7 @@ main() {
       chmod 755 "${setup_scratch}/cli/kast"
       printf 'Installing Kast and the IDEA plugin...\n' >&2
       "${setup_scratch}/cli/kast" setup --idea-plugin "$plugin_archive"
+      reconcile_codex
       printf 'Kast is ready at %s/current/bin/kast\n' "${KAST_HOME:-${HOME}/.local/share/kast}"
       return 0
     fi
@@ -146,6 +155,7 @@ main() {
   [[ -x "${bundle_root}/bin/kast" ]] || die "bundle CLI is missing: ${bundle_root}/bin/kast"
   printf 'Installing Kast...\n' >&2
   "${bundle_root}/bin/kast" setup --source "$bundle_root"
+  reconcile_codex
   printf 'Kast is ready at %s/current/bin/kast\n' "${KAST_HOME:-${HOME}/.local/share/kast}"
 }
 

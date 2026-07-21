@@ -8,10 +8,6 @@ pub fn global_config_path() -> PathBuf {
         .unwrap_or_else(|_| manifest::default_resolved_paths().config_file)
 }
 
-pub fn home_dir() -> PathBuf {
-    manifest::home_dir()
-}
-
 pub fn normalize(path: PathBuf) -> PathBuf {
     if path.is_absolute() {
         path

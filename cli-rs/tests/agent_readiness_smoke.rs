@@ -4,19 +4,14 @@ use support::*;
 
 #[cfg(not(target_os = "macos"))]
 #[test]
-fn missing_expected_skill_reports_install_repair_instead_of_quarantine() {
+fn readiness_delegates_guidance_and_skill_authority_to_the_codex_plugin() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
-    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
 
     let ready = kast(&home, &config_home)
-        .env_remove("CODEX_HOME")
-        .current_dir(&workspace)
         .args([
             "--output",
             "json",
@@ -29,24 +24,9 @@ fn missing_expected_skill_reports_install_repair_instead_of_quarantine() {
         .output()
         .expect("agent ready");
 
-    assert!(
-        !ready.status.success(),
-        "a missing effective skill must block readiness"
-    );
     let payload: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("readiness JSON");
-    let missing_skill = payload["agentEnvironment"]["skills"]["candidates"]
-        .as_array()
-        .expect("skill candidates")
-        .iter()
-        .find(|candidate| candidate["state"] == "missing")
-        .unwrap_or_else(|| panic!("missing expected skill candidate: {payload:#}"));
-    let repair = missing_skill["repairCommand"]
-        .as_str()
-        .unwrap_or_else(|| panic!("missing skill repair command: {missing_skill:#}"));
-    assert!(
-        !repair.starts_with("mv "),
-        "a missing path cannot be quarantined: {repair}"
-    );
+    assert!(payload["agentEnvironment"].get("skills").is_none());
+    assert!(payload["agentEnvironment"].get("guidance").is_none());
 }
 
 #[cfg(target_os = "macos")]
@@ -101,14 +81,8 @@ fn agent_ready_uses_the_idea_plugin_without_a_global_skill() {
         String::from_utf8_lossy(&ready.stderr),
     );
     let payload: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("readiness JSON");
-    let candidates = payload["agentEnvironment"]["skills"]["candidates"]
-        .as_array()
-        .expect("skill candidates");
-    assert!(candidates.is_empty(), "{payload:#}");
-    assert_eq!(
-        payload["agentEnvironment"]["guidance"]["source"],
-        "idea-plugin",
-    );
+    assert!(payload["agentEnvironment"].get("skills").is_none());
+    assert!(payload["agentEnvironment"].get("guidance").is_none());
 }
 
 #[cfg(target_os = "macos")]
@@ -129,8 +103,8 @@ fn workspace_resources_do_not_affect_machine_readiness() {
     let guidance = workspace.join("AGENTS.local.md");
     let skill = workspace.join(".agents/skills/kast/SKILL.md");
     std::fs::create_dir_all(skill.parent().expect("skill parent")).expect("skill parent");
-    std::fs::write(&guidance, "user guidance").expect("guidance");
-    std::fs::write(&skill, "user skill").expect("skill");
+    std::fs::write(&guidance, "legacy guidance").expect("guidance");
+    std::fs::write(&skill, "legacy skill").expect("skill");
 
     let ready = kast_at(&active_binary, &home, &config_home)
         .env_remove("CODEX_HOME")
@@ -148,16 +122,19 @@ fn workspace_resources_do_not_affect_machine_readiness() {
 
     assert!(
         ready.status.success(),
-        "worktree resources are outside machine authority: stdout={}, stderr={}",
+        "stdout={}, stderr={}",
         String::from_utf8_lossy(&ready.stdout),
         String::from_utf8_lossy(&ready.stderr),
     );
+    let payload: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("readiness JSON");
+    assert!(payload["agentEnvironment"].get("skills").is_none());
+    assert!(payload["agentEnvironment"].get("guidance").is_none());
     assert_eq!(
-        std::fs::read_to_string(&guidance).expect("guidance after readiness"),
-        "user guidance",
+        std::fs::read_to_string(guidance).expect("guidance"),
+        "legacy guidance"
     );
     assert_eq!(
-        std::fs::read_to_string(&skill).expect("skill after readiness"),
-        "user skill",
+        std::fs::read_to_string(skill).expect("skill"),
+        "legacy skill"
     );
 }

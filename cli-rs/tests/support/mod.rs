@@ -553,8 +553,6 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
     let backend_dir = bundle.join(format!("lib/backends/headless-{version}"));
     std::fs::create_dir_all(bundle.join("bin")).expect("bundle bin");
     std::fs::create_dir_all(bundle.join("plugins")).expect("bundle plugins");
-    std::fs::create_dir_all(bundle.join("skills/kast")).expect("bundle skills");
-    std::fs::create_dir_all(bundle.join("guidance")).expect("bundle guidance");
     std::fs::create_dir_all(backend_dir.join("runtime-libs")).expect("runtime libs");
     std::fs::create_dir_all(backend_dir.join("idea-home/lib")).expect("idea lib");
     std::fs::create_dir_all(backend_dir.join("idea-home/modules")).expect("idea modules");
@@ -578,8 +576,6 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
     .expect("module descriptors");
     std::fs::write(bundle.join("install.sh"), "#!/usr/bin/env bash\n").expect("bootstrap script");
     std::fs::write(bundle.join("plugins/kast.zip"), b"plugin").expect("plugin");
-    std::fs::write(bundle.join("skills/kast/SKILL.md"), b"skill").expect("skill");
-    std::fs::write(bundle.join("guidance/AGENTS.md"), b"guidance").expect("guidance");
     set_executable_for_test(&bundled_kast);
     set_executable_for_test(&backend_dir.join("kast-headless"));
     set_executable_for_test(&bundle.join("install.sh"));
@@ -629,16 +625,6 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
                     "role": "plugin",
                     "path": "plugins/kast.zip",
                     "sha256": test_path_sha256(&bundle.join("plugins/kast.zip"))
-                },
-                {
-                    "role": "skill",
-                    "path": "skills/kast",
-                    "sha256": test_path_sha256(&bundle.join("skills/kast"))
-                },
-                {
-                    "role": "guidance",
-                    "path": "guidance",
-                    "sha256": test_path_sha256(&bundle.join("guidance"))
                 }
             ]
         }))

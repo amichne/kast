@@ -35,7 +35,10 @@ pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
         mdln!(document, "No runtime candidates were found.");
         mdln!(document);
         mdln!(document, "## Next steps");
-        mdln!(document, "- Start a backend: `kast setup`");
+        mdln!(
+            document,
+            "- Start a backend through the Kast IDE plugin or an installed headless distribution."
+        );
         mdln!(
             document,
             "- Install or replace the complete release with `kast setup --source <bundle>`."

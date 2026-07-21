@@ -28,6 +28,11 @@ roles, versions, and checksums; the receipt identifies the active release and
 manifest digests. Consumers therefore resolve one authority instead of
 combining package-manager state, shell shims, IDE state, and repair receipts.
 
+Codex routing and hooks are published separately from
+`amichne/kast-marketplace`. They track that marketplace's `main` branch and
+delegate compatibility and execution to the active CLI instead of joining the
+release digest.
+
 Setup never edits `current` in place. It stages and validates a complete
 release, archives recognized prior Kast state, switches `current` atomically,
 then verifies the active CLI. If verification fails, the switch is rolled back.

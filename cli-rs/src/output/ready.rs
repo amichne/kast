@@ -109,11 +109,10 @@ fn print_agent_environment(
     );
     mdln!(
         document,
-        "- Binary: `{}` version `{}` revision `{}` dialect `{}` (source `{}`)",
+        "- Binary: `{}` version `{}` revision `{}` (source `{}`)",
         compact_path_for_output(&environment.binary.path),
         environment.binary.version,
         environment.binary.revision,
-        environment.binary.dialect_revision,
         compact_path_for_output(&environment.binary.source_path)
     );
     mdln!(
@@ -130,36 +129,6 @@ fn print_agent_environment(
             .map(compact_path_for_output)
             .unwrap_or_else(|| "-".to_string())
     );
-    mdln!(
-        document,
-        "- Guidance: `{}` from `{}` at `{}`",
-        agent_resource_state_label(environment.guidance.state),
-        environment.guidance.source,
-        compact_path_for_output(&environment.guidance.path)
-    );
-    if let Some(command) = &environment.guidance.repair_command {
-        mdln!(document, "  - Repair: `{command}`");
-    }
-    mdln!(
-        document,
-        "- Skills compatible: {}",
-        yes_no(environment.skills.compatible)
-    );
-    for skill in &environment.skills.candidates {
-        mdln!(
-            document,
-            "  - `{}`: `{}` from `{}`, dialect `{}`",
-            compact_path_for_output(&skill.path),
-            agent_resource_state_label(skill.state),
-            skill.source,
-            skill
-                .dialect_revision
-                .map_or_else(|| "-".to_string(), |revision| revision.to_string())
-        );
-        if let Some(command) = &skill.repair_command {
-            mdln!(document, "    - Repair: `{command}`");
-        }
-    }
 }
 
 fn agent_resource_state_label(
