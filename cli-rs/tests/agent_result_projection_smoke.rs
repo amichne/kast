@@ -1041,18 +1041,31 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
         "explanation": "capability explanation ".repeat(200),
         "schemaVersion": 3
     });
+    #[cfg(target_os = "macos")]
+    let responses = vec![
+        ("runtime/status", runtime.clone()),
+        ("capabilities", capabilities.clone()),
+    ];
+    #[cfg(not(target_os = "macos"))]
+    let responses = vec![
+        ("runtime/status", runtime.clone()),
+        ("capabilities", capabilities.clone()),
+        ("runtime/status", runtime.clone()),
+        ("capabilities", capabilities.clone()),
+    ];
     let backend = spawn_sequenced_idea_backend(
         &home,
         &config_home,
         &workspace,
         &socket_path,
-        vec![
-            ("runtime/status", runtime.clone()),
-            ("capabilities", capabilities.clone()),
-            ("health", json!({"ok": true, "status": "READY"})),
-            ("runtime/status", runtime),
-            ("capabilities", capabilities),
-        ],
+        responses
+            .into_iter()
+            .chain([
+                ("health", json!({"ok": true, "status": "READY"})),
+                ("runtime/status", runtime),
+                ("capabilities", capabilities),
+            ])
+            .collect(),
     );
     let output = kast(&home, &config_home)
         .args([
