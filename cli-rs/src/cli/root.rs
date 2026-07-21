@@ -37,9 +37,6 @@ pub enum Command {
     Version,
     /// Print compact workspace context for agents.
     Context(RuntimeArgs),
-    /// Retired repository setup command; use the Kast Codex plugin.
-    #[command(hide = true)]
-    Setup(SetupArgs),
     /// Verify that Kast is ready for a task.
     Ready(ReadyArgs),
     /// Plan or apply safe repair of Kast install state.
@@ -58,9 +55,6 @@ pub enum Command {
     /// Agent setup, readiness, LSP, and pipe-friendly semantic requests.
     Agent(AgentArgs),
 }
-
-#[derive(Debug, Args, Clone)]
-pub struct SetupArgs {}
 
 #[derive(Debug, Args, Clone)]
 pub struct ReadyArgs {

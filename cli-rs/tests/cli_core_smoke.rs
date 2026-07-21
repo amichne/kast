@@ -31,30 +31,16 @@ fn smoke_core_cli_commands() {
     assert!(help.status.success());
     let help_stdout = String::from_utf8_lossy(&help.stdout);
     assert!(help_stdout.contains("Usage: kast"));
-    let expected_commands = if cfg!(target_os = "macos") {
-        vec![
-            "help",
-            "version",
-            "ready",
-            "repair",
-            "status",
-            "machine",
-            "developer",
-            "agent",
-        ]
-    } else {
-        vec![
-            "help",
-            "version",
-            "setup",
-            "ready",
-            "repair",
-            "status",
-            "machine",
-            "developer",
-            "agent",
-        ]
-    };
+    let expected_commands = [
+        "help",
+        "version",
+        "ready",
+        "repair",
+        "status",
+        "machine",
+        "developer",
+        "agent",
+    ];
     for command in expected_commands {
         assert!(
             help_lists_command(&help_stdout, command),
@@ -164,29 +150,7 @@ fn smoke_core_cli_commands() {
         "{agent_tools_json:#}"
     );
 
-    let setup = kast(&home, &config_home)
-        .args(["--output", "json", "setup"])
-        .output()
-        .expect("setup refusal");
-    assert!(!setup.status.success());
-    let setup_json: serde_json::Value =
-        serde_json::from_slice(&setup.stdout).expect("setup refusal json");
-    assert_eq!(setup_json["ok"], false);
-    assert_eq!(setup_json["method"], "setup");
-    assert_eq!(setup_json["error"]["code"], "AGENT_COMMAND_REMOVED");
-    assert!(
-        setup_json["error"]["details"]["replacements"]
-            .as_array()
-            .expect("setup replacements")
-            .iter()
-            .any(|replacement| replacement == "codex plugin add kast@kast")
-    );
-    assert!(
-        !install_manifest_path(&home).exists(),
-        "retired setup must not write install state"
-    );
-
-    for removed_root in ["runtime", "inspect", "release", "rpc"] {
+    for removed_root in ["setup", "runtime", "inspect", "release", "rpc"] {
         let direct = kast(&home, &config_home)
             .args([removed_root, "--help"])
             .output()

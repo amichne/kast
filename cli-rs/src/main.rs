@@ -224,7 +224,6 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
             Ok(0)
         }
         Command::Context(args) => run_context(args, output_format),
-        Command::Setup(args) => run_setup(args, output_format),
         Command::Ready(args) => run_ready(args, output_format),
         Command::Repair(args) => run_repair(args, output_format),
         Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
@@ -355,19 +354,6 @@ fn display_current_executable() -> String {
     raw
 }
 
-fn run_setup(_args: cli::SetupArgs, output_format: OutputFormat) -> Result<i32> {
-    removed_operator_command(
-        "setup",
-        "Kast agent guidance is owned by the Kast Codex plugin; the CLI no longer writes workspace skills or context files.",
-        &[
-            "kast machine reconcile",
-            "codex plugin marketplace add amichne/kast-marketplace --ref main",
-            "codex plugin add kast@kast",
-        ],
-        output_format,
-    )
-}
-
 fn run_ready(args: cli::ReadyArgs, output_format: OutputFormat) -> Result<i32> {
     let cli::ReadyArgs { runtime, target } = args;
     let workspace_root = runtime
@@ -453,51 +439,6 @@ fn current_executable_argument() -> String {
         .map(|arg| arg.to_string_lossy().into_owned())
         .filter(|arg| !arg.is_empty())
         .unwrap_or_else(|| "kast".to_string())
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RemovedOperatorCommandEnvelope<'a> {
-    ok: bool,
-    method: &'a str,
-    error: RemovedOperatorCommandError<'a>,
-    schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RemovedOperatorCommandError<'a> {
-    code: &'static str,
-    message: &'a str,
-    details: RemovedOperatorCommandDetails<'a>,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RemovedOperatorCommandDetails<'a> {
-    replacements: &'a [&'a str],
-}
-
-fn removed_operator_command(
-    method: &'static str,
-    message: &'static str,
-    replacements: &'static [&'static str],
-    output_format: OutputFormat,
-) -> Result<i32> {
-    output::print_structured(
-        &RemovedOperatorCommandEnvelope {
-            ok: false,
-            method,
-            error: RemovedOperatorCommandError {
-                code: "AGENT_COMMAND_REMOVED",
-                message,
-                details: RemovedOperatorCommandDetails { replacements },
-            },
-            schema_version: SCHEMA_VERSION,
-        },
-        output_format,
-    )?;
-    Ok(1)
 }
 
 fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Result<i32> {
