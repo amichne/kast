@@ -17,8 +17,7 @@ complete headless release:
 
 The bootstrap delegates to `kast setup`. A successful invocation activates the
 platform release and receipt under `KAST_HOME` (default
-`~/.local/share/kast`). A failed invocation leaves the prior active release
-usable.
+`~/.local/share/kast`). A failed invocation leaves the prior active release usable.
 
 For a local bundle:
 
