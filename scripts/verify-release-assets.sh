@@ -65,7 +65,6 @@ required = {
     "cli-linux-x64": f"kast-{tag}-linux-x64.zip",
     "cli-macos-arm64": f"kast-{tag}-macos-arm64.zip",
     "cli-macos-x64": f"kast-{tag}-macos-x64.zip",
-    "codex-plugin": f"kast-codex-plugin-{tag}.zip",
     "gradle-ro-cache": "gradle-ro-dep-cache.tar.zst",
     "headless-linux-x64": "kast-headless-linux-x64.tar.zst",
     "openapi": "openapi.yaml",
@@ -114,17 +113,6 @@ if missing_provenance:
 unexpected_provenance = sorted(set(by_platform) - set(supported))
 if unexpected_provenance:
     fail(f"unexpected provenance for {unexpected_provenance}")
-
-codex_provenance = by_platform["codex-plugin"]
-if codex_provenance.get("ref") != f"refs/tags/{tag}":
-    fail(f"Codex plugin provenance ref must be refs/tags/{tag}")
-release_sha = codex_provenance.get("sha")
-if not isinstance(release_sha, str) or re.fullmatch(r"[0-9a-f]{40}", release_sha) is None:
-    fail("Codex plugin provenance sha must be a full lowercase Git commit SHA")
-if codex_provenance.get("pluginVersion") != tag.removeprefix("v"):
-    fail("Codex plugin provenance pluginVersion must match release tag")
-if codex_provenance.get("generatorCommand") != "kast developer codex generate --release":
-    fail("Codex plugin provenance must name the release-mode Rust generator")
 
 expected_assets = set()
 for platform_id, entry in by_platform.items():
@@ -270,16 +258,6 @@ if not isinstance(manifest["artifactSha256"], str) or not re.fullmatch(r"[0-9a-f
 runtime_asset = "kast-headless-linux-x64.tar.zst"
 if manifest["artifactSha256"] != sha_entries.get(runtime_asset):
     fail("runtime manifest artifactSha256 must match kast-headless-linux-x64.tar.zst")
-
-codex_asset = release_dir / supported["codex-plugin"]
-subprocess.run(
-    [
-        str(repo_root / ".github" / "scripts" / "verify-codex-plugin-package.py"),
-        str(codex_asset),
-        tag.removeprefix("v"),
-    ],
-    check=True,
-)
 
 print(f"Verified Kast release assets for {tag} in {release_dir}")
 PY

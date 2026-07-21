@@ -2,7 +2,7 @@ use crate::SCHEMA_VERSION;
 use crate::cli;
 use crate::cli::{InstallRepairArgs, ReadyTarget};
 use crate::config::{self, PathResolutionReport};
-use crate::error::{CliError, Result};
+use crate::error::Result;
 use crate::install::{self, InstallRepairResult};
 use crate::manifest;
 #[cfg(target_os = "macos")]
@@ -550,15 +550,6 @@ fn validate_macos_plugin_workspace_metadata(
         )));
     }
     validate_prepared_compatibility_metadata(metadata_path, &metadata, strict_plugin_matching)?;
-    let current_version = cli::version();
-    if metadata.compatibility.cli_version != current_version {
-        return Err(macos_plugin_workspace_error(format!(
-            "macOS Kast workspace metadata describes CLI version {} but the running CLI is {}; update Kast, reopen this exact project, and refresh workspace metadata at {}",
-            metadata.compatibility.cli_version,
-            current_version,
-            metadata_path.display(),
-        )));
-    }
     let metadata_workspace_root = config::normalize(metadata.workspace_root);
     if metadata_workspace_root != workspace_root {
         return Err(macos_plugin_workspace_error(format!(

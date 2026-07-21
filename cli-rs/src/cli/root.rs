@@ -37,8 +37,8 @@ pub enum Command {
     Version,
     /// Print compact workspace context for agents.
     Context(RuntimeArgs),
-    /// Set up Kast for this repository.
-    #[cfg_attr(target_os = "macos", command(hide = true))]
+    /// Retired repository setup command; use the Kast Codex plugin.
+    #[command(hide = true)]
     Setup(SetupArgs),
     /// Verify that Kast is ready for a task.
     Ready(ReadyArgs),
@@ -60,26 +60,7 @@ pub enum Command {
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct SetupArgs {
-    /// Absolute workspace root for repository guidance setup.
-    #[arg(long)]
-    pub workspace_root: Option<PathBuf>,
-    /// Packaged skill target root. Defaults to configured setup, then .agents/skills.
-    #[arg(long = "skill-target-dir")]
-    pub skill_target_dir: Option<PathBuf>,
-    /// Repository context file to patch with Kast managed guidance.
-    #[arg(long = "context-file")]
-    pub context_files: Vec<PathBuf>,
-    /// Overwrite existing managed resources.
-    #[arg(short = 'f', long)]
-    pub force: bool,
-    /// Do not add managed resource paths to Git info/exclude.
-    #[arg(long)]
-    pub no_auto_exclude_git: bool,
-    /// Explain repository setup without writing files.
-    #[arg(long)]
-    pub dry_run: bool,
-}
+pub struct SetupArgs {}
 
 #[derive(Debug, Args, Clone)]
 pub struct ReadyArgs {

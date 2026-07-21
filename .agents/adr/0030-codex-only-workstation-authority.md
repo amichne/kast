@@ -1,6 +1,6 @@
 # ADR 0030: Codex-only workstation authority
 
-Status: Accepted
+Status: Superseded by ADR 0031
 
 Date: 2026-07-20
 

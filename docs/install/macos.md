@@ -1,7 +1,7 @@
 ---
 type: How-to Guide
 title: Install Kast on a Developer Workstation
-description: Install the matched Kast, IDEA, and Codex bundle on macOS.
+description: Install Kast, IDEA integration, and the public Codex marketplace on macOS.
 tags: [install, macos, idea, codex]
 code_sources:
   - path: install.sh
@@ -30,7 +30,8 @@ Run the single workstation entrypoint:
 
 Review the displayed plan and press Return. The installer taps the Kast
 Homebrew repository, installs the CLI, downloads the release-matched IDEA
-plugin, activates the machine bundle, and selects `kast@kast` when Codex is
+plugin, activates the machine bundle, fast-forwards
+`amichne/kast-marketplace@main`, and selects `kast@kast` when Codex is
 installed.
 
 The completed bundle contains no global Kast skill, resident service, watcher,
@@ -46,7 +47,7 @@ https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml
 ```
 
 The feed lets the IDE discover Kast plugin releases through its native plugin
-UI. The installer remains the authority for selecting a matched workstation
+UI. The installer remains the authority for selecting a matched CLI and IDEA
 bundle.
 
 ## 4. Open the exact root
@@ -72,5 +73,6 @@ Quit the IDE and run:
 ```
 
 Open the exact root again and start a new Codex task. If the IDE feed updates
-the IDEA plugin independently, rerun this update before working so the CLI,
-IDEA plugin, and Codex plugin return to one release generation.
+the IDEA plugin independently, rerun this update before working so the CLI and
+IDEA plugin return to one matched generation. The Codex plugin is updated
+independently from the marketplace's `main` branch.

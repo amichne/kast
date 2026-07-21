@@ -321,62 +321,6 @@ mod tests {
     }
 
     #[test]
-    fn install_skill_omits_marker_and_skips_matching_version() {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let args = ResourceInstallArgs {
-            target_dir: Some(temp.path().to_path_buf()),
-            name: Some("kast".to_string()),
-            source_dir: None,
-            force: false,
-            no_auto_exclude_git: false,
-        };
-        let first = install_skill(args.clone()).expect("first install");
-        assert!(!first.skipped);
-        assert!(temp.path().join("kast/SKILL.md").is_file());
-        assert!(!temp.path().join("kast/AGENTS.md").exists());
-        let second = install_skill(args).expect("second install");
-        assert!(second.skipped);
-    }
-
-    #[test]
-    fn install_skill_replaces_retired_heavy_outputs_when_managed() {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let args = ResourceInstallArgs {
-            target_dir: Some(temp.path().to_path_buf()),
-            name: Some("kast".to_string()),
-            source_dir: None,
-            force: false,
-            no_auto_exclude_git: false,
-        };
-        install_skill(args.clone()).expect("first install");
-        let target = temp.path().join("kast");
-        fs::create_dir_all(target.join("references")).expect("legacy references");
-        fs::write(target.join("AGENTS.md"), "old source guide\n").expect("legacy guide");
-        let second = install_skill(args.clone()).expect("replacement");
-        assert!(!second.skipped);
-        assert!(!target.join("AGENTS.md").exists());
-        assert!(!target.join("references").exists());
-        assert!(install_skill(args).expect("stable install").skipped);
-    }
-
-    #[test]
-    fn install_skill_source_override_requires_entrypoint() {
-        let temp = tempfile::tempdir().expect("tempdir");
-        let source = temp.path().join("source");
-        fs::create_dir_all(&source).expect("source");
-        let error = install_skill(ResourceInstallArgs {
-            target_dir: Some(temp.path().join("target")),
-            name: Some("kast".to_string()),
-            source_dir: Some(source),
-            force: false,
-            no_auto_exclude_git: false,
-        })
-        .expect_err("incomplete source");
-        assert_eq!(error.code, "RESOURCE_SOURCE_INCOMPLETE");
-        assert!(error.message.contains("SKILL.md"));
-    }
-
-    #[test]
     fn generated_resource_cache_files_are_not_packaged() {
         assert!(is_generated_resource_cache_file(Path::new(
             "scripts/__pycache__/verify-kast-state.cpython-314.pyc"

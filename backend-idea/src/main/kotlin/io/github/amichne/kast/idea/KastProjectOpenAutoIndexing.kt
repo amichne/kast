@@ -69,7 +69,7 @@ internal object KastProjectOpenAutoIndexing {
             .getNotificationGroup("Kast")
             .createNotification(
                 "Kast project setup",
-                "Could not install Kast agent guidance for this project: ${result.message}",
+                "Could not prepare Kast for this project: ${result.message}",
                 NotificationType.WARNING,
             )
             .notify(project)

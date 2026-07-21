@@ -13,7 +13,6 @@ change:
 - `.github/scripts/*`
 - `.github/ci/*.json`
 - `.github/dependabot.yml`
-- `.github/skill-shadowing.json`
 
 Do not add provider-specific assistant trigger workflows. The V1 hosted-agent
 path is the headless runtime plus the published `kast-action` contract smoke.
@@ -31,7 +30,7 @@ The release-free processless machine authority gate lives in
 `.github/scripts/test-local-development-refresh-contract.sh`. Keep it wired in
 the independent `local-authority-contracts` CI job whenever refresh
 orchestration, machine manifest activation, closed-IDE reconciliation, local
-readiness, or installed skill/Codex routing changes. Its Gradle graph must build
+readiness, or remote Codex marketplace routing changes. Its Gradle graph must build
 the IDEA plugin, must not build or start `backend-headless`, and must not
 install launchd state.
 Umbrella source contracts must not rerun focused owners. The processless
@@ -141,8 +140,3 @@ For IDEA GitHub Release distribution changes, run:
 .github/scripts/test-release-workflow-contract.sh
 .github/scripts/test-macos-installer-contract.sh
 ```
-
-For plugin-eval metric pack changes, run the script that owns the changed pack,
-such as `.github/scripts/test-kast-routing-evals.sh` for routing checks or
-`.github/scripts/run-kast-format-impact-report.sh` for the TOON format impact,
-answer-request capture, and optional scored-answer pack.

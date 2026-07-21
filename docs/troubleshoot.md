@@ -23,7 +23,7 @@ a new Codex task.
 | The installer cannot find an IDE profile | IDEA or Android Studio has not created its user profile. | Start the IDE once, quit it, then rerun the installer. |
 | Codex does not load Kast | The task started before `kast@kast` was selected. | Finish installation and start a new Codex task. |
 | Codex reports no prepared workspace | The exact task root has not been opened by the IDEA plugin. | Open that project or worktree in the IDE, wait for loading, then start a new task. |
-| Codex reports an incompatible release pair | IDEA updated the plugin independently or installation was interrupted. | Close the IDE and run the installer in update mode. |
+| Kast semantic commands report incompatible runtime capabilities | IDEA updated independently or installation was interrupted. | Close the IDE and run the installer in update mode. |
 | A startup or diagnostics hook reports a failure | Advisory launch or diagnostics context was unavailable. | Confirm the exact project is open; continue if the task does not need semantic evidence, otherwise reinstall and start a new task. |
 
 ## Restore the matched bundle
@@ -35,5 +35,5 @@ Quit the IDE and run:
 ```
 
 Open the exact root again and start a new Codex task. The installer does not
-replace user-owned files at the former global-skill location; it removes only
-the obsolete Kast-owned symlink from earlier workstation bundles.
+detect, rewrite, or delete guidance and skill files created by earlier Kast
+versions.

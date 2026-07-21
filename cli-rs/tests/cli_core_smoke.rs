@@ -164,83 +164,26 @@ fn smoke_core_cli_commands() {
         "{agent_tools_json:#}"
     );
 
-    if cfg!(target_os = "macos") {
-        let setup = kast(&home, &config_home)
-            .args([
-                "--output",
-                "json",
-                "setup",
-                "--workspace-root",
-                workspace.to_str().expect("workspace path"),
-            ])
-            .output()
-            .expect("setup macos refusal");
-        assert!(
-            !setup.status.success(),
-            "setup should fail closed on macOS: stdout={}, stderr={}",
-            String::from_utf8_lossy(&setup.stdout),
-            String::from_utf8_lossy(&setup.stderr)
-        );
-        let setup_json: serde_json::Value =
-            serde_json::from_slice(&setup.stdout).expect("setup refusal json");
-        assert_eq!(setup_json["ok"], false);
-        assert_eq!(setup_json["method"], "setup");
-        assert_eq!(setup_json["error"]["code"], "AGENT_COMMAND_REMOVED");
-    } else {
-        let setup_help = kast(&home, &config_home)
-            .args(["setup", "--help"])
-            .output()
-            .expect("setup help");
-        assert!(setup_help.status.success());
-        let setup_help_stdout = String::from_utf8_lossy(&setup_help.stdout);
-        for flag in [
-            "--workspace-root",
-            "--skill-target-dir",
-            "--context-file",
-            "--dry-run",
-        ] {
-            assert!(
-                setup_help_stdout.contains(flag),
-                "setup help should expose {flag}: {setup_help_stdout}"
-            );
-        }
-        assert!(
-            !setup_help_stdout.contains("--backend"),
-            "setup should not expose backend/runtime selection: {setup_help_stdout}"
-        );
-        let setup_plan = kast(&home, &config_home)
-            .args([
-                "--output",
-                "json",
-                "setup",
-                "--workspace-root",
-                workspace.to_str().expect("workspace path"),
-                "--dry-run",
-            ])
-            .output()
-            .expect("setup dry-run");
-        assert!(
-            setup_plan.status.success(),
-            "setup dry-run should plan without requiring installed backend: stdout={}, stderr={}",
-            String::from_utf8_lossy(&setup_plan.stdout),
-            String::from_utf8_lossy(&setup_plan.stderr)
-        );
-        let setup_plan_json: serde_json::Value =
-            serde_json::from_slice(&setup_plan.stdout).expect("setup plan json");
-        assert_eq!(setup_plan_json["type"], "AGENT_SETUP_PLAN");
-        assert_eq!(setup_plan_json["dryRun"], true);
-        assert_eq!(
-            setup_plan_json["installCommand"][1], "setup",
-            "root setup dry-run should advertise root setup, not hidden agent setup: {setup_plan_json:#}"
-        );
-        assert!(
-            setup_plan_json.get("runtimeCommand").is_none(),
-            "setup without --backend should not plan runtime warmup: {setup_plan_json:#}"
-        );
-    }
+    let setup = kast(&home, &config_home)
+        .args(["--output", "json", "setup"])
+        .output()
+        .expect("setup refusal");
+    assert!(!setup.status.success());
+    let setup_json: serde_json::Value =
+        serde_json::from_slice(&setup.stdout).expect("setup refusal json");
+    assert_eq!(setup_json["ok"], false);
+    assert_eq!(setup_json["method"], "setup");
+    assert_eq!(setup_json["error"]["code"], "AGENT_COMMAND_REMOVED");
+    assert!(
+        setup_json["error"]["details"]["replacements"]
+            .as_array()
+            .expect("setup replacements")
+            .iter()
+            .any(|replacement| replacement == "codex plugin add kast@kast")
+    );
     assert!(
         !install_manifest_path(&home).exists(),
-        "setup --dry-run must not run readiness repair or write install state"
+        "retired setup must not write install state"
     );
 
     for removed_root in ["runtime", "inspect", "release", "rpc"] {

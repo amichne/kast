@@ -82,10 +82,6 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-macos-installer-contract.sh
 
-      - name: Test Kast routing evals
-        shell: bash
-        run: ./.github/scripts/test-kast-routing-evals.sh
-
       - name: Test release asset verifier
         shell: bash
         run: ./.github/scripts/test-release-asset-verifier.sh
@@ -93,10 +89,6 @@ jobs:
       - name: Test release provenance assembler
         shell: bash
         run: ./.github/scripts/test-release-provenance-assembler.sh
-
-      - name: Test Codex plugin package contract
-        shell: bash
-        run: ./.github/scripts/test-codex-plugin-package-contract.sh
 
       - name: Test CI artifact ledger
         shell: bash
@@ -270,10 +262,6 @@ jobs:
         working-directory: cli-rs
         run: cargo test --locked --all-targets --all-features
 
-      - name: Check generated Codex plugin assets
-        shell: bash
-        run: cargo run --manifest-path cli-rs/Cargo.toml --locked --bin kast -- developer codex generate --check
-
   source-bound-cli:
     name: Source-bound release CLI
     runs-on: ubuntu-22.04
@@ -326,32 +314,6 @@ jobs:
       - name: Validate generated CLI contracts
         run: cli-rs/target/release/kast developer release generate contract --check
 
-      - name: Package Codex plugin CI asset
-        shell: bash
-        run: |
-          set -euo pipefail
-          staging_dir="$RUNNER_TEMP/kast-codex-plugin-ci"
-          asset_name="kast-codex-plugin-v0.0.0-ci.zip"
-          rm -rf "$staging_dir"
-          mkdir -p "$staging_dir" dist/ci-ledgers
-          cli-rs/target/release/kast developer codex generate \
-            --release \
-            --output-dir "$staging_dir"
-          (cd "$staging_dir" && zip -X -9 -q -r "$GITHUB_WORKSPACE/dist/${asset_name}" marketplace.json .agents/plugins/marketplace.json plugins/kast)
-          .github/scripts/verify-codex-plugin-package.py \
-            "dist/${asset_name}" \
-            0.0.0-ci
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/ci-ledgers/codex-plugin.json \
-            --git-sha "$GITHUB_SHA" \
-            --source-ref "$GITHUB_REF" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind ci-codex-plugin \
-            --artifact-name kast-codex-plugin \
-            --artifact-path "dist/${asset_name}" \
-            --producer-job source-bound-cli \
-            --build-command-id ci-codex-plugin-generate
-
       - name: Test LSP config smoke
         shell: bash
         run: >
@@ -398,22 +360,6 @@ jobs:
         with:
           name: ci-artifact-ledger-rust-cli-linux-x64
           path: dist/ci-ledgers/rust-cli-linux-x64.json
-          if-no-files-found: error
-          retention-days: 3
-
-      - name: Upload Codex plugin CI asset
-        uses: actions/upload-artifact@v6
-        with:
-          name: kast-codex-plugin
-          path: dist/kast-codex-plugin-v0.0.0-ci.zip
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Upload Codex plugin CI ledger
-        uses: actions/upload-artifact@v6
-        with:
-          name: ci-artifact-ledger-codex-plugin
-          path: dist/ci-ledgers/codex-plugin.json
           if-no-files-found: error
           retention-days: 3
 

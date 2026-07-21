@@ -1,51 +1,41 @@
 ---
 type: API Contract
 title: Codex Plugin Reference
-description: The installed kast@kast surface, lifecycle, settings, and boundaries.
+description: The separately published kast@kast surface and runtime boundary.
 tags: [codex, reference, hooks]
 code_sources:
-  - path: cli-rs/resources/codex-plugin/plugins/kast/.codex-plugin/plugin.json
-  - path: cli-rs/resources/codex-plugin/plugins/kast/hooks/hooks.json
-  - path: cli-rs/src/codex/exposure.rs
   - path: cli-rs/src/codex/hook.rs
+  - path: cli-rs/src/machine.rs
 ---
 
 # Codex Plugin Reference
 
-`kast@kast` is the sole agent-facing component in the macOS workstation bundle.
-It contains one routing skill, two advisory hooks, generated command metadata,
-and a launcher for the selected Kast binary.
+`kast@kast` is the sole Kast agent-guidance surface. It is published from the
+public [amichne/kast-marketplace](https://github.com/amichne/kast-marketplace)
+repository and tracks its `main` branch independently from Kast releases.
 
 ## Installed components
 
 | Component | Contract |
 | --- | --- |
-| Routing skill | Exposes compiler-backed inspection, relationships, impact, diagnostics, and plan-first Kotlin mutations to Codex. |
-| `SessionStart` hook | Requests the configured IDEA application for the task's exact root and reports launch failures as context. |
-| `PostToolUse` hook | Requests diagnostics after successful Kotlin writes when the exact-root IDEA runtime is healthy. |
-| Launcher | Resolves the selected Kast binary and forwards the hook event without maintaining its own state. |
+| Routing skill | Points Codex to the installed Kast CLI for Kotlin and Gradle semantic work. |
+| `SessionStart` hook | Delegates startup and daemon awareness to the CLI for the task's exact root. |
+| `PostToolUse` hook | Delegates post-write diagnostics to the CLI. |
+| Launcher | Resolves `kast` from `PATH`, then `$HOME/.local/bin/kast`, and forwards the hook event. |
 
 The plugin contains no MCP server, app connector, independent semantic
-protocol, or global Kast skill.
-
-## Hook settings
-
-The IntelliJ Kast settings page controls the hooks globally. Both hooks are
-enabled by default. The master switch disables both; each event can also be
-disabled independently.
+protocol, embedded CLI, or duplicate workspace guidance generator.
 
 ## Runtime boundary
 
-IDEA owns compiler state and workspace indexing. The plugin uses only the exact
-root supplied by the Codex task. Another clone or linked worktree is not a
-compatible substitute.
+IDEA owns compiler state and workspace indexing. The CLI owns daemon,
+compatibility, command execution, and structured result concerns. The Codex
+plugin only supplies hooks and invocation guidance.
 
-Hooks are advisory. Typed semantic mutations remain plan-first and return only
-after the resulting diagnostics reach a terminal outcome.
+Machine receipts hash the CLI and IDEA plugin only. Marketplace contents and
+plugin versions are not coupled to Kast release digests. Reconciliation
+re-registers `amichne/kast-marketplace --ref main` and installs `kast@kast`.
 
-## Release identity
-
-The installer selects CLI, IDEA plugin, and Codex plugin artifacts from one
-release. The IDEA update feed can discover a newer plugin independently, but
-runtime compatibility—not matching display text—decides whether a pair may
-operate. Rerunning the installer restores the matched generation.
+Kast never creates, migrates, or removes `AGENTS.md`, `AGENTS.local.md`, or
+workspace skill files. Files left by older versions are ordinary user-visible
+workspace content.

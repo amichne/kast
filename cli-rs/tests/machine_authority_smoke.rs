@@ -124,12 +124,15 @@ fn activation_installs_one_processless_machine_bundle() {
     );
     assert!(!machine.join("resources/kast-skill").exists());
     assert!(activation.get("skill").is_none());
-    assert!(
-        machine
-            .join("resources/codex-marketplace/marketplace.json")
-            .is_file()
-    );
+    assert!(!machine.join("resources").exists());
     assert!(machine.join("machine.json").is_file());
+    let manifest: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(machine.join("machine.json")).expect("machine manifest"),
+    )
+    .expect("machine manifest JSON");
+    assert_eq!(manifest["schemaVersion"], 3);
+    assert!(manifest.get("skillSha256").is_none());
+    assert!(manifest.get("codexSha256").is_none());
     assert_eq!(
         std::fs::read_link(home.join(".local/bin/kast")).expect("stable command"),
         machine.join("bin/kast"),
@@ -200,15 +203,6 @@ fn reconciliation_replaces_the_closed_ide_plugin_and_selects_codex() {
         .expect("activation");
     assert!(activation.status.success());
 
-    let legacy_skill = home.join(".agents/skills/kast");
-    std::fs::create_dir_all(legacy_skill.parent().expect("legacy skill parent"))
-        .expect("legacy skill parent");
-    std::os::unix::fs::symlink(
-        home.join("Library/Application Support/Kast/machine/resources/kast-skill"),
-        &legacy_skill,
-    )
-    .expect("legacy machine skill link");
-
     let reconciliation = kast(&home, &config_home)
         .env_remove("CODEX_HOME")
         .env("KAST_MACHINE_IDE_STATE", "closed")
@@ -256,7 +250,6 @@ fn reconciliation_replaces_the_closed_ide_plugin_and_selects_codex() {
         std::fs::read(quarantine.join("old.jar")).expect("quarantined plugin"),
         b"old",
     );
-    assert!(!legacy_skill.exists());
     assert!(!home.join("Library/LaunchAgents").exists());
     let codex_calls = std::fs::read_to_string(&codex_log).expect("Codex calls");
     assert!(codex_calls.contains("plugin list --json"), "{codex_calls}");
@@ -265,7 +258,7 @@ fn reconciliation_replaces_the_closed_ide_plugin_and_selects_codex() {
         "{codex_calls}"
     );
     assert!(
-        codex_calls.contains("plugin marketplace add ") && codex_calls.contains(" --json"),
+        codex_calls.contains("plugin marketplace add amichne/kast-marketplace --ref main --json"),
         "{codex_calls}"
     );
     assert!(
@@ -273,8 +266,6 @@ fn reconciliation_replaces_the_closed_ide_plugin_and_selects_codex() {
         "{codex_calls}"
     );
 
-    std::fs::create_dir_all(&legacy_skill).expect("user-owned skill");
-    std::fs::write(legacy_skill.join("SKILL.md"), "user-owned").expect("user-owned skill");
     let second_reconciliation = kast(&home, &config_home)
         .env_remove("CODEX_HOME")
         .env("KAST_MACHINE_IDE_STATE", "closed")
@@ -298,10 +289,86 @@ fn reconciliation_replaces_the_closed_ide_plugin_and_selects_codex() {
         .output()
         .expect("second reconciliation");
     assert!(second_reconciliation.status.success());
-    assert_eq!(
-        std::fs::read_to_string(legacy_skill.join("SKILL.md")).expect("preserved skill"),
-        "user-owned",
+}
+
+#[test]
+fn reconciliation_fast_forwards_the_remote_codex_marketplace_without_embedded_resources() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let plugin = temp.path().join("kast-idea.zip");
+    let codex_log = temp.path().join("codex.log");
+    let fake_bin = temp.path().join("bin");
+    let fake_codex = fake_bin.join("codex");
+    let plugins = temp.path().join("idea-profile/plugins");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&fake_bin).expect("fake bin");
+    std::fs::write(
+        &fake_codex,
+        "#!/bin/sh\nset -eu\nprintf '%s\\n' \"$*\" >>\"$KAST_TEST_CODEX_LOG\"\ncase \"$*\" in\n  'plugin list --json') printf '%s\\n' '{\"installed\":[]}' ;;\n  'plugin marketplace list --json') printf '%s\\n' '{\"marketplaces\":[]}' ;;\nesac\n",
+    )
+    .expect("fake codex");
+    set_executable_for_test(&fake_codex);
+    write_idea_plugin(&plugin);
+
+    let activation = kast(&home, &config_home)
+        .args([
+            "machine",
+            "activate",
+            "--idea-plugin",
+            plugin.to_str().expect("plugin path"),
+        ])
+        .output()
+        .expect("activation");
+    assert!(activation.status.success());
+    let legacy_marketplace =
+        home.join("Library/Application Support/Kast/machine/resources/codex-marketplace");
+    let manifest_path = home.join("Library/Application Support/Kast/machine/machine.json");
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&manifest_path).expect("machine manifest"))
+            .expect("machine manifest JSON");
+    manifest["schemaVersion"] = 2.into();
+    manifest["skillSha256"] = "obsolete".into();
+    manifest["codexSha256"] = "dirty-receipt".into();
+    std::fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&manifest).expect("legacy machine manifest JSON"),
+    )
+    .expect("legacy machine manifest");
+    std::fs::create_dir_all(&legacy_marketplace).expect("legacy marketplace");
+    std::fs::write(legacy_marketplace.join("dirty"), "modified").expect("dirty marketplace");
+
+    let reconciliation = kast(&home, &config_home)
+        .env("KAST_MACHINE_IDE_STATE", "closed")
+        .env("KAST_TEST_CODEX_LOG", &codex_log)
+        .env(
+            "PATH",
+            format!(
+                "{}:{}",
+                fake_bin.display(),
+                std::env::var("PATH").unwrap_or_default()
+            ),
+        )
+        .args([
+            "machine",
+            "reconcile",
+            "--idea-plugins-dir",
+            plugins.to_str().expect("plugins path"),
+        ])
+        .output()
+        .expect("reconciliation");
+    assert!(
+        reconciliation.status.success(),
+        "reconciliation: stdout={}, stderr={}",
+        String::from_utf8_lossy(&reconciliation.stdout),
+        String::from_utf8_lossy(&reconciliation.stderr),
     );
+    let codex_calls = std::fs::read_to_string(&codex_log).expect("Codex calls");
+    assert!(
+        codex_calls.contains("plugin marketplace add amichne/kast-marketplace --ref main --json"),
+        "{codex_calls}",
+    );
+    assert!(legacy_marketplace.join("dirty").is_file());
 }
 
 #[cfg(target_os = "macos")]

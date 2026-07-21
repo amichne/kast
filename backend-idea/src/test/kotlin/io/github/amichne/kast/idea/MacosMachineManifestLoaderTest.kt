@@ -15,7 +15,7 @@ class MacosMachineManifestLoaderTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `one strict machine manifest selects its own CLI`() {
+    fun `machine manifest selects its own CLI`() {
         val manifest = writeMachineManifest()
 
         val loaded = assertInstanceOf(
@@ -41,6 +41,25 @@ class MacosMachineManifestLoaderTest {
     }
 
     @Test
+    fun `legacy guidance digests are ignored`() {
+        val manifest = writeMachineManifest(
+            schemaVersion = 1,
+            obsoleteFields = """
+              "skillSha256": "dirty",
+              "codexSha256": "also-dirty",
+            """.trimIndent(),
+        )
+
+        val loaded = assertInstanceOf(
+            MacosMachineManifestLoadResult.Loaded::class.java,
+            MacosMachineManifestLoader.load(manifest) { CliImplementationVersion("1.2.3") },
+        )
+
+        assertEquals(manifest.parent.resolve("bin/kast").toRealPath(), loaded.binary)
+        assertTrue(Files.notExists(manifest.parent.resolve("resources")))
+    }
+
+    @Test
     fun `default manifest path is machine scoped`() {
         assertEquals(
             tempDir.resolve("Library/Application Support/Kast/machine/machine.json"),
@@ -48,21 +67,18 @@ class MacosMachineManifestLoaderTest {
         )
     }
 
-    private fun writeMachineManifest(): Path {
+    private fun writeMachineManifest(
+        schemaVersion: Int = 3,
+        obsoleteFields: String = "",
+    ): Path {
         val root = tempDir.resolve("Library/Application Support/Kast/machine")
         val binary = root.resolve("bin/kast")
         val plugin = root.resolve("idea/kast.zip")
-        val skill = root.resolve("resources/kast-skill/SKILL.md")
-        val codex = root.resolve("resources/codex-marketplace/marketplace.json")
         Files.createDirectories(binary.parent)
         Files.createDirectories(plugin.parent)
-        Files.createDirectories(skill.parent)
-        Files.createDirectories(codex.parent)
         Files.writeString(binary, "binary")
         check(binary.toFile().setExecutable(true))
         Files.writeString(plugin, "plugin")
-        Files.writeString(skill, "skill")
-        Files.writeString(codex, "codex")
         return root.resolve("machine.json").also { manifest ->
             Files.writeString(
                 manifest,
@@ -71,9 +87,8 @@ class MacosMachineManifestLoaderTest {
                   "type": "KAST_MACHINE_MANIFEST",
                   "cliSha256": "${sha256(binary)}",
                   "ideaPluginSha256": "${sha256(plugin)}",
-                  "skillSha256": "${sha256(skill)}",
-                  "codexSha256": "${directorySha256(codex.parent)}",
-                  "schemaVersion": 1
+                  $obsoleteFields
+                  "schemaVersion": $schemaVersion
                 }
                 """.trimIndent(),
             )
@@ -85,17 +100,4 @@ class MacosMachineManifestLoaderTest {
             .digest(Files.readAllBytes(path))
             .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
 
-    private fun directorySha256(root: Path): String {
-        val identity = Files.walk(root).use { entries ->
-            entries
-                .filter(Files::isRegularFile)
-                .map { path -> "${root.relativize(path)}\n${sha256(path)}\n" }
-                .sorted()
-                .toList()
-                .joinToString("")
-        }
-        return MessageDigest.getInstance("SHA-256")
-            .digest(identity.toByteArray())
-            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
-    }
 }

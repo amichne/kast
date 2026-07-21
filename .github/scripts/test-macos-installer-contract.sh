@@ -235,7 +235,7 @@ require_log_contains "$log_file" "kast version" "install should derive the plugi
 require_log_contains_fragment "$log_file" "curl -fsSL --output " "install should download the exact plugin ZIP"
 require_log_contains_fragment "$log_file" "https://github.com/amichne/kast/releases/download/v0.13.0/kast-idea-v0.13.0.zip" "install should select the release-matched plugin"
 require_log_contains_fragment "$log_file" "kast machine activate --idea-plugin " "install should activate one machine bundle"
-require_log_contains "$log_file" "kast machine reconcile" "install should synchronously reconcile the plugin and resources"
+require_log_contains "$log_file" "kast machine reconcile" "install should synchronously reconcile the IDEA plugin and Codex marketplace"
 require_log_not_contains_prefix "$log_file" "kast setup" "install should leave workspace setup to JetBrains"
 
 : >"$log_file"
@@ -250,7 +250,7 @@ require_log_contains "$log_file" "brew update" "update should refresh Homebrew m
 require_log_contains "$log_file" "brew upgrade kast" "update should upgrade the formula"
 require_log_contains "$log_file" "kast version" "update should derive the expected plugin release from the installed CLI"
 require_log_contains_fragment "$log_file" "kast machine activate --idea-plugin " "update should replace the machine bundle"
-require_log_contains "$log_file" "kast machine reconcile" "update should synchronously reconcile the plugin and resources"
+require_log_contains "$log_file" "kast machine reconcile" "update should synchronously reconcile the IDEA plugin and Codex marketplace"
 require_log_not_contains_prefix "$log_file" "kast setup" "update should leave workspace setup to JetBrains"
 
 : >"$log_file"

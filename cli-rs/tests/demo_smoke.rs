@@ -151,8 +151,8 @@ fn unavailable_demo_reports_the_platform_setup_authority() {
         );
     } else {
         assert!(
-            message.contains("kast setup --workspace-root"),
-            "headless remediation should name the CLI-owned setup path: {response:#}"
+            message.contains("installed headless distribution"),
+            "headless remediation should name the distribution-owned startup path: {response:#}"
         );
     }
 }

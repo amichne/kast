@@ -15,8 +15,9 @@ single workstation installer:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The installer selects one matched CLI, IDEA plugin, and `kast@kast` Codex
-plugin. It creates no global Kast skill and starts no background service.
+The installer selects one matched CLI and IDEA plugin, fast-forwards the public
+`amichne/kast-marketplace` marketplace, and installs `kast@kast`. It creates no
+global Kast skill and starts no background service.
 
 For native IDEA update discovery, add this URL under **Settings → Plugins →
 Manage Plugin Repositories**:
@@ -38,8 +39,8 @@ Quit the IDE and rerun the same installer in update mode:
 ```
 
 If IDEA applies a plugin update from the feed independently, rerun the
-installer before the next task so the workstation returns to a release-matched
-bundle.
+installer before the next task so the CLI and IDEA plugin return to a matched
+bundle. The Codex plugin continues to track the marketplace's `main` branch.
 
 Read the [workstation install guide](https://kast.michne.com/install/macos/),
 [Codex usage guide](https://kast.michne.com/use/codex/), or

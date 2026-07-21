@@ -10,7 +10,6 @@ REQUIRED_PLATFORMS = {
     "cli-linux-x64",
     "cli-macos-arm64",
     "cli-macos-x64",
-    "codex-plugin",
     "gradle-ro-cache",
     "headless-linux-x64",
     "openapi",
@@ -93,20 +92,6 @@ def validate(entries: list[dict], *, release_tag: str) -> None:
             or asset_digest == "sha256:"
         ):
             fail(f"provenance entry for {platform} has no SHA-256 assetDigest")
-        if platform == "codex-plugin":
-            if entry.get("ref") != f"refs/tags/{release_tag}":
-                fail(f"Codex plugin provenance ref must be refs/tags/{release_tag}")
-            release_sha = entry.get("sha")
-            if not isinstance(release_sha, str) or len(release_sha) != 40 or any(
-                character not in "0123456789abcdef" for character in release_sha
-            ):
-                fail("Codex plugin provenance sha must be a full lowercase Git commit SHA")
-            if entry.get("pluginVersion") != release_tag.removeprefix("v"):
-                fail("Codex plugin provenance pluginVersion must match the release tag")
-            if entry.get("generatorCommand") != "kast developer codex generate --release":
-                fail("Codex plugin provenance must name the release-mode Rust generator")
-
-
 def main() -> None:
     args = parse_args()
     entries = load_entries(args.roots)

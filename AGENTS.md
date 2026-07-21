@@ -80,9 +80,3 @@ Command:
 
 - None
 ````
-
-<kast>
-## Kast routing
-Use `kast agent` and scoped `--help` for compiler-backed Kotlin and Gradle work.
-Mutations plan, apply, and validate diagnostics synchronously; report only structured, actionable failures.
-</kast>

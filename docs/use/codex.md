@@ -4,9 +4,8 @@ title: Use Kast in Codex
 description: Ask Codex for Kotlin work backed by the open IDEA project.
 tags: [codex, kotlin, workflow]
 code_sources:
-  - path: cli-rs/resources/codex-plugin/plugins/kast/skills/kast-codex/SKILL.md
-  - path: cli-rs/resources/codex-plugin/plugins/kast/hooks/hooks.json
   - path: cli-rs/src/codex/hook.rs
+  - path: cli-rs/src/machine.rs
 ---
 
 # Use Kast in Codex
@@ -32,22 +31,20 @@ Find the callers of OrderService.submit and explain which one owns retries.
 Rename this Kotlin declaration and verify the resulting files.
 ```
 
-The plugin resolves compiler identities before relationships and routes
-supported writes through plan-first semantic mutations. Unsupported work can
-fall back to Codex's normal tools.
+The plugin delegates semantic discovery, mutations, daemon state, and
+compatibility decisions to the installed Kast CLI. Unsupported work can fall
+back to Codex's normal tools.
 
-## Review the result
+## Refresh the plugin
 
-Kast results distinguish exact compiler evidence from bounded or unavailable
-evidence. A successful semantic mutation includes diagnostics for the resulting
-contents.
+Close the IDE and rerun the workstation installer. Reconciliation
+fast-forwards `amichne/kast-marketplace@main`, installs `kast@kast`, and leaves
+old workspace guidance or skill files untouched. Start a new Codex task so the
+updated plugin is discovered.
 
-Two advisory hooks add local context:
+Two advisory hooks add local context: task startup asks Kast to prepare the
+exact root, and a successful Kotlin write requests diagnostics when that root
+has a healthy IDEA runtime. Hook failures add context but do not deny an edit
+or stop the task.
 
-- Task startup asks Kast to open the exact root through the configured IDEA
-  application.
-- A successful Kotlin write requests diagnostics when that root has a healthy
-  IDEA runtime.
-
-Hook failures add context but do not deny an edit or stop the task. See the
-[plugin reference](../reference/codex-plugin.md) for the fixed boundary.
+See the [plugin reference](../reference/codex-plugin.md) for the fixed boundary.

@@ -126,12 +126,6 @@ requireText("cli-rs/src/rpc.rs", {
   "backend code test": "preserves_backend_error_code",
 });
 
-const skillShadowing = readJson(".github/skill-shadowing.json");
-const skillIds = new Set(skillShadowing.skills.map((entry) => entry.id));
-if (skillIds.size !== 1 || !skillIds.has("kast")) {
-  fail(".github/skill-shadowing.json must route only the repo-local kast skill");
-}
-
 console.log("LSP pivot static gates passed");
 NODE
 

@@ -31,30 +31,24 @@ resources.
   limitations used by `agent workspace-files` and Gradle DSL consumers.
 - `src/install.rs`, `src/manifest.rs`, `src/self_mgmt.rs`, and
   `src/self_mgmt/agent_readiness.rs` own install state, managed resource
-  records, doctor checks, effective binary/backend/skill/guidance evidence,
-  CLI dialect compatibility, and repair behavior.
+  records, doctor checks, effective binary/backend evidence, and repair
+  behavior.
 - `src/machine.rs` and `src/cli/machine.rs` own one processless machine bundle:
-  strict digest validation, atomic CLI/plugin/resource activation, closed-IDE
-  plugin reconciliation, and native Codex plugin selection. They must not add a
+  strict digest validation, atomic CLI/IDE-plugin activation, closed-IDE plugin
+  reconciliation, and remote Codex marketplace selection. They must not add a
   launchd plist, resident daemon, socket, watcher, or worktree resource copy.
 - `src/self_mgmt.rs` parses revision-3 exact-root compatibility facts strictly
   and delegates active admission to the authored typed compatibility matrix.
   Unknown fields, capabilities, revisions, unsupported rows, and missing
   required capabilities fail closed; missing optional capabilities remain
   local to the operation that needs them.
-- `resources/kast-skill/` owns only the provider-neutral packaged `SKILL.md`
-  and its concise agent-facing references. Internal catalogs, schemas,
-  generated request samples, and maintenance evaluations stay under
-  `protocol/` and must never be distributed as skill support files.
-- `resources/codex-plugin/` owns the repo-local Codex marketplace source. Rust
-  exposure descriptors generate its manifest, hook configuration, command
-  references, recovery assets, and contract fixtures; the thin skill,
-  launcher, skill presentation metadata, and canonical logo remain authored.
+- `https://github.com/amichne/kast-marketplace` owns the Codex marketplace,
+  routing skill, hook wiring, launcher, and presentation assets. This crate
+  retains only the CLI hook implementation.
 - `resources/plugin/` owns the independent GitHub Copilot package source
   material used by release validation.
 - `protocol/source/` contains the authored internal catalog plus generated
-  schemas and request samples; `protocol/maintenance/` contains routing and
-  format evaluation fixtures. Other `protocol/` outputs serve release and
+  schemas and request samples. Other `protocol/` outputs serve release and
   integration consumers.
 
 The broader public product surface, workflows, and AXI contract live in
@@ -64,10 +58,9 @@ in `.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`;
 `.agents/adr/0028-unsigned-github-idea-plugin-distribution.md` supersedes its
 plugin distribution decisions. Exact-root agent lease identity, ownership,
 recovery, and release authority live in
-`.agents/adr/0028-exact-root-agent-workspace-leases.md`. The Codex CLI-only
-plugin, exhaustive Rust exposure classifier, hook state, and
-release coupling live in
-`.agents/adr/0026-codex-cli-plugin-and-rust-exposure-authority.md`.
+`.agents/adr/0028-exact-root-agent-workspace-leases.md`. The external Codex
+marketplace and CLI hook boundary live in
+`.agents/adr/0031-external-codex-marketplace-authority.md`.
 The processless development-machine boundary and IDEA-only leases live in
 `.agents/adr/0029-processless-development-machine-authority.md`.
 
@@ -75,14 +68,8 @@ The processless development-machine boundary and IDEA-only leases live in
 
 - Keep command invariants in typed Rust structures. Clap, serde, and catalog
   schema validation own command parsing and structured data boundaries.
-- Classify every root, agent, operation, and developer command for Codex with
-  exhaustive Rust matches and no wildcard arm. A new command must fail to
-  compile until it is deliberately agent-visible, hook-only, or unavailable.
-- Keep the Codex plugin CLI-only. Do not add `.mcp.json`, `.app.json`, an MCP
-  server, app connector, custom agent profile, raw RPC payload, or copied
-  command catalog to `resources/codex-plugin/`.
-- Keep Codex hook parsing, decisions, state, and output schemas in Rust. The
-  launcher may only resolve the active binary and forward the event and stdin.
+- Keep Codex hook parsing, decisions, and output schemas in Rust. Marketplace
+  wiring must remain in `amichne/kast-marketplace`.
   Hooks may inspect readiness and produce repair plans but must never apply
   setup or repair mutations.
 - Keep task completion evidence in the typed task core. Provider adapters may
@@ -138,16 +125,9 @@ The processless development-machine boundary and IDEA-only leases live in
 
 - Command catalog truth lives in
   `protocol/source/commands.json`.
-- Codex command exposure truth lives in the exhaustive Rust exposure enums and
-  typed descriptors. Generated Codex references must not consume the internal
-  command catalog.
-- The authored Codex skill and launcher live under
-  `resources/codex-plugin/plugins/kast/`; generated files are enumerated by its
-  scoped `AGENTS.md` and checked by `developer codex generate --check`.
+- Codex skill and launcher truth lives in `amichne/kast-marketplace`; no
+  marketplace payload or generator belongs in this repository.
 - Package artifact output shape lives in `resources/plugin/primitive-manifest.json`.
-- Installable skill source lives in `resources/kast-skill/`.
-- Agent task launcher, workflow policy, Gradle receipt logic, and task guidance
-  live in `resources/agent-task/`.
 - Generated request schemas and samples under `protocol/source/requests/` are
   derived from the catalog. Regenerate them through the contract generator.
 - Generated protocol markdown, OpenAPI YAML, and example fixtures live under
@@ -168,20 +148,15 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked
 .github/scripts/test-runtime-compatibility-contract.sh
 ```
 
-For any workspace-files, packaged guidance, resource, or catalog change, run
-all package, LSP, routing, generated-contract, and docs gates below:
+For workspace-files, Copilot package, resource, or catalog changes, run the
+relevant package, LSP, generated-contract, and docs gates below:
 
 ```console
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
-cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer codex generate --check
-cargo test --manifest-path cli-rs/Cargo.toml --locked --test packaged_content_smoke
-cargo test --manifest-path cli-rs/Cargo.toml --locked --test codex_plugin_smoke
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
 python3 packaging/homebrew/scripts/test-formulas.py
 .github/scripts/test-kast-copilot-plugin.sh
-.github/scripts/test-codex-plugin-package-contract.sh
 .github/scripts/test-lsp-pivot-gates.sh
-.github/scripts/test-kast-routing-evals.sh
 .github/scripts/test-docs-content-contract.sh
 .github/scripts/test-docs-navigation-contract.sh
 zensical build --clean

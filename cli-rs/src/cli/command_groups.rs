@@ -15,7 +15,7 @@ pub enum DeveloperCommand {
     Machine(MachineArgs),
     /// Build, activate, and validate release artifacts.
     Release(ReleaseArgs),
-    /// Generate and run the Codex plugin contract.
+    /// Run the Codex plugin hook bridge.
     Codex(CodexArgs),
 }
 
@@ -53,9 +53,9 @@ pub struct MachineArgs {
 pub enum MachineCommand {
     /// Report the installed machine bundle without changing it.
     Status,
-    /// Atomically make this CLI, one IDEA plugin, and embedded resources machine-wide.
+    /// Atomically make this CLI and one IDEA plugin machine-wide.
     Activate(MachineActivateArgs),
-    /// Repair the selected closed-IDE plugin and global agent resources.
+    /// Repair the selected closed-IDE plugin and refresh the Kast Codex marketplace.
     Reconcile(MachineReconcileArgs),
     /// Configure developer-machine defaults to use the IDEA plugin backend.
     Defaults(DeveloperMachineDefaultsArgs),

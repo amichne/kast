@@ -1,10 +1,7 @@
 use crate::cli::{OutputFormat, ReadyTarget};
 use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
-use crate::install::{
-    ActivateBundleResult, AgentGuidanceSetupPlan, AgentGuidanceSetupResult, InstallResult,
-    InstallShellResult,
-};
+use crate::install::{ActivateBundleResult, InstallResult, InstallShellResult};
 use crate::package::{PackageResult, UbuntuDebianBundlePackageResult};
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,

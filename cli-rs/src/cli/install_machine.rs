@@ -90,22 +90,3 @@ pub struct DeveloperMachineDefaultsArgs {
     #[arg(long)]
     pub dry_run: bool,
 }
-
-#[derive(Debug, Args, Clone)]
-pub struct ResourceInstallArgs {
-    /// Target root directory.
-    #[arg(long)]
-    pub target_dir: Option<PathBuf>,
-    /// Directory name for the installed resource. Defaults to kast.
-    #[arg(long)]
-    pub name: Option<String>,
-    /// Override the packaged resource source directory. Developer/test use only.
-    #[arg(long)]
-    pub source_dir: Option<PathBuf>,
-    /// Overwrite existing managed resources.
-    #[arg(short = 'f', long)]
-    pub force: bool,
-    /// Do not add managed resource paths to Git info/exclude.
-    #[arg(long)]
-    pub no_auto_exclude_git: bool,
-}

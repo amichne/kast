@@ -1,76 +1,5 @@
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct InstallSkillResult {
-    pub installed_at: String,
-    pub version: String,
-    pub source_bundle_sha256: String,
-    pub output_paths: Vec<String>,
-    pub skipped: bool,
-    pub git_exclude: GitExcludeResult,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentGuidanceSetupPlan {
-    #[serde(rename = "type")]
-    pub result_type: &'static str,
-    pub skill_target: String,
-    pub agents_md_targets: Vec<AgentsMdTargetPlan>,
-    pub install_command: Vec<String>,
-    pub force: bool,
-    pub dry_run: bool,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentsMdTargetPlan {
-    pub path: String,
-    pub exists: bool,
-    pub will_create: bool,
-    pub managed_region_present: bool,
-    pub will_modify: bool,
-    pub reason: String,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentGuidanceSetupResult {
-    #[serde(rename = "type")]
-    pub result_type: &'static str,
-    pub skill: InstallSkillResult,
-    pub agents_md_targets: Vec<AgentsMdTargetResult>,
-    pub install_command: Vec<String>,
-    pub skipped: bool,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentsMdTargetResult {
-    pub path: String,
-    pub created: bool,
-    pub updated: bool,
-    pub skipped: bool,
-    pub managed_region_sha256: String,
-    pub git_exclude: GitExcludeResult,
-}
-
-#[derive(Debug, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GitExcludeResult {
-    pub attempted: bool,
-    pub updated: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub exclude_file: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reason: Option<String>,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct InstallShellResult {
     pub shell: String,
     pub command_name: String,
@@ -111,7 +40,6 @@ pub struct InstallRepairResult {
 #[serde(untagged)]
 pub enum InstallResult {
     ActivateBundle(ActivateBundleResult),
-    AgentGuidance(AgentGuidanceSetupResult),
     Shell(InstallShellResult),
 }
 

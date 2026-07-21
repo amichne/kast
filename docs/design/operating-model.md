@@ -7,7 +7,7 @@ code_sources:
   - path: install.sh
   - path: cli-rs/src/machine.rs
   - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastPluginService.kt
-  - path: cli-rs/src/codex/exposure.rs
+  - path: cli-rs/src/codex/hook.rs
 ---
 
 # The Kast Workstation Model
@@ -17,20 +17,21 @@ each concern has one owner.
 
 ```mermaid
 flowchart LR
-    install["Installer\nmatched artifacts"] --> idea["IDEA plugin\ncompiler state"]
+    install["Installer\nCLI and IDEA"] --> idea["IDEA plugin\ncompiler state"]
+    marketplace["Public marketplace\ntracks main"] --> codex["Codex plugin\nagent interface"]
     idea --> root["Exact open root"]
     root --> codex["Codex plugin\nagent interface"]
 ```
 
 ## The installer owns machine identity
 
-The installer selects one CLI, one IDEA plugin ZIP, and one Codex marketplace
-generation. Reconciliation is synchronous and requires the IDE to be closed.
-Nothing watches the machine afterward, because installation is an occasional
-transaction rather than continuous work.
+The installer selects one CLI and one IDEA plugin ZIP. Reconciliation is
+synchronous, requires the IDE to be closed, and separately fast-forwards the
+public Codex marketplace. Nothing watches the machine afterward, because
+installation is an occasional transaction rather than continuous work.
 
-The bundle does not project a global skill. Codex's native plugin selection is
-the only workstation agent integration.
+The machine bundle does not project a global skill or embed a marketplace.
+Codex's native plugin selection is the only workstation agent integration.
 
 ## IDEA owns semantic state
 
@@ -41,8 +42,8 @@ different semantic workspaces.
 
 ## Codex owns interaction
 
-Developers describe outcomes to Codex. The installed plugin decides which
-requests can use compiler-backed operations and keeps installer, release, and
+Developers describe outcomes to Codex. The independently published plugin
+routes requests to the installed CLI and keeps installer, release, and
 runtime-management commands outside the normal task surface.
 
 This boundary keeps the visible workflow small without weakening semantic

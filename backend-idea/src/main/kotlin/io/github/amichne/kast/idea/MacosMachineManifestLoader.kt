@@ -11,17 +11,20 @@ import java.nio.file.Path
 import java.security.MessageDigest
 
 internal object MacosMachineManifestLoader {
-    private const val schemaVersion = 1
+    private val schemaVersions = setOf(1, 2, 3)
     private const val manifestType = "KAST_MACHINE_MANIFEST"
-    private val keys = setOf(
+    private val requiredKeys = setOf(
         "type",
         "cliSha256",
         "ideaPluginSha256",
-        "skillSha256",
-        "codexSha256",
         "schemaVersion",
     )
-    private val canonicalKeyPatterns = keys.associateWith { key ->
+    private val obsoleteKeys = setOf(
+        "skillSha256",
+        "codexSha256",
+    )
+    private val allowedKeys = requiredKeys + obsoleteKeys
+    private val canonicalKeyPatterns = allowedKeys.associateWith { key ->
         Regex("""(?:\{|,)\s*"${Regex.escape(key)}"\s*:""")
     }
 
@@ -41,18 +44,21 @@ internal object MacosMachineManifestLoader {
         val raw = runCatching { Files.readString(path) }.getOrElse { error ->
             return invalid(path, error.message)
         }
-        if (canonicalKeyPatterns.any { (_, pattern) -> pattern.findAll(raw).count() != 1 }) {
+        if (requiredKeys.any { canonicalKeyPatterns.getValue(it).findAll(raw).count() != 1 } ||
+            obsoleteKeys.any { canonicalKeyPatterns.getValue(it).findAll(raw).count() > 1 }
+        ) {
             return invalid(path, "manifest keys must use each canonical spelling exactly once")
         }
         val manifest = runCatching { Json.parseToJsonElement(raw).jsonObject }.getOrElse { error ->
             return invalid(path, error.message)
         }
         if (
-            manifest.keys != keys ||
-            manifest.int("schemaVersion") != schemaVersion ||
+            !manifest.keys.containsAll(requiredKeys) ||
+            !allowedKeys.containsAll(manifest.keys) ||
+            manifest.int("schemaVersion") !in schemaVersions ||
             manifest.string("type") != manifestType
         ) {
-            return invalid(path, "invalid schema-1 machine manifest")
+            return invalid(path, "invalid machine manifest")
         }
         val root = path.toAbsolutePath().normalize().parent
             ?: return invalid(path, "manifest has no machine root")
@@ -75,22 +81,6 @@ internal object MacosMachineManifestLoader {
             ) == null
         ) {
             return modified(path, "IDEA plugin")
-        }
-        if (
-            validateComponent(
-                root = root,
-                canonicalRoot = canonicalRoot,
-                relative = "resources/kast-skill/SKILL.md",
-                expectedSha256 = manifest.string("skillSha256"),
-            ) == null
-        ) {
-            return modified(path, "Kast skill")
-        }
-        if (
-            directorySha256(root.resolve("resources/codex-marketplace")) !=
-            manifest.string("codexSha256")
-        ) {
-            return modified(path, "Codex marketplace")
         }
         val version = loadCliVersion(binary)
             ?: return rejected(
@@ -118,27 +108,6 @@ internal object MacosMachineManifestLoader {
         MessageDigest.getInstance("SHA-256")
             .digest(Files.readAllBytes(path))
             .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
-
-    private fun directorySha256(root: Path): String? {
-        if (!Files.isDirectory(root)) return null
-        val files = Files.walk(root).use { entries ->
-            entries
-                .filter { path -> path != root }
-                .map { path -> path to Files.readAttributes(path, java.nio.file.attribute.BasicFileAttributes::class.java) }
-                .toList()
-        }
-        if (files.any { (path, attributes) -> attributes.isSymbolicLink || !attributes.isDirectory && !attributes.isRegularFile }) {
-            return null
-        }
-        val identity = files
-            .filter { (_, attributes) -> attributes.isRegularFile }
-            .map { (path, _) -> root.relativize(path).toString() to sha256(path) }
-            .sortedBy { (relative, _) -> relative }
-            .joinToString(separator = "", transform = { (relative, digest) -> "$relative\n$digest\n" })
-        return MessageDigest.getInstance("SHA-256")
-            .digest(identity.toByteArray())
-            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
-    }
 
     private fun invalid(path: Path, detail: String?): MacosMachineManifestLoadResult.Rejected =
         rejected("Kast machine manifest is invalid at $path: $detail")

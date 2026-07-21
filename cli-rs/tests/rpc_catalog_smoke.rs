@@ -631,15 +631,6 @@ fn agent_tool_surface_exposes_navigation_without_internal_transport_leaks() {
 }
 
 #[test]
-fn installed_skill_teaches_semantic_discovery_without_raw_commands() {
-    let skill = include_str!("../resources/kast-skill/SKILL.md");
-    assert!(skill.contains("kast agent --help"));
-    assert!(!skill.contains("kast agent workspace-files"));
-    assert!(!skill.contains("raw/workspace-files"));
-    assert!(!skill.contains("raw/workspace-files-continuation"));
-}
-
-#[test]
 fn copilot_plugin_source_stays_inside_cli_resources_plugin() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let plugin_root = manifest_dir.join("resources/plugin");

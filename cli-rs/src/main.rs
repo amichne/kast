@@ -209,7 +209,6 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
     let command = cli
         .command
         .unwrap_or_else(|| Command::Context(default_runtime_args()));
-    let _exposure = codex::classify_command(&command);
     match command {
         Command::Help { topic } => {
             if topic.is_empty() {
@@ -307,9 +306,8 @@ fn context_command_hints() -> Vec<ContextCommandHint> {
     {
         vec![
             ContextCommandHint {
-                command: "kast setup --workspace-root <repo>".to_string(),
-                purpose: "Install or repair the Kast skill and managed repo instructions."
-                    .to_string(),
+                command: "codex plugin add kast@kast".to_string(),
+                purpose: "Install the independently published Kast Codex plugin.".to_string(),
             },
             ContextCommandHint {
                 command: "kast agent verify --workspace-root <repo>".to_string(),
@@ -357,28 +355,17 @@ fn display_current_executable() -> String {
     raw
 }
 
-fn run_setup(args: cli::SetupArgs, output_format: OutputFormat) -> Result<i32> {
-    #[cfg(target_os = "macos")]
-    {
-        let _ = args;
-        macos_plugin_bootstrap_required("setup", output_format)
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let guidance = setup_to_agent_guidance_args(args);
-        run_agent_guidance_setup_with_command(guidance, output_format, root_setup_command)
-    }
-}
-
-fn setup_to_agent_guidance_args(args: cli::SetupArgs) -> cli::AgentGuidanceSetupArgs {
-    cli::AgentGuidanceSetupArgs {
-        workspace_root: args.workspace_root,
-        skill_target_dir: args.skill_target_dir,
-        context_files: args.context_files,
-        force: args.force,
-        no_auto_exclude_git: args.no_auto_exclude_git,
-        dry_run: args.dry_run,
-    }
+fn run_setup(_args: cli::SetupArgs, output_format: OutputFormat) -> Result<i32> {
+    removed_operator_command(
+        "setup",
+        "Kast agent guidance is owned by the Kast Codex plugin; the CLI no longer writes workspace skills or context files.",
+        &[
+            "kast machine reconcile",
+            "codex plugin marketplace add amichne/kast-marketplace --ref main",
+            "codex plugin add kast@kast",
+        ],
+        output_format,
+    )
 }
 
 fn run_ready(args: cli::ReadyArgs, output_format: OutputFormat) -> Result<i32> {
@@ -468,7 +455,6 @@ fn current_executable_argument() -> String {
         .unwrap_or_else(|| "kast".to_string())
 }
 
-#[cfg(target_os = "macos")]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct RemovedOperatorCommandEnvelope<'a> {
@@ -478,7 +464,6 @@ struct RemovedOperatorCommandEnvelope<'a> {
     schema_version: u32,
 }
 
-#[cfg(target_os = "macos")]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct RemovedOperatorCommandError<'a> {
@@ -487,14 +472,12 @@ struct RemovedOperatorCommandError<'a> {
     details: RemovedOperatorCommandDetails<'a>,
 }
 
-#[cfg(target_os = "macos")]
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct RemovedOperatorCommandDetails<'a> {
     replacements: &'a [&'a str],
 }
 
-#[cfg(target_os = "macos")]
 fn removed_operator_command(
     method: &'static str,
     message: &'static str,
@@ -515,71 +498,6 @@ fn removed_operator_command(
         output_format,
     )?;
     Ok(1)
-}
-
-#[cfg(target_os = "macos")]
-fn macos_plugin_bootstrap_required(
-    method: &'static str,
-    output_format: OutputFormat,
-) -> Result<i32> {
-    removed_operator_command(
-        method,
-        "macOS workspace setup is owned by the JetBrains-installed Kast plugin. The CLI does not write plugin directories, runtime state, or skill-only workspace state on macOS.",
-        &[
-            "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)\" -- install",
-            "Add https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml as a custom plugin repository",
-            "Open the workspace in IntelliJ IDEA or Android Studio with the Kast plugin enabled",
-            "kast agent verify --workspace-root <repo>",
-        ],
-        output_format,
-    )
-}
-
-fn run_agent_guidance_setup_with_command(
-    args: cli::AgentGuidanceSetupArgs,
-    output_format: OutputFormat,
-    command_builder: fn(&cli::AgentGuidanceSetupArgs) -> Vec<String>,
-) -> Result<i32> {
-    let install_command = command_builder(&args);
-    if args.dry_run {
-        let plan = install::agent_guidance_setup_plan(&args, install_command)?;
-        if output_format.is_structured() {
-            output::print_structured(&plan, output_format)?;
-        } else {
-            output::print_agent_guidance_setup_plan(&plan)?;
-        }
-        return Ok(0);
-    }
-    let result = install::install_agent_guidance(args, install_command)?;
-    if output_format.is_structured() {
-        output::print_structured(&result, output_format)?;
-    } else {
-        output::print_agent_guidance_setup_result(&result)?;
-    }
-    Ok(0)
-}
-
-fn root_setup_command(args: &cli::AgentGuidanceSetupArgs) -> Vec<String> {
-    let mut command = vec![current_executable_argument(), "setup".to_string()];
-    if let Some(workspace_root) = &args.workspace_root {
-        command.push("--workspace-root".to_string());
-        command.push(workspace_root.display().to_string());
-    }
-    if let Some(skill_target_dir) = &args.skill_target_dir {
-        command.push("--skill-target-dir".to_string());
-        command.push(skill_target_dir.display().to_string());
-    }
-    for target in &args.context_files {
-        command.push("--context-file".to_string());
-        command.push(target.display().to_string());
-    }
-    if args.force {
-        command.push("--force".to_string());
-    }
-    if args.no_auto_exclude_git {
-        command.push("--no-auto-exclude-git".to_string());
-    }
-    command
 }
 
 fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Result<i32> {
@@ -688,9 +606,8 @@ fn run_machine(command: cli::MachineCommand, output_format: OutputFormat) -> Res
                 output::print_structured(&result, output_format)?;
             } else {
                 println!(
-                    "Kast machine\n\nState: reconciled\nIDEA plugin: {}\nSkill: {}\nCodex: {}",
+                    "Kast machine\n\nState: reconciled\nIDEA plugin: {}\nCodex: {}",
                     result.idea_plugin,
-                    result.skill,
                     result.codex.as_deref().unwrap_or("not installed"),
                 );
             }

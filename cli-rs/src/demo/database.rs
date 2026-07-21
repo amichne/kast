@@ -4,7 +4,7 @@ impl DemoDatabase {
             return Err(CliError::new(
                 "DEMO_SOURCE_INDEX_MISSING",
                 format!(
-                    "No source-index database exists at {}. Run `kast setup` for this workspace first.",
+                    "No source-index database exists at {}. Start the workspace through the Kast IDE plugin or an installed headless distribution first.",
                     request.database.display()
                 ),
             ));

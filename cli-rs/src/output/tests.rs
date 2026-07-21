@@ -103,7 +103,7 @@ mod tests {
     #[test]
     fn rendered_human_output_plain_text_does_not_dump_raw_markdown_tokens() {
         let rendered = render_markdown_for_test(
-            "# Kast status\n\n- Workspace: `/tmp/kast`\n\n## Next steps\n- Run `kast setup`\n",
+            "# Kast status\n\n- Workspace: `/tmp/kast`\n\n## Next steps\n- Open the IDE\n",
             RenderStyle::Plain,
         );
 

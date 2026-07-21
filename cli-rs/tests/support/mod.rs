@@ -102,10 +102,6 @@ pub(crate) fn write_macos_homebrew_receipt_for_test(home: &Path, cli_binary: &Pa
         .expect("receipt json"),
     )
     .expect("receipt");
-    let skill = home.join(".agents/skills/kast/SKILL.md");
-    std::fs::create_dir_all(skill.parent().expect("skill parent")).expect("skill dir");
-    std::fs::write(skill, include_bytes!("../../resources/kast-skill/SKILL.md"))
-        .expect("machine skill");
     receipt
 }
 
