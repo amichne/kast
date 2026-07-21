@@ -12,7 +12,6 @@ mod demo;
 mod error;
 mod install;
 mod lsp;
-mod machine;
 mod manifest;
 mod metrics;
 mod metrics_database;
@@ -29,7 +28,7 @@ mod validate;
 mod workspace_inventory;
 
 use clap::{CommandFactory, Parser};
-use cli::{Cli, Command, GenerateCommand, OutputFormat, ShellKind};
+use cli::{Cli, Command, GenerateCommand, OutputFormat};
 use error::{CliError, Result};
 use serde::Serialize;
 use std::env;
@@ -227,9 +226,7 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
         Command::Context(args) => run_context(args, output_format),
         Command::Setup(args) => run_setup(args, output_format),
         Command::Ready(args) => run_ready(args, output_format),
-        Command::Repair(args) => run_repair(args, output_format),
         Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
-        Command::Machine(args) => run_machine(args.command, output_format),
         Command::Demo(args) => demo::run_public(args, output_format),
         Command::Developer(args) => run_developer(args.command, output_format),
         Command::Doctor(args) => run_ready(args.into(), output_format),
@@ -263,13 +260,13 @@ fn run_context(args: cli::RuntimeArgs, output_format: OutputFormat) -> Result<i3
     let context = KastContext {
         context_type: "KAST_CONTEXT",
         bin: display_current_executable(),
-        description: "Compiler-backed Kotlin semantic navigation, editing, diagnostics, and repository agent setup.",
+        description: "Compiler-backed Kotlin semantic navigation, editing, diagnostics, and transactional release setup.",
         workspace_root: workspace_root.display().to_string(),
         output_default: "Kast agent commands always default to TOON; JSON remains deprecated compatibility output.",
         commands: context_command_hints(),
         help: vec![
             "Run `kast --help` for command reference.".to_string(),
-            "Run `kast repair --apply` only when readiness output asks for install-state repair."
+            "Rerun `kast setup --source <bundle>` whenever installation readiness fails."
                 .to_string(),
         ],
         schema_version: SCHEMA_VERSION,
@@ -283,44 +280,20 @@ fn run_context(args: cli::RuntimeArgs, output_format: OutputFormat) -> Result<i3
 }
 
 fn context_command_hints() -> Vec<ContextCommandHint> {
-    #[cfg(target_os = "macos")]
-    {
-        vec![
-            ContextCommandHint {
-                command: "kast repair --for machine --apply".to_string(),
-                purpose: "Repair the CLI-only Homebrew receipt and recognized legacy state."
-                    .to_string(),
-            },
-            ContextCommandHint {
-                command: "kast agent verify --workspace-root <repo>".to_string(),
-                purpose:
-                    "Check backend health, runtime state, and capabilities after IDE activation."
-                        .to_string(),
-            },
-            ContextCommandHint {
-                command: "kast agent symbol --query <name> --workspace-root <repo>".to_string(),
-                purpose: "Resolve Kotlin symbol identity before reading or editing.".to_string(),
-            },
-        ]
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        vec![
-            ContextCommandHint {
-                command: "kast setup --workspace-root <repo>".to_string(),
-                purpose: "Install or repair the Kast skill and managed repo instructions."
-                    .to_string(),
-            },
-            ContextCommandHint {
-                command: "kast agent verify --workspace-root <repo>".to_string(),
-                purpose: "Check backend health, runtime state, and capabilities.".to_string(),
-            },
-            ContextCommandHint {
-                command: "kast agent symbol --query <name> --workspace-root <repo>".to_string(),
-                purpose: "Resolve Kotlin symbol identity before reading or editing.".to_string(),
-            },
-        ]
-    }
+    vec![
+        ContextCommandHint {
+            command: "kast setup --source <bundle>".to_string(),
+            purpose: "Install or replace the complete verified Kast release.".to_string(),
+        },
+        ContextCommandHint {
+            command: "kast agent verify --workspace-root <repo>".to_string(),
+            purpose: "Check backend health, runtime state, and capabilities.".to_string(),
+        },
+        ContextCommandHint {
+            command: "kast agent symbol --query <name> --workspace-root <repo>".to_string(),
+            purpose: "Resolve Kotlin symbol identity before reading or editing.".to_string(),
+        },
+    ]
 }
 
 fn print_context_human(context: &KastContext) -> Result<()> {
@@ -358,27 +331,16 @@ fn display_current_executable() -> String {
 }
 
 fn run_setup(args: cli::SetupArgs, output_format: OutputFormat) -> Result<i32> {
-    #[cfg(target_os = "macos")]
-    {
-        let _ = args;
-        macos_plugin_bootstrap_required("setup", output_format)
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let guidance = setup_to_agent_guidance_args(args);
-        run_agent_guidance_setup_with_command(guidance, output_format, root_setup_command)
-    }
-}
-
-fn setup_to_agent_guidance_args(args: cli::SetupArgs) -> cli::AgentGuidanceSetupArgs {
-    cli::AgentGuidanceSetupArgs {
-        workspace_root: args.workspace_root,
-        skill_target_dir: args.skill_target_dir,
-        context_files: args.context_files,
-        force: args.force,
-        no_auto_exclude_git: args.no_auto_exclude_git,
-        dry_run: args.dry_run,
-    }
+    let result = install::setup(args)?;
+    output::print_structured(
+        &result,
+        if output_format.is_structured() {
+            output_format
+        } else {
+            OutputFormat::Toon
+        },
+    )?;
+    Ok(0)
 }
 
 fn run_ready(args: cli::ReadyArgs, output_format: OutputFormat) -> Result<i32> {
@@ -388,65 +350,13 @@ fn run_ready(args: cli::ReadyArgs, output_format: OutputFormat) -> Result<i32> {
         .as_deref()
         .map(|path| config::resolve_workspace_root(Some(path.to_path_buf())))
         .transpose()?;
-    let result = self_mgmt::doctor(false, target, workspace_root.as_deref())?;
+    let result = self_mgmt::doctor(target, workspace_root.as_deref())?;
     if output_format.is_structured() {
         output::print_structured(&result, output_format)?;
     } else {
         output::print_ready(&result)?;
     }
     Ok(if result.ok { 0 } else { 1 })
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RepairCommandResult {
-    #[serde(rename = "type")]
-    result_type: &'static str,
-    target: cli::ReadyTarget,
-    applied: bool,
-    repair: install::InstallRepairResult,
-    ready: self_mgmt::SelfDoctorResult,
-    ok: bool,
-    schema_version: u32,
-}
-
-fn run_repair(args: cli::RepairArgs, output_format: OutputFormat) -> Result<i32> {
-    let cli::RepairArgs {
-        runtime,
-        target,
-        apply,
-        jetbrains_config_root,
-    } = args;
-    let workspace_root = runtime
-        .workspace_root
-        .as_deref()
-        .map(|path| config::resolve_workspace_root(Some(path.to_path_buf())))
-        .transpose()?;
-    let repair_args = cli::InstallRepairArgs {
-        apply,
-        jetbrains_config_root,
-    };
-    if apply && !install::macos_homebrew_repair_authority_is_provable()? {
-        manifest::install_current_executable()?;
-    }
-    let repair = install::repair_install_state(repair_args)?;
-    let ready = self_mgmt::doctor(false, target, workspace_root.as_deref())?;
-    let ok = ready.ok;
-    let result = RepairCommandResult {
-        result_type: "KAST_REPAIR",
-        target,
-        applied: apply,
-        repair,
-        ready,
-        ok,
-        schema_version: SCHEMA_VERSION,
-    };
-    if output_format.is_structured() {
-        output::print_structured(&result, output_format)?;
-    } else {
-        output::print_structured(&result, OutputFormat::Toon)?;
-    }
-    Ok(if ok { 0 } else { 1 })
 }
 
 fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
@@ -524,62 +434,15 @@ fn macos_plugin_bootstrap_required(
 ) -> Result<i32> {
     removed_operator_command(
         method,
-        "macOS workspace setup is owned by the JetBrains-installed Kast plugin. The CLI does not write plugin directories, runtime state, or skill-only workspace state on macOS.",
+        "The active Kast release is missing. Install or replace the complete release with `kast setup --source <bundle>` before opening the workspace in IntelliJ IDEA or Android Studio.",
         &[
-            "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)\" -- install",
-            "Add https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml as a custom plugin repository",
+            "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)\"",
+            "kast setup --source <bundle>",
             "Open the workspace in IntelliJ IDEA or Android Studio with the Kast plugin enabled",
             "kast agent verify --workspace-root <repo>",
         ],
         output_format,
     )
-}
-
-fn run_agent_guidance_setup_with_command(
-    args: cli::AgentGuidanceSetupArgs,
-    output_format: OutputFormat,
-    command_builder: fn(&cli::AgentGuidanceSetupArgs) -> Vec<String>,
-) -> Result<i32> {
-    let install_command = command_builder(&args);
-    if args.dry_run {
-        let plan = install::agent_guidance_setup_plan(&args, install_command)?;
-        if output_format.is_structured() {
-            output::print_structured(&plan, output_format)?;
-        } else {
-            output::print_agent_guidance_setup_plan(&plan)?;
-        }
-        return Ok(0);
-    }
-    let result = install::install_agent_guidance(args, install_command)?;
-    if output_format.is_structured() {
-        output::print_structured(&result, output_format)?;
-    } else {
-        output::print_agent_guidance_setup_result(&result)?;
-    }
-    Ok(0)
-}
-
-fn root_setup_command(args: &cli::AgentGuidanceSetupArgs) -> Vec<String> {
-    let mut command = vec![current_executable_argument(), "setup".to_string()];
-    if let Some(workspace_root) = &args.workspace_root {
-        command.push("--workspace-root".to_string());
-        command.push(workspace_root.display().to_string());
-    }
-    if let Some(skill_target_dir) = &args.skill_target_dir {
-        command.push("--skill-target-dir".to_string());
-        command.push(skill_target_dir.display().to_string());
-    }
-    for target in &args.context_files {
-        command.push("--context-file".to_string());
-        command.push(target.display().to_string());
-    }
-    if args.force {
-        command.push("--force".to_string());
-    }
-    if args.no_auto_exclude_git {
-        command.push("--no-auto-exclude-git".to_string());
-    }
-    command
 }
 
 fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Result<i32> {
@@ -636,7 +499,6 @@ fn run_developer(command: cli::DeveloperCommand, output_format: OutputFormat) ->
     match command {
         cli::DeveloperCommand::Runtime(args) => run_runtime(args.command, output_format),
         cli::DeveloperCommand::Inspect(args) => run_inspect(args.command, output_format),
-        cli::DeveloperCommand::Machine(args) => run_machine(args.command, output_format),
         cli::DeveloperCommand::Release(args) => run_release(args.command, output_format),
         cli::DeveloperCommand::Codex(args) => codex::run(args.command, output_format),
     }
@@ -662,67 +524,9 @@ fn run_inspect(command: cli::InspectCommand, output_format: OutputFormat) -> Res
     }
 }
 
-fn run_machine(command: cli::MachineCommand, output_format: OutputFormat) -> Result<i32> {
-    match command {
-        cli::MachineCommand::Status => {
-            let result = machine::status()?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                println!("Kast machine\n\nState: {}", result.state);
-            }
-            Ok(0)
-        }
-        cli::MachineCommand::Activate(args) => {
-            let result = machine::activate(args)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                println!("Kast machine\n\nState: activated\nCLI: {}", result.cli);
-            }
-            Ok(0)
-        }
-        cli::MachineCommand::Reconcile(args) => {
-            let result = machine::reconcile(args)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                println!(
-                    "Kast machine\n\nState: reconciled\nIDEA plugin: {}\nSkill: {}\nCodex: {}",
-                    result.idea_plugin,
-                    result.skill,
-                    result.codex.as_deref().unwrap_or("not installed"),
-                );
-            }
-            Ok(0)
-        }
-        cli::MachineCommand::Defaults(args) => {
-            let result = self_mgmt::configure_developer_machine_defaults(args.dry_run)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                output::print_developer_machine_defaults(&result)?;
-            }
-            Ok(0)
-        }
-        cli::MachineCommand::Shell(args) => {
-            run_install(cli::InstallCommand::Shell(args), output_format)
-        }
-        cli::MachineCommand::Completion(args) => {
-            print_completion(args);
-            Ok(0)
-        }
-    }
-}
-
 fn run_release(command: cli::ReleaseCommand, output_format: OutputFormat) -> Result<i32> {
     match command {
         cli::ReleaseCommand::Package(args) => run_package(args, output_format),
-        cli::ReleaseCommand::Activate(args) => match args.command {
-            cli::ReleaseActivateCommand::Bundle(args) => {
-                run_install(cli::InstallCommand::ActivateBundle(args), output_format)
-            }
-        },
         cli::ReleaseCommand::Generate(args) => run_generate(args),
         cli::ReleaseCommand::Validate(args) => run_validate(args),
     }
@@ -783,23 +587,6 @@ fn run_paths(args: cli::PathsArgs, output_format: OutputFormat) -> Result<i32> {
     Ok(0)
 }
 
-fn run_install(command: cli::InstallCommand, output_format: OutputFormat) -> Result<i32> {
-    let command = match command {
-        cli::InstallCommand::Completion(completion_args) => {
-            print_completion(completion_args);
-            return Ok(0);
-        }
-        command => command,
-    };
-    let result = install::install(cli::InstallArgs { command })?;
-    if output_format.is_structured() {
-        output::print_structured(&result, output_format)?;
-    } else {
-        output::print_install_result(&result)?;
-    }
-    Ok(0)
-}
-
 fn contract_paths(args: &cli::GenerateContractArgs) -> contract_gen::ContractPaths {
     let mut paths = contract_gen::ContractPaths::defaults(Path::new(env!("CARGO_MANIFEST_DIR")));
     if let Some(catalog) = &args.catalog {
@@ -812,24 +599,6 @@ fn contract_paths(args: &cli::GenerateContractArgs) -> contract_gen::ContractPat
         paths.samples_root = samples_root.clone();
     }
     paths
-}
-
-fn print_completion(args: cli::CompletionArgs) {
-    let mut command = Cli::command();
-    let command_name = args.command_name.unwrap_or_else(|| "kast".to_string());
-    clap_complete::generate(
-        completion_shell(args.shell),
-        &mut command,
-        command_name,
-        &mut io::stdout(),
-    );
-}
-
-fn completion_shell(shell: ShellKind) -> clap_complete::Shell {
-    match shell {
-        ShellKind::Bash => clap_complete::Shell::Bash,
-        ShellKind::Zsh => clap_complete::Shell::Zsh,
-    }
 }
 
 #[cfg(test)]

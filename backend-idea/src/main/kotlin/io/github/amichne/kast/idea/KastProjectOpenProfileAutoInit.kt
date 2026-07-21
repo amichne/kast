@@ -51,7 +51,7 @@ object KastProjectOpenProfileAutoInit {
     internal fun executeWithDependencies(
         workspaceRoot: Path,
         config: KastConfig,
-        loadMachineManifest: () -> MacosMachineManifestLoadResult = MacosMachineManifestLoader::load,
+        loadInstallReceipt: () -> KastInstallReceiptLoadResult = KastInstallReceiptLoader::load,
         prepareWorkspace: (PluginWorkspaceBootstrapRequest) -> PluginWorkspaceBootstrapResult =
             PluginWorkspaceBootstrap::prepare,
     ): ProjectOpenProfileAutoInitResult =
@@ -59,13 +59,13 @@ object KastProjectOpenProfileAutoInit {
             workspaceRoot = workspaceRoot,
             config = config,
             resolveCliAuthority = {
-                when (val result = loadMachineManifest()) {
-                    is MacosMachineManifestLoadResult.Loaded ->
+                when (val result = loadInstallReceipt()) {
+                    is KastInstallReceiptLoadResult.Loaded ->
                         CliAuthorityLoadResult.Loaded(
                             binary = result.binary,
                             version = result.version,
                         )
-                    is MacosMachineManifestLoadResult.Rejected ->
+                    is KastInstallReceiptLoadResult.Rejected ->
                         CliAuthorityLoadResult.Rejected(result.message)
                 }
             },

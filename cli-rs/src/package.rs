@@ -1,8 +1,7 @@
 use crate::SCHEMA_VERSION;
 use crate::bundle::{
     BundleVersion, HEADLESS_BACKEND_ARCHIVE_ROOT, HEADLESS_BACKEND_LAUNCHER,
-    UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT, UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID,
-    ubuntu_debian_headless_manifest,
+    UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT, ubuntu_debian_headless_manifest,
 };
 use crate::cli::{PackageArgs, PackageCommand, UbuntuDebianBundlePackageArgs};
 use crate::config;
@@ -33,6 +32,7 @@ pub struct UbuntuDebianBundlePackageResult {
     pub manifest_schema_version: u32,
     pub cli_archive: String,
     pub backend_archive: String,
+    pub plugin_archive: String,
     pub bundle_sha256: String,
     pub schema_version: u32,
 }
@@ -50,18 +50,25 @@ pub fn package_ubuntu_debian_bundle(
 ) -> Result<UbuntuDebianBundlePackageResult> {
     let cli_archive = config::normalize(args.cli_archive);
     let backend_archive = config::normalize(args.backend_archive);
+    let plugin_archive = config::normalize(args.plugin_archive);
     require_file(&cli_archive, "CLI archive")?;
     require_file(&backend_archive, "backend archive")?;
+    require_file(&plugin_archive, "IDEA plugin archive")?;
     let version = BundleVersion::parse(&args.version)
         .map_err(|message| CliError::new("CLI_USAGE", format!("Package version {message}.")))?;
+    let platform = args.platform.trim();
+    if platform.is_empty()
+        || !platform
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'-' | b'_'))
+    {
+        return Err(CliError::new("CLI_USAGE", "Package platform is invalid."));
+    }
     let repo_root = args
         .repo_root
         .map(config::normalize)
         .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-    let bundle_name = format!(
-        "kast-{UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID}-{}",
-        version.as_str()
-    );
+    let bundle_name = format!("kast-{platform}-{}", version.as_str());
     let output = args
         .bundle_output
         .map(config::normalize)
@@ -78,7 +85,9 @@ pub fn package_ubuntu_debian_bundle(
     fs::create_dir_all(&backend_extract)?;
     fs::create_dir_all(staging_root.join("bin"))?;
     fs::create_dir_all(staging_root.join("lib/backends"))?;
-    fs::create_dir_all(staging_root.join("scripts"))?;
+    fs::create_dir_all(staging_root.join("plugins"))?;
+    fs::create_dir_all(staging_root.join("skills"))?;
+    fs::create_dir_all(staging_root.join("guidance"))?;
     if let Some(parent) = output.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -100,8 +109,18 @@ pub fn package_ubuntu_debian_bundle(
     copy_dir_recursive(&backend_root, &backend_install_dir)?;
     make_executable(&backend_install_dir.join(HEADLESS_BACKEND_LAUNCHER))?;
 
+    fs::copy(&plugin_archive, staging_root.join("plugins/kast.zip"))?;
+    copy_dir_recursive(
+        &repo_root.join("cli-rs/resources/kast-skill"),
+        &staging_root.join("skills/kast"),
+    )?;
+    copy_dir_recursive(
+        &repo_root.join("cli-rs/resources/codex-plugin"),
+        &staging_root.join("guidance/codex-plugin"),
+    )?;
+
     let installer = repo_root.join(UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT);
-    require_file(&installer, "Ubuntu/Debian bootstrap installer")?;
+    require_file(&installer, "setup bootstrap installer")?;
     fs::copy(
         &installer,
         staging_root.join(UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT),
@@ -109,12 +128,15 @@ pub fn package_ubuntu_debian_bundle(
     make_executable(&staging_root.join(UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT))?;
     copy_license(&repo_root, &staging_root)?;
 
-    let cli_sha = file_sha256(&cli_archive)?;
-    let backend_sha = file_sha256(&backend_archive)?;
+    let cli_sha = path_sha256(&staging_root.join("bin/kast"))?;
+    let backend_sha = path_sha256(&backend_install_dir)?;
+    let plugin_sha = path_sha256(&staging_root.join("plugins/kast.zip"))?;
+    let skill_sha = path_sha256(&staging_root.join("skills/kast"))?;
+    let guidance_sha = path_sha256(&staging_root.join("guidance"))?;
     let manifest = ubuntu_debian_headless_manifest(
         version.as_str(),
-        cli_sha,
-        backend_sha,
+        platform,
+        [cli_sha, backend_sha, plugin_sha, skill_sha, guidance_sha],
         build_commit(&repo_root),
     );
     fs::write(
@@ -142,10 +164,11 @@ pub fn package_ubuntu_debian_bundle(
         output: output.display().to_string(),
         sha256_sidecar: sidecar.display().to_string(),
         version: version.into_string(),
-        platform: UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID.to_string(),
+        platform: platform.to_string(),
         manifest_schema_version: manifest.schema_version,
         cli_archive: cli_archive.display().to_string(),
         backend_archive: backend_archive.display().to_string(),
+        plugin_archive: plugin_archive.display().to_string(),
         bundle_sha256: bundle_sha,
         schema_version: SCHEMA_VERSION,
     })
@@ -326,6 +349,48 @@ fn file_sha256(path: &Path) -> Result<String> {
         hasher.update(&buffer[..read]);
     }
     Ok(hex::encode(hasher.finalize()))
+}
+
+fn path_sha256(path: &Path) -> Result<String> {
+    if path.is_file() {
+        return file_sha256(path);
+    }
+    require_directory(path, "artifact directory")?;
+    let mut files = Vec::new();
+    fn collect(root: &Path, directory: &Path, files: &mut Vec<PathBuf>) -> Result<()> {
+        for entry in fs::read_dir(directory)? {
+            let entry = entry?;
+            let metadata = fs::symlink_metadata(entry.path())?;
+            if metadata.file_type().is_symlink() {
+                return Err(CliError::new(
+                    "PACKAGE_ARCHIVE_INVALID",
+                    format!("Artifact contains a symlink: {}", entry.path().display()),
+                ));
+            }
+            if metadata.is_dir() {
+                collect(root, &entry.path(), files)?;
+            } else if metadata.is_file() {
+                files.push(
+                    entry
+                        .path()
+                        .strip_prefix(root)
+                        .expect("artifact child")
+                        .to_path_buf(),
+                );
+            }
+        }
+        Ok(())
+    }
+    collect(path, path, &mut files)?;
+    files.sort();
+    let mut digest = Sha256::new();
+    for relative in files {
+        digest.update(relative.to_string_lossy().as_bytes());
+        digest.update(b"\n");
+        digest.update(file_sha256(&path.join(&relative))?.as_bytes());
+        digest.update(b"\n");
+    }
+    Ok(hex::encode(digest.finalize()))
 }
 
 fn build_commit(repo_root: &Path) -> String {

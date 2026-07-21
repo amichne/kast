@@ -10,6 +10,5 @@ include!("cli/runtime_lsp.rs");
 include!("cli/codex.rs");
 include!("cli/command_groups.rs");
 include!("cli/conversions.rs");
-include!("cli/install_machine.rs");
 include!("cli/shared.rs");
 include!("cli/helpers.rs");

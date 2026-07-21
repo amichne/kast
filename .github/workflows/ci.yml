@@ -119,10 +119,6 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-ci-gradle-retry.sh
 
-      - name: Test Homebrew package renderer
-        shell: bash
-        run: packaging/homebrew/scripts/test-formulas.py
-
   local-authority-contracts:
     name: Local development authority contracts
     runs-on: ubuntu-latest
@@ -170,9 +166,9 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-kast-copilot-plugin.sh
 
-      - name: Smoke Ubuntu/Debian bundle contract
+      - name: Test sole setup transaction
         shell: bash
-        run: ./scripts/smoke-ubuntu-debian-bundle.sh
+        run: ./.github/scripts/test-setup-contract.sh
 
   runtime-compatibility-contract:
     name: Runtime compatibility matrix
@@ -553,6 +549,7 @@ jobs:
     runs-on: ubuntu-24.04
     needs:
       - prepared-generation
+      - test-idea-plugin
     steps:
       - uses: actions/checkout@v5
 
@@ -577,6 +574,18 @@ jobs:
           name: ci-artifact-ledger-prepared-generation
           path: ${{ runner.temp }}/kast-prepared-generation-ledger
 
+      - name: Download IDEA plugin
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-idea-plugin
+          path: ${{ runner.temp }}/kast-idea-plugin
+
+      - name: Download IDEA plugin ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-idea-plugin
+          path: ${{ runner.temp }}/kast-idea-plugin-ledger
+
       - name: Verify prepared generation input
         shell: bash
         run: |
@@ -586,6 +595,13 @@ jobs:
             --git-sha "$GITHUB_SHA" \
             --require-kind ci-prepared-local-generation \
             --artifact "ci-prepared-local-generation=$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst"
+          plugin_asset="$(find "$RUNNER_TEMP/kast-idea-plugin" -maxdepth 1 -name '*.zip' -print -quit)"
+          [[ -n "$plugin_asset" ]] || { echo 'Missing IDEA plugin archive' >&2; exit 1; }
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger "$RUNNER_TEMP/kast-idea-plugin-ledger/idea-plugin.json" \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind ci-idea-plugin \
+            --artifact "ci-idea-plugin=$plugin_asset"
           (cd "$RUNNER_TEMP/kast-prepared-generation" && sha256sum -c kast-local-prepared-generation.sha256)
 
       - name: Package prepared Ubuntu and Debian bundle
@@ -593,11 +609,13 @@ jobs:
         run: |
           set -euo pipefail
           KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG="v0.7.11-ci"
+          plugin_asset="$(find "$RUNNER_TEMP/kast-idea-plugin" -maxdepth 1 -name '*.zip' -print -quit)"
           printf 'KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG=%s\n' "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" >> "$GITHUB_ENV"
           scripts/package-prepared-local-generation-derivatives.sh \
             --kind ubuntu-debian-bundle \
             --source-root "$GITHUB_WORKSPACE" \
             --prepared-generation-archive "$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst" \
+            --plugin-archive "$plugin_asset" \
             --dist-directory dist \
             --bundle-version "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG"
 
@@ -777,12 +795,9 @@ jobs:
             --artifact "ci-ubuntu-debian-bundle=${bundle_asset}"
           printf 'KAST_UBUNTU_DEBIAN_BUNDLE=%s\n' "$bundle_asset" >> "$GITHUB_ENV"
 
-      - name: Validate Ubuntu/Debian bundle in Ubuntu container
-        env:
-          KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE: ${{ matrix.container-image }}
-          KAST_UBUNTU_DEBIAN_JAVA_VERSION: ${{ matrix.java-version }}
+      - name: Validate setup bundle
         shell: bash
-        run: BUNDLE_PATH="$KAST_UBUNTU_DEBIAN_BUNDLE" ./scripts/validate-ubuntu-debian-bundle-in-docker.sh
+        run: ./scripts/verify-setup-bundle.sh "$KAST_UBUNTU_DEBIAN_BUNDLE"
 
   kast-action-runtime-contract:
     name: kast-action runtime contract
@@ -837,7 +852,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          runtime_version="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("packaging/homebrew/release-state.json").read_text(encoding="utf-8"))["current_release"].removeprefix("v"))')"
+          runtime_version="$(git describe --tags --match 'v*' --abbrev=0 | sed 's/^v//')"
           scripts/package-prepared-local-generation-derivatives.sh \
             --kind kast-action-runtime \
             --source-root "$GITHUB_WORKSPACE" \
@@ -877,7 +892,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          runtime_version="$(python3 -c 'import json; from pathlib import Path; print(json.loads(Path("packaging/homebrew/release-state.json").read_text(encoding="utf-8"))["current_release"].removeprefix("v"))')"
+          runtime_version="$(git describe --tags --match 'v*' --abbrev=0 | sed 's/^v//')"
           scripts/verify-ci-artifact-ledger.py verify \
             --ledger dist/ci-ledgers/kast-action-runtime/ci-headless-runtime.json \
             --ledger dist/ci-ledgers/kast-action-runtime/ci-headless-runtime-manifest.json \

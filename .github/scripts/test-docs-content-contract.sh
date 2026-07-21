@@ -26,7 +26,7 @@ require_not_contains() {
 expected_pages=(
   "design/operating-model.md"
   "index.md"
-  "install/macos.md"
+  "install/setup.md"
   "reference/codex-plugin.md"
   "troubleshoot.md"
   "use/codex.md"
@@ -46,22 +46,24 @@ require_absent "${docs_root}/learn"
 require_absent "${docs_root}/assets/demo"
 
 installer='/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"'
-feed='https://github.com/amichne/kast/releases/latest/download/updatePlugins.xml'
 require_contains "$readme" "$installer"
-require_contains "$readme" "$feed"
-require_contains "$readme" "creates no global Kast skill"
-require_contains "${docs_root}/install/macos.md" "$installer"
-require_contains "${docs_root}/install/macos.md" "$feed"
-require_contains "${docs_root}/install/macos.md" "start a new Codex task"
+require_contains "$readme" "kast setup"
+require_contains "$readme" "prior active release usable"
+require_contains "${docs_root}/install/setup.md" "$installer"
+require_contains "${docs_root}/install/setup.md" "./gradlew refreshDevelopmentMachine"
+require_contains "${docs_root}/install/setup.md" "current/bin/kast"
 require_contains "${docs_root}/use/codex.md" "without operating Kast"
 require_contains "${docs_root}/reference/codex-plugin.md" "sole agent-facing component"
-require_contains "${docs_root}/design/operating-model.md" "does not project a global skill"
-require_contains "${docs_root}/troubleshoot.md" "obsolete Kast-owned symlink"
+require_contains "${docs_root}/design/operating-model.md" "one installation authority"
+require_contains "${docs_root}/troubleshoot.md" 'Do not edit `current`'
 
 require_not_contains "$docs_root" "kast agent"
 require_not_contains "$docs_root" "--output"
 require_not_contains "$docs_root" "Headless Linux"
 require_not_contains "$docs_root" "codex plugin marketplace add"
+require_not_contains "$docs_root" "Homebrew"
+require_not_contains "$docs_root" "kast repair"
+require_not_contains "$docs_root" "kast machine"
 ! grep -Fq 'privacyPolicyURL' "$manifest" || die "Codex manifest still publishes a policy page"
 ! grep -Fq 'termsOfServiceURL' "$manifest" || die "Codex manifest still publishes a service page"
 

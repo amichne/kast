@@ -41,8 +41,7 @@ fn borrowed_idea_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
         "rootProject.name = \"lease\"\n",
     )
     .expect("settings");
-    let binary = write_homebrew_kast_for_test(temp.path());
-    write_macos_homebrew_receipt_for_test(&home, &binary);
+    let binary = write_active_kast_for_test(&home, &config_home);
     let backend = spawn_scripted_idea_backend_for_invocations(
         &home,
         &config_home,
@@ -219,8 +218,7 @@ fn abandoned_owner_is_observable_and_recovered_without_stopping_borrowed_idea() 
         "rootProject.name = \"lease\"\n",
     )
     .expect("settings");
-    let binary = write_homebrew_kast_for_test(temp.path());
-    write_macos_homebrew_receipt_for_test(&home, &binary);
+    let binary = write_active_kast_for_test(&home, &config_home);
     let backend = spawn_scripted_idea_backend_for_invocations(
         &home,
         &config_home,
@@ -317,8 +315,7 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
         "rootProject.name = \"lease\"\n",
     )
     .expect("settings");
-    let binary = write_homebrew_kast_for_test(temp.path());
-    write_macos_homebrew_receipt_for_test(&home, &binary);
+    let binary = write_active_kast_for_test(&home, &config_home);
     let backend = spawn_scripted_idea_backend_for_invocations(
         &home,
         &config_home,
@@ -426,8 +423,7 @@ fn indexing_idea_runtime_never_becomes_lease_ready() {
         "rootProject.name = \"lease\"\n",
     )
     .expect("settings");
-    let binary = write_homebrew_kast_for_test(temp.path());
-    write_macos_homebrew_receipt_for_test(&home, &binary);
+    let binary = write_active_kast_for_test(&home, &config_home);
     let backend = spawn_sequenced_idea_backend(
         &home,
         &config_home,
@@ -521,8 +517,7 @@ fn primary_and_linked_worktree_leases_keep_distinct_exact_roots() {
     .expect("linked settings");
     let primary = std::fs::canonicalize(primary).expect("canonical primary");
     let linked = std::fs::canonicalize(linked).expect("canonical linked");
-    let binary = write_homebrew_kast_for_test(temp.path());
-    write_macos_homebrew_receipt_for_test(&home, &binary);
+    let binary = write_active_kast_for_test(&home, &config_home);
     let primary_socket = std::env::temp_dir().join(format!(
         "kast-{}-primary.sock",
         uuid::Uuid::new_v4().simple()

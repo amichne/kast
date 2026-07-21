@@ -10,14 +10,14 @@ import org.gradle.api.tasks.TaskAction
 abstract class WriteSourceIndexSchemaVersionTask : DefaultTask() {
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val releaseStateFile: RegularFileProperty
+    abstract val schemaVersionFile: RegularFileProperty
 
     @get:OutputDirectory
     abstract val outputDirectory: DirectoryProperty
 
     @TaskAction
     fun write() {
-        val version = sourceIndexSchemaVersion(releaseStateFile.get().asFile.readText())
+        val version = sourceIndexSchemaVersion(schemaVersionFile.get().asFile.readText())
         outputDirectory
             .file("io/github/amichne/kast/indexstore/store/SourceIndexSchemaVersion.kt")
             .get()
@@ -29,7 +29,7 @@ abstract class WriteSourceIndexSchemaVersionTask : DefaultTask() {
                     package io.github.amichne.kast.indexstore.store
 
                     /**
-                     * SQLite source-index schema version declared by the release state.
+                     * SQLite source-index schema version declared by the shared protocol.
                      */
                     const val SOURCE_INDEX_SCHEMA_VERSION: Int = $version
                     """.trimIndent() + "\n",
@@ -38,12 +38,7 @@ abstract class WriteSourceIndexSchemaVersionTask : DefaultTask() {
     }
 
     private fun sourceIndexSchemaVersion(content: String): Int {
-        val regex = Regex(""""source_index_schema_version"\s*:\s*(\d+)""")
-        val matches = regex.findAll(content).toList()
-        require(matches.size == 1) {
-            "release-state.json must contain exactly one source_index_schema_version field"
-        }
-        return matches.single().groupValues[1].toInt().also { version ->
+        return content.trim().toInt().also { version ->
             require(version > 0) { "source_index_schema_version must be positive" }
         }
     }

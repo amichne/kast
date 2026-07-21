@@ -14,17 +14,14 @@ fn main() {
 
     let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR"));
     let out_dir = PathBuf::from(env::var("OUT_DIR").expect("OUT_DIR"));
-    let release_state = manifest_dir
-        .parent()
-        .expect("repo root")
-        .join("packaging/homebrew/release-state.json");
-    println!("cargo:rerun-if-changed={}", release_state.display());
+    let schema_version_file = manifest_dir.join("protocol/source-index-schema-version.txt");
+    println!("cargo:rerun-if-changed={}", schema_version_file.display());
 
-    let content = fs::read_to_string(&release_state).unwrap_or_else(|error| {
-        panic!("failed to read {}: {error}", release_state.display());
+    let content = fs::read_to_string(&schema_version_file).unwrap_or_else(|error| {
+        panic!("failed to read {}: {error}", schema_version_file.display());
     });
     let version = source_index_schema_version(&content).unwrap_or_else(|error| {
-        panic!("invalid {}: {error}", release_state.display());
+        panic!("invalid {}: {error}", schema_version_file.display());
     });
 
     let output = out_dir.join("source_index_schema.rs");
@@ -48,30 +45,12 @@ fn main() {
 }
 
 fn source_index_schema_version(content: &str) -> Result<i64, String> {
-    let key = "\"source_index_schema_version\"";
-    let count = content.matches(key).count();
-    if count != 1 {
-        return Err(format!("expected exactly one {key} field, found {count}"));
-    }
-    let (_, after_key) = content
-        .split_once(key)
-        .ok_or_else(|| format!("missing {key}"))?;
-    let (_, after_colon) = after_key
-        .split_once(':')
-        .ok_or_else(|| format!("{key} must have a value"))?;
-    let digits: String = after_colon
-        .trim_start()
-        .chars()
-        .take_while(|ch| ch.is_ascii_digit())
-        .collect();
-    if digits.is_empty() {
-        return Err(format!("{key} must be a positive integer"));
-    }
-    let version = digits
+    let version = content
+        .trim()
         .parse::<i64>()
-        .map_err(|error| format!("{key} is not a valid integer: {error}"))?;
+        .map_err(|error| format!("schema version is not an integer: {error}"))?;
     if version <= 0 {
-        return Err(format!("{key} must be positive"));
+        return Err("schema version must be positive".to_string());
     }
     Ok(version)
 }

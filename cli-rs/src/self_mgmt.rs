@@ -1,9 +1,8 @@
 use crate::SCHEMA_VERSION;
 use crate::cli;
-use crate::cli::{InstallRepairArgs, ReadyTarget};
+use crate::cli::ReadyTarget;
 use crate::config::{self, PathResolutionReport};
 use crate::error::{CliError, Result};
-use crate::install::{self, InstallRepairResult};
 use crate::manifest;
 #[cfg(target_os = "macos")]
 use crate::runtime;
@@ -25,6 +24,10 @@ pub use crate::manifest::{
     KastInstallManifest as InstallState, ManagedRepo, ManagedRepoResource,
     ManagedRepoResourceHistory, ManagedResourceKind,
 };
+
+fn shell_quote_for_remediation(value: &str) -> String {
+    format!("'{}'", value.replace('\'', "'\\''"))
+}
 
 const MANAGED_RESOURCE_HISTORY_LIMIT: usize = 5;
 #[cfg(target_os = "macos")]
@@ -71,35 +74,11 @@ pub struct DoctorBinaryDiagnostic {
     pub schema_version: u32,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct DeveloperMachineDefaultsResult {
-    pub config_path: String,
-    pub default_backend: config::RuntimeDefaultBackend,
-    pub idea_launch_enabled: bool,
-    pub idea_launch_command: String,
-    pub applied: bool,
-    pub schema_version: u32,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum InstallAuthority {
-    Machine,
-    MacosHomebrew,
-    ManagedLocal,
+    ActiveRelease,
     Missing,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LegacyShadowDiagnostic {
-    pub path: String,
-    pub managed: bool,
-    pub writable: bool,
-    pub homebrew_is_next: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub cleanup_command: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -108,10 +87,6 @@ pub struct SelfDoctorResult {
     pub target: ReadyTarget,
     pub installed: bool,
     pub install_authority: InstallAuthority,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub homebrew_install: Option<install::MacosHomebrewInstallReceipt>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub legacy_shadow: Option<LegacyShadowDiagnostic>,
     pub config_path: String,
     pub manifest_path: String,
     pub configuration: DoctorConfigurationDiagnostic,
@@ -123,44 +98,17 @@ pub struct SelfDoctorResult {
     pub minimum_backend_version: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub install: Option<InstallState>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub repair: Option<InstallRepairResult>,
     pub ok: bool,
     pub issues: Vec<String>,
     pub warnings: Vec<String>,
     pub schema_version: u32,
 }
 
-pub fn doctor(
-    repair: bool,
-    target: ReadyTarget,
-    workspace_root: Option<&Path>,
-) -> Result<SelfDoctorResult> {
-    let machine_identity = crate::machine::active_machine_identity()?;
+pub fn doctor(target: ReadyTarget, workspace_root: Option<&Path>) -> Result<SelfDoctorResult> {
     let config_path = config::global_config_path();
     let manifest_path = manifest::default_install_manifest_path();
     let mut issues = vec![];
     let mut warnings = vec![];
-    let repair_result = if repair {
-        let repair_args = InstallRepairArgs {
-            apply: true,
-            jetbrains_config_root: None,
-        };
-        if !install::macos_homebrew_repair_authority_is_provable()? {
-            manifest::install_current_executable()?;
-        }
-        Some(install::repair_install_state(repair_args)?)
-    } else {
-        None
-    };
-    #[cfg(target_os = "macos")]
-    let homebrew_install = if machine_identity.is_some() {
-        None
-    } else {
-        install::read_macos_homebrew_receipt()?
-    };
-    #[cfg(not(target_os = "macos"))]
-    let homebrew_install = None;
     let global_config = match config::KastConfig::load_global() {
         Ok(global_config) => global_config,
         Err(error) => {
@@ -201,30 +149,9 @@ pub fn doctor(
         ));
     }
     let minimum_backend_version = minimum_backend_version();
-    let legacy_shadow = homebrew_install
-        .as_ref()
-        .and_then(|receipt| legacy_shadow_diagnostic(receipt, install.as_ref()));
-    if let Some(shadow) = &legacy_shadow {
-        if let Some(command) = &shadow.cleanup_command {
-            warnings.push(format!(
-                "Legacy kast at {} shadows Homebrew on PATH; clean it up with: {command}",
-                shadow.path
-            ));
-        } else {
-            warnings.push(format!(
-                "kast at {} shadows the authoritative Homebrew executable; no automatic cleanup is safe",
-                shadow.path
-            ));
-        }
-    }
-    if homebrew_install.is_some() && install.is_some() {
-        warnings.push(format!(
-            "Inactive legacy install manifest remains at {}; the macOS Homebrew receipt is authoritative",
-            manifest_path.display()
-        ));
-    } else if let Some(install) = &install {
+    if let Some(install) = &install {
         for path in &install.managed_paths {
-            let managed_path = managed_path(&install_root, path);
+            let managed_path = managed_path(&install_root.join("current"), path);
             if !managed_path.exists() {
                 warnings.push(format!(
                     "Managed path is missing: {}",
@@ -271,7 +198,7 @@ pub fn doctor(
                     .any(|resource| resource.kind == ManagedResourceKind::CopilotPackage)
             {
                 issues.push(format!(
-                    "Managed repo {} uses retired copilotPackageVersion state, which is incompatible with manifest-backed resource verification; upgrade/reinstall Kast if needed, then run `kast repair --apply` to refresh from the active binary bundles",
+                    "Managed repo {} uses retired copilotPackageVersion state; rerun `kast setup --source <bundle>`",
                     repo.path
                 ));
             }
@@ -291,7 +218,7 @@ pub fn doctor(
                 }
             }
         }
-    } else if machine_identity.is_none() && homebrew_install.is_none() {
+    } else {
         issues.push(format!(
             "Install manifest is missing at {}",
             manifest_path.display()
@@ -301,16 +228,11 @@ pub fn doctor(
         target,
         workspace_root,
         install.as_ref(),
-        machine_identity.is_some() || homebrew_install.is_some(),
         &binary,
         &mut issues,
     );
-    let install_authority = if machine_identity.is_some() {
-        InstallAuthority::Machine
-    } else if homebrew_install.is_some() {
-        InstallAuthority::MacosHomebrew
-    } else if install.is_some() {
-        InstallAuthority::ManagedLocal
+    let install_authority = if install.is_some() {
+        InstallAuthority::ActiveRelease
     } else {
         InstallAuthority::Missing
     };
@@ -327,10 +249,8 @@ pub fn doctor(
     };
     Ok(SelfDoctorResult {
         target,
-        installed: machine_identity.is_some() || homebrew_install.is_some() || install.is_some(),
+        installed: install.is_some(),
         install_authority,
-        homebrew_install,
-        legacy_shadow,
         config_path: config_path.display().to_string(),
         manifest_path: manifest_path.display().to_string(),
         configuration,
@@ -340,7 +260,6 @@ pub fn doctor(
         path_resolution,
         minimum_backend_version: minimum_backend_version.to_string(),
         install,
-        repair: repair_result,
         ok: issues.is_empty(),
         issues,
         warnings,
@@ -348,55 +267,10 @@ pub fn doctor(
     })
 }
 
-fn legacy_shadow_diagnostic(
-    receipt: &install::MacosHomebrewInstallReceipt,
-    legacy_install: Option<&InstallState>,
-) -> Option<LegacyShadowDiagnostic> {
-    let candidates = env::var_os("PATH")
-        .map(|path| {
-            env::split_paths(&path)
-                .map(|directory| directory.join("kast"))
-                .filter(|candidate| candidate.is_file())
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    let first = candidates.first()?;
-    if same_binary_path(first, &receipt.cli.binary) {
-        return None;
-    }
-    let managed = legacy_install.is_some_and(|install| {
-        let shim = Path::new(&install.entrypoints.shim);
-        config::normalize(shim.to_path_buf()) == config::normalize(first.to_path_buf())
-            && manifest::is_managed_shim_for(shim, Path::new(&install.entrypoints.active_binary))
-    });
-    let writable = managed && install::path_parent_is_writable(first);
-    let homebrew_is_next = candidates
-        .get(1)
-        .is_some_and(|candidate| same_binary_path(candidate, &receipt.cli.binary));
-    let cleanup_command = (managed && writable && homebrew_is_next).then(|| {
-        format!(
-            "{} repair --for machine --apply && hash -r",
-            shell_quote_for_remediation(&receipt.cli.binary.display().to_string())
-        )
-    });
-    Some(LegacyShadowDiagnostic {
-        path: first.display().to_string(),
-        managed,
-        writable,
-        homebrew_is_next,
-        cleanup_command,
-    })
-}
-
-fn shell_quote_for_remediation(value: &str) -> String {
-    format!("'{}'", value.replace('\'', "'\\''"))
-}
-
 fn apply_ready_target_checks(
     target: ReadyTarget,
     workspace_root: Option<&Path>,
     install: Option<&InstallState>,
-    homebrew_install: bool,
     binary: &DoctorBinaryDiagnostic,
     issues: &mut Vec<String>,
 ) {
@@ -417,7 +291,7 @@ fn apply_ready_target_checks(
             }
         }
         ReadyTarget::Kotlin => {
-            if !homebrew_install && install.is_none_or(|install| install.backends.is_empty()) {
+            if install.is_none_or(|install| install.backends.is_empty()) {
                 issues.push(
                     "Kotlin readiness requires an installed semantic backend in the manifest"
                         .to_string(),
@@ -887,31 +761,6 @@ pub fn update_global_config(
 ) -> Result<PathBuf> {
     let path = config::global_config_path();
     update_config_file(&path, mutator)
-}
-
-pub fn configure_developer_machine_defaults(
-    dry_run: bool,
-) -> Result<DeveloperMachineDefaultsResult> {
-    let config_path = config::global_config_path();
-    if !dry_run {
-        update_global_config(write_developer_machine_idea_defaults)?;
-    }
-    Ok(DeveloperMachineDefaultsResult {
-        config_path: config_path.display().to_string(),
-        default_backend: config::RuntimeDefaultBackend::Idea,
-        idea_launch_enabled: true,
-        idea_launch_command: "idea".to_string(),
-        applied: !dry_run,
-        schema_version: SCHEMA_VERSION,
-    })
-}
-
-pub(crate) fn write_developer_machine_idea_defaults(document: &mut toml::Table) -> Result<()> {
-    table(document, "runtime")?.insert("defaultBackend".to_string(), "idea".into());
-    let idea_launch = nested_table(document, "runtime", "ideaLaunch")?;
-    idea_launch.insert("enabled".to_string(), true.into());
-    idea_launch.insert("command".to_string(), "idea".into());
-    Ok(())
 }
 
 fn update_config_file(

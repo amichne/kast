@@ -34,12 +34,12 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
     if let AgentCommand::Workflow(_) = command {
         return removed_agent_command(
             "agent/workflow",
-            "`kast agent workflow` is no longer public. Use `kast agent verify`, `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, `kast agent rename`, or `kast repair --apply`.",
+            "`kast agent workflow` is no longer public. Use `kast agent verify`, `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, `kast agent rename`, or rerun `kast setup --source <bundle>`.",
             replacement_commands([
                 "kast agent verify --workspace-root <repo>",
                 "kast agent symbol --query <name> --workspace-root <repo>",
                 "kast agent diagnostics --file-path <path> --workspace-root <repo>",
-                "kast repair --apply",
+                "kast setup --source <bundle>",
             ]),
         );
     }

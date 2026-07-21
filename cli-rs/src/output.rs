@@ -1,16 +1,12 @@
 use crate::cli::{OutputFormat, ReadyTarget};
 use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
-use crate::install::{
-    ActivateBundleResult, AgentGuidanceSetupPlan, AgentGuidanceSetupResult, InstallResult,
-    InstallShellResult,
-};
 use crate::package::{PackageResult, UbuntuDebianBundlePackageResult};
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
     WorkspaceRestartResult, WorkspaceStatusResult,
 };
-use crate::self_mgmt::{DeveloperMachineDefaultsResult, SelfDoctorResult};
+use crate::self_mgmt::SelfDoctorResult;
 use glamour::{Renderer, Style as GlamourStyle};
 use serde::Serialize;
 use serde_json::Value;
@@ -33,6 +29,5 @@ include!("output/core.rs");
 include!("output/package_runtime.rs");
 include!("output/ready.rs");
 include!("output/tables.rs");
-include!("output/install.rs");
 include!("output/runtime_helpers.rs");
 include!("output/tests.rs");

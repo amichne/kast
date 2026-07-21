@@ -296,7 +296,7 @@
         },
         {
           "kind": "command",
-          "name": "kast repair --for agent --apply"
+          "name": "kast setup --source <bundle>"
         }
       ],
       "forbiddenActions": [

@@ -1,49 +1,39 @@
 ---
 type: Explanation
-title: The Kast Workstation Model
-description: Why installation, compiler state, and agent interaction have separate owners.
-tags: [architecture, codex, idea]
+title: The Kast Setup Model
+description: Why a Kast release is installed as one atomic replacement.
+tags: [architecture, setup, reliability]
 code_sources:
-  - path: install.sh
-  - path: cli-rs/src/machine.rs
-  - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/KastPluginService.kt
-  - path: cli-rs/src/codex/exposure.rs
+  - path: cli-rs/src/install/bundle_install.rs
+  - path: cli-rs/src/install/bundle_validation.rs
+  - path: cli-rs/src/manifest.rs
 ---
 
-# The Kast Workstation Model
+# The Kast Setup Model
 
-Kast separates machine installation, compiler state, and user interaction so
-each concern has one owner.
+Kast has one installation authority: `kast setup`. The same transaction serves
+workstations, headless Linux hosts, hosted agents, local development, and
+packaged releases.
 
 ```mermaid
 flowchart LR
-    install["Installer\nmatched artifacts"] --> idea["IDEA plugin\ncompiler state"]
-    idea --> root["Exact open root"]
-    root --> codex["Codex plugin\nagent interface"]
+    bundle["Verified bundle"] --> stage["Complete staged release"]
+    stage --> current["Atomic current switch"]
+    current --> ready["Active-root verification"]
+    ready --> receipt["Verified setup receipt"]
 ```
 
-## The installer owns machine identity
+Every release artifact lives below `KAST_HOME`. The manifest binds its paths,
+roles, versions, and checksums; the receipt identifies the active release and
+manifest digests. Consumers therefore resolve one authority instead of
+combining package-manager state, shell shims, IDE state, and repair receipts.
 
-The installer selects one CLI, one IDEA plugin ZIP, and one Codex marketplace
-generation. Reconciliation is synchronous and requires the IDE to be closed.
-Nothing watches the machine afterward, because installation is an occasional
-transaction rather than continuous work.
+Setup never edits `current` in place. It stages and validates a complete
+release, archives recognized prior Kast state, switches `current` atomically,
+then verifies the active CLI. If verification fails, the switch is rolled back.
+Interrupted staging is disposable, repeated setup converges, and an exclusive
+lock serializes concurrent writers.
 
-The bundle does not project a global skill. Codex's native plugin selection is
-the only workstation agent integration.
-
-## IDEA owns semantic state
-
-The Kotlin compiler already lives inside IDEA or Android Studio with the loaded
-project model. The Kast IDEA plugin exposes that state for the exact open root
-instead of starting another local JVM. This also means two worktrees are two
-different semantic workspaces.
-
-## Codex owns interaction
-
-Developers describe outcomes to Codex. The installed plugin decides which
-requests can use compiler-backed operations and keeps installer, release, and
-runtime-management commands outside the normal task surface.
-
-This boundary keeps the visible workflow small without weakening semantic
-identity, plan-first mutations, diagnostics, or compatibility admission.
+The IDEA plugin still owns the compiler-backed runtime for each exact open
+workspace. That is runtime state, not a second installation authority: the
+plugin and CLI both come from the active setup release.

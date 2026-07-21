@@ -1,135 +1,35 @@
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct InstallSkillResult {
-    pub installed_at: String,
-    pub version: String,
-    pub source_bundle_sha256: String,
-    pub output_paths: Vec<String>,
-    pub skipped: bool,
-    pub git_exclude: GitExcludeResult,
-    pub schema_version: u32,
+#[derive(Debug, Serialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SetupStatus {
+    Activated,
+    Current,
 }
 
-#[derive(Debug, Serialize, Clone)]
+#[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AgentGuidanceSetupPlan {
+pub struct SetupResult {
     #[serde(rename = "type")]
     pub result_type: &'static str,
-    pub skill_target: String,
-    pub agents_md_targets: Vec<AgentsMdTargetPlan>,
-    pub install_command: Vec<String>,
-    pub force: bool,
-    pub dry_run: bool,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentsMdTargetPlan {
-    pub path: String,
-    pub exists: bool,
-    pub will_create: bool,
-    pub managed_region_present: bool,
-    pub will_modify: bool,
-    pub reason: String,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentGuidanceSetupResult {
-    #[serde(rename = "type")]
-    pub result_type: &'static str,
-    pub skill: InstallSkillResult,
-    pub agents_md_targets: Vec<AgentsMdTargetResult>,
-    pub install_command: Vec<String>,
-    pub skipped: bool,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentsMdTargetResult {
-    pub path: String,
-    pub created: bool,
-    pub updated: bool,
-    pub skipped: bool,
-    pub managed_region_sha256: String,
-    pub git_exclude: GitExcludeResult,
-}
-
-#[derive(Debug, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct GitExcludeResult {
-    pub attempted: bool,
-    pub updated: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub exclude_file: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub reason: Option<String>,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct InstallShellResult {
-    pub shell: String,
-    pub command_name: String,
-    pub bin_dir: String,
-    pub config_home: String,
-    pub source_file: String,
-    pub profile: String,
-    pub profile_updated: bool,
-    pub dry_run: bool,
-    pub source_line: String,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct InstallRepairAction {
-    pub kind: String,
-    pub target: String,
-    pub status: String,
-    pub message: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub command: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct InstallRepairResult {
-    pub applied: bool,
-    pub config_path: String,
-    pub apply_command: String,
-    pub actions: Vec<InstallRepairAction>,
-    pub backups: Vec<String>,
-    pub warnings: Vec<String>,
-    pub schema_version: u32,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(untagged)]
-pub enum InstallResult {
-    ActivateBundle(ActivateBundleResult),
-    AgentGuidance(AgentGuidanceSetupResult),
-    Shell(InstallShellResult),
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ActivateBundleResult {
-    pub installed_at: String,
-    pub version: String,
-    pub platform: String,
-    pub profile: String,
-    pub install_root: String,
+    pub status: SetupStatus,
+    pub release_digest: String,
+    pub manifest_digest: String,
+    pub kast_home: String,
     pub current: String,
-    pub manifest: String,
     pub active_binary: String,
-    pub shim: String,
-    pub skipped: bool,
-    pub verify_only: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backup: Option<String>,
+    pub artifacts: Vec<SetupArtifact>,
+    pub verified: bool,
     pub schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetupArtifact {
+    pub role: String,
+    pub path: String,
+    pub sha256: String,
+    pub verified: bool,
 }
 
 #[derive(Debug)]
@@ -139,6 +39,8 @@ struct ValidatedBundle {
     version: BundleVersion,
     cli_relative: PathBuf,
     backend_install_relative: PathBuf,
+    release_digest: String,
+    manifest_digest: String,
 }
 
 #[derive(Debug)]

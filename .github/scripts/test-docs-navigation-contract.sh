@@ -13,7 +13,7 @@ config = tomllib.loads((root / "zensical.toml").read_text())
 
 expected = [
     ("Start", ["index.md"]),
-    ("Install", ["install/macos.md"]),
+    ("Install", ["install/setup.md"]),
     ("Use", ["use/codex.md"]),
     ("Reference", ["reference/codex-plugin.md"]),
     ("Troubleshoot", ["troubleshoot.md"]),

@@ -71,7 +71,7 @@ function isPublicCommand(name) {
     name === "kast agent" ||
     name.startsWith("kast help") ||
     name.startsWith("kast ready") ||
-    name.startsWith("kast repair") ||
+    name.startsWith("kast setup") ||
     name.startsWith("kast setup") ||
     name.startsWith("kast status") ||
     name.startsWith("kast agent verify") ||
@@ -229,7 +229,7 @@ const requiredActions = [
   "kast",
   "kast help agent",
   "kast ready --for agent",
-  "kast repair --for agent --apply",
+  "kast setup --source <bundle>",
   "kast setup --skill-target-dir",
   "kast agent verify",
   "kast agent symbol --query",
