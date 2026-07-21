@@ -1,5 +1,4 @@
 use crate::SCHEMA_VERSION;
-use crate::cli;
 use crate::error::{CliError, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -192,7 +191,6 @@ impl Default for ManifestSchemas {
 #[derive(Debug, Clone)]
 pub struct ResolvedKastPaths {
     pub install_root: PathBuf,
-    pub manifest_file: PathBuf,
     pub bin_dir: PathBuf,
     pub lib_dir: PathBuf,
     pub data_dir: PathBuf,
@@ -232,7 +230,6 @@ pub fn default_resolved_paths() -> ResolvedKastPaths {
     let locks_dir = install_root.clone();
     ResolvedKastPaths {
         install_root: install_root.clone(),
-        manifest_file: current.join(INSTALL_MANIFEST_FILE),
         bin_dir: bin_dir.clone(),
         lib_dir: lib_dir.clone(),
         data_dir,
@@ -273,65 +270,6 @@ pub fn read_install_manifest() -> Result<Option<KastInstallManifest>> {
     read_manifest_at(&path).map(Some)
 }
 
-pub fn write_install_manifest(manifest: &KastInstallManifest) -> Result<PathBuf> {
-    let paths = paths_from_manifest(manifest)?;
-    with_install_lock(&paths, || {
-        write_manifest_atomic(&paths.manifest_file, manifest)
-    })?;
-    Ok(paths.manifest_file)
-}
-
-pub fn fresh_manifest() -> KastInstallManifest {
-    let paths = default_resolved_paths();
-    manifest_from_paths(paths, None, vec!["cli".to_string(), "config".to_string()])
-}
-
-pub fn manifest_from_paths(
-    paths: ResolvedKastPaths,
-    previous_version: Option<String>,
-    components: Vec<String>,
-) -> KastInstallManifest {
-    let now = current_timestamp();
-    let version = cli::version().to_string();
-    KastInstallManifest {
-        tool: TOOL_NAME.to_string(),
-        install_id: uuid::Uuid::new_v4().to_string(),
-        release_digest: String::new(),
-        manifest_digest: String::new(),
-        profile: DEFAULT_PROFILE.to_string(),
-        active_version: version.clone(),
-        previous_version,
-        created_at: now.clone(),
-        updated_at: now.clone(),
-        roots: ManifestRoots {
-            install: paths.install_root.display().to_string(),
-            bin: paths.bin_dir.display().to_string(),
-            config: paths.config_root.display().to_string(),
-            data: paths.data_dir.display().to_string(),
-            cache: paths.cache_dir.display().to_string(),
-            runtime: paths.runtime_dir.display().to_string(),
-            logs: paths.logs_dir.display().to_string(),
-            locks: paths.locks_dir.display().to_string(),
-        },
-        entrypoints: ManifestEntrypoints {
-            shim: paths.shim_path.display().to_string(),
-            active_binary: paths.active_binary.display().to_string(),
-        },
-        schemas: ManifestSchemas::default(),
-        version,
-        backend_version: String::new(),
-        installed_at: now,
-        platform: format!("{}-{}", env::consts::OS, env::consts::ARCH),
-        components,
-        backends: vec![],
-        managed_paths: vec![],
-        owned_paths: owned_paths(&paths),
-        shell_rc_patches: vec![],
-        repos: vec![],
-        schema_version: SCHEMA_VERSION,
-    }
-}
-
 pub fn paths_from_manifest(manifest: &KastInstallManifest) -> Result<ResolvedKastPaths> {
     if manifest.tool != TOOL_NAME {
         return Err(CliError::new(
@@ -352,7 +290,6 @@ pub fn paths_from_manifest(manifest: &KastInstallManifest) -> Result<ResolvedKas
         .find(|backend| backend.name == "headless");
     Ok(ResolvedKastPaths {
         install_root: install_root.clone(),
-        manifest_file: install_root.join("current").join(INSTALL_MANIFEST_FILE),
         bin_dir: normalize(PathBuf::from(&manifest.roots.bin)),
         lib_dir: lib_dir.clone(),
         data_dir: normalize(PathBuf::from(&manifest.roots.data)),

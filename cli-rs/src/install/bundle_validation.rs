@@ -241,7 +241,6 @@ fn activation_target_paths(
     let lib_dir = current_link.join("lib");
     let resolved = manifest::ResolvedKastPaths {
         install_root: install_root.clone(),
-        manifest_file: current_link.join(manifest::INSTALL_MANIFEST_FILE),
         bin_dir: bin_dir.clone(),
         lib_dir,
         data_dir: state_dir.join("data"),

@@ -21,15 +21,13 @@ use agent_readiness::agent_environment_diagnostic;
 pub use agent_readiness::{AgentResourceState, DoctorAgentEnvironmentDiagnostic};
 
 pub use crate::manifest::{
-    KastInstallManifest as InstallState, ManagedRepo, ManagedRepoResource,
-    ManagedRepoResourceHistory, ManagedResourceKind,
+    KastInstallManifest as InstallState, ManagedRepo, ManagedRepoResource, ManagedResourceKind,
 };
 
 fn shell_quote_for_remediation(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
 
-const MANAGED_RESOURCE_HISTORY_LIMIT: usize = 5;
 #[cfg(target_os = "macos")]
 const MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE: &str = ".kast/setup/workspace.json";
 #[cfg(target_os = "macos")]
@@ -647,7 +645,11 @@ fn binary_diagnostic(
     let configured_binary = cli.binary_path.clone();
     let configured_exists = configured_binary.is_file();
     let configured_matches_running = configured_exists
-        && configured_binary_matches_running(&configured_binary, &running_binary, install);
+        && configured_binary_matches_running(
+            &configured_binary,
+            &running_binary,
+            install.map(|install| Path::new(&install.entrypoints.active_binary)),
+        );
     DoctorBinaryDiagnostic {
         running_binary: running_binary.display().to_string(),
         configured_binary: configured_binary.display().to_string(),
@@ -660,15 +662,11 @@ fn binary_diagnostic(
 fn configured_binary_matches_running(
     configured_binary: &Path,
     running_binary: &Path,
-    install: Option<&InstallState>,
+    active_binary: Option<&Path>,
 ) -> bool {
     same_binary_path(configured_binary, running_binary)
-        || install.is_some_and(|install| {
-            same_binary_path(
-                Path::new(&install.entrypoints.active_binary),
-                running_binary,
-            )
-        })
+        || active_binary
+            .is_some_and(|active_binary| same_binary_path(active_binary, running_binary))
 }
 
 fn same_binary_path(left: &Path, right: &Path) -> bool {
@@ -681,172 +679,8 @@ fn same_binary_path(left: &Path, right: &Path) -> bool {
     }
 }
 
-pub fn write_install_state(install: &InstallState) -> Result<PathBuf> {
-    manifest::write_install_manifest(install)
-}
-
-pub fn record_repo_resource(repo_root: &Path, resource: ManagedRepoResource) -> Result<()> {
-    let paths = manifest::default_resolved_paths();
-    manifest::with_install_lock(&paths, || {
-        let mut install =
-            manifest::read_install_manifest()?.unwrap_or_else(manifest::fresh_manifest);
-        upsert_repo_resource(&mut install, repo_root, resource);
-        install.version = install.version.trim().to_string();
-        if install.version.is_empty() {
-            install.version = cli::version().to_string();
-        }
-        install.active_version = cli::version().to_string();
-        install.updated_at = manifest::current_timestamp();
-        let paths = manifest::paths_from_manifest(&install)?;
-        manifest::write_manifest_atomic(&paths.manifest_file, &install)
-    })
-}
-
-fn upsert_repo_resource(
-    install: &mut InstallState,
-    repo_root: &Path,
-    mut resource: ManagedRepoResource,
-) {
-    let normalized_repo = config::normalize(repo_root.to_path_buf());
-    let repo_path = normalized_repo.display().to_string();
-    let repo_index = install
-        .repos
-        .iter()
-        .position(|repo| repo.path == repo_path)
-        .unwrap_or_else(|| {
-            install.repos.push(ManagedRepo {
-                path: repo_path.clone(),
-                copilot_package_version: String::new(),
-                resources: vec![],
-            });
-            install.repos.len() - 1
-        });
-    let repo = &mut install.repos[repo_index];
-    if resource.kind == ManagedResourceKind::CopilotPackage {
-        repo.copilot_package_version.clear();
-    }
-    let normalized_target = config::normalize(PathBuf::from(&resource.target_path));
-    if let Some(existing_index) = repo.resources.iter().position(|existing| {
-        existing.kind == resource.kind
-            && config::normalize(PathBuf::from(&existing.target_path)) == normalized_target
-    }) {
-        let existing = repo.resources.remove(existing_index);
-        let mut history = existing.history;
-        history.insert(
-            0,
-            ManagedRepoResourceHistory {
-                primitive_version: existing.primitive_version,
-                source_bundle_sha256: existing.source_bundle_sha256,
-                installed_at: existing.installed_at,
-                output_checksums: existing.output_checksums,
-            },
-        );
-        history.truncate(MANAGED_RESOURCE_HISTORY_LIMIT);
-        resource.history = history;
-    }
-    repo.resources.push(resource);
-    repo.resources.sort_by(|left, right| {
-        left.kind
-            .cmp(&right.kind)
-            .then_with(|| left.target_path.cmp(&right.target_path))
-    });
-}
-
 pub fn read_global_install_state() -> Result<Option<InstallState>> {
     manifest::read_install_manifest()
-}
-
-pub fn update_global_config(
-    mutator: impl FnOnce(&mut toml::Table) -> Result<()>,
-) -> Result<PathBuf> {
-    let path = config::global_config_path();
-    update_config_file(&path, mutator)
-}
-
-fn update_config_file(
-    path: &Path,
-    mutator: impl FnOnce(&mut toml::Table) -> Result<()>,
-) -> Result<PathBuf> {
-    let mut document = default_config_document()?;
-    merge_config_document(&mut document, read_config_document(path)?);
-    mutator(&mut document)?;
-    write_config_document(path, &document)?;
-    Ok(path.to_path_buf())
-}
-
-pub fn remove_global_install_state() -> Result<bool> {
-    let path = manifest::default_install_manifest_path();
-    if !path.exists() {
-        return Ok(false);
-    }
-    fs::remove_file(path)?;
-    Ok(true)
-}
-
-fn read_config_document(path: &Path) -> Result<toml::Table> {
-    if !path.is_file() {
-        return Ok(toml::Table::new());
-    }
-    Ok(fs::read_to_string(path)?.parse::<toml::Table>()?)
-}
-
-fn write_config_document(path: &Path, document: &toml::Table) -> Result<()> {
-    if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    fs::write(path, toml::to_string_pretty(document)?)?;
-    Ok(())
-}
-
-fn default_config_document() -> Result<toml::Table> {
-    Ok(config::default_config_template()?.parse::<toml::Table>()?)
-}
-
-fn table<'a>(document: &'a mut toml::Table, key: &str) -> Result<&'a mut toml::Table> {
-    document
-        .entry(key.to_string())
-        .or_insert_with(|| toml::Value::Table(toml::Table::new()))
-        .as_table_mut()
-        .ok_or_else(|| {
-            crate::error::CliError::new(
-                "CONFIG_ERROR",
-                format!(
-                    "Cannot write developer-machine config because `{key}` is not a TOML table."
-                ),
-            )
-        })
-}
-
-fn nested_table<'a>(
-    document: &'a mut toml::Table,
-    first: &str,
-    second: &str,
-) -> Result<&'a mut toml::Table> {
-    table(document, first)?
-        .entry(second.to_string())
-        .or_insert_with(|| toml::Value::Table(toml::Table::new()))
-        .as_table_mut()
-        .ok_or_else(|| {
-            crate::error::CliError::new(
-                "CONFIG_ERROR",
-                format!(
-                    "Cannot write developer-machine config because `{first}.{second}` is not a TOML table."
-                ),
-            )
-        })
-}
-
-fn merge_config_document(base: &mut toml::Table, overlay: toml::Table) {
-    for (key, value) in overlay {
-        match (base.get_mut(&key), value) {
-            (Some(toml::Value::Table(base_table)), toml::Value::Table(overlay_table)) => {
-                merge_config_document(base_table, overlay_table);
-            }
-            (_, value) => {
-                base.insert(key, value);
-            }
-        }
-    }
 }
 
 fn managed_path(install_root: &Path, value: &str) -> PathBuf {
@@ -878,23 +712,6 @@ fn parse_version_triplet(value: &str) -> Option<(u64, u64, u64)> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn test_repo_resource(
-        kind: ManagedResourceKind,
-        target_path: &str,
-        version: &str,
-    ) -> ManagedRepoResource {
-        ManagedRepoResource {
-            kind,
-            target_path: target_path.to_string(),
-            primitive_version: version.to_string(),
-            source_bundle_sha256: format!("source-{version}"),
-            output_paths: vec![format!("{target_path}/output.md")],
-            output_checksums: vec![],
-            installed_at: format!("installed-{version}"),
-            history: vec![],
-        }
-    }
 
     #[cfg(target_os = "macos")]
     #[test]
@@ -1013,66 +830,16 @@ mod tests {
     fn configured_binary_match_accepts_manifest_active_binary() {
         let configured_binary = Path::new("/example/bin/kast");
         let running_binary = Path::new("/example/versions/0.1.0/bin/kast");
-        let mut install = manifest::fresh_manifest();
-        install.entrypoints.active_binary = running_binary.display().to_string();
 
         assert!(configured_binary_matches_running(
             configured_binary,
             running_binary,
-            Some(&install)
+            Some(running_binary)
         ));
         assert!(!configured_binary_matches_running(
             configured_binary,
             Path::new("/other/bin/kast"),
-            Some(&install)
+            Some(running_binary)
         ));
-    }
-
-    #[test]
-    fn repo_resource_upsert_preserves_resources_and_records_history() {
-        let mut install = manifest::fresh_manifest();
-        let repo_root = Path::new("/workspace/kast");
-        let skill_target = "/workspace/kast/.agents/skills/kast";
-        let instructions_target = "/workspace/kast/.agents/instructions/kast";
-
-        upsert_repo_resource(
-            &mut install,
-            repo_root,
-            test_repo_resource(ManagedResourceKind::Skill, skill_target, "1.0.0"),
-        );
-        upsert_repo_resource(
-            &mut install,
-            repo_root,
-            test_repo_resource(
-                ManagedResourceKind::Instructions,
-                instructions_target,
-                "1.0.0",
-            ),
-        );
-        upsert_repo_resource(
-            &mut install,
-            repo_root,
-            test_repo_resource(ManagedResourceKind::Skill, skill_target, "1.0.1"),
-        );
-
-        let repo = install
-            .repos
-            .iter()
-            .find(|repo| repo.path == repo_root.display().to_string())
-            .expect("repo resource entry");
-        assert_eq!(repo.resources.len(), 2);
-        let skill = repo
-            .resources
-            .iter()
-            .find(|resource| resource.kind == ManagedResourceKind::Skill)
-            .expect("skill resource");
-        assert_eq!(skill.primitive_version, "1.0.1");
-        assert_eq!(skill.history.len(), 1);
-        assert_eq!(skill.history[0].primitive_version, "1.0.0");
-        assert!(
-            repo.resources
-                .iter()
-                .any(|resource| resource.kind == ManagedResourceKind::Instructions)
-        );
     }
 }

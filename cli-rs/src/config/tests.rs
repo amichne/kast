@@ -372,17 +372,6 @@ installRoot = "{}"
     }
 
     #[test]
-    fn default_config_template_omits_install_owned_paths() {
-        let template = default_config_template().unwrap();
-        let document = template.parse::<toml::Table>().unwrap();
-        assert!(!document.contains_key("paths"), "{template}");
-        assert!(!document.contains_key("cli"), "{template}");
-        assert!(!document.contains_key("install"), "{template}");
-        assert!(!template.contains("binaryPath"), "{template}");
-        assert!(!template.contains("runtimeLibsDir"), "{template}");
-    }
-
-    #[test]
     fn path_resolution_entries_mark_default_derivations() {
         let temp = tempfile::tempdir().unwrap();
         let install_root = temp.path().join("portable-kast");

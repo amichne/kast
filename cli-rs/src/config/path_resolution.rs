@@ -1,7 +1,3 @@
-pub fn default_config_template() -> Result<String> {
-    Ok(String::new())
-}
-
 pub fn path_resolution_report(
     config: &KastConfig,
     workspace_root: Option<&Path>,
