@@ -360,25 +360,37 @@ fn extract_idea_plugin_zip(source: &Path, target: &Path) -> Result<()> {
 }
 
 fn default_idea_plugins_dir() -> Result<PathBuf> {
-    let profiles = manifest::home_dir().join("Library/Application Support/JetBrains");
-    let mut candidates = fs::read_dir(&profiles)
-        .map_err(|error| {
-            CliError::new(
-                "IDE_PROFILE_NOT_FOUND",
-                format!("Cannot inspect {}: {error}", profiles.display()),
-            )
-        })?
-        .filter_map(std::result::Result::ok)
-        .filter(|entry| {
-            entry.file_type().is_ok_and(|kind| kind.is_dir())
-                && entry.file_name().to_str().is_some_and(|name| {
-                    ["IntelliJIdea", "IdeaIC", "AndroidStudio"]
-                        .iter()
-                        .any(|prefix| name.starts_with(prefix))
+    let application_support = manifest::home_dir().join("Library/Application Support");
+    let mut candidates = Vec::new();
+    for (root, prefixes) in [
+        (
+            application_support.join("JetBrains"),
+            &["IntelliJIdea", "IdeaIC"][..],
+        ),
+        (application_support.join("Google"), &["AndroidStudio"][..]),
+    ] {
+        let entries = match fs::read_dir(&root) {
+            Ok(entries) => entries,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => continue,
+            Err(error) => {
+                return Err(CliError::new(
+                    "IDE_PROFILE_NOT_FOUND",
+                    format!("Cannot inspect {}: {error}", root.display()),
+                ));
+            }
+        };
+        candidates.extend(
+            entries
+                .filter_map(std::result::Result::ok)
+                .filter(|entry| {
+                    entry.file_type().is_ok_and(|kind| kind.is_dir())
+                        && entry.file_name().to_str().is_some_and(|name| {
+                            prefixes.iter().any(|prefix| name.starts_with(prefix))
+                        })
                 })
-        })
-        .map(|entry| entry.path().join("plugins"))
-        .collect::<Vec<_>>();
+                .map(|entry| entry.path().join("plugins")),
+        );
+    }
     candidates.sort();
     candidates.pop().ok_or_else(|| {
         CliError::new(

@@ -46,9 +46,9 @@ fn setup_installs_native_cli_and_idea_plugin() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
-    let plugins = temp.path().join("plugins");
+    let plugins = home.join("Library/Application Support/Google/AndroidStudio2026.1/plugins");
     let plugin = write_idea_plugin_zip(temp.path());
-    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&plugins).expect("Android Studio profile");
 
     let output = kast(&home, &kast_home.join("unused-config"))
         .env_remove("KAST_CONFIG_HOME")
@@ -60,8 +60,6 @@ fn setup_installs_native_cli_and_idea_plugin() {
             "setup",
             "--idea-plugin",
             plugin.to_str().expect("plugin path"),
-            "--idea-plugins-dir",
-            plugins.to_str().expect("plugins path"),
         ])
         .output()
         .expect("kast setup");
