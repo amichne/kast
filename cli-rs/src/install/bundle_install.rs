@@ -12,7 +12,7 @@ fn install_validated_bundle(
             ),
         ));
     }
-    let install_manifest = project_install_manifest(bundle, targets)?;
+    let install_manifest = project_install_manifest(bundle, targets);
     for directory in [
         targets.resolved.install_root.join("releases"),
         targets.resolved.install_root.join("backups"),
@@ -96,29 +96,19 @@ fn rollback_activated_bundle(
 fn project_install_manifest(
     bundle: &ValidatedBundle,
     targets: &ActivationTargetPaths,
-) -> Result<manifest::KastInstallManifest> {
-    let active_receipt = targets.current_link.join(manifest::INSTALL_MANIFEST_FILE);
-    let previous = if active_receipt.is_file() {
-        let manifest = manifest_from_file(&active_receipt)?;
-        BundleVersion::parse(&manifest.active_version)
-            .ok()
-            .filter(|version| version.as_str() != bundle.version.as_str())
-            .map(BundleVersion::into_string)
-    } else {
-        None
-    };
+) -> manifest::KastInstallManifest {
     let now = manifest::current_timestamp();
     let normalized_version = bundle.version.normalized();
     let headless_root = targets.headless_current_dir.clone();
     let install_id = format!("kast-{}-{}", bundle.manifest.platform, normalized_version);
-    Ok(manifest::KastInstallManifest {
+    manifest::KastInstallManifest {
         tool: "kast".to_string(),
         install_id,
         release_digest: bundle.release_digest.clone(),
         manifest_digest: bundle.manifest_digest.clone(),
         profile: bundle.manifest.profile.clone(),
         active_version: bundle.version.as_str().to_string(),
-        previous_version: previous,
+        previous_version: None,
         created_at: now.clone(),
         updated_at: now,
         roots: manifest::ManifestRoots {
@@ -162,7 +152,7 @@ fn project_install_manifest(
         shell_rc_patches: vec![],
         repos: vec![],
         schema_version: SCHEMA_VERSION,
-    })
+    }
 }
 
 fn verify_activated_bundle(
