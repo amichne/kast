@@ -62,18 +62,81 @@ class SemanticGraphBackendTest {
 
             class Box<T>
         """
+
+        private const val boundarySource = """
+            package demo
+
+            fun reachBoundary(): BoundaryTarget = BoundaryTarget()
+        """
+
+        private const val boundaryTarget = """
+            package demo
+
+            class BoundaryTarget
+        """
     }
 
     private val moduleFixture = projectFixture.moduleFixture("main")
     private val sourceRootFixture = moduleFixture.sourceRootFixture()
     private val sourceFileFixture = sourceRootFixture.psiFileFixture("SemanticGraph.kt", source)
     private val brokenSourceFileFixture = sourceRootFixture.psiFileFixture("Broken.kt", brokenSource)
+    private val boundarySourceFileFixture = sourceRootFixture.psiFileFixture("BoundarySource.kt", boundarySource)
+    private val boundaryTargetFileFixture = sourceRootFixture.psiFileFixture("BoundaryTarget.kt", boundaryTarget)
     private val duplicateModuleFixture = projectFixture.moduleFixture("duplicate")
     private val duplicateSourceRootFixture = duplicateModuleFixture.sourceRootFixture()
     private val duplicateSourceFileFixture = duplicateSourceRootFixture.psiFileFixture("Duplicate.kt", duplicateSource)
 
     @TempDir
     lateinit var storeRoot: Path
+
+    @Test
+    fun `scoped graph returns unexpanded cross file targets`() = runBlocking {
+        val project = projectFixture.get()
+        val sourceFile = boundarySourceFileFixture.get()
+        val targetFile = boundaryTargetFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(maxResults = 500, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4),
+                semanticGraphStore = store,
+                psiGeneration = { 1L },
+            ).use { backend ->
+                val scoped = backend.semanticGraph(
+                    SemanticGraphQuery(
+                        filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
+                    ).parsed(),
+                )
+                val boundary = scoped.boundarySymbols.single { symbol -> symbol.name.value == "BoundaryTarget" }
+
+                assertEquals("BoundaryTarget.kt", boundary.path.value)
+                assertTrue(scoped.symbols.none { symbol -> symbol.canonicalKey == boundary.canonicalKey })
+                assertTrue(scoped.relations.any { relation -> relation.targetKey == boundary.canonicalKey })
+                assertTrue(
+                    scoped.relations.all { relation ->
+                        relation.targetKey in scoped.symbols.map { it.canonicalKey }.toSet() ||
+                            relation.targetKey in scoped.boundarySymbols.map { it.canonicalKey }.toSet()
+                    },
+                )
+
+                val expanded = backend.semanticGraph(
+                    SemanticGraphQuery(
+                        filePaths = listOf(
+                            SemanticGraphPath.parse(sourceFile.virtualFile.path),
+                            SemanticGraphPath.parse(targetFile.virtualFile.path),
+                        ),
+                    ).parsed(),
+                )
+
+                assertTrue(expanded.symbols.any { symbol -> symbol.canonicalKey == boundary.canonicalKey })
+                assertTrue(expanded.boundarySymbols.none { symbol -> symbol.canonicalKey == boundary.canonicalKey })
+            }
+        }
+    }
 
     @Test
     fun `returns compiler diagnostics without aborting graph extraction`() = runBlocking {

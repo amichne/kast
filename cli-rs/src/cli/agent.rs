@@ -154,9 +154,12 @@ pub struct AgentGraphifyArgs {
     /// Atomic destination for the Kotlin Graphify extraction fragment.
     #[arg(long)]
     pub output_file: PathBuf,
-    /// Existing Kast-v1 graph required for incremental extraction.
+    /// Existing Kast Graphify-v2 graph required for incremental extraction.
     #[arg(long)]
     pub base_graph: Option<PathBuf>,
+    /// Maximum Kotlin files analyzed by one semantic-graph RPC.
+    #[arg(long, default_value_t = 25, value_parser = clap::value_parser!(u16).range(1..=500))]
+    pub batch_size: u16,
 }
 
 #[derive(Debug, Args, Clone)]

@@ -1327,6 +1327,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin scopeFingerprint: SemanticGraphSha256` | SHA-256 fingerprint of the selected and removed path scope. |
             | `#!kotlin coverage: SemanticGraphCoverage` | Refresh, diagnostic, and omission evidence for the scope. |
             | `#!kotlin symbols: List<SemanticGraphSymbol>` | Semantic symbol records included in this page. |
+            | `#!kotlin boundarySymbols: List<SemanticGraphSymbol>?` | Referenced workspace symbols outside the selected file scope, returned without expansion. |
             | `#!kotlin relations: List<SemanticGraphRelation>` | Semantic relation records included in this page. |
             | `#!kotlin nextPageToken: SemanticGraphPageToken?` | Opaque token for the next page, or null when complete. |
         === "Internal protocol"
@@ -1380,6 +1381,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "line": 1
                         }
                     ],
+                    "boundarySymbols": [],
                     "relations": []
                 },
                 "id": 1,

@@ -44,7 +44,7 @@ so the page exposes the internal JSON-RPC catalog used by typed
 families, flow-oriented building blocks, and request fields that
 callers compose into larger automation flows.
 
-Catalog version: `dev`. Methods: `41`.
+Catalog version: `dev`. Methods: `42`.
 
 #### Method families
 
@@ -55,7 +55,7 @@ The families below are internal JSON-RPC namespaces, not public CLI commands.
 | `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`runtime/shutdown`<br>`runtime/restart`<br>`capabilities` |
 | `mutation` | Cataloged JSON-RPC methods. | backend | `mutation/submit` |
 | `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`selector/identity`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/implementations`<br>`symbol/hierarchy`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
-| `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
+| `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/semantic-graph`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
 | `database` | Source-index queries for metrics and impact views. | sqlite | `database/metrics` |
 
 #### Composition building blocks
@@ -117,6 +117,7 @@ uses a discriminated response envelope.
 | `raw/workspace-symbol` | `raw` | backend | Search the workspace for symbols by name pattern | `pattern` | `kind`<br>`maxResults`<br>`regex`<br>`includeDeclarationScope` | `WorkspaceSymbolResult` | single result |
 | `raw/workspace-search` | `raw` | backend | Search workspace file contents by text or regex | `pattern` | `regex`<br>`maxResults`<br>`fileGlob`<br>`caseSensitive` | `WorkspaceSearchResult` | single result |
 | `raw/workspace-files` | `raw` | backend | List generation-bound workspace modules and Kotlin file pages | none | `kindDomain`<br>`moduleName`<br>`includeFiles`<br>`maxFilesPerModule`<br>`snapshotToken`<br>`pageToken` | `WorkspaceFilesResult` | single result |
+| `raw/semantic-graph` | `raw` | backend | Project compiler-backed Kotlin symbols and relations | none | `filePaths`<br>`removedFilePaths`<br>`pageSize`<br>`continuation` | `SemanticGraphResult` | single result |
 | `raw/workspace-files-continuation` | `raw` | backend | Issue or consume server-held public workspace-file continuation state | `action`<br>`ISSUE`: `identity`, `state`<br>`CONSUME`: `identity`, `pageToken` | none | `WorkspaceFilesContinuationResult` | `ISSUED`<br>`CONSUMED` |
 | `raw/implementations` | `raw` | backend | Find concrete implementations and subclasses for a declaration | `position` | `maxResults` | `ImplementationsResult` | single result |
 | `raw/code-actions` | `raw` | backend | Return available code actions at a file position | `position` | `diagnosticCode` | `CodeActionsResult` | single result |
@@ -178,7 +179,6 @@ Response type: `BackendCapabilities`.
 | Field | Type | Required | Nullable | Values |
 | --- | --- | --- | --- | --- |
 | `type` | `string` | yes | no | `RENAME`<br>`ADD_FILE`<br>`ADD_DECLARATION`<br>`ADD_IMPLEMENTATION`<br>`ADD_STATEMENT`<br>`REPLACE_DECLARATION` |
-
 
 Request variants:
 
@@ -718,6 +718,26 @@ Notes:
 - File pages echo kindDomain and snapshotToken, require one exact moduleName and a positive server-bounded maxFilesPerModule, and pass the preceding nextPageToken as pageToken.
 - Each module page reports returnedFileCount equal to files.size; nextPageToken is non-null exactly when filesTruncated is true and another page remains.
 - Unknown, replayed, mismatched, evicted, or stale snapshot and page handles fail instead of restarting enumeration.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/semantic-graph</code> - Project compiler-backed Kotlin symbols and relations</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `filePaths` | `array of string` | no | no |  |
+| `removedFilePaths` | `array of string` | no | no |  |
+| `pageSize` | `integer` | no | no |  |
+| `continuation` | `string` | no | yes |  |
+
+Response type: `SemanticGraphResult`.
+
+Notes:
+
+- The scope must contain at least one selected or removed Kotlin path.
+- Continuation is an opaque single-use token bound to the selected and removed path scope.
+- Direct workspace targets outside the selected file scope are returned in boundarySymbols; every relation target is present in symbols or boundarySymbols.
 
 </details>
 
