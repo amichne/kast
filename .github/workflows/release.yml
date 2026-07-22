@@ -44,10 +44,28 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - uses: actions/setup-java@v5
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          cache-cleanup: always
+
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Verify the sole setup contract
         run: .github/scripts/test-setup-contract.sh
+
+      - name: Validate JVM source before creating a tag
+        if: github.event_name == 'workflow_dispatch'
+        run: >
+          ./scripts/ci-gradle-retry.sh ./gradlew test
+          --no-daemon
+          --stacktrace
 
   bump-version:
     name: Bump version (${{ inputs.release_type }})
@@ -117,7 +135,7 @@ jobs:
   prepare-release:
     name: Prepare release
     needs: [release-preflight, bump-version]
-    if: always() && needs.release-preflight.result == 'success' && (needs.bump-version.result == 'success' || needs.bump-version.result == 'skipped')
+    if: always() && github.event_name == 'push' && needs.release-preflight.result == 'success' && needs.bump-version.result == 'skipped'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -392,8 +410,8 @@ jobs:
             fi
           done
           if [[ "$missing" -eq 1 ]]; then
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::Missing Maven Central or signing secrets and release modules are not yet published."
+            echo "::error::Missing Maven Central or signing secrets and release modules are not yet published."
+            exit 1
           else
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
@@ -455,6 +473,14 @@ jobs:
           elif [[ "$verify_exit" -ne 0 ]]; then
             echo "::warning::Maven Central verification did not pass in the publish job; final release-state verification will decide the workflow result."
           fi
+
+      - name: Verify Maven Central publication
+        shell: bash
+        run: |
+          scripts/verify-maven-central.sh \
+            --version "${{ needs.prepare-release.outputs.release_version }}" \
+            --attempts 30 \
+            --delay-seconds 20
 
   build-cli:
     name: Build Rust CLI asset (${{ matrix.asset_id }})
@@ -1063,7 +1089,8 @@ jobs:
       - build-idea-plugin
       - build-headless-backend
       - build-linux-headless-tarball
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success'
+      - publish-maven-central
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success' && needs.publish-maven-central.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
