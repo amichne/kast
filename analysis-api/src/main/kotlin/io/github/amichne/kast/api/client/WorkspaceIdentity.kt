@@ -27,6 +27,7 @@ data class WorkspaceIdentity(
     val canonicalWorkspaceRoot: NormalizedPath,
     val workspaceId: WorkspaceId,
     val canonicalWorkspaceId: WorkspaceId,
+    val repositoryDataDirectory: NormalizedPath?,
     val workspaceDataDirectory: NormalizedPath,
     val workspaceCacheDirectory: NormalizedPath,
     val sourceIndexDatabasePath: NormalizedPath,
@@ -42,6 +43,9 @@ data class WorkspaceIdentity(
 
     val workspaceDataDirectoryPath: Path
         get() = workspaceDataDirectory.toJavaPath()
+
+    val repositoryDataDirectoryPath: Path?
+        get() = repositoryDataDirectory?.toJavaPath()
 
     val workspaceCacheDirectoryPath: Path
         get() = workspaceCacheDirectory.toJavaPath()
@@ -78,6 +82,7 @@ data class WorkspaceIdentity(
         "canonicalWorkspaceId" to canonicalWorkspaceId.value,
         "workspaceRoot" to workspaceRoot.value,
         "canonicalWorkspaceRoot" to canonicalWorkspaceRoot.value,
+        "repositoryDataDirectory" to repositoryDataDirectory?.value,
         "workspaceDataDirectory" to workspaceDataDirectory.value,
         "workspaceCacheDirectory" to workspaceCacheDirectory.value,
         "sourceIndexDatabasePath" to sourceIndexDatabasePath.value,
@@ -105,6 +110,8 @@ data class WorkspaceIdentity(
                 canonicalWorkspaceRoot = canonicalWorkspaceRoot,
                 workspaceId = workspaceId,
                 canonicalWorkspaceId = canonicalWorkspaceId,
+                repositoryDataDirectory = resolver.repositoryDataDirectory(normalizedWorkspaceRoot.toJavaPath())
+                    ?.let(NormalizedPath::ofAbsolute),
                 workspaceDataDirectory = NormalizedPath.ofAbsolute(workspaceDataDirectory),
                 workspaceCacheDirectory = NormalizedPath.ofAbsolute(workspaceCacheDirectory),
                 sourceIndexDatabasePath = NormalizedPath.ofAbsolute(resolver.workspaceDatabasePath(normalizedWorkspaceRoot.toJavaPath())),
