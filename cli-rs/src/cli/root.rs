@@ -69,6 +69,9 @@ pub struct SetupArgs {
     /// IntelliJ IDEA or Android Studio plugins directory.
     #[arg(long, requires = "idea_plugin")]
     pub idea_plugins_dir: Option<PathBuf>,
+    /// TOML defaults selected by the interactive macOS installer.
+    #[arg(long, requires = "idea_plugin")]
+    pub config_defaults: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]

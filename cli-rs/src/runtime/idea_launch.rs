@@ -13,16 +13,13 @@ struct SystemIdeaBackendLaunchOps;
 
 impl IdeaBackendLaunchOps for SystemIdeaBackendLaunchOps {
     fn launch(&self, command: &Path, workspace_root: &Path) -> Result<()> {
+        if command == Path::new("idea") && launch_default_jetbrains_app(workspace_root) {
+            return Ok(());
+        }
         let launch_error = match Command::new(command).arg(workspace_root).spawn() {
             Ok(_) => return Ok(()),
             Err(error) => error,
         };
-        if launch_error.kind() == std::io::ErrorKind::NotFound
-            && command == Path::new("idea")
-            && launch_default_jetbrains_app(workspace_root)
-        {
-            return Ok(());
-        }
         let mut error = CliError::new(
             "IDEA_LAUNCH_FAILED",
             format!(
@@ -61,7 +58,7 @@ impl IdeaBackendLaunchOps for SystemIdeaBackendLaunchOps {
 fn launch_default_jetbrains_app(workspace_root: &Path) -> bool {
     ["IntelliJ IDEA", "Android Studio"].into_iter().any(|app_name| {
         Command::new("open")
-            .args(["-g", "-a", app_name])
+            .args(["-g", "-n", "-a", app_name])
             .arg(workspace_root)
             .output()
             .is_ok_and(|output| output.status.success())

@@ -89,6 +89,97 @@ fn setup_installs_native_cli_and_idea_plugin() {
 }
 
 #[test]
+fn setup_persists_selected_idea_defaults() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let plugins = home.join("Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins");
+    let plugin = write_idea_plugin_zip(temp.path());
+    let defaults = temp.path().join("defaults.toml");
+    let expected = "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\n";
+    std::fs::create_dir_all(&plugins).expect("IDEA profile");
+    std::fs::write(&defaults, expected).expect("selected defaults");
+
+    let output = kast(&home, &kast_home.join("unused-config"))
+        .env_remove("KAST_CONFIG_HOME")
+        .env("KAST_HOME", &kast_home)
+        .env("KAST_MACHINE_IDE_STATE", "closed")
+        .args([
+            "setup",
+            "--idea-plugin",
+            plugin.to_str().expect("plugin path"),
+            "--config-defaults",
+            defaults.to_str().expect("defaults path"),
+        ])
+        .output()
+        .expect("kast setup");
+
+    assert!(
+        output.status.success(),
+        "setup should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert_eq!(
+        std::fs::read_to_string(kast_home.join("current/config/config.toml"))
+            .expect("installed defaults"),
+        expected,
+    );
+}
+
+#[test]
+fn setup_replaces_defaults_when_release_is_current() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let plugins = home.join("Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins");
+    let plugin = write_idea_plugin_zip(temp.path());
+    let defaults = temp.path().join("defaults.toml");
+    let expected = "[runtime]\ndefaultBackend = \"auto\"\n";
+    std::fs::create_dir_all(&plugins).expect("IDEA profile");
+
+    let first = kast(&home, &kast_home.join("unused-config"))
+        .env_remove("KAST_CONFIG_HOME")
+        .env("KAST_HOME", &kast_home)
+        .env("KAST_MACHINE_IDE_STATE", "closed")
+        .args([
+            "setup",
+            "--idea-plugin",
+            plugin.to_str().expect("plugin path"),
+        ])
+        .output()
+        .expect("initial setup");
+    assert!(first.status.success());
+    std::fs::write(&defaults, expected).expect("selected defaults");
+
+    let second = kast(&home, &kast_home.join("unused-config"))
+        .env_remove("KAST_CONFIG_HOME")
+        .env("KAST_HOME", &kast_home)
+        .env("KAST_MACHINE_IDE_STATE", "closed")
+        .args([
+            "setup",
+            "--idea-plugin",
+            plugin.to_str().expect("plugin path"),
+            "--config-defaults",
+            defaults.to_str().expect("defaults path"),
+        ])
+        .output()
+        .expect("reconfigured setup");
+
+    assert!(
+        second.status.success(),
+        "reconfiguration should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&second.stdout),
+        String::from_utf8_lossy(&second.stderr),
+    );
+    assert_eq!(
+        std::fs::read_to_string(kast_home.join("current/config/config.toml"))
+            .expect("updated defaults"),
+        expected,
+    );
+}
+
+#[test]
 fn setup_activates_one_validated_release_and_converges_on_rerun() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
