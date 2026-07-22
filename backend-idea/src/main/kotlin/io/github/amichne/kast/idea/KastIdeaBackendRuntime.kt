@@ -2,6 +2,8 @@ package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.idea.diagnostics.*
+import io.github.amichne.kast.idea.snapshot.BuildClasspathFingerprintResolver
+import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
@@ -12,6 +14,7 @@ import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.RuntimeLifecycleController
 import io.github.amichne.kast.server.RunningAnalysisServer
@@ -98,7 +101,26 @@ object KastIdeaBackendRuntime {
         )
         val diagnostics = KastDiagnosticsService.getInstance(project)
         val limits = ideaServerLimits(config)
+        val snapshotCoordinator = workspaceIdentity.workspaceIdentity.repositoryDataDirectoryPath?.let { repositoryDirectory ->
+            RepositorySnapshotCoordinator(
+                workspaceRoot = workspaceIdentity.workspaceRootPath,
+                repositoryDirectory = repositoryDirectory,
+                buildClasspathFingerprint = BuildClasspathFingerprintResolver.resolve(
+                    project,
+                    workspaceIdentity.workspaceIdentity,
+                ),
+                producerVersion = ProducerVersion.parse(KastPluginBackend.BACKEND_VERSION),
+            )
+        }
+        val preparedOverlay = snapshotCoordinator?.prepareWorktreeDatabase(
+            workspaceIdentity.workspaceIdentity.sourceIndexDatabaseFile,
+        )
         val sourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
+        preparedOverlay?.let { overlay ->
+            (overlay.tombstones + overlay.shards.keys).forEach { relativePath ->
+                sourceIndexStore.removeFile(workspaceIdentity.workspaceRootPath.resolve(relativePath).toString())
+            }
+        }
         val semanticAdmission = IdeaIndexSemanticAdmission(project)
         var pluginBackend: KastPluginBackend? = null
         val backend = try {
@@ -166,6 +188,7 @@ object KastIdeaBackendRuntime {
                 diagnostics = diagnostics,
                 indexStore = sourceIndexStore,
                 semanticAdmission = semanticAdmission,
+                snapshotCoordinator = snapshotCoordinator,
             ).also { it.start() }
             projectIndexing = startedProjectIndexing
             return RunningKastIdeaBackend(
@@ -198,6 +221,7 @@ internal class KastIdeaProjectIndexing(
     private val diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
     private val indexStore: SqliteSourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity),
     private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
+    private val snapshotCoordinator: RepositorySnapshotCoordinator? = null,
 ) {
     constructor(
         project: Project,
@@ -278,6 +302,13 @@ internal class KastIdeaProjectIndexing(
                     indexStore.loadKastSourceIndexSummary()
                 }.onSuccess { summary ->
                     if (!cancelled.get()) {
+                        snapshotCoordinator?.let { coordinator ->
+                            runCatching {
+                                coordinator.publishCompletedIndex(indexStore)
+                            }.onFailure { error ->
+                                LOG.warn("Kast repository snapshot publication failed", error)
+                            }
+                        }
                         KastStructuredTrace.event(
                             eventName = "idea.index.completed",
                             project = project,

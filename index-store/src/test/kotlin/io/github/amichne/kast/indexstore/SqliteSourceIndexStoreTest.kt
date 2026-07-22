@@ -17,6 +17,8 @@ import io.github.amichne.kast.indexstore.store.SourceIndexPageReadObserver
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
+import io.github.amichne.kast.indexstore.snapshot.GitObjectId
+import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -38,6 +40,25 @@ import kotlin.concurrent.thread
 class SqliteSourceIndexStoreTest {
     @TempDir
     lateinit var workspaceRoot: Path
+
+    @Test
+    fun `snapshot export carries complete stable progress and pending evidence`() {
+        val tree = GitObjectId.parse("a".repeat(40))
+        val producer = ProducerVersion.parse("test-producer")
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            store.initializeModuleProgress(mapOf("main" to 1))
+            store.markModuleComplete("main", 1)
+
+            val exact = store.exportSnapshotDatabase(workspaceRoot.resolve("exact.db"), tree, producer)
+            assertTrue(exact.proves(key(tree, producer)))
+
+            store.appendPendingUpdate("remove_file", workspaceRoot.resolve("A.kt").toString(), null)
+            val pending = store.exportSnapshotDatabase(workspaceRoot.resolve("pending.db"), tree, producer)
+            assertFalse(pending.proves(key(tree, producer)))
+            assertEquals(1, pending.pendingCount)
+        }
+    }
 
     @Test
     fun `typed Gradle and package provenance round-trips and advances generation on every transition`() {
@@ -1283,6 +1304,16 @@ class SqliteSourceIndexStoreTest {
             packageEvidence = IndexedPackageEvidence.ProvenNamed(
                 IndexedPackageEvidence.CanonicalName.parse("demo"),
             ),
+        )
+
+    private fun key(tree: GitObjectId, producer: ProducerVersion) =
+        io.github.amichne.kast.indexstore.snapshot.SnapshotKey(
+            treeOid = tree,
+            buildClasspathFingerprint = io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint.parse(
+                "8".repeat(64),
+            ),
+            indexSchema = SOURCE_INDEX_SCHEMA_VERSION,
+            producerVersion = producer,
         )
 
     private fun gradleProject(
