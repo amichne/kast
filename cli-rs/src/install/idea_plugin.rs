@@ -1,10 +1,19 @@
 fn setup_idea_plugin(
     idea_plugin: PathBuf,
     idea_plugins_dir: Option<PathBuf>,
+    config_defaults: Option<PathBuf>,
 ) -> Result<SetupResult> {
     let idea_plugin = config::normalize(idea_plugin);
     require_regular_file(&idea_plugin, "Kast IDEA plugin ZIP")?;
     require_jetbrains_ides_closed()?;
+    let config_defaults = if let Some(path) = config_defaults.map(config::normalize) {
+        require_regular_file(&path, "Kast config defaults")?;
+        let contents = fs::read_to_string(path)?;
+        config::validate_toml(&contents)?;
+        Some(contents)
+    } else {
+        None
+    };
 
     let current_exe = env::current_exe()?;
     require_executable(&current_exe, "running Kast CLI")?;
@@ -33,6 +42,12 @@ fn setup_idea_plugin(
             )
             .is_ok()
         {
+            if let Some(config_defaults) = &config_defaults {
+                fs::write(
+                    targets.current_link.join("config/config.toml"),
+                    config_defaults,
+                )?;
+            }
             return Ok(idea_setup_result(
                 &targets,
                 SetupStatus::Current,
@@ -52,6 +67,7 @@ fn setup_idea_plugin(
             &release_digest,
             &cli_sha256,
             &plugin_sha256,
+            config_defaults.as_deref().unwrap_or(DEFAULT_IDEA_CONFIG),
         )?;
         let installed_plugin = plugins_dir.join("kast");
         let plugin_backup = match install_idea_plugin(&extracted_plugin, &installed_plugin) {
@@ -105,6 +121,7 @@ fn install_idea_release(
     release_digest: &str,
     cli_sha256: &str,
     plugin_sha256: &str,
+    config_defaults: &str,
 ) -> Result<(Option<PathBuf>, Option<PathBuf>)> {
     let staging_root = targets.resolved.install_root.join("staging");
     manifest::remove_path(&staging_root)?;
@@ -118,10 +135,7 @@ fn install_idea_release(
     fs::copy(current_exe, staged.join("bin/kast"))?;
     manifest::make_executable(&staged.join("bin/kast"))?;
     fs::copy(idea_plugin, staged.join("idea/kast.zip"))?;
-    fs::write(
-        staged.join("config/config.toml"),
-        "[runtime]\ndefaultBackend = \"idea\"\n\n[backends.headless]\nenabled = false\n\n[backends.idea]\nenabled = true\n",
-    )?;
+    fs::write(staged.join("config/config.toml"), config_defaults)?;
     manifest::write_manifest_atomic(
         &staged.join(manifest::INSTALL_MANIFEST_FILE),
         &idea_install_manifest(targets, release_digest, cli_sha256, plugin_sha256),
@@ -136,6 +150,8 @@ fn install_idea_release(
     manifest::replace_symlink_or_copy(&targets.version_dir, &targets.current_link)?;
     Ok((previous, backup))
 }
+
+const DEFAULT_IDEA_CONFIG: &str = "[runtime]\ndefaultBackend = \"idea\"\n\n[backends.headless]\nenabled = false\n\n[backends.idea]\nenabled = true\n";
 
 fn idea_install_manifest(
     targets: &ActivationTargetPaths,

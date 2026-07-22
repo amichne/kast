@@ -1,7 +1,11 @@
 pub fn setup(args: SetupArgs) -> Result<SetupResult> {
     match (args.source, args.idea_plugin) {
         (Some(source), None) => setup_bundle(source),
-        (None, Some(idea_plugin)) => setup_idea_plugin(idea_plugin, args.idea_plugins_dir),
+        (None, Some(idea_plugin)) => setup_idea_plugin(
+            idea_plugin,
+            args.idea_plugins_dir,
+            args.config_defaults,
+        ),
         _ => Err(CliError::new(
             "CLI_USAGE",
             "Pass exactly one of --source or --idea-plugin.",
