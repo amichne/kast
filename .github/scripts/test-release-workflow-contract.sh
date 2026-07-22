@@ -45,6 +45,8 @@ grep -Fq './gradlew test' <<<"$release_preflight" \
   || { printf '%s\n' 'error: release dispatch must validate JVM tests before creating a tag' >&2; exit 1; }
 grep -Fq 'needs: [release-preflight]' <<<"$bump_version" \
   || { printf '%s\n' 'error: version tagging must depend on release preflight' >&2; exit 1; }
+grep -Fq 'token: ${{ secrets.RELEASE_GITHUB_TOKEN }}' <<<"$bump_version" \
+  || { printf '%s\n' 'error: version tags must use the release token so tag pushes trigger publication' >&2; exit 1; }
 grep -Fq "github.event_name == 'push'" <<<"$prepare_release" \
   || { printf '%s\n' 'error: workflow dispatch must stop after pushing the release tag' >&2; exit 1; }
 grep -Fq 'name: Verify Maven Central publication' <<<"$publish_maven" \
