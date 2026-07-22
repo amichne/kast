@@ -8,6 +8,11 @@ build="$repo_root/build.gradle.kts"
 verify_assets="$repo_root/scripts/verify-release-assets.sh"
 verify_state="$repo_root/scripts/verify-release-state.sh"
 verify_setup="$repo_root/scripts/verify-setup-bundle.sh"
+release_preflight="$(sed -n '/^  release-preflight:/,/^  bump-version:/p' "$release")"
+bump_version="$(sed -n '/^  bump-version:/,/^  prepare-release:/p' "$release")"
+prepare_release="$(sed -n '/^  prepare-release:/,/^  validate-jvm:/p' "$release")"
+publish_maven="$(sed -n '/^  publish-maven-central:/,/^  build-cli:/p' "$release")"
+publish_release="$(sed -n '/^  publish-release:/,/^  verify-release-state:/p' "$release")"
 
 require() {
   local file="$1" text="$2" message="$3"
@@ -37,6 +42,19 @@ require "$verify_state" '--attempts "$maven_attempts"' 'published Maven verifica
 require "$verify_state" '--delay-seconds "$maven_delay_seconds"' 'published Maven verification must retain its retry delay'
 require "$verify_setup" '"status"[[:space:]]*:[[:space:]]*"ACTIVATED"' 'setup verification must accept pretty-printed activation JSON'
 require "$verify_setup" '"status"[[:space:]]*:[[:space:]]*"CURRENT"' 'setup verification must accept pretty-printed current JSON'
+
+grep -Fq './gradlew test' <<<"$release_preflight" \
+  || { printf '%s\n' 'error: release dispatch must validate JVM tests before creating a tag' >&2; exit 1; }
+grep -Fq 'needs: [release-preflight]' <<<"$bump_version" \
+  || { printf '%s\n' 'error: version tagging must depend on release preflight' >&2; exit 1; }
+grep -Fq "github.event_name == 'push'" <<<"$prepare_release" \
+  || { printf '%s\n' 'error: workflow dispatch must stop after pushing the release tag' >&2; exit 1; }
+grep -Fq 'name: Verify Maven Central publication' <<<"$publish_maven" \
+  || { printf '%s\n' 'error: Maven publication must end with authoritative remote verification' >&2; exit 1; }
+grep -Fq -- '- publish-maven-central' <<<"$publish_release" \
+  || { printf '%s\n' 'error: GitHub publication must depend on Maven Central publication' >&2; exit 1; }
+grep -Fq "needs.publish-maven-central.result == 'success'" <<<"$publish_release" \
+  || { printf '%s\n' 'error: GitHub publication must require successful Maven Central publication' >&2; exit 1; }
 
 for file in "$ci" "$release" "$verify_state"; do
   reject "$file" 'homebrew' 'retired Homebrew authority remains in release flow'
