@@ -60,13 +60,12 @@ fn setup_idea_plugin(
             }
             return Ok(idea_setup_result(
                 &targets,
-                SetupStatus::Current,
+                (SetupStatus::Current, None),
                 &release_digest,
                 &cli_sha256,
                 &extracted_plugin_digest,
                 &manifest_digest,
                 &plugins_dir.join("kast"),
-                None,
             ));
         }
 
@@ -103,13 +102,15 @@ fn setup_idea_plugin(
 
         Ok(idea_setup_result(
             &targets,
-            SetupStatus::Activated,
+            (
+                SetupStatus::Activated,
+                release_backup.as_deref().or(legacy_backup.as_deref()),
+            ),
             &release_digest,
             &cli_sha256,
             &extracted_plugin_digest,
             &manifest_digest,
             &installed_plugin,
-            release_backup.as_deref().or(legacy_backup.as_deref()),
         ))
     })
 }
@@ -292,14 +293,14 @@ fn verify_idea_plugin_setup(
 
 fn idea_setup_result(
     targets: &ActivationTargetPaths,
-    status: SetupStatus,
+    activation: (SetupStatus, Option<&Path>),
     release_digest: &str,
     cli_sha256: &str,
     plugin_digest: &str,
     manifest_digest: &str,
     installed_plugin: &Path,
-    backup: Option<&Path>,
 ) -> SetupResult {
+    let (status, backup) = activation;
     SetupResult {
         result_type: "KAST_SETUP",
         status,
