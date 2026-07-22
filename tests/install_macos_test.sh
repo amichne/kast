@@ -22,7 +22,7 @@ printf '%s\n' '#!/bin/sh' 'destination=""' 'while [ "$#" -gt 0 ]; do case "$1" i
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_CODEX_LOG"' > "$scratch/bin/codex"
 printf '%s\n' '#!/bin/sh' 'if [ "${KAST_TEST_IDEA_RUNNING:-0}" = 1 ] && [ ! -f "$KAST_TEST_IDEA_CLOSED" ]; then printf "%s\n" "4312 /Applications/IntelliJ IDEA.app/Contents/MacOS/idea"; else printf "%s\n" "4311 /bin/bash"; fi' > "$scratch/bin/ps"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_KILL_LOG"' ': > "$KAST_TEST_IDEA_CLOSED"' > "$scratch/bin/kill"
-printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_BREW_LOG"' 'if [ "$*" = "install fzf" ]; then printf "%s\n" "#!/bin/sh" "printf \"%s\\n\" \"\$*\" >> \"\$KAST_TEST_FZF_LOG\"" "sed -n \"1p\"" > "$KAST_TEST_FAKE_BIN/fzf"; chmod 755 "$KAST_TEST_FAKE_BIN/fzf"; fi' > "$scratch/bin/brew"
+printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_BREW_LOG"' 'if [ "$*" = "install fzf" ]; then printf "%s\n" "#!/bin/sh" "printf \"%s\\n\" \"\$*\" >> \"\$KAST_TEST_FZF_LOG\"" "if [ \"\${KAST_TEST_FZF_LAST:-}\" = 1 ]; then sed -n \"\$p\"; else sed -n \"1p\"; fi" > "$KAST_TEST_FAKE_BIN/fzf"; chmod 755 "$KAST_TEST_FAKE_BIN/fzf"; fi' > "$scratch/bin/brew"
 chmod 755 "$scratch/bin/uname" "$scratch/bin/curl" "$scratch/bin/unzip" "$scratch/bin/tar" "$scratch/bin/codex" "$scratch/bin/ps" "$scratch/bin/kill" "$scratch/bin/brew"
 
 export PATH="$scratch/bin:$PATH"
@@ -93,10 +93,32 @@ grep -Fqx 'https://releases.test/download/v1.2.3/kast-linux-x64-v1.2.3.tar.gz' "
 rm -f "$scratch/bin/fzf"
 isolated_path="$scratch/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 KAST_TEST_INSTALLER="$repo_root/install.sh" KAST_TEST_PATH="$isolated_path" \
+  KAST_TEST_SCREEN="$scratch/cancel.screen" expect <<'EXPECT' >/dev/null
+set timeout 20
+log_file -noappend $env(KAST_TEST_SCREEN)
+spawn env PATH=$env(KAST_TEST_PATH) NO_COLOR= CLICOLOR_FORCE=1 KAST_TEST_FZF_LAST=1 bash $env(KAST_TEST_INSTALLER) --version v1.2.3
+expect {
+  -exact {Select [1]:} { send "cancel\r"; exp_continue }
+  "Install fzf with Homebrew for interactive selection?" { send "y\r"; exp_continue }
+  eof
+}
+catch wait result
+exit [lindex $result 3]
+EXPECT
+if [[ -s "$KAST_TEST_BREW_LOG" ]]; then
+  printf '%s\n' 'cancelled installer mutated Homebrew state' >&2
+  exit 1
+fi
+
+: > "$KAST_TEST_BREW_LOG"
+rm -f "$scratch/bin/fzf"
+KAST_TEST_INSTALLER="$repo_root/install.sh" KAST_TEST_PATH="$isolated_path" \
   KAST_TEST_SCREEN="$scratch/interactive.screen" expect <<'EXPECT' >/dev/null
 set timeout 20
 log_file -noappend $env(KAST_TEST_SCREEN)
 spawn env PATH=$env(KAST_TEST_PATH) NO_COLOR= CLICOLOR_FORCE=1 bash $env(KAST_TEST_INSTALLER) --version v1.2.3
+expect -exact {Select [1]:}
+send "configure\r"
 expect "Install fzf with Homebrew for interactive selection?"
 send "y\r"
 expect eof

@@ -455,8 +455,8 @@ main() {
       if ((configure == 1)); then
         ensure_fzf
       elif ((autostart == 0)) && [[ -z "$config_defaults" ]] && interactive_terminal; then
-        ensure_fzf
         choose_install_mode || return 0
+        ((configure == 0)) || ensure_fzf
       fi
       require unzip
       cli_archive="${setup_scratch}/kast-${version}-${platform_id}.zip"
