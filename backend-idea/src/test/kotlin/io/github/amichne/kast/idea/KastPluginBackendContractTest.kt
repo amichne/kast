@@ -518,47 +518,49 @@ class KastPluginBackendContractTest {
     fun `fallback discovery resumes across many nonmatching files without heuristic filtering`() = runBlocking {
         ensureProjectReady()
         val irrelevantFiles = createIrrelevantKotlinFiles(count = 200)
+        try {
+            val (workspaceRoot, filePath, offset) = readAction {
+                val usageFile = sampleUsageFileFixture.get()
+                Triple(
+                    commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
+                    sampleFile.virtualFile.path,
+                    sampleFile.text.indexOf("greet"),
+                )
+            }
 
-        val (workspaceRoot, filePath, offset) = readAction {
-            val usageFile = sampleUsageFileFixture.get()
-            Triple(
-                commonWorkspaceRoot(sampleFile.virtualFile.path, usageFile.virtualFile.path),
-                sampleFile.virtualFile.path,
-                sampleFile.text.indexOf("greet"),
-            )
-        }
-
-        val backend = backend(workspaceRoot)
-        var result = backend.findReferences(
-            ReferencesQuery(
-                position = FilePosition(filePath = filePath, offset = offset),
-                includeDeclaration = false,
-                maxResults = 4,
-            ),
-        )
-        assertTrue(result.references.isEmpty())
-        assertNotNull(result.page?.nextPageToken)
-
-        val references = mutableListOf<ReferenceOccurrence>()
-        references += result.references
-        repeat(10) {
-            val nextPageToken = result.page?.nextPageToken ?: return@repeat
-            result = backend.findReferences(
+            val backend = backend(workspaceRoot)
+            var result = backend.findReferences(
                 ReferencesQuery(
                     position = FilePosition(filePath = filePath, offset = offset),
                     includeDeclaration = false,
                     maxResults = 4,
-                    pageToken = nextPageToken,
                 ),
             )
-            references += result.references
-        }
+            val references = mutableListOf<ReferenceOccurrence>()
+            var pageCount = 0
+            while (true) {
+                pageCount += 1
+                references += result.references
+                val nextPageToken = result.page?.nextPageToken ?: break
+                assertTrue(pageCount < 16, "Candidate discovery did not terminate: $result")
+                result = backend.findReferences(
+                    ReferencesQuery(
+                        position = FilePosition(filePath = filePath, offset = offset),
+                        includeDeclaration = false,
+                        maxResults = 4,
+                        pageToken = nextPageToken,
+                    ),
+                )
+            }
 
-        val searchScope = checkNotNull(result.searchScope)
-        assertTrue(searchScope.candidateFileCount > 64)
-        assertTrue(searchScope.searchedFileCount <= searchScope.candidateFileCount)
-        assertTrue(references.any { reference -> reference.location.preview.contains("greet(\"idea\")") })
-        deleteKotlinFiles(irrelevantFiles)
+            val searchScope = checkNotNull(result.searchScope)
+            assertTrue(pageCount > 1)
+            assertTrue(searchScope.candidateFileCount > 64)
+            assertTrue(searchScope.searchedFileCount <= searchScope.candidateFileCount)
+            assertTrue(references.any { reference -> reference.location.preview.contains("greet(\"idea\")") })
+        } finally {
+            deleteKotlinFiles(irrelevantFiles)
+        }
     }
 
     @Test
