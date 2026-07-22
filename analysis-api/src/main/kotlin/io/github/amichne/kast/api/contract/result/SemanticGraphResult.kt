@@ -232,6 +232,8 @@ data class SemanticGraphResult(
     val coverage: SemanticGraphCoverage,
     @DocField(description = "Semantic symbol records included in this page.")
     val symbols: List<SemanticGraphSymbol>,
+    @DocField(description = "Referenced workspace symbols outside the selected file scope, returned without expansion.")
+    val boundarySymbols: List<SemanticGraphSymbol> = emptyList(),
     @DocField(description = "Semantic relation records included in this page.")
     val relations: List<SemanticGraphRelation>,
     @DocField(description = "Opaque token for the next page, or null when complete.")

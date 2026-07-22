@@ -2370,7 +2370,8 @@
       "responseType": "SemanticGraphResult",
       "notes": [
         "The scope must contain at least one selected or removed Kotlin path.",
-        "Continuation is an opaque single-use token bound to the selected and removed path scope."
+        "Continuation is an opaque single-use token bound to the selected and removed path scope.",
+        "Direct workspace targets outside the selected file scope are returned in boundarySymbols; every relation target is present in symbols or boundarySymbols."
       ]
     },
     "raw/workspace-files-continuation": {

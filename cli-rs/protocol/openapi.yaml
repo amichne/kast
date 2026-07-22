@@ -2397,6 +2397,10 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/SemanticGraphSymbol"
+        boundarySymbols:
+          type: array
+          items:
+            "$ref": "#/components/schemas/SemanticGraphSymbol"
         relations:
           type: array
           items:
