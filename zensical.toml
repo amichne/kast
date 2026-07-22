@@ -11,11 +11,21 @@ site_dir = "site"
 copyright = "Copyright &copy; 2026 amichne"
 nav = [
   { "Start" = "index.md" },
-  { "Install" = [{ "Install or update Kast" = "install/setup.md" }] },
-  { "Use" = [{ "Use Kast in Codex" = "use/codex.md" }] },
-  { "Reference" = [{ "Codex plugin" = "reference/codex-plugin.md" }] },
-  { "Troubleshoot" = "troubleshoot.md" },
-  { "Understand" = [{ "Workstation model" = "design/operating-model.md" }] },
+  { "Tutorials" = [{ "Your first compiler-backed task" = "tutorials/first-compiler-backed-task.md" }] },
+  { "How-to guides" = [
+    { "Install or update Kast" = "how-to/install-or-update.md" },
+    { "Explore Kotlin code" = "how-to/explore-kotlin-code.md" },
+    { "Plan a safe Kotlin edit" = "how-to/plan-safe-edits.md" },
+    { "Troubleshoot Kast" = "how-to/troubleshoot.md" },
+  ] },
+  { "Reference" = [
+    { "CLI" = "reference/cli.md" },
+    { "Codex plugin" = "reference/codex-plugin.md" },
+  ] },
+  { "Explanation" = [
+    { "Architecture" = "explanation/architecture.md" },
+    { "Compiler-backed evidence" = "explanation/compiler-evidence.md" },
+  ] },
 ]
 
 [project.markdown_extensions.admonition]

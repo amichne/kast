@@ -23,12 +23,16 @@ require_not_contains() {
 }
 
 expected_pages=(
-  "design/operating-model.md"
+  "explanation/architecture.md"
+  "explanation/compiler-evidence.md"
+  "how-to/explore-kotlin-code.md"
+  "how-to/install-or-update.md"
+  "how-to/plan-safe-edits.md"
+  "how-to/troubleshoot.md"
   "index.md"
-  "install/setup.md"
+  "reference/cli.md"
   "reference/codex-plugin.md"
-  "troubleshoot.md"
-  "use/codex.md"
+  "tutorials/first-compiler-backed-task.md"
 )
 actual_pages="$(find "$docs_root" -type f -name '*.md' -print | sed "s#${docs_root}/##" | sort)"
 expected_page_lines="$(printf '%s\n' "${expected_pages[@]}" | sort)"
@@ -39,9 +43,9 @@ expected_page_lines="$(printf '%s\n' "${expected_pages[@]}" | sort)"
 
 require_absent "${docs_root}/privacy.md"
 require_absent "${docs_root}/terms.md"
-require_absent "${docs_root}/install/headless-linux.md"
-require_absent "${docs_root}/install/codex.md"
-require_absent "${docs_root}/learn"
+require_absent "${docs_root}/install"
+require_absent "${docs_root}/use"
+require_absent "${docs_root}/design"
 require_absent "${docs_root}/assets/demo"
 
 installer='/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"'
@@ -49,21 +53,24 @@ require_contains "$readme" "$installer"
 require_contains "$readme" "kast setup"
 require_contains "$readme" "prior active release usable"
 require_contains "$readme" "amichne/kast-marketplace"
-require_contains "${docs_root}/install/setup.md" "$installer"
-require_contains "${docs_root}/install/setup.md" "./gradlew refreshDevelopmentMachine"
-require_contains "${docs_root}/install/setup.md" "current/bin/kast"
-require_contains "${docs_root}/use/codex.md" "without operating Kast"
-require_contains "${docs_root}/reference/codex-plugin.md" "sole Kast agent-guidance surface"
-require_contains "${docs_root}/design/operating-model.md" "one installation authority"
-require_contains "${docs_root}/troubleshoot.md" 'Do not edit `current`'
+require_contains "${docs_root}/how-to/install-or-update.md" "$installer"
+require_contains "${docs_root}/how-to/install-or-update.md" "./gradlew refreshDevelopmentMachine"
+require_contains "${docs_root}/how-to/install-or-update.md" "current/bin/kast"
+require_contains "${docs_root}/tutorials/first-compiler-backed-task.md" "IdeaIndexSemanticAdmission"
+require_contains "${docs_root}/how-to/explore-kotlin-code.md" "coverage is complete or limited"
+require_contains "${docs_root}/how-to/plan-safe-edits.md" "one exact compiler identity"
+require_contains "${docs_root}/reference/cli.md" 'kast agent'
+require_contains "${docs_root}/reference/cli.md" '`toon`'
+require_contains "${docs_root}/reference/codex-plugin.md" 'tracks its `main` branch independently'
+require_contains "${docs_root}/explanation/architecture.md" "exact workspace"
+require_contains "${docs_root}/explanation/compiler-evidence.md" "scope fingerprint"
+require_contains "${docs_root}/how-to/troubleshoot.md" 'Do not edit `current`'
 
-require_not_contains "$docs_root" "kast agent"
-require_not_contains "$docs_root" "--output"
-require_not_contains "$docs_root" "Headless Linux"
 require_not_contains "$docs_root" "codex plugin marketplace add"
 require_not_contains "$docs_root" "Homebrew"
 require_not_contains "$docs_root" "kast repair"
 require_not_contains "$docs_root" "kast machine"
+require_not_contains "$docs_root" "raw/semantic-graph"
 
 python3 - "$docs_root" "${expected_pages[@]}" <<'PY'
 import sys
