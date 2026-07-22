@@ -250,14 +250,10 @@ fn setup_replaces_incompatible_legacy_idea_activation() {
         &std::fs::read(kast_home.join("current/receipt.json")).expect("replacement receipt"),
     )
     .expect("replacement receipt JSON");
-    assert_eq!(
-        receipt["manifestDigest"],
-        test_path_sha256(&manifest_path)
-    );
-    let manifest: serde_json::Value = serde_json::from_slice(
-        &std::fs::read(&manifest_path).expect("replacement manifest"),
-    )
-    .expect("replacement manifest JSON");
+    assert_eq!(receipt["manifestDigest"], test_path_sha256(&manifest_path));
+    let manifest: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&manifest_path).expect("replacement manifest"))
+            .expect("replacement manifest JSON");
     assert_eq!(
         manifest["artifacts"][0]["sha256"],
         test_path_sha256(&kast_home.join("current/bin/kast"))
