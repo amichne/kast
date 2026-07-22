@@ -110,6 +110,7 @@ object KastIdeaBackendRuntime {
                 backendName = backendName,
                 workspaceIdentity = workspaceIdentity,
                 referenceIndexLookup = DiagnosticsReferenceIndexLookup(diagnostics, sourceIndexStore),
+                semanticGraphStore = sourceIndexStore,
                 indexSemanticAdmissionStatus = semanticAdmission::status,
             )
             pluginBackend = startedPluginBackend

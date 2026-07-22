@@ -4,7 +4,7 @@ use crate::SCHEMA_VERSION;
 use crate::cli::OutputFormat;
 use crate::cli::{
     AgentAddFileArgs, AgentCallsArgs, AgentCommand, AgentDiagnosticsArgs, AgentDiagnosticsField,
-    AgentDiagnosticsViewArgs, AgentExactSymbolSelectorArgs, AgentHierarchyArgs,
+    AgentDiagnosticsViewArgs, AgentExactSymbolSelectorArgs, AgentGraphifyArgs, AgentHierarchyArgs,
     AgentHierarchyDirection, AgentImpactArgs, AgentImpactField, AgentImpactPageToken,
     AgentImpactViewArgs, AgentImplementationsArgs, AgentLeaseArgs, AgentLeaseCommand,
     AgentMutationApplyArgs, AgentMutationField, AgentMutationViewArgs, AgentReferencesArgs,
@@ -44,6 +44,7 @@ include!("agent/types.rs");
 include!("agent/path.rs");
 include!("agent/public_capabilities.rs");
 include!("agent/workspace_files.rs");
+include!("agent/graphify.rs");
 include!("agent/relations.rs");
 include!("agent/dispatch.rs");
 include!("agent/request.rs");

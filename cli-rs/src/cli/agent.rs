@@ -15,6 +15,8 @@ pub enum AgentCommand {
     Verify(AgentVerifyArgs),
     /// Discover Kotlin source and script files with typed workspace evidence.
     WorkspaceFiles(AgentWorkspaceFilesArgs),
+    /// Project compiler-backed Kotlin semantics into Graphify extraction JSON.
+    Graphify(AgentGraphifyArgs),
     /// Query and resolve a symbol identity.
     Symbol(AgentSymbolArgs),
     /// Find bounded references to one compiler-anchored declaration.
@@ -140,6 +142,21 @@ pub struct AgentVerifyArgs {
     pub runtime: AgentRuntimeArgs,
     #[command(flatten)]
     pub view: AgentVerifyViewArgs,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct AgentGraphifyArgs {
+    #[command(flatten)]
+    pub runtime: AgentRuntimeArgs,
+    /// Graphify detection or incremental manifest JSON.
+    #[arg(long)]
+    pub manifest: PathBuf,
+    /// Atomic destination for the Kotlin Graphify extraction fragment.
+    #[arg(long)]
+    pub output_file: PathBuf,
+    /// Existing Kast-v1 graph required for incremental extraction.
+    #[arg(long)]
+    pub base_graph: Option<PathBuf>,
 }
 
 #[derive(Debug, Args, Clone)]

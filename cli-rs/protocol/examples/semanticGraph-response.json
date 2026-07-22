@@ -1,0 +1,31 @@
+{
+    "result": {
+        "generation": 0,
+        "scopeFingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+        "coverage": {
+            "files": [
+                {
+                    "path": "src/Sample.kt",
+                    "contentHash": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72",
+                    "status": "REFRESHED",
+                    "diagnostics": []
+                }
+            ],
+            "omittedExternalTargetCount": 0
+        },
+        "symbols": [
+            {
+                "canonicalKey": "file:src/Sample.kt",
+                "kind": "FILE",
+                "name": "Sample.kt",
+                "path": "src/Sample.kt",
+                "startOffset": 0,
+                "endOffset": 56,
+                "line": 1
+            }
+        ],
+        "relations": []
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

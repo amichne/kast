@@ -21,6 +21,7 @@ import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.SemanticGraphResult
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
@@ -39,6 +40,7 @@ import io.github.amichne.kast.api.validation.ParsedReferencesQuery
 import io.github.amichne.kast.api.validation.ParsedRefreshQuery
 import io.github.amichne.kast.api.validation.ParsedRenameQuery
 import io.github.amichne.kast.api.validation.ParsedSemanticInsertionQuery
+import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.api.validation.ParsedSymbolQuery
 import io.github.amichne.kast.api.validation.ParsedTypeHierarchyQuery
 import io.github.amichne.kast.api.validation.ParsedWorkspaceFilesQuery
@@ -116,6 +118,9 @@ internal class ObservedAnalysisBackend(
 
     override suspend fun workspaceFiles(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult =
         observe(KastBackendOperation.WORKSPACE_FILES) { delegate.workspaceFiles(query) }
+
+    override suspend fun semanticGraph(query: ParsedSemanticGraphQuery): SemanticGraphResult =
+        observe(KastBackendOperation.SEMANTIC_GRAPH) { delegate.semanticGraph(query) }
 
     override suspend fun implementations(query: ParsedImplementationsQuery): ImplementationsResult =
         observe(KastBackendOperation.IMPLEMENTATIONS) { delegate.implementations(query) }

@@ -19,6 +19,7 @@ categories:
   - raw/workspace-symbol
   - raw/workspace-search
   - raw/workspace-files
+  - raw/semantic-graph
   - raw/workspace-files-continuation
   - raw/implementations
   - raw/code-actions
@@ -544,6 +545,33 @@ commands:
       - position
     responseType: SymbolResult
     summary: Resolve the symbol at a file position
+  raw/semantic-graph:
+    category: raw
+    dataSource: backend
+    method: raw/semantic-graph
+    notes:
+    - The scope must contain at least one selected or removed Kotlin path.
+    - Continuation is an opaque single-use token bound to the selected and removed path scope.
+    request:
+      fields:
+        continuation:
+          nullable: true
+          optional: true
+          sample: 00000000-0000-4000-8000-000000000337
+          type: string
+        filePaths:
+          items: string
+          optional: true
+          type: array
+        pageSize:
+          optional: true
+          type: integer
+        removedFilePaths:
+          items: string
+          optional: true
+          type: array
+    responseType: SemanticGraphResult
+    summary: Project compiler-backed Kotlin symbols and relations
   raw/semantic-insertion-point:
     category: raw
     dataSource: backend

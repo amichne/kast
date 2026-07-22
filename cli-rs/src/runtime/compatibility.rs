@@ -14,6 +14,7 @@ pub(crate) enum WorkspaceReadCapability {
     CallHierarchy,
     TypeHierarchy,
     SemanticInsertionPoint,
+    SemanticGraph,
     Diagnostics,
     FileOutline,
     WorkspaceSymbolSearch,

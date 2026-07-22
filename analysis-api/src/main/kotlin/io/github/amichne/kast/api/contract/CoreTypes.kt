@@ -2,6 +2,7 @@ package io.github.amichne.kast.api.contract
 
 import io.github.amichne.kast.api.docs.DocField
 import io.github.amichne.kast.api.protocol.*
+import kotlinx.serialization.Serializable
 
 import java.nio.file.Files
 import java.nio.file.Path
@@ -124,6 +125,7 @@ value class PackageName(val value: String) {
 /**
  * A fully-qualified Kotlin name (dot-separated).
  */
+@Serializable
 @JvmInline
 value class FqName(val value: String) {
     override fun toString(): String = value
@@ -134,6 +136,7 @@ value class FqName(val value: String) {
  *
  * @throws IllegalArgumentException if [value] is negative.
  */
+@Serializable
 @JvmInline
 value class ByteOffset(val value: Int) : Comparable<ByteOffset> {
     init {
@@ -150,6 +153,7 @@ value class ByteOffset(val value: Int) : Comparable<ByteOffset> {
  *
  * @throws IllegalArgumentException if [value] is less than 1.
  */
+@Serializable
 @JvmInline
 value class LineNumber(val value: Int) {
     init {
@@ -176,6 +180,7 @@ value class ColumnNumber(val value: Int) {
 /**
  * An integer that must be at least one.
  */
+@Serializable
 @JvmInline
 value class PositiveInt(val value: Int) {
     init {
@@ -188,6 +193,7 @@ value class PositiveInt(val value: Int) {
 /**
  * An integer that may be zero but not negative.
  */
+@Serializable
 @JvmInline
 value class NonNegativeInt(val value: Int) {
     init {
@@ -212,6 +218,7 @@ value class PositiveLong(val value: Long) {
 /**
  * A string that must contain non-whitespace content.
  */
+@Serializable
 @JvmInline
 value class NonBlankString(val value: String) {
     init {

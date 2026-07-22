@@ -109,7 +109,7 @@ category. Expand any operation to see its input and output schemas.
 
     !!! abstract "At a glance"
 
-        13 read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions.
+        14 read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions.
 
     ??? info "raw/resolve — Resolve the symbol at a file position"
 
@@ -320,6 +320,29 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin modules: List<WorkspaceModule>` | List of workspace modules visible to the daemon. |
             | `#!kotlin snapshotToken: String` | Opaque reusable handle identifying the coherent workspace inventory snapshot. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+
+    ??? info "raw/semantic-graph — Export a compiler-backed Kotlin semantic graph page"
+
+        **Capability** &nbsp;·&nbsp; `SEMANTIC_GRAPH`
+
+        === "Input: SemanticGraphQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin filePaths: List<String>` | Sorted absolute Kotlin files to refresh or read. |
+            | `#!kotlin removedFilePaths: List<String>?` | Sorted absolute Kotlin paths removed from the workspace. |
+            | `#!kotlin pageSize: PositiveInt?` | Maximum combined symbol and relation records in one page. |
+            | `#!kotlin continuation: SemanticGraphPageToken?` | Opaque continuation returned by the preceding page. |
+        === "Output: SemanticGraphResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin generation: SemanticGraphGeneration` | Shared source-index generation bound to this page sequence. |
+            | `#!kotlin scopeFingerprint: SemanticGraphSha256` | SHA-256 fingerprint of the selected and removed path scope. |
+            | `#!kotlin coverage: SemanticGraphCoverage` | Refresh, diagnostic, and omission evidence for the scope. |
+            | `#!kotlin symbols: List<SemanticGraphSymbol>` | Semantic symbol records included in this page. |
+            | `#!kotlin relations: List<SemanticGraphRelation>` | Semantic relation records included in this page. |
+            | `#!kotlin nextPageToken: SemanticGraphPageToken?` | Opaque token for the next page, or null when complete. |
 
     ??? info "raw/workspace-files-continuation — Issue or consume public workspace-file continuation state"
 

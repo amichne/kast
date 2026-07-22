@@ -272,6 +272,22 @@ object OperationDocRegistry {
             ),
         ),
         OperationDoc(
+            operationId = "semanticGraph",
+            jsonRpcMethod = "raw/semantic-graph",
+            summary = "Export a compiler-backed Kotlin semantic graph page",
+            tag = "read",
+            capability = "SEMANTIC_GRAPH",
+            requestSchema = "SemanticGraphQuery",
+            responseSchema = "SemanticGraphResult",
+            description = "Refreshes selected Kotlin files through K2 analysis and exports provider-neutral symbols, relations, and coverage evidence.",
+            behavioralNotes = listOf(
+                "PSI is used only inside the IDEA backend for enumeration and source ranges; no PSI or Analysis API object crosses the contract boundary.",
+                "Continuation tokens are single-use and bound to the exact path scope, page size, and shared source-index generation.",
+                "Compiler-resolved library and JDK targets are omitted and counted in coverage evidence.",
+            ),
+            errorCodes = listOf("CAPABILITY_NOT_SUPPORTED", "VALIDATION_ERROR", "CONFLICT"),
+        ),
+        OperationDoc(
             operationId = "workspaceFilesContinuation",
             jsonRpcMethod = "raw/workspace-files-continuation",
             summary = "Issue or consume public workspace-file continuation state",

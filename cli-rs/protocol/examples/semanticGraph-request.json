@@ -1,0 +1,12 @@
+{
+    "method": "raw/semantic-graph",
+    "params": {
+        "filePaths": [
+            "/workspace/src/Sample.kt"
+        ],
+        "removedFilePaths": [],
+        "pageSize": 500
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

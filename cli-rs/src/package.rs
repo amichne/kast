@@ -254,7 +254,7 @@ fn copy_license(repo_root: &Path, staging_root: &Path) -> Result<()> {
 
 fn write_tar_gz(source_dir: &Path, archive_root_name: &str, output: &Path) -> Result<()> {
     let file = fs::File::create(output)?;
-    let encoder = GzEncoder::new(file, Compression::default());
+    let encoder = GzEncoder::new(file, Compression::fast());
     let mut archive = tar::Builder::new(encoder);
     archive
         .append_dir_all(archive_root_name, source_dir)
@@ -482,4 +482,22 @@ fn set_mode(_path: &Path, _mode: u32) -> Result<()> {
 
 fn zip_entry_is_symlink(mode: Option<u32>) -> bool {
     mode.is_some_and(|mode| mode & 0o170000 == 0o120000)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn write_tar_gz_uses_fast_compression() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let source = temp.path().join("source");
+        let output = temp.path().join("bundle.tar.gz");
+        fs::create_dir(&source).expect("source directory");
+        fs::write(source.join("payload"), vec![0_u8; 1024]).expect("payload");
+
+        write_tar_gz(&source, "bundle", &output).expect("bundle archive");
+
+        assert_eq!(fs::read(output).expect("gzip archive")[8], 4);
+    }
 }

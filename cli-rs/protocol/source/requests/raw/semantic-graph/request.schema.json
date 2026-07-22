@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "raw/semantic-graph"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": false,
+      "properties": {
+        "continuation": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "filePaths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "pageSize": {
+          "type": "integer"
+        },
+        "removedFilePaths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast raw/semantic-graph JSON-RPC request",
+  "type": "object"
+}

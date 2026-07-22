@@ -34,6 +34,7 @@ import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationAction
@@ -64,6 +65,7 @@ import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
+import io.github.amichne.kast.api.contract.result.SemanticGraphResult
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
@@ -320,6 +322,8 @@ object OpenApiDocument {
         registry.register("WorkspaceSearchResult", WorkspaceSearchResult.serializer())
         registry.register("WorkspaceFilesQuery", WorkspaceFilesQuery.serializer())
         registry.register("WorkspaceFilesResult", WorkspaceFilesResult.serializer())
+        registry.register("SemanticGraphQuery", SemanticGraphQuery.serializer())
+        registry.register("SemanticGraphResult", SemanticGraphResult.serializer())
         registry.register("WorkspaceFilesContinuationAction", WorkspaceFilesContinuationAction.serializer())
         registry.register("WorkspaceFilesContinuationQuery", WorkspaceFilesContinuationQuery.serializer())
         registry.registerSynthetic(
@@ -475,6 +479,14 @@ object OpenApiDocument {
             requestSchema = "WorkspaceFilesQuery",
             responseSchema = "WorkspaceFilesResult",
             capability = "WORKSPACE_FILES",
+        ),
+        "/rpc/raw/semantic-graph" to readMethod(
+            operationId = "semanticGraph",
+            summary = "Export a compiler-backed Kotlin semantic graph page",
+            method = "raw/semantic-graph",
+            requestSchema = "SemanticGraphQuery",
+            responseSchema = "SemanticGraphResult",
+            capability = "SEMANTIC_GRAPH",
         ),
         "/rpc/raw/workspace-files-continuation" to internalReadMethod(
             operationId = "workspaceFilesContinuation",

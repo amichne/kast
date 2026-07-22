@@ -1,0 +1,15 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "raw/semantic-graph",
+  "params": {
+    "continuation": "00000000-0000-4000-8000-000000000337",
+    "filePaths": [
+      "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt"
+    ],
+    "pageSize": 1,
+    "removedFilePaths": [
+      "example-removedFilePath"
+    ]
+  }
+}

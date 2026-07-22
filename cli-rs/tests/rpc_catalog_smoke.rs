@@ -9,6 +9,36 @@ fn catalog() -> Value {
 }
 
 #[test]
+fn semantic_graph_request_is_catalog_valid() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "raw/semantic-graph",
+        "params": {
+            "filePaths": ["/workspace/Example.kt"],
+            "removedFilePaths": ["/workspace/Removed.kt"],
+            "pageSize": 500,
+            "continuation": "00000000-0000-4000-8000-000000000337"
+        }
+    })
+    .to_string();
+
+    let validator = Command::new(env!("CARGO_BIN_EXE_kast"))
+        .current_dir(root)
+        .args(["developer", "release", "validate", &request])
+        .output()
+        .expect("catalog request validation");
+
+    assert!(
+        validator.status.success(),
+        "stdout={}, stderr={}",
+        String::from_utf8_lossy(&validator.stdout),
+        String::from_utf8_lossy(&validator.stderr)
+    );
+}
+
+#[test]
 fn symbol_resolve_catalog_declares_every_exact_outcome() {
     let catalog = catalog();
     assert_eq!(

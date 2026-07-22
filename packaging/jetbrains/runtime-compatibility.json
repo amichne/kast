@@ -68,6 +68,10 @@
         },
         {
           "kind": "READ",
+          "name": "SEMANTIC_GRAPH"
+        },
+        {
+          "kind": "READ",
           "name": "SEMANTIC_INSERTION_POINT"
         },
         {

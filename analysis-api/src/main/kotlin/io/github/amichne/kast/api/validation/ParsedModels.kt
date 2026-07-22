@@ -329,6 +329,15 @@ fun WorkspaceFilesQuery.parsed(): ParsedWorkspaceFilesQuery = validationBoundary
     )
 }
 
+fun SemanticGraphQuery.parsed(): ParsedSemanticGraphQuery = validationBoundary {
+    ParsedSemanticGraphQuery(
+        filePaths = filePaths.distinct().sorted(),
+        removedFilePaths = removedFilePaths.distinct().sorted(),
+        pageSize = pageSize,
+        continuation = continuation,
+    )
+}
+
 fun ImplementationsQuery.parsed(): ParsedImplementationsQuery = validationBoundary {
     ParsedImplementationsQuery(
         position = position.parsed(),

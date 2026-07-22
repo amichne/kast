@@ -17,6 +17,7 @@ import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
+import io.github.amichne.kast.api.contract.result.SemanticGraphResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
@@ -137,6 +138,13 @@ interface AnalysisBackend {
         throw CapabilityNotSupportedException(
             capability = "WORKSPACE_FILES",
             message = "Workspace file listing is not available for this backend",
+        )
+    }
+
+    suspend fun semanticGraph(query: ParsedSemanticGraphQuery): SemanticGraphResult {
+        throw CapabilityNotSupportedException(
+            capability = "SEMANTIC_GRAPH",
+            message = "Semantic graph extraction is not available for this backend",
         )
     }
 

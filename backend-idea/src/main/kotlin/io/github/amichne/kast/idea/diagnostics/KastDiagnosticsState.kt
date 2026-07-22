@@ -337,6 +337,7 @@ internal enum class KastBackendOperation(val displayName: String) {
     WORKSPACE_SYMBOL_SEARCH("Workspace symbols"),
     WORKSPACE_SEARCH("Workspace search"),
     WORKSPACE_FILES("Workspace files"),
+    SEMANTIC_GRAPH("Semantic graph"),
     IMPLEMENTATIONS("Implementations"),
     CODE_ACTIONS("Code actions"),
     COMPLETIONS("Completions"),

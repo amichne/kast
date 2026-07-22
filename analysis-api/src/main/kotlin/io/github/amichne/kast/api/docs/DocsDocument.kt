@@ -15,6 +15,7 @@ import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationAction
@@ -51,6 +52,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
+import io.github.amichne.kast.api.contract.result.SemanticGraphResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -159,6 +161,8 @@ object DocsDocument {
         "WorkspaceSearchResult" to WorkspaceSearchResult.serializer(),
         "WorkspaceFilesQuery" to WorkspaceFilesQuery.serializer(),
         "WorkspaceFilesResult" to WorkspaceFilesResult.serializer(),
+        "SemanticGraphQuery" to SemanticGraphQuery.serializer(),
+        "SemanticGraphResult" to SemanticGraphResult.serializer(),
         "WorkspaceFilesContinuationAction" to WorkspaceFilesContinuationAction.serializer(),
         "WorkspaceFilesContinuationQuery" to WorkspaceFilesContinuationQuery.serializer(),
         "WorkspaceFilesPublicContinuationIdentity" to WorkspaceFilesPublicContinuationIdentity.serializer(),

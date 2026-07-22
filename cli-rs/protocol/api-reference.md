@@ -292,6 +292,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "WORKSPACE_SYMBOL_SEARCH",
                         "WORKSPACE_SEARCH",
                         "WORKSPACE_FILES",
+                        "SEMANTIC_GRAPH",
                         "IMPLEMENTATIONS",
                         "CODE_ACTIONS",
                         "COMPLETIONS"
@@ -322,7 +323,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
     !!! abstract "At a glance"
 
-        13 read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions.
+        14 read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions.
 
     ??? example "raw/resolve — Resolve the symbol at a file position"
 
@@ -1303,6 +1304,95 @@ daemon, including input/output schemas, examples, and behavioral notes.
             - Unknown, replayed, mismatched, evicted, or stale snapshot and page handles fail instead of restarting enumeration.
 
         **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`, `INVALID_WORKSPACE_FILE_CURSOR`, `STALE_WORKSPACE_INVENTORY`
+
+    ??? example "raw/semantic-graph — Export a compiler-backed Kotlin semantic graph page"
+
+        Refreshes selected Kotlin files through K2 analysis and exports provider-neutral symbols, relations, and coverage evidence.
+
+        **Capability** &nbsp;·&nbsp; `SEMANTIC_GRAPH`
+
+        === "Input: SemanticGraphQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin filePaths: List<String>` | Sorted absolute Kotlin files to refresh or read. |
+            | `#!kotlin removedFilePaths: List<String>?` | Sorted absolute Kotlin paths removed from the workspace. |
+            | `#!kotlin pageSize: PositiveInt?` | Maximum combined symbol and relation records in one page. |
+            | `#!kotlin continuation: SemanticGraphPageToken?` | Opaque continuation returned by the preceding page. |
+        === "Output: SemanticGraphResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin generation: SemanticGraphGeneration` | Shared source-index generation bound to this page sequence. |
+            | `#!kotlin scopeFingerprint: SemanticGraphSha256` | SHA-256 fingerprint of the selected and removed path scope. |
+            | `#!kotlin coverage: SemanticGraphCoverage` | Refresh, diagnostic, and omission evidence for the scope. |
+            | `#!kotlin symbols: List<SemanticGraphSymbol>` | Semantic symbol records included in this page. |
+            | `#!kotlin relations: List<SemanticGraphRelation>` | Semantic relation records included in this page. |
+            | `#!kotlin nextPageToken: SemanticGraphPageToken?` | Opaque token for the next page, or null when complete. |
+        === "Internal protocol"
+
+            ```text
+            JSON-RPC method: raw/semantic-graph
+            Params: see Request tab
+            ```
+        === "Request"
+
+            ```json
+            {
+                "method": "raw/semantic-graph",
+                "params": {
+                    "filePaths": [
+                        "/workspace/src/Sample.kt"
+                    ],
+                    "removedFilePaths": [],
+                    "pageSize": 500
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "generation": 0,
+                    "scopeFingerprint": "0000000000000000000000000000000000000000000000000000000000000000",
+                    "coverage": {
+                        "files": [
+                            {
+                                "path": "src/Sample.kt",
+                                "contentHash": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72",
+                                "status": "REFRESHED",
+                                "diagnostics": []
+                            }
+                        ],
+                        "omittedExternalTargetCount": 0
+                    },
+                    "symbols": [
+                        {
+                            "canonicalKey": "file:src/Sample.kt",
+                            "kind": "FILE",
+                            "name": "Sample.kt",
+                            "path": "src/Sample.kt",
+                            "startOffset": 0,
+                            "endOffset": 56,
+                            "line": 1
+                        }
+                    ],
+                    "relations": []
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        !!! note "Behavioral notes"
+
+            - PSI is used only inside the IDEA backend for enumeration and source ranges; no PSI or Analysis API object crosses the contract boundary.
+            - Continuation tokens are single-use and bound to the exact path scope, page size, and shared source-index generation.
+            - Compiler-resolved library and JDK targets are omitted and counted in coverage evidence.
+
+        **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`, `VALIDATION_ERROR`, `CONFLICT`
 
     ??? example "raw/workspace-files-continuation — Issue or consume public workspace-file continuation state"
 

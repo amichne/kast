@@ -50,6 +50,7 @@ import io.github.amichne.kast.api.contract.result.ContainingSymbolUnavailableRea
 import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.SemanticGraphResult
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.SearchScopeKind
@@ -90,6 +91,12 @@ import io.github.amichne.kast.idea.backend.relationships.*
 import io.github.amichne.kast.idea.backend.diagnostics.*
 import io.github.amichne.kast.idea.backend.mutation.*
 import io.github.amichne.kast.idea.backend.workspace.*
+import io.github.amichne.kast.idea.backend.semantic.semanticGraphOperation
+import io.github.amichne.kast.idea.backend.semantic.SemanticGraphContinuationProjection
+import io.github.amichne.kast.idea.backend.semantic.SemanticGraphContinuationState
+import io.github.amichne.kast.idea.backend.semantic.SemanticGraphQueryIdentity
+import io.github.amichne.kast.api.contract.query.SemanticGraphPageToken
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 
 internal class KastPluginBackend(
     internal val project: Project,
@@ -99,6 +106,7 @@ internal class KastPluginBackend(
     internal val backendName: String? = null,
     internal val workspaceIdentity: IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
     internal val referenceIndexLookup: ReferenceIndexLookup = ReferenceIndexLookup.Unavailable,
+    internal val semanticGraphStore: SqliteSourceIndexStore? = null,
     internal val referenceSearchClock: ReferenceSearchClock = ReferenceSearchClock.System,
     internal val semanticAdmissionAwaiter: IdeaSemanticAdmissionAwaiter =
         IdeaSemanticAdmissionAwaiter.forRequestBudget(limits.requestTimeoutMillis),
@@ -149,6 +157,17 @@ internal class KastPluginBackend(
         capacity = limits.typedContinuationCapacity,
         timeToLive = limits.typedContinuationTtl,
         tokenIssuer = ContinuationTokenIssuer(DiagnosticPageToken::random),
+        stateDisposer = ContinuationStateDisposer { },
+    )
+    internal val semanticGraphContinuations = SharedContinuationStore<
+        SemanticGraphPageToken,
+        SemanticGraphQueryIdentity,
+        SemanticGraphContinuationState,
+        SemanticGraphContinuationProjection,
+    >(
+        capacity = limits.typedContinuationCapacity,
+        timeToLive = limits.typedContinuationTtl,
+        tokenIssuer = ContinuationTokenIssuer(SemanticGraphPageToken::random),
         stateDisposer = ContinuationStateDisposer { },
     )
     internal val relationshipContinuations = RelationshipContinuationStore(limits)
@@ -216,7 +235,7 @@ internal class KastPluginBackend(
             ReadCapability.IMPLEMENTATIONS,
             ReadCapability.CODE_ACTIONS,
             ReadCapability.COMPLETIONS,
-        ),
+        ) + setOfNotNull(ReadCapability.SEMANTIC_GRAPH.takeIf { semanticGraphStore != null }),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
             MutationCapability.APPLY_EDITS,
@@ -283,6 +302,7 @@ internal class KastPluginBackend(
     override suspend fun codeActions(query: ParsedCodeActionsQuery): CodeActionsResult = codeActionsOperation(query)
     override suspend fun completions(query: ParsedCompletionsQuery): CompletionsResult = completionsOperation(query)
     override suspend fun workspaceFiles(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult = workspaceFilesOperation(query)
+    override suspend fun semanticGraph(query: ParsedSemanticGraphQuery): SemanticGraphResult = semanticGraphOperation(query)
     override suspend fun semanticInsertionPoint(query: ParsedSemanticInsertionQuery): SemanticInsertionResult = semanticInsertionPointOperation(query)
     override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult = diagnosticsOperation(query)
     override suspend fun rename(query: ParsedRenameQuery): RenameResult = renameOperation(query)
@@ -391,6 +411,7 @@ internal class KastPluginBackend(
         val failures = listOf(
             runCatching(referenceContinuations::close).exceptionOrNull(),
             runCatching(diagnosticContinuations::close).exceptionOrNull(),
+            runCatching(semanticGraphContinuations::close).exceptionOrNull(),
             runCatching(relationshipContinuations::close).exceptionOrNull(),
             runCatching(workspaceFilePaging::close).exceptionOrNull(),
         ).filterNotNull()

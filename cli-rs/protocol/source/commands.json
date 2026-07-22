@@ -45,6 +45,7 @@
       "raw/workspace-symbol",
       "raw/workspace-search",
       "raw/workspace-files",
+      "raw/semantic-graph",
       "raw/workspace-files-continuation",
       "raw/implementations",
       "raw/code-actions",
@@ -2336,6 +2337,41 @@
         "name": "kast_workspace_files",
         "description": "Enumerate compiler/project-model Kotlin modules and generation-bound source or script file pages. Capture snapshotToken from the module inventory, then request exact-module pages with kindDomain and snapshotToken until nextPageToken is absent."
       }
+    },
+    "raw/semantic-graph": {
+      "method": "raw/semantic-graph",
+      "category": "raw",
+      "summary": "Project compiler-backed Kotlin symbols and relations",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "filePaths": {
+            "type": "array",
+            "optional": true,
+            "items": "string"
+          },
+          "removedFilePaths": {
+            "type": "array",
+            "optional": true,
+            "items": "string"
+          },
+          "pageSize": {
+            "type": "integer",
+            "optional": true
+          },
+          "continuation": {
+            "type": "string",
+            "optional": true,
+            "nullable": true,
+            "sample": "00000000-0000-4000-8000-000000000337"
+          }
+        }
+      },
+      "responseType": "SemanticGraphResult",
+      "notes": [
+        "The scope must contain at least one selected or removed Kotlin path.",
+        "Continuation is an opaque single-use token bound to the selected and removed path scope."
+      ]
     },
     "raw/workspace-files-continuation": {
       "method": "raw/workspace-files-continuation",

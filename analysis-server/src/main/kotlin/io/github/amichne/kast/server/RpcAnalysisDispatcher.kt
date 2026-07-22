@@ -41,6 +41,8 @@ import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
+import io.github.amichne.kast.api.contract.result.SemanticGraphResult
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.query.RenameQuery
@@ -346,6 +348,20 @@ class RpcAnalysisDispatcher(
                         }
                         requireReadCapability(ReadCapability.WORKSPACE_FILES)
                     }.parsed(),
+                ),
+            )
+
+            "raw/semantic-graph" -> encode(
+                SemanticGraphResult.serializer(),
+                backend.semanticGraph(
+                    decodeParams(SemanticGraphQuery.serializer(), params).parsed().also { query ->
+                        if (query.pageSize.value > config.maxResults) {
+                            throw ValidationException(
+                                "Semantic graph pageSize must be less than or equal to server maxResults (${config.maxResults})",
+                            )
+                        }
+                        requireReadCapability(ReadCapability.SEMANTIC_GRAPH)
+                    },
                 ),
             )
 

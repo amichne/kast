@@ -16,6 +16,8 @@ import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.query.SemanticGraphPath
+import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.query.SymbolQuery
@@ -238,6 +240,13 @@ object DocExampleGenerator {
             json.encodeToJsonElement(
                 WorkspaceFilesQuery.serializer(),
                 WorkspaceFilesQuery(),
+            ),
+        )
+        ops += "semanticGraph" to request(
+            "raw/semantic-graph",
+            json.encodeToJsonElement(
+                SemanticGraphQuery.serializer(),
+                SemanticGraphQuery(filePaths = listOf(SemanticGraphPath.parse(sampleFile))),
             ),
         )
         ops += "workspaceFilesContinuation" to request(

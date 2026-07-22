@@ -26,6 +26,7 @@ READ_CAPABILITIES = frozenset(
         "CALL_HIERARCHY",
         "TYPE_HIERARCHY",
         "SEMANTIC_INSERTION_POINT",
+        "SEMANTIC_GRAPH",
         "DIAGNOSTICS",
         "FILE_OUTLINE",
         "WORKSPACE_SYMBOL_SEARCH",

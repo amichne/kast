@@ -73,6 +73,7 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         AgentCommand::Workflow(_) => unreachable!("workflow is handled before request prep"),
         AgentCommand::Verify(args) => execute_agent_verify(args),
         AgentCommand::WorkspaceFiles(args) => execute_agent_workspace_files(args),
+        AgentCommand::Graphify(args) => execute_agent_graphify(args),
         AgentCommand::Symbol(args) => execute_agent_symbol(args),
         AgentCommand::References(args) => execute_agent_references(args),
         AgentCommand::Callers(args) => execute_agent_callers(args),
@@ -106,6 +107,7 @@ fn agent_command_runtime(command: &AgentCommand) -> Option<&AgentRuntimeArgs> {
     match command {
         AgentCommand::Verify(args) => Some(&args.runtime),
         AgentCommand::WorkspaceFiles(args) => Some(&args.runtime),
+        AgentCommand::Graphify(args) => Some(&args.runtime),
         AgentCommand::Symbol(args) => Some(&args.runtime),
         AgentCommand::References(args) => Some(&args.runtime),
         AgentCommand::Callers(args) | AgentCommand::Callees(args) => Some(&args.runtime),

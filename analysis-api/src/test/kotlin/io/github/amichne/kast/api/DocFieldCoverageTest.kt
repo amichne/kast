@@ -15,6 +15,9 @@ import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.query.SemanticGraphPageToken
+import io.github.amichne.kast.api.contract.query.SemanticGraphPath
+import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationQuery
@@ -56,6 +59,16 @@ import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
 import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
+import io.github.amichne.kast.api.contract.result.SemanticGraphCoverage
+import io.github.amichne.kast.api.contract.result.SemanticGraphDiagnosticEvidence
+import io.github.amichne.kast.api.contract.result.SemanticGraphFileCoverage
+import io.github.amichne.kast.api.contract.result.SemanticGraphGeneration
+import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
+import io.github.amichne.kast.api.contract.result.SemanticGraphResult
+import io.github.amichne.kast.api.contract.result.SemanticGraphSha256
+import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbol
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.protocol.*
 import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
@@ -171,6 +184,19 @@ class DocFieldCoverageTest {
         "SearchMatch" to SearchMatch.serializer(),
         "WorkspaceFilesQuery" to WorkspaceFilesQuery.serializer(),
         "WorkspaceFilesResult" to WorkspaceFilesResult.serializer(),
+        "SemanticGraphPath" to SemanticGraphPath.serializer(),
+        "SemanticGraphPageToken" to SemanticGraphPageToken.serializer(),
+        "SemanticGraphQuery" to SemanticGraphQuery.serializer(),
+        "SemanticGraphSymbolKey" to SemanticGraphSymbolKey.serializer(),
+        "SemanticGraphSourcePath" to SemanticGraphSourcePath.serializer(),
+        "SemanticGraphSha256" to SemanticGraphSha256.serializer(),
+        "SemanticGraphGeneration" to SemanticGraphGeneration.serializer(),
+        "SemanticGraphSymbol" to SemanticGraphSymbol.serializer(),
+        "SemanticGraphRelation" to SemanticGraphRelation.serializer(),
+        "SemanticGraphDiagnosticEvidence" to SemanticGraphDiagnosticEvidence.serializer(),
+        "SemanticGraphFileCoverage" to SemanticGraphFileCoverage.serializer(),
+        "SemanticGraphCoverage" to SemanticGraphCoverage.serializer(),
+        "SemanticGraphResult" to SemanticGraphResult.serializer(),
         "WorkspaceFilesContinuationQuery" to WorkspaceFilesContinuationQuery.serializer(),
         "WorkspaceFilesContinuationQuery.Issue" to WorkspaceFilesContinuationQuery.serializer(),
         "WorkspaceFilesContinuationQuery.Consume" to WorkspaceFilesContinuationQuery.serializer(),

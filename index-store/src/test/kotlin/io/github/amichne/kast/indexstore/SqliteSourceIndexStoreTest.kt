@@ -129,14 +129,14 @@ class SqliteSourceIndexStoreTest {
     }
 
     @Test
-    fun `claimed version eight missing provenance structures fails closed`() {
+    fun `claimed current version missing required structures fails closed`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val dbPath = sourceIndexDatabasePath(normalized)
         Files.createDirectories(dbPath.parent)
         DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
             conn.createStatement().use { stmt ->
                 stmt.execute("CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0)")
-                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (8, 0)")
+                stmt.execute("INSERT INTO schema_version (version, generation) VALUES ($SOURCE_INDEX_SCHEMA_VERSION, 0)")
             }
         }
 
@@ -147,7 +147,7 @@ class SqliteSourceIndexStoreTest {
     }
 
     @Test
-    fun `claimed version eight without package constraints fails closed`() {
+    fun `claimed current version without package constraints fails closed`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val dbPath = sourceIndexDatabasePath(normalized)
         SqliteSourceIndexStore(normalized).use { store -> store.ensureSchema() }
@@ -177,7 +177,7 @@ class SqliteSourceIndexStoreTest {
     }
 
     @Test
-    fun `claimed version eight without provenance foreign keys fails closed`() {
+    fun `claimed current version without provenance foreign keys fails closed`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val dbPath = sourceIndexDatabasePath(normalized)
         SqliteSourceIndexStore(normalized).use { store -> store.ensureSchema() }
@@ -204,7 +204,7 @@ class SqliteSourceIndexStoreTest {
     }
 
     @Test
-    fun `claimed version eight missing a provenance column fails closed`() {
+    fun `claimed current version missing a provenance column fails closed`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val dbPath = sourceIndexDatabasePath(normalized)
         SqliteSourceIndexStore(normalized).use { store -> store.ensureSchema() }

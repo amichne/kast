@@ -16,6 +16,7 @@ import io.github.amichne.kast.api.continuation.ServerHeldContinuationStore
 import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.BackendCapabilities
+import io.github.amichne.kast.api.contract.ByteOffset
 import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
 import io.github.amichne.kast.api.contract.result.CallHierarchyStats
@@ -35,7 +36,9 @@ import io.github.amichne.kast.api.contract.HealthResponse
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.LineNumber
 import io.github.amichne.kast.api.contract.MutationCapability
+import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.InvalidWorkspaceFileCursorException
 import io.github.amichne.kast.api.protocol.InvalidWorkspaceFileCursorScope
@@ -75,6 +78,16 @@ import io.github.amichne.kast.api.contract.result.WorkspaceModule
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
+import io.github.amichne.kast.api.contract.result.SemanticGraphCoverage
+import io.github.amichne.kast.api.contract.result.SemanticGraphFileCoverage
+import io.github.amichne.kast.api.contract.result.SemanticGraphFileStatus
+import io.github.amichne.kast.api.contract.result.SemanticGraphGeneration
+import io.github.amichne.kast.api.contract.result.SemanticGraphResult
+import io.github.amichne.kast.api.contract.result.SemanticGraphSha256
+import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbol
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
 import io.github.amichne.kast.api.contract.selector.DigestSelectorHandleAuthority
 import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
@@ -86,6 +99,7 @@ import java.nio.file.StandardCopyOption.ATOMIC_MOVE
 import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.UUID
 import kotlin.io.path.writeText
+import kotlin.io.path.readText
 
 class FakeAnalysisBackend private constructor(
     private val workspaceRoot: Path,
@@ -180,6 +194,7 @@ class FakeAnalysisBackend private constructor(
             ReadCapability.WORKSPACE_SYMBOL_SEARCH,
             ReadCapability.WORKSPACE_SEARCH,
             ReadCapability.WORKSPACE_FILES,
+            ReadCapability.SEMANTIC_GRAPH,
             ReadCapability.IMPLEMENTATIONS,
             ReadCapability.CODE_ACTIONS,
             ReadCapability.COMPLETIONS,
@@ -200,6 +215,44 @@ class FakeAnalysisBackend private constructor(
             backendName = capabilities.backendName,
             backendVersion = capabilities.backendVersion,
             workspaceRoot = capabilities.workspaceRoot,
+        )
+    }
+
+    override suspend fun semanticGraph(query: ParsedSemanticGraphQuery): SemanticGraphResult {
+        val coverage = query.filePaths.map { filePath ->
+            val absolute = filePath.value.toJavaPath()
+            requireKnownFile(absolute.toString())
+            val relative = SemanticGraphSourcePath.parse(workspaceRoot.relativize(absolute).toString())
+            SemanticGraphFileCoverage(
+                path = relative,
+                contentHash = SemanticGraphSha256.parse(FileHashing.sha256(absolute.readText())),
+                status = SemanticGraphFileStatus.REFRESHED,
+            )
+        }
+        val removed = query.removedFilePaths.map { filePath ->
+            SemanticGraphFileCoverage(
+                path = SemanticGraphSourcePath.parse(workspaceRoot.relativize(filePath.value.toJavaPath()).toString()),
+                contentHash = null,
+                status = SemanticGraphFileStatus.REMOVED,
+            )
+        }
+        val symbols = coverage.map { file ->
+            SemanticGraphSymbol(
+                canonicalKey = SemanticGraphSymbolKey.parse("file:${file.path.value}"),
+                kind = SemanticGraphSymbolKind.FILE,
+                name = NonBlankString(Path.of(file.path.value).fileName.toString()),
+                path = file.path,
+                startOffset = ByteOffset(0),
+                endOffset = ByteOffset(Files.size(workspaceRoot.resolve(file.path.value)).toInt()),
+                line = LineNumber(1),
+            )
+        }
+        return SemanticGraphResult(
+            generation = SemanticGraphGeneration(0),
+            scopeFingerprint = SemanticGraphSha256.parse("0".repeat(64)),
+            coverage = SemanticGraphCoverage(coverage + removed),
+            symbols = symbols,
+            relations = emptyList(),
         )
     }
 
