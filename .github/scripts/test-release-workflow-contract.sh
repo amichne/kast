@@ -13,6 +13,7 @@ bump_version="$(sed -n '/^  bump-version:/,/^  prepare-release:/p' "$release")"
 prepare_release="$(sed -n '/^  prepare-release:/,/^  validate-jvm:/p' "$release")"
 publish_maven="$(sed -n '/^  publish-maven-central:/,/^  build-cli:/p' "$release")"
 publish_release="$(sed -n '/^  publish-release:/,/^  verify-release-state:/p' "$release")"
+verify_release="$(sed -n '/^  verify-release-state:/,$p' "$release")"
 
 require() {
   local file="$1" text="$2" message="$3"
@@ -37,9 +38,6 @@ done
 require "$release" '--plugin-archive "$work/kast-idea-${tag}.zip"' 'release bundles must include the release-matched IDEA plugin'
 require "$release" 'scripts/verify-setup-bundle.sh' 'release validation must enter through kast setup'
 require "$verify_state" 'verify-setup-bundle.sh' 'published release verification must enter through kast setup'
-require "$verify_state" 'verify-maven-central.sh' 'published release verification must check Maven Central'
-require "$verify_state" '--attempts "$maven_attempts"' 'published Maven verification must retain its retry count'
-require "$verify_state" '--delay-seconds "$maven_delay_seconds"' 'published Maven verification must retain its retry delay'
 require "$verify_setup" '"status"[[:space:]]*:[[:space:]]*"ACTIVATED"' 'setup verification must accept pretty-printed activation JSON'
 require "$verify_setup" '"status"[[:space:]]*:[[:space:]]*"CURRENT"' 'setup verification must accept pretty-printed current JSON'
 
@@ -51,10 +49,14 @@ grep -Fq "github.event_name == 'push'" <<<"$prepare_release" \
   || { printf '%s\n' 'error: workflow dispatch must stop after pushing the release tag' >&2; exit 1; }
 grep -Fq 'name: Verify Maven Central publication' <<<"$publish_maven" \
   || { printf '%s\n' 'error: Maven publication must end with authoritative remote verification' >&2; exit 1; }
-grep -Fq -- '- publish-maven-central' <<<"$publish_release" \
-  || { printf '%s\n' 'error: GitHub publication must depend on Maven Central publication' >&2; exit 1; }
-grep -Fq "needs.publish-maven-central.result == 'success'" <<<"$publish_release" \
-  || { printf '%s\n' 'error: GitHub publication must require successful Maven Central publication' >&2; exit 1; }
+grep -Fq 'continue-on-error: true' <<<"$publish_maven" \
+  || { printf '%s\n' 'error: Maven publication must not block the release workflow' >&2; exit 1; }
+! grep -Fq 'verify-maven-central.sh' "$verify_state" \
+  || { printf '%s\n' 'error: immutable release verification must not call Maven Central' >&2; exit 1; }
+! grep -Fq 'publish-maven-central' <<<"$publish_release" \
+  || { printf '%s\n' 'error: immutable release publication must not depend on Maven Central' >&2; exit 1; }
+! grep -Fq 'publish-maven-central' <<<"$verify_release" \
+  || { printf '%s\n' 'error: immutable release verification must not depend on Maven Central' >&2; exit 1; }
 
 for file in "$ci" "$release" "$verify_state"; do
   reject "$file" 'homebrew' 'retired Homebrew authority remains in release flow'

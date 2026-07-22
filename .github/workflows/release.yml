@@ -331,8 +331,7 @@ jobs:
       - validate-jvm
     if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success'
     runs-on: ubuntu-latest
-    outputs:
-      state: ${{ steps.maven-state.outputs.state }}
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v5
         with:
@@ -379,7 +378,7 @@ jobs:
                 --delay-seconds 20; then
                 state="all"
               else
-                echo "::warning::Maven Central remains partial; final release-state verification will decide the workflow result."
+                echo "::warning::Maven Central remains partial; final Maven verification will decide the job result."
               fi
             else
               exit "$verifier_exit"
@@ -459,7 +458,7 @@ jobs:
           publish_exit="$?"
           set -e
           if [[ "$publish_exit" -ne 0 ]]; then
-            echo "::warning::Gradle Maven Central publication exited with ${publish_exit}; verifying published coordinates before final release-state verification."
+            echo "::warning::Gradle Maven Central publication exited with ${publish_exit}; verifying published coordinates before final Maven verification."
           fi
           set +e
           scripts/verify-maven-central.sh \
@@ -471,7 +470,7 @@ jobs:
           if [[ "$verify_exit" -eq 0 && "$publish_exit" -ne 0 ]]; then
             echo "Maven Central verification passed after Gradle exited with ${publish_exit}."
           elif [[ "$verify_exit" -ne 0 ]]; then
-            echo "::warning::Maven Central verification did not pass in the publish job; final release-state verification will decide the workflow result."
+            echo "::warning::Maven Central verification did not pass in the publish step; final Maven verification will decide the job result."
           fi
 
       - name: Verify Maven Central publication
@@ -1089,8 +1088,7 @@ jobs:
       - build-idea-plugin
       - build-headless-backend
       - build-linux-headless-tarball
-      - publish-maven-central
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success' && needs.publish-maven-central.result == 'success'
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -1318,7 +1316,6 @@ jobs:
     name: Verify published release state
     needs:
       - prepare-release
-      - publish-maven-central
       - publish-release
     if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
@@ -1337,9 +1334,6 @@ jobs:
             echo "::error::Publish release finished with result ${{ needs.publish-release.result }}."
             exit 1
           fi
-          echo "Maven Central job result: ${{ needs.publish-maven-central.result }}"
           scripts/verify-release-state.sh \
             --tag "${{ needs.prepare-release.outputs.release_tag }}" \
-            --repository "${{ github.repository }}" \
-            --maven-attempts 30 \
-            --maven-delay-seconds 20
+            --repository "${{ github.repository }}"
