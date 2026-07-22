@@ -50,7 +50,7 @@ class WorkspacePathsTest {
         val binDir = Path.of(System.getProperty("user.home")).resolve(".local/bin").toAbsolutePath().normalize()
         val cacheDir = Path.of(System.getProperty("user.home")).resolve(".cache/kast").toAbsolutePath().normalize()
         val logsDir = Path.of(System.getProperty("user.home")).resolve(".local/state/kast/logs").toAbsolutePath().normalize()
-        val runtimeDir = installRoot.resolve("runtime")
+        val runtimeDir = installRoot.resolve("state/runtime")
         val defaults = KastConfig.defaults()
 
         assertEquals(runtimeDir.resolve("daemons"), defaultDescriptorDirectory())
@@ -197,7 +197,7 @@ class WorkspacePathsTest {
         fun `resolves to descriptor directory from config defaults`() {
             val result = defaultDescriptorDirectory()
             assertEquals(
-                defaultInstallRootPath().resolve("runtime/daemons"),
+                defaultInstallRootPath().resolve("state/runtime/daemons"),
                 result,
             )
         }

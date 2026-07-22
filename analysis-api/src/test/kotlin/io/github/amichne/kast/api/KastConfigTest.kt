@@ -116,7 +116,7 @@ class KastConfigTest {
         val libDir = installRoot.resolve("current/lib")
         val cacheDir = Path.of(System.getProperty("user.home")).resolve(".cache/kast")
         val logsDir = Path.of(System.getProperty("user.home")).resolve(".local/state/kast/logs")
-        val runtimeDir = installRoot.resolve("runtime")
+        val runtimeDir = installRoot.resolve("state/runtime")
         val descriptorDir = runtimeDir.resolve("daemons")
         val socketDir = runtimeDir
         val binaryPath = binDir.resolve("kast")
