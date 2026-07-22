@@ -21,6 +21,14 @@ fn setup_idea_plugin(
     let plugin_sha256 = manifest::sha256_file(&idea_plugin)?;
     let release_digest =
         manifest::sha256_bytes(format!("{cli_sha256}\n{plugin_sha256}\n").as_bytes());
+    let mut bundle_manifest = serde_json::to_vec_pretty(&serde_json::json!({
+        "artifacts": [
+            {"role": "cli", "path": "bin/kast", "sha256": cli_sha256},
+            {"role": "idea-plugin", "path": "idea/kast.zip", "sha256": plugin_sha256}
+        ]
+    }))?;
+    bundle_manifest.push(b'\n');
+    let manifest_digest = manifest::sha256_bytes(&bundle_manifest);
     let resolved = manifest::default_resolved_paths();
     let targets = idea_activation_target_paths(resolved, &release_digest);
     let plugins_dir = idea_plugins_dir
@@ -39,6 +47,8 @@ fn setup_idea_plugin(
                 &plugins_dir.join("kast"),
                 &cli_sha256,
                 &extracted_plugin_digest,
+                &release_digest,
+                &manifest_digest,
             )
             .is_ok()
         {
@@ -54,6 +64,7 @@ fn setup_idea_plugin(
                 &release_digest,
                 &cli_sha256,
                 &extracted_plugin_digest,
+                &manifest_digest,
                 &plugins_dir.join("kast"),
                 None,
             ));
@@ -65,9 +76,9 @@ fn setup_idea_plugin(
             &current_exe,
             &idea_plugin,
             &release_digest,
-            &cli_sha256,
-            &plugin_sha256,
             config_defaults.as_deref().unwrap_or(DEFAULT_IDEA_CONFIG),
+            &bundle_manifest,
+            &manifest_digest,
         )?;
         let installed_plugin = plugins_dir.join("kast");
         let plugin_backup = match install_idea_plugin(&extracted_plugin, &installed_plugin) {
@@ -82,6 +93,8 @@ fn setup_idea_plugin(
             &installed_plugin,
             &cli_sha256,
             &extracted_plugin_digest,
+            &release_digest,
+            &manifest_digest,
         ) {
             rollback_idea_plugin(&installed_plugin, plugin_backup.as_deref())?;
             rollback_activated_bundle(&targets, previous.as_deref())?;
@@ -94,6 +107,7 @@ fn setup_idea_plugin(
             &release_digest,
             &cli_sha256,
             &extracted_plugin_digest,
+            &manifest_digest,
             &installed_plugin,
             release_backup.as_deref().or(legacy_backup.as_deref()),
         ))
@@ -119,9 +133,9 @@ fn install_idea_release(
     current_exe: &Path,
     idea_plugin: &Path,
     release_digest: &str,
-    cli_sha256: &str,
-    plugin_sha256: &str,
     config_defaults: &str,
+    bundle_manifest: &[u8],
+    manifest_digest: &str,
 ) -> Result<(Option<PathBuf>, Option<PathBuf>)> {
     let staging_root = targets.resolved.install_root.join("staging");
     manifest::remove_path(&staging_root)?;
@@ -136,9 +150,14 @@ fn install_idea_release(
     manifest::make_executable(&staged.join("bin/kast"))?;
     fs::copy(idea_plugin, staged.join("idea/kast.zip"))?;
     fs::write(staged.join("config/config.toml"), config_defaults)?;
+    fs::write(staged.join(BUNDLE_MANIFEST_FILE), bundle_manifest)?;
     manifest::write_manifest_atomic(
         &staged.join(manifest::INSTALL_MANIFEST_FILE),
-        &idea_install_manifest(targets, release_digest, cli_sha256, plugin_sha256),
+        &idea_install_manifest(
+            targets,
+            release_digest,
+            manifest_digest,
+        ),
     )?;
 
     let (previous, backup) = archive_current_activation(targets)?;
@@ -156,8 +175,7 @@ const DEFAULT_IDEA_CONFIG: &str = "[runtime]\ndefaultBackend = \"idea\"\n\n[back
 fn idea_install_manifest(
     targets: &ActivationTargetPaths,
     release_digest: &str,
-    cli_sha256: &str,
-    plugin_sha256: &str,
+    manifest_digest: &str,
 ) -> manifest::KastInstallManifest {
     let now = manifest::current_timestamp();
     let version = crate::cli::version().to_string();
@@ -165,9 +183,7 @@ fn idea_install_manifest(
         tool: "kast".to_string(),
         install_id: format!("kast-macos-idea-{version}"),
         release_digest: release_digest.to_string(),
-        manifest_digest: manifest::sha256_bytes(
-            format!("{cli_sha256}\n{plugin_sha256}\n").as_bytes(),
-        ),
+        manifest_digest: manifest_digest.to_string(),
         profile: "macos-idea".to_string(),
         active_version: version.clone(),
         previous_version: None,
@@ -240,13 +256,25 @@ fn verify_idea_plugin_setup(
     installed_plugin: &Path,
     cli_sha256: &str,
     plugin_digest: &str,
+    release_digest: &str,
+    manifest_digest: &str,
 ) -> Result<()> {
     let active_cli = targets.current_link.join("bin/kast");
     require_executable(&active_cli, "installed Kast CLI")?;
-    require_file(
-        &targets.current_link.join(manifest::INSTALL_MANIFEST_FILE),
-        "install receipt",
-    )?;
+    let receipt_path = targets.current_link.join(manifest::INSTALL_MANIFEST_FILE);
+    require_file(&receipt_path, "install receipt")?;
+    let receipt = manifest_from_file(&receipt_path)?;
+    let bundle_manifest = targets.current_link.join(BUNDLE_MANIFEST_FILE);
+    require_file(&bundle_manifest, "bundle manifest")?;
+    if receipt.release_digest != release_digest
+        || receipt.manifest_digest != manifest_digest
+        || manifest::sha256_file(&bundle_manifest)? != manifest_digest
+    {
+        return Err(CliError::new(
+            "SETUP_VERIFY_FAILED",
+            "Installed Kast manifest does not match the setup source.",
+        ));
+    }
     if manifest::sha256_file(&active_cli)? != cli_sha256 {
         return Err(CliError::new(
             "SETUP_VERIFY_FAILED",
@@ -268,6 +296,7 @@ fn idea_setup_result(
     release_digest: &str,
     cli_sha256: &str,
     plugin_digest: &str,
+    manifest_digest: &str,
     installed_plugin: &Path,
     backup: Option<&Path>,
 ) -> SetupResult {
@@ -275,7 +304,7 @@ fn idea_setup_result(
         result_type: "KAST_SETUP",
         status,
         release_digest: release_digest.to_string(),
-        manifest_digest: release_digest.to_string(),
+        manifest_digest: manifest_digest.to_string(),
         kast_home: targets.resolved.install_root.display().to_string(),
         current: targets.current_link.display().to_string(),
         active_binary: targets.resolved.active_binary.display().to_string(),

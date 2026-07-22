@@ -180,6 +180,91 @@ fn setup_replaces_defaults_when_release_is_current() {
 }
 
 #[test]
+fn setup_replaces_incompatible_legacy_bundle_activation() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let source = write_install_bundle_source(temp.path(), "v9.8.7");
+    std::fs::create_dir_all(kast_home.join("current")).expect("legacy current");
+    std::fs::write(kast_home.join("current/receipt.json"), "legacy").expect("legacy receipt");
+
+    let output = setup(&home, &kast_home, &source);
+
+    assert!(
+        output.status.success(),
+        "setup should replace the legacy activation: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).expect("setup JSON");
+    assert_eq!(result["status"], "ACTIVATED");
+    assert!(kast_home.join("current/manifest.json").is_file());
+    let receipt: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(kast_home.join("current/receipt.json")).expect("replacement receipt"),
+    )
+    .expect("replacement receipt JSON");
+    assert_eq!(receipt["activeVersion"], "v9.8.7");
+}
+
+#[test]
+fn setup_replaces_incompatible_legacy_idea_activation() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let plugins = home.join("Library/Application Support/Google/AndroidStudio2026.1/plugins");
+    let plugin = write_idea_plugin_zip(temp.path());
+    std::fs::create_dir_all(&plugins).expect("Android Studio profile");
+    let run_setup = || {
+        kast(&home, &kast_home.join("unused-config"))
+            .env_remove("KAST_CONFIG_HOME")
+            .env("KAST_HOME", &kast_home)
+            .env("KAST_MACHINE_IDE_STATE", "closed")
+            .args([
+                "--output",
+                "json",
+                "setup",
+                "--idea-plugin",
+                plugin.to_str().expect("plugin path"),
+            ])
+            .output()
+            .expect("kast setup")
+    };
+    let first = run_setup();
+    assert!(first.status.success(), "initial setup should succeed");
+    let manifest_path = kast_home.join("current/manifest.json");
+    let _ = std::fs::remove_file(&manifest_path);
+
+    let replacement = run_setup();
+
+    assert!(
+        replacement.status.success(),
+        "setup should replace the incompatible activation: stdout={}, stderr={}",
+        String::from_utf8_lossy(&replacement.stdout),
+        String::from_utf8_lossy(&replacement.stderr),
+    );
+    let result: serde_json::Value =
+        serde_json::from_slice(&replacement.stdout).expect("setup JSON");
+    assert_eq!(result["status"], "ACTIVATED");
+    assert!(manifest_path.is_file());
+    let receipt: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(kast_home.join("current/receipt.json")).expect("replacement receipt"),
+    )
+    .expect("replacement receipt JSON");
+    assert_eq!(
+        receipt["manifestDigest"],
+        test_path_sha256(&manifest_path)
+    );
+    let manifest: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(&manifest_path).expect("replacement manifest"),
+    )
+    .expect("replacement manifest JSON");
+    assert_eq!(
+        manifest["artifacts"][0]["sha256"],
+        test_path_sha256(&kast_home.join("current/bin/kast"))
+    );
+}
+
+#[test]
 fn setup_activates_one_validated_release_and_converges_on_rerun() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
