@@ -2,8 +2,10 @@
 
 # Kast
 
-Kast gives agents compiler-backed Kotlin and Gradle context through IntelliJ
-IDEA, Android Studio, or the packaged headless backend.
+Kast gives Codex compiler-backed Kotlin and Gradle evidence through IntelliJ
+IDEA, Android Studio, or the packaged headless backend. It resolves exact
+symbols, navigates relationships, plans semantic edits, and keeps evidence
+limits visible.
 
 ## Install or update
 
@@ -27,6 +29,6 @@ For a local bundle:
 ./install.sh --source /path/to/kast-platform-vX.Y.Z.tar.gz
 ```
 
-Read the [installation guide](https://kast.michne.com/install/setup/),
-[Codex usage guide](https://kast.michne.com/use/codex/), or
-[troubleshooting guide](https://kast.michne.com/troubleshoot/).
+Start with the [first compiler-backed task](https://kast.michne.com/tutorials/first-compiler-backed-task/),
+follow the [installation guide](https://kast.michne.com/how-to/install-or-update/),
+or use the [CLI reference](https://kast.michne.com/reference/cli/).

@@ -1,47 +1,63 @@
 # Kast
 
-Kast gives agents compiler-backed Kotlin context through IntelliJ IDEA, Android
-Studio, or the packaged headless backend. Every host uses one setup path.
+Kast gives Codex compiler-backed Kotlin evidence from the project you already
+have open in IntelliJ IDEA or Android Studio. On Linux and hosted agents, the
+packaged headless backend provides the same typed analysis boundary.
 
 ```mermaid
 flowchart LR
-    installer["kast setup"] --> release["Verified active release"]
-    release --> workspace["IDEA or headless workspace"]
-    workspace --> codex["Codex task"]
-    codex --> evidence["Compiler-backed evidence"]
+    task["Kotlin task in Codex"] --> route["Exact workspace route"]
+    route --> compiler["IDEA or headless compiler"]
+    compiler --> result["Typed, source-located evidence"]
+    result --> task
 ```
+
+Choose the page that matches what you need now.
 
 <div class="grid cards" markdown>
 
--   :octicons-download-24:{ .lg .middle } **Install Kast**
+-   :octicons-rocket-24:{ .lg .middle } **Learn the workflow**
 
     ---
 
-    Atomically install or replace the complete platform bundle.
+    Complete one read-only task in the Kast repository and see what
+    compiler-backed evidence looks like.
 
-    [:octicons-arrow-right-24: Install or update Kast](install/setup.md)
+    [:octicons-arrow-right-24: Your first compiler-backed task](tutorials/first-compiler-backed-task.md)
 
--   :octicons-comment-discussion-24:{ .lg .middle } **Work in Codex**
-
-    ---
-
-    Ask for Kotlin work normally; the plugin supplies semantic routing.
-
-    [:octicons-arrow-right-24: Use Kast in Codex](use/codex.md)
-
--   :octicons-tools-24:{ .lg .middle } **Recover a task**
+-   :octicons-tools-24:{ .lg .middle } **Do a task**
 
     ---
 
-    Start from the failed phase and rerun the same setup transaction.
+    Install Kast, explore Kotlin code, plan an edit, or recover a blocked
+    workspace.
 
-    [:octicons-arrow-right-24: Troubleshoot Kast](troubleshoot.md)
+    [:octicons-arrow-right-24: Browse the how-to guides](how-to/explore-kotlin-code.md)
+
+-   :octicons-book-24:{ .lg .middle } **Look something up**
+
+    ---
+
+    Check the supported CLI and the boundary between the Codex plugin and the
+    installed release.
+
+    [:octicons-arrow-right-24: CLI reference](reference/cli.md)
+
+-   :octicons-light-bulb-24:{ .lg .middle } **Understand the system**
+
+    ---
+
+    Learn why Kast binds compiler evidence to an exact workspace and how the
+    runtime layers fit together.
+
+    [:octicons-arrow-right-24: Architecture](explanation/architecture.md)
 
 </div>
 
-## What Runs Where
+## Start here
 
-`kast setup` owns the active release. IDEA owns compiler state for an exact open
-root; the headless backend owns compiler state on non-IDE hosts. Read the
-[operating model](design/operating-model.md) or consult the [Codex plugin
-reference](reference/codex-plugin.md).
+If Kast is not installed, follow [Install or update Kast](how-to/install-or-update.md).
+If it is installed and your project is open, begin with the
+[tutorial](tutorials/first-compiler-backed-task.md). For a specific job, go
+straight to [Explore Kotlin code](how-to/explore-kotlin-code.md) or
+[Plan a safe Kotlin edit](how-to/plan-safe-edits.md).

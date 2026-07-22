@@ -13,11 +13,21 @@ config = tomllib.loads((root / "zensical.toml").read_text())
 
 expected = [
     ("Start", ["index.md"]),
-    ("Install", ["install/setup.md"]),
-    ("Use", ["use/codex.md"]),
-    ("Reference", ["reference/codex-plugin.md"]),
-    ("Troubleshoot", ["troubleshoot.md"]),
-    ("Understand", ["design/operating-model.md"]),
+    ("Tutorials", ["tutorials/first-compiler-backed-task.md"]),
+    (
+        "How-to guides",
+        [
+            "how-to/install-or-update.md",
+            "how-to/explore-kotlin-code.md",
+            "how-to/plan-safe-edits.md",
+            "how-to/troubleshoot.md",
+        ],
+    ),
+    ("Reference", ["reference/cli.md", "reference/codex-plugin.md"]),
+    (
+        "Explanation",
+        ["explanation/architecture.md", "explanation/compiler-evidence.md"],
+    ),
 ]
 
 actual = []
