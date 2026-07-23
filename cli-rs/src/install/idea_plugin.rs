@@ -101,7 +101,11 @@ fn setup_idea_plugin(
             return Err(error);
         }
 
-        install_user_command(&targets)?;
+        if let Err(error) = install_user_command(&targets) {
+            rollback_idea_plugin(&installed_plugin, plugin_backup.as_deref())?;
+            rollback_activated_bundle(&targets, previous.as_deref())?;
+            return Err(error);
+        }
         Ok(idea_setup_result(
             &targets,
             (

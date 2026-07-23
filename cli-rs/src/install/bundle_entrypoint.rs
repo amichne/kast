@@ -51,7 +51,10 @@ fn setup_bundle(source: PathBuf) -> Result<SetupResult> {
             );
             return Err(failure);
         }
-        install_user_command(&targets)?;
+        if let Err(error) = install_user_command(&targets) {
+            rollback_activated_bundle(&targets, previous.as_deref())?;
+            return Err(error);
+        }
         Ok(setup_result(
             &bundle,
             &targets,
