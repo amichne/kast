@@ -200,7 +200,7 @@ class SqliteSourceIndexStore private constructor(
                 statement.setString(1, manifest.target.directoryName)
                 statement.executeUpdate() == 1
             }
-            if (shouldSeed) {
+            val seededGraphState = if (shouldSeed) {
                 conn.prepareStatement(
                     "INSERT OR IGNORE INTO repository_overlay_tombstones(path) VALUES (?)",
                 ).use { statement ->
@@ -208,8 +208,13 @@ class SqliteSourceIndexStore private constructor(
                         statement.setString(1, path)
                         statement.addBatch()
                     }
-                    statement.executeBatch()
+                    statement.executeBatch().any { updateCount -> updateCount != 0 }
                 }
+            } else {
+                false
+            }
+            if (seededGraphState) {
+                incrementGenerationInTransaction(conn)
             }
             conn.commit()
         } catch (error: Exception) {

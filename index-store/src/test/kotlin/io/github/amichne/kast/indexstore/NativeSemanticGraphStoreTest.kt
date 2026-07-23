@@ -243,6 +243,37 @@ class NativeSemanticGraphStoreTest {
     }
 
     @Test
+    fun `first overlay seed advances generation when graph-visible state changes`() {
+        val sourcePath = SemanticGraphSourcePath.parse("src/A.kt")
+        val baseGeneration = SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            store.replaceSemanticGraphFiles(
+                listOf(semanticUpdate(sourcePath, "a", listOf(semanticSymbol("a#source", "source", sourcePath)))),
+            ).generation
+        }
+        val database = sourceIndexDatabasePath(workspaceRoot)
+        Files.writeString(
+            database.resolveSibling("repository-overlay.json"),
+            Json.encodeToString(
+                OverlayManifest(
+                    base = snapshotKey('a'),
+                    target = snapshotKey('b'),
+                    tombstones = setOf(sourcePath.value),
+                    shards = emptyMap(),
+                ),
+            ),
+        )
+
+        val seededGeneration = SqliteSourceIndexStore(workspaceRoot).use { store -> store.readGeneration() }
+        val reopenedGeneration = SqliteSourceIndexStore(workspaceRoot).use { store -> store.readGeneration() }
+
+        assertEquals(
+            listOf(baseGeneration.value + 1, baseGeneration.value + 1),
+            listOf(seededGeneration.value, reopenedGeneration.value),
+        )
+    }
+
+    @Test
     fun `schema mismatch overlay rebuilds before tombstone seeding`() {
         val sourcePath = SemanticGraphSourcePath.parse("src/A.kt")
         val target = snapshotKey('b')
