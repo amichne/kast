@@ -25,7 +25,7 @@ struct NativeGraph {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct NativeGraphOverlayDescriptor {
-    base_database: Option<PathBuf>,
+    base_database: PathBuf,
 }
 
 fn execute_agent_native_graph(args: AgentNativeGraphArgs) -> AgentEnvelope {
@@ -83,6 +83,19 @@ fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value
     let load_started = std::time::Instant::now();
     let graph = load_native_graph(&connection, args.scope, has_repository_base)?;
     let load_nanos = load_started.elapsed().as_nanos();
+    if args.operation == NativeGraphOperation::Neighbors {
+        let symbol = args.symbol.as_deref().ok_or_else(|| {
+            agent_error("AGENT_USAGE", "--symbol is required for --operation neighbors.")
+        })?;
+        let body = native_graph_neighbors(&graph, generation, args.scope, symbol)?;
+        if native_graph_generation(&connection)? != generation {
+            return Err(agent_error(
+                "NATIVE_GRAPH_GENERATION_CHANGED",
+                "Source-index generation changed while native graph neighbors were being computed.",
+            ));
+        }
+        return Ok(body);
+    }
     let compute_started = std::time::Instant::now();
     let components = native_connected_components(&graph);
     let strongly_connected = native_tarjan_scc(&graph);
@@ -110,12 +123,7 @@ fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value
             "measurements": measurements,
             "schemaVersion": SCHEMA_VERSION
         }),
-        NativeGraphOperation::Neighbors => {
-            let symbol = args.symbol.as_deref().ok_or_else(|| {
-                agent_error("AGENT_USAGE", "--symbol is required for --operation neighbors.")
-            })?;
-            native_graph_neighbors(&graph, generation, args.scope, symbol)?
-        }
+        NativeGraphOperation::Neighbors => unreachable!("neighbors returned before graph analytics"),
         NativeGraphOperation::Topology => json!({
             "type": "KAST_NATIVE_GRAPH_TOPOLOGY",
             "scope": args.scope,
@@ -169,9 +177,7 @@ fn native_graph_attach_repository_base(
             format!("Cannot decode {}: {error}", descriptor_path.display()),
         )
     })?;
-    let Some(base) = descriptor.base_database else {
-        return Ok(false);
-    };
+    let base = descriptor.base_database;
     if !base.is_absolute() || !base.is_file() {
         return Err(agent_error(
             "NATIVE_GRAPH_OVERLAY_UNAVAILABLE",
@@ -767,65 +773,76 @@ fn native_connected_components(graph: &NativeGraph) -> Vec<usize> {
 }
 
 fn native_tarjan_scc(graph: &NativeGraph) -> Vec<usize> {
-    struct Tarjan<'a> {
-        graph: &'a NativeGraph,
-        next_index: usize,
-        indices: Vec<Option<usize>>,
-        lowlink: Vec<usize>,
-        stack: Vec<usize>,
-        on_stack: Vec<bool>,
-        components: Vec<Vec<usize>>,
+    #[derive(Clone, Copy)]
+    struct VisitFrame {
+        node: usize,
+        next_edge: usize,
     }
-    impl Tarjan<'_> {
-        fn visit(&mut self, node: usize) {
-            let index = self.next_index;
-            self.next_index += 1;
-            self.indices[node] = Some(index);
-            self.lowlink[node] = index;
-            self.stack.push(node);
-            self.on_stack[node] = true;
-            for edge_index in self.graph.offsets[node]..self.graph.offsets[node + 1] {
-                let target = self.graph.targets[edge_index];
-                if self.indices[target].is_none() {
-                    self.visit(target);
-                    self.lowlink[node] = self.lowlink[node].min(self.lowlink[target]);
-                } else if self.on_stack[target] {
-                    self.lowlink[node] = self.lowlink[node].min(self.indices[target].unwrap());
+
+    let count = graph.nodes.len();
+    let mut next_index = 0;
+    let mut indices = vec![usize::MAX; count];
+    let mut lowlink = vec![0; count];
+    let mut stack = Vec::new();
+    let mut on_stack = vec![false; count];
+    let mut components = Vec::new();
+
+    for root in 0..count {
+        if indices[root] != usize::MAX {
+            continue;
+        }
+        indices[root] = next_index;
+        lowlink[root] = next_index;
+        next_index += 1;
+        stack.push(root);
+        on_stack[root] = true;
+        let mut visits = vec![VisitFrame {
+            node: root,
+            next_edge: graph.offsets[root],
+        }];
+
+        while let Some(frame) = visits.last_mut() {
+            let node = frame.node;
+            if frame.next_edge < graph.offsets[node + 1] {
+                let target = graph.targets[frame.next_edge];
+                frame.next_edge += 1;
+                if indices[target] == usize::MAX {
+                    indices[target] = next_index;
+                    lowlink[target] = next_index;
+                    next_index += 1;
+                    stack.push(target);
+                    on_stack[target] = true;
+                    visits.push(VisitFrame {
+                        node: target,
+                        next_edge: graph.offsets[target],
+                    });
+                } else if on_stack[target] {
+                    lowlink[node] = lowlink[node].min(indices[target]);
                 }
+                continue;
             }
-            if self.lowlink[node] == self.indices[node].unwrap() {
+
+            visits.pop();
+            if lowlink[node] == indices[node] {
                 let mut component = Vec::new();
-                loop {
-                    let member = self.stack.pop().unwrap();
-                    self.on_stack[member] = false;
+                while let Some(member) = stack.pop() {
+                    on_stack[member] = false;
                     component.push(member);
                     if member == node {
                         break;
                     }
                 }
                 component.sort_unstable();
-                self.components.push(component);
+                components.push(component);
+            }
+            if let Some(parent) = visits.last() {
+                lowlink[parent.node] = lowlink[parent.node].min(lowlink[node]);
             }
         }
     }
-    let count = graph.nodes.len();
-    let mut tarjan = Tarjan {
-        graph,
-        next_index: 0,
-        indices: vec![None; count],
-        lowlink: vec![0; count],
-        stack: Vec::new(),
-        on_stack: vec![false; count],
-        components: Vec::new(),
-    };
-    for node in 0..count {
-        if tarjan.indices[node].is_none() {
-            tarjan.visit(node);
-        }
-    }
-    tarjan.components.sort_by_key(|component| component[0]);
+    components.sort_by_key(|component| component[0]);
     let mut membership = vec![0; count];
-    for (component_id, component) in tarjan.components.iter().enumerate() {
+    for (component_id, component) in components.iter().enumerate() {
         for &node in component {
             membership[node] = component_id;
         }
@@ -1125,6 +1142,12 @@ mod native_graph_tests {
     }
 
     #[test]
+    fn native_graph_overlay_descriptor_requires_repository_base() {
+        let error = serde_json::from_str::<NativeGraphOverlayDescriptor>("{}").unwrap_err();
+        assert!(error.to_string().contains("baseDatabase"));
+    }
+
+    #[test]
     fn native_graph_tarjan_condensation_and_components_are_deterministic() {
         let graph = fixture(
             6,
@@ -1143,6 +1166,34 @@ mod native_graph_tests {
         assert_eq!(
             native_condensation_topological_order(&graph, &first),
             native_condensation_topological_order(&graph, &first)
+        );
+    }
+
+    #[test]
+    fn native_graph_tarjan_handles_deep_acyclic_chain_without_process_stack_growth() {
+        const CHILD_ENV: &str = "KAST_NATIVE_GRAPH_DEEP_TARJAN_CHILD";
+        if std::env::var_os(CHILD_ENV).is_some() {
+            let node_count = 50_000;
+            let edges = (0..node_count - 1)
+                .map(|node| (node, node + 1, 1.0))
+                .collect::<Vec<_>>();
+            let membership = native_tarjan_scc(&fixture(node_count, &edges));
+            assert_eq!(membership.len(), node_count);
+            return;
+        }
+
+        let output = std::process::Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "agent::native_graph_tests::native_graph_tarjan_handles_deep_acyclic_chain_without_process_stack_growth",
+            ])
+            .env(CHILD_ENV, "1")
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "deep Tarjan child failed: {}",
+            String::from_utf8_lossy(&output.stderr)
         );
     }
 
