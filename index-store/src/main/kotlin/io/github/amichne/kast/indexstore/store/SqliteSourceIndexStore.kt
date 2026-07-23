@@ -1969,10 +1969,13 @@ class SqliteSourceIndexStore private constructor(
             val conn = connection()
             conn.autoCommit = false
             return try {
-                (removedPaths + updates.map(SemanticGraphFileIndexUpdate::path))
+                removedPaths
                     .distinct()
                     .sorted()
                     .forEach { path -> deleteSemanticGraphFile(conn, path.value) }
+                updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
+                    prepareSemanticGraphFileUpdate(conn, update)
+                }
 
                 updates.asSequence()
                     .flatMap { update -> update.boundarySymbols.asSequence() }
@@ -2036,6 +2039,45 @@ class SqliteSourceIndexStore private constructor(
         ).use { statement ->
             statement.setString(1, path.value)
             statement.executeUpdate()
+        }
+    }
+
+    private fun prepareSemanticGraphFileUpdate(conn: Connection, update: SemanticGraphFileIndexUpdate) {
+        val fileId = optionalSemanticId(
+            conn,
+            "SELECT id FROM semantic_files WHERE path = ?",
+            update.path.value,
+        ) ?: return
+        conn.prepareStatement("DELETE FROM semantic_edge_occurrences WHERE source_file_id = ?").use { statement ->
+            statement.setLong(1, fileId)
+            statement.executeUpdate()
+        }
+        conn.prepareStatement("UPDATE semantic_symbols SET owner_id = NULL WHERE file_id = ?").use { statement ->
+            statement.setLong(1, fileId)
+            statement.executeUpdate()
+        }
+
+        val retainedKeys = update.symbols.mapTo(mutableSetOf()) { symbol -> symbol.canonicalKey.value }
+        val removedKeys = conn.prepareStatement(
+            "SELECT stable_key FROM semantic_symbols WHERE file_id = ? ORDER BY stable_key",
+        ).use { statement ->
+            statement.setLong(1, fileId)
+            val rows = statement.executeQuery()
+            buildList {
+                while (rows.next()) {
+                    rows.getString(1).takeUnless(retainedKeys::contains)?.let(::add)
+                }
+            }
+        }
+        conn.prepareStatement(
+            "DELETE FROM semantic_symbols WHERE file_id = ? AND stable_key = ?",
+        ).use { statement ->
+            removedKeys.forEach { key ->
+                statement.setLong(1, fileId)
+                statement.setString(2, key)
+                statement.addBatch()
+            }
+            statement.executeBatch()
         }
     }
 

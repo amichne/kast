@@ -1,5 +1,17 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.api.contract.ByteOffset
+import io.github.amichne.kast.api.contract.LineNumber
+import io.github.amichne.kast.api.contract.NonBlankString
+import io.github.amichne.kast.api.contract.result.SemanticGraphFileStatus
+import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
+import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
+import io.github.amichne.kast.api.contract.result.SemanticGraphSha256
+import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbol
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
+import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
 import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
@@ -136,6 +148,50 @@ class NativeSemanticGraphStoreTest {
             ).forEach { view ->
                 assertEquals(occurrences, scalarLong(connection, "SELECT COALESCE(SUM(weight), 0) FROM $view"))
             }
+        }
+    }
+
+    @Test
+    fun `target refresh preserves inbound edges only to surviving symbols`() {
+        val sourcePath = SemanticGraphSourcePath.parse("src/A.kt")
+        val targetPath = SemanticGraphSourcePath.parse("src/B.kt")
+        val source = semanticSymbol("a#source", "source", sourcePath)
+        val target = semanticSymbol("b#target", "target", targetPath)
+        val relation = SemanticGraphRelation(
+            sourceKey = source.canonicalKey,
+            targetKey = target.canonicalKey,
+            kind = SemanticGraphRelationKind.CALLS,
+            sourcePath = sourcePath,
+            startOffset = ByteOffset(0),
+            endOffset = ByteOffset(1),
+            line = LineNumber(1),
+        )
+        val sourceUpdate = semanticUpdate(
+            path = sourcePath,
+            hash = "a",
+            symbols = listOf(source),
+            boundarySymbols = listOf(target),
+            relations = listOf(relation),
+        )
+        val targetUpdate = semanticUpdate(targetPath, "b", listOf(target))
+
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            store.replaceSemanticGraphFiles(listOf(sourceUpdate, targetUpdate))
+            store.replaceSemanticGraphFiles(listOf(targetUpdate.copy(contentHash = SemanticGraphSha256.parse("c".repeat(64)))))
+
+            assertEquals(listOf(relation), store.readSemanticGraph(listOf(sourcePath)).relations)
+
+            store.replaceSemanticGraphFiles(
+                listOf(
+                    targetUpdate.copy(
+                        contentHash = SemanticGraphSha256.parse("d".repeat(64)),
+                        symbols = emptyList(),
+                    ),
+                ),
+            )
+
+            assertTrue(store.readSemanticGraph(listOf(sourcePath)).relations.isEmpty())
         }
     }
 
@@ -291,6 +347,39 @@ class NativeSemanticGraphStoreTest {
             check(rows.next())
             rows.getLong(1)
         }
+
+    private fun semanticSymbol(
+        key: String,
+        name: String,
+        path: SemanticGraphSourcePath,
+    ): SemanticGraphSymbol = SemanticGraphSymbol(
+        canonicalKey = SemanticGraphSymbolKey.parse(key),
+        kind = SemanticGraphSymbolKind.FUNCTION,
+        name = NonBlankString(name),
+        path = path,
+        startOffset = ByteOffset(0),
+        endOffset = ByteOffset(1),
+        line = LineNumber(1),
+    )
+
+    private fun semanticUpdate(
+        path: SemanticGraphSourcePath,
+        hash: String,
+        symbols: List<SemanticGraphSymbol>,
+        boundarySymbols: List<SemanticGraphSymbol> = emptyList(),
+        relations: List<SemanticGraphRelation> = emptyList(),
+    ): SemanticGraphFileIndexUpdate = SemanticGraphFileIndexUpdate(
+        path = path,
+        packageName = null,
+        moduleName = null,
+        contentHash = SemanticGraphSha256.parse(hash.repeat(64)),
+        status = SemanticGraphFileStatus.REFRESHED,
+        diagnostics = emptyList(),
+        types = emptyList(),
+        symbols = symbols,
+        boundarySymbols = boundarySymbols,
+        relations = relations,
+    )
 
     private companion object {
         const val SCALE_FILE_COUNT = 200
