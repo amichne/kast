@@ -214,7 +214,7 @@ class RpcAnalysisDispatcher(
 
             "runtime/open-project" -> encode(
                 RuntimeOpenProjectResponse.serializer(),
-                projectOpenController.openProject(
+                requestProjectOpen(
                     decodeParams(RuntimeOpenProjectRequest.serializer(), params),
                 ),
             )
@@ -540,6 +540,12 @@ class RpcAnalysisDispatcher(
             workspaceRoot = capabilities.workspaceRoot,
             message = "Runtime ${action.name.lowercase()} accepted; action will run after this response is flushed.",
         )
+    }
+
+    private fun requestProjectOpen(request: RuntimeOpenProjectRequest): RuntimeOpenProjectResponse {
+        val plan = projectOpenController.openProject(request)
+        afterResponseActions += plan.afterResponseAction
+        return plan.response
     }
 
     private suspend fun requireReadCapability(capability: ReadCapability) {

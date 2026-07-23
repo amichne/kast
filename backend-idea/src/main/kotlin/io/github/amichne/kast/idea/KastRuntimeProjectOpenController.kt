@@ -14,6 +14,7 @@ import io.github.amichne.kast.api.contract.RuntimeOpenProjectResult
 import io.github.amichne.kast.api.contract.RuntimeOpenProjectRoot
 import io.github.amichne.kast.api.protocol.AnalysisException
 import io.github.amichne.kast.server.RuntimeProjectOpenController
+import io.github.amichne.kast.server.RuntimeProjectOpenPlan
 import java.awt.Frame
 import java.util.concurrent.atomic.AtomicReference
 
@@ -23,7 +24,7 @@ internal class KastRuntimeProjectOpenController(
 ) : RuntimeProjectOpenController {
     private val requests = KastOpenProjectRequestStore(config)
 
-    override fun openProject(request: RuntimeOpenProjectRequest): RuntimeOpenProjectResponse {
+    override fun openProject(request: RuntimeOpenProjectRequest): RuntimeProjectOpenPlan {
         requireSupportedIdeaHost()
         val canonicalRoot = request.canonicalRoot
         if (!requests.consume(canonicalRoot, request.requestId, allowUntargeted = false)) {
@@ -35,32 +36,40 @@ internal class KastRuntimeProjectOpenController(
         ProjectManager.getInstance().openProjects
             .firstOrNull { project -> project.basePath?.let(::canonicalRootOrNull) == canonicalRoot }
             ?.let { project ->
-                KastPluginService.getInstance(project).startServer()
-                return RuntimeOpenProjectResponse(RuntimeOpenProjectResult.ALREADY_OPEN)
+                return RuntimeProjectOpenPlan(
+                    response = RuntimeOpenProjectResponse(RuntimeOpenProjectResult.ALREADY_OPEN),
+                    afterResponseAction = {
+                        KastPluginService.getInstance(project).startServer()
+                    },
+                )
             }
 
         val root = canonicalRoot.toJavaPath()
-        val anchor = ProjectUtil.getActiveProject() ?: hostProject
-        val anchorFrame = WindowManager.getInstance().getFrame(anchor)
-        val opened = AtomicReference<Project?>()
-        ApplicationManager.getApplication().invokeAndWait {
-            opened.set(
-                ProjectUtil.openOrImport(
-                    root,
-                    OpenProjectTask.build()
-                        .withForceOpenInNewFrame(true)
-                        .withProjectToClose(null),
-                ),
-            )
-        }
-        val project = opened.get()
-            ?: throw openProjectError(
-                "IDEA_PROJECT_OPEN_FAILED",
-                "IntelliJ Platform did not return an opened project for $root.",
-            )
-        KastOpenedProjectProvenance.mark(project)
-        inheritPlacementWithoutActivation(anchorFrame, WindowManager.getInstance().getFrame(project))
-        return RuntimeOpenProjectResponse(RuntimeOpenProjectResult.OPENED_NEW_PROJECT)
+        return RuntimeProjectOpenPlan(
+            response = RuntimeOpenProjectResponse(RuntimeOpenProjectResult.OPENED_NEW_PROJECT),
+            afterResponseAction = {
+                val anchor = ProjectUtil.getActiveProject() ?: hostProject
+                val anchorFrame = WindowManager.getInstance().getFrame(anchor)
+                val opened = AtomicReference<Project?>()
+                ApplicationManager.getApplication().invokeAndWait {
+                    opened.set(
+                        ProjectUtil.openOrImport(
+                            root,
+                            OpenProjectTask.build()
+                                .withForceOpenInNewFrame(true)
+                                .withProjectToClose(null),
+                        ),
+                    )
+                }
+                val project = opened.get()
+                    ?: throw openProjectError(
+                        "IDEA_PROJECT_OPEN_FAILED",
+                        "IntelliJ Platform did not return an opened project for $root.",
+                    )
+                KastOpenedProjectProvenance.mark(project)
+                inheritPlacementWithoutActivation(anchorFrame, WindowManager.getInstance().getFrame(project))
+            },
+        )
     }
 
     private fun canonicalRootOrNull(value: String): RuntimeOpenProjectRoot? =

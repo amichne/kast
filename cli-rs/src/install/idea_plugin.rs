@@ -201,21 +201,29 @@ fn idea_config_defaults(
     if !previous.is_file() {
         return Ok(DEFAULT_IDEA_CONFIG.to_string());
     }
-    let mut contents = fs::read_to_string(previous)?;
+    let contents = fs::read_to_string(previous)?;
     config::validate_toml(&contents)?;
-    let value: toml::Value = toml::from_str(&contents)?;
-    let has_launch_choice = value
-        .get("runtime")
-        .and_then(toml::Value::as_table)
-        .and_then(|runtime| runtime.get("ideaLaunch"))
-        .and_then(toml::Value::as_table)
-        .is_some_and(|launch| launch.contains_key("enabled"));
-    if !has_launch_choice {
-        if !contents.ends_with('\n') {
-            contents.push('\n');
+    migrate_missing_idea_launch_choice(contents)
+}
+
+fn migrate_missing_idea_launch_choice(mut contents: String) -> Result<String> {
+    let mut value: toml::Value = toml::from_str(&contents)?;
+    if let Some(launch) = value
+        .get_mut("runtime")
+        .and_then(toml::Value::as_table_mut)
+        .and_then(|runtime| runtime.get_mut("ideaLaunch"))
+        .and_then(toml::Value::as_table_mut)
+    {
+        if launch.contains_key("enabled") {
+            return Ok(contents);
         }
-        contents.push_str("\n[runtime.ideaLaunch]\nenabled = true\n");
+        launch.insert("enabled".to_string(), toml::Value::Boolean(true));
+        return Ok(toml::to_string_pretty(&value)?);
     }
+    if !contents.ends_with('\n') {
+        contents.push('\n');
+    }
+    contents.push_str("\n[runtime.ideaLaunch]\nenabled = true\n");
     Ok(contents)
 }
 

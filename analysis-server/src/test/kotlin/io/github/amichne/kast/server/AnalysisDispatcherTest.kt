@@ -178,12 +178,16 @@ class AnalysisDispatcherTest {
     @Test
     fun `runtime open project forwards the authenticated exact-root request`() {
         var received: RuntimeOpenProjectRequest? = null
+        var opened = false
         val dispatcher = RpcAnalysisDispatcher(
             backend = FakeAnalysisBackend.sample(tempDir),
             config = AnalysisServerConfig(),
             projectOpenController = RuntimeProjectOpenController { request ->
                 received = request
-                RuntimeOpenProjectResponse(RuntimeOpenProjectResult.OPENED_NEW_PROJECT)
+                RuntimeProjectOpenPlan(
+                    response = RuntimeOpenProjectResponse(RuntimeOpenProjectResult.OPENED_NEW_PROJECT),
+                    afterResponseAction = { opened = true },
+                )
             },
         )
         val request = RuntimeOpenProjectRequest(
@@ -205,6 +209,9 @@ class AnalysisDispatcherTest {
 
         assertEquals(request, received)
         assertEquals(RuntimeOpenProjectResult.OPENED_NEW_PROJECT, result.result)
+        assertFalse(opened, "Project opening must wait until the transport flushes the response")
+        assertTrue(dispatcher.runAfterResponseActions())
+        assertTrue(opened)
     }
 
     @Test
