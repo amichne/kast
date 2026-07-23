@@ -393,6 +393,13 @@ mod tests {
     }
 
     #[test]
+    fn headless_workspace_reuse_omits_idea_launch_disposition() {
+        let selected = candidate("headless", RuntimeState::Ready, false);
+
+        assert_eq!(reused_project_launch_disposition(&selected), None);
+    }
+
+    #[test]
     fn running_idea_host_selection_reuses_one_process_and_rejects_multiple() {
         let mut first = candidate("idea", RuntimeState::Ready, false).descriptor;
         first.workspace_root = "/work/first".to_string();
@@ -449,12 +456,12 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn stale_plugin_in_a_running_idea_host_is_rejected() {
+    fn running_idea_host_without_compatible_metadata_is_rejected() {
         let mut host = candidate("idea", RuntimeState::Ready, false).descriptor;
         host.backend_version = "stale".to_string();
 
-        let error = require_current_running_idea_plugin(&host)
-            .expect_err("a stale loaded plugin must be rejected before project opening");
+        let error = require_compatible_running_idea_plugin(&host, &KastConfig::defaults())
+            .expect_err("an unverified loaded plugin must be rejected before project opening");
 
         assert_eq!(error.code, "IDEA_PLUGIN_UPDATE_REQUIRED");
     }

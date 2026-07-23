@@ -99,7 +99,7 @@ fn open_macos_idea_project(
         None => select_running_idea_host(&descriptors)?,
     };
     if let Some(host) = running_host {
-        require_current_running_idea_plugin(&host)?;
+        require_compatible_running_idea_plugin(&host, config)?;
         let request =
             write_open_project_request(
                 &config.paths.runtime_dir,
@@ -457,18 +457,24 @@ fn running_idea_app(pid: u64) -> Option<PathBuf> {
 }
 
 #[cfg(target_os = "macos")]
-fn require_current_running_idea_plugin(host: &ServerInstanceDescriptor) -> Result<()> {
-    let cli_version = crate::cli::version();
-    if host.backend_version == cli_version {
-        return Ok(());
-    }
-    Err(CliError::new(
-        "IDEA_PLUGIN_UPDATE_REQUIRED",
-        format!(
-            "The running IDEA process has Kast plugin {} but this CLI is {cli_version}. Run `kast setup`, restart that IDE only if requested, and retry.",
-            host.backend_version,
-        ),
-    ))
+fn require_compatible_running_idea_plugin(
+    host: &ServerInstanceDescriptor,
+    config: &KastConfig,
+) -> Result<()> {
+    self_mgmt::validate_macos_running_plugin_workspace(
+        Path::new(&host.workspace_root),
+        &host.backend_version,
+        config.runtime.strict_plugin_matching,
+    )
+    .map_err(|error| {
+        CliError::new(
+            "IDEA_PLUGIN_UPDATE_REQUIRED",
+            format!(
+                "The running IDEA process does not advertise a compatible Kast plugin: {} Run `kast setup`, restart that IDE only if requested, and retry.",
+                error.message,
+            ),
+        )
+    })
 }
 
 #[cfg(target_os = "macos")]

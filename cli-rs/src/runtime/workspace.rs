@@ -58,12 +58,13 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         args.accept_indexing.unwrap_or(false),
     ) {
         validate_macos_workspace_after_bootstrap(&workspace_root, &selected)?;
+        let launch_disposition = reused_project_launch_disposition(&selected);
         return Ok(WorkspaceEnsureResult {
             workspace_root: workspace_root.display().to_string(),
             descriptor_directory: inspection.descriptor_directory.display().to_string(),
             path_resolution,
             started: false,
-            launch_disposition: Some(LaunchDisposition::ReusedOpenProject),
+            launch_disposition,
             log_file: None,
             selected,
             note: None,
@@ -197,6 +198,13 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         note,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn reused_project_launch_disposition(
+    selected: &RuntimeCandidateStatus,
+) -> Option<LaunchDisposition> {
+    (selected.descriptor.backend_name == BackendName::Idea.canonical())
+        .then_some(LaunchDisposition::ReusedOpenProject)
 }
 
 fn remaining_runtime_wait_timeout(started_at: Instant, total_wait_timeout_ms: u64) -> u64 {
