@@ -34,17 +34,17 @@ If you still need Kast, follow [Install or update Kast](../how-to/install-or-upd
 From the repository root, run:
 
 ```console
-kast ready --for kotlin
+kast developer runtime up --backend idea --accept-indexing
 ```
 
-A ready result means Kast found a compatible compiler-backed runtime for this
+A `READY` result means Kast found a compatible compiler-backed runtime for this
 exact root. If the project was closed, Kast background-opens it in the sole
 supported host. A new worktree is opened the same way and receives
 plugin-created metadata.
 
 If the result is `INDEXING`, the exact runtime is already reachable. Wait for
 Gradle import, IDEA/Kotlin indexing, and the Kast reference index, then rerun
-the check. If it reports a typed blocker, use the action it reports before
+the command. If it reports a typed blocker, use the action it reports before
 continuing.
 
 ## 2. Ask for a semantic explanation

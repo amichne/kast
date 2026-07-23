@@ -52,6 +52,7 @@ fn setup_idea_plugin(
             )
             .is_ok()
         {
+            let legacy_backup = archive_legacy_installations(&targets)?;
             if let Some(config_defaults) = &config_defaults {
                 fs::write(
                     targets.current_link.join("config/config.toml"),
@@ -61,7 +62,7 @@ fn setup_idea_plugin(
             install_user_command(&targets)?;
             return Ok(idea_setup_result(
                 &targets,
-                (SetupStatus::Current, None),
+                (SetupStatus::Current, legacy_backup.as_deref()),
                 &release_digest,
                 &cli_sha256,
                 &extracted_plugin_digest,
