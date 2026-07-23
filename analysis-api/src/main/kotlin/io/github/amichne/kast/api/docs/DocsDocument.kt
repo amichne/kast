@@ -88,6 +88,8 @@ object DocsDocument {
         "HealthResponse" to HealthResponse.serializer(),
         "RuntimeStatusResponse" to RuntimeStatusResponse.serializer(),
         "RuntimeLifecycleResponse" to RuntimeLifecycleResponse.serializer(),
+        "RuntimeOpenProjectRequest" to RuntimeOpenProjectRequest.serializer(),
+        "RuntimeOpenProjectResponse" to RuntimeOpenProjectResponse.serializer(),
         "BackendCapabilities" to BackendCapabilities.serializer(),
         // Shared types
         "FilePosition" to FilePosition.serializer(),

@@ -29,6 +29,7 @@ class AnalysisOpenApiDocumentTest {
         val expectedMethods = listOf(
             "health",
             "runtime/status",
+            "runtime/open-project",
             "runtime/shutdown",
             "runtime/restart",
             "capabilities",

@@ -44,6 +44,7 @@ categories:
   system:
   - health
   - runtime/status
+  - runtime/open-project
   - runtime/shutdown
   - runtime/restart
   - capabilities
@@ -860,6 +861,23 @@ commands:
     tool:
       description: Search the workspace for Kotlin symbols by name pattern. Supports substring matching (default) and regex. Use to find declarations across the codebase because it understands Kotlin symbol names, kinds, and declaration scopes.
       name: kast_workspace_symbol
+  runtime/open-project:
+    category: system
+    dataSource: backend
+    method: runtime/open-project
+    request:
+      fields:
+        canonicalRoot:
+          sample: /workspace
+          type: string
+        requestId:
+          sample: 00000000-0000-4000-8000-000000000032
+          type: string
+      required:
+      - canonicalRoot
+      - requestId
+    responseType: RuntimeOpenProjectResponse
+    summary: Open an authenticated exact-root project in this runtime host
   runtime/restart:
     category: system
     dataSource: backend

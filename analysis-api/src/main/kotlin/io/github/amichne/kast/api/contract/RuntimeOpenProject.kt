@@ -1,8 +1,12 @@
-@file:OptIn(kotlin.uuid.ExperimentalUuidApi::class)
+@file:OptIn(
+    kotlin.uuid.ExperimentalUuidApi::class,
+    kotlinx.serialization.ExperimentalSerializationApi::class,
+)
 
 package io.github.amichne.kast.api.contract
 
 import io.github.amichne.kast.api.protocol.SCHEMA_VERSION
+import io.github.amichne.kast.api.docs.DocField
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.descriptors.PrimitiveKind
@@ -82,7 +86,9 @@ object RuntimeOpenProjectRequestIdSerializer : KSerializer<RuntimeOpenProjectReq
 
 @Serializable
 data class RuntimeOpenProjectRequest(
+    @DocField(description = "Canonical absolute root of the project to open.")
     val canonicalRoot: RuntimeOpenProjectRoot,
+    @DocField(description = "One-shot UUID authenticating the project-open request.")
     val requestId: RuntimeOpenProjectRequestId,
 )
 
@@ -94,6 +100,8 @@ enum class RuntimeOpenProjectResult {
 
 @Serializable
 data class RuntimeOpenProjectResponse(
+    @DocField(description = "Whether the exact root was already open or was opened in a new project frame.")
     val result: RuntimeOpenProjectResult,
+    @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 )

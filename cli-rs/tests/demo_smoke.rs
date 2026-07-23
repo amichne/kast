@@ -581,7 +581,7 @@ fn spawn_ready_demo_backend(
   "transport": "uds",
   "socketPath": "{}",
   "pid": {},
-  "schemaVersion": 4
+  "schemaVersion": 5
 }}]"#,
             workspace.display(),
             socket_path.display(),
@@ -621,7 +621,7 @@ fn spawn_ready_demo_backend(
                     "backendVersion": "demo-test",
                     "workspaceRoot": server_workspace.display().to_string(),
                     "referenceIndexReady": true,
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 }),
                 "capabilities" => serde_json::json!({
                     "backendName": "idea",
@@ -634,7 +634,7 @@ fn spawn_ready_demo_backend(
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 }),
                 "symbol/resolve" => resolve_result.clone().unwrap_or_else(|| serde_json::json!({
                         "type": "RESOLVE_SUCCESS",
@@ -677,7 +677,7 @@ fn spawn_ready_demo_backend(
                 }),
                 "raw/diagnostics" => serde_json::json!({
                     "diagnostics": [],
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 }),
                 other => panic!("unexpected demo method: {other}"),
             };

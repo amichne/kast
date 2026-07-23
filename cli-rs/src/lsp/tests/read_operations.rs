@@ -46,7 +46,7 @@
                     location(&file, declaration_start, declaration_start + "greet".len()),
                     location(&file, call_start, call_start + "greet".len())
                 ],
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         );
         let mut server = LspServer::new(rpc);
@@ -135,7 +135,7 @@
                         "children": []
                     }]
                 }],
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         );
         let mut server = LspServer::new(rpc);
@@ -167,7 +167,7 @@
             "raw/workspace-symbol",
             json!({
                 "symbols": symbols,
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         );
         let mut server = LspServer::new(rpc);
@@ -208,7 +208,7 @@
                         "CLASS"
                     )
                 ],
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         );
         let mut server = LspServer::new(rpc);

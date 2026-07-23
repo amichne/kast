@@ -142,7 +142,7 @@ fn workspace_files_session_responses(
         "backendName": "idea",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
-        "schemaVersion": 4
+        "schemaVersion": 5
     });
     let capabilities = serde_json::json!({
         "backendName": "idea",
@@ -155,7 +155,7 @@ fn workspace_files_session_responses(
             "maxResults": 1000,
             "maxConcurrentRequests": 4
         },
-        "schemaVersion": 4
+        "schemaVersion": 5
     });
     vec![("runtime/status", runtime), ("capabilities", capabilities)]
 }
@@ -188,18 +188,18 @@ fn append_paged_workspace_files_collection(
                 "nextPageToken": next_page_token,
                 "files": files
             }],
-            "schemaVersion": 4
+            "schemaVersion": 5
         })
     };
     let collection_validation = serde_json::json!({
         "snapshotToken": "snapshot-500",
         "modules": [],
-        "schemaVersion": 4
+        "schemaVersion": 5
     });
     let barrier_validation = serde_json::json!({
         "snapshotToken": revalidation_snapshot_token,
         "modules": [],
-        "schemaVersion": 4
+        "schemaVersion": 5
     });
     responses.extend([
         (
@@ -217,7 +217,7 @@ fn append_paged_workspace_files_collection(
                     "nextPageToken": null,
                     "files": []
                 }],
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         ),
         ("raw/workspace-files", page(0..200, Some("raw-page-2"))),
@@ -289,13 +289,13 @@ fn spawn_small_mixed_workspace_files_backend(
                 "fileCount": 2,
                 "nextPageToken": null
             }],
-            "schemaVersion": 4
+            "schemaVersion": 5
         })
     };
     let validation = serde_json::json!({
         "snapshotToken": "snapshot-mixed",
         "modules": [],
-        "schemaVersion": 4
+        "schemaVersion": 5
     });
     spawn_scripted_idea_backend(
         home,
@@ -352,13 +352,13 @@ fn spawn_structured_filter_workspace_files_backend(
                 "fileCount": 5,
                 "nextPageToken": null
             }],
-            "schemaVersion": 4
+            "schemaVersion": 5
         })
     };
     let validation = serde_json::json!({
         "snapshotToken": "snapshot-structured-filters",
         "modules": [],
-        "schemaVersion": 4
+        "schemaVersion": 5
     });
     spawn_scripted_idea_backend(
         home,
@@ -396,13 +396,13 @@ fn spawn_single_owned_workspace_files_backend(
                 "fileCount": 1,
                 "nextPageToken": null
             }],
-            "schemaVersion": 4
+            "schemaVersion": 5
         })
     };
     let validation = serde_json::json!({
         "snapshotToken": "snapshot-composition",
         "modules": [],
-        "schemaVersion": 4
+        "schemaVersion": 5
     });
     spawn_scripted_idea_backend(
         home,
@@ -537,7 +537,7 @@ fn exact_root_inventory_returns_a_bounded_compact_public_result() {
                 "fileCount": 1,
                 "nextPageToken": null
             }],
-            "schemaVersion": 4
+            "schemaVersion": 5
         })
     };
     let server = spawn_scripted_idea_backend(
@@ -556,7 +556,7 @@ fn exact_root_inventory_returns_a_bounded_compact_public_result() {
                 serde_json::json!({
                     "snapshotToken": "snapshot-one",
                     "modules": [],
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 }),
             ),
             (
@@ -564,7 +564,7 @@ fn exact_root_inventory_returns_a_bounded_compact_public_result() {
                 serde_json::json!({
                     "snapshotToken": "snapshot-one",
                     "modules": [],
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 }),
             ),
         ],
@@ -1578,13 +1578,13 @@ fn backend_module_filter_is_partial_when_backend_page_is_incomplete() {
                 "fileCount": 2,
                 "nextPageToken": null
             }],
-            "schemaVersion": 4
+            "schemaVersion": 5
         })
     };
     let validation = serde_json::json!({
         "snapshotToken": "snapshot-partial-backend-owner",
         "modules": [],
-        "schemaVersion": 4
+        "schemaVersion": 5
     });
     let backend = spawn_scripted_idea_backend(
         &home,
@@ -1870,7 +1870,7 @@ fn discovered_file_path_composes_with_diagnostics_and_exact_symbol_lookup() {
                     "removedFileCount": 0,
                     "attemptCount": 1,
                     "elapsedMillis": 0,
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 }),
             ),
             (
