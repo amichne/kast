@@ -526,7 +526,7 @@ private fun KtNamedDeclaration.semanticVisibility(): SemanticGraphVisibility = w
     hasModifier(KtTokens.PRIVATE_KEYWORD) -> SemanticGraphVisibility.PRIVATE
     hasModifier(KtTokens.PROTECTED_KEYWORD) -> SemanticGraphVisibility.PROTECTED
     hasModifier(KtTokens.INTERNAL_KEYWORD) -> SemanticGraphVisibility.INTERNAL
-    fqName == null && this is KtNamedFunction -> SemanticGraphVisibility.LOCAL
+    fqName == null -> SemanticGraphVisibility.LOCAL
     else -> SemanticGraphVisibility.PUBLIC
 }
 

@@ -13,6 +13,7 @@ import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
+import io.github.amichne.kast.api.contract.result.SemanticGraphVisibility
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -93,6 +94,15 @@ class NativeSemanticGraphBackendTest {
 
             val rightFoo: Foo? = null
         """
+
+        private const val localPropertySource = """
+            package demo
+
+            fun useLocalProperty(): Int {
+                val localValue = 1
+                return localValue
+            }
+        """
     }
 
     private val moduleFixture = projectFixture.moduleFixture("main")
@@ -104,6 +114,7 @@ class NativeSemanticGraphBackendTest {
     private val rightTypeFixture = sourceRootFixture.psiFileFixture("RightType.kt", rightType)
     private val leftTypeConsumerFixture = sourceRootFixture.psiFileFixture("LeftTypeConsumer.kt", leftTypeConsumer)
     private val rightTypeConsumerFixture = sourceRootFixture.psiFileFixture("RightTypeConsumer.kt", rightTypeConsumer)
+    private val localPropertyFixture = sourceRootFixture.psiFileFixture("LocalProperty.kt", localPropertySource)
 
     @TempDir
     lateinit var storeRoot: Path
@@ -227,6 +238,37 @@ class NativeSemanticGraphBackendTest {
             val leftKey = snapshot.symbols.single { symbol -> symbol.name.value == "leftFoo" }.declaredTypeKey
             val rightKey = snapshot.symbols.single { symbol -> symbol.name.value == "rightFoo" }.declaredTypeKey
             assertTrue(leftKey != null && rightKey != null && leftKey != rightKey)
+        }
+    }
+
+    @Test
+    fun `local properties retain local visibility`() = runBlocking {
+        val project = projectFixture.get()
+        val sourceFile = localPropertyFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = limits(),
+                semanticGraphStore = store,
+                psiGeneration = { 1L },
+            ).use { backend ->
+                backend.semanticGraph(
+                    SemanticGraphQuery(
+                        filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
+                    ).parsed(),
+                )
+            }
+
+            val snapshot = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse("LocalProperty.kt")))
+            assertEquals(
+                SemanticGraphVisibility.LOCAL,
+                snapshot.symbols.single { symbol -> symbol.name.value == "localValue" }.visibility,
+            )
         }
     }
 
