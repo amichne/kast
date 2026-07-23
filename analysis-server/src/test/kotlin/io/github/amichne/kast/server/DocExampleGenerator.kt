@@ -84,6 +84,7 @@ object DocExampleGenerator {
             val friendlyGreeterOffset = typeContent.indexOf("FriendlyGreeter")
 
             val pathToSanitize = tempDir.toString()
+            val canonicalPathToSanitize = tempDir.toRealPath().toString()
             val continuationIdentity = continuationIdentity(sampleFile)
 
             val operations = buildOperations(
@@ -99,11 +100,13 @@ object DocExampleGenerator {
             val result = linkedMapOf<String, ExamplePair>()
             for ((operationId, request) in operations) {
                 val requestJson = json.encodeToString(JsonRpcRequest.serializer(), request)
+                    .replace(canonicalPathToSanitize, "/workspace")
                     .replace(pathToSanitize, "/workspace")
                     .withDeterministicWorkspaceHandles(operationId)
                 val responseRaw = runBlocking { dispatcher.dispatch(request) }
                 val responseElement = json.parseToJsonElement(responseRaw)
                 val responseJson = json.encodeToString(JsonElement.serializer(), responseElement)
+                    .replace(canonicalPathToSanitize, "/workspace")
                     .replace(pathToSanitize, "/workspace")
                     .withDeterministicWorkspaceHandles(operationId)
                 result[operationId] = ExamplePair(requestJson, responseJson)

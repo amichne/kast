@@ -152,7 +152,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             {
                 "method": "runtime/open-project",
                 "params": {
-                    "canonicalRoot": "/private/workspace",
+                    "canonicalRoot": "/workspace",
                     "requestId": "00000000-0000-4000-8000-000000000032"
                 },
                 "id": 1,

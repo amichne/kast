@@ -133,7 +133,10 @@ mod macos {
         );
         let payload: serde_json::Value =
             serde_json::from_slice(&output.stdout).expect("status error JSON");
-        assert_eq!(payload["code"], "IDEA_PLUGIN_UPDATE_REQUIRED", "{payload:#}");
+        assert_eq!(
+            payload["code"], "IDEA_PLUGIN_UPDATE_REQUIRED",
+            "{payload:#}"
+        );
         assert_eq!(
             payload["details"]["cause"], "MACOS_PLUGIN_WORKSPACE_REQUIRED",
             "{payload:#}"
