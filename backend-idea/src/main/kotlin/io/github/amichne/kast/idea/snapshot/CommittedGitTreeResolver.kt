@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea.snapshot
 
+import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.snapshot.GitObjectId
 import java.nio.file.Path
 
@@ -11,6 +12,12 @@ data class CommittedGitTree(
 object CommittedGitTreeResolver {
     fun resolve(workspaceRoot: Path): CommittedGitTree? {
         if (git(workspaceRoot, "status", "--porcelain", "--untracked-files=normal")?.isNotEmpty() != false) return null
+        if (
+            gitBytes(workspaceRoot, "ls-files", "--others", "--ignored", "--exclude-standard", "-z", "--", "*.kt")
+                ?.isNotEmpty() != false
+        ) {
+            return null
+        }
         val workspacePrefix = gitBytes(workspaceRoot, "rev-parse", "--show-prefix")
             ?.toString(Charsets.UTF_8)
             ?.removeSuffix("\n")
@@ -29,6 +36,7 @@ object CommittedGitTreeResolver {
                 require(fields.size == 3 && fields[1] == "blob") { "Git tree contains an unsupported entry" }
                 path to GitObjectId.parse(fields[2])
             }
+            .filterKeys(SourceIndexFilePolicy::isEligible)
             .toSortedMap()
         return CommittedGitTree(treeOid, files)
     }

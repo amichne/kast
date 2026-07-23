@@ -32,7 +32,8 @@ class RepositorySnapshotIntegrationTest {
         git("config", "user.email", "kast@example.invalid")
         git("config", "user.name", "Kast Test")
         Files.writeString(workspace.resolve("A.kt"), "class A")
-        git("add", "A.kt")
+        Files.writeString(workspace.resolve("Notes.txt"), "not indexed")
+        git("add", "A.kt", "Notes.txt")
         git("commit", "-m", "initial")
 
         val committed = CommittedGitTreeResolver.resolve(workspace)
@@ -44,6 +45,13 @@ class RepositorySnapshotIntegrationTest {
 
         git("checkout", "--", "A.kt")
         Files.writeString(workspace.resolve("untracked.kt"), "class Untracked")
+        assertNull(CommittedGitTreeResolver.resolve(workspace))
+
+        Files.delete(workspace.resolve("untracked.kt"))
+        Files.writeString(workspace.resolve(".gitignore"), "ignored.kt\n")
+        git("add", ".gitignore")
+        git("commit", "-m", "ignore local source")
+        Files.writeString(workspace.resolve("ignored.kt"), "class Ignored")
         assertNull(CommittedGitTreeResolver.resolve(workspace))
     }
 
@@ -117,6 +125,7 @@ class RepositorySnapshotIntegrationTest {
         git("config", "user.name", "Kast Test")
         Files.writeString(workspace.resolve("A.kt"), "class A")
         Files.writeString(workspace.resolve("B.kt"), "class B")
+        Files.writeString(workspace.resolve("asset.bin"), "base asset")
         git("add", ".")
         git("commit", "-m", "base")
         val baseTree = requireNotNull(CommittedGitTreeResolver.resolve(workspace))
@@ -135,6 +144,7 @@ class RepositorySnapshotIntegrationTest {
         Files.writeString(workspace.resolve("A.kt"), "class A2")
         Files.delete(workspace.resolve("B.kt"))
         Files.writeString(workspace.resolve("C.kt"), "class C")
+        Files.writeString(workspace.resolve("asset.bin"), "changed asset")
         git("add", "-A")
         git("commit", "-m", "target")
         val targetDatabase = repositoryDirectory.resolveSibling("${workspace.fileName}-worktree/source-index.db")
