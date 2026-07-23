@@ -103,11 +103,18 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
 }
 
 fn install_user_command(targets: &ActivationTargetPaths) -> Result<()> {
+    let user_command = manifest::home_dir().join(".local/bin/kast");
+    let receipt_path = targets
+        .current_link
+        .join(manifest::INSTALL_MANIFEST_FILE);
+    let mut receipt = manifest_from_file(&receipt_path)?;
+    let user_command_state = user_command.display().to_string();
+    if !receipt.owned_paths.contains(&user_command_state) {
+        receipt.owned_paths.push(user_command_state);
+        manifest::write_manifest_atomic(&receipt_path, &receipt)?;
+    }
     #[cfg(unix)]
-    manifest::replace_symlink_or_copy(
-        &targets.resolved.active_binary,
-        &manifest::home_dir().join(".local/bin/kast"),
-    )?;
+    manifest::replace_symlink_or_copy(&targets.resolved.active_binary, &user_command)?;
     Ok(())
 }
 
