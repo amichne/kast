@@ -1,5 +1,7 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
@@ -8,6 +10,8 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
+import io.github.amichne.kast.api.contract.NonNegativeInt
+import io.github.amichne.kast.api.continuation.ContinuationClock
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.PositiveInt
@@ -19,12 +23,16 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphSha256
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
-import io.github.amichne.kast.api.protocol.ConflictException
+import io.github.amichne.kast.api.protocol.InvalidSemanticGraphCursorException
+import io.github.amichne.kast.api.protocol.SemanticGraphSnapshotExpiredException
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
+import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import kotlinx.coroutines.runBlocking
+import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtPsiFactory
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -74,6 +82,11 @@ class SemanticGraphBackendTest {
 
             class BoundaryTarget
         """
+
+        private val oversizedSource = buildString {
+            appendLine("package oversized")
+            repeat(300) { index -> appendLine("fun declaration$index(): Int = $index") }
+        }
     }
 
     private val moduleFixture = projectFixture.moduleFixture("main")
@@ -82,6 +95,7 @@ class SemanticGraphBackendTest {
     private val brokenSourceFileFixture = sourceRootFixture.psiFileFixture("Broken.kt", brokenSource)
     private val boundarySourceFileFixture = sourceRootFixture.psiFileFixture("BoundarySource.kt", boundarySource)
     private val boundaryTargetFileFixture = sourceRootFixture.psiFileFixture("BoundaryTarget.kt", boundaryTarget)
+    private val oversizedSourceFileFixture = sourceRootFixture.psiFileFixture("Oversized.kt", oversizedSource)
     private val duplicateModuleFixture = projectFixture.moduleFixture("duplicate")
     private val duplicateSourceRootFixture = duplicateModuleFixture.sourceRootFixture()
     private val duplicateSourceFileFixture = duplicateSourceRootFixture.psiFileFixture("Duplicate.kt", duplicateSource)
@@ -294,13 +308,13 @@ class SemanticGraphBackendTest {
                 assertEquals(result.symbols.map { it.canonicalKey }, pagedSymbols.map { it.canonicalKey })
                 assertEquals(result.relations, pagedRelations)
 
-                val stalePage = backend.semanticGraph(
+                val snapshotPage = backend.semanticGraph(
                     SemanticGraphQuery(
                         filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
                         pageSize = PositiveInt(2),
                     ).parsed(),
                 )
-                val staleToken = requireNotNull(stalePage.nextPageToken)
+                val snapshotToken = requireNotNull(snapshotPage.nextPageToken)
                 val indexed = store.readSemanticGraph(listOf(result.coverage.files.single().path))
                 val beforeGeneration = store.readGeneration()
                 val afterGeneration = store.replaceSemanticGraphFiles(
@@ -310,22 +324,23 @@ class SemanticGraphBackendTest {
                             contentHash = requireNotNull(indexed.files.single().contentHash),
                             status = SemanticGraphFileStatus.REFRESHED,
                             diagnostics = indexed.files.single().diagnostics,
+                            configurationFingerprint = indexed.fileRecords.single().configurationFingerprint,
+                            omittedExternalTargetCount = indexed.fileRecords.single().omittedExternalTargetCount,
+                            dependencyContentHashes = indexed.fileRecords.single().dependencyContentHashes,
                             symbols = indexed.symbols,
                             relations = indexed.relations,
                         ),
                     ),
                 )
                 assertEquals(beforeGeneration.value + 1, afterGeneration.value)
-                val staleFailure = runCatching {
-                    backend.semanticGraph(
-                        SemanticGraphQuery(
-                            filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
-                            pageSize = PositiveInt(2),
-                            continuation = staleToken,
-                        ).parsed(),
-                    )
-                }.exceptionOrNull()
-                assertTrue(staleFailure is ConflictException)
+                val resumedPage = backend.semanticGraph(
+                    SemanticGraphQuery(
+                        filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
+                        pageSize = PositiveInt(2),
+                        continuation = snapshotToken,
+                    ).parsed(),
+                )
+                assertEquals(snapshotPage.generation, resumedPage.generation)
             }
         }
     }
@@ -369,6 +384,9 @@ class SemanticGraphBackendTest {
                             contentHash = requireNotNull(indexed.files.single().contentHash),
                             status = SemanticGraphFileStatus.REFRESHED,
                             diagnostics = indexed.files.single().diagnostics,
+                            configurationFingerprint = indexed.fileRecords.single().configurationFingerprint,
+                            omittedExternalTargetCount = indexed.fileRecords.single().omittedExternalTargetCount,
+                            dependencyContentHashes = indexed.fileRecords.single().dependencyContentHashes,
                             symbols = indexed.symbols,
                             relations = indexed.relations + indexed.relations.first().copy(targetKey = staleKey),
                         ),
@@ -377,6 +395,9 @@ class SemanticGraphBackendTest {
                             contentHash = SemanticGraphSha256.parse("b".repeat(64)),
                             status = SemanticGraphFileStatus.REFRESHED,
                             diagnostics = emptyList(),
+                            configurationFingerprint = null,
+                            omittedExternalTargetCount = NonNegativeInt(0),
+                            dependencyContentHashes = emptyMap(),
                             symbols = listOf(staleSymbol),
                             relations = emptyList(),
                         ),
@@ -387,6 +408,213 @@ class SemanticGraphBackendTest {
 
                 assertEquals(SemanticGraphFileStatus.REFRESHED, refreshed.coverage.files.single().status)
                 assertTrue(refreshed.relations.none { relation -> relation.targetKey == staleKey })
+            }
+        }
+    }
+
+    @Test
+    fun `unchanged semantic graph files are reused from the persistent index`() = runBlocking {
+        val project = projectFixture.get()
+        val sourceFile = sourceFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(maxResults = 500, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4),
+                semanticGraphStore = store,
+                semanticGraphConfigurationFingerprint = BuildClasspathFingerprint.parse("a".repeat(64)),
+                psiGeneration = { 1L },
+            ).use { backend ->
+                val query = SemanticGraphQuery(
+                    filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
+                    pageSize = PositiveInt(500),
+                ).parsed()
+                backend.semanticGraph(query)
+
+                val reused = backend.semanticGraph(query)
+
+                assertEquals(SemanticGraphFileStatus.CACHED, reused.coverage.files.single().status)
+            }
+        }
+    }
+
+    @Test
+    fun `compiler configuration change invalidates persistent semantic fragments`() = runBlocking {
+        val project = projectFixture.get()
+        val sourceFile = sourceFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
+        val query = SemanticGraphQuery(
+            filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
+            pageSize = PositiveInt(500),
+        ).parsed()
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(maxResults = 500, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4),
+                semanticGraphStore = store,
+                semanticGraphConfigurationFingerprint = BuildClasspathFingerprint.parse("a".repeat(64)),
+                psiGeneration = { 1L },
+            ).use { backend -> backend.semanticGraph(query) }
+
+            val refreshed = KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(maxResults = 500, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4),
+                semanticGraphStore = store,
+                semanticGraphConfigurationFingerprint = BuildClasspathFingerprint.parse("b".repeat(64)),
+                psiGeneration = { 1L },
+            ).use { backend -> backend.semanticGraph(query) }
+
+            assertEquals(SemanticGraphFileStatus.REFRESHED, refreshed.coverage.files.single().status)
+        }
+    }
+
+    @Test
+    fun `source dependency changes refresh dependents while unrelated files remain cached`() = runBlocking {
+        val project = projectFixture.get()
+        val dependent = boundarySourceFileFixture.get()
+        val target = boundaryTargetFileFixture.get()
+        val unrelated = sourceFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(dependent.virtualFile.path).toRealPath().parent
+        val queryPaths = listOf(dependent, target, unrelated).map { file ->
+            SemanticGraphPath.parse(file.virtualFile.path)
+        }
+        val query = SemanticGraphQuery(
+            filePaths = queryPaths,
+            pageSize = PositiveInt(500),
+        ).parsed()
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(maxResults = 500, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4),
+                semanticGraphStore = store,
+                semanticGraphConfigurationFingerprint = BuildClasspathFingerprint.parse("a".repeat(64)),
+                psiGeneration = { 1L },
+            ).use { backend ->
+                backend.semanticGraph(query)
+                assertEquals(
+                    setOf(SemanticGraphSourcePath.parse("BoundaryTarget.kt")),
+                    store.readSemanticGraph(
+                        listOf(SemanticGraphSourcePath.parse("BoundarySource.kt")),
+                    ).fileRecords.single().dependencyContentHashes.keys,
+                )
+                assertTrue(
+                    backend.semanticGraph(query).coverage.files.all { file ->
+                        file.status == SemanticGraphFileStatus.CACHED
+                    },
+                )
+                val oldSnapshotPage = backend.semanticGraph(
+                    SemanticGraphQuery(filePaths = queryPaths, pageSize = PositiveInt(2)).parsed(),
+                )
+                val oldSnapshotToken = requireNotNull(oldSnapshotPage.nextPageToken)
+                val concurrentSnapshotPage = backend.semanticGraph(
+                    SemanticGraphQuery(filePaths = queryPaths, pageSize = PositiveInt(2)).parsed(),
+                )
+                val concurrentSnapshotToken = requireNotNull(concurrentSnapshotPage.nextPageToken)
+                assertNotEquals(oldSnapshotToken, concurrentSnapshotToken)
+
+                ApplicationManager.getApplication().invokeAndWait {
+                    WriteCommandAction.runWriteCommandAction(project) {
+                        (target as KtFile).declarations.single().replace(
+                            KtPsiFactory(project).createClass("class BoundaryTarget(val changed: Int = 1)"),
+                        )
+                    }
+                }
+                waitUntilIndexesAreReady(project)
+
+                val refreshed = backend.semanticGraph(query).coverage.files.associateBy { file -> file.path.value }
+
+                assertEquals(
+                    SemanticGraphFileStatus.REFRESHED,
+                    refreshed.getValue("BoundarySource.kt").status,
+                )
+                assertEquals(
+                    SemanticGraphFileStatus.REFRESHED,
+                    refreshed.getValue("BoundaryTarget.kt").status,
+                )
+                assertEquals(
+                    SemanticGraphFileStatus.CACHED,
+                    refreshed.getValue("SemanticGraph.kt").status,
+                )
+                val oldSnapshotContinuation = backend.semanticGraph(
+                    SemanticGraphQuery(
+                        filePaths = queryPaths,
+                        pageSize = PositiveInt(2),
+                        continuation = oldSnapshotToken,
+                    ).parsed(),
+                )
+                assertEquals(oldSnapshotPage.generation, oldSnapshotContinuation.generation)
+                val concurrentSnapshotContinuation = backend.semanticGraph(
+                    SemanticGraphQuery(
+                        filePaths = queryPaths,
+                        pageSize = PositiveInt(2),
+                        continuation = concurrentSnapshotToken,
+                    ).parsed(),
+                )
+                assertEquals(concurrentSnapshotPage.generation, concurrentSnapshotContinuation.generation)
+            }
+        }
+    }
+
+    @Test
+    fun `oversized single file completes after a newer generation is published`() = runBlocking {
+        val project = projectFixture.get()
+        val sourceFile = oversizedSourceFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(maxResults = 500, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4),
+                semanticGraphStore = store,
+                psiGeneration = { 1L },
+            ).use { backend ->
+                val query = SemanticGraphQuery(
+                    filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
+                    pageSize = PositiveInt(500),
+                )
+                val first = backend.semanticGraph(query.parsed())
+                var recordCount = first.symbols.size + first.relations.size
+                var continuation = requireNotNull(first.nextPageToken)
+                val indexed = store.readSemanticGraph(listOf(first.coverage.files.single().path))
+                store.replaceSemanticGraphFiles(
+                    listOf(
+                        SemanticGraphFileIndexUpdate(
+                            path = indexed.files.single().path,
+                            contentHash = requireNotNull(indexed.files.single().contentHash),
+                            status = SemanticGraphFileStatus.REFRESHED,
+                            diagnostics = indexed.files.single().diagnostics,
+                            configurationFingerprint = indexed.fileRecords.single().configurationFingerprint,
+                            omittedExternalTargetCount = indexed.fileRecords.single().omittedExternalTargetCount,
+                            dependencyContentHashes = indexed.fileRecords.single().dependencyContentHashes,
+                            symbols = indexed.symbols,
+                            relations = indexed.relations,
+                        ),
+                    ),
+                )
+
+                while (true) {
+                    val page = backend.semanticGraph(query.copy(continuation = continuation).parsed())
+                    recordCount += page.symbols.size + page.relations.size
+                    continuation = page.nextPageToken ?: break
+                }
+
+                assertTrue(recordCount > 500)
             }
         }
     }
@@ -425,8 +653,53 @@ class SemanticGraphBackendTest {
                     replacement.semanticGraph(query.copy(continuation = token).parsed())
                 }.exceptionOrNull()
 
-                assertTrue(failure is ConflictException)
+                assertTrue(failure is InvalidSemanticGraphCursorException)
             }
         }
+    }
+
+    @Test
+    fun `expired semantic graph snapshot is retryable and distinct from an invalid cursor`() = runBlocking {
+        val project = projectFixture.get()
+        val sourceFile = sourceFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
+        val clock = MutableClock()
+        val query = SemanticGraphQuery(
+            filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
+            pageSize = PositiveInt(2),
+        )
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = ServerLimits(
+                    maxResults = 500,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                    continuationTtlMillis = 1,
+                ),
+                semanticGraphStore = store,
+                semanticGraphContinuationClock = clock,
+                psiGeneration = { 1L },
+            ).use { backend ->
+                val token = requireNotNull(backend.semanticGraph(query.parsed()).nextPageToken)
+                clock.nowNanos = 2_000_000
+
+                val failure = runCatching {
+                    backend.semanticGraph(query.copy(continuation = token).parsed())
+                }.exceptionOrNull()
+
+                assertTrue(failure is SemanticGraphSnapshotExpiredException)
+            }
+        }
+    }
+
+    private class MutableClock : ContinuationClock {
+        var nowNanos: Long = 0
+
+        override fun nowNanos(): Long = nowNanos
     }
 }

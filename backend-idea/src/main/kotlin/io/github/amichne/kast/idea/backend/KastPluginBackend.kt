@@ -23,6 +23,7 @@ import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.continuation.ContinuationStateDisposer
+import io.github.amichne.kast.api.continuation.ContinuationClock
 import io.github.amichne.kast.api.continuation.ContinuationTokenIssuer
 import io.github.amichne.kast.api.continuation.ServerHeldContinuationStore as SharedContinuationStore
 import io.github.amichne.kast.api.validation.*
@@ -82,6 +83,8 @@ import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import java.nio.file.Path
+import java.util.Collections
+import java.util.LinkedHashMap
 import java.util.UUID
 import java.util.concurrent.CancellationException
 import io.github.amichne.kast.idea.*
@@ -97,6 +100,7 @@ import io.github.amichne.kast.idea.backend.semantic.SemanticGraphContinuationSta
 import io.github.amichne.kast.idea.backend.semantic.SemanticGraphQueryIdentity
 import io.github.amichne.kast.api.contract.query.SemanticGraphPageToken
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
 
 internal class KastPluginBackend(
     internal val project: Project,
@@ -107,6 +111,8 @@ internal class KastPluginBackend(
     internal val workspaceIdentity: IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
     internal val referenceIndexLookup: ReferenceIndexLookup = ReferenceIndexLookup.Unavailable,
     internal val semanticGraphStore: SqliteSourceIndexStore? = null,
+    internal val semanticGraphConfigurationFingerprint: BuildClasspathFingerprint? = null,
+    internal val semanticGraphContinuationClock: ContinuationClock = ContinuationClock.System,
     internal val referenceSearchClock: ReferenceSearchClock = ReferenceSearchClock.System,
     internal val semanticAdmissionAwaiter: IdeaSemanticAdmissionAwaiter =
         IdeaSemanticAdmissionAwaiter.forRequestBudget(limits.requestTimeoutMillis),
@@ -169,7 +175,16 @@ internal class KastPluginBackend(
         timeToLive = limits.typedContinuationTtl,
         tokenIssuer = ContinuationTokenIssuer(SemanticGraphPageToken::random),
         stateDisposer = ContinuationStateDisposer { },
+        clock = semanticGraphContinuationClock,
     )
+    internal val semanticGraphContinuationIssuedAtNanos: MutableMap<SemanticGraphPageToken, Long> =
+        Collections.synchronizedMap(
+            object : LinkedHashMap<SemanticGraphPageToken, Long>() {
+                override fun removeEldestEntry(
+                    eldest: MutableMap.MutableEntry<SemanticGraphPageToken, Long>?,
+                ): Boolean = size > Math.multiplyExact(limits.continuationCapacity, 2)
+            },
+        )
     internal val relationshipContinuations = RelationshipContinuationStore(limits)
     internal val workspaceFilePaging = IdeaWorkspaceFilePaging(
         workspaceId = sharedWorkspaceIdentity.canonicalWorkspaceId,
@@ -408,6 +423,7 @@ internal class KastPluginBackend(
         )
 
     override fun close() {
+        semanticGraphContinuationIssuedAtNanos.clear()
         val failures = listOf(
             runCatching(referenceContinuations::close).exceptionOrNull(),
             runCatching(diagnosticContinuations::close).exceptionOrNull(),

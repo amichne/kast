@@ -1,3 +1,373 @@
+const GRAPHIFY_CHECKPOINT_SCHEMA_VERSION: u32 = 1;
+const GRAPHIFY_PROGRESS_INTERVAL: std::time::Duration = std::time::Duration::from_secs(3);
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GraphifyCheckpointManifest {
+    schema_version: u32,
+    query_fingerprint: String,
+    partition_count: usize,
+    completed: BTreeMap<usize, GraphifyCheckpointPartition>,
+    published: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct GraphifyCheckpointPartition {
+    checksum: String,
+    file_count: usize,
+}
+
+#[derive(Debug)]
+struct GraphifyCheckpointStore {
+    directory: PathBuf,
+    manifest: GraphifyCheckpointManifest,
+}
+
+#[derive(Debug, Default)]
+struct GraphifySemanticAccumulator {
+    symbols: BTreeMap<String, Value>,
+    boundary_symbols: BTreeMap<String, Value>,
+    relations: BTreeMap<String, Value>,
+    coverage_files: BTreeMap<String, Value>,
+    omitted_external_target_count: u64,
+}
+
+#[derive(Debug)]
+struct GraphifyExtraction {
+    semantic: Value,
+    analyzed_files: usize,
+    reused_files: usize,
+    resumed_files: usize,
+    partition_count: usize,
+    checkpoint: Option<GraphifyCheckpointStore>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+struct GraphifyProgressSnapshot {
+    completed_files: usize,
+    analyzed_files: usize,
+    reused_files: usize,
+    resumed_files: usize,
+    completed_partitions: usize,
+}
+
+#[derive(Debug)]
+struct GraphifyProgressState {
+    total_files: usize,
+    total_partitions: usize,
+    completed_files: std::sync::atomic::AtomicUsize,
+    analyzed_files: std::sync::atomic::AtomicUsize,
+    reused_files: std::sync::atomic::AtomicUsize,
+    resumed_files: std::sync::atomic::AtomicUsize,
+    completed_partitions: std::sync::atomic::AtomicUsize,
+    stopped: std::sync::atomic::AtomicBool,
+}
+
+#[derive(Debug)]
+struct GraphifyProgress {
+    state: std::sync::Arc<GraphifyProgressState>,
+    reporter: Option<std::thread::JoinHandle<()>>,
+}
+
+impl GraphifyCheckpointStore {
+    fn start(
+        output_file: &Path,
+        query_fingerprint: String,
+        partition_count: usize,
+        resume: bool,
+    ) -> std::result::Result<Self, AgentError> {
+        let parent = output_file.parent().ok_or_else(|| {
+            agent_error("AGENT_USAGE", "--output-file must have a parent directory.")
+        })?;
+        let output_name = output_file
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("graphify");
+        let directory = parent.join(format!(".{output_name}.kast-job"));
+        std::fs::create_dir_all(&directory).map_err(|error| {
+            agent_error(
+                "GRAPHIFY_CHECKPOINT_WRITE_FAILED",
+                format!("Cannot create Graphify checkpoint directory: {error}"),
+            )
+        })?;
+        let manifest_path = directory.join("manifest.json");
+        let manifest = if resume && manifest_path.exists() {
+            let bytes = std::fs::read(&manifest_path).map_err(|error| {
+                agent_error(
+                    "GRAPHIFY_CHECKPOINT_INVALID",
+                    format!("Cannot read Graphify checkpoint manifest: {error}"),
+                )
+            })?;
+            let manifest: GraphifyCheckpointManifest = serde_json::from_slice(&bytes).map_err(|error| {
+                agent_error(
+                    "GRAPHIFY_CHECKPOINT_INVALID",
+                    format!("Cannot parse Graphify checkpoint manifest: {error}"),
+                )
+            })?;
+            if manifest.schema_version != GRAPHIFY_CHECKPOINT_SCHEMA_VERSION
+                || manifest.query_fingerprint != query_fingerprint
+                || manifest.partition_count != partition_count
+            {
+                return Err(agent_error(
+                    "GRAPHIFY_RESUME_MISMATCH",
+                    "The durable Graphify checkpoint does not match this extraction request.",
+                ));
+            }
+            manifest
+        } else {
+            GraphifyCheckpointManifest {
+                schema_version: GRAPHIFY_CHECKPOINT_SCHEMA_VERSION,
+                query_fingerprint,
+                partition_count,
+                completed: BTreeMap::new(),
+                published: false,
+            }
+        };
+        let store = Self {
+            directory,
+            manifest,
+        };
+        if !resume || !manifest_path.exists() {
+            store.persist_manifest()?;
+        }
+        Ok(store)
+    }
+
+    fn load_partition(
+        &self,
+        index: usize,
+    ) -> std::result::Result<Option<Value>, AgentError> {
+        let Some(expected) = self.manifest.completed.get(&index) else {
+            return Ok(None);
+        };
+        let path = self.partition_path(index);
+        let bytes = std::fs::read(&path).map_err(|error| {
+            agent_error(
+                "GRAPHIFY_CHECKPOINT_INVALID",
+                format!("Cannot read Graphify checkpoint partition {}: {error}", index + 1),
+            )
+        })?;
+        let value: Value = serde_json::from_slice(&bytes).map_err(|error| {
+            agent_error(
+                "GRAPHIFY_CHECKPOINT_INVALID",
+                format!("Cannot parse Graphify checkpoint partition {}: {error}", index + 1),
+            )
+        })?;
+        let checksum = graphify_value_checksum(&value)?;
+        if checksum != expected.checksum
+            || graphify_coverage_file_count(&value)? != expected.file_count
+        {
+            return Err(agent_error(
+                "GRAPHIFY_CHECKPOINT_INVALID",
+                format!("Graphify checkpoint partition {} failed validation.", index + 1),
+            ));
+        }
+        Ok(Some(value))
+    }
+
+    fn persist_partition(
+        &mut self,
+        index: usize,
+        value: &Value,
+    ) -> std::result::Result<(), AgentError> {
+        let checksum = graphify_value_checksum(value)?;
+        let file_count = graphify_coverage_file_count(value)?;
+        write_graphify_fragment_atomically(&self.partition_path(index), value).map_err(|error| {
+            agent_error("GRAPHIFY_CHECKPOINT_WRITE_FAILED", error.message)
+        })?;
+        self.manifest.completed.insert(
+            index,
+            GraphifyCheckpointPartition {
+                checksum,
+                file_count,
+            },
+        );
+        self.persist_manifest()
+    }
+
+    fn mark_published(&mut self) -> std::result::Result<(), AgentError> {
+        self.manifest.published = true;
+        self.persist_manifest()
+    }
+
+    fn partition_path(&self, index: usize) -> PathBuf {
+        self.directory.join(format!("partition-{:06}.json", index + 1))
+    }
+
+    fn persist_manifest(&self) -> std::result::Result<(), AgentError> {
+        let value = serde_json::to_value(&self.manifest).map_err(|error| {
+            agent_error(
+                "GRAPHIFY_CHECKPOINT_WRITE_FAILED",
+                format!("Cannot encode Graphify checkpoint manifest: {error}"),
+            )
+        })?;
+        write_graphify_fragment_atomically(&self.directory.join("manifest.json"), &value)
+            .map_err(|error| agent_error("GRAPHIFY_CHECKPOINT_WRITE_FAILED", error.message))
+    }
+}
+
+impl GraphifySemanticAccumulator {
+    fn add(&mut self, result: &Value) -> std::result::Result<(), AgentError> {
+        for symbol in result["symbols"].as_array().into_iter().flatten() {
+            let key = graphify_required_str(symbol, "canonicalKey")?;
+            self.symbols.insert(key.to_string(), symbol.clone());
+        }
+        for symbol in result["boundarySymbols"].as_array().into_iter().flatten() {
+            let key = graphify_required_str(symbol, "canonicalKey")?;
+            self.boundary_symbols.insert(key.to_string(), symbol.clone());
+        }
+        for relation in result["relations"].as_array().into_iter().flatten() {
+            self.relations.insert(relation.to_string(), relation.clone());
+        }
+        for file in result["coverage"]["files"].as_array().into_iter().flatten() {
+            let path = graphify_required_str(file, "path")?;
+            self.coverage_files.insert(path.to_string(), file.clone());
+        }
+        let omitted = result["coverage"]["omittedExternalTargetCount"]
+            .as_u64()
+            .ok_or_else(|| {
+                agent_error(
+                    "SEMANTIC_GRAPH_INVALID",
+                    "Semantic graph coverage omitted omittedExternalTargetCount.",
+                )
+            })?;
+        self.omitted_external_target_count = self
+            .omitted_external_target_count
+            .checked_add(omitted)
+            .ok_or_else(|| {
+                agent_error(
+                    "SEMANTIC_GRAPH_INVALID",
+                    "Semantic graph omission count overflowed.",
+                )
+            })?;
+        Ok(())
+    }
+
+    fn finish(mut self) -> Value {
+        self.boundary_symbols
+            .retain(|key, _| !self.symbols.contains_key(key));
+        json!({
+            "symbols": self.symbols.into_values().collect::<Vec<_>>(),
+            "boundarySymbols": self.boundary_symbols.into_values().collect::<Vec<_>>(),
+            "relations": self.relations.into_values().collect::<Vec<_>>(),
+            "coverage": {
+                "files": self.coverage_files.into_values().collect::<Vec<_>>(),
+                "omittedExternalTargetCount": self.omitted_external_target_count,
+            },
+        })
+    }
+}
+
+impl GraphifyProgressState {
+    fn snapshot(&self) -> GraphifyProgressSnapshot {
+        use std::sync::atomic::Ordering;
+
+        GraphifyProgressSnapshot {
+            completed_files: self.completed_files.load(Ordering::Relaxed),
+            analyzed_files: self.analyzed_files.load(Ordering::Relaxed),
+            reused_files: self.reused_files.load(Ordering::Relaxed),
+            resumed_files: self.resumed_files.load(Ordering::Relaxed),
+            completed_partitions: self.completed_partitions.load(Ordering::Relaxed),
+        }
+    }
+
+    fn emit(&self) {
+        let snapshot = self.snapshot();
+        eprintln!(
+            "graphify progress: files={}/{} analyzed={} reused={} resumed={} remaining={} partitions={}/{}",
+            snapshot.completed_files,
+            self.total_files,
+            snapshot.analyzed_files,
+            snapshot.reused_files,
+            snapshot.resumed_files,
+            self.total_files.saturating_sub(snapshot.completed_files),
+            snapshot.completed_partitions,
+            self.total_partitions,
+        );
+    }
+}
+
+impl GraphifyProgress {
+    fn new(enabled: bool, total_files: usize, total_partitions: usize) -> Self {
+        let state = std::sync::Arc::new(GraphifyProgressState {
+            total_files,
+            total_partitions,
+            completed_files: std::sync::atomic::AtomicUsize::new(0),
+            analyzed_files: std::sync::atomic::AtomicUsize::new(0),
+            reused_files: std::sync::atomic::AtomicUsize::new(0),
+            resumed_files: std::sync::atomic::AtomicUsize::new(0),
+            completed_partitions: std::sync::atomic::AtomicUsize::new(0),
+            stopped: std::sync::atomic::AtomicBool::new(false),
+        });
+        let reporter = enabled.then(|| {
+            use std::sync::atomic::Ordering;
+
+            state.emit();
+            let reporter_state = std::sync::Arc::clone(&state);
+            std::thread::spawn(move || {
+                while !reporter_state.stopped.load(Ordering::Relaxed) {
+                    std::thread::park_timeout(GRAPHIFY_PROGRESS_INTERVAL);
+                    if !reporter_state.stopped.load(Ordering::Relaxed) {
+                        reporter_state.emit();
+                    }
+                }
+            })
+        });
+        Self { state, reporter }
+    }
+
+    fn advance(&self, completed_files: usize, analyzed: usize, reused: usize, resumed: usize) {
+        use std::sync::atomic::Ordering;
+
+        self.state.completed_files.fetch_add(completed_files, Ordering::Relaxed);
+        self.state.analyzed_files.fetch_add(analyzed, Ordering::Relaxed);
+        self.state.reused_files.fetch_add(reused, Ordering::Relaxed);
+        self.state.resumed_files.fetch_add(resumed, Ordering::Relaxed);
+        self.state.completed_partitions.fetch_add(1, Ordering::Relaxed);
+    }
+
+    fn snapshot(&self) -> GraphifyProgressSnapshot {
+        self.state.snapshot()
+    }
+}
+
+impl Drop for GraphifyProgress {
+    fn drop(&mut self) {
+        use std::sync::atomic::Ordering;
+
+        if let Some(reporter) = self.reporter.take() {
+            self.state.emit();
+            self.state.stopped.store(true, Ordering::Relaxed);
+            reporter.thread().unpark();
+            let _ = reporter.join();
+        }
+    }
+}
+
+fn graphify_value_checksum(value: &Value) -> std::result::Result<String, AgentError> {
+    serde_json::to_vec(value)
+        .map(|bytes| crate::manifest::sha256_bytes(&bytes))
+        .map_err(|error| {
+            agent_error(
+                "GRAPHIFY_CHECKPOINT_INVALID",
+                format!("Cannot encode Graphify checkpoint value: {error}"),
+            )
+        })
+}
+
+fn graphify_coverage_file_count(value: &Value) -> std::result::Result<usize, AgentError> {
+    value["coverage"]["files"]
+        .as_array()
+        .map(Vec::len)
+        .ok_or_else(|| {
+            agent_error(
+                "SEMANTIC_GRAPH_INVALID",
+                "Semantic graph coverage omitted its files array.",
+            )
+        })
+}
+
 #[derive(Debug)]
 struct GraphifyManifestScope {
     selected: Vec<PathBuf>,
@@ -52,15 +422,29 @@ fn execute_agent_graphify(mut args: AgentGraphifyArgs) -> AgentEnvelope {
         );
     }
 
-    let semantic = if scope.selected.is_empty() {
-        json!({"symbols": [], "boundarySymbols": [], "relations": [], "coverage": {"files": [], "omittedExternalTargetCount": 0}})
+    let mut extraction = if scope.selected.is_empty() {
+        GraphifyExtraction {
+            semantic: json!({"symbols": [], "boundarySymbols": [], "relations": [], "coverage": {"files": [], "omittedExternalTargetCount": 0}}),
+            analyzed_files: 0,
+            reused_files: 0,
+            resumed_files: 0,
+            partition_count: 0,
+            checkpoint: None,
+        }
     } else {
-        match graphify_semantic_pages(&args.runtime, &scope, usize::from(args.batch_size)) {
+        match graphify_semantic_pages(
+            &args.runtime,
+            &scope,
+            usize::from(args.batch_size),
+            &args.output_file,
+            args.resume,
+            args.progress,
+        ) {
             Ok(result) => result,
             Err(envelope) => return *envelope,
         }
     };
-    let fragment = match project_graphify_fragment(&semantic) {
+    let fragment = match project_graphify_fragment(&extraction.semantic) {
         Ok(fragment) => fragment,
         Err(error) => return error_envelope("agent/graphify".to_string(), None, error),
     };
@@ -79,6 +463,17 @@ fn execute_agent_graphify(mut args: AgentGraphifyArgs) -> AgentEnvelope {
     if let Err(error) = write_graphify_fragment_atomically(&args.output_file, &fragment) {
         return error_envelope("agent/graphify".to_string(), None, error);
     }
+    if let Some(checkpoint) = extraction.checkpoint.as_mut()
+        && let Err(error) = checkpoint.mark_published()
+    {
+        return error_envelope("agent/graphify".to_string(), None, error);
+    }
+    let completed_files = extraction.analyzed_files + extraction.reused_files + extraction.resumed_files;
+    let cache_hit_rate = if completed_files == 0 {
+        0.0
+    } else {
+        (extraction.reused_files + extraction.resumed_files) as f64 / completed_files as f64
+    };
     result_envelope(
         "agent/graphify".to_string(),
         json!({
@@ -88,7 +483,16 @@ fn execute_agent_graphify(mut args: AgentGraphifyArgs) -> AgentEnvelope {
             "edgeCount": fragment["edges"].as_array().map_or(0, Vec::len),
             "incremental": scope.incremental,
             "batchSize": args.batch_size,
-            "coverage": semantic["coverage"],
+            "partitionCount": extraction.partition_count,
+            "completedPartitions": extraction.partition_count,
+            "filesDiscovered": scope.selected.len(),
+            "filesCompleted": completed_files,
+            "filesAnalyzed": extraction.analyzed_files,
+            "filesReused": extraction.reused_files,
+            "filesResumed": extraction.resumed_files,
+            "filesRemaining": 0,
+            "cacheHitRate": cache_hit_rate,
+            "coverage": extraction.semantic["coverage"],
         }),
     )
 }
@@ -229,7 +633,10 @@ fn graphify_semantic_pages(
     runtime: &AgentRuntimeArgs,
     scope: &GraphifyManifestScope,
     batch_size: usize,
-) -> std::result::Result<Value, Box<AgentEnvelope>> {
+    output_file: &Path,
+    resume: bool,
+    report_progress: bool,
+) -> std::result::Result<GraphifyExtraction, Box<AgentEnvelope>> {
     let capabilities = execute_request(AgentRequest {
         method: "capabilities".to_string(),
         request: json_rpc_request("capabilities", json!({})),
@@ -240,127 +647,109 @@ fn graphify_semantic_pages(
     if !capabilities.ok {
         return Err(Box::new(capabilities));
     }
-    let page_size = graphify_page_size_from_capabilities(
-        capabilities
-            .result
-            .as_ref()
-            .expect("successful capabilities RPC has a result"),
-    )
-    .map_err(|error| {
-        Box::new(error_envelope(
-            "agent/graphify".to_string(),
-            None,
-            error,
-        ))
-    })?;
+    let capability_result = capabilities
+        .result
+        .as_ref()
+        .expect("successful capabilities RPC has a result");
+    let page_size = graphify_page_size_from_capabilities(capability_result)
+        .map_err(graphify_error_envelope)?;
     let workspace_root = runtime
         .workspace_root
         .as_deref()
         .expect("Graphify workspace root was validated before semantic extraction");
-    let expected_hashes = graphify_capture_file_hashes(&scope.selected, workspace_root).map_err(|error| {
-        Box::new(error_envelope(
-            "agent/graphify".to_string(),
-            None,
-            error,
-        ))
-    })?;
-    let batch_count = scope.selected.len().div_ceil(batch_size);
-    let mut symbols = BTreeMap::new();
-    let mut boundary_symbols = BTreeMap::new();
-    let mut relations = BTreeMap::new();
-    let mut coverage_files = BTreeMap::new();
-    let mut omitted_external_target_count = 0_u64;
+    let expected_hashes = graphify_capture_file_hashes(&scope.selected, workspace_root)
+        .map_err(graphify_error_envelope)?;
+    let partition_count = scope.selected.len().div_ceil(batch_size);
+    let query_fingerprint = graphify_query_fingerprint(
+        workspace_root,
+        scope,
+        batch_size,
+        capability_result,
+        &expected_hashes,
+    )
+    .map_err(graphify_error_envelope)?;
+    let mut checkpoint = GraphifyCheckpointStore::start(
+        output_file,
+        query_fingerprint,
+        partition_count,
+        resume,
+    )
+    .map_err(graphify_error_envelope)?;
+    let progress = GraphifyProgress::new(report_progress, scope.selected.len(), partition_count);
+    let mut accumulator = GraphifySemanticAccumulator::default();
+    let mut analyzed_files = 0;
+    let mut reused_files = 0;
+    let mut resumed_files = 0;
     for (batch_index, batch) in scope.selected.chunks(batch_size).enumerate() {
-        let result = graphify_semantic_batch(runtime, batch, page_size, batch_index, batch_count)?;
+        let checkpointed = if resume {
+            checkpoint
+                .load_partition(batch_index)
+                .map_err(graphify_error_envelope)?
+        } else {
+            None
+        };
+        let loaded_checkpoint = checkpointed.is_some();
+        let (result, batch_analyzed, batch_reused, batch_resumed) = if let Some(result) = checkpointed {
+            (result, 0, 0, batch.len())
+        } else {
+            let result = graphify_semantic_batch_with_retry(
+                runtime,
+                batch,
+                page_size,
+                batch_index,
+                partition_count,
+            )?;
+            let (batch_analyzed, batch_reused) = graphify_batch_file_stats(&result)
+                .map_err(graphify_error_envelope)?;
+            (result, batch_analyzed, batch_reused, 0)
+        };
         graphify_validate_batch_coverage(&result["coverage"], batch, workspace_root, &expected_hashes)
-            .map_err(|error| {
-                Box::new(error_envelope(
-                    "agent/graphify".to_string(),
-                    None,
-                    error,
-                ))
-            })?;
-        graphify_verify_current_file_hashes(batch, workspace_root, &expected_hashes).map_err(
-            |error| {
-                Box::new(error_envelope(
-                    "agent/graphify".to_string(),
-                    None,
-                    error,
-                ))
-            },
-        )?;
-        for symbol in result["symbols"].as_array().into_iter().flatten() {
-            let key = graphify_required_str(symbol, "canonicalKey").map_err(|error| {
-                Box::new(error_envelope(
-                    "agent/graphify".to_string(),
-                    None,
-                    error,
-                ))
-            })?;
-            symbols.insert(key.to_string(), symbol.clone());
+            .map_err(graphify_error_envelope)?;
+        graphify_verify_current_file_hashes(batch, workspace_root, &expected_hashes)
+            .map_err(graphify_error_envelope)?;
+        if !loaded_checkpoint {
+            checkpoint
+                .persist_partition(batch_index, &result)
+                .map_err(graphify_error_envelope)?;
         }
-        for symbol in result["boundarySymbols"].as_array().into_iter().flatten() {
-            let key = graphify_required_str(symbol, "canonicalKey").map_err(|error| {
-                Box::new(error_envelope(
-                    "agent/graphify".to_string(),
-                    None,
-                    error,
-                ))
-            })?;
-            boundary_symbols.insert(key.to_string(), symbol.clone());
-        }
-        for relation in result["relations"].as_array().into_iter().flatten() {
-            relations.insert(relation.to_string(), relation.clone());
-        }
-        for file in result["coverage"]["files"].as_array().into_iter().flatten() {
-            let path = graphify_required_str(file, "path").map_err(|error| {
-                Box::new(error_envelope(
-                    "agent/graphify".to_string(),
-                    None,
-                    error,
-                ))
-            })?;
-            coverage_files.insert(path.to_string(), file.clone());
-        }
-        let omitted = result["coverage"]["omittedExternalTargetCount"]
-            .as_u64()
-            .ok_or_else(|| {
-                Box::new(error_envelope(
-                    "agent/graphify".to_string(),
-                    None,
-                    agent_error(
-                        "SEMANTIC_GRAPH_INVALID",
-                        "Semantic graph coverage omitted omittedExternalTargetCount.",
-                    ),
-                ))
-            })?;
-        omitted_external_target_count = omitted_external_target_count.checked_add(omitted).ok_or_else(|| {
-            Box::new(error_envelope(
-                "agent/graphify".to_string(),
-                None,
-                agent_error("SEMANTIC_GRAPH_INVALID", "Semantic graph omission count overflowed."),
-            ))
-        })?;
+        accumulator.add(&result).map_err(graphify_error_envelope)?;
+        analyzed_files += batch_analyzed;
+        reused_files += batch_reused;
+        resumed_files += batch_resumed;
+        progress.advance(batch.len(), batch_analyzed, batch_reused, batch_resumed);
     }
-    graphify_verify_current_file_hashes(&scope.selected, workspace_root, &expected_hashes).map_err(
-        |error| {
-            Box::new(error_envelope(
-                "agent/graphify".to_string(),
-                None,
-                error,
-            ))
-        },
-    )?;
-    boundary_symbols.retain(|key, _| !symbols.contains_key(key));
-    Ok(json!({
-        "symbols": symbols.into_values().collect::<Vec<_>>(),
-        "boundarySymbols": boundary_symbols.into_values().collect::<Vec<_>>(),
-        "relations": relations.into_values().collect::<Vec<_>>(),
-        "coverage": {
-            "files": coverage_files.into_values().collect::<Vec<_>>(),
-            "omittedExternalTargetCount": omitted_external_target_count,
-        },
-    }))
+    graphify_verify_current_file_hashes(&scope.selected, workspace_root, &expected_hashes)
+        .map_err(graphify_error_envelope)?;
+    debug_assert_eq!(progress.snapshot().completed_files, scope.selected.len());
+    drop(progress);
+    Ok(GraphifyExtraction {
+        semantic: accumulator.finish(),
+        analyzed_files,
+        reused_files,
+        resumed_files,
+        partition_count,
+        checkpoint: Some(checkpoint),
+    })
+}
+
+fn graphify_error_envelope(error: AgentError) -> Box<AgentEnvelope> {
+    Box::new(error_envelope("agent/graphify".to_string(), None, error))
+}
+
+fn graphify_batch_file_stats(
+    result: &Value,
+) -> std::result::Result<(usize, usize), AgentError> {
+    let files = result["coverage"]["files"].as_array().ok_or_else(|| {
+        agent_error(
+            "SEMANTIC_GRAPH_INVALID",
+            "Semantic graph coverage omitted its files array.",
+        )
+    })?;
+    let reused = files
+        .iter()
+        .filter(|file| file["status"].as_str() == Some("CACHED"))
+        .count();
+    Ok((files.len() - reused, reused))
 }
 
 fn graphify_semantic_batch(
@@ -412,6 +801,33 @@ fn graphify_semantic_batch(
         "relations": relations,
         "coverage": coverage,
     }))
+}
+
+fn graphify_semantic_batch_with_retry(
+    runtime: &AgentRuntimeArgs,
+    batch: &[PathBuf],
+    page_size: u64,
+    batch_index: usize,
+    batch_count: usize,
+) -> std::result::Result<Value, Box<AgentEnvelope>> {
+    const MAX_ATTEMPTS: usize = 3;
+
+    for attempt in 1..=MAX_ATTEMPTS {
+        match graphify_semantic_batch(runtime, batch, page_size, batch_index, batch_count) {
+            Ok(result) => return Ok(result),
+            Err(envelope)
+                if attempt < MAX_ATTEMPTS && graphify_retryable_batch_failure(&envelope) => {}
+            Err(envelope) => return Err(envelope),
+        }
+    }
+    unreachable!("bounded semantic graph retry loop always returns")
+}
+
+fn graphify_retryable_batch_failure(envelope: &AgentEnvelope) -> bool {
+    envelope
+        .error
+        .as_ref()
+        .is_some_and(|error| error.code == "GRAPH_SNAPSHOT_EXPIRED")
 }
 
 fn graphify_batch_failure(
@@ -538,6 +954,103 @@ fn graphify_file_hash(path: &Path) -> std::result::Result<String, AgentError> {
         )
     })?;
     Ok(hex::encode(Sha256::digest(bytes)))
+}
+
+fn graphify_query_fingerprint(
+    workspace_root: &Path,
+    scope: &GraphifyManifestScope,
+    batch_size: usize,
+    capabilities: &Value,
+    expected_hashes: &BTreeMap<String, String>,
+) -> std::result::Result<String, AgentError> {
+    let removed = scope
+        .removed
+        .iter()
+        .map(|path| graphify_relative_source_path(path, workspace_root))
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    let compiler_configuration = graphify_compiler_configuration_fingerprint(workspace_root)?;
+    let identity = json!({
+        "checkpointSchemaVersion": GRAPHIFY_CHECKPOINT_SCHEMA_VERSION,
+        "graphIdentitySchema": "KAST_GRAPHIFY_V2",
+        "workspaceRoot": workspace_root,
+        "batchSize": batch_size,
+        "expectedHashes": expected_hashes,
+        "removedPaths": removed,
+        "compilerConfiguration": compiler_configuration,
+        "backendCapabilities": capabilities,
+    });
+    graphify_value_checksum(&identity)
+}
+
+fn graphify_compiler_configuration_fingerprint(
+    workspace_root: &Path,
+) -> std::result::Result<String, AgentError> {
+    fn visit(
+        directory: &Path,
+        workspace_root: &Path,
+        files: &mut BTreeMap<String, String>,
+    ) -> std::result::Result<(), AgentError> {
+        let entries = std::fs::read_dir(directory).map_err(|error| {
+            agent_error(
+                "GRAPHIFY_FINGERPRINT_FAILED",
+                format!("Cannot scan compiler configuration under {}: {error}", directory.display()),
+            )
+        })?;
+        for entry in entries {
+            let entry = entry.map_err(|error| {
+                agent_error(
+                    "GRAPHIFY_FINGERPRINT_FAILED",
+                    format!("Cannot scan compiler configuration: {error}"),
+                )
+            })?;
+            let file_type = entry.file_type().map_err(|error| {
+                agent_error(
+                    "GRAPHIFY_FINGERPRINT_FAILED",
+                    format!("Cannot inspect compiler configuration: {error}"),
+                )
+            })?;
+            let name = entry.file_name();
+            let name = name.to_string_lossy();
+            if file_type.is_dir() {
+                if !matches!(
+                    name.as_ref(),
+                    ".git" | ".gradle" | "build" | "target" | "graphify-out" | ".idea"
+                ) {
+                    visit(&entry.path(), workspace_root, files)?;
+                }
+            } else if file_type.is_file()
+                && matches!(
+                    name.as_ref(),
+                    "build.gradle"
+                        | "build.gradle.kts"
+                        | "settings.gradle"
+                        | "settings.gradle.kts"
+                        | "gradle.properties"
+                        | "libs.versions.toml"
+                        | "gradle-wrapper.properties"
+                )
+            {
+                let path = entry.path();
+                let relative = path
+                    .strip_prefix(workspace_root)
+                    .expect("compiler configuration scan remains under workspace")
+                    .to_string_lossy()
+                    .replace('\\', "/");
+                let bytes = std::fs::read(&path).map_err(|error| {
+                    agent_error(
+                        "GRAPHIFY_FINGERPRINT_FAILED",
+                        format!("Cannot read compiler configuration {}: {error}", path.display()),
+                    )
+                })?;
+                files.insert(relative, crate::manifest::sha256_bytes(&bytes));
+            }
+        }
+        Ok(())
+    }
+
+    let mut files = BTreeMap::new();
+    visit(workspace_root, workspace_root, &mut files)?;
+    graphify_value_checksum(&json!(files))
 }
 
 fn graphify_page_size_from_capabilities(
@@ -1068,6 +1581,145 @@ mod graphify_projection_tests {
             "501",
         ])
         .is_err());
+    }
+
+    #[test]
+    fn graphify_accepts_resume_and_progress_flags() {
+        assert!(crate::cli::Cli::try_parse_from([
+            "kast",
+            "agent",
+            "graphify",
+            "--workspace-root",
+            "/workspace",
+            "--manifest",
+            "/workspace/manifest.json",
+            "--output-file",
+            "/workspace/fragment.json",
+            "--resume",
+            "--progress",
+        ])
+        .is_ok());
+    }
+
+    #[test]
+    fn graphify_checkpoint_resumes_completed_partitions_without_recomputation() {
+        let directory = tempfile::tempdir().expect("checkpoint directory");
+        let output = directory.path().join("fragment.json");
+        let partition = json!({
+            "symbols": [{"canonicalKey": "file:A.kt"}],
+            "boundarySymbols": [],
+            "relations": [],
+            "coverage": {
+                "files": [{"path": "A.kt", "contentHash": "a".repeat(64), "status": "REFRESHED"}],
+                "omittedExternalTargetCount": 0,
+            },
+        });
+        let mut initial =
+            GraphifyCheckpointStore::start(&output, "request-a".to_string(), 2, false)
+                .expect("new checkpoint");
+        initial
+            .persist_partition(0, &partition)
+            .expect("completed partition");
+        drop(initial);
+
+        let resumed = GraphifyCheckpointStore::start(&output, "request-a".to_string(), 2, true)
+            .expect("matching checkpoint");
+
+        assert_eq!(resumed.load_partition(0).unwrap(), Some(partition));
+        assert_eq!(resumed.load_partition(1).unwrap(), None);
+    }
+
+    #[test]
+    fn graphify_checkpoint_rejects_a_different_request() {
+        let directory = tempfile::tempdir().expect("checkpoint directory");
+        let output = directory.path().join("fragment.json");
+        GraphifyCheckpointStore::start(&output, "request-a".to_string(), 1, false)
+            .expect("new checkpoint");
+
+        let error = GraphifyCheckpointStore::start(&output, "request-b".to_string(), 1, true)
+            .expect_err("mismatched checkpoint");
+
+        assert_eq!(error.code, "GRAPHIFY_RESUME_MISMATCH");
+    }
+
+    #[test]
+    fn graphify_retries_expired_snapshots_but_not_invalid_cursors() {
+        let expired = error_envelope(
+            "agent/graphify".to_string(),
+            None,
+            agent_error("GRAPH_SNAPSHOT_EXPIRED", "expired"),
+        );
+        let invalid = error_envelope(
+            "agent/graphify".to_string(),
+            None,
+            agent_error("GRAPH_CURSOR_INVALID", "invalid"),
+        );
+
+        assert!(graphify_retryable_batch_failure(&expired));
+        assert!(!graphify_retryable_batch_failure(&invalid));
+    }
+
+    #[test]
+    fn graphify_partition_order_does_not_change_semantic_output() {
+        let first = json!({
+            "symbols": [{"canonicalKey": "file:B.kt"}],
+            "boundarySymbols": [],
+            "relations": [],
+            "coverage": {
+                "files": [{"path": "B.kt"}],
+                "omittedExternalTargetCount": 1,
+            },
+        });
+        let second = json!({
+            "symbols": [{"canonicalKey": "file:A.kt"}],
+            "boundarySymbols": [],
+            "relations": [],
+            "coverage": {
+                "files": [{"path": "A.kt"}],
+                "omittedExternalTargetCount": 2,
+            },
+        });
+        let mut forward = GraphifySemanticAccumulator::default();
+        forward.add(&first).unwrap();
+        forward.add(&second).unwrap();
+        let mut reverse = GraphifySemanticAccumulator::default();
+        reverse.add(&second).unwrap();
+        reverse.add(&first).unwrap();
+
+        assert_eq!(forward.finish(), reverse.finish());
+    }
+
+    #[test]
+    fn graphify_progress_counts_analyzed_reused_resumed_and_remaining_work() {
+        let progress = GraphifyProgress::new(false, 9, 3);
+        progress.advance(3, 2, 1, 0);
+        progress.advance(3, 0, 0, 3);
+
+        assert_eq!(
+            progress.snapshot(),
+            GraphifyProgressSnapshot {
+                completed_files: 6,
+                analyzed_files: 2,
+                reused_files: 1,
+                resumed_files: 3,
+                completed_partitions: 2,
+            }
+        );
+        assert_eq!(progress.state.total_files - progress.snapshot().completed_files, 3);
+    }
+
+    #[test]
+    fn graphify_compiler_configuration_changes_the_resume_fingerprint() {
+        let workspace = tempfile::tempdir().expect("workspace");
+        let build = workspace.path().join("build.gradle.kts");
+        std::fs::write(&build, "plugins {}").expect("build fixture");
+        let before = graphify_compiler_configuration_fingerprint(workspace.path()).unwrap();
+        std::fs::write(&build, "plugins { kotlin(\"jvm\") }").expect("changed build fixture");
+
+        assert_ne!(
+            before,
+            graphify_compiler_configuration_fingerprint(workspace.path()).unwrap()
+        );
     }
 
     #[test]
