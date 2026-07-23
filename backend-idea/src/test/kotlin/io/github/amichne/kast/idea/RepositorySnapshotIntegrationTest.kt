@@ -122,7 +122,7 @@ class RepositorySnapshotIntegrationTest {
     }
 
     @Test
-    fun `clean target uses one immutable base with small isolated worktree overlays and blob shards`() {
+    fun `clean target preserves immutable base facts in isolated worktree databases and blob shards`() {
         git("init", "-b", "main")
         git("config", "user.email", "kast@example.invalid")
         git("config", "user.name", "Kast Test")
@@ -137,9 +137,10 @@ class RepositorySnapshotIntegrationTest {
         val key = SnapshotKey(baseTree.treeOid, fingerprint, SOURCE_INDEX_SCHEMA_VERSION, producer)
         val repositoryDirectory = workspace.resolveSibling("${workspace.fileName}-repository-state")
         val source = repositoryDirectory.resolveSibling("${workspace.fileName}-base.db")
+        val basePayload = "x".repeat(1_000_000)
         SqliteSourceIndexStore(identityFor(source)).use { store ->
             store.ensureSchema()
-            store.writeWorkspaceDiscovery("base-payload", 1, "x".repeat(1_000_000))
+            store.writeWorkspaceDiscovery("base-payload", 1, basePayload)
         }
         RepositorySnapshotStore(repositoryDirectory).publishMain(
             SnapshotManifest(key, baseTree.files, 1),
@@ -162,17 +163,17 @@ class RepositorySnapshotIntegrationTest {
         assertEquals(setOf("B.kt"), overlay?.tombstones)
         assertEquals(setOf("A.kt", "C.kt"), overlay?.shards?.keys)
         assertEquals(immutableBase.toAbsolutePath().normalize().toString(), overlay?.baseDatabase)
-        assertFalse(Files.exists(targetDatabase))
+        assertTrue(Files.isRegularFile(targetDatabase))
         assertFalse(Files.isWritable(immutableBase))
         overlay?.shards?.values?.forEach { shard ->
             assertTrue(RepositorySnapshotStore(repositoryDirectory).contentShard(shard)?.let(Files::isRegularFile) == true)
         }
         SqliteSourceIndexStore(identityFor(targetDatabase)).use { store ->
             store.ensureSchema()
+            assertEquals(basePayload, store.readWorkspaceDiscovery("base-payload"))
             store.writeWorkspaceDiscovery("worktree-a", 1, "first")
             assertEquals("first", store.readWorkspaceDiscovery("worktree-a"))
         }
-        assertTrue(Files.size(targetDatabase) < Files.size(immutableBase))
 
         val siblingDatabase = targetDatabase.parent
             .resolveSibling("${workspace.fileName}-sibling-worktree")

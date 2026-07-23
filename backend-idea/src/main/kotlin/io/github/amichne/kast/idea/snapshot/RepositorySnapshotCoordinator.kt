@@ -12,6 +12,7 @@ import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -29,6 +30,7 @@ class RepositorySnapshotCoordinator(
             preparedFromSnapshot = Files.isRegularFile(overlayPath)
             return null
         }
+        var stagedDatabase: Path? = null
         return runCatching {
             val committedTree = CommittedGitTreeResolver.resolve(workspaceRoot) ?: return null
             val target = SnapshotManifest(
@@ -50,9 +52,16 @@ class RepositorySnapshotCoordinator(
                 gitBlob(shard.blobOid)?.let { content -> snapshotStore.putContentShard(shard, content) }
             }
             Files.createDirectories(databasePath.parent)
+            val staged = Files.createTempFile(databasePath.parent, ".source-index-", ".preparing")
+            stagedDatabase = staged
+            Files.copy(baseDatabase, staged, StandardCopyOption.REPLACE_EXISTING)
+            check(staged.toFile().setWritable(true, true)) { "Snapshot database could not be made writable" }
             Files.writeString(overlayPath, Json { prettyPrint = true }.encodeToString(overlay))
+            Files.move(staged, databasePath, StandardCopyOption.ATOMIC_MOVE)
+            stagedDatabase = null
             overlay.also { preparedFromSnapshot = true }
         }.getOrElse {
+            stagedDatabase?.let { staged -> runCatching { Files.deleteIfExists(staged) } }
             runCatching { Files.deleteIfExists(overlayPath) }
             null
         }

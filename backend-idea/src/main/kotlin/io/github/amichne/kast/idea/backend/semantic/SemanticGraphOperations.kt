@@ -201,16 +201,14 @@ private fun KastPluginBackend.extractSemanticGraphFile(
             val ownerDeclaration = PsiTreeUtil.getParentOfType(constructor, KtClassOrObject::class.java, true)
                 ?: return@forEach
             val owner = symbolByDeclaration[ownerDeclaration] ?: return@forEach
-            val signature = constructor.valueParameters.joinToString(
+            val signature = constructor.compilerStableSignature() ?: constructor.valueParameters.joinToString(
                 prefix = "(",
                 postfix = ")",
             ) { parameter -> parameter.typeReference?.text?.canonicalTypeText() ?: "?" }
             val symbol = syntheticSemanticGraphSymbol(
                 element = constructor,
                 path = path,
-                key = SemanticGraphSymbolKey.parse(
-                    "constructor:${owner.canonicalKey.value}:${constructor.textRange.startOffset}:$signature",
-                ),
+                key = semanticConstructorKey(owner.canonicalKey, constructor, signature),
                 kind = SemanticGraphSymbolKind.CONSTRUCTOR,
                 name = "<init>",
                 owner = owner,
@@ -337,8 +335,11 @@ private fun KastPluginBackend.extractSemanticGraphFile(
                     boundarySymbols[symbol.canonicalKey] = symbol
                 }
                 val resolvedTargetKey = target.exactConstructorSignature?.let { signature ->
-                    val targetPath = relativePathOr(requireNotNull(target.element), path)
-                    SemanticGraphSymbolKey.parse("constructor:${targetPath.value}:$signature")
+                    val constructor = target.element as? KtConstructor<*> ?: return@let null
+                    val owner = PsiTreeUtil.getParentOfType(constructor, KtClassOrObject::class.java, true)
+                        ?: return@let null
+                    val targetPath = relativePathOr(constructor, path)
+                    semanticConstructorKey(owner.semanticKey(targetPath), constructor, signature)
                 }
                 relations += relation(
                     source,
@@ -675,6 +676,17 @@ private fun KtUserType.resolveTarget(): PsiElement? = analyze(this) {
 }
 
 private fun KtNamedFunction.compilerStableSignature(): String? = analyze(this) { symbol.compilerStableSignature() }
+
+private fun KtConstructor<*>.compilerStableSignature(): String? =
+    analyze(this) { (symbol as? KaConstructorSymbol)?.compilerStableSignature() }
+
+private fun semanticConstructorKey(
+    ownerKey: SemanticGraphSymbolKey,
+    constructor: KtConstructor<*>,
+    signature: String,
+): SemanticGraphSymbolKey = SemanticGraphSymbolKey.parse(
+    "constructor:${ownerKey.value}:${constructor.textRange.startOffset}:$signature",
+)
 
 private fun KtNamedDeclaration.semanticCompilerRelations(): List<Pair<PsiElement, SemanticGraphRelationKind>> =
     analyze(this) {

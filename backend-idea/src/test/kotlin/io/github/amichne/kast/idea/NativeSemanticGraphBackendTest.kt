@@ -45,6 +45,13 @@ class NativeSemanticGraphBackendTest {
                 fun pick(value: String): String = value
                 fun pick(value: Int): Int = value
             }
+
+            class Constructed {
+                constructor(value: String)
+                constructor(value: Int)
+            }
+
+            fun construct(): Constructed = Constructed(1)
         """
 
         private const val boundarySource = """
@@ -108,6 +115,15 @@ class NativeSemanticGraphBackendTest {
             assertTrue(snapshot.relations.any { relation -> relation.kind == SemanticGraphRelationKind.INHERITS })
             assertTrue(snapshot.relations.any { relation -> relation.kind == SemanticGraphRelationKind.OVERRIDES })
             assertTrue(snapshot.relations.any { relation -> relation.kind == SemanticGraphRelationKind.SEALED_MEMBER })
+            val constructorKeys = snapshot.symbols
+                .filter { symbol -> symbol.kind == SemanticGraphSymbolKind.CONSTRUCTOR }
+                .mapTo(mutableSetOf()) { symbol -> symbol.canonicalKey }
+            assertTrue(
+                snapshot.relations.any { relation ->
+                    relation.kind == SemanticGraphRelationKind.CALLS &&
+                        relation.resolvedTargetKey in constructorKeys
+                },
+            )
         }
     }
 
