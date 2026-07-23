@@ -90,6 +90,175 @@ fn setup_installs_native_cli_and_idea_plugin() {
         arch => format!("macos-{arch}"),
     };
     assert_eq!(receipt["platform"], platform);
+    assert!(
+        std::fs::read_to_string(kast_home.join("current/config/config.toml"))
+            .expect("installed defaults")
+            .contains("[runtime.ideaLaunch]\nenabled = true"),
+    );
+}
+
+#[test]
+fn setup_rejects_multiple_supported_plugin_profiles_without_selection() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let idea = home.join("Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins");
+    let android = home.join("Library/Application Support/Google/AndroidStudio2026.1/plugins");
+    let plugin = write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin");
+    std::fs::create_dir_all(idea).expect("IDEA profile");
+    std::fs::create_dir_all(android).expect("Android Studio profile");
+
+    let output = kast(&home, &kast_home.join("unused-config"))
+        .env_remove("KAST_CONFIG_HOME")
+        .env("KAST_HOME", &kast_home)
+        .env("KAST_MACHINE_IDE_STATE", "closed")
+        .args([
+            "--output",
+            "json",
+            "setup",
+            "--idea-plugin",
+            plugin.to_str().expect("plugin path"),
+        ])
+        .output()
+        .expect("kast setup");
+
+    assert!(!output.status.success());
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).expect("setup failure");
+    assert_eq!(result["code"], "IDE_PROFILE_AMBIGUOUS");
+}
+
+#[test]
+fn matching_plugin_is_not_replaced_while_idea_runs() {
+    use std::os::unix::fs::MetadataExt;
+
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let plugins = home.join("Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins");
+    let plugin = write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin");
+    std::fs::create_dir_all(&plugins).expect("IDEA profile");
+    let command = |state: &str| {
+        kast(&home, &kast_home.join("unused-config"))
+            .env_remove("KAST_CONFIG_HOME")
+            .env("KAST_HOME", &kast_home)
+            .env("KAST_MACHINE_IDE_STATE", state)
+            .args([
+                "--output",
+                "json",
+                "setup",
+                "--idea-plugin",
+                plugin.to_str().expect("plugin path"),
+            ])
+            .output()
+            .expect("kast setup")
+    };
+
+    assert!(
+        command("closed").status.success(),
+        "initial setup should succeed",
+    );
+    let installed_plugin = plugins.join("kast/lib/plugin.jar");
+    let plugin_inode = std::fs::metadata(&installed_plugin)
+        .expect("installed plugin")
+        .ino();
+    std::fs::write(kast_home.join("current/bin/kast"), "drifted CLI").expect("drift active CLI");
+    let current = command("open");
+
+    assert!(
+        current.status.success(),
+        "CLI repair should preserve the matching plugin while IDEA runs: {}",
+        String::from_utf8_lossy(&current.stdout),
+    );
+    assert_eq!(
+        std::fs::metadata(installed_plugin)
+            .expect("preserved plugin")
+            .ino(),
+        plugin_inode,
+    );
+}
+
+#[test]
+fn changed_plugin_requires_a_running_ide_to_close() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let plugins = home.join("Library/Application Support/Google/AndroidStudio2026.1/plugins");
+    let plugin = write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin");
+    std::fs::create_dir_all(&plugins).expect("Android Studio profile");
+    let run = |state: &str| {
+        kast(&home, &kast_home.join("unused-config"))
+            .env_remove("KAST_CONFIG_HOME")
+            .env("KAST_HOME", &kast_home)
+            .env("KAST_MACHINE_IDE_STATE", state)
+            .args([
+                "--output",
+                "json",
+                "setup",
+                "--idea-plugin",
+                plugin.to_str().expect("plugin path"),
+            ])
+            .output()
+            .expect("kast setup")
+    };
+    assert!(run("closed").status.success());
+    write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"updated plugin");
+
+    let blocked = run("open");
+
+    assert!(!blocked.status.success());
+    let result: serde_json::Value = serde_json::from_slice(&blocked.stdout).expect("setup failure");
+    assert_eq!(result["code"], "IDE_RESTART_REQUIRED");
+    assert_eq!(
+        std::fs::read(plugins.join("kast/lib/plugin.jar")).expect("installed plugin"),
+        b"plugin",
+    );
+}
+
+#[test]
+fn setup_migrates_only_a_missing_recommended_launch_choice() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let plugins = home.join("Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins");
+    let plugin = write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin");
+    std::fs::create_dir_all(&plugins).expect("IDEA profile");
+    let run = || {
+        kast(&home, &kast_home.join("unused-config"))
+            .env_remove("KAST_CONFIG_HOME")
+            .env("KAST_HOME", &kast_home)
+            .env("KAST_MACHINE_IDE_STATE", "closed")
+            .args([
+                "setup",
+                "--idea-plugin",
+                plugin.to_str().expect("plugin path"),
+            ])
+            .output()
+            .expect("kast setup")
+    };
+    assert!(run().status.success());
+    let config = kast_home.join("current/config/config.toml");
+    std::fs::write(&config, "[runtime]\ndefaultBackend = \"idea\"\n")
+        .expect("legacy recommended config");
+    write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin revision 2");
+    assert!(run().status.success());
+    assert!(
+        std::fs::read_to_string(&config)
+            .expect("migrated config")
+            .contains("[runtime.ideaLaunch]\nenabled = true"),
+    );
+
+    std::fs::write(
+        &config,
+        "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = false\n",
+    )
+    .expect("explicit launch choice");
+    write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin revision 3");
+    assert!(run().status.success());
+    assert!(
+        std::fs::read_to_string(config)
+            .expect("preserved config")
+            .contains("[runtime.ideaLaunch]\nenabled = false"),
+    );
 }
 
 #[test]

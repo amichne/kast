@@ -19,6 +19,15 @@ import java.nio.file.Path
 
 class KastPluginServiceConfigTest {
     @Test
+    fun `host compatibility admits IDEA 262 and Android Studio 261 only`() {
+        assertTrue(isSupportedIdeaHost("IU", 262))
+        assertTrue(isSupportedIdeaHost("IC", 262))
+        assertTrue(isSupportedIdeaHost("AI", 261))
+        assertFalse(isSupportedIdeaHost("IU", 261))
+        assertFalse(isSupportedIdeaHost("AI", 262))
+    }
+
+    @Test
     fun `idea server limits use config defaults`() {
         val limits = ideaServerLimits(KastConfig.defaults())
 

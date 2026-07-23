@@ -27,6 +27,7 @@ internal class KastDiagnosticsService(
     private val lock = Any()
     private val state = KastDiagnosticsState()
     private val listeners = mutableListOf<KastDiagnosticsListener>()
+    private val terminalFailures = KastTerminalFailureDeduplicator()
 
     override fun dispose() {
         synchronized(lock) {
@@ -77,8 +78,8 @@ internal class KastDiagnosticsService(
     }
 
     fun enrichRuntimeStatus(status: RuntimeStatusResponse): RuntimeStatusResponse {
-        val indexReady = snapshot().indexSummary.state == KastIndexState.READY
-        return if (status.referenceIndexReady == indexReady) status else status.copy(referenceIndexReady = indexReady)
+        val index = snapshot().indexSummary
+        return status.withReferenceIndex(index)
     }
 
     fun recordIndexWaitingForIde() {
@@ -137,6 +138,16 @@ internal class KastDiagnosticsService(
         )
     }
 
+    fun notifyTerminalFailure(title: String, detail: String) {
+        if (!terminalFailures.first(title, detail)) return
+        runCatching {
+            NotificationGroupManager.getInstance()
+                .getNotificationGroup("Kast")
+                .createNotification(title, detail, com.intellij.notification.NotificationType.ERROR)
+                .notify(project)
+        }
+    }
+
     private fun elapsedMillis(startedNanos: Long): Long = (System.nanoTime() - startedNanos) / 1_000_000
 
     private fun publish(event: KastActivityEvent?) {
@@ -158,16 +169,42 @@ internal class KastDiagnosticsService(
     }
 
     private fun notifyIfNeeded(event: KastActivityEvent) {
-        if (event.severity == KastActivitySeverity.INFO) return
-        runCatching {
-            NotificationGroupManager.getInstance()
-                .getNotificationGroup(KAST_ACTIVITY_NOTIFICATION_GROUP_ID)
-                .createNotification(event.title, event.detail.orEmpty(), event.severity.toNotificationType())
-                .notify(project)
-        }
+        if (!event.isActionableTerminalFailure()) return
+        notifyTerminalFailure(event.title, event.detail.orEmpty())
     }
 
     companion object {
         fun getInstance(project: Project): KastDiagnosticsService = project.service()
     }
+}
+
+internal class KastTerminalFailureDeduplicator {
+    private val keys = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    fun first(title: String, detail: String): Boolean =
+        keys.add("$title\u0000$detail")
+}
+
+internal fun KastActivityEvent.isActionableTerminalFailure(): Boolean =
+    severity == KastActivitySeverity.ERROR &&
+        (kind == KastActivityKind.BACKEND || kind == KastActivityKind.INDEX)
+
+internal fun RuntimeStatusResponse.withReferenceIndex(
+    index: KastSourceIndexSummary,
+): RuntimeStatusResponse = when {
+    index.state == KastIndexState.FAILED -> copy(
+        state = io.github.amichne.kast.api.contract.RuntimeState.DEGRADED,
+        healthy = false,
+        indexing = false,
+        message = "Kast reference index failed: ${index.displayText()}",
+        referenceIndexReady = false,
+    )
+    index.state == KastIndexState.READY -> copy(referenceIndexReady = true)
+    state == io.github.amichne.kast.api.contract.RuntimeState.READY -> copy(
+        state = io.github.amichne.kast.api.contract.RuntimeState.INDEXING,
+        indexing = true,
+        message = "Kast reference index is ${index.displayText().lowercase()}",
+        referenceIndexReady = false,
+    )
+    else -> copy(referenceIndexReady = false)
 }

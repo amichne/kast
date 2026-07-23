@@ -20,6 +20,8 @@ import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.HealthResponse
 import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
 import io.github.amichne.kast.api.contract.RuntimeLifecycleResponse
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectRequest
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectResponse
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
@@ -88,6 +90,7 @@ class RpcAnalysisDispatcher(
     private val backend: AnalysisBackend,
     private val config: AnalysisServerConfig,
     private val lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
+    private val projectOpenController: RuntimeProjectOpenController = RuntimeProjectOpenController.Unavailable,
     private val json: Json = Json {
         encodeDefaults = true
         explicitNulls = false
@@ -207,6 +210,13 @@ class RpcAnalysisDispatcher(
             "runtime/restart" -> encode(
                 RuntimeLifecycleResponse.serializer(),
                 requestLifecycle(RuntimeLifecycleAction.RESTART),
+            )
+
+            "runtime/open-project" -> encode(
+                RuntimeOpenProjectResponse.serializer(),
+                requestProjectOpen(
+                    decodeParams(RuntimeOpenProjectRequest.serializer(), params),
+                ),
             )
 
             "capabilities" -> encode(BackendCapabilities.serializer(), backend.capabilities())
@@ -530,6 +540,12 @@ class RpcAnalysisDispatcher(
             workspaceRoot = capabilities.workspaceRoot,
             message = "Runtime ${action.name.lowercase()} accepted; action will run after this response is flushed.",
         )
+    }
+
+    private fun requestProjectOpen(request: RuntimeOpenProjectRequest): RuntimeOpenProjectResponse {
+        val plan = projectOpenController.openProject(request)
+        afterResponseActions += plan.afterResponseAction
+        return plan.response
     }
 
     private suspend fun requireReadCapability(capability: ReadCapability) {

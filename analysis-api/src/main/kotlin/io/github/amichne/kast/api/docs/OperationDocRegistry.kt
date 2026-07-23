@@ -35,6 +35,25 @@ object OperationDocRegistry {
                 "before running analysis commands.",
         ),
         OperationDoc(
+            operationId = "runtimeOpenProject",
+            jsonRpcMethod = "runtime/open-project",
+            summary = "Open an authenticated exact-root project in this runtime host",
+            tag = "system",
+            requestSchema = "RuntimeOpenProjectRequest",
+            responseSchema = "RuntimeOpenProjectResponse",
+            description = "Consumes a local one-shot request and opens its canonical root " +
+                "in this compatible IDEA application without replacing an existing project.",
+            behavioralNotes = listOf(
+                "The response is flushed before IDEA begins opening a new project frame.",
+                "Requests are exact-root, one-shot, short-lived, and restricted to the selected local host.",
+            ),
+            errorCodes = listOf(
+                "IDEA_OPEN_REQUEST_REJECTED",
+                "IDEA_VERSION_UNSUPPORTED",
+                "IDEA_PROJECT_OPEN_FAILED",
+            ),
+        ),
+        OperationDoc(
             operationId = "runtimeShutdown",
             jsonRpcMethod = "runtime/shutdown",
             summary = "Request runtime host shutdown after the response is flushed",

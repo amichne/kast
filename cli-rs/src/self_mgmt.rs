@@ -379,6 +379,36 @@ pub fn validate_macos_plugin_workspace(workspace_root: &Path) -> Result<()> {
     let strict_plugin_matching = config::KastConfig::load(&workspace_root)?
         .runtime
         .strict_plugin_matching;
+    let (metadata_path, metadata) = read_macos_plugin_workspace_metadata(&workspace_root)?;
+    validate_macos_plugin_workspace_metadata(
+        &workspace_root,
+        &metadata_path,
+        metadata,
+        strict_plugin_matching,
+    )
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn validate_macos_running_plugin_workspace(
+    workspace_root: &Path,
+    backend_version: &str,
+    strict_plugin_matching: bool,
+) -> Result<()> {
+    let workspace_root = config::normalize(workspace_root.to_path_buf());
+    let (metadata_path, metadata) = read_macos_plugin_workspace_metadata(&workspace_root)?;
+    validate_macos_running_plugin_workspace_metadata(
+        &workspace_root,
+        &metadata_path,
+        metadata,
+        backend_version,
+        strict_plugin_matching,
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn read_macos_plugin_workspace_metadata(
+    workspace_root: &Path,
+) -> Result<(PathBuf, MacosPluginWorkspaceMetadata)> {
     let metadata_path = workspace_root.join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
     let raw = fs::read_to_string(&metadata_path).map_err(|error| {
         macos_plugin_workspace_error(format!(
@@ -392,17 +422,40 @@ pub fn validate_macos_plugin_workspace(workspace_root: &Path) -> Result<()> {
             metadata_path.display(),
         ))
     })?;
-    validate_macos_plugin_workspace_metadata(
-        &workspace_root,
-        &metadata_path,
-        metadata,
-        strict_plugin_matching,
-    )
+    Ok((metadata_path, metadata))
 }
 
 #[cfg(not(target_os = "macos"))]
 pub fn validate_macos_plugin_workspace(_workspace_root: &Path) -> Result<()> {
     Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn validate_macos_running_plugin_workspace_metadata(
+    workspace_root: &Path,
+    metadata_path: &Path,
+    metadata: MacosPluginWorkspaceMetadata,
+    backend_version: &str,
+    strict_plugin_matching: bool,
+) -> Result<()> {
+    if metadata.compatibility.plugin_version != backend_version
+        || metadata
+            .compatibility
+            .runtime_identity
+            .implementation_version
+            != backend_version
+    {
+        return Err(macos_plugin_workspace_error(format!(
+            "The running IDEA descriptor version {backend_version} does not match its workspace compatibility metadata at {}",
+            metadata_path.display(),
+        )));
+    }
+    validate_macos_plugin_workspace_metadata(
+        workspace_root,
+        metadata_path,
+        metadata,
+        strict_plugin_matching,
+    )
 }
 
 #[cfg(target_os = "macos")]
@@ -719,54 +772,83 @@ mod tests {
         fs::create_dir_all(workspace_root.join(".kast/setup")).expect("metadata dir");
         let metadata_path = workspace_root.join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
         fs::write(&metadata_path, "{}").expect("metadata file");
-        let socket_path = config::KastConfig::defaults()
-            .paths
-            .socket_dir
-            .join(format!(
-                "kast-{}.sock",
-                config::workspace_hash(&workspace_root)
-            ));
 
         validate_macos_plugin_workspace_metadata(
             &workspace_root,
             &metadata_path,
-            MacosPluginWorkspaceMetadata {
-                schema_version: MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION,
-                prepared_by: MACOS_PLUGIN_WORKSPACE_PREPARED_BY.to_string(),
-                workspace_root: workspace_root.clone(),
-                cli_binary: env::current_exe().expect("current exe"),
-                backend: MACOS_PLUGIN_WORKSPACE_BACKEND.to_string(),
-                socket_path,
-                compatibility: runtime::RuntimeCompatibilityFacts {
-                    plugin_version: cli::version().to_string(),
-                    cli_version: cli::version().to_string(),
-                    protocol_revision: runtime::ProtocolRevision(
-                        std::num::NonZeroU32::new(2).expect("revision"),
-                    ),
-                    workspace_metadata_revision: runtime::WorkspaceMetadataRevision(
-                        std::num::NonZeroU32::new(MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION)
-                            .expect("revision"),
-                    ),
-                    read_capabilities: vec![
-                        runtime::WorkspaceReadCapability::Diagnostics,
-                        runtime::WorkspaceReadCapability::ResolveSymbol,
-                        runtime::WorkspaceReadCapability::WorkspaceFiles,
-                    ],
-                    mutation_capabilities: vec![
-                        runtime::WorkspaceMutationCapability::ApplyEdits,
-                        runtime::WorkspaceMutationCapability::RefreshWorkspace,
-                        runtime::WorkspaceMutationCapability::Rename,
-                    ],
-                    runtime_identity: runtime::WorkspaceRuntimeIdentity {
-                        implementation_version: cli::version().to_string(),
-                        backend_kind: runtime::WorkspaceRuntimeBackendKind::Idea,
-                    },
-                },
-                required_artifacts: vec![PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE)],
-            },
+            test_macos_plugin_workspace_metadata(&workspace_root),
             true,
         )
         .expect("resolved config socket path should be accepted");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn macos_running_plugin_workspace_metadata_accepts_relaxed_plugin_match() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let workspace_root = config::normalize(temp.path().join("workspace"));
+        fs::create_dir_all(workspace_root.join(".kast/setup")).expect("metadata dir");
+        let metadata_path = workspace_root.join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
+        fs::write(&metadata_path, "{}").expect("metadata file");
+        let mut metadata = test_macos_plugin_workspace_metadata(&workspace_root);
+        metadata.compatibility.plugin_version = "newer-plugin".to_string();
+        metadata
+            .compatibility
+            .runtime_identity
+            .implementation_version = "newer-plugin".to_string();
+
+        validate_macos_running_plugin_workspace_metadata(
+            &workspace_root,
+            &metadata_path,
+            metadata,
+            "newer-plugin",
+            false,
+        )
+        .expect("relaxed matching should admit matrix-compatible running plugin metadata");
+    }
+
+    #[cfg(target_os = "macos")]
+    fn test_macos_plugin_workspace_metadata(workspace_root: &Path) -> MacosPluginWorkspaceMetadata {
+        MacosPluginWorkspaceMetadata {
+            schema_version: MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION,
+            prepared_by: MACOS_PLUGIN_WORKSPACE_PREPARED_BY.to_string(),
+            workspace_root: workspace_root.to_path_buf(),
+            cli_binary: env::current_exe().expect("current exe"),
+            backend: MACOS_PLUGIN_WORKSPACE_BACKEND.to_string(),
+            socket_path: config::KastConfig::defaults()
+                .paths
+                .socket_dir
+                .join(format!(
+                    "kast-{}.sock",
+                    config::workspace_hash(workspace_root)
+                )),
+            compatibility: runtime::RuntimeCompatibilityFacts {
+                plugin_version: cli::version().to_string(),
+                cli_version: cli::version().to_string(),
+                protocol_revision: runtime::ProtocolRevision(
+                    std::num::NonZeroU32::new(2).expect("revision"),
+                ),
+                workspace_metadata_revision: runtime::WorkspaceMetadataRevision(
+                    std::num::NonZeroU32::new(MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION)
+                        .expect("revision"),
+                ),
+                read_capabilities: vec![
+                    runtime::WorkspaceReadCapability::Diagnostics,
+                    runtime::WorkspaceReadCapability::ResolveSymbol,
+                    runtime::WorkspaceReadCapability::WorkspaceFiles,
+                ],
+                mutation_capabilities: vec![
+                    runtime::WorkspaceMutationCapability::ApplyEdits,
+                    runtime::WorkspaceMutationCapability::RefreshWorkspace,
+                    runtime::WorkspaceMutationCapability::Rename,
+                ],
+                runtime_identity: runtime::WorkspaceRuntimeIdentity {
+                    implementation_version: cli::version().to_string(),
+                    backend_kind: runtime::WorkspaceRuntimeBackendKind::Idea,
+                },
+            },
+            required_artifacts: vec![PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE)],
+        }
     }
 
     #[test]

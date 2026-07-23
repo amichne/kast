@@ -73,11 +73,12 @@ class KastProjectOpenAutoIndexingTest {
     private val callerFileFixture = sourceRootFixture.psiFileFixture("Caller.kt", callerSource)
 
     @Test
-    fun `project open starts backend and then requests Gradle load when idea backend is enabled`() {
+    fun `project open reports indexing then waits for Gradle before starting reference index`() {
         val project = projectFixture.get()
         var loadedWorkspaceRoot: Path? = null
         var loadedGradleWorkspaceRoot: Path? = null
         var startedProject: Project? = null
+        var gradleCompletion: ((Throwable?) -> Unit)? = null
         val events = mutableListOf<String>()
 
         val started = KastProjectOpenAutoIndexing.execute(
@@ -92,20 +93,25 @@ class KastProjectOpenAutoIndexingTest {
                     backups = emptyList(),
                 )
             },
-            loadGradleProject = { workspaceRoot, _ ->
+            loadGradleProject = { workspaceRoot, _, onComplete ->
                 events.add("gradle")
                 loadedGradleWorkspaceRoot = workspaceRoot
+                gradleCompletion = onComplete
                 ProjectOpenGradleLoadResult.Requested(GradleProjectLoadRequest.Link(workspaceRoot))
             },
-            startBackendAndIndexReferences = {
+            startBackend = {
                 events.add("backend")
                 startedProject = it
             },
+            startReferenceIndex = { events.add("index") },
+            failReadiness = { _, error -> events.add("failed:${error.message}") },
         )
 
         assertTrue(started)
         assertSame(project, startedProject)
         assertEquals(listOf("backend", "gradle"), events)
+        gradleCompletion?.invoke(null)
+        assertEquals(listOf("backend", "gradle", "index"), events)
         assertNotNull(loadedWorkspaceRoot)
         assertEquals(loadedWorkspaceRoot, loadedGradleWorkspaceRoot)
         assertEquals(loadedWorkspaceRoot, loadedWorkspaceRoot?.toAbsolutePath()?.normalize())
@@ -197,11 +203,18 @@ class KastProjectOpenAutoIndexingTest {
                     backups = emptyList(),
                 )
             },
-            loadGradleProject = { workspaceRoot, config ->
+            loadGradleProject = { workspaceRoot, config, onComplete ->
                 requestedGradleLoad = true
-                KastProjectOpenGradleLoad.execute(project, workspaceRoot, config.projectOpen.gradleLoadEnabled)
+                KastProjectOpenGradleLoad.execute(
+                    project,
+                    workspaceRoot,
+                    config.projectOpen.gradleLoadEnabled,
+                    onComplete,
+                )
             },
-            startBackendAndIndexReferences = { startedProject = it },
+            startBackend = { startedProject = it },
+            startReferenceIndex = { startedProject = it },
+            failReadiness = { _, _ -> },
         )
 
         assertTrue(started)
@@ -224,7 +237,9 @@ class KastProjectOpenAutoIndexingTest {
         val requestedStart = KastProjectOpenAutoIndexing.execute(
             project = project,
             loadConfig = { disabledConfig },
-            startBackendAndIndexReferences = { started = true },
+            startBackend = { started = true },
+            startReferenceIndex = { started = true },
+            failReadiness = { _, _ -> },
         )
 
         assertFalse(requestedStart)
@@ -242,7 +257,9 @@ class KastProjectOpenAutoIndexingTest {
             installProjectOpenProfile = { _, _ ->
                 ProjectOpenProfileAutoInitResult.Failed("invalid setup")
             },
-            startBackendAndIndexReferences = { started = true },
+            startBackend = { started = true },
+            startReferenceIndex = { started = true },
+            failReadiness = { _, _ -> },
         )
 
         assertFalse(requestedStart)

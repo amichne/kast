@@ -13,6 +13,7 @@ internal object KastProjectOpenGradleLoad {
         project: Project,
         workspaceRoot: Path,
         enabled: ProjectOpenGradleLoadEnabled,
+        onComplete: (Throwable?) -> Unit = {},
         scheduleGradleLoad: ((() -> Unit) -> Unit) = { task ->
             ApplicationManager.getApplication().executeOnPooledThread(task)
         },
@@ -34,7 +35,7 @@ internal object KastProjectOpenGradleLoad {
 
         return runCatching {
             scheduleGradleLoad {
-                requestGradleProjectLoad(project, request)
+                requestGradleProjectLoad(project, request, onComplete)
             }
             ProjectOpenGradleLoadResult.Requested(request)
         }.getOrElse { error ->
@@ -56,7 +57,11 @@ internal object KastProjectOpenGradleLoad {
     private fun isGradleWorkspace(workspaceRoot: Path): Boolean =
         GRADLE_MARKERS.any { marker -> Files.isRegularFile(workspaceRoot.resolve(marker)) }
 
-    private fun requestGradleProjectLoad(project: Project, request: GradleProjectLoadRequest) {
+    private fun requestGradleProjectLoad(
+        project: Project,
+        request: GradleProjectLoadRequest,
+        onComplete: (Throwable?) -> Unit,
+    ) {
         val externalProjectPathString = request.externalProjectPath.toString()
         runCatching {
             val importFuture = CompletableFuture<Void>()
@@ -66,6 +71,7 @@ internal object KastProjectOpenGradleLoad {
                 } else {
                     LOG.warn("Kast Gradle project ${request.verb} failed for $externalProjectPathString", error)
                 }
+                onComplete(error)
             }
             when (request) {
                 is GradleProjectLoadRequest.Link ->
@@ -83,6 +89,7 @@ internal object KastProjectOpenGradleLoad {
             }
         }.onFailure { error ->
             LOG.warn("Kast Gradle project ${request.verb} request failed for $externalProjectPathString", error)
+            onComplete(error)
         }
     }
 

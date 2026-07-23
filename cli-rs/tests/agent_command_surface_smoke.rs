@@ -38,7 +38,7 @@ fn rename_preview(workspace: &Path, new_name: &str) -> Value {
             "hash": "a".repeat(64),
         }],
         "affectedFiles": [file_path],
-        "schemaVersion": 4,
+        "schemaVersion": 5,
     })
 }
 fn run_agent_symbol(
@@ -615,7 +615,7 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
                         "declarationStartOffset": 10,
                         "containingType": "io.example.OrderService"
                     },
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 }),
             ),
             ("raw/rename", rename_preview(&workspace, "processSafely")),
@@ -820,7 +820,7 @@ fn agent_rename_preview_rejects_duplicate_hash_rows_that_leave_an_affected_file_
             {"filePath": first_file, "hash": "b".repeat(64)},
         ],
         "affectedFiles": [first_file, second_file],
-        "schemaVersion": 4,
+        "schemaVersion": 5,
     });
     let backend = spawn_scripted_idea_backend(
         &home,

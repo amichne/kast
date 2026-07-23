@@ -5,6 +5,7 @@
     "system": [
       "health",
       "runtime/status",
+      "runtime/open-project",
       "runtime/shutdown",
       "runtime/restart",
       "capabilities"
@@ -75,6 +76,29 @@
         "fields": {}
       },
       "responseType": "RuntimeStatusResponse"
+    },
+    "runtime/open-project": {
+      "method": "runtime/open-project",
+      "category": "system",
+      "summary": "Open an authenticated exact-root project in this runtime host",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "canonicalRoot": {
+            "type": "string",
+            "sample": "/workspace"
+          },
+          "requestId": {
+            "type": "string",
+            "sample": "00000000-0000-4000-8000-000000000032"
+          }
+        },
+        "required": [
+          "canonicalRoot",
+          "requestId"
+        ]
+      },
+      "responseType": "RuntimeOpenProjectResponse"
     },
     "runtime/shutdown": {
       "method": "runtime/shutdown",

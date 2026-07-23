@@ -44,7 +44,7 @@ so the page exposes the internal JSON-RPC catalog used by typed
 families, flow-oriented building blocks, and request fields that
 callers compose into larger automation flows.
 
-Catalog version: `dev`. Methods: `42`.
+Catalog version: `dev`. Methods: `43`.
 
 #### Method families
 
@@ -52,7 +52,7 @@ The families below are internal JSON-RPC namespaces, not public CLI commands.
 
 | Family | Role | Source | Methods |
 | --- | --- | --- | --- |
-| `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`runtime/shutdown`<br>`runtime/restart`<br>`capabilities` |
+| `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`runtime/open-project`<br>`runtime/shutdown`<br>`runtime/restart`<br>`capabilities` |
 | `mutation` | Cataloged JSON-RPC methods. | backend | `mutation/submit` |
 | `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`selector/identity`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/implementations`<br>`symbol/hierarchy`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
 | `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/semantic-graph`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
@@ -83,6 +83,7 @@ uses a discriminated response envelope.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `health` | `system` | backend | Basic health check | none | none | `HealthResponse` | single result |
 | `runtime/status` | `system` | backend | Detailed runtime state including indexing progress | none | none | `RuntimeStatusResponse` | single result |
+| `runtime/open-project` | `system` | backend | Open an authenticated exact-root project in this runtime host | `canonicalRoot`<br>`requestId` | none | `RuntimeOpenProjectResponse` | single result |
 | `runtime/shutdown` | `system` | backend | Ask the runtime host to shut down after this response is flushed | none | none | `RuntimeLifecycleResponse` | single result |
 | `runtime/restart` | `system` | backend | Ask the runtime host to restart after this response is flushed | none | none | `RuntimeLifecycleResponse` | single result |
 | `capabilities` | `system` | backend | Advertised read and mutation capabilities | none | none | `BackendCapabilities` | single result |
@@ -143,6 +144,18 @@ Response type: `HealthResponse`.
 No request parameters.
 
 Response type: `RuntimeStatusResponse`.
+
+</details>
+
+<details markdown="1">
+<summary><code>runtime/open-project</code> - Open an authenticated exact-root project in this runtime host</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `canonicalRoot` | `string` | yes | no |  |
+| `requestId` | `string` | yes | no |  |
+
+Response type: `RuntimeOpenProjectResponse`.
 
 </details>
 

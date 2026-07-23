@@ -1,10 +1,9 @@
 package io.github.amichne.kast.idea
 
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.notification.NotificationGroupManager
-import com.intellij.notification.NotificationType
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.idea.diagnostics.KastDiagnosticsService
 import java.nio.file.Path
 
 internal object KastProjectOpenAutoIndexing {
@@ -14,14 +13,18 @@ internal object KastProjectOpenAutoIndexing {
         installProjectOpenProfile: (Path, KastConfig) -> ProjectOpenProfileAutoInitResult = { workspaceRoot, config ->
             KastProjectOpenProfileAutoInit.execute(workspaceRoot, config)
         },
-        loadGradleProject: (Path, KastConfig) -> ProjectOpenGradleLoadResult = { workspaceRoot, config ->
+        loadGradleProject: (Path, KastConfig, (Throwable?) -> Unit) -> ProjectOpenGradleLoadResult =
+            { workspaceRoot, config, onComplete ->
             KastProjectOpenGradleLoad.execute(
                 project = project,
                 workspaceRoot = workspaceRoot,
                 enabled = config.projectOpen.gradleLoadEnabled,
+                onComplete = onComplete,
             )
         },
-        startBackendAndIndexReferences: (Project) -> Unit,
+        startBackend: (Project) -> Unit,
+        startReferenceIndex: (Project) -> Unit,
+        failReadiness: (Project, Throwable) -> Unit,
     ): Boolean {
         val workspaceRoot = project.basePath?.let { Path.of(it).toAbsolutePath().normalize() }
         if (workspaceRoot == null) {
@@ -53,26 +56,35 @@ internal object KastProjectOpenAutoIndexing {
         }
 
         LOG.info("Kast startup activity triggered for project: ${project.name}")
-        startBackendAndIndexReferences(project)
+        startBackend(project)
 
         if (config.projectOpen.gradleLoadEnabled.value) {
-            val gradleLoadResult = loadGradleProject(workspaceRoot, config)
+            val gradleLoadResult = loadGradleProject(workspaceRoot, config) { failure ->
+                if (failure == null) {
+                    startReferenceIndex(project)
+                } else {
+                    failReadiness(project, failure)
+                }
+            }
             KastProjectOpenGradleLoad.log(gradleLoadResult)
+            when (gradleLoadResult) {
+                is ProjectOpenGradleLoadResult.Requested -> {}
+                is ProjectOpenGradleLoadResult.Skipped -> startReferenceIndex(project)
+                is ProjectOpenGradleLoadResult.Failed ->
+                    failReadiness(project, IllegalStateException(gradleLoadResult.message))
+            }
         } else {
             LOG.info("Kast Gradle project load skipped because projectOpen.gradleLoadEnabled is disabled")
+            startReferenceIndex(project)
         }
         return true
     }
 
     private fun notifyAutoInitFailure(project: Project, result: ProjectOpenProfileAutoInitResult.Failed) {
-        NotificationGroupManager.getInstance()
-            .getNotificationGroup("Kast")
-            .createNotification(
-                "Kast project setup",
-                "Could not prepare Kast for this project: ${result.message}",
-                NotificationType.WARNING,
-            )
-            .notify(project)
+        KastDiagnosticsService.getInstance(project).notifyTerminalFailure(
+            title = "Kast project setup failed",
+            detail = "Could not prepare Kast for this project: ${result.message}. Run `kast setup` and retry.",
+        )
     }
 
     private val LOG = Logger.getInstance(KastProjectOpenAutoIndexing::class.java)

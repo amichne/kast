@@ -15,6 +15,8 @@ import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.contract.ParameterInfo
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.RuntimeLifecycleResponse
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectRequest
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectResponse
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
@@ -196,6 +198,8 @@ object OpenApiDocument {
         registry.register("HealthResponse", HealthResponse.serializer())
         registry.register("RuntimeStatusResponse", RuntimeStatusResponse.serializer())
         registry.register("RuntimeLifecycleResponse", RuntimeLifecycleResponse.serializer())
+        registry.register("RuntimeOpenProjectRequest", RuntimeOpenProjectRequest.serializer())
+        registry.register("RuntimeOpenProjectResponse", RuntimeOpenProjectResponse.serializer())
         registry.register("BackendCapabilities", BackendCapabilities.serializer())
 
         // Shared types
@@ -380,6 +384,13 @@ object OpenApiDocument {
             method = "runtime/status",
             responseSchema = "RuntimeStatusResponse",
         ),
+        "/rpc/runtime-open-project" to systemMethod(
+            operationId = "runtimeOpenProject",
+            summary = "Open an authenticated exact-root project in this runtime host",
+            method = "runtime/open-project",
+            requestSchema = "RuntimeOpenProjectRequest",
+            responseSchema = "RuntimeOpenProjectResponse",
+        ),
         "/rpc/runtime-shutdown" to systemMethod(
             operationId = "runtimeShutdown",
             summary = "Request runtime host shutdown after the response is flushed",
@@ -562,6 +573,7 @@ object OpenApiDocument {
         operationId: String,
         summary: String,
         method: String,
+        requestSchema: String? = null,
         responseSchema: String,
     ): Map<String, Any?> = linkedMapOf(
         "post" to linkedMapOf(
@@ -569,7 +581,18 @@ object OpenApiDocument {
             "summary" to summary,
             "tags" to listOf("system"),
             "x-jsonrpc-method" to method,
-            "responses" to linkedMapOf(
+        ).also { operation ->
+            if (requestSchema != null) {
+                operation["requestBody"] = linkedMapOf(
+                    "required" to true,
+                    "content" to linkedMapOf(
+                        "application/json" to linkedMapOf(
+                            "schema" to ref(requestSchema),
+                        ),
+                    ),
+                )
+            }
+            operation["responses"] = linkedMapOf(
                 "200" to linkedMapOf(
                     "description" to "JSON-RPC success result",
                     "content" to linkedMapOf(
@@ -579,8 +602,8 @@ object OpenApiDocument {
                     ),
                 ),
                 "default" to errorResponse(),
-            ),
-        ),
+            )
+        },
     )
 
     private fun readMethod(

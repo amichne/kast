@@ -65,6 +65,13 @@ fn read_input() -> Result<HookInput> {
 }
 
 fn session_start(workspace: &Path) -> Value {
+    session_start_with_runner(workspace, run_kast)
+}
+
+fn session_start_with_runner(
+    workspace: &Path,
+    runner: impl FnOnce(&[OsString]) -> Result<String>,
+) -> Value {
     let args = [
         OsString::from("--output"),
         OsString::from("json"),
@@ -75,10 +82,11 @@ fn session_start(workspace: &Path) -> Value {
         workspace.as_os_str().to_os_string(),
         OsString::from("--backend"),
         OsString::from("idea"),
+        OsString::from("--accept-indexing"),
     ];
     additional_context(
         CodexHookEvent::SessionStart,
-        advisory_result("Kast session launch", run_kast(&args)),
+        advisory_result("Kast session launch", runner(&args)),
     )
 }
 
@@ -441,5 +449,22 @@ mod tests {
         assert!(!hook_enabled(&disabled, CodexHookEvent::SessionStart));
         assert!(hook_enabled(&session_only, CodexHookEvent::SessionStart));
         assert!(!hook_enabled(&session_only, CodexHookEvent::PostToolUse));
+    }
+
+    #[test]
+    fn session_start_invokes_kast_once_and_accepts_indexing() {
+        let calls = std::cell::RefCell::new(Vec::new());
+
+        let output = session_start_with_runner(Path::new("/workspace"), |args| {
+            calls.borrow_mut().push(args.to_vec());
+            Ok("{\"state\":\"INDEXING\"}".to_string())
+        });
+
+        assert_eq!(calls.borrow().len(), 1);
+        assert!(calls.borrow()[0].contains(&OsString::from("--accept-indexing")));
+        assert_eq!(
+            output.pointer("/hookSpecificOutput/hookEventName"),
+            Some(&json!("SessionStart"))
+        );
     }
 }

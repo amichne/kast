@@ -440,7 +440,7 @@ fn indexing_idea_runtime_never_becomes_lease_ready() {
                     "backendName": "idea",
                     "backendVersion": "scripted-test",
                     "workspaceRoot": workspace.display().to_string(),
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 }),
             ),
             (
@@ -456,7 +456,7 @@ fn indexing_idea_runtime_never_becomes_lease_ready() {
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 }),
             ),
         ],

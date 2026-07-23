@@ -215,6 +215,7 @@ fn restart_idea_backend_candidates(
         descriptor_directory: inspection.descriptor_directory.display().to_string(),
         path_resolution,
         started: false,
+        launch_disposition: Some(LaunchDisposition::ReusedOpenProject),
         log_file: None,
         selected,
         note: Some("Requested IDEA backend restart through runtime/restart.".to_string()),

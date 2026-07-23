@@ -42,3 +42,38 @@ fn command_error(code: &'static str, message: &str, args: &[String], output: &Ou
     );
     error
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn idea_launch_migration_extends_an_existing_partial_table() {
+        let migrated = migrate_missing_idea_launch_choice(
+            "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\ncommand = \"/Applications/IntelliJ IDEA.app\"\nwaitTimeoutMillis = 45000\n".to_string(),
+        )
+        .expect("migration");
+        let value: toml::Value = toml::from_str(&migrated).expect("valid TOML");
+        let launch = value
+            .get("runtime")
+            .and_then(toml::Value::as_table)
+            .and_then(|runtime| runtime.get("ideaLaunch"))
+            .and_then(toml::Value::as_table)
+            .expect("idea launch table");
+
+        assert_eq!(
+            launch.get("enabled").and_then(toml::Value::as_bool),
+            Some(true)
+        );
+        assert_eq!(
+            launch.get("command").and_then(toml::Value::as_str),
+            Some("/Applications/IntelliJ IDEA.app"),
+        );
+        assert_eq!(
+            launch
+                .get("waitTimeoutMillis")
+                .and_then(toml::Value::as_integer),
+            Some(45_000),
+        );
+    }
+}

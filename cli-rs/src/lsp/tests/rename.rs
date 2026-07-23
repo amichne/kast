@@ -109,7 +109,7 @@
                     "candidateFileCount": 1,
                     "searchedFileCount": 1
                 },
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         );
         let mut server = LspServer::new(rpc);
@@ -185,7 +185,7 @@
                     "candidateFileCount": 10,
                     "searchedFileCount": 2
                 },
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         );
         let mut server = LspServer::new(rpc);

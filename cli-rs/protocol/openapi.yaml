@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Kast Analysis API
-  version: "4.0.0"
+  version: "5.0.0"
   description: >
     JSON-RPC 2.0 analysis protocol for the Kast daemon. Each operation is
     modelled as a logical POST whose request body is the JSON-RPC params
@@ -60,6 +60,32 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/RuntimeStatusResponse"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/runtime-open-project":
+    post:
+      operationId: runtimeOpenProject
+      summary: Open an authenticated exact-root project in this runtime host
+      tags:
+        - system
+      x-jsonrpc-method: runtime/open-project
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/RuntimeOpenProjectRequest"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/RuntimeOpenProjectResponse"
         default:
           description: JSON-RPC error response
           content:
@@ -832,6 +858,33 @@ components:
       enum:
         - SHUTDOWN
         - RESTART
+    RuntimeOpenProjectRequest:
+      type: object
+      properties:
+        canonicalRoot:
+          type: string
+        requestId:
+          type: string
+      additionalProperties: false
+      required:
+        - canonicalRoot
+        - requestId
+    RuntimeOpenProjectResponse:
+      type: object
+      properties:
+        result:
+          "$ref": "#/components/schemas/RuntimeOpenProjectResult"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - result
+    RuntimeOpenProjectResult:
+      type: string
+      enum:
+        - ALREADY_OPEN
+        - OPENED_NEW_PROJECT
     BackendCapabilities:
       type: object
       properties:

@@ -324,7 +324,7 @@ fn exact_zero_relationships_require_complete_coverage_proof() {
                 "subject": function,
                 "references": [],
                 "cardinality": {"type": "EXACT", "totalCount": 0},
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         ),
         (
@@ -336,7 +336,7 @@ fn exact_zero_relationships_require_complete_coverage_proof() {
                 "subject": function,
                 "records": [],
                 "page": proofless_exact_relation_page(0),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         ),
         (
@@ -348,7 +348,7 @@ fn exact_zero_relationships_require_complete_coverage_proof() {
                 "subject": function,
                 "records": [],
                 "page": proofless_exact_relation_page(0),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         ),
         (
@@ -360,7 +360,7 @@ fn exact_zero_relationships_require_complete_coverage_proof() {
                 "subject": interface,
                 "records": [],
                 "page": proofless_exact_relation_page(0),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         ),
         (
@@ -372,7 +372,7 @@ fn exact_zero_relationships_require_complete_coverage_proof() {
                 "subject": interface,
                 "records": [],
                 "page": proofless_exact_relation_page(0),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         ),
     ];
@@ -482,7 +482,7 @@ fn relationship_evidence_variants_reject_inconsistent_coverage_facts() {
                     "subject": subject,
                     "references": [],
                     "evidence": evidence,
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 }),
             )],
         );
@@ -527,7 +527,7 @@ fn genuine_exact_zero_preserves_complete_coverage_in_compact_and_count_views() {
             ),
             "references": [],
             "evidence": complete_relationship_evidence(0),
-            "schemaVersion": 4
+            "schemaVersion": 5
         })
     };
 
@@ -640,7 +640,7 @@ fn handle_backed_degraded_relationship_preserves_known_minimum_and_limitations()
                 "subject": subject,
                 "reason": "CALL_HIERARCHY_UNAVAILABLE",
                 "evidence": excluded_source_set_evidence(3),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -695,7 +695,7 @@ fn handle_backed_stale_relationship_preserves_known_minimum_and_limitations() {
                 },
                 "reason": "GENERATION_CHANGED",
                 "evidence": generation_changed_evidence(2),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -829,7 +829,7 @@ fn selector_handle_drives_impact_without_position_resolution() {
             serde_json::json!({
                 "type": "AVAILABLE",
                 "identity": relation_identity("lib.Foo", "CLASS", &declaration_file, 1),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -915,7 +915,7 @@ fn selector_handle_impact_preserves_rejection_before_sql() {
                 "type": "SELECTOR_HANDLE_REJECTED",
                 "reason": "STALE",
                 "recovery": "RESOLVE_AGAIN",
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -1275,7 +1275,7 @@ fn selector_handle_resolves_once_and_reuses_identity_for_references() {
                 "subject": selector,
                 "references": [],
                 "evidence": complete_relationship_evidence(0),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -1335,7 +1335,7 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
                 "subject": function,
                 "records": [],
                 "page": exact_relation_page(0),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         ),
         (
@@ -1347,7 +1347,7 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
                 "subject": function,
                 "records": [],
                 "page": exact_relation_page(0),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         ),
         (
@@ -1359,7 +1359,7 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
                 "subject": interface,
                 "records": [],
                 "page": exact_relation_page(0),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         ),
         (
@@ -1371,7 +1371,7 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
                 "subject": interface,
                 "records": [],
                 "page": exact_relation_page(0),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         ),
     ];
@@ -1452,7 +1452,7 @@ fn selector_handle_rejections_stay_distinct_and_actionable_in_cli_projection() {
                     "type": "SELECTOR_HANDLE_REJECTED",
                     "reason": reason,
                     "recovery": recovery,
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 }),
             )],
         );
@@ -1547,7 +1547,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
                     "truncated": true,
                     "nextPageToken": reference_handle
                 },
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -1593,7 +1593,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
                 "subject": selector,
                 "references": [],
                 "evidence": complete_relationship_evidence(1),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -1647,7 +1647,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
                     "containingSymbol": {"type": "TOP_LEVEL"}
                 }],
                 "page": exact_relation_page(1),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -1857,7 +1857,7 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
                     "truncated": true,
                     "nextPageToken": backend_token
                 },
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -1927,7 +1927,7 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
                 },
                 "references": [],
                 "evidence": complete_relationship_evidence(1),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -2014,7 +2014,7 @@ fn references_preserve_a_zero_known_minimum_while_search_remains_resumable() {
                     "truncated": true,
                     "nextPageToken": backend_token
                 },
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -2227,7 +2227,7 @@ fn explicit_references_fail_closed_on_response_provenance_mismatch() {
             "subject": other_subject,
             "references": [],
             "evidence": complete_relationship_evidence(0),
-            "schemaVersion": 4
+            "schemaVersion": 5
         }),
         serde_json::json!({
             "type": "DEGRADED",
@@ -2235,20 +2235,20 @@ fn explicit_references_fail_closed_on_response_provenance_mismatch() {
             "subject": other_subject,
             "reason": "REFERENCES_UNAVAILABLE",
             "evidence": excluded_source_set_evidence(0),
-            "schemaVersion": 4
+            "schemaVersion": 5
         }),
         serde_json::json!({
             "type": "CURSOR_STALE",
             "selector": other_selector,
             "reason": "GENERATION_CHANGED",
             "evidence": excluded_source_set_evidence(0),
-            "schemaVersion": 4
+            "schemaVersion": 5
         }),
         serde_json::json!({
             "type": "SELECTOR_HANDLE_REJECTED",
             "reason": "STALE",
             "recovery": "RESOLVE_AGAIN",
-            "schemaVersion": 4
+            "schemaVersion": 5
         }),
     ];
 
@@ -2422,7 +2422,7 @@ fn compact_references_bound_high_cardinality_output() {
                 "references": references,
                 "evidence": resumable_relationship_evidence(TOTAL_REFERENCES),
                 "page": {"truncated": true, "nextPageToken": backend_token},
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -2526,7 +2526,7 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
                         "containingSymbol": {"type": "TOP_LEVEL"}
                     }],
                     "page": exact_relation_page(1),
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 }),
             )],
         );
@@ -2601,7 +2601,7 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
                     )
                 }],
                 "page": exact_relation_page(1),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -2668,7 +2668,7 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
                     "depth": 1
                 }],
                 "page": exact_relation_page(1),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -2742,7 +2742,7 @@ fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
                     "truncated": true,
                     "nextHandle": handle
                 },
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -2801,7 +2801,7 @@ fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
                     "visitedCandidateCount": 1,
                     "truncated": false
                 },
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );
@@ -3132,7 +3132,7 @@ fn call_relationships_fail_closed_on_over_depth_backend_evidence() {
                     "containingSymbol": {"type": "TOP_LEVEL"}
                 }],
                 "page": exact_relation_page(1),
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         )],
     );

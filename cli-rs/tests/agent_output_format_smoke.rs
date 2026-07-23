@@ -58,7 +58,7 @@ fn rename_backend(
                         "hash": "a".repeat(64),
                     }],
                     "affectedFiles": [file_path],
-                    "schemaVersion": 4,
+                    "schemaVersion": 5,
                 }),
             ),
         ],

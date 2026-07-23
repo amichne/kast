@@ -31,7 +31,7 @@
                 "backendVersion": "test",
                 "workspaceRoot": temp.path().display().to_string(),
                 "message": "IDEA is indexing",
-                "schemaVersion": 4
+                "schemaVersion": 5
             }),
         );
         let mut server = LspServer::new(rpc);

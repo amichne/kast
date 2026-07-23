@@ -10,6 +10,11 @@ import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectRequest
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectRequestId
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectResponse
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectResult
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectRoot
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
@@ -61,6 +66,12 @@ object DocExampleGenerator {
                 backend = backend,
                 config = AnalysisServerConfig(),
                 lifecycleController = RuntimeLifecycleController { {} },
+                projectOpenController = RuntimeProjectOpenController {
+                    RuntimeProjectOpenPlan(
+                        response = RuntimeOpenProjectResponse(RuntimeOpenProjectResult.ALREADY_OPEN),
+                        afterResponseAction = {},
+                    )
+                },
             )
 
             val sampleFile = tempDir.resolve("src/Sample.kt").toString()
@@ -73,6 +84,7 @@ object DocExampleGenerator {
             val friendlyGreeterOffset = typeContent.indexOf("FriendlyGreeter")
 
             val pathToSanitize = tempDir.toString()
+            val canonicalPathToSanitize = tempDir.toRealPath().toString()
             val continuationIdentity = continuationIdentity(sampleFile)
 
             val operations = buildOperations(
@@ -88,11 +100,13 @@ object DocExampleGenerator {
             val result = linkedMapOf<String, ExamplePair>()
             for ((operationId, request) in operations) {
                 val requestJson = json.encodeToString(JsonRpcRequest.serializer(), request)
+                    .replace(canonicalPathToSanitize, "/workspace")
                     .replace(pathToSanitize, "/workspace")
                     .withDeterministicWorkspaceHandles(operationId)
                 val responseRaw = runBlocking { dispatcher.dispatch(request) }
                 val responseElement = json.parseToJsonElement(responseRaw)
                 val responseJson = json.encodeToString(JsonElement.serializer(), responseElement)
+                    .replace(canonicalPathToSanitize, "/workspace")
                     .replace(pathToSanitize, "/workspace")
                     .withDeterministicWorkspaceHandles(operationId)
                 result[operationId] = ExamplePair(requestJson, responseJson)
@@ -157,6 +171,18 @@ object DocExampleGenerator {
         // System operations (no params)
         ops += "health" to request("health")
         ops += "runtimeStatus" to request("runtime/status")
+        ops += "runtimeOpenProject" to request(
+            "runtime/open-project",
+            json.encodeToJsonElement(
+                RuntimeOpenProjectRequest.serializer(),
+                RuntimeOpenProjectRequest(
+                    canonicalRoot = RuntimeOpenProjectRoot.of(Path.of(sampleFile).parent.parent),
+                    requestId = RuntimeOpenProjectRequestId.parse(
+                        "00000000-0000-4000-8000-000000000032",
+                    ),
+                ),
+            ),
+        )
         ops += "runtimeShutdown" to request("runtime/shutdown")
         ops += "runtimeRestart" to request("runtime/restart")
         ops += "capabilities" to request("capabilities")

@@ -63,6 +63,11 @@ import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
 import io.github.amichne.kast.api.contract.RuntimeLifecycleResponse
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectRequest
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectRequestId
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectResponse
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectResult
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectRoot
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
@@ -168,6 +173,45 @@ class AnalysisDispatcherTest {
         assertTrue(dispatcher.runAfterResponseActions())
         assertEquals(listOf(RuntimeLifecycleAction.RESTART), actions)
         assertFalse(dispatcher.runAfterResponseActions())
+    }
+
+    @Test
+    fun `runtime open project forwards the authenticated exact-root request`() {
+        var received: RuntimeOpenProjectRequest? = null
+        var opened = false
+        val dispatcher = RpcAnalysisDispatcher(
+            backend = FakeAnalysisBackend.sample(tempDir),
+            config = AnalysisServerConfig(),
+            projectOpenController = RuntimeProjectOpenController { request ->
+                received = request
+                RuntimeProjectOpenPlan(
+                    response = RuntimeOpenProjectResponse(RuntimeOpenProjectResult.OPENED_NEW_PROJECT),
+                    afterResponseAction = { opened = true },
+                )
+            },
+        )
+        val request = RuntimeOpenProjectRequest(
+            canonicalRoot = RuntimeOpenProjectRoot.parse(tempDir.toRealPath().toString()),
+            requestId = RuntimeOpenProjectRequestId.parse("a7370b30-7ca5-4fa5-93c0-e59d30aa6157"),
+        )
+
+        val raw = runBlocking {
+            dispatcher.dispatch(
+                JsonRpcRequest(
+                    id = JsonPrimitive(1),
+                    method = "runtime/open-project",
+                    params = json.encodeToJsonElement(RuntimeOpenProjectRequest.serializer(), request),
+                ),
+            )
+        }
+        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+        val result = json.decodeFromJsonElement(RuntimeOpenProjectResponse.serializer(), response.result)
+
+        assertEquals(request, received)
+        assertEquals(RuntimeOpenProjectResult.OPENED_NEW_PROJECT, result.result)
+        assertFalse(opened, "Project opening must wait until the transport flushes the response")
+        assertTrue(dispatcher.runAfterResponseActions())
+        assertTrue(opened)
     }
 
     @Test

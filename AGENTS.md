@@ -24,6 +24,7 @@ If `.agent/TASK.md` cannot be completed from the request, make the narrowest rea
 ### Required `.agent/TASK.md` template
 
 ````
+
 # Task Contract
 
 ## Goal
@@ -80,3 +81,29 @@ Command:
 
 - None
 ````
+
+## macOS IDEA golden pathway
+
+On a macOS developer workstation, treat the Codex session-start path as the
+normal runtime bootstrap. Invoke the active Kast CLI once for the canonical
+workspace root:
+
+```shell
+kast developer runtime up \
+  --workspace-root "$PWD" \
+  --backend idea \
+  --accept-indexing
+```
+
+Kast reuses an exact-root IntelliJ IDEA or Android Studio project. Otherwise it
+background-opens the root in the sole supported host, bootstraps metadata,
+starts Gradle import and semantic indexing, and returns `INDEXING` when the
+runtime is reachable. Commands that need complete semantic evidence must still
+gate on `READY`.
+
+Supported hosts are IntelliJ IDEA 2026.2/build 262 and Android Studio
+2026.1.2/build 261. Treat `IDEA_PLUGIN_UPDATE_REQUIRED`,
+`IDEA_VERSION_UNSUPPORTED`, and `IDEA_HOST_AMBIGUOUS` as terminal typed
+blockers. Do not manually open another IDE process, use `open -n`, focus or
+move project windows, suppress IDE notifications, or bypass the exact-root
+runtime.

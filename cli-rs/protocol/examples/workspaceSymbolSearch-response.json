@@ -69,7 +69,7 @@
                 ]
             }
         ],
-        "schemaVersion": 4
+        "schemaVersion": 5
     },
     "id": 1,
     "jsonrpc": "2.0"

@@ -46,6 +46,14 @@ pub enum RuntimeState {
     Degraded,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum LaunchDisposition {
+    ReusedOpenProject,
+    OpenedInRunningIdea,
+    LaunchedIdea,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StaleDescriptorPolicy {
     Preserve,
@@ -88,6 +96,8 @@ pub struct WorkspaceEnsureResult {
     pub descriptor_directory: String,
     pub path_resolution: PathResolutionReport,
     pub started: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub launch_disposition: Option<LaunchDisposition>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_file: Option<String>,
     pub selected: RuntimeCandidateStatus,

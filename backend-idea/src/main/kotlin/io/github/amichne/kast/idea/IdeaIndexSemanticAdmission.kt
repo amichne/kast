@@ -81,6 +81,10 @@ internal class IdeaIndexSemanticAdmission(
 
     fun status(): Status = status.get()
 
+    fun fail(detail: String) {
+        status.set(Status.Failed(detail))
+    }
+
     private fun elapsedMillisSince(startedAtNanos: Long): Long =
         ((nanoTime() - startedAtNanos).coerceAtLeast(0L) / NANOS_PER_MILLISECOND)
 

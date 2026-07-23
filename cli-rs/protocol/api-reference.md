@@ -13,7 +13,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
     !!! abstract "At a glance"
 
-        5 operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required.
+        6 operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required.
 
     ??? example "health — Basic health check"
 
@@ -55,7 +55,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "backendName": "fake",
                     "backendVersion": "0.1.0-test",
                     "workspaceRoot": "/workspace",
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -117,12 +117,66 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "sourceModuleNames": [],
                     "dependentModuleNamesBySourceModuleName": {},
                     "referenceIndexReady": false,
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
             }
             ```
+
+    ??? example "runtime/open-project — Open an authenticated exact-root project in this runtime host"
+
+        Consumes a local one-shot request and opens its canonical root in this compatible IDEA application without replacing an existing project.
+
+        === "Input: RuntimeOpenProjectRequest"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin canonicalRoot: String` | Canonical absolute root of the project to open. |
+            | `#!kotlin requestId: String` | One-shot UUID authenticating the project-open request. |
+        === "Output: RuntimeOpenProjectResponse"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin result: RuntimeOpenProjectResult` | Whether the exact root was already open or was opened in a new project frame. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+        === "Internal protocol"
+
+            ```text
+            JSON-RPC method: runtime/open-project
+            Params: see Request tab
+            ```
+        === "Request"
+
+            ```json
+            {
+                "method": "runtime/open-project",
+                "params": {
+                    "canonicalRoot": "/workspace",
+                    "requestId": "00000000-0000-4000-8000-000000000032"
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "result": "ALREADY_OPEN",
+                    "schemaVersion": 5
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        !!! note "Behavioral notes"
+
+            - The response is flushed before IDEA begins opening a new project frame.
+            - Requests are exact-root, one-shot, short-lived, and restricted to the selected local host.
+
+        **Error codes** &nbsp;·&nbsp; `IDEA_OPEN_REQUEST_REJECTED`, `IDEA_VERSION_UNSUPPORTED`, `IDEA_PROJECT_OPEN_FAILED`
 
     ??? example "runtime/shutdown — Request runtime host shutdown after the response is flushed"
 
@@ -168,7 +222,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "backendVersion": "0.1.0-test",
                     "workspaceRoot": "/workspace",
                     "message": "Runtime shutdown accepted; action will run after this response is flushed.",
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -226,7 +280,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "backendVersion": "0.1.0-test",
                     "workspaceRoot": "/workspace",
                     "message": "Runtime restart accepted; action will run after this response is flushed.",
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -312,7 +366,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "continuationTtlMillis": 60000,
                         "continuationCapacity": 256
                     },
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -394,7 +448,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "documentation": "/** Greets the provided name. */",
                         "containingDeclaration": "sample"
                     },
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -517,7 +571,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "limitations": []
                         }
                     },
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -644,7 +698,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "maxChildrenPerNodeReached": false,
                         "filesVisited": 1
                     },
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -768,7 +822,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "maxDepthReached": 1,
                         "truncated": false
                     },
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -829,7 +883,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                 "result": {
                     "insertionOffset": 56,
                     "filePath": "/workspace/src/Sample.kt",
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -922,7 +976,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "type": "EXACT",
                         "totalCount": 0
                     },
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1004,7 +1058,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "children": []
                         }
                     ],
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1133,7 +1187,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             ]
                         }
                     ],
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1212,7 +1266,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "truncated": false,
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1291,7 +1345,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "snapshotToken": "00000000-0000-4000-8000-000000000002",
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1534,7 +1588,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "exhaustive": true,
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1592,7 +1646,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             {
                 "result": {
                     "actions": [],
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1668,7 +1722,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "exhaustive": true,
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1760,7 +1814,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "affectedFiles": [
                         "/workspace/src/Sample.kt"
                     ],
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1820,7 +1874,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "edits": [],
                     "fileHashes": [],
                     "affectedFiles": [],
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1904,7 +1958,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     ],
                     "createdFiles": [],
                     "deletedFiles": [],
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1994,7 +2048,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "removedFileCount": 0,
                     "attemptCount": 1,
                     "elapsedMillis": 0,
-                    "schemaVersion": 4
+                    "schemaVersion": 5
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
