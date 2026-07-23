@@ -55,7 +55,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "backendName": "fake",
                     "backendVersion": "0.1.0-test",
                     "workspaceRoot": "/workspace",
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -117,7 +117,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "sourceModuleNames": [],
                     "dependentModuleNamesBySourceModuleName": {},
                     "referenceIndexReady": false,
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -168,7 +168,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "backendVersion": "0.1.0-test",
                     "workspaceRoot": "/workspace",
                     "message": "Runtime shutdown accepted; action will run after this response is flushed.",
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -226,7 +226,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "backendVersion": "0.1.0-test",
                     "workspaceRoot": "/workspace",
                     "message": "Runtime restart accepted; action will run after this response is flushed.",
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -312,7 +312,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "continuationTtlMillis": 60000,
                         "continuationCapacity": 256
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -394,7 +394,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "documentation": "/** Greets the provided name. */",
                         "containingDeclaration": "sample"
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -517,7 +517,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "limitations": []
                         }
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -644,7 +644,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "maxChildrenPerNodeReached": false,
                         "filesVisited": 1
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -768,7 +768,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "maxDepthReached": 1,
                         "truncated": false
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -829,7 +829,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                 "result": {
                     "insertionOffset": 56,
                     "filePath": "/workspace/src/Sample.kt",
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -922,7 +922,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "type": "EXACT",
                         "totalCount": 0
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1004,7 +1004,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "children": []
                         }
                     ],
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1133,7 +1133,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             ]
                         }
                     ],
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1212,7 +1212,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "truncated": false,
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1291,7 +1291,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "snapshotToken": "00000000-0000-4000-8000-000000000002",
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1305,9 +1305,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
         **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`, `INVALID_WORKSPACE_FILE_CURSOR`, `STALE_WORKSPACE_INVENTORY`
 
-    ??? example "raw/semantic-graph — Export a compiler-backed Kotlin semantic graph page"
+    ??? example "raw/semantic-graph — Refresh and persist a compiler-backed Kotlin semantic graph"
 
-        Refreshes selected Kotlin files through K2 analysis and exports provider-neutral symbols, relations, and coverage evidence.
+        Refreshes selected Kotlin files through K2 analysis, atomically persists provider-neutral graph facts, and returns coverage plus persisted fact counts.
 
         **Capability** &nbsp;·&nbsp; `SEMANTIC_GRAPH`
 
@@ -1375,7 +1375,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
         !!! note "Behavioral notes"
 
             - PSI is used only inside the IDEA backend for enumeration and source ranges; no PSI or Analysis API object crosses the contract boundary.
-            - Continuation tokens are single-use and bound to the exact path scope, page size, and shared source-index generation.
+            - The result is an atomic refresh acknowledgement; enumerate native graph nodes separately with generation-pinned keyset queries.
             - Compiler-resolved library and JDK targets are omitted and counted in coverage evidence.
 
         **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`, `VALIDATION_ERROR`, `CONFLICT`
@@ -1534,7 +1534,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "exhaustive": true,
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1592,7 +1592,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             {
                 "result": {
                     "actions": [],
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1668,7 +1668,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "exhaustive": true,
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1760,7 +1760,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "affectedFiles": [
                         "/workspace/src/Sample.kt"
                     ],
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1820,7 +1820,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "edits": [],
                     "fileHashes": [],
                     "affectedFiles": [],
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1904,7 +1904,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     ],
                     "createdFiles": [],
                     "deletedFiles": [],
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1994,7 +1994,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "removedFileCount": 0,
                     "attemptCount": 1,
                     "elapsedMillis": 0,
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 },
                 "id": 1,
                 "jsonrpc": "2.0"

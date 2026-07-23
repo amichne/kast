@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Kast Analysis API
-  version: "3.0.0"
+  version: "4.0.0"
   description: >
     JSON-RPC 2.0 analysis protocol for the Kast daemon. Each operation is
     modelled as a logical POST whose request body is the JSON-RPC params

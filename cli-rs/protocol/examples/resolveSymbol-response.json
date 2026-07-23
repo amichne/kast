@@ -22,7 +22,7 @@
             "documentation": "/** Greets the provided name. */",
             "containingDeclaration": "sample"
         },
-        "schemaVersion": 3
+        "schemaVersion": 4
     },
     "id": 1,
     "jsonrpc": "2.0"

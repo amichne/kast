@@ -728,7 +728,7 @@ mod tests {
                     plugin_version: cli::version().to_string(),
                     cli_version: cli::version().to_string(),
                     protocol_revision: runtime::ProtocolRevision(
-                        std::num::NonZeroU32::new(1).expect("revision"),
+                        std::num::NonZeroU32::new(2).expect("revision"),
                     ),
                     workspace_metadata_revision: runtime::WorkspaceMetadataRevision(
                         std::num::NonZeroU32::new(MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION)

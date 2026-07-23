@@ -704,7 +704,7 @@ fn write_descriptor(home: &Path, workspace: &Path, socket_path: &Path) {
             "transport": "uds",
             "socketPath": socket_path.display().to_string(),
             "pid": std::process::id(),
-            "schemaVersion": 3
+            "schemaVersion": 4
         }]))
         .expect("descriptor JSON"),
     )
@@ -764,7 +764,7 @@ fn spawn_fake_backend(
                     "backendName": "idea",
                     "backendVersion": "diagnostics-test",
                     "workspaceRoot": workspace.display().to_string(),
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "capabilities" => json!({
                     "backendName": "idea",
@@ -777,7 +777,7 @@ fn spawn_fake_backend(
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "raw/workspace-refresh" => refresh.clone(),
                 "raw/diagnostics" => diagnostics.clone(),
@@ -829,7 +829,7 @@ fn complete_refresh_for(file_paths: &[String]) -> Value {
         "removedFileCount": 0,
         "attemptCount": 1,
         "elapsedMillis": 0,
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -853,7 +853,7 @@ fn complete_removed_refresh(file: &Path) -> Value {
         "removedFileCount": 1,
         "attemptCount": 1,
         "elapsedMillis": 0,
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -881,7 +881,7 @@ fn incomplete_refresh(file: &Path) -> Value {
         "removedFileCount": 0,
         "attemptCount": 3,
         "elapsedMillis": 50,
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -905,7 +905,7 @@ fn incomplete_diagnostics(file: &Path) -> Value {
         "skippedFileCount": 1,
         "severityCounts": {"error": 1, "warning": 0, "info": 0, "total": 1},
         "cardinality": {"type": "EXACT", "totalCount": 1},
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -928,7 +928,7 @@ fn complete_compiler_diagnostics(file: &Path) -> Value {
         "skippedFileCount": 0,
         "severityCounts": {"error": 1, "warning": 0, "info": 0, "total": 1},
         "cardinality": {"type": "EXACT", "totalCount": 1},
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -956,7 +956,7 @@ fn complete_clean_diagnostics_for(file_paths: &[String]) -> Value {
         "skippedFileCount": 0,
         "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
         "cardinality": {"type": "EXACT", "totalCount": 0},
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -1012,7 +1012,7 @@ fn incomplete_diagnostics_with_page(file: &Path, page: Option<Value>) -> Value {
         "skippedFileCount": 0,
         "severityCounts": {"error": 1, "warning": 1, "info": 0, "total": 2},
         "cardinality": {"type": "EXACT", "totalCount": 2},
-        "schemaVersion": 3
+        "schemaVersion": 4
     });
     if let Some(page) = page {
         result["page"] = page;
@@ -1025,7 +1025,7 @@ fn omitted_completeness_proof(_file: &Path) -> Value {
         "diagnostics": [],
         "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
         "cardinality": {"type": "EXACT", "totalCount": 0},
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -1044,7 +1044,7 @@ fn complete_outcome_with_skipped_file(file: &Path) -> Value {
         "skippedFileCount": 1,
         "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
         "cardinality": {"type": "EXACT", "totalCount": 0},
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -1058,7 +1058,7 @@ fn missing_file_status_ledger(file: &Path) -> Value {
         "skippedFileCount": 0,
         "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
         "cardinality": {"type": "EXACT", "totalCount": 0},
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -1076,7 +1076,7 @@ fn mismatched_file_status_ledger(file: &Path) -> Value {
         "skippedFileCount": 1,
         "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
         "cardinality": {"type": "EXACT", "totalCount": 0},
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -1094,7 +1094,7 @@ fn unknown_file_analysis_state(file: &Path) -> Value {
         "skippedFileCount": 0,
         "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
         "cardinality": {"type": "EXACT", "totalCount": 0},
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -1117,7 +1117,7 @@ fn malformed_diagnostic_code(file: &Path) -> Value {
         "skippedFileCount": 0,
         "severityCounts": {"error": 1, "warning": 0, "info": 0, "total": 1},
         "cardinality": {"type": "EXACT", "totalCount": 1},
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -1139,7 +1139,7 @@ fn malformed_diagnostic_structure(file: &Path) -> Value {
         "skippedFileCount": 0,
         "severityCounts": {"error": 1, "warning": 0, "info": 0, "total": 1},
         "cardinality": {"type": "EXACT", "totalCount": 1},
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 
@@ -1157,7 +1157,7 @@ fn malformed_completeness_evidence(file: &Path) -> Value {
         "skippedFileCount": 0,
         "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
         "cardinality": {"type": "EXACT", "totalCount": 0},
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 

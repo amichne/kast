@@ -17,6 +17,7 @@ import java.nio.file.Path
 class RuntimeCompatibilitySourceContractTest {
     @Test
     fun `authored matrix matches the typed revision and capability vocabulary`() {
+        assertEquals(2, ProtocolRevision.CURRENT.value)
         val sourcePath = Path.of(
             requireNotNull(System.getProperty(SOURCE_PATH_PROPERTY)) {
                 "Missing runtime compatibility source test input"

@@ -103,7 +103,7 @@ fn stop_removes_every_matching_stale_headless_descriptor() {
     "transport": "uds",
     "socketPath": "{}",
     "pid": 0,
-    "schemaVersion": 3
+    "schemaVersion": 4
   }},
   {{
     "workspaceRoot": "{}",
@@ -112,7 +112,7 @@ fn stop_removes_every_matching_stale_headless_descriptor() {
     "transport": "uds",
     "socketPath": "{}",
     "pid": 999999999,
-    "schemaVersion": 3
+    "schemaVersion": 4
   }},
   {{
     "workspaceRoot": "{}",
@@ -121,7 +121,7 @@ fn stop_removes_every_matching_stale_headless_descriptor() {
     "transport": "uds",
     "socketPath": "{}",
     "pid": 0,
-    "schemaVersion": 3
+    "schemaVersion": 4
   }}
 ]"#,
             workspace.display(),
@@ -204,7 +204,7 @@ fn stop_requests_reachable_idea_backend_shutdown() {
     "transport": "uds",
     "socketPath": "{}",
     "pid": {},
-    "schemaVersion": 3
+    "schemaVersion": 4
   }}
 ]"#,
             workspace.display(),
@@ -242,7 +242,7 @@ fn stop_requests_reachable_idea_backend_shutdown() {
                     "backendName": "idea",
                     "backendVersion": "test",
                     "workspaceRoot": server_workspace.display().to_string(),
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "capabilities" => serde_json::json!({
                     "backendName": "idea",
@@ -255,7 +255,7 @@ fn stop_requests_reachable_idea_backend_shutdown() {
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "runtime/shutdown" => {
                     let result = serde_json::json!({
@@ -264,7 +264,7 @@ fn stop_requests_reachable_idea_backend_shutdown() {
                         "backendName": "idea",
                         "backendVersion": "test",
                         "workspaceRoot": server_workspace.display().to_string(),
-                        "schemaVersion": 3
+                        "schemaVersion": 4
                     });
                     writeln!(
                         stream,
@@ -353,7 +353,7 @@ fn restart_requests_reachable_idea_backend_restart() {
     "transport": "uds",
     "socketPath": "{}",
     "pid": {},
-    "schemaVersion": 3
+    "schemaVersion": 4
   }},
   {{
     "workspaceRoot": "{}",
@@ -362,7 +362,7 @@ fn restart_requests_reachable_idea_backend_restart() {
     "transport": "uds",
     "socketPath": "{}",
     "pid": 1,
-    "schemaVersion": 3
+    "schemaVersion": 4
   }}
 ]"#,
             workspace.display(),
@@ -401,7 +401,7 @@ fn restart_requests_reachable_idea_backend_restart() {
                     "backendName": "idea",
                     "backendVersion": "test",
                     "workspaceRoot": server_workspace.display().to_string(),
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "capabilities" => serde_json::json!({
                     "backendName": "idea",
@@ -414,7 +414,7 @@ fn restart_requests_reachable_idea_backend_restart() {
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "runtime/restart" => serde_json::json!({
                     "accepted": true,
@@ -422,7 +422,7 @@ fn restart_requests_reachable_idea_backend_restart() {
                     "backendName": "idea",
                     "backendVersion": "test",
                     "workspaceRoot": server_workspace.display().to_string(),
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 other => panic!("unexpected fake idea method: {other}"),
             };

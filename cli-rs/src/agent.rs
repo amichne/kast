@@ -142,7 +142,7 @@ mod semantic_analysis_evidence_tests {
         });
         let result = json!({
             "semanticOutcome": "not a diagnostics outcome",
-            "schemaVersion": 3
+            "schemaVersion": SCHEMA_VERSION
         });
 
         assert!(matches!(
@@ -166,7 +166,7 @@ mod semantic_analysis_evidence_tests {
             "removedFileCount": 0,
             "attemptCount": 1,
             "elapsedMillis": 0,
-            "schemaVersion": 3
+            "schemaVersion": SCHEMA_VERSION
         });
 
         assert!(matches!(

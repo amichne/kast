@@ -205,7 +205,7 @@ class DeclarationScopeTest {
     }
 
     @Test
-    fun `schema version is now 3`() {
-        assertEquals(3, SCHEMA_VERSION)
+    fun `schema version is now 4`() {
+        assertEquals(4, SCHEMA_VERSION)
     }
 }

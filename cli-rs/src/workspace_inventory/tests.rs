@@ -678,7 +678,7 @@ fn backend_result(
     Ok(serde_json::json!({
         "snapshotToken": snapshot,
         "modules": modules,
-        "schemaVersion": 3
+        "schemaVersion": 4
     }))
 }
 

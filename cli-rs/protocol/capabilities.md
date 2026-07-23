@@ -321,7 +321,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin snapshotToken: String` | Opaque reusable handle identifying the coherent workspace inventory snapshot. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
-    ??? info "raw/semantic-graph — Export a compiler-backed Kotlin semantic graph page"
+    ??? info "raw/semantic-graph — Refresh and persist a compiler-backed Kotlin semantic graph"
 
         **Capability** &nbsp;·&nbsp; `SEMANTIC_GRAPH`
 

@@ -44,6 +44,19 @@ class AnalysisDocsDocumentTest {
     }
 
     @Test
+    fun `semantic graph documentation describes atomic persistence rather than paging`() {
+        val operation = OperationDocRegistry.all().single { it.jsonRpcMethod == "raw/semantic-graph" }
+        val prose = (listOf(operation.summary, operation.description) + operation.behavioralNotes)
+            .joinToString(" ")
+            .lowercase()
+
+        assertTrue("persist" in prose)
+        assertTrue("count" in prose)
+        assertTrue("page" !in prose)
+        assertTrue("continuation" !in prose)
+    }
+
+    @Test
     fun `generated protocol examples are not labeled as public CLI examples`() {
         val markdown = DocsDocument.renderApiReference()
 

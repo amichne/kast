@@ -331,7 +331,7 @@ mod tests {
         let mut facts = RuntimeCompatibilityFacts {
             plugin_version: cli::version().to_string(),
             cli_version: cli::version().to_string(),
-            protocol_revision: ProtocolRevision(NonZeroU32::new(1).expect("protocol")),
+            protocol_revision: ProtocolRevision(NonZeroU32::new(2).expect("protocol")),
             workspace_metadata_revision: WorkspaceMetadataRevision(
                 NonZeroU32::new(3).expect("metadata"),
             ),
@@ -388,7 +388,7 @@ mod tests {
         let mut facts = RuntimeCompatibilityFacts {
             plugin_version: "newer-plugin".to_string(),
             cli_version: cli::version().to_string(),
-            protocol_revision: ProtocolRevision(NonZeroU32::new(1).expect("protocol")),
+            protocol_revision: ProtocolRevision(NonZeroU32::new(2).expect("protocol")),
             workspace_metadata_revision: WorkspaceMetadataRevision(
                 NonZeroU32::new(3).expect("metadata"),
             ),

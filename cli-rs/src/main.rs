@@ -35,7 +35,7 @@ use std::env;
 use std::io::{self, IsTerminal};
 use std::path::{Path, PathBuf};
 
-const SCHEMA_VERSION: u32 = 3;
+const SCHEMA_VERSION: u32 = 4;
 const AGENT_JSON_DEPRECATION_WARNING: &str =
     "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.";
 
