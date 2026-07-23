@@ -22,6 +22,8 @@ struct NativeGraph {
     weights: Vec<f64>,
 }
 
+const NATIVE_GRAPH_ROOT_PACKAGE_KEY: &str = "<root>";
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct NativeGraphOverlayDescriptor {
@@ -371,12 +373,16 @@ fn load_native_graph(
             "SELECT id, path FROM semantic_files ORDER BY id",
             true,
         )?,
-        NativeGraphScope::Package => native_graph_nodes(
-            connection,
-            "SELECT NULL, package_name FROM semantic_files
-               WHERE package_name IS NOT NULL GROUP BY package_name ORDER BY package_name",
-            false,
-        )?,
+        NativeGraphScope::Package => {
+            let package_key = native_graph_package_key_sql("package_name");
+            native_graph_nodes(
+                connection,
+                &format!(
+                    "SELECT NULL, {package_key} FROM semantic_files GROUP BY 2 ORDER BY 2"
+                ),
+                false,
+            )?
+        }
         NativeGraphScope::Module => native_graph_nodes(
             connection,
             "SELECT NULL, module_name FROM semantic_files
@@ -432,14 +438,29 @@ fn load_native_graph(
             "semantic_file_quotient",
             &numeric_positions,
         )?,
-        NativeGraphScope::Package => native_graph_text_quotient_edges(
+        NativeGraphScope::Package => {
+            let source_package = native_graph_package_key_sql("source_file.package_name");
+            let target_package = native_graph_package_key_sql("target_file.package_name");
+            native_graph_text_edges(
+                connection,
+                &format!(
+                    "SELECT {source_package}, {target_package}, edges.kind, edges.context, COUNT(*)
+                       FROM semantic_edge_occurrences edges
+                       JOIN semantic_symbols source ON source.id = edges.source_id
+                       JOIN semantic_files source_file ON source_file.id = source.file_id
+                       JOIN semantic_symbols target ON target.id = edges.target_id
+                       JOIN semantic_files target_file ON target_file.id = target.file_id
+                       GROUP BY 1, 2, edges.kind, edges.context
+                       ORDER BY 1, 2, 3, 4"
+                ),
+                &positions,
+            )?
+        }
+        NativeGraphScope::Module => native_graph_text_edges(
             connection,
-            "semantic_package_quotient",
-            &positions,
-        )?,
-        NativeGraphScope::Module => native_graph_text_quotient_edges(
-            connection,
-            "semantic_module_quotient",
+            "SELECT source_container, target_container, kind, context, weight
+               FROM semantic_module_quotient
+               ORDER BY source_container, target_container, kind, context",
             &positions,
         )?,
     };
@@ -544,11 +565,13 @@ fn load_native_overlay_graph(
             "{} SELECT NULL, path FROM effective_files ORDER BY path",
             native_graph_overlay_cte(),
         ),
-        NativeGraphScope::Package => format!(
-            "{} SELECT NULL, package_name FROM effective_files
-                WHERE package_name IS NOT NULL GROUP BY package_name ORDER BY package_name",
-            native_graph_overlay_cte(),
-        ),
+        NativeGraphScope::Package => {
+            let package_key = native_graph_package_key_sql("package_name");
+            format!(
+                "{} SELECT NULL, {package_key} FROM effective_files GROUP BY 2 ORDER BY 2",
+                native_graph_overlay_cte(),
+            )
+        }
         NativeGraphScope::Module => format!(
             "{} SELECT NULL, module_name FROM effective_files
                 WHERE module_name IS NOT NULL GROUP BY module_name ORDER BY module_name",
@@ -567,16 +590,19 @@ fn load_native_overlay_graph(
         .collect::<BTreeMap<_, _>>();
     let edge_projection = match scope {
         NativeGraphScope::Symbol => {
-            "source.stable_key, target.stable_key, edges.kind, edges.context, 1.0"
+            "source.stable_key, target.stable_key, edges.kind, edges.context, 1.0".to_string()
         }
         NativeGraphScope::File => {
-            "source.file_path, target.file_path, edges.kind, edges.context, COUNT(*)"
+            "source.file_path, target.file_path, edges.kind, edges.context, COUNT(*)".to_string()
         }
-        NativeGraphScope::Package => {
-            "source_file.package_name, target_file.package_name, edges.kind, edges.context, COUNT(*)"
-        }
+        NativeGraphScope::Package => format!(
+            "{}, {}, edges.kind, edges.context, COUNT(*)",
+            native_graph_package_key_sql("source_file.package_name"),
+            native_graph_package_key_sql("target_file.package_name"),
+        ),
         NativeGraphScope::Module => {
             "source_file.module_name, target_file.module_name, edges.kind, edges.context, COUNT(*)"
+                .to_string()
         }
     };
     let container_joins = match scope {
@@ -587,9 +613,7 @@ fn load_native_overlay_graph(
         NativeGraphScope::Symbol | NativeGraphScope::File => "",
     };
     let non_null_filter = match scope {
-        NativeGraphScope::Package => {
-            "AND source_file.package_name IS NOT NULL AND target_file.package_name IS NOT NULL"
-        }
+        NativeGraphScope::Package => "",
         NativeGraphScope::Module => {
             "AND source_file.module_name IS NOT NULL AND target_file.module_name IS NOT NULL"
         }
@@ -707,17 +731,17 @@ fn native_graph_numeric_quotient_edges(
         .collect())
 }
 
-fn native_graph_text_quotient_edges(
+fn native_graph_package_key_sql(column: &str) -> String {
+    format!("COALESCE({column}, '{NATIVE_GRAPH_ROOT_PACKAGE_KEY}')")
+}
+
+fn native_graph_text_edges(
     connection: &rusqlite::Connection,
-    view: &str,
+    sql: &str,
     positions: &BTreeMap<String, usize>,
 ) -> std::result::Result<Vec<NativeGraphEdge>, AgentError> {
-    let sql = format!(
-        "SELECT source_container, target_container, kind, context, weight FROM {view} \
-         ORDER BY source_container, target_container, kind, context"
-    );
     let mut statement = connection
-        .prepare(&sql)
+        .prepare(sql)
         .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_QUERY_FAILED", error))?;
     let rows = statement
         .query_map([], |row| {
@@ -1282,6 +1306,86 @@ mod native_graph_tests {
         assert_eq!(graph.offsets, vec![0, 1, 1]);
         assert_eq!(graph.targets, vec![1]);
         assert_eq!(graph.weights, vec![5.0]);
+    }
+
+    #[test]
+    fn native_graph_package_scope_includes_root_package_files() {
+        let connection = rusqlite::Connection::open_in_memory().unwrap();
+        connection
+            .execute_batch(
+                "ATTACH DATABASE ':memory:' AS repository_base;
+                 CREATE TABLE semantic_files(
+                     id INTEGER PRIMARY KEY, path TEXT, package_name TEXT, module_name TEXT,
+                     refresh_status TEXT
+                 );
+                 CREATE TABLE semantic_symbols(
+                     id INTEGER PRIMARY KEY, stable_key TEXT, kind TEXT, name TEXT, file_id INTEGER
+                 );
+                 CREATE TABLE semantic_edge_occurrences(
+                     id INTEGER PRIMARY KEY, source_id INTEGER, target_id INTEGER,
+                     source_file_id INTEGER, kind TEXT, context TEXT
+                 );
+                 CREATE VIEW semantic_package_quotient AS
+                     SELECT source_file.package_name AS source_container,
+                            target_file.package_name AS target_container,
+                            edges.kind, edges.context, COUNT(*) AS weight
+                     FROM semantic_edge_occurrences edges
+                     JOIN semantic_symbols source ON source.id = edges.source_id
+                     JOIN semantic_symbols target ON target.id = edges.target_id
+                     JOIN semantic_files source_file ON source_file.id = source.file_id
+                     JOIN semantic_files target_file ON target_file.id = target.file_id
+                     WHERE source_file.package_name IS NOT NULL
+                       AND target_file.package_name IS NOT NULL
+                     GROUP BY 1, 2, edges.kind, edges.context;
+                 CREATE TABLE repository_overlay_tombstones(path TEXT PRIMARY KEY) WITHOUT ROWID;
+                 CREATE TABLE repository_base.semantic_files(
+                     id INTEGER PRIMARY KEY, path TEXT, package_name TEXT, module_name TEXT,
+                     refresh_status TEXT
+                 );
+                 CREATE TABLE repository_base.semantic_symbols(
+                     id INTEGER PRIMARY KEY, stable_key TEXT, kind TEXT, name TEXT, file_id INTEGER
+                 );
+                 CREATE TABLE repository_base.semantic_edge_occurrences(
+                     id INTEGER PRIMARY KEY, source_id INTEGER, target_id INTEGER,
+                     source_file_id INTEGER, kind TEXT, context TEXT
+                 );
+                 INSERT INTO semantic_files VALUES
+                     (1, 'Root.kt', NULL, 'main', 'REFRESHED'),
+                     (2, 'Named.kt', 'demo', 'main', 'REFRESHED');
+                 INSERT INTO semantic_symbols VALUES
+                     (1, 'root', 'CLASS', 'Root', 1),
+                     (2, 'named', 'CLASS', 'Named', 2);
+                 INSERT INTO semantic_edge_occurrences VALUES
+                     (1, 1, 2, 1, 'REFERENCES', 'NONE'),
+                     (2, 2, 1, 2, 'REFERENCES', 'NONE');",
+            )
+            .unwrap();
+
+        for graph in [
+            load_native_graph(&connection, NativeGraphScope::Package, false).unwrap(),
+            load_native_overlay_graph(&connection, NativeGraphScope::Package).unwrap(),
+        ] {
+            assert_eq!(
+                graph
+                    .nodes
+                    .iter()
+                    .map(|node| node.key.as_str())
+                    .collect::<Vec<_>>(),
+                vec!["<root>", "demo"]
+            );
+            assert_eq!(
+                graph
+                    .edges
+                    .iter()
+                    .map(|edge| (
+                        graph.nodes[edge.source].key.as_str(),
+                        graph.nodes[edge.target].key.as_str(),
+                        edge.weight,
+                    ))
+                    .collect::<Vec<_>>(),
+                vec![("<root>", "demo", 1.0), ("demo", "<root>", 1.0)]
+            );
+        }
     }
 
     #[test]
