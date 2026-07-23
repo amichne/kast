@@ -370,6 +370,11 @@ class KastPluginBackendContractTest {
     }
 
     @Test
+    fun `all IntelliJ Platform products publish the shared IDEA backend identity`() = runBlocking {
+        assertEquals("idea", backend().capabilities().backendName)
+    }
+
+    @Test
     fun `runtime degrades when compiler semantic admission fails`() = runBlocking {
         ensureProjectReady()
 

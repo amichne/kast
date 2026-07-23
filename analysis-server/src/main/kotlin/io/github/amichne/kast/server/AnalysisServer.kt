@@ -10,12 +10,18 @@ class AnalysisServer(
     private val backend: CloseableAnalysisBackend,
     private val config: AnalysisServerConfig,
     private val lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
+    private val projectOpenController: RuntimeProjectOpenController = RuntimeProjectOpenController.Unavailable,
 ) {
     fun start(): RunningAnalysisServer {
         val capabilities = runBlocking {
             backend.capabilities()
         }
-        val dispatcher = RpcAnalysisDispatcher(backend, config, lifecycleController)
+        val dispatcher = RpcAnalysisDispatcher(
+            backend,
+            config,
+            lifecycleController,
+            projectOpenController,
+        )
         var transportServer: LocalRpcServer? = null
         var descriptor: ServerInstanceDescriptor? = null
         var descriptorStore: DescriptorStore? = null

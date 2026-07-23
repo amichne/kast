@@ -2,7 +2,6 @@
 
 package io.github.amichne.kast.idea.backend
 
-import com.intellij.openapi.application.ApplicationInfo
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
@@ -231,10 +230,7 @@ internal class KastPluginBackend(
         limits = limits,
     )
 
-    internal fun defaultBackendName(): String = when (ApplicationInfo.getInstance().build.productCode) {
-        "AI" -> "android-studio"
-        else -> "idea"
-    }
+    internal fun defaultBackendName(): String = "idea"
 
     override suspend fun runtimeStatus(): RuntimeStatusResponse {
         val caps = capabilities()

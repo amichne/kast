@@ -45,7 +45,7 @@ private class KastStatusBarWidget(
                     "activeRequests" to snapshot.activeRequests,
                     "completedRequests" to snapshot.completedRequests,
                     "failedRequests" to snapshot.failedRequests,
-                    "statusText" to snapshot.statusText(),
+                    "statusText" to snapshot.statusText(kastProject),
                 ),
             )
             statusBar.updateWidget(ID())
@@ -53,7 +53,7 @@ private class KastStatusBarWidget(
     }
 
     override fun getPresentation(): StatusBarWidget.WidgetPresentation = object : StatusBarWidget.TextPresentation {
-        override fun getText(): String = diagnostics.snapshot().statusText()
+        override fun getText(): String = diagnostics.snapshot().statusText(kastProject)
 
         override fun getTooltipText(): String = diagnostics.snapshot().tooltipText()
 
@@ -67,9 +67,10 @@ private class KastStatusBarWidget(
     }
 }
 
-private fun KastDiagnosticsSnapshot.statusText(): String {
+private fun KastDiagnosticsSnapshot.statusText(project: Project): String {
     val active = activeRequests.takeIf { it > 0 }?.let { " ($it)" }.orEmpty()
-    return "Kast: ${visibleStatus().displayName}$active"
+    val label = if (KastOpenedProjectProvenance.isMarked(project)) "Kast Agent" else "Kast"
+    return "$label: ${visibleStatus().displayName}$active"
 }
 
 private fun KastDiagnosticsSnapshot.tooltipText(): String = buildString {

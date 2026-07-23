@@ -171,7 +171,7 @@ reconcile_codex() {
 JETBRAINS_PROCESS_PIDS=()
 JETBRAINS_PROCESS_PRODUCTS=()
 JETBRAINS_PROCESS_EXECUTABLES=()
-DETECTED_INTELLIJ_BIN=""
+last_closed_idea_app=""
 
 detect_running_jetbrains_ides() {
   local process_table pid executable product
@@ -193,23 +193,9 @@ detect_running_jetbrains_ides() {
   done <<<"$process_table"
 }
 
-remember_running_intellij_bin() {
-  local index executable
-  for ((index = 0; index < ${#JETBRAINS_PROCESS_EXECUTABLES[@]}; index += 1)); do
-    [[ "${JETBRAINS_PROCESS_PRODUCTS[$index]}" == "IntelliJ IDEA" ]] || continue
-    executable="${JETBRAINS_PROCESS_EXECUTABLES[$index]}"
-    if [[ -n "$DETECTED_INTELLIJ_BIN" && "$DETECTED_INTELLIJ_BIN" != "$executable" ]]; then
-      DETECTED_INTELLIJ_BIN=""
-      return
-    fi
-    DETECTED_INTELLIJ_BIN="$executable"
-  done
-}
-
 require_jetbrains_ides_closed() {
   local index reply="" deadline
   detect_running_jetbrains_ides
-  remember_running_intellij_bin
   ((${#JETBRAINS_PROCESS_PIDS[@]} > 0)) || return 0
   ui_warning "A JetBrains IDE must close before its plugin is updated"
   for ((index = 0; index < ${#JETBRAINS_PROCESS_PIDS[@]}; index += 1)); do
@@ -218,9 +204,13 @@ require_jetbrains_ides_closed() {
   if [[ "${NONINTERACTIVE:-}" == "1" ]]; then
     die "close the detected JetBrains IDE before installing the plugin"
   fi
+  if ((${#JETBRAINS_PROCESS_PIDS[@]} != 1)); then
+    die "multiple JetBrains IDEs are running; close all but the intended plugin host and rerun the installer"
+  fi
   ui_prompt 'Close the detected editor and continue? [y/N]: '
   IFS= read -r reply || die "could not read editor closure confirmation"
   [[ "$reply" == "y" || "$reply" == "Y" ]] || die "aborted while a JetBrains IDE is running"
+  last_closed_idea_app="${JETBRAINS_PROCESS_EXECUTABLES[0]%/Contents/MacOS/*}"
   env kill -TERM "${JETBRAINS_PROCESS_PIDS[@]}" || die "could not stop the detected JetBrains IDE"
   deadline=$((SECONDS + 30))
   while ((SECONDS < deadline)); do
@@ -234,46 +224,13 @@ require_jetbrains_ides_closed() {
   die "timed out waiting for the detected JetBrains IDE to stop"
 }
 
-detect_installed_intellij_bin() {
-  local candidate found=""
-  if [[ -n "${KAST_INTELLIJ_BIN:-}" ]]; then
-    if [[ "$KAST_INTELLIJ_BIN" == /* && -f "$KAST_INTELLIJ_BIN" && -x "$KAST_INTELLIJ_BIN" ]]; then
-      DETECTED_INTELLIJ_BIN="$KAST_INTELLIJ_BIN"
-    else
-      DETECTED_INTELLIJ_BIN=""
-      ui_warning "KAST_INTELLIJ_BIN is not an absolute executable file"
-    fi
-    return 0
+relaunch_closed_idea() {
+  [[ -n "$last_closed_idea_app" ]] || return 0
+  if open -j -g -a "$last_closed_idea_app"; then
+    ui_success "JetBrains IDE relaunched in the background"
+  else
+    ui_warning "Kast installed, but ${last_closed_idea_app} could not be relaunched"
   fi
-  [[ -z "$DETECTED_INTELLIJ_BIN" ]] || return 0
-  while IFS= read -r candidate; do
-    [[ -f "$candidate" && -x "$candidate" ]] || continue
-    if [[ -n "$found" && "$found" != "$candidate" ]]; then
-      ui_warning "Multiple IntelliJ executables detected; set KAST_INTELLIJ_BIN explicitly"
-      return
-    fi
-    found="$candidate"
-  done < <(
-    find \
-      "$HOME/Applications" \
-      /Applications \
-      "$HOME/Library/Application Support/JetBrains/Toolbox/apps" \
-      -path '*/IntelliJ IDEA*.app/Contents/MacOS/idea' \
-      -print 2>/dev/null
-  )
-  DETECTED_INTELLIJ_BIN="$found"
-}
-
-report_intellij_bin() {
-  local quoted
-  detect_installed_intellij_bin
-  if [[ -z "$DETECTED_INTELLIJ_BIN" ]]; then
-    ui_warning "IntelliJ was not detected; set KAST_INTELLIJ_BIN before using macOS autolaunch"
-    return
-  fi
-  printf -v quoted '%q' "$DETECTED_INTELLIJ_BIN"
-  ui_success "IntelliJ executable detected"
-  ui_detail "export KAST_INTELLIJ_BIN=${quoted}"
 }
 
 prompt_boolean() {
@@ -467,6 +424,7 @@ main() {
   local source="" version="" bundle_root="" bundle_archive="" platform_id=""
   local cli_archive="" cli_url="" plugin_archive="" plugin_url=""
   local configure=0 autostart=0 config_defaults=""
+  local -a setup_args=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --source) [[ $# -ge 2 ]] || die '--source requires a value'; source="$2"; shift 2 ;;
@@ -511,9 +469,6 @@ main() {
       [[ -f "${setup_scratch}/cli/kast" ]] || die "native CLI bundle is missing kast"
       chmod 755 "${setup_scratch}/cli/kast"
       ui_success "Installer prepared"
-      require ps
-      require_jetbrains_ides_closed
-      report_intellij_bin
       if ((configure == 1)); then
         config_defaults="${setup_scratch}/config.toml"
         configure_idea_defaults "$config_defaults"
@@ -524,10 +479,19 @@ main() {
         [[ -f "$config_defaults" ]] || die "config defaults do not exist: $config_defaults"
       fi
       ui_step "Installing Kast and the IDEA plugin"
+      setup_args=("${setup_scratch}/cli/kast" setup --idea-plugin "$plugin_archive")
       if [[ -n "$config_defaults" ]]; then
-        run_setup "${setup_scratch}/cli/kast" setup --idea-plugin "$plugin_archive" --config-defaults "$config_defaults" || die "Kast setup failed"
-      else
-        run_setup "${setup_scratch}/cli/kast" setup --idea-plugin "$plugin_archive" || die "Kast setup failed"
+        setup_args+=(--config-defaults "$config_defaults")
+      fi
+      if ! run_setup "${setup_args[@]}"; then
+        if grep -Fq 'IDE_RESTART_REQUIRED' "${setup_scratch}/setup-output"; then
+          require ps
+          require_jetbrains_ides_closed
+          run_setup "${setup_args[@]}" || die "Kast setup failed after the IDE closed"
+          relaunch_closed_idea
+        else
+          die "Kast setup failed"
+        fi
       fi
       ui_success "Kast and the IDEA plugin installed"
       if command -v codex >/dev/null 2>&1; then

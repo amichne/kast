@@ -17,6 +17,7 @@ import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.RuntimeLifecycleController
+import io.github.amichne.kast.server.RuntimeProjectOpenController
 import io.github.amichne.kast.server.RunningAnalysisServer
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
@@ -57,6 +58,14 @@ class RunningKastIdeaBackend internal constructor(
     fun await() {
         server.await()
     }
+
+    fun startIndexing() {
+        projectIndexing.start()
+    }
+
+    fun failIndexing(error: Throwable) {
+        projectIndexing.fail(error)
+    }
 }
 
 object KastIdeaBackendRuntime {
@@ -67,6 +76,8 @@ object KastIdeaBackendRuntime {
         config: KastConfig = KastConfig.load(workspaceRoot),
         backendName: String? = null,
         lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
+        projectOpenController: RuntimeProjectOpenController = RuntimeProjectOpenController.Unavailable,
+        startProjectIndexing: Boolean = true,
     ): RunningKastIdeaBackend = start(
         project = project,
         workspaceRoot = workspaceRoot,
@@ -74,6 +85,8 @@ object KastIdeaBackendRuntime {
         config = config,
         backendName = backendName,
         lifecycleController = lifecycleController,
+        projectOpenController = projectOpenController,
+        startProjectIndexing = startProjectIndexing,
     )
 
     fun start(
@@ -83,6 +96,8 @@ object KastIdeaBackendRuntime {
         config: KastConfig = KastConfig.load(workspaceRoot),
         backendName: String? = null,
         lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
+        projectOpenController: RuntimeProjectOpenController = RuntimeProjectOpenController.Unavailable,
+        startProjectIndexing: Boolean = true,
     ): RunningKastIdeaBackend {
         val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
             project = project,
@@ -158,6 +173,7 @@ object KastIdeaBackendRuntime {
                 backend = backend,
                 config = ideaAnalysisServerConfig(transport, limits, config),
                 lifecycleController = lifecycleController,
+                projectOpenController = projectOpenController,
             ).start()
         } catch (failure: Throwable) {
             listOf<() -> Unit>(backend::close, sourceIndexStore::close).forEach { cleanupPhase ->
@@ -189,7 +205,9 @@ object KastIdeaBackendRuntime {
                 indexStore = sourceIndexStore,
                 semanticAdmission = semanticAdmission,
                 snapshotCoordinator = snapshotCoordinator,
-            ).also { it.start() }
+            ).also { indexing ->
+                if (startProjectIndexing) indexing.start()
+            }
             projectIndexing = startedProjectIndexing
             return RunningKastIdeaBackend(
                 backend = backend,
@@ -367,6 +385,11 @@ internal class KastIdeaProjectIndexing(
             )
             diagnostics.recordIndexCancelled()
         }
+    }
+
+    fun fail(error: Throwable) {
+        semanticAdmission.fail(error.message?.takeIf(String::isNotBlank) ?: error::class.java.name)
+        diagnostics.recordIndexFailed(error)
     }
 
     companion object {

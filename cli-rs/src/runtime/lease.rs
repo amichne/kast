@@ -513,6 +513,7 @@ fn ensure_lease_runtime(
             descriptor_directory: config.paths.descriptor_dir.display().to_string(),
             path_resolution,
             started: false,
+            launch_disposition: Some(LaunchDisposition::ReusedOpenProject),
             log_file: None,
             selected,
             note: Some(

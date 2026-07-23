@@ -26,10 +26,10 @@ internal class KastPluginService(
     @Volatile
     private var runningConfig: KastConfig? = null
 
-    fun startServer() {
+    fun startServer(startIndexing: Boolean = true) {
         if (runningBackend != null) return
         val workspaceRoot = workspaceRoot() ?: return
-        startServer(workspaceRoot, loadConfig(workspaceRoot))
+        startServer(workspaceRoot, loadConfig(workspaceRoot), startIndexing)
     }
 
     override fun dispose() {
@@ -39,6 +39,14 @@ internal class KastPluginService(
     fun restartServer() {
         val workspaceRoot = workspaceRoot() ?: return
         restartServer(workspaceRoot, loadConfig(workspaceRoot))
+    }
+
+    fun startIndexing() {
+        runningBackend?.startIndexing()
+    }
+
+    fun failIndexing(error: Throwable) {
+        runningBackend?.failIndexing(error)
     }
 
     fun reloadConfig(): KastConfigReloadDecision {
@@ -55,10 +63,10 @@ internal class KastPluginService(
 
     private fun restartServer(workspaceRoot: Path, config: KastConfig) {
         stopServer()
-        startServer(workspaceRoot, config)
+        startServer(workspaceRoot, config, startIndexing = true)
     }
 
-    private fun startServer(workspaceRoot: Path, config: KastConfig) {
+    private fun startServer(workspaceRoot: Path, config: KastConfig, startIndexing: Boolean) {
         LOG.info("Starting kast idea backend for workspace: $workspaceRoot")
         KastStructuredTrace.event(
             eventName = "idea.backend.starting",
@@ -77,6 +85,8 @@ internal class KastPluginService(
                 socketPath = socketPath,
                 config = config,
                 lifecycleController = lifecycleController(),
+                projectOpenController = KastRuntimeProjectOpenController(project, config),
+                startProjectIndexing = startIndexing,
             )
         }.onSuccess { backend ->
             runningBackend = backend

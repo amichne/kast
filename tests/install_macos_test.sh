@@ -14,19 +14,17 @@ cleanup() {
 }
 trap cleanup EXIT
 
-idea_bin="$scratch/home/Applications/IntelliJ IDEA.app/Contents/MacOS/idea"
-mkdir -p "$scratch/bin" "$scratch/home" "$(dirname "$idea_bin")"
-printf '%s\n' '#!/bin/sh' > "$idea_bin"
-chmod 755 "$idea_bin"
+mkdir -p "$scratch/bin" "$scratch/home"
 printf '%s\n' '#!/bin/sh' 'if [ "$1" = "-s" ]; then printf "%s\\n" "${KAST_TEST_OS:-Darwin}"; else printf "%s\\n" "${KAST_TEST_ARCH:-arm64}"; fi' > "$scratch/bin/uname"
 printf '%s\n' '#!/bin/sh' 'output=""' 'url=""' 'while [ "$#" -gt 0 ]; do case "$1" in --output) output="$2"; shift 2 ;; *) url="$1"; shift ;; esac; done' 'printf "%s\\n" "$url" >> "$KAST_TEST_CURL_LOG"' ': > "$output"' > "$scratch/bin/curl"
-printf '%s\n' '#!/bin/sh' 'destination=""' 'while [ "$#" -gt 0 ]; do case "$1" in -d) destination="$2"; shift 2 ;; *) shift ;; esac; done' 'mkdir -p "$destination"' 'printf "%s\n" "#!/bin/sh" "printf \"%s\\n\" \"\$*\" > \"\$KAST_TEST_SETUP_ARGS\"" "while [ \"\$#\" -gt 0 ]; do case \"\$1\" in --config-defaults) cp \"\$2\" \"\$KAST_TEST_CONFIG_DEFAULTS\"; shift 2 ;; *) shift ;; esac; done" "printf \"%s\\n\" \"type: KAST_SETUP\" \"status: CURRENT\"" > "$destination/kast"' 'chmod 755 "$destination/kast"' > "$scratch/bin/unzip"
+printf '%s\n' '#!/bin/sh' 'destination=""' 'while [ "$#" -gt 0 ]; do case "$1" in -d) destination="$2"; shift 2 ;; *) shift ;; esac; done' 'mkdir -p "$destination"' 'printf "%s\n" "#!/bin/sh" "printf \"%s\\n\" \"\$*\" > \"\$KAST_TEST_SETUP_ARGS\"" "while [ \"\$#\" -gt 0 ]; do case \"\$1\" in --config-defaults) cp \"\$2\" \"\$KAST_TEST_CONFIG_DEFAULTS\"; shift 2 ;; *) shift ;; esac; done" "if [ \"\${KAST_TEST_IDEA_RUNNING:-0}\" = 1 ] && [ \"\${KAST_TEST_PLUGIN_CURRENT:-0}\" != 1 ] && [ ! -f \"\$KAST_TEST_IDEA_CLOSED\" ]; then printf \"%s\\n\" \"code: IDE_RESTART_REQUIRED\"; exit 1; fi" "printf \"%s\\n\" \"type: KAST_SETUP\" \"status: CURRENT\"" > "$destination/kast"' 'chmod 755 "$destination/kast"' > "$scratch/bin/unzip"
 printf '%s\n' '#!/bin/sh' 'destination=""' 'while [ "$#" -gt 0 ]; do case "$1" in -C) destination="$2"; shift 2 ;; *) shift ;; esac; done' 'mkdir -p "$destination/bundle/bin"' 'printf "%s\n" "#!/bin/sh" "printf \"%s\\n\" \"\$*\" > \"\$KAST_TEST_SETUP_ARGS\"" > "$destination/bundle/bin/kast"' 'chmod 755 "$destination/bundle/bin/kast"' > "$scratch/bin/tar"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_CODEX_LOG"' > "$scratch/bin/codex"
 printf '%s\n' '#!/bin/sh' 'if [ "${KAST_TEST_IDEA_RUNNING:-0}" = 1 ] && [ ! -f "$KAST_TEST_IDEA_CLOSED" ]; then printf "%s\n" "4312 /Applications/IntelliJ IDEA.app/Contents/MacOS/idea"; else printf "%s\n" "4311 /bin/bash"; fi' > "$scratch/bin/ps"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_KILL_LOG"' ': > "$KAST_TEST_IDEA_CLOSED"' > "$scratch/bin/kill"
+printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_OPEN_LOG"' > "$scratch/bin/open"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_BREW_LOG"' > "$scratch/bin/brew"
-chmod 755 "$scratch/bin/uname" "$scratch/bin/curl" "$scratch/bin/unzip" "$scratch/bin/tar" "$scratch/bin/codex" "$scratch/bin/ps" "$scratch/bin/kill" "$scratch/bin/brew"
+chmod 755 "$scratch/bin/uname" "$scratch/bin/curl" "$scratch/bin/unzip" "$scratch/bin/tar" "$scratch/bin/codex" "$scratch/bin/ps" "$scratch/bin/kill" "$scratch/bin/open" "$scratch/bin/brew"
 
 export PATH="$scratch/bin:$PATH"
 export HOME="$scratch/home"
@@ -37,6 +35,7 @@ export KAST_TEST_CODEX_LOG="$scratch/codex.log"
 export KAST_TEST_CONFIG_DEFAULTS="$scratch/config.toml"
 export KAST_TEST_IDEA_CLOSED="$scratch/idea.closed"
 export KAST_TEST_KILL_LOG="$scratch/kill.log"
+export KAST_TEST_OPEN_LOG="$scratch/open.log"
 export KAST_TEST_BREW_LOG="$scratch/brew.log"
 export KAST_TEST_FZF_LOG="$scratch/fzf.log"
 export KAST_TEST_FAKE_BIN="$scratch/bin"
@@ -55,8 +54,6 @@ grep -Fq $'\033[36m◆\033[0m Downloading Kast CLI' "$scratch/stderr"
 grep -Fq $'\033[32m✓\033[0m Kast is ready' "$scratch/stderr"
 grep -Fq "$HOME/.local/bin is not on PATH" "$scratch/stderr"
 grep -Fq 'export PATH="$HOME/.local/bin:$PATH"' "$scratch/stderr"
-printf -v expected_idea_export 'export KAST_INTELLIJ_BIN=%q' "$idea_bin"
-grep -Fq "$expected_idea_export" "$scratch/stderr"
 if [[ -s "$scratch/stdout" ]]; then
   printf '%s\n' 'successful installer leaked the setup payload to stdout' >&2
   exit 1
@@ -70,13 +67,23 @@ if grep -Fq 'kast-macos-arm64-v1.2.3.tar.gz' "$scratch/curl.log"; then
   exit 1
 fi
 
+: > "$KAST_TEST_KILL_LOG"
+KAST_TEST_IDEA_RUNNING=1 KAST_TEST_PLUGIN_CURRENT=1 \
+  bash "$repo_root/install.sh" --version v1.2.3 >"$scratch/stdout" 2>"$scratch/stderr"
+if [[ -s "$KAST_TEST_KILL_LOG" ]]; then
+  printf '%s\n' 'current IDEA plugin caused a running IDE to close' >&2
+  exit 1
+fi
+
 rm -f "$KAST_TEST_IDEA_CLOSED"
 : > "$KAST_TEST_KILL_LOG"
+: > "$KAST_TEST_OPEN_LOG"
 KAST_TEST_IDEA_RUNNING=1 bash "$repo_root/install.sh" --version v1.2.3 --autostart \
   >"$scratch/stdout" 2>"$scratch/stderr" <<<"y"
 grep -Fqx -- '-TERM 4312' "$KAST_TEST_KILL_LOG"
 grep -Fq 'Detected IntelliJ IDEA (PID 4312)' "$scratch/stderr"
 grep -Fq 'Close the detected editor and continue? [y/N]:' "$scratch/stderr"
+grep -Fqx -- '-j -g -a /Applications/IntelliJ IDEA.app' "$KAST_TEST_OPEN_LOG"
 grep -Fq 'enabled = true' "$KAST_TEST_CONFIG_DEFAULTS"
 grep -Eq '^setup --idea-plugin .*/kast-idea-v1\.2\.3\.zip --config-defaults .*/config\.toml$' "$scratch/setup.args"
 

@@ -16,11 +16,17 @@ use serde_json::Value;
 use std::collections::BTreeSet;
 use std::fs;
 #[cfg(target_os = "macos")]
+use std::io::Write;
+#[cfg(target_os = "macos")]
 use std::num::NonZeroU32;
+#[cfg(target_os = "macos")]
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+#[cfg(target_os = "macos")]
+use uuid::Uuid;
 
 include!("runtime/types.rs");
 #[cfg(target_os = "macos")]

@@ -19,8 +19,13 @@ action does not have to guess at all four.
 | --- | --- | --- |
 | `kast` is missing or the active release is invalid | `~/.local/share/kast/current/bin/kast version` | Rerun the installer. |
 | The wrong project is reported | `kast status` from the intended root | Open or select the exact root; do not reuse another checkout's runtime. |
-| IDEA runtime is unavailable | Confirm the exact root is open in IDEA or Android Studio | Open it, wait for project loading, then retry. |
-| Runtime reports indexing | Wait for IDEA indexing and Gradle import | Retry `kast ready --for kotlin`. |
+| `IDEA_PLUGIN_UPDATE_REQUIRED` | Rerun setup and read its typed result | Close only the selected IDE if setup returns `IDE_RESTART_REQUIRED`, then retry. |
+| `IDEA_VERSION_UNSUPPORTED` | Check the product build | Use IntelliJ IDEA 2026.2/build 262 or Android Studio 2026.1.2/build 261. |
+| `IDEA_HOST_AMBIGUOUS` | Check running processes and installed bundles | Set `runtime.ideaLaunch.command` to the exact supported app. |
+| `IDE_PROFILE_AMBIGUOUS` | Check supported JetBrains profiles | Rerun setup with `--idea-plugins-dir` for the selected host profile. |
+| IDEA runtime is unavailable | Run `kast ready --for kotlin` from the exact root | Let Kast background-open the project; do not start a duplicate IDE process. |
+| Runtime reports indexing | Wait for Gradle, IDEA/Kotlin, and Kast indexing | Retry `kast ready --for kotlin`. |
+| Runtime reports degraded | Read its single actionable cause | Repair the named Gradle, Kotlin admission, or reference-index failure. |
 | Kotlin source modules are unavailable | Check the IDE project model and SDK | Repair the IDE/Gradle model, then reopen the project. |
 | Relationships are limited | Read the result's coverage and next action | Resume or narrow the query; do not treat a partial result as exhaustive. |
 | A mutation is rejected | Check exact-root readiness and target identity | Prepare the workspace and resolve one exact declaration before retrying. |
@@ -55,6 +60,10 @@ kast ready --for kotlin
 `status` describes the current workspace runtime. `ready` evaluates whether
 that runtime is suitable for the requested task and reports typed limitations
 such as indexing, missing source modules, or an unprepared workspace.
+
+Kast progress and success are silent. It emits one deduplicated notification
+for an actionable terminal Kast failure. Git, shallow-clone, IDE, and
+third-party notifications remain owned by their source.
 
 If the problem persists, include the workspace root, backend name, Kast
 version, readiness limitation, and the exact failed command when reporting it.

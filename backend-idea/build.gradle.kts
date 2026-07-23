@@ -10,10 +10,13 @@ import org.gradle.jvm.tasks.Jar
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 
 plugins {
     id("kast.idea-build-helpers")
     kotlin("jvm")
+    kotlin("plugin.serialization")
     id("org.jetbrains.intellij.platform") version "2.16.0"
 }
 
@@ -29,7 +32,8 @@ repositories {
 }
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(25)
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
@@ -82,7 +86,7 @@ dependencies {
     compileOnly(gradlePluginLibs)
 
     intellijPlatform {
-        intellijIdea("2025.3")
+        intellijIdea(ideaDistributionVersion)
         bundledPlugin("org.jetbrains.kotlin")
         bundledPlugin("com.intellij.java")
         bundledPlugin("com.intellij.gradle")
@@ -129,16 +133,24 @@ intellijPlatform {
         description = "Kast Kotlin analysis backend for IDEA-based IDEs"
 
         ideaVersion {
-            sinceBuild = "253"   // IDEA 2025.3
+            sinceBuild = "261"
         }
     }
 
     pluginVerification {
         ides {
-            create(IntelliJPlatformType.IntellijIdea, "2025.3")
-            create(IntelliJPlatformType.AndroidStudio, "2025.3.1.7")
+            create(IntelliJPlatformType.IntellijIdea, "2026.2")
+            create(IntelliJPlatformType.AndroidStudio, "2026.1.2.10")
         }
     }
+}
+
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(21)
+}
+
+tasks.withType<KotlinJvmCompile>().configureEach {
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
 }
 
 val generatedResourcesDir = layout.buildDirectory.dir("generated-resources")

@@ -5,7 +5,6 @@ fn setup_idea_plugin(
 ) -> Result<SetupResult> {
     let idea_plugin = config::normalize(idea_plugin);
     require_regular_file(&idea_plugin, "Kast IDEA plugin ZIP")?;
-    require_jetbrains_ides_closed()?;
     let config_defaults = if let Some(path) = config_defaults.map(config::normalize) {
         require_regular_file(&path, "Kast config defaults")?;
         let contents = fs::read_to_string(path)?;
@@ -41,11 +40,11 @@ fn setup_idea_plugin(
     let extracted_plugin_digest = directory_sha256(&extracted_plugin)?;
 
     manifest::with_install_lock(&targets.resolved, || {
-        let legacy_backup = archive_legacy_installations(&targets)?;
+        let installed_plugin = plugins_dir.join("kast");
         if current_release_matches(&targets)
             && verify_idea_plugin_setup(
                 &targets,
-                &plugins_dir.join("kast"),
+                &installed_plugin,
                 &cli_sha256,
                 &extracted_plugin_digest,
                 &release_digest,
@@ -62,25 +61,31 @@ fn setup_idea_plugin(
             install_user_command(&targets)?;
             return Ok(idea_setup_result(
                 &targets,
-                (SetupStatus::Current, legacy_backup.as_deref()),
+                (SetupStatus::Current, None),
                 &release_digest,
                 &cli_sha256,
                 &extracted_plugin_digest,
                 &manifest_digest,
-                &plugins_dir.join("kast"),
+                &installed_plugin,
             ));
         }
 
+        if directory_sha256(&installed_plugin).ok().as_deref()
+            != Some(extracted_plugin_digest.as_str())
+        {
+            require_jetbrains_ides_closed()?;
+        }
+        let config_defaults = idea_config_defaults(&targets, config_defaults.as_deref())?;
+        let legacy_backup = archive_legacy_installations(&targets)?;
         let (previous, release_backup) = install_idea_release(
             &targets,
             &current_exe,
             &idea_plugin,
             &release_digest,
-            config_defaults.as_deref().unwrap_or(DEFAULT_IDEA_CONFIG),
+            &config_defaults,
             &bundle_manifest,
             &manifest_digest,
         )?;
-        let installed_plugin = plugins_dir.join("kast");
         let plugin_backup = match install_idea_plugin(&extracted_plugin, &installed_plugin) {
             Ok(backup) => backup,
             Err(error) => {
@@ -177,7 +182,36 @@ fn install_idea_release(
     Ok((previous, backup))
 }
 
-const DEFAULT_IDEA_CONFIG: &str = "[runtime]\ndefaultBackend = \"idea\"\n\n[backends.headless]\nenabled = false\n\n[backends.idea]\nenabled = true\n";
+fn idea_config_defaults(
+    targets: &ActivationTargetPaths,
+    selected: Option<&str>,
+) -> Result<String> {
+    if let Some(selected) = selected {
+        return Ok(selected.to_string());
+    }
+    let previous = targets.current_link.join("config/config.toml");
+    if !previous.is_file() {
+        return Ok(DEFAULT_IDEA_CONFIG.to_string());
+    }
+    let mut contents = fs::read_to_string(previous)?;
+    config::validate_toml(&contents)?;
+    let value: toml::Value = toml::from_str(&contents)?;
+    let has_launch_choice = value
+        .get("runtime")
+        .and_then(toml::Value::as_table)
+        .and_then(|runtime| runtime.get("ideaLaunch"))
+        .and_then(toml::Value::as_table)
+        .is_some_and(|launch| launch.contains_key("enabled"));
+    if !has_launch_choice {
+        if !contents.ends_with('\n') {
+            contents.push('\n');
+        }
+        contents.push_str("\n[runtime.ideaLaunch]\nenabled = true\n");
+    }
+    Ok(contents)
+}
+
+const DEFAULT_IDEA_CONFIG: &str = "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\n\n[backends.headless]\nenabled = false\n\n[backends.idea]\nenabled = true\n";
 
 fn idea_install_manifest(
     targets: &ActivationTargetPaths,
@@ -411,15 +445,31 @@ fn extract_idea_plugin_zip(source: &Path, target: &Path) -> Result<()> {
     Ok(())
 }
 
+pub(crate) fn idea_plugin_directory_matches_archive(
+    installed_plugin: &Path,
+    plugin_archive: &Path,
+) -> Result<bool> {
+    if !installed_plugin.is_dir() || !plugin_archive.is_file() {
+        return Ok(false);
+    }
+    let scratch = ScratchDir::new("kast-idea-plugin-preflight")?;
+    let extracted = scratch.path().join("plugin");
+    extract_idea_plugin_zip(plugin_archive, &extracted)?;
+    Ok(directory_sha256(installed_plugin)? == directory_sha256(&extracted)?)
+}
+
 fn default_idea_plugins_dir() -> Result<PathBuf> {
     let application_support = manifest::home_dir().join("Library/Application Support");
     let mut candidates = Vec::new();
     for (root, prefixes) in [
         (
             application_support.join("JetBrains"),
-            &["IntelliJIdea", "IdeaIC"][..],
+            &["IntelliJIdea2026.2", "IdeaIC2026.2"][..],
         ),
-        (application_support.join("Google"), &["AndroidStudio"][..]),
+        (
+            application_support.join("Google"),
+            &["AndroidStudio2026.1"][..],
+        ),
     ] {
         let entries = match fs::read_dir(&root) {
             Ok(entries) => entries,
@@ -444,12 +494,18 @@ fn default_idea_plugins_dir() -> Result<PathBuf> {
         );
     }
     candidates.sort();
-    candidates.pop().ok_or_else(|| {
-        CliError::new(
+    candidates.dedup();
+    match candidates.as_slice() {
+        [plugins] => Ok(plugins.clone()),
+        [] => Err(CliError::new(
             "IDE_PROFILE_NOT_FOUND",
-            "No IntelliJ IDEA or Android Studio profile was found; pass --idea-plugins-dir.",
-        )
-    })
+            "No supported IntelliJ IDEA 2026.2 or Android Studio 2026.1 profile was found; pass --idea-plugins-dir.",
+        )),
+        _ => Err(CliError::new(
+            "IDE_PROFILE_AMBIGUOUS",
+            "Multiple supported JetBrains profiles were found; pass --idea-plugins-dir for the selected IntelliJ IDEA or Android Studio host.",
+        )),
+    }
 }
 
 fn require_jetbrains_ides_closed() -> Result<()> {
