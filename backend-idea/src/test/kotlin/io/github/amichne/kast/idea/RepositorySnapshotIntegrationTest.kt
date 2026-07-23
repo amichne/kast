@@ -154,6 +154,7 @@ class RepositorySnapshotIntegrationTest {
         assertEquals(setOf("B.kt"), overlay?.tombstones)
         assertEquals(setOf("A.kt", "C.kt"), overlay?.shards?.keys)
         assertEquals("immutable base", Files.readString(targetDatabase))
+        assertTrue(Files.isWritable(targetDatabase))
         overlay?.shards?.values?.forEach { shard ->
             assertTrue(RepositorySnapshotStore(repositoryDirectory).contentShard(shard)?.let(Files::isRegularFile) == true)
         }

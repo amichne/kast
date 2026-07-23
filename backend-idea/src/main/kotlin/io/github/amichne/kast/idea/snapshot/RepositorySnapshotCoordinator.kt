@@ -53,6 +53,7 @@ class RepositorySnapshotCoordinator(
             val staged = Files.createTempFile(databasePath.parent, ".source-index-", ".preparing")
             stagedDatabase = staged
             Files.copy(snapshotStore.snapshotDatabase(base.key), staged, StandardCopyOption.REPLACE_EXISTING)
+            check(staged.toFile().setWritable(true, true)) { "Snapshot database could not be made writable" }
             Files.writeString(overlayPath, Json { prettyPrint = true }.encodeToString(overlay))
             Files.move(staged, databasePath, StandardCopyOption.ATOMIC_MOVE)
             stagedDatabase = null
