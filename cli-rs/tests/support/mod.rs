@@ -222,6 +222,7 @@ pub(crate) fn spawn_scripted_idea_backend(
     scripted_results: Vec<(&'static str, serde_json::Value)>,
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     write_macos_plugin_workspace_metadata(workspace);
+    std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
     spawn_scripted_backend(
         home,

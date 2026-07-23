@@ -180,6 +180,7 @@ pub(crate) fn assert_declaration_facets<const N: usize>(response: &Value, expect
 
 pub(crate) fn seed_source_index(workspace: &std::path::Path) {
     write_macos_plugin_workspace_metadata(workspace);
+    std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
     let db_path = workspace.join(".gradle/kast/cache/source-index.db");
     std::fs::create_dir_all(db_path.parent().expect("db parent")).expect("db parent");
