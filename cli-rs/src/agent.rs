@@ -4,16 +4,17 @@ use crate::SCHEMA_VERSION;
 use crate::cli::OutputFormat;
 use crate::cli::{
     AgentAddFileArgs, AgentCallsArgs, AgentCommand, AgentDiagnosticsArgs, AgentDiagnosticsField,
-    AgentDiagnosticsViewArgs, AgentExactSymbolSelectorArgs, AgentGraphifyArgs, AgentHierarchyArgs,
+    AgentDiagnosticsViewArgs, AgentExactSymbolSelectorArgs, AgentHierarchyArgs,
     AgentHierarchyDirection, AgentImpactArgs, AgentImpactField, AgentImpactPageToken,
     AgentImpactViewArgs, AgentImplementationsArgs, AgentLeaseArgs, AgentLeaseCommand,
-    AgentMutationApplyArgs, AgentMutationField, AgentMutationViewArgs, AgentReferencesArgs,
-    AgentRelationField, AgentRelationPageToken, AgentRelationViewArgs, AgentRenameArgs,
-    AgentReplaceDeclarationArgs, AgentReusableSymbolSelector, AgentReusableSymbolSelectorArgs,
-    AgentRuntimeArgs, AgentScopedMutationArgs, AgentSelectorHandle, AgentStatementMutationArgs,
-    AgentSymbolArgs, AgentSymbolField, AgentSymbolMode, AgentSymbolViewArgs, AgentVerifyArgs,
-    AgentVerifyField, AgentVerifyViewArgs, AgentWorkspaceFilesArgs, AgentWorkspaceFilesField,
-    AgentWorkspaceFilesViewArgs, BackendName, WorkspaceDirtyFilter, WorkspaceDriftFilter,
+    AgentMutationApplyArgs, AgentMutationField, AgentMutationViewArgs, AgentNativeGraphArgs,
+    AgentReferencesArgs, AgentRelationField, AgentRelationPageToken, AgentRelationViewArgs,
+    AgentRenameArgs, AgentReplaceDeclarationArgs, AgentReusableSymbolSelector,
+    AgentReusableSymbolSelectorArgs, AgentRuntimeArgs, AgentScopedMutationArgs,
+    AgentSelectorHandle, AgentStatementMutationArgs, AgentSymbolArgs, AgentSymbolField,
+    AgentSymbolMode, AgentSymbolViewArgs, AgentVerifyArgs, AgentVerifyField, AgentVerifyViewArgs,
+    AgentWorkspaceFilesArgs, AgentWorkspaceFilesField, AgentWorkspaceFilesViewArgs, BackendName,
+    NativeGraphOperation, NativeGraphScope, WorkspaceDirtyFilter, WorkspaceDriftFilter,
     WorkspaceFileKindFilter, WorkspaceFilesPublicPageToken, WorkspaceModuleSelector,
     WorkspacePackageSelector, WorkspaceRelativeGlob, WorkspaceRelativePathPrefix,
     WorkspaceSourceSetName,
@@ -44,7 +45,7 @@ include!("agent/types.rs");
 include!("agent/path.rs");
 include!("agent/public_capabilities.rs");
 include!("agent/workspace_files.rs");
-include!("agent/graphify.rs");
+include!("agent/native_graph.rs");
 include!("agent/relations.rs");
 include!("agent/dispatch.rs");
 include!("agent/request.rs");

@@ -30,20 +30,11 @@
     "params": {
       "additionalProperties": false,
       "properties": {
-        "continuation": {
-          "type": [
-            "string",
-            "null"
-          ]
-        },
         "filePaths": {
           "items": {
             "type": "string"
           },
           "type": "array"
-        },
-        "pageSize": {
-          "type": "integer"
         },
         "removedFilePaths": {
           "items": {

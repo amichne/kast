@@ -4,6 +4,8 @@ import io.github.amichne.kast.idea.snapshot.CommittedGitTreeResolver
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
 import io.github.amichne.kast.idea.snapshot.gitWorkspaceScope
 import io.github.amichne.kast.idea.snapshot.stableClasspathRootUrl
+import io.github.amichne.kast.api.client.WorkspaceIdentity
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.indexstore.snapshot.RepositorySnapshotStore
@@ -21,6 +23,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.security.MessageDigest
 
 class RepositorySnapshotIntegrationTest {
     @TempDir
@@ -119,7 +122,7 @@ class RepositorySnapshotIntegrationTest {
     }
 
     @Test
-    fun `clean target bootstraps from cheapest snapshot with one direct overlay and blob shards`() {
+    fun `clean target uses one immutable base with small isolated worktree overlays and blob shards`() {
         git("init", "-b", "main")
         git("config", "user.email", "kast@example.invalid")
         git("config", "user.name", "Kast Test")
@@ -134,7 +137,10 @@ class RepositorySnapshotIntegrationTest {
         val key = SnapshotKey(baseTree.treeOid, fingerprint, SOURCE_INDEX_SCHEMA_VERSION, producer)
         val repositoryDirectory = workspace.resolveSibling("${workspace.fileName}-repository-state")
         val source = repositoryDirectory.resolveSibling("${workspace.fileName}-base.db")
-        Files.writeString(source, "immutable base")
+        SqliteSourceIndexStore(identityFor(source)).use { store ->
+            store.ensureSchema()
+            store.writeWorkspaceDiscovery("base-payload", 1, "x".repeat(1_000_000))
+        }
         RepositorySnapshotStore(repositoryDirectory).publishMain(
             SnapshotManifest(key, baseTree.files, 1),
             source,
@@ -150,14 +156,38 @@ class RepositorySnapshotIntegrationTest {
         val targetDatabase = repositoryDirectory.resolveSibling("${workspace.fileName}-worktree/source-index.db")
         val coordinator = RepositorySnapshotCoordinator(workspace, repositoryDirectory, fingerprint, producer)
         val overlay = coordinator.prepareWorktreeDatabase(targetDatabase)
+        val immutableBase = RepositorySnapshotStore(repositoryDirectory).snapshotDatabase(key)
+        val baseDigest = sha256(immutableBase)
 
         assertEquals(setOf("B.kt"), overlay?.tombstones)
         assertEquals(setOf("A.kt", "C.kt"), overlay?.shards?.keys)
-        assertEquals("immutable base", Files.readString(targetDatabase))
-        assertTrue(Files.isWritable(targetDatabase))
+        assertEquals(immutableBase.toAbsolutePath().normalize().toString(), overlay?.baseDatabase)
+        assertFalse(Files.exists(targetDatabase))
+        assertFalse(Files.isWritable(immutableBase))
         overlay?.shards?.values?.forEach { shard ->
             assertTrue(RepositorySnapshotStore(repositoryDirectory).contentShard(shard)?.let(Files::isRegularFile) == true)
         }
+        SqliteSourceIndexStore(identityFor(targetDatabase)).use { store ->
+            store.ensureSchema()
+            store.writeWorkspaceDiscovery("worktree-a", 1, "first")
+            assertEquals("first", store.readWorkspaceDiscovery("worktree-a"))
+        }
+        assertTrue(Files.size(targetDatabase) < Files.size(immutableBase))
+
+        val siblingDatabase = targetDatabase.parent.resolveSibling("sibling-worktree").resolve("source-index.db")
+        val siblingOverlay = RepositorySnapshotCoordinator(workspace, repositoryDirectory, fingerprint, producer)
+            .prepareWorktreeDatabase(siblingDatabase)
+        assertEquals(overlay?.base, siblingOverlay?.base)
+        SqliteSourceIndexStore(identityFor(siblingDatabase)).use { store ->
+            store.ensureSchema()
+            assertNull(store.readWorkspaceDiscovery("worktree-a"))
+            store.writeWorkspaceDiscovery("worktree-b", 1, "second")
+        }
+        SqliteSourceIndexStore(identityFor(targetDatabase)).use { store ->
+            assertNull(store.readWorkspaceDiscovery("worktree-b"))
+        }
+        assertEquals(baseDigest, sha256(immutableBase))
+
         val restartedCoordinator = RepositorySnapshotCoordinator(workspace, repositoryDirectory, fingerprint, producer)
         assertNull(restartedCoordinator.prepareWorktreeDatabase(targetDatabase))
         SqliteSourceIndexStore(workspace).use { store ->
@@ -200,4 +230,14 @@ class RepositorySnapshotIntegrationTest {
         val process = ProcessBuilder("git", *arguments).directory(workspace.toFile()).start()
         assertTrue(process.waitFor() == 0, process.errorStream.bufferedReader().readText())
     }
+
+    private fun identityFor(database: Path): WorkspaceIdentity =
+        WorkspaceIdentity.fromWorkspaceRoot(workspace).copy(
+            sourceIndexDatabasePath = NormalizedPath.ofAbsolute(database),
+        )
+
+    private fun sha256(path: Path): String =
+        MessageDigest.getInstance("SHA-256")
+            .digest(Files.readAllBytes(path))
+            .joinToString("") { byte -> "%02x".format(byte) }
 }

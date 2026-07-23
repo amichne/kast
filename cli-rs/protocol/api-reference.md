@@ -1317,19 +1317,15 @@ daemon, including input/output schemas, examples, and behavioral notes.
             |-----------|-------------|
             | `#!kotlin filePaths: List<String>` | Sorted absolute Kotlin files to refresh or read. |
             | `#!kotlin removedFilePaths: List<String>?` | Sorted absolute Kotlin paths removed from the workspace. |
-            | `#!kotlin pageSize: PositiveInt?` | Maximum combined symbol and relation records in one page. |
-            | `#!kotlin continuation: SemanticGraphPageToken?` | Opaque continuation returned by the preceding page. |
         === "Output: SemanticGraphResult"
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin generation: SemanticGraphGeneration` | Shared source-index generation bound to this page sequence. |
+            | `#!kotlin generation: SemanticGraphGeneration` | Shared source-index generation produced by this atomic refresh. |
             | `#!kotlin scopeFingerprint: SemanticGraphSha256` | SHA-256 fingerprint of the selected and removed path scope. |
             | `#!kotlin coverage: SemanticGraphCoverage` | Refresh, diagnostic, and omission evidence for the scope. |
-            | `#!kotlin symbols: List<SemanticGraphSymbol>` | Semantic symbol records included in this page. |
-            | `#!kotlin boundarySymbols: List<SemanticGraphSymbol>?` | Referenced workspace symbols outside the selected file scope, returned without expansion. |
-            | `#!kotlin relations: List<SemanticGraphRelation>` | Semantic relation records included in this page. |
-            | `#!kotlin nextPageToken: SemanticGraphPageToken?` | Opaque token for the next page, or null when complete. |
+            | `#!kotlin symbolCount: NonNegativeInt` | Number of canonical symbols written for selected files. |
+            | `#!kotlin edgeOccurrenceCount: NonNegativeInt` | Number of typed edge occurrences written for selected files. |
         === "Internal protocol"
 
             ```text

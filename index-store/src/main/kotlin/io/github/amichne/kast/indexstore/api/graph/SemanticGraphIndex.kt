@@ -7,14 +7,19 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
 import io.github.amichne.kast.api.contract.result.SemanticGraphSha256
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbol
+import io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 
 data class SemanticGraphFileIndexUpdate(
     val path: SemanticGraphSourcePath,
+    val packageName: String?,
+    val moduleName: String?,
     val contentHash: SemanticGraphSha256,
     val status: SemanticGraphFileStatus,
     val diagnostics: List<SemanticGraphDiagnosticEvidence>,
+    val types: List<SemanticGraphTypeFact>,
     val symbols: List<SemanticGraphSymbol>,
+    val boundarySymbols: List<SemanticGraphSymbol>,
     val relations: List<SemanticGraphRelation>,
 ) {
     init {
@@ -27,9 +32,17 @@ data class SemanticGraphFileIndexUpdate(
     }
 }
 
+data class SemanticGraphWriteResult(
+    val generation: SourceIndexGeneration,
+    val fileCount: Int,
+    val symbolCount: Int,
+    val edgeOccurrenceCount: Int,
+)
+
 data class SemanticGraphIndexSnapshot(
     val generation: SourceIndexGeneration,
     val files: List<SemanticGraphFileCoverage>,
     val symbols: List<SemanticGraphSymbol>,
+    val boundarySymbols: List<SemanticGraphSymbol>,
     val relations: List<SemanticGraphRelation>,
 )

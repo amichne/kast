@@ -21,7 +21,14 @@ data class OverlayManifest(
     val target: SnapshotKey,
     val tombstones: Set<String>,
     val shards: Map<String, ExtractionShardKey>,
+    val baseDatabase: String? = null,
 ) {
+    init {
+        baseDatabase?.let { raw ->
+            require(Path.of(raw).isAbsolute) { "Snapshot overlay base database must be absolute" }
+        }
+    }
+
     companion object {
         fun between(base: SnapshotManifest, target: SnapshotManifest): OverlayManifest {
             require(base.key.compatibility == target.key.compatibility) { "Snapshot overlay requires exact compatibility" }

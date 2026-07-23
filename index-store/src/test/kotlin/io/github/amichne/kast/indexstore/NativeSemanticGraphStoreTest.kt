@@ -1,0 +1,300 @@
+package io.github.amichne.kast.indexstore
+
+import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
+import java.sql.Connection
+import java.sql.DriverManager
+
+class NativeSemanticGraphStoreTest {
+    @TempDir
+    lateinit var workspaceRoot: Path
+
+    @Test
+    fun `schema stores canonical graph facts under numeric identities with required indexes`() {
+        SqliteSourceIndexStore(workspaceRoot).use { store -> store.ensureSchema() }
+
+        DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(workspaceRoot)}").use { connection ->
+            assertTrue(SOURCE_INDEX_SCHEMA_VERSION > 9)
+            assertEquals(listOf("id", "path"), primaryColumns(connection, "semantic_files"))
+            assertEquals(
+                listOf("id", "stable_key", "file_id", "owner_id"),
+                leadingColumns(connection, "semantic_symbols", 4),
+            )
+            assertEquals(
+                listOf("id", "source_id", "target_id", "source_file_id", "kind", "context"),
+                leadingColumns(connection, "semantic_edge_occurrences", 6),
+            )
+            assertIndex(connection, "idx_semantic_symbols_file_id_id", "semantic_symbols", "file_id", "id")
+            assertIndex(connection, "idx_semantic_symbols_owner_id_id", "semantic_symbols", "owner_id", "id")
+            assertIndex(
+                connection,
+                "idx_semantic_edges_source_file_id_id",
+                "semantic_edge_occurrences",
+                "source_file_id",
+                "id",
+            )
+            assertIndex(
+                connection,
+                "idx_semantic_edges_source_kind_target",
+                "semantic_edge_occurrences",
+                "source_id",
+                "kind",
+                "target_id",
+            )
+            assertIndex(
+                connection,
+                "idx_semantic_edges_target_kind_source",
+                "semantic_edge_occurrences",
+                "target_id",
+                "kind",
+                "source_id",
+            )
+        }
+    }
+
+    @Test
+    fun `scoped keyset and boundary reads use indexed searches`() {
+        SqliteSourceIndexStore(workspaceRoot).use { store -> store.ensureSchema() }
+
+        DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(workspaceRoot)}").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute(
+                    "CREATE TEMP TABLE requested_semantic_file_ids(id INTEGER PRIMARY KEY) WITHOUT ROWID",
+                )
+            }
+            val scopedPlan = explain(
+                connection,
+                """SELECT symbols.id
+                   FROM requested_semantic_file_ids requested
+                   JOIN semantic_symbols symbols ON symbols.file_id = requested.id
+                   WHERE symbols.id > 0
+                   ORDER BY symbols.id
+                   LIMIT 100""",
+            )
+            val boundaryPlan = explain(
+                connection,
+                """SELECT DISTINCT target.id
+                   FROM semantic_edge_occurrences edges INDEXED BY idx_semantic_edges_source_file_id_id
+                   JOIN semantic_symbols target ON target.id = edges.target_id
+                   LEFT JOIN requested_semantic_file_ids internal ON internal.id = target.file_id
+                   WHERE edges.source_file_id IN (SELECT id FROM requested_semantic_file_ids)
+                     AND internal.id IS NULL""",
+            )
+
+            assertTrue(scopedPlan.any { it.contains("SEARCH symbols USING") }, scopedPlan.joinToString())
+            assertTrue(boundaryPlan.any { it.contains("SEARCH edges USING") }, boundaryPlan.joinToString())
+            assertTrue(boundaryPlan.none { it.contains("SCAN semantic_symbols") }, boundaryPlan.joinToString())
+            assertTrue(boundaryPlan.none { it.contains("SCAN semantic_edge_occurrences") }, boundaryPlan.joinToString())
+        }
+    }
+
+    @Test
+    fun `file package and module quotients conserve canonical edge occurrences`() {
+        SqliteSourceIndexStore(workspaceRoot).use { store -> store.ensureSchema() }
+
+        DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(workspaceRoot)}").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute(
+                    """INSERT INTO semantic_files(
+                           id, path, package_name, module_name, content_hash, refresh_status, diagnostics_json
+                       ) VALUES
+                           (1, 'A.kt', 'alpha', 'app', NULL, 'REFRESHED', '[]'),
+                           (2, 'B.kt', 'beta', 'lib', NULL, 'REFRESHED', '[]')""",
+                )
+                statement.execute(
+                    """INSERT INTO semantic_symbols(
+                           id, stable_key, file_id, kind, name, visibility, origin,
+                           start_offset, end_offset, line
+                       ) VALUES
+                           (1, 'a#one', 1, 'FUNCTION', 'one', 'PUBLIC', 'SOURCE', 0, 1, 1),
+                           (2, 'a#two', 1, 'FUNCTION', 'two', 'PUBLIC', 'SOURCE', 2, 3, 1),
+                           (3, 'b#target', 2, 'CLASS', 'Target', 'PUBLIC', 'SOURCE', 0, 1, 1)""",
+                )
+                statement.execute(
+                    """INSERT INTO semantic_edge_occurrences(
+                           source_id, target_id, source_file_id, kind, context,
+                           start_offset, end_offset, line
+                       ) VALUES
+                           (1, 3, 1, 'CALLS', 'NONE', 0, 1, 1),
+                           (1, 3, 1, 'CALLS', 'NONE', 2, 3, 1),
+                           (2, 3, 1, 'CALLS', 'NONE', 4, 5, 1)""",
+                )
+            }
+
+            val occurrences = scalarLong(connection, "SELECT COUNT(*) FROM semantic_edge_occurrences")
+            listOf(
+                "semantic_file_quotient",
+                "semantic_package_quotient",
+                "semantic_module_quotient",
+            ).forEach { view ->
+                assertEquals(occurrences, scalarLong(connection, "SELECT COALESCE(SUM(weight), 0) FROM $view"))
+            }
+        }
+    }
+
+    @Test
+    fun `enterprise scale scorecard measures ingest incremental size and indexed query p95`() {
+        SqliteSourceIndexStore(workspaceRoot).use { store -> store.ensureSchema() }
+        val database = sourceIndexDatabasePath(workspaceRoot)
+
+        DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
+            connection.autoCommit = false
+            val ingestStarted = System.nanoTime()
+            connection.prepareStatement(
+                """INSERT INTO semantic_files(
+                       id, path, package_name, module_name, content_hash, refresh_status, diagnostics_json
+                   ) VALUES (?, ?, ?, ?, NULL, 'REFRESHED', '[]')""",
+            ).use { statement ->
+                repeat(SCALE_FILE_COUNT) { index ->
+                    statement.setInt(1, index + 1)
+                    statement.setString(2, "src/File$index.kt")
+                    statement.setString(3, "scale.p${index % 20}")
+                    statement.setString(4, "module-${index % 10}")
+                    statement.addBatch()
+                }
+                statement.executeBatch()
+            }
+            connection.prepareStatement(
+                """INSERT INTO semantic_symbols(
+                       id, stable_key, file_id, kind, name, visibility, origin,
+                       start_offset, end_offset, line
+                   ) VALUES (?, ?, ?, 'FUNCTION', ?, 'PUBLIC', 'SOURCE', 0, 1, 1)""",
+            ).use { statement ->
+                repeat(SCALE_SYMBOL_COUNT) { index ->
+                    statement.setInt(1, index + 1)
+                    statement.setString(2, "scale#symbol$index")
+                    statement.setInt(3, index % SCALE_FILE_COUNT + 1)
+                    statement.setString(4, "symbol$index")
+                    statement.addBatch()
+                }
+                statement.executeBatch()
+            }
+            connection.prepareStatement(
+                """INSERT INTO semantic_edge_occurrences(
+                       source_id, target_id, source_file_id, kind, context,
+                       start_offset, end_offset, line
+                   ) VALUES (?, ?, ?, 'REFERENCES', 'GENERIC_ARG', 0, 1, 1)""",
+            ).use { statement ->
+                repeat(SCALE_EDGE_COUNT) { index ->
+                    val source = index % SCALE_SYMBOL_COUNT + 1
+                    statement.setInt(1, source)
+                    statement.setInt(2, (source + 97) % SCALE_SYMBOL_COUNT + 1)
+                    statement.setInt(3, (source - 1) % SCALE_FILE_COUNT + 1)
+                    statement.addBatch()
+                }
+                statement.executeBatch()
+            }
+            connection.commit()
+            val ingestNanos = System.nanoTime() - ingestStarted
+
+            val incrementalStarted = System.nanoTime()
+            connection.createStatement().use { statement ->
+                statement.executeUpdate("DELETE FROM semantic_edge_occurrences WHERE source_file_id = 1")
+                statement.executeUpdate(
+                    """INSERT INTO semantic_edge_occurrences(
+                           source_id, target_id, source_file_id, kind, context,
+                           start_offset, end_offset, line
+                       )
+                       SELECT id, (id + 97) % $SCALE_SYMBOL_COUNT + 1, 1,
+                              'REFERENCES', 'GENERIC_ARG', 0, 1, 1
+                       FROM semantic_symbols
+                       WHERE file_id = 1""",
+                )
+            }
+            connection.commit()
+            val incrementalNanos = System.nanoTime() - incrementalStarted
+
+            val querySamples = LongArray(21) {
+                val started = System.nanoTime()
+                connection.prepareStatement(
+                    """SELECT id FROM semantic_edge_occurrences
+                       WHERE source_id = ? AND kind = 'REFERENCES'
+                       ORDER BY target_id LIMIT 100""",
+                ).use { statement ->
+                    statement.setInt(1, it % SCALE_SYMBOL_COUNT + 1)
+                    statement.executeQuery().use { rows -> while (rows.next()) rows.getLong(1) }
+                }
+                System.nanoTime() - started
+            }.sorted()
+            val queryP95Nanos = querySamples[(querySamples.size * 95 + 99) / 100 - 1]
+            connection.autoCommit = true
+            connection.createStatement().use { statement -> statement.execute("PRAGMA wal_checkpoint(TRUNCATE)") }
+            val databaseBytes = Files.size(database)
+
+            println(
+                "nativeGraphScaleMetrics " +
+                    "files=$SCALE_FILE_COUNT symbols=$SCALE_SYMBOL_COUNT edges=$SCALE_EDGE_COUNT " +
+                    "ingestNanos=$ingestNanos incrementalNanos=$incrementalNanos " +
+                    "databaseBytes=$databaseBytes queryP95Nanos=$queryP95Nanos",
+            )
+            assertTrue(ingestNanos in 1 until 60_000_000_000L)
+            assertTrue(incrementalNanos in 1 until 5_000_000_000L)
+            assertTrue(databaseBytes > 0)
+            assertTrue(queryP95Nanos in 1 until 2_000_000_000L)
+        }
+    }
+
+    private fun primaryColumns(connection: Connection, table: String): List<String> =
+        connection.createStatement().use { statement ->
+            val rows = statement.executeQuery("PRAGMA table_info('$table')")
+            buildList {
+                while (rows.next()) {
+                    if (rows.getInt("pk") > 0 || rows.getString("name") == "path") add(rows.getString("name"))
+                }
+            }
+        }
+
+    private fun leadingColumns(connection: Connection, table: String, count: Int): List<String> =
+        connection.createStatement().use { statement ->
+            val rows = statement.executeQuery("PRAGMA table_info('$table')")
+            buildList {
+                while (rows.next() && size < count) add(rows.getString("name"))
+            }
+        }
+
+    private fun assertIndex(
+        connection: Connection,
+        index: String,
+        table: String,
+        vararg columns: String,
+    ) {
+        val definition = connection.prepareStatement(
+            "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = ? AND tbl_name = ?",
+        ).use { statement ->
+            statement.setString(1, index)
+            statement.setString(2, table)
+            val rows = statement.executeQuery()
+            check(rows.next()) { "Missing index $index" }
+            rows.getString(1)
+        }
+        assertTrue(definition.endsWith("(${columns.joinToString()})"), definition)
+    }
+
+    private fun explain(connection: Connection, sql: String): List<String> =
+        connection.createStatement().use { statement ->
+            val rows = statement.executeQuery("EXPLAIN QUERY PLAN $sql")
+            buildList {
+                while (rows.next()) add(rows.getString("detail"))
+            }
+        }
+
+    private fun scalarLong(connection: Connection, sql: String): Long =
+        connection.createStatement().use { statement ->
+            val rows = statement.executeQuery(sql)
+            check(rows.next())
+            rows.getLong(1)
+        }
+
+    private companion object {
+        const val SCALE_FILE_COUNT = 200
+        const val SCALE_SYMBOL_COUNT = 10_000
+        const val SCALE_EDGE_COUNT = 50_000
+    }
+}

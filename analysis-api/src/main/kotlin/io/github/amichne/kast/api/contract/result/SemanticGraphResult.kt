@@ -6,7 +6,6 @@ import io.github.amichne.kast.api.contract.FqName
 import io.github.amichne.kast.api.contract.LineNumber
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NonNegativeInt
-import io.github.amichne.kast.api.contract.query.SemanticGraphPageToken
 import io.github.amichne.kast.api.docs.DocField
 import kotlinx.serialization.Serializable
 
@@ -100,7 +99,104 @@ enum class SemanticGraphSymbolKind {
     FUNCTION,
     MEMBER_FUNCTION,
     CONSTRUCTOR,
+    PROPERTY,
+    GETTER,
+    SETTER,
+    VALUE_PARAMETER,
+    RECEIVER_PARAMETER,
+    TYPE_PARAMETER,
+    TYPE_ALIAS,
 }
+
+@Serializable
+enum class SemanticGraphVisibility {
+    PUBLIC,
+    INTERNAL,
+    PROTECTED,
+    PRIVATE,
+    LOCAL,
+}
+
+@Serializable
+enum class SemanticGraphModality {
+    FINAL,
+    OPEN,
+    ABSTRACT,
+    SEALED,
+}
+
+@Serializable
+enum class SemanticGraphOrigin {
+    SOURCE,
+    SYNTHETIC,
+}
+
+@Serializable
+enum class SemanticGraphTypeKind {
+    CLASS,
+    TYPE_PARAMETER,
+    FLEXIBLE,
+    INTERSECTION,
+    FUNCTION,
+    SUSPEND_FUNCTION,
+    ERROR,
+    DYNAMIC,
+    UNKNOWN,
+}
+
+@Serializable
+enum class SemanticGraphTypeNullability {
+    NON_NULL,
+    NULLABLE,
+    PLATFORM,
+    UNKNOWN,
+}
+
+@Serializable
+enum class SemanticGraphTypeRole {
+    ARGUMENT,
+    FLEXIBLE_LOWER,
+    FLEXIBLE_UPPER,
+    INTERSECTION_MEMBER,
+    RECEIVER,
+    RETURN,
+    CONSTRAINT,
+}
+
+@Serializable
+enum class SemanticGraphTypeVariance {
+    INVARIANT,
+    IN,
+    OUT,
+    STAR,
+}
+
+@Serializable
+data class SemanticGraphTypeEdge(
+    val childKey: NonBlankString? = null,
+    val role: SemanticGraphTypeRole,
+    val position: NonNegativeInt,
+    val variance: SemanticGraphTypeVariance = SemanticGraphTypeVariance.INVARIANT,
+)
+
+@Serializable
+data class SemanticGraphTypeFact(
+    val stableKey: NonBlankString,
+    val kind: SemanticGraphTypeKind,
+    val classifier: NonBlankString? = null,
+    val nullability: SemanticGraphTypeNullability,
+    val debugText: NonBlankString,
+    val edges: List<SemanticGraphTypeEdge> = emptyList(),
+)
+
+@Serializable
+data class SemanticGraphSymbolFlags(
+    val isExpect: Boolean = false,
+    val isActual: Boolean = false,
+    val isOverride: Boolean = false,
+    val isSealed: Boolean = false,
+    val isDelegated: Boolean = false,
+)
 
 @Serializable
 enum class SemanticGraphRelationKind {
@@ -109,6 +205,10 @@ enum class SemanticGraphRelationKind {
     CASE_OF,
     INHERITS,
     IMPLEMENTS,
+    OVERRIDES,
+    EXPECT_ACTUAL,
+    SEALED_MEMBER,
+    DELEGATES,
     CALLS,
     REFERENCES,
 }
@@ -120,6 +220,10 @@ enum class SemanticGraphRelationContext {
     PARAMETER_TYPE,
     RETURN_TYPE,
     GENERIC_ARG,
+    RECEIVER_TYPE,
+    TYPE_CONSTRAINT,
+    ANNOTATION,
+    DELEGATE,
     CALL,
 }
 
@@ -144,6 +248,22 @@ data class SemanticGraphSymbol(
     val signature: NonBlankString? = null,
     @DocField(description = "Canonical key of the nearest projected owner.")
     val ownerKey: SemanticGraphSymbolKey? = null,
+    @DocField(description = "Compiler visibility retained for graph queries.")
+    val visibility: SemanticGraphVisibility = SemanticGraphVisibility.PUBLIC,
+    @DocField(description = "Compiler modality retained for graph queries.")
+    val modality: SemanticGraphModality? = null,
+    @DocField(description = "Whether the symbol comes from source or a compiler-synthesized declaration.")
+    val origin: SemanticGraphOrigin = SemanticGraphOrigin.SOURCE,
+    @DocField(description = "Graph-relevant compiler declaration flags.")
+    val flags: SemanticGraphSymbolFlags = SemanticGraphSymbolFlags(),
+    @DocField(description = "Fully-qualified annotation class names.")
+    val annotations: List<NonBlankString> = emptyList(),
+    @DocField(description = "Normalized declared-type identity.")
+    val declaredTypeKey: NonBlankString? = null,
+    @DocField(description = "Normalized receiver-type identity.")
+    val receiverTypeKey: NonBlankString? = null,
+    @DocField(description = "Normalized return-type identity.")
+    val returnTypeKey: NonBlankString? = null,
     @DocField(description = "Repository-relative Kotlin source path.")
     val path: SemanticGraphSourcePath,
     @DocField(description = "Exact zero-based declaration start offset.")
@@ -224,18 +344,14 @@ data class SemanticGraphCoverage(
 
 @Serializable
 data class SemanticGraphResult(
-    @DocField(description = "Shared source-index generation bound to this page sequence.")
+    @DocField(description = "Shared source-index generation produced by this atomic refresh.")
     val generation: SemanticGraphGeneration,
     @DocField(description = "SHA-256 fingerprint of the selected and removed path scope.")
     val scopeFingerprint: SemanticGraphSha256,
     @DocField(description = "Refresh, diagnostic, and omission evidence for the scope.")
     val coverage: SemanticGraphCoverage,
-    @DocField(description = "Semantic symbol records included in this page.")
-    val symbols: List<SemanticGraphSymbol>,
-    @DocField(description = "Referenced workspace symbols outside the selected file scope, returned without expansion.")
-    val boundarySymbols: List<SemanticGraphSymbol> = emptyList(),
-    @DocField(description = "Semantic relation records included in this page.")
-    val relations: List<SemanticGraphRelation>,
-    @DocField(description = "Opaque token for the next page, or null when complete.")
-    val nextPageToken: SemanticGraphPageToken? = null,
+    @DocField(description = "Number of canonical symbols written for selected files.")
+    val symbolCount: NonNegativeInt,
+    @DocField(description = "Number of typed edge occurrences written for selected files.")
+    val edgeOccurrenceCount: NonNegativeInt,
 )

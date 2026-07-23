@@ -551,22 +551,13 @@ commands:
     method: raw/semantic-graph
     notes:
     - The scope must contain at least one selected or removed Kotlin path.
-    - Continuation is an opaque single-use token bound to the selected and removed path scope.
-    - Direct workspace targets outside the selected file scope are returned in boundarySymbols; every relation target is present in symbols or boundarySymbols.
+    - The result reports only generation and persisted fact counts; enumerate native graph nodes with generation-pinned keyset queries.
     request:
       fields:
-        continuation:
-          nullable: true
-          optional: true
-          sample: 00000000-0000-4000-8000-000000000337
-          type: string
         filePaths:
           items: string
           optional: true
           type: array
-        pageSize:
-          optional: true
-          type: integer
         removedFilePaths:
           items: string
           optional: true

@@ -15,8 +15,8 @@ pub enum AgentCommand {
     Verify(AgentVerifyArgs),
     /// Discover Kotlin source and script files with typed workspace evidence.
     WorkspaceFiles(AgentWorkspaceFilesArgs),
-    /// Project compiler-backed Kotlin semantics into Graphify extraction JSON.
-    Graphify(AgentGraphifyArgs),
+    /// Query compiler-backed graph facts and native topology directly from SQLite.
+    Graph(AgentNativeGraphArgs),
     /// Query and resolve a symbol identity.
     Symbol(AgentSymbolArgs),
     /// Find bounded references to one compiler-anchored declaration.
@@ -145,21 +145,52 @@ pub struct AgentVerifyArgs {
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct AgentGraphifyArgs {
+pub struct AgentNativeGraphArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
-    /// Graphify detection or incremental manifest JSON.
+    /// Read a specific source-index database instead of the workspace default.
     #[arg(long)]
-    pub manifest: PathBuf,
-    /// Atomic destination for the Kotlin Graphify extraction fragment.
+    pub database: Option<PathBuf>,
+    /// Canonical graph or SQL-derived quotient to query.
+    #[arg(long, value_enum, default_value_t = NativeGraphScope::Symbol)]
+    pub scope: NativeGraphScope,
+    /// Native graph operation to execute.
+    #[arg(long, value_enum, default_value_t = NativeGraphOperation::Summary)]
+    pub operation: NativeGraphOperation,
+    /// Canonical symbol key used by the neighbors operation.
     #[arg(long)]
-    pub output_file: PathBuf,
-    /// Existing Kast Graphify-v2 graph required for incremental extraction.
+    pub symbol: Option<String>,
+    /// Fail closed unless the source-index generation matches this value.
     #[arg(long)]
-    pub base_graph: Option<PathBuf>,
-    /// Maximum Kotlin files analyzed by one semantic-graph RPC.
-    #[arg(long, default_value_t = 25, value_parser = clap::value_parser!(u16).range(1..=500))]
-    pub batch_size: u16,
+    pub generation: Option<u64>,
+    /// Last numeric symbol id returned by a preceding nodes query.
+    #[arg(long, default_value_t = 0)]
+    pub after_id: u64,
+    /// Maximum symbols returned by generation-pinned keyset enumeration.
+    #[arg(long, default_value_t = 100, value_parser = clap::value_parser!(u16).range(1..=500))]
+    pub limit: u16,
+    /// Resolution used by deterministic weighted Leiden clustering.
+    #[arg(long, default_value_t = 1.0)]
+    pub resolution: f64,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum NativeGraphScope {
+    Symbol,
+    File,
+    Package,
+    Module,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum NativeGraphOperation {
+    Summary,
+    Nodes,
+    Neighbors,
+    Topology,
+    Communities,
 }
 
 #[derive(Debug, Args, Clone)]
