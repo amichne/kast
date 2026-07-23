@@ -729,6 +729,7 @@ jobs:
             -Pversion="${{ needs.prepare-release.outputs.release_version }}" \
             -PkastHeadlessIdeaHomeProfile=full \
             stageHeadlessDist \
+            :backend-headless:verifyHeadlessPortableDistLayout \
             buildHeadlessPortableZip \
             --no-daemon
           shopt -s nullglob

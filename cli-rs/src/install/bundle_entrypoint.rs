@@ -66,7 +66,7 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
     fs::create_dir_all(&backups)?;
     let home = manifest::home_dir();
     let user_command = home.join(".local/bin/kast");
-    let user_command_target = targets.current_link.join("bin/kast");
+    let user_command_target = &targets.resolved.active_binary;
     let mut legacy = vec![
         (
             targets.resolved.install_root.join("install.json"),
@@ -101,7 +101,7 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
 fn install_user_command(targets: &ActivationTargetPaths) -> Result<()> {
     #[cfg(unix)]
     manifest::replace_symlink_or_copy(
-        &targets.current_link.join("bin/kast"),
+        &targets.resolved.active_binary,
         &manifest::home_dir().join(".local/bin/kast"),
     )?;
     Ok(())
