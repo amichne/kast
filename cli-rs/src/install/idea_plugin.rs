@@ -445,6 +445,7 @@ fn extract_idea_plugin_zip(source: &Path, target: &Path) -> Result<()> {
     Ok(())
 }
 
+#[cfg(target_os = "macos")]
 pub(crate) fn idea_plugin_directory_matches_archive(
     installed_plugin: &Path,
     plugin_archive: &Path,

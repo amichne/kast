@@ -391,6 +391,7 @@ fn idea_app_build(app: &Path) -> Option<IdeaAppBuild> {
         })
 }
 
+#[cfg(any(target_os = "macos", test))]
 fn select_running_idea_host(
     descriptors: &[ServerInstanceDescriptor],
 ) -> Result<Option<ServerInstanceDescriptor>> {

@@ -249,7 +249,10 @@ fn validate_macos_workspace_for_preference(
     preference: RuntimeBackendPreference,
 ) -> Result<()> {
     #[cfg(not(target_os = "macos"))]
-    let _ = preference;
+    {
+        let _ = preference;
+        return self_mgmt::validate_macos_plugin_workspace(workspace_root);
+    }
     #[cfg(target_os = "macos")]
     if preference.fixed_backend() == Some(BackendName::Headless) {
         return Err(CliError::new(
@@ -257,8 +260,8 @@ fn validate_macos_workspace_for_preference(
             "Kast does not run headless IntelliJ JVMs on macOS developer machines. Open this exact root in IntelliJ IDEA or Android Studio and use the IDEA backend.",
         ));
     }
+    #[cfg(target_os = "macos")]
     self_mgmt::validate_macos_plugin_workspace(workspace_root).map_err(|error| {
-        #[cfg(target_os = "macos")]
         if preference.fixed_backend() == Some(BackendName::Idea) {
             let mut update = CliError::new(
                 "IDEA_PLUGIN_UPDATE_REQUIRED",
