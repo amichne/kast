@@ -96,54 +96,60 @@ fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value
         }
         return Ok(body);
     }
-    let compute_started = std::time::Instant::now();
-    let components = native_connected_components(&graph);
-    let strongly_connected = native_tarjan_scc(&graph);
-    let topological_components = native_condensation_topological_order(&graph, &strongly_connected);
-    let communities = native_weighted_leiden(&graph, args.resolution);
-    let compute_nanos = compute_started.elapsed().as_nanos();
-    let measurements = native_graph_measurements(
-        &connection,
-        &database,
-        load_nanos,
-        compute_nanos,
-    )?;
 
     let body = match args.operation {
-        NativeGraphOperation::Summary => json!({
-            "type": "KAST_NATIVE_GRAPH_SUMMARY",
-            "scope": args.scope,
-            "generation": generation,
-            "nodeCount": graph.nodes.len(),
-            "edgeOccurrenceCount": graph.edges.len(),
-            "weightedEdgeCount": graph.edges.iter().map(|edge| edge.weight).sum::<f64>(),
-            "componentCount": components.iter().copied().max().map_or(0, |value| value + 1),
-            "stronglyConnectedComponentCount": strongly_connected.iter().copied().max().map_or(0, |value| value + 1),
-            "communityCount": communities.iter().copied().max().map_or(0, |value| value + 1),
-            "measurements": measurements,
-            "schemaVersion": SCHEMA_VERSION
-        }),
+        NativeGraphOperation::Summary => {
+            let compute_started = std::time::Instant::now();
+            let components = native_connected_components(&graph);
+            let strongly_connected = native_tarjan_scc(&graph);
+            let communities = native_weighted_leiden(&graph, args.resolution);
+            let compute_nanos = compute_started.elapsed().as_nanos();
+            let measurements =
+                native_graph_measurements(&connection, &database, load_nanos, compute_nanos)?;
+            json!({
+                "type": "KAST_NATIVE_GRAPH_SUMMARY",
+                "scope": args.scope,
+                "generation": generation,
+                "nodeCount": graph.nodes.len(),
+                "edgeOccurrenceCount": graph.edges.len(),
+                "weightedEdgeCount": graph.edges.iter().map(|edge| edge.weight).sum::<f64>(),
+                "componentCount": components.iter().copied().max().map_or(0, |value| value + 1),
+                "stronglyConnectedComponentCount": strongly_connected.iter().copied().max().map_or(0, |value| value + 1),
+                "communityCount": communities.iter().copied().max().map_or(0, |value| value + 1),
+                "measurements": measurements,
+                "schemaVersion": SCHEMA_VERSION
+            })
+        }
         NativeGraphOperation::Neighbors => unreachable!("neighbors returned before graph analytics"),
-        NativeGraphOperation::Topology => json!({
-            "type": "KAST_NATIVE_GRAPH_TOPOLOGY",
-            "scope": args.scope,
-            "generation": generation,
-            "nodes": graph.nodes.iter().map(|node| &node.key).collect::<Vec<_>>(),
-            "components": components,
-            "stronglyConnectedComponents": strongly_connected,
-            "condensationTopologicalOrder": topological_components,
-            "schemaVersion": SCHEMA_VERSION
-        }),
-        NativeGraphOperation::Communities => json!({
-            "type": "KAST_NATIVE_GRAPH_COMMUNITIES",
-            "scope": args.scope,
-            "generation": generation,
-            "resolution": args.resolution,
-            "nodes": graph.nodes.iter().zip(communities).map(|(node, community)| {
-                json!({"key": node.key, "community": community})
-            }).collect::<Vec<_>>(),
-            "schemaVersion": SCHEMA_VERSION
-        }),
+        NativeGraphOperation::Topology => {
+            let components = native_connected_components(&graph);
+            let strongly_connected = native_tarjan_scc(&graph);
+            let topological_components =
+                native_condensation_topological_order(&graph, &strongly_connected);
+            json!({
+                "type": "KAST_NATIVE_GRAPH_TOPOLOGY",
+                "scope": args.scope,
+                "generation": generation,
+                "nodes": graph.nodes.iter().map(|node| &node.key).collect::<Vec<_>>(),
+                "components": components,
+                "stronglyConnectedComponents": strongly_connected,
+                "condensationTopologicalOrder": topological_components,
+                "schemaVersion": SCHEMA_VERSION
+            })
+        }
+        NativeGraphOperation::Communities => {
+            let communities = native_weighted_leiden(&graph, args.resolution);
+            json!({
+                "type": "KAST_NATIVE_GRAPH_COMMUNITIES",
+                "scope": args.scope,
+                "generation": generation,
+                "resolution": args.resolution,
+                "nodes": graph.nodes.iter().zip(communities).map(|(node, community)| {
+                    json!({"key": node.key, "community": community})
+                }).collect::<Vec<_>>(),
+                "schemaVersion": SCHEMA_VERSION
+            })
+        }
         NativeGraphOperation::Nodes => unreachable!("nodes returned before graph materialization"),
     };
     if native_graph_generation(&connection)? != generation {
@@ -433,7 +439,11 @@ fn native_graph_overlay_cte() -> &'static str {
     r#"WITH
        effective_file_rows AS (
            SELECT path, package_name, module_name
-           FROM semantic_files
+           FROM semantic_files overlay
+           WHERE NOT EXISTS (
+                   SELECT 1 FROM repository_overlay_tombstones tombstone
+                   WHERE tombstone.path = overlay.path
+               )
            UNION ALL
            SELECT base.path, base.package_name, base.module_name
            FROM repository_base.semantic_files base
@@ -456,6 +466,10 @@ fn native_graph_overlay_cte() -> &'static str {
                   symbols.stable_key, symbols.kind, symbols.name, files.path AS file_path
            FROM semantic_symbols symbols
            JOIN semantic_files files ON files.id = symbols.file_id
+           WHERE NOT EXISTS (
+                   SELECT 1 FROM repository_overlay_tombstones tombstone
+                   WHERE tombstone.path = files.path
+               )
            UNION ALL
            SELECT symbols.id * 2 AS encoded_id,
                   symbols.stable_key, symbols.kind, symbols.name, files.path AS file_path
@@ -483,6 +497,11 @@ fn native_graph_overlay_cte() -> &'static str {
            FROM semantic_edge_occurrences edges
            JOIN semantic_symbols source ON source.id = edges.source_id
            JOIN semantic_symbols target ON target.id = edges.target_id
+           JOIN semantic_files source_file ON source_file.id = edges.source_file_id
+           WHERE NOT EXISTS (
+                   SELECT 1 FROM repository_overlay_tombstones tombstone
+                   WHERE tombstone.path = source_file.path
+               )
            UNION ALL
            SELECT source.stable_key AS source_key, target.stable_key AS target_key,
                   edges.kind, edges.context
@@ -1277,6 +1296,23 @@ mod native_graph_tests {
                  (1, 1, 2, 1, 'REFERENCES', 'NONE');",
         )
         .unwrap();
+
+        let tombstoned = load_native_overlay_graph(&connection, NativeGraphScope::Symbol).unwrap();
+        assert_eq!(
+            tombstoned
+                .nodes
+                .iter()
+                .map(|node| node.key.as_str())
+                .collect::<Vec<_>>(),
+            vec!["b"]
+        );
+        assert!(tombstoned.edges.is_empty());
+        connection
+            .execute(
+                "DELETE FROM repository_overlay_tombstones WHERE path = 'A.kt'",
+                [],
+            )
+            .unwrap();
 
         let overlay = load_native_overlay_graph(&connection, NativeGraphScope::Symbol).unwrap();
         let clean = native_graph_to_csr(

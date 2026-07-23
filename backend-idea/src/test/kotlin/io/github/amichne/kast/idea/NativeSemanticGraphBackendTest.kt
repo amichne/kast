@@ -65,6 +65,34 @@ class NativeSemanticGraphBackendTest {
 
             class BoundaryTarget
         """
+
+        private const val leftType = """
+            package left
+
+            class Foo
+        """
+
+        private const val rightType = """
+            package right
+
+            class Foo
+        """
+
+        private const val leftTypeConsumer = """
+            package consumer
+
+            import left.Foo
+
+            val leftFoo: Foo? = null
+        """
+
+        private const val rightTypeConsumer = """
+            package consumer
+
+            import right.Foo
+
+            val rightFoo: Foo? = null
+        """
     }
 
     private val moduleFixture = projectFixture.moduleFixture("main")
@@ -72,6 +100,10 @@ class NativeSemanticGraphBackendTest {
     private val canonicalFileFixture = sourceRootFixture.psiFileFixture("Canonical.kt", canonicalSource)
     private val boundarySourceFixture = sourceRootFixture.psiFileFixture("BoundarySource.kt", boundarySource)
     private val boundaryTargetFixture = sourceRootFixture.psiFileFixture("BoundaryTarget.kt", boundaryTarget)
+    private val leftTypeFixture = sourceRootFixture.psiFileFixture("LeftType.kt", leftType)
+    private val rightTypeFixture = sourceRootFixture.psiFileFixture("RightType.kt", rightType)
+    private val leftTypeConsumerFixture = sourceRootFixture.psiFileFixture("LeftTypeConsumer.kt", leftTypeConsumer)
+    private val rightTypeConsumerFixture = sourceRootFixture.psiFileFixture("RightTypeConsumer.kt", rightTypeConsumer)
 
     @TempDir
     lateinit var storeRoot: Path
@@ -155,6 +187,46 @@ class NativeSemanticGraphBackendTest {
             val boundary = snapshot.boundarySymbols.single { symbol -> symbol.name.value == "BoundaryTarget" }
             assertTrue(snapshot.relations.any { relation -> relation.targetKey == boundary.canonicalKey })
             assertTrue(snapshot.symbols.none { symbol -> symbol.canonicalKey == boundary.canonicalKey })
+        }
+    }
+
+    @Test
+    fun `resolved classifiers distinguish identical short type names`() = runBlocking {
+        val project = projectFixture.get()
+        val files = listOf(
+            leftTypeFixture.get(),
+            rightTypeFixture.get(),
+            leftTypeConsumerFixture.get(),
+            rightTypeConsumerFixture.get(),
+        )
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(files.first().virtualFile.path).toRealPath().parent
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = limits(),
+                semanticGraphStore = store,
+                psiGeneration = { 1L },
+            ).use { backend ->
+                backend.semanticGraph(
+                    SemanticGraphQuery(
+                        filePaths = files.map { file -> SemanticGraphPath.parse(file.virtualFile.path) },
+                    ).parsed(),
+                )
+            }
+
+            val snapshot = store.readSemanticGraph(
+                listOf(
+                    SemanticGraphSourcePath.parse("LeftTypeConsumer.kt"),
+                    SemanticGraphSourcePath.parse("RightTypeConsumer.kt"),
+                ),
+            )
+            val leftKey = snapshot.symbols.single { symbol -> symbol.name.value == "leftFoo" }.declaredTypeKey
+            val rightKey = snapshot.symbols.single { symbol -> symbol.name.value == "rightFoo" }.declaredTypeKey
+            assertTrue(leftKey != null && rightKey != null && leftKey != rightKey)
         }
     }
 

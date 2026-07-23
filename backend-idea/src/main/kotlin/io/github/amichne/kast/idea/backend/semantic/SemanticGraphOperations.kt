@@ -613,8 +613,12 @@ private fun semanticTypeFact(reference: KtTypeReference): SemanticGraphTypeFact 
     )
 }
 
-private fun semanticTypeKey(reference: KtTypeReference): NonBlankString =
-    NonBlankString("type:${reference.text.canonicalTypeText()}")
+private fun semanticTypeKey(reference: KtTypeReference): NonBlankString {
+    val resolved = runCatching {
+        analyze(reference) { reference.type.toString().canonicalTypeText() }
+    }.getOrNull()?.takeIf(String::isNotBlank)
+    return NonBlankString("type:${resolved ?: reference.text.canonicalTypeText()}")
+}
 
 private fun KtNamedDeclaration.semanticKey(path: SemanticGraphSourcePath): SemanticGraphSymbolKey = when (this) {
     is KtEnumEntry -> {
@@ -678,7 +682,7 @@ private fun KtUserType.resolveTarget(): PsiElement? = analyze(this) {
 private fun KtNamedFunction.compilerStableSignature(): String? = analyze(this) { symbol.compilerStableSignature() }
 
 private fun KtConstructor<*>.compilerStableSignature(): String? =
-    analyze(this) { (symbol as? KaConstructorSymbol)?.compilerStableSignature() }
+    analyze(this) { symbol.compilerStableSignature() }
 
 private fun semanticConstructorKey(
     ownerKey: SemanticGraphSymbolKey,
