@@ -98,6 +98,57 @@ fn setup_installs_native_cli_and_idea_plugin() {
 }
 
 #[test]
+fn current_idea_setup_archives_a_restored_unmanaged_user_command() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let plugins = home.join("Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins");
+    let plugin = write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin");
+    std::fs::create_dir_all(&plugins).expect("IDEA profile");
+    let run = || {
+        kast(&home, &kast_home.join("unused-config"))
+            .env_remove("KAST_CONFIG_HOME")
+            .env("KAST_HOME", &kast_home)
+            .env("KAST_MACHINE_IDE_STATE", "closed")
+            .args([
+                "--output",
+                "json",
+                "setup",
+                "--idea-plugin",
+                plugin.to_str().expect("plugin path"),
+            ])
+            .output()
+            .expect("kast setup")
+    };
+
+    assert!(run().status.success(), "initial setup should succeed");
+    let user_command = home.join(".local/bin/kast");
+    std::fs::remove_file(&user_command).expect("managed user command");
+    std::fs::write(&user_command, "unmanaged").expect("unmanaged user command");
+
+    let current = run();
+
+    assert!(
+        current.status.success(),
+        "current setup should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&current.stdout),
+        String::from_utf8_lossy(&current.stderr),
+    );
+    let result: serde_json::Value = serde_json::from_slice(&current.stdout).expect("setup result");
+    let backup = kast_home.join("backups/legacy-local-bin-kast");
+    assert_eq!(result["status"], "CURRENT");
+    assert_eq!(result["backup"], backup.display().to_string());
+    assert_eq!(
+        std::fs::read_to_string(backup).expect("archived unmanaged command"),
+        "unmanaged",
+    );
+    assert_eq!(
+        std::fs::read_link(user_command).expect("restored managed user command"),
+        kast_home.join("current/bin/kast"),
+    );
+}
+
+#[test]
 fn setup_rejects_multiple_supported_plugin_profiles_without_selection() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
