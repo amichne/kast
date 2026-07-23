@@ -614,7 +614,7 @@ fn maybe_launch_idea_backend(
         return Ok(None);
     }
     let launch_config = &config.runtime.idea_launch;
-    if !launch_config.enabled && !cfg!(target_os = "macos") {
+    if !launch_config.enabled {
         return Ok(None);
     }
     if !config.backends.idea.enabled {

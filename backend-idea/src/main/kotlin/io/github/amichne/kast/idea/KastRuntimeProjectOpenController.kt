@@ -24,7 +24,7 @@ internal class KastRuntimeProjectOpenController(
     private val requests = KastOpenProjectRequestStore(config)
 
     override fun openProject(request: RuntimeOpenProjectRequest): RuntimeOpenProjectResponse {
-        requireSupportedHost()
+        requireSupportedIdeaHost()
         val canonicalRoot = request.canonicalRoot
         if (!requests.consume(canonicalRoot, request.requestId, allowUntargeted = false)) {
             throw openProjectError(
@@ -62,21 +62,6 @@ internal class KastRuntimeProjectOpenController(
         return RuntimeOpenProjectResponse(RuntimeOpenProjectResult.OPENED_NEW_PROJECT)
     }
 
-    private fun requireSupportedHost() {
-        val build = ApplicationInfo.getInstance().build
-        val supported = when (build.productCode) {
-            "AI" -> build.baselineVersion == 261
-            "IC", "IU" -> build.baselineVersion == 262
-            else -> false
-        }
-        if (!supported) {
-            throw openProjectError(
-                "IDEA_VERSION_UNSUPPORTED",
-                "Kast supports IntelliJ IDEA build 262 and Android Studio build 261; this host is ${build.asString()}.",
-            )
-        }
-    }
-
     private fun canonicalRootOrNull(value: String): RuntimeOpenProjectRoot? =
         runCatching { RuntimeOpenProjectRoot.of(java.nio.file.Path.of(value)) }.getOrNull()
 
@@ -86,6 +71,23 @@ internal class KastRuntimeProjectOpenController(
         target.extendedState = anchor.extendedState
     }
 }
+
+internal fun requireSupportedIdeaHost() {
+    val build = ApplicationInfo.getInstance().build
+    if (!isSupportedIdeaHost(build.productCode, build.baselineVersion)) {
+        throw openProjectError(
+            "IDEA_VERSION_UNSUPPORTED",
+            "Kast supports IntelliJ IDEA build 262 and Android Studio build 261; this host is ${build.asString()}.",
+        )
+    }
+}
+
+internal fun isSupportedIdeaHost(productCode: String, baselineVersion: Int): Boolean =
+    when (productCode) {
+        "AI" -> baselineVersion == 261
+        "IC", "IU" -> baselineVersion == 262
+        else -> false
+    }
 
 private fun openProjectError(code: String, message: String): AnalysisException =
     AnalysisException(

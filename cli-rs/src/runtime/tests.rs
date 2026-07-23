@@ -259,7 +259,7 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn idea_launch_is_required_for_macos_idea_workspaces() {
+    fn disabled_idea_launch_is_respected_on_macos() {
         let workspace = PathBuf::from("/work/kast");
         let config = KastConfig::defaults();
         let ops = FakeIdeaLaunchOps::ready();
@@ -273,8 +273,8 @@ mod tests {
         )
         .unwrap();
 
-        assert!(selected.is_some());
-        assert_eq!(ops.launches.borrow().len(), 1);
+        assert!(selected.is_none());
+        assert!(ops.launches.borrow().is_empty());
     }
 
     #[test]

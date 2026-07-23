@@ -79,6 +79,7 @@ internal class KastPluginService(
 
         val socketPath = defaultSocketPath(workspaceRoot)
         runCatching {
+            requireSupportedIdeaHost()
             KastIdeaBackendRuntime.start(
                 project = project,
                 workspaceRoot = workspaceRoot,

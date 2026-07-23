@@ -402,7 +402,7 @@ configure_idea_defaults() {
 
 run_setup() {
   local output_file="${setup_scratch}/setup-output"
-  if "$@" >"$output_file"; then
+  if "$@" >"$output_file" 2>&1; then
     return 0
   fi
   [[ ! -s "$output_file" ]] || sed -n '1,160p' "$output_file" >&2
