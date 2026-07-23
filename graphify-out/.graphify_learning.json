@@ -1,7 +1,23 @@
 {
-  "generated_at": "2026-07-21T21:59:29.580839+00:00",
+  "generated_at": "2026-07-23T03:17:55.721576+00:00",
   "nodes": {
-    "analysis_api_src_main_kotlin_io_github_amichne_kast_api_client_fields_configurationdefault_configurationdefault": {
+    "analysis-api::kast:kotlin:v1:759e44fc56f3c424ad54b42bddee940c96aae8cd955dbc6b2c7da3b61e72bf09": {
+      "code_fingerprint": "550d53f856f7f3e9de61c733b27dca4174d1706c5eecd808b15cbd9744a37634",
+      "label": "gitWorkspaceDataDirectory",
+      "last": "2026-07-22T19:18:23.564425+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-22T19:18:23.564425+00:00",
+          "outcome": "useful",
+          "q": "We should try to evaluate what we can do to create a known good ancestor on main that we increment and retain and use as a jumping off point for all of the index building that's needed. This should ideally be something that even if, for example, we are building an index for a feature branch that is three commits removed from main and maybe two commits behind, we should be able to unwind any of the added commits as well as pull main in a way that rather removes the added commits from the index synthetically and then apply the main commit changes such that we're effectively doing diff-wise operations that end up in the resulting index representing main at some common ancestor to allow for reuse when we're instantiating things like new worktrees, so on and so forth. We want to keep this rolling forward, let's say like past a known last used date. Maybe we say we keep the most recent N and try to eagerly remove things that are out of scope. I dunno. What is an efficient, maybe more heavy space utilization but faster initial indexing and time to first query on a net new worktree?"
+        }
+      ],
+      "score": 0.992335335,
+      "source_file": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/client/WorkspaceDirectoryResolver.kt",
+      "status": "tentative",
+      "uses": 1
+    },
+    "analysis-api::kast:kotlin:v1:ba6c6f9d5aeb64232b876848de9faf63d7c9af08157ed825c27b2cbee4f0f19c": {
       "code_fingerprint": "ebee4d41c76c4bd0a68603259b51b030f69333490c5533d8cd9e85e24377e5a8",
       "label": "ConfigurationDefault",
       "last": "2026-07-21T03:06:10.943355+00:00",
@@ -12,45 +28,119 @@
           "q": "Help me understand where we have residual complexity in the system that we would be best served by attempting to trim"
         }
       ],
-      "score": 0.98198028,
+      "score": 0.954661662,
       "source_file": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/client/fields/ConfigurationDefault.kt",
       "status": "tentative",
       "uses": 1
     },
-    "analysis_api_src_main_kotlin_io_github_amichne_kast_api_continuation_serverheldcontinuationstore_serverheldcontinuationstore": {
-      "code_fingerprint": "fba1670d0948c608cccac7240001c8a81f8955a1b9e587b6cdda51c2492ead2c",
-      "label": "ServerHeldContinuationStore",
-      "last": "2026-07-21T03:06:10.943355+00:00",
+    "analysis-api::kast:kotlin:v1:d0d2bc99f5e7aeccdfff5cac5bb9fe968bd269921970de843f247c3b5951545f": {
+      "code_fingerprint": "550d53f856f7f3e9de61c733b27dca4174d1706c5eecd808b15cbd9744a37634",
+      "label": "WorkspaceDirectoryResolver",
+      "last": "2026-07-22T19:18:23.564425+00:00",
       "provenance": [
         {
-          "date": "2026-07-21T03:06:10.943355+00:00",
+          "date": "2026-07-22T19:18:23.564425+00:00",
           "outcome": "useful",
-          "q": "Help me understand where we have residual complexity in the system that we would be best served by attempting to trim"
+          "q": "We should try to evaluate what we can do to create a known good ancestor on main that we increment and retain and use as a jumping off point for all of the index building that's needed. This should ideally be something that even if, for example, we are building an index for a feature branch that is three commits removed from main and maybe two commits behind, we should be able to unwind any of the added commits as well as pull main in a way that rather removes the added commits from the index synthetically and then apply the main commit changes such that we're effectively doing diff-wise operations that end up in the resulting index representing main at some common ancestor to allow for reuse when we're instantiating things like new worktrees, so on and so forth. We want to keep this rolling forward, let's say like past a known last used date. Maybe we say we keep the most recent N and try to eagerly remove things that are out of scope. I dunno. What is an efficient, maybe more heavy space utilization but faster initial indexing and time to first query on a net new worktree?"
         }
       ],
-      "score": 0.98198028,
-      "source_file": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/continuation/ServerHeldContinuationStore.kt",
+      "score": 0.992335335,
+      "source_file": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/client/WorkspaceDirectoryResolver.kt",
       "status": "tentative",
       "uses": 1
     },
-    "analysis_server_src_main_kotlin_io_github_amichne_kast_server_skillrpcorchestrator_skillrpcorchestrator": {
-      "code_fingerprint": "69cbf6073213d81d711dfda88f6ac09f72eb289df9c4d9a89e1ec4c9fd646f56",
-      "label": "SkillRpcOrchestrator",
-      "last": "2026-07-21T03:06:10.943355+00:00",
+    "cli-rs::src_agent_graphify_execute_agent_graphify": {
+      "code_fingerprint": "",
+      "label": "execute_agent_graphify()",
+      "last": "2026-07-23T02:52:28.052615+00:00",
       "provenance": [
         {
-          "date": "2026-07-21T03:06:10.943355+00:00",
+          "date": "2026-07-23T02:52:28.052615+00:00",
           "outcome": "useful",
-          "q": "Help me understand where we have residual complexity in the system that we would be best served by attempting to trim"
+          "q": "Graphify feels like it's costing us a ton of performance, especially with the need to do explicit file writes, especially for large paginated workspaces. What is it doing that's so unique that we can't build it out in a native manner, since we own the contract, we own all the specification, all the requirements, and we're able to go and be stable in our own right and not have to depend on this external library? What is so valuable that it is not able to be kind of extracted and reused?"
         }
       ],
-      "score": 0.98198028,
-      "source_file": "analysis-server/src/main/kotlin/io/github/amichne/kast/server/SkillRpcOrchestrator.kt",
+      "score": 0.999591557,
+      "source_file": "src/agent/graphify.rs",
       "status": "tentative",
       "uses": 1
     },
-    "cli_rs_src_agent_types_agentenvelope": {
-      "code_fingerprint": "66bcba1bb96587d55ecbdba92a2d828f5709e35b18c80f28fcd3f43309d33d36",
+    "cli-rs::src_agent_graphify_graphify_semantic_pages": {
+      "code_fingerprint": "",
+      "label": "graphify_semantic_pages()",
+      "last": "2026-07-23T03:06:47.128342+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-23T03:06:47.128342+00:00",
+          "outcome": "useful",
+          "q": "What are the most viable long-term and scalable solutions? Specifically understanding that we want this to work pretty seamlessly on a developer machine across multiple work trees on an enterprise code base with something like 25, 30 million lines of code. We need this to be quite performant, the ingestion and pipeline of the clustering and the kind of topological mappings and inferred communities of like these concepts needs to be performant. But I also do think that we're losing some aspect of this clustering currently as we're not able to leverage a lot of the key K2 and or rich type information that we have as a result of our integration with the compiler. So, help me ideate on alternatives here. What if we were to reimplement what we currently use Graphify for today natively, or at least rather in our own code base? What should that look like? What could we gain? And what are the risks? i.e. what are the upsides and what are the downsides for doing so?"
+        },
+        {
+          "date": "2026-07-23T02:52:28.052615+00:00",
+          "outcome": "useful",
+          "q": "Graphify feels like it's costing us a ton of performance, especially with the need to do explicit file writes, especially for large paginated workspaces. What is it doing that's so unique that we can't build it out in a native manner, since we own the contract, we own all the specification, all the requirements, and we're able to go and be stable in our own right and not have to depend on this external library? What is so valuable that it is not able to be kind of extracted and reused?"
+        }
+      ],
+      "score": 1.99941278,
+      "source_file": "src/agent/graphify.rs",
+      "status": "preferred",
+      "uses": 2
+    },
+    "cli-rs::src_agent_graphify_project_graphify_fragment": {
+      "code_fingerprint": "",
+      "label": "project_graphify_fragment()",
+      "last": "2026-07-23T03:06:47.128342+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-23T03:06:47.128342+00:00",
+          "outcome": "useful",
+          "q": "What are the most viable long-term and scalable solutions? Specifically understanding that we want this to work pretty seamlessly on a developer machine across multiple work trees on an enterprise code base with something like 25, 30 million lines of code. We need this to be quite performant, the ingestion and pipeline of the clustering and the kind of topological mappings and inferred communities of like these concepts needs to be performant. But I also do think that we're losing some aspect of this clustering currently as we're not able to leverage a lot of the key K2 and or rich type information that we have as a result of our integration with the compiler. So, help me ideate on alternatives here. What if we were to reimplement what we currently use Graphify for today natively, or at least rather in our own code base? What should that look like? What could we gain? And what are the risks? i.e. what are the upsides and what are the downsides for doing so?"
+        }
+      ],
+      "score": 0.999821222,
+      "source_file": "src/agent/graphify.rs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "cli-rs::src_agent_graphify_validate_graphify_incremental_base": {
+      "code_fingerprint": "",
+      "label": "validate_graphify_incremental_base()",
+      "last": "2026-07-22T19:18:23.564425+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-22T19:18:23.564425+00:00",
+          "outcome": "useful",
+          "q": "We should try to evaluate what we can do to create a known good ancestor on main that we increment and retain and use as a jumping off point for all of the index building that's needed. This should ideally be something that even if, for example, we are building an index for a feature branch that is three commits removed from main and maybe two commits behind, we should be able to unwind any of the added commits as well as pull main in a way that rather removes the added commits from the index synthetically and then apply the main commit changes such that we're effectively doing diff-wise operations that end up in the resulting index representing main at some common ancestor to allow for reuse when we're instantiating things like new worktrees, so on and so forth. We want to keep this rolling forward, let's say like past a known last used date. Maybe we say we keep the most recent N and try to eagerly remove things that are out of scope. I dunno. What is an efficient, maybe more heavy space utilization but faster initial indexing and time to first query on a net new worktree?"
+        }
+      ],
+      "score": 0.992335335,
+      "source_file": "src/agent/graphify.rs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "cli-rs::src_agent_graphify_write_graphify_fragment_atomically": {
+      "code_fingerprint": "",
+      "label": "write_graphify_fragment_atomically()",
+      "last": "2026-07-23T02:52:28.052615+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-23T02:52:28.052615+00:00",
+          "outcome": "useful",
+          "q": "Graphify feels like it's costing us a ton of performance, especially with the need to do explicit file writes, especially for large paginated workspaces. What is it doing that's so unique that we can't build it out in a native manner, since we own the contract, we own all the specification, all the requirements, and we're able to go and be stable in our own right and not have to depend on this external library? What is so valuable that it is not able to be kind of extracted and reused?"
+        },
+        {
+          "date": "2026-07-22T19:18:23.564425+00:00",
+          "outcome": "useful",
+          "q": "We should try to evaluate what we can do to create a known good ancestor on main that we increment and retain and use as a jumping off point for all of the index building that's needed. This should ideally be something that even if, for example, we are building an index for a feature branch that is three commits removed from main and maybe two commits behind, we should be able to unwind any of the added commits as well as pull main in a way that rather removes the added commits from the index synthetically and then apply the main commit changes such that we're effectively doing diff-wise operations that end up in the resulting index representing main at some common ancestor to allow for reuse when we're instantiating things like new worktrees, so on and so forth. We want to keep this rolling forward, let's say like past a known last used date. Maybe we say we keep the most recent N and try to eagerly remove things that are out of scope. I dunno. What is an efficient, maybe more heavy space utilization but faster initial indexing and time to first query on a net new worktree?"
+        }
+      ],
+      "score": 1.991926892,
+      "source_file": "src/agent/graphify.rs",
+      "status": "preferred",
+      "uses": 2
+    },
+    "cli-rs::src_agent_types_agentenvelope": {
+      "code_fingerprint": "",
       "label": "AgentEnvelope",
       "last": "2026-07-21T03:06:10.943355+00:00",
       "provenance": [
@@ -60,13 +150,13 @@
           "q": "Help me understand where we have residual complexity in the system that we would be best served by attempting to trim"
         }
       ],
-      "score": 0.98198028,
-      "source_file": "cli-rs/src/agent/types.rs",
+      "score": 0.954661662,
+      "source_file": "src/agent/types.rs",
       "status": "tentative",
       "uses": 1
     },
-    "cli_rs_src_codex_hook": {
-      "code_fingerprint": "52a77e5c0b608354d154bf6158dbba0cfb6eb55921bec79498bbcb7d58f94acd",
+    "cli-rs::src_codex_hook": {
+      "code_fingerprint": "",
       "label": "hook.rs",
       "last": "2026-07-21T20:23:33.680615+00:00",
       "provenance": [
@@ -76,13 +166,29 @@
           "q": "Split Kast Codex tooling into a separately published fast-forward marketplace, remove plugin digest/version coupling, and delegate daemon/runtime concerns to the CLI"
         }
       ],
-      "score": 0.998461953,
-      "source_file": "cli-rs/src/codex/hook.rs",
+      "score": 0.970684816,
+      "source_file": "src/codex/hook.rs",
       "status": "tentative",
       "uses": 1
     },
-    "cli_rs_src_daemon": {
-      "code_fingerprint": "2667cd2b06268d55c4c5fa47045443838396c7a8e27519fdca0c857aefbebbf6",
+    "cli-rs::src_config_tests_git_workspace_data_directory_isolates_sibling_worktrees": {
+      "code_fingerprint": "",
+      "label": "git_workspace_data_directory_isolates_sibling_worktrees()",
+      "last": "2026-07-23T03:06:47.128342+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-23T03:06:47.128342+00:00",
+          "outcome": "useful",
+          "q": "What are the most viable long-term and scalable solutions? Specifically understanding that we want this to work pretty seamlessly on a developer machine across multiple work trees on an enterprise code base with something like 25, 30 million lines of code. We need this to be quite performant, the ingestion and pipeline of the clustering and the kind of topological mappings and inferred communities of like these concepts needs to be performant. But I also do think that we're losing some aspect of this clustering currently as we're not able to leverage a lot of the key K2 and or rich type information that we have as a result of our integration with the compiler. So, help me ideate on alternatives here. What if we were to reimplement what we currently use Graphify for today natively, or at least rather in our own code base? What should that look like? What could we gain? And what are the risks? i.e. what are the upsides and what are the downsides for doing so?"
+        }
+      ],
+      "score": 0.999821222,
+      "source_file": "src/config/tests.rs",
+      "status": "tentative",
+      "uses": 1
+    },
+    "cli-rs::src_daemon": {
+      "code_fingerprint": "",
       "label": "daemon.rs",
       "last": "2026-07-21T20:23:33.680615+00:00",
       "provenance": [
@@ -92,12 +198,33 @@
           "q": "Split Kast Codex tooling into a separately published fast-forward marketplace, remove plugin digest/version coupling, and delegate daemon/runtime concerns to the CLI"
         }
       ],
-      "score": 0.998461953,
-      "source_file": "cli-rs/src/daemon.rs",
+      "score": 0.970684816,
+      "source_file": "src/daemon.rs",
       "status": "tentative",
       "uses": 1
     },
-    "cli_rs_tests_setup_smoke": {
+    "cli-rs::src_workspace_inventory_model_sourceindexsnapshotstamp": {
+      "code_fingerprint": "",
+      "label": "SourceIndexSnapshotStamp",
+      "last": "2026-07-23T03:06:47.128342+00:00",
+      "provenance": [
+        {
+          "date": "2026-07-23T03:06:47.128342+00:00",
+          "outcome": "useful",
+          "q": "What are the most viable long-term and scalable solutions? Specifically understanding that we want this to work pretty seamlessly on a developer machine across multiple work trees on an enterprise code base with something like 25, 30 million lines of code. We need this to be quite performant, the ingestion and pipeline of the clustering and the kind of topological mappings and inferred communities of like these concepts needs to be performant. But I also do think that we're losing some aspect of this clustering currently as we're not able to leverage a lot of the key K2 and or rich type information that we have as a result of our integration with the compiler. So, help me ideate on alternatives here. What if we were to reimplement what we currently use Graphify for today natively, or at least rather in our own code base? What should that look like? What could we gain? And what are the risks? i.e. what are the upsides and what are the downsides for doing so?"
+        },
+        {
+          "date": "2026-07-22T19:18:23.564425+00:00",
+          "outcome": "useful",
+          "q": "We should try to evaluate what we can do to create a known good ancestor on main that we increment and retain and use as a jumping off point for all of the index building that's needed. This should ideally be something that even if, for example, we are building an index for a feature branch that is three commits removed from main and maybe two commits behind, we should be able to unwind any of the added commits as well as pull main in a way that rather removes the added commits from the index synthetically and then apply the main commit changes such that we're effectively doing diff-wise operations that end up in the resulting index representing main at some common ancestor to allow for reuse when we're instantiating things like new worktrees, so on and so forth. We want to keep this rolling forward, let's say like past a known last used date. Maybe we say we keep the most recent N and try to eagerly remove things that are out of scope. I dunno. What is an efficient, maybe more heavy space utilization but faster initial indexing and time to first query on a net new worktree?"
+        }
+      ],
+      "score": 1.992156557,
+      "source_file": "src/workspace_inventory/model.rs",
+      "status": "preferred",
+      "uses": 2
+    },
+    "cli-rs::tests_setup_smoke": {
       "code_fingerprint": "",
       "label": "setup_smoke.rs",
       "last": "2026-07-21T12:57:41.509982+00:00",
@@ -108,56 +235,8 @@
           "q": "Which files define the failing kast-action setup runtime contract?"
         }
       ],
-      "score": 0.991344437,
-      "source_file": "cli-rs/tests/setup_smoke.rs",
-      "status": "tentative",
-      "uses": 1
-    },
-    "index_store_src_main_kotlin_io_github_amichne_kast_indexstore_store_sqlitesourceindexstore_sqlitesourceindexstore": {
-      "code_fingerprint": "6af29beea89cbcbb0db14c03b8c9e78c879a48eaf5946935e5ee21468128d9c0",
-      "label": "SqliteSourceIndexStore",
-      "last": "2026-07-21T03:06:10.943355+00:00",
-      "provenance": [
-        {
-          "date": "2026-07-21T03:06:10.943355+00:00",
-          "outcome": "useful",
-          "q": "Help me understand where we have residual complexity in the system that we would be best served by attempting to trim"
-        }
-      ],
-      "score": 0.98198028,
-      "source_file": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt",
-      "status": "tentative",
-      "uses": 1
-    },
-    "install": {
-      "code_fingerprint": "eb4bbad89219d153c82a748325b77089602225c684f919213c7f3fded8b0d8c6",
-      "label": "install.sh",
-      "last": "2026-07-21T12:57:41.509982+00:00",
-      "provenance": [
-        {
-          "date": "2026-07-21T12:57:41.509982+00:00",
-          "outcome": "useful",
-          "q": "Which files define the failing kast-action setup runtime contract?"
-        }
-      ],
-      "score": 0.991344437,
-      "source_file": "install.sh",
-      "status": "tentative",
-      "uses": 1
-    },
-    "scripts_verify_setup_kast_install": {
-      "code_fingerprint": "13257c70ec743f009a29e5e8e82935d4e92bf9109f314faa3c4196319952666d",
-      "label": "verify-setup-kast-install.sh",
-      "last": "2026-07-21T12:57:41.509982+00:00",
-      "provenance": [
-        {
-          "date": "2026-07-21T12:57:41.509982+00:00",
-          "outcome": "useful",
-          "q": "Which files define the failing kast-action setup runtime contract?"
-        }
-      ],
-      "score": 0.991344437,
-      "source_file": "scripts/verify-setup-kast-install.sh",
+      "score": 0.963765309,
+      "source_file": "tests/setup_smoke.rs",
       "status": "tentative",
       "uses": 1
     }

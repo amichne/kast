@@ -4,8 +4,8 @@ use std::io::Write;
 use std::process::Stdio;
 use support::*;
 
-fn write_idea_plugin_zip(root: &Path) -> PathBuf {
-    let archive = root.join("kast-idea.zip");
+fn write_idea_plugin_zip(root: &Path, name: &str, contents: &[u8]) -> PathBuf {
+    let archive = root.join(name);
     let file = std::fs::File::create(&archive).expect("plugin archive");
     let mut zip = zip::ZipWriter::new(file);
     zip.start_file(
@@ -13,7 +13,7 @@ fn write_idea_plugin_zip(root: &Path) -> PathBuf {
         zip::write::SimpleFileOptions::default(),
     )
     .expect("plugin entry");
-    zip.write_all(b"plugin").expect("plugin contents");
+    zip.write_all(contents).expect("plugin contents");
     zip.finish().expect("plugin archive");
     archive
 }
@@ -47,7 +47,7 @@ fn setup_installs_native_cli_and_idea_plugin() {
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
     let plugins = home.join("Library/Application Support/Google/AndroidStudio2026.1/plugins");
-    let plugin = write_idea_plugin_zip(temp.path());
+    let plugin = write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin");
     std::fs::create_dir_all(&plugins).expect("Android Studio profile");
 
     let output = kast(&home, &kast_home.join("unused-config"))
@@ -71,6 +71,10 @@ fn setup_installs_native_cli_and_idea_plugin() {
         String::from_utf8_lossy(&output.stderr),
     );
     assert!(kast_home.join("current/bin/kast").is_file());
+    assert_eq!(
+        std::fs::read_link(home.join(".local/bin/kast")).expect("user command"),
+        kast_home.join("current/bin/kast"),
+    );
     assert!(plugins.join("kast/lib/plugin.jar").is_file());
     let receipt: serde_json::Value = serde_json::from_slice(
         &std::fs::read(kast_home.join("current/receipt.json")).expect("setup receipt"),
@@ -89,12 +93,152 @@ fn setup_installs_native_cli_and_idea_plugin() {
 }
 
 #[test]
+fn setup_user_command_tracks_manifest_active_binary() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let source = write_install_bundle_source(temp.path(), "v9.8.7");
+    let manifest_path = source.join("manifest.json");
+    let active_binary = source.join("commands/kast");
+    std::fs::create_dir_all(active_binary.parent().expect("active binary parent"))
+        .expect("active binary directory");
+    std::fs::rename(source.join("bin/kast"), &active_binary).expect("custom active binary");
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&manifest_path).expect("bundle manifest"))
+            .expect("manifest JSON");
+    manifest["activation"]["cli"]["path"] = serde_json::json!("commands/kast");
+    manifest["artifacts"][0]["path"] = serde_json::json!("commands/kast");
+    std::fs::write(
+        &manifest_path,
+        serde_json::to_vec_pretty(&manifest).expect("manifest JSON"),
+    )
+    .expect("updated manifest");
+
+    let output = setup(&home, &kast_home, &source);
+
+    assert!(
+        output.status.success(),
+        "setup should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert_eq!(
+        std::fs::read_link(home.join(".local/bin/kast")).expect("user command"),
+        kast_home.join("current/commands/kast"),
+    );
+}
+
+#[test]
+fn doctor_rejects_drifted_user_command() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let source = write_install_bundle_source(temp.path(), "v9.8.7");
+    let setup_output = setup(&home, &kast_home, &source);
+    assert!(setup_output.status.success(), "setup should succeed");
+    let user_command = home.join(".local/bin/kast");
+    std::fs::remove_file(&user_command).expect("remove user command");
+    std::os::unix::fs::symlink("/bin/sh", &user_command).expect("retarget user command");
+
+    let doctor = kast_at(
+        &kast_home.join("current/bin/kast"),
+        &home,
+        &kast_home.join("unused-config"),
+    )
+    .env_remove("KAST_CONFIG_HOME")
+    .env("KAST_HOME", &kast_home)
+    .args(["--output", "json", "doctor"])
+    .output()
+    .expect("kast doctor");
+
+    assert!(
+        !doctor.status.success(),
+        "doctor should reject command drift"
+    );
+    let result: serde_json::Value = serde_json::from_slice(&doctor.stdout).expect("doctor JSON");
+    assert!(
+        result["issues"]
+            .as_array()
+            .expect("doctor issues")
+            .iter()
+            .any(|issue| issue
+                .as_str()
+                .is_some_and(|issue| issue.contains("Managed user command"))),
+        "{result}"
+    );
+}
+
+#[test]
+fn setup_rolls_back_bundle_when_user_command_projection_fails() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let first_source = write_install_bundle_source(temp.path(), "v1.0.0");
+    let first = setup(&home, &kast_home, &first_source);
+    assert!(first.status.success(), "initial setup should succeed");
+    let previous = std::fs::canonicalize(kast_home.join("current")).expect("active release");
+    std::fs::remove_dir_all(home.join(".local/bin")).expect("remove user bin directory");
+    std::fs::write(home.join(".local/bin"), "not a directory").expect("block user command");
+    let second_source = write_install_bundle_source(temp.path(), "v2.0.0");
+
+    let failed = setup(&home, &kast_home, &second_source);
+
+    assert!(!failed.status.success(), "command projection should fail");
+    assert_eq!(
+        std::fs::canonicalize(kast_home.join("current")).expect("rolled-back release"),
+        previous,
+    );
+}
+
+#[test]
+fn setup_rolls_back_idea_activation_when_user_command_projection_fails() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let plugins = temp.path().join("idea-plugins");
+    let first_plugin = write_idea_plugin_zip(temp.path(), "kast-idea-v1.zip", b"plugin-v1");
+    let run_setup = |plugin: &Path| {
+        kast(&home, &kast_home.join("unused-config"))
+            .env_remove("KAST_CONFIG_HOME")
+            .env("KAST_HOME", &kast_home)
+            .env("KAST_MACHINE_IDE_STATE", "closed")
+            .args([
+                "setup",
+                "--idea-plugin",
+                plugin.to_str().expect("plugin path"),
+                "--idea-plugins-dir",
+                plugins.to_str().expect("plugins path"),
+            ])
+            .output()
+            .expect("kast setup")
+    };
+    let first = run_setup(&first_plugin);
+    assert!(first.status.success(), "initial setup should succeed");
+    let previous = std::fs::canonicalize(kast_home.join("current")).expect("active release");
+    std::fs::remove_dir_all(home.join(".local/bin")).expect("remove user bin directory");
+    std::fs::write(home.join(".local/bin"), "not a directory").expect("block user command");
+    let second_plugin = write_idea_plugin_zip(temp.path(), "kast-idea-v2.zip", b"plugin-v2");
+
+    let failed = run_setup(&second_plugin);
+
+    assert!(!failed.status.success(), "command projection should fail");
+    assert_eq!(
+        std::fs::canonicalize(kast_home.join("current")).expect("rolled-back release"),
+        previous,
+    );
+    assert_eq!(
+        std::fs::read(plugins.join("kast/lib/plugin.jar")).expect("rolled-back plugin"),
+        b"plugin-v1",
+    );
+}
+
+#[test]
 fn setup_persists_selected_idea_defaults() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
     let plugins = home.join("Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins");
-    let plugin = write_idea_plugin_zip(temp.path());
+    let plugin = write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin");
     let defaults = temp.path().join("defaults.toml");
     let expected = "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\n";
     std::fs::create_dir_all(&plugins).expect("IDEA profile");
@@ -133,7 +277,7 @@ fn setup_replaces_defaults_when_release_is_current() {
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
     let plugins = home.join("Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins");
-    let plugin = write_idea_plugin_zip(temp.path());
+    let plugin = write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin");
     let defaults = temp.path().join("defaults.toml");
     let expected = "[runtime]\ndefaultBackend = \"auto\"\n";
     std::fs::create_dir_all(&plugins).expect("IDEA profile");
@@ -212,7 +356,7 @@ fn setup_replaces_incompatible_legacy_idea_activation() {
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
     let plugins = home.join("Library/Application Support/Google/AndroidStudio2026.1/plugins");
-    let plugin = write_idea_plugin_zip(temp.path());
+    let plugin = write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin");
     std::fs::create_dir_all(&plugins).expect("Android Studio profile");
     let run_setup = || {
         kast(&home, &kast_home.join("unused-config"))
@@ -296,7 +440,10 @@ fn setup_activates_one_validated_release_and_converges_on_rerun() {
         std::fs::canonicalize(kast_home.join("current/bin/kast")).expect("active command"),
         std::fs::canonicalize(release.join("bin/kast")).expect("active binary"),
     );
-    assert!(!home.join(".local/bin/kast").exists());
+    assert_eq!(
+        std::fs::read_link(home.join(".local/bin/kast")).expect("user command"),
+        kast_home.join("current/bin/kast"),
+    );
     assert!(!kast_home.join("install.json").exists());
     assert!(!home.join(".config/kast").exists());
 
@@ -331,14 +478,19 @@ fn setup_rolls_back_when_the_new_release_fails_readiness() {
     let active = std::fs::canonicalize(kast_home.join("current")).expect("active release");
 
     let broken = write_install_bundle_source(temp.path(), "v2.0.0");
-    std::fs::write(broken.join("bin/kast"), "#!/bin/sh\nexit 1\n").expect("broken CLI");
-    set_executable_for_test(&broken.join("bin/kast"));
+    let broken_cli = broken.join("commands/kast");
+    std::fs::create_dir_all(broken_cli.parent().expect("broken CLI parent"))
+        .expect("broken CLI directory");
+    std::fs::rename(broken.join("bin/kast"), &broken_cli).expect("custom CLI path");
+    std::fs::write(&broken_cli, "#!/bin/sh\nexit 1\n").expect("broken CLI");
+    set_executable_for_test(&broken_cli);
     let manifest_path = broken.join("manifest.json");
     let mut manifest: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&manifest_path).expect("bundle manifest"))
             .expect("manifest JSON");
-    manifest["artifacts"][0]["sha256"] =
-        serde_json::Value::String(test_path_sha256(&broken.join("bin/kast")));
+    manifest["activation"]["cli"]["path"] = serde_json::json!("commands/kast");
+    manifest["artifacts"][0]["path"] = serde_json::json!("commands/kast");
+    manifest["artifacts"][0]["sha256"] = serde_json::Value::String(test_path_sha256(&broken_cli));
     std::fs::write(
         &manifest_path,
         serde_json::to_string_pretty(&manifest).expect("manifest JSON"),
@@ -355,6 +507,10 @@ fn setup_rolls_back_when_the_new_release_fails_readiness() {
     assert_eq!(
         std::fs::canonicalize(kast_home.join("current/bin/kast")).expect("active command"),
         active.join("bin/kast"),
+    );
+    assert_eq!(
+        std::fs::read_link(home.join(".local/bin/kast")).expect("user command"),
+        kast_home.join("current/bin/kast"),
     );
     assert_eq!(
         first["releaseDigest"],

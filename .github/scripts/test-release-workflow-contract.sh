@@ -37,9 +37,17 @@ for platform in linux-x64 linux-arm64 macos-x64 macos-arm64; do
 done
 require "$release" '--plugin-archive "$work/kast-idea-${tag}.zip"' 'release bundles must include the release-matched IDEA plugin'
 require "$release" 'scripts/verify-setup-bundle.sh' 'release validation must enter through kast setup'
+require "$release" './scripts/ci-gradle-retry.sh ./gradlew \' 'headless release must invoke Gradle directly through the CI retry helper'
+require "$release" 'stageHeadlessDist \' 'headless release must stage the portable distribution'
+require "$release" ':backend-headless:verifyHeadlessPortableDistLayout \' 'headless release must verify the portable distribution layout'
+require "$release" 'buildHeadlessPortableZip \' 'headless release must build the portable zip'
+require "$release" 'cp "${headless_zips[0]}" dist/headless.zip' 'headless release must publish the artifact consumed by later jobs'
 require "$verify_state" 'verify-setup-bundle.sh' 'published release verification must enter through kast setup'
 require "$verify_setup" '"status"[[:space:]]*:[[:space:]]*"ACTIVATED"' 'setup verification must accept pretty-printed activation JSON'
 require "$verify_setup" '"status"[[:space:]]*:[[:space:]]*"CURRENT"' 'setup verification must accept pretty-printed current JSON'
+reject "$release" './kast.sh' 'release workflow still depends on the deleted build wrapper'
+[[ ! -e "$repo_root/kast.sh" ]] \
+  || { printf '%s\n' 'error: retired kast.sh build wrapper still exists' >&2; exit 1; }
 
 grep -Fq './gradlew test' <<<"$release_preflight" \
   || { printf '%s\n' 'error: release dispatch must validate JVM tests before creating a tag' >&2; exit 1; }

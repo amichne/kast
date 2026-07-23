@@ -721,7 +721,24 @@ jobs:
             release-headless-runtime-${{ runner.os }}-
 
       - name: Build headless backend
-        run: ./kast.sh build headless -Pversion="${{ needs.prepare-release.outputs.release_version }}"
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf backend-headless/build/portable-dist backend-headless/build/distributions
+          ./scripts/ci-gradle-retry.sh ./gradlew \
+            -Pversion="${{ needs.prepare-release.outputs.release_version }}" \
+            -PkastHeadlessIdeaHomeProfile=full \
+            stageHeadlessDist \
+            :backend-headless:verifyHeadlessPortableDistLayout \
+            buildHeadlessPortableZip \
+            --no-daemon
+          shopt -s nullglob
+          headless_zips=(backend-headless/build/distributions/backend-headless-*-portable.zip)
+          shopt -u nullglob
+          [[ "${#headless_zips[@]}" -eq 1 ]] \
+            || { echo "Expected one portable headless zip, found ${#headless_zips[@]}" >&2; exit 1; }
+          mkdir -p dist
+          cp "${headless_zips[0]}" dist/headless.zip
 
       - name: Ensure zstd is available
         shell: bash

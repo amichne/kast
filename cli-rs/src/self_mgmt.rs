@@ -142,6 +142,19 @@ pub fn doctor(target: ReadyTarget, workspace_root: Option<&Path>) -> Result<Self
     }
     let minimum_backend_version = minimum_backend_version();
     if let Some(install) = &install {
+        let user_command = manifest::home_dir().join(".local/bin/kast");
+        if install
+            .owned_paths
+            .iter()
+            .any(|path| Path::new(path) == user_command)
+            && !same_binary_path(&user_command, Path::new(&install.entrypoints.active_binary))
+        {
+            issues.push(format!(
+                "Managed user command {} does not resolve to active binary {}",
+                user_command.display(),
+                install.entrypoints.active_binary
+            ));
+        }
         for path in &install.managed_paths {
             let managed_path = managed_path(&install_root.join("current"), path);
             if !managed_path.exists() {
