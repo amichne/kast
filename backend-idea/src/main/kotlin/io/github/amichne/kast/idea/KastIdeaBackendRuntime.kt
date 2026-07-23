@@ -101,14 +101,15 @@ object KastIdeaBackendRuntime {
         )
         val diagnostics = KastDiagnosticsService.getInstance(project)
         val limits = ideaServerLimits(config)
+        val buildClasspathFingerprint = BuildClasspathFingerprintResolver.resolve(
+            project,
+            workspaceIdentity.workspaceIdentity,
+        )
         val snapshotCoordinator = workspaceIdentity.workspaceIdentity.repositoryDataDirectoryPath?.let { repositoryDirectory ->
             RepositorySnapshotCoordinator(
                 workspaceRoot = workspaceIdentity.workspaceRootPath,
                 repositoryDirectory = repositoryDirectory,
-                buildClasspathFingerprint = BuildClasspathFingerprintResolver.resolve(
-                    project,
-                    workspaceIdentity.workspaceIdentity,
-                ),
+                buildClasspathFingerprint = buildClasspathFingerprint,
                 producerVersion = ProducerVersion.parse(KastPluginBackend.BACKEND_VERSION),
             )
         }
@@ -133,6 +134,7 @@ object KastIdeaBackendRuntime {
                 workspaceIdentity = workspaceIdentity,
                 referenceIndexLookup = DiagnosticsReferenceIndexLookup(diagnostics, sourceIndexStore),
                 semanticGraphStore = sourceIndexStore,
+                semanticGraphConfigurationFingerprint = buildClasspathFingerprint,
                 indexSemanticAdmissionStatus = semanticAdmission::status,
             )
             pluginBackend = startedPluginBackend

@@ -46,6 +46,25 @@ class ConflictException(
     details = details,
 )
 
+class InvalidSemanticGraphCursorException(
+    reason: String,
+) : AnalysisException(
+    statusCode = 400,
+    errorCode = "GRAPH_CURSOR_INVALID",
+    message = "The semantic graph cursor is invalid",
+    details = mapOf("reason" to reason),
+)
+
+class SemanticGraphSnapshotExpiredException(
+    reason: String = "expired",
+) : AnalysisException(
+    statusCode = 409,
+    errorCode = "GRAPH_SNAPSHOT_EXPIRED",
+    message = "The retained semantic graph snapshot is no longer available",
+    retryable = true,
+    details = mapOf("reason" to reason),
+)
+
 class CapabilityNotSupportedException(
     capability: String,
     message: String,

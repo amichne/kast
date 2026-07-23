@@ -9,6 +9,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.api.continuation.ContinuationConsumeResult
+import io.github.amichne.kast.api.continuation.ContinuationAccessFailure
 import io.github.amichne.kast.api.continuation.ContinuationIssueResult
 import io.github.amichne.kast.api.continuation.ContinuationOwnedState
 import io.github.amichne.kast.api.continuation.ContinuationProjection
@@ -38,13 +39,17 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
 import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
 import io.github.amichne.kast.api.protocol.ConflictException
+import io.github.amichne.kast.api.protocol.InvalidSemanticGraphCursorException
+import io.github.amichne.kast.api.protocol.SemanticGraphSnapshotExpiredException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.idea.backend.diagnostics.analyzeDiagnosticsFileInReadEpoch
 import io.github.amichne.kast.idea.backend.workspace.isWorkspaceFile
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
+import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexRecord
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphIndexSnapshot
+import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.resolution.singleFunctionCallOrNull
@@ -112,12 +117,18 @@ private sealed interface SemanticGraphRecord {
 private data class ExtractedSemanticGraphFile(
     val update: SemanticGraphFileIndexUpdate,
     val boundarySymbols: List<SemanticGraphSymbol>,
-    val omittedExternalTargetCount: Int,
+)
+
+private data class RequestedSemanticGraphFile(
+    val file: KtFile,
+    val path: SemanticGraphSourcePath,
+    val contentHash: SemanticGraphSha256,
 )
 
 private data class ResolvedSemanticTarget(
     val key: SemanticGraphSymbolKey,
     val boundarySymbol: SemanticGraphSymbol?,
+    val dependencyContentHash: Pair<SemanticGraphSourcePath, SemanticGraphSha256>?,
 )
 
 private data class ResolvedSemanticCallTarget(
@@ -135,13 +146,11 @@ internal suspend fun KastPluginBackend.semanticGraphOperation(query: ParsedSeman
         val identity = SemanticGraphQueryIdentity(query.filePaths, query.removedFilePaths, query.pageSize)
         val continuation = query.continuation
         if (continuation != null) {
+            val issuedAtNanos = semanticGraphContinuationIssuedAtNanos.remove(continuation)
             val consumed = semanticGraphContinuations.consume(
                 continuation,
                 identity,
                 ContinuationStateTransition { state ->
-                    if (store.readGeneration().value != state.snapshot.generation.value) {
-                        throw ConflictException("Semantic graph generation changed after the preceding page")
-                    }
                     val projection = SemanticGraphContinuationProjection(state.snapshot, state.nextOffset)
                     val nextOffset = semanticGraphNextOffset(
                         state.snapshot,
@@ -159,11 +168,12 @@ internal suspend fun KastPluginBackend.semanticGraphOperation(query: ParsedSeman
             return@withContext when (consumed) {
                 is ContinuationConsumeResult.Completed ->
                     semanticGraphPage(consumed.output, identity.pageSize.value, null)
-                is ContinuationConsumeResult.Reissued ->
+                is ContinuationConsumeResult.Reissued -> {
+                    rememberSemanticGraphContinuation(consumed.token, issuedAtNanos)
                     semanticGraphPage(consumed.output, identity.pageSize.value, consumed.token)
-                is ContinuationConsumeResult.Rejected -> throw ConflictException(
-                    "The semantic graph page token is unknown, expired, consumed, or belongs to another query",
-                )
+                }
+                is ContinuationConsumeResult.Rejected ->
+                    throw semanticGraphContinuationFailure(consumed.failure, issuedAtNanos)
             }
         }
 
@@ -176,7 +186,9 @@ internal suspend fun KastPluginBackend.semanticGraphOperation(query: ParsedSeman
                 identity,
                 SemanticGraphContinuationState(snapshot, nextOffset),
             )) {
-                is ContinuationIssueResult.Issued -> issued.token
+                is ContinuationIssueResult.Issued -> issued.token.also { token ->
+                    rememberSemanticGraphContinuation(token)
+                }
                 is ContinuationIssueResult.Rejected -> throw ConflictException(
                     "Semantic graph continuation store is unavailable",
                 )
@@ -185,20 +197,58 @@ internal suspend fun KastPluginBackend.semanticGraphOperation(query: ParsedSeman
             null
         }
         semanticGraphPage(SemanticGraphContinuationProjection(snapshot, 0), identity.pageSize.value, nextToken)
-    }
+}
+
+private fun KastPluginBackend.rememberSemanticGraphContinuation(
+    token: SemanticGraphPageToken,
+    originalIssuedAtNanos: Long? = null,
+) {
+    semanticGraphContinuationIssuedAtNanos[token] = originalIssuedAtNanos ?: semanticGraphContinuationClock.nowNanos()
+}
+
+private fun KastPluginBackend.semanticGraphContinuationFailure(
+    failure: ContinuationAccessFailure,
+    issuedAtNanos: Long?,
+): RuntimeException = when {
+    failure == ContinuationAccessFailure.UnknownToken &&
+        issuedAtNanos != null &&
+        semanticGraphContinuationClock.nowNanos() - issuedAtNanos >=
+        Math.multiplyExact(limits.continuationTtlMillis, 1_000_000L) -> SemanticGraphSnapshotExpiredException()
+    failure == ContinuationAccessFailure.ExpiredToken -> SemanticGraphSnapshotExpiredException()
+    failure == ContinuationAccessFailure.StoreClosed -> SemanticGraphSnapshotExpiredException("serverClosed")
+    failure == ContinuationAccessFailure.QueryMismatch -> InvalidSemanticGraphCursorException("queryMismatch")
+    failure == ContinuationAccessFailure.TokenCollision -> InvalidSemanticGraphCursorException("tokenCollision")
+    else -> InvalidSemanticGraphCursorException("unknown")
+}
 
 private fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSemanticGraphQuery): SemanticGraphSnapshot {
     val store = requireNotNull(semanticGraphStore)
     val selectedPaths = query.filePaths.map(::toRelativeSemanticGraphPath)
     val removedPaths = query.removedFilePaths.map(::toRelativeSemanticGraphPath)
+    val requestedFiles = query.filePaths.zip(selectedPaths).map { (absolutePath, relativePath) ->
+        val file = findKtFile(absolutePath.value.value)
+        RequestedSemanticGraphFile(file, relativePath, sha256(file.text))
+    }
+    val reusableFiles = reusableSemanticGraphFiles(
+        persisted = store.readSemanticGraph(selectedPaths),
+        requestedFiles = requestedFiles,
+        configurationFingerprint = semanticGraphConfigurationFingerprint,
+    )
     val updates = mutableListOf<SemanticGraphFileIndexUpdate>()
     val coverage = mutableListOf<SemanticGraphFileCoverage>()
     val extractedBoundarySymbols = mutableMapOf<SemanticGraphSymbolKey, SemanticGraphSymbol>()
     var omittedExternalTargetCount = 0
 
-    query.filePaths.zip(selectedPaths).forEach { (absolutePath, relativePath) ->
-        val file = findKtFile(absolutePath.value.value)
-        val contentHash = sha256(file.text)
+    query.filePaths.zip(requestedFiles).forEach { (absolutePath, requestedFile) ->
+        val reusable = reusableFiles[requestedFile.path]
+        if (reusable != null) {
+            coverage += reusable.coverage.copy(status = SemanticGraphFileStatus.CACHED)
+            omittedExternalTargetCount = Math.addExact(
+                omittedExternalTargetCount,
+                reusable.omittedExternalTargetCount.value,
+            )
+            return@forEach
+        }
         val diagnostics = analyzeDiagnosticsFileInReadEpoch(absolutePath.value)
         if (diagnostics.status.state.name != "ANALYZED") {
             throw ValidationException(
@@ -214,20 +264,26 @@ private fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSemanticGr
                 line = LineNumber(diagnostic.location.startLine.coerceAtLeast(1)),
             )
         }
-        val extracted = extractSemanticGraphFile(file, relativePath, contentHash, evidence)
+        val extracted = extractSemanticGraphFile(
+            requestedFile.file,
+            requestedFile.path,
+            requestedFile.contentHash,
+            evidence,
+            semanticGraphConfigurationFingerprint,
+        )
         updates += extracted.update
         extracted.boundarySymbols.forEach { symbol ->
             extractedBoundarySymbols[symbol.canonicalKey] = symbol
         }
         coverage += SemanticGraphFileCoverage(
-            path = relativePath,
-            contentHash = contentHash,
+            path = requestedFile.path,
+            contentHash = requestedFile.contentHash,
             status = SemanticGraphFileStatus.REFRESHED,
             diagnostics = evidence,
         )
         omittedExternalTargetCount = Math.addExact(
             omittedExternalTargetCount,
-            extracted.omittedExternalTargetCount,
+            extracted.update.omittedExternalTargetCount.value,
         )
     }
 
@@ -239,7 +295,8 @@ private fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSemanticGr
     }
     val persisted = store.readSemanticGraph(selectedPaths)
     val selectedSymbolKeys = persisted.symbols.mapTo(mutableSetOf(), SemanticGraphSymbol::canonicalKey)
-    val boundarySymbols = extractedBoundarySymbols.values
+    val boundarySymbols = (persisted.boundarySymbols + extractedBoundarySymbols.values)
+        .distinctBy(SemanticGraphSymbol::canonicalKey)
         .filterNot { symbol -> symbol.canonicalKey in selectedSymbolKeys }
         .sortedBy(SemanticGraphSymbol::canonicalKey)
     val availableTargetKeys = selectedSymbolKeys + boundarySymbols.map(SemanticGraphSymbol::canonicalKey)
@@ -266,11 +323,39 @@ private fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSemanticGr
     )
 }
 
+private fun KastPluginBackend.reusableSemanticGraphFiles(
+    persisted: SemanticGraphIndexSnapshot,
+    requestedFiles: List<RequestedSemanticGraphFile>,
+    configurationFingerprint: BuildClasspathFingerprint?,
+): Map<SemanticGraphSourcePath, SemanticGraphFileIndexRecord> {
+    if (configurationFingerprint == null) return emptyMap()
+    val requestedByPath = requestedFiles.associateBy(RequestedSemanticGraphFile::path)
+    val availableTargetKeys = (persisted.symbols + persisted.boundarySymbols)
+        .mapTo(mutableSetOf(), SemanticGraphSymbol::canonicalKey)
+    val relationsByPath = persisted.relations.groupBy(SemanticGraphRelation::sourcePath)
+    return persisted.fileRecords.filter { record ->
+        val requested = requestedByPath[record.coverage.path]
+        requested != null &&
+            record.coverage.contentHash == requested.contentHash &&
+            record.configurationFingerprint == configurationFingerprint &&
+            record.dependencyContentHashes.all { (path, expectedHash) ->
+                val target = runCatching {
+                    findKtFile(workspaceRoot.resolve(path.value).normalize().toString())
+                }.getOrNull()
+                target != null && sha256(target.text) == expectedHash
+            } &&
+            relationsByPath[record.coverage.path].orEmpty().all { relation ->
+                relation.targetKey in availableTargetKeys
+            }
+    }.associateBy { record -> record.coverage.path }
+}
+
 private fun KastPluginBackend.extractSemanticGraphFile(
     file: KtFile,
     path: SemanticGraphSourcePath,
     contentHash: SemanticGraphSha256,
     diagnostics: List<SemanticGraphDiagnosticEvidence>,
+    configurationFingerprint: BuildClasspathFingerprint?,
 ): ExtractedSemanticGraphFile {
     val declarations = PsiTreeUtil.findChildrenOfType(file, KtNamedDeclaration::class.java)
         .filter { declaration -> projectableKind(declaration) != null }
@@ -287,6 +372,7 @@ private fun KastPluginBackend.extractSemanticGraphFile(
     )
     val symbols = listOf(fileSymbol) + symbolByDeclaration.values
     val boundarySymbols = mutableMapOf<SemanticGraphSymbolKey, SemanticGraphSymbol>()
+    val dependencyContentHashes = mutableMapOf<SemanticGraphSourcePath, SemanticGraphSha256>()
     val relations = mutableListOf<SemanticGraphRelation>()
     declarations.forEach { declaration ->
         val symbol = symbolByDeclaration.getValue(declaration)
@@ -322,6 +408,9 @@ private fun KastPluginBackend.extractSemanticGraphFile(
             val source = nearestProjectedOwner(call, symbolByDeclaration) ?: fileSymbol
             val semanticTarget = target.element?.let { semanticTarget(it, path) }
             if (semanticTarget != null) {
+                semanticTarget.dependencyContentHash?.let { (targetPath, targetHash) ->
+                    dependencyContentHashes[targetPath] = targetHash
+                }
                 semanticTarget.boundarySymbol?.let { symbol ->
                     boundarySymbols[symbol.canonicalKey] = symbol
                 }
@@ -354,6 +443,9 @@ private fun KastPluginBackend.extractSemanticGraphFile(
             val target = entry.typeReference?.resolveTypeTarget()
             val semanticTarget = target?.let { semanticTarget(it, path) }
             if (semanticTarget != null) {
+                semanticTarget.dependencyContentHash?.let { (targetPath, targetHash) ->
+                    dependencyContentHashes[targetPath] = targetHash
+                }
                 semanticTarget.boundarySymbol?.let { symbol ->
                     boundarySymbols[symbol.canonicalKey] = symbol
                 }
@@ -379,6 +471,9 @@ private fun KastPluginBackend.extractSemanticGraphFile(
                     val semanticTarget = target?.let { semanticTarget(it, path) }
                     val source = nearestProjectedOwner(reference, symbolByDeclaration) ?: fileSymbol
                     if (semanticTarget != null) {
+                        semanticTarget.dependencyContentHash?.let { (targetPath, targetHash) ->
+                            dependencyContentHashes[targetPath] = targetHash
+                        }
                         semanticTarget.boundarySymbol?.let { symbol ->
                             boundarySymbols[symbol.canonicalKey] = symbol
                         }
@@ -407,11 +502,13 @@ private fun KastPluginBackend.extractSemanticGraphFile(
             contentHash = contentHash,
             status = SemanticGraphFileStatus.REFRESHED,
             diagnostics = diagnostics,
+            configurationFingerprint = configurationFingerprint,
+            omittedExternalTargetCount = NonNegativeInt(omittedExternalTargetCount),
+            dependencyContentHashes = dependencyContentHashes,
             symbols = symbols,
             relations = relations.distinct().sortedWith(semanticGraphRelationOrder),
         ),
         boundarySymbols = boundarySymbols.values.sortedBy(SemanticGraphSymbol::canonicalKey),
-        omittedExternalTargetCount = omittedExternalTargetCount,
     )
 }
 
@@ -471,6 +568,7 @@ private fun KastPluginBackend.semanticTarget(
     return ResolvedSemanticTarget(
         key = symbol.canonicalKey,
         boundarySymbol = symbol.takeUnless { targetPath == sourcePath },
+        dependencyContentHash = (targetPath to sha256(targetFile.text)).takeUnless { targetPath == sourcePath },
     )
 }
 

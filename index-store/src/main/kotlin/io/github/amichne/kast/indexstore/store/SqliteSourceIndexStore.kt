@@ -19,6 +19,7 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphSymbol
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
+import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexRecord
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphIndexSnapshot
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleProjectIdentity
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleSourceSetIdentity
@@ -41,6 +42,7 @@ import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
 import io.github.amichne.kast.indexstore.snapshot.GitObjectId
+import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.indexstore.snapshot.PublicationEvidence
 import io.github.amichne.kast.indexstore.store.cache.defaultCacheJson
@@ -239,8 +241,11 @@ class SqliteSourceIndexStore private constructor(
             "semantic_graph_files" to mapOf(
                 "path" to true,
                 "content_hash" to true,
+                "configuration_fingerprint" to false,
                 "refresh_status" to true,
                 "diagnostics_json" to true,
+                "omitted_external_target_count" to true,
+                "dependency_content_hashes_json" to true,
             ),
             "semantic_graph_symbols" to mapOf(
                 "canonical_key" to true,
@@ -632,8 +637,11 @@ class SqliteSourceIndexStore private constructor(
             """CREATE TABLE IF NOT EXISTS semantic_graph_files (
                 path TEXT PRIMARY KEY NOT NULL,
                 content_hash TEXT NOT NULL,
+                configuration_fingerprint TEXT,
                 refresh_status TEXT NOT NULL CHECK(refresh_status IN ('REFRESHED','CACHED','REMOVED')),
-                diagnostics_json TEXT NOT NULL
+                diagnostics_json TEXT NOT NULL,
+                omitted_external_target_count INTEGER NOT NULL CHECK(omitted_external_target_count >= 0),
+                dependency_content_hashes_json TEXT NOT NULL
             )""",
         )
 
@@ -1785,13 +1793,24 @@ class SqliteSourceIndexStore private constructor(
                 updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
                     deleteSemanticGraphFile(conn, update.path.value)
                     conn.prepareStatement(
-                        """INSERT INTO semantic_graph_files(path, content_hash, refresh_status, diagnostics_json)
-                           VALUES (?, ?, ?, ?)""",
+                        """INSERT INTO semantic_graph_files(
+                               path, content_hash, configuration_fingerprint, refresh_status,
+                               diagnostics_json, omitted_external_target_count, dependency_content_hashes_json
+                           ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
                     ).use { statement ->
                         statement.setString(1, update.path.value)
                         statement.setString(2, update.contentHash.value)
-                        statement.setString(3, update.status.name)
-                        statement.setString(4, Json.encodeToString(update.diagnostics))
+                        statement.setString(3, update.configurationFingerprint?.value)
+                        statement.setString(4, update.status.name)
+                        statement.setString(5, Json.encodeToString(update.diagnostics))
+                        statement.setInt(6, update.omittedExternalTargetCount.value)
+                        statement.setString(
+                            7,
+                            Json.encodeToString(
+                                update.dependencyContentHashes.mapKeys { (path, _) -> path.value }
+                                    .mapValues { (_, hash) -> hash.value },
+                            ),
+                        )
                         statement.executeUpdate()
                     }
                     conn.prepareStatement(
@@ -1862,8 +1881,10 @@ class SqliteSourceIndexStore private constructor(
         synchronized(writeLock) {
             val conn = connection()
             val generation = readGenerationInTransaction(conn)
-            val files = conn.prepareStatement(
-                "SELECT path, content_hash, refresh_status, diagnostics_json FROM semantic_graph_files ORDER BY path",
+            val fileRecords = conn.prepareStatement(
+                """SELECT path, content_hash, configuration_fingerprint, refresh_status,
+                          diagnostics_json, omitted_external_target_count, dependency_content_hashes_json
+                   FROM semantic_graph_files ORDER BY path""",
             ).use { statement ->
                 val rows = statement.executeQuery()
                 buildList {
@@ -1871,39 +1892,18 @@ class SqliteSourceIndexStore private constructor(
                         val path = rows.getString(1)
                         if (path in scope) {
                             add(
-                                SemanticGraphFileCoverage(
-                                    path = SemanticGraphSourcePath.parse(path),
-                                    contentHash = rows.getString(2)?.let(SemanticGraphSha256::parse),
-                                    status = SemanticGraphFileStatus.valueOf(rows.getString(3)),
-                                    diagnostics = Json.decodeFromString(rows.getString(4)),
-                                ),
-                            )
-                        }
-                    }
-                }
-            }
-            val symbols = conn.prepareStatement(
-                """SELECT canonical_key, kind, name, fq_name, signature, owner_key,
-                          path, start_offset, end_offset, line
-                   FROM semantic_graph_symbols ORDER BY canonical_key""",
-            ).use { statement ->
-                val rows = statement.executeQuery()
-                buildList {
-                    while (rows.next()) {
-                        val path = rows.getString(7)
-                        if (path in scope) {
-                            add(
-                                SemanticGraphSymbol(
-                                    canonicalKey = SemanticGraphSymbolKey.parse(rows.getString(1)),
-                                    kind = SemanticGraphSymbolKind.valueOf(rows.getString(2)),
-                                    name = NonBlankString(rows.getString(3)),
-                                    fqName = rows.getString(4)?.let(::FqName),
-                                    signature = rows.getString(5)?.let(::NonBlankString),
-                                    ownerKey = rows.getString(6)?.let(SemanticGraphSymbolKey::parse),
-                                    path = SemanticGraphSourcePath.parse(path),
-                                    startOffset = ByteOffset(rows.getInt(8)),
-                                    endOffset = ByteOffset(rows.getInt(9)),
-                                    line = LineNumber(rows.getInt(10)),
+                                SemanticGraphFileIndexRecord(
+                                    coverage = SemanticGraphFileCoverage(
+                                        path = SemanticGraphSourcePath.parse(path),
+                                        contentHash = rows.getString(2)?.let(SemanticGraphSha256::parse),
+                                        status = SemanticGraphFileStatus.valueOf(rows.getString(4)),
+                                        diagnostics = Json.decodeFromString(rows.getString(5)),
+                                    ),
+                                    configurationFingerprint = rows.getString(3)?.let(BuildClasspathFingerprint::parse),
+                                    omittedExternalTargetCount = NonNegativeInt(rows.getInt(6)),
+                                    dependencyContentHashes = Json.decodeFromString<Map<String, String>>(rows.getString(7))
+                                        .mapKeys { (path, _) -> SemanticGraphSourcePath.parse(path) }
+                                        .mapValues { (_, hash) -> SemanticGraphSha256.parse(hash) },
                                 ),
                             )
                         }
@@ -1937,7 +1937,42 @@ class SqliteSourceIndexStore private constructor(
                     }
                 }
             }
-            return SemanticGraphIndexSnapshot(generation, files, symbols, relations)
+            val targetKeys = relations.mapTo(mutableSetOf(), SemanticGraphRelation::targetKey)
+            val selectedSymbols = mutableListOf<SemanticGraphSymbol>()
+            val boundarySymbols = mutableListOf<SemanticGraphSymbol>()
+            conn.prepareStatement(
+                """SELECT canonical_key, kind, name, fq_name, signature, owner_key,
+                          path, start_offset, end_offset, line
+                   FROM semantic_graph_symbols ORDER BY canonical_key""",
+            ).use { statement ->
+                val rows = statement.executeQuery()
+                while (rows.next()) {
+                    val key = SemanticGraphSymbolKey.parse(rows.getString(1))
+                    val path = rows.getString(7)
+                    if (path in scope || key in targetKeys) {
+                        val symbol = SemanticGraphSymbol(
+                            canonicalKey = key,
+                            kind = SemanticGraphSymbolKind.valueOf(rows.getString(2)),
+                            name = NonBlankString(rows.getString(3)),
+                            fqName = rows.getString(4)?.let(::FqName),
+                            signature = rows.getString(5)?.let(::NonBlankString),
+                            ownerKey = rows.getString(6)?.let(SemanticGraphSymbolKey::parse),
+                            path = SemanticGraphSourcePath.parse(path),
+                            startOffset = ByteOffset(rows.getInt(8)),
+                            endOffset = ByteOffset(rows.getInt(9)),
+                            line = LineNumber(rows.getInt(10)),
+                        )
+                        if (path in scope) selectedSymbols += symbol else boundarySymbols += symbol
+                    }
+                }
+            }
+            return SemanticGraphIndexSnapshot(
+                generation,
+                fileRecords,
+                selectedSymbols,
+                boundarySymbols,
+                relations,
+            )
         }
     }
 

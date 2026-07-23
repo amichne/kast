@@ -160,6 +160,12 @@ pub struct AgentGraphifyArgs {
     /// Maximum Kotlin files analyzed by one semantic-graph RPC.
     #[arg(long, default_value_t = 25, value_parser = clap::value_parser!(u16).range(1..=500))]
     pub batch_size: u16,
+    /// Resume completed partitions from the durable checkpoint beside the output file.
+    #[arg(long)]
+    pub resume: bool,
+    /// Emit periodic extraction progress to stderr.
+    #[arg(long)]
+    pub progress: bool,
 }
 
 #[derive(Debug, Args, Clone)]
