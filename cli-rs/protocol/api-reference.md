@@ -1365,19 +1365,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         ],
                         "omittedExternalTargetCount": 0
                     },
-                    "symbols": [
-                        {
-                            "canonicalKey": "file:src/Sample.kt",
-                            "kind": "FILE",
-                            "name": "Sample.kt",
-                            "path": "src/Sample.kt",
-                            "startOffset": 0,
-                            "endOffset": 56,
-                            "line": 1
-                        }
-                    ],
-                    "boundarySymbols": [],
-                    "relations": []
+                    "symbolCount": 1,
+                    "edgeOccurrenceCount": 0
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
