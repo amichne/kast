@@ -69,7 +69,8 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
     fs::create_dir_all(&backups)?;
     let home = manifest::home_dir();
     let user_command = home.join(".local/bin/kast");
-    let user_command_target = &targets.resolved.active_binary;
+    let user_command_is_managed = fs::read_link(&user_command)
+        .is_ok_and(|target| target.starts_with(&targets.current_link));
     let mut legacy = vec![
         (
             targets.resolved.install_root.join("install.json"),
@@ -85,7 +86,7 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
             "legacy-homebrew-install.json",
         ),
     ];
-    if fs::read_link(&user_command).ok().as_deref() != Some(user_command_target.as_path()) {
+    if !user_command_is_managed {
         legacy.push((user_command, "legacy-local-bin-kast"));
     }
     let mut archived = None;
