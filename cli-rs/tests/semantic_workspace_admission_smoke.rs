@@ -557,6 +557,119 @@ fn agent_verify_never_runs_configured_idea_launch_command() {
     );
 }
 
+#[cfg(target_os = "macos")]
+#[test]
+fn macos_runtime_up_requires_and_uses_only_kast_intellij_bin() {
+    let fixture = tempfile::tempdir().expect("launch fixture");
+    let workspace = fixture.path().join("workspace");
+    let home = fixture.path().join("home");
+    let kast_home = fixture.path().join("kast-home");
+    let config_home = kast_home.join("current/config");
+    let configured_marker = fixture.path().join("configured-command-launched");
+    let configured_command = fixture.path().join("configured-command");
+    let selected_marker = fixture.path().join("selected-command-launched");
+    let selected_command = fixture.path().join("selected-command");
+    write_gradle_workspace(&workspace);
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::write(
+        &configured_command,
+        format!("#!/bin/sh\ntouch '{}'\n", configured_marker.display()),
+    )
+    .expect("configured command");
+    let mut permissions = std::fs::metadata(&configured_command)
+        .expect("configured command metadata")
+        .permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&configured_command, permissions)
+        .expect("configured command executable");
+    std::fs::write(
+        &selected_command,
+        format!("#!/bin/sh\ntouch '{}'\n", selected_marker.display()),
+    )
+    .expect("selected command");
+    let mut permissions = std::fs::metadata(&selected_command)
+        .expect("selected command metadata")
+        .permissions();
+    permissions.set_mode(0o755);
+    std::fs::set_permissions(&selected_command, permissions).expect("selected command executable");
+    std::fs::write(
+        config_home.join("config.toml"),
+        format!(
+            "[runtime]\ndefaultBackend = \"headless\"\n\n[runtime.ideaLaunch]\nenabled = false\ncommand = \"{}\"\nwaitTimeoutMillis = 100\n",
+            configured_command.display()
+        ),
+    )
+    .expect("config");
+
+    let missing = kast(&home, &config_home)
+        .env("KAST_HOME", &kast_home)
+        .env_remove("KAST_INTELLIJ_BIN")
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "runtime",
+            "up",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--backend=idea",
+        ])
+        .output()
+        .expect("runtime up without KAST_INTELLIJ_BIN");
+    let missing: serde_json::Value =
+        serde_json::from_slice(&missing.stdout).expect("missing variable JSON");
+    assert_eq!(missing["code"], "KAST_INTELLIJ_BIN_REQUIRED", "{missing:#}");
+
+    let invalid = kast(&home, &config_home)
+        .env("KAST_HOME", &kast_home)
+        .env("KAST_INTELLIJ_BIN", fixture.path().join("missing-idea"))
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "runtime",
+            "up",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--backend=idea",
+        ])
+        .output()
+        .expect("runtime up with invalid KAST_INTELLIJ_BIN");
+    let invalid: serde_json::Value =
+        serde_json::from_slice(&invalid.stdout).expect("invalid variable JSON");
+    assert_eq!(invalid["code"], "KAST_INTELLIJ_BIN_INVALID", "{invalid:#}");
+
+    let selected = kast(&home, &config_home)
+        .env("KAST_HOME", &kast_home)
+        .env("KAST_INTELLIJ_BIN", &selected_command)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "runtime",
+            "up",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--backend=idea",
+        ])
+        .output()
+        .expect("runtime up with selected IntelliJ");
+    let selected: serde_json::Value =
+        serde_json::from_slice(&selected.stdout).expect("selected runtime JSON");
+
+    assert!(
+        selected_marker.exists(),
+        "runtime up must execute KAST_INTELLIJ_BIN before requiring plugin metadata: {selected:#}"
+    );
+    assert!(
+        !configured_marker.exists(),
+        "macOS runtime must not execute runtime.ideaLaunch.command"
+    );
+    assert_eq!(selected["code"], "RUNTIME_TIMEOUT", "{selected:#}");
+}
+
 #[test]
 fn reuse_only_verify_preserves_dead_descriptor_bytes_without_launching() {
     let fixture = tempfile::tempdir().expect("stale descriptor fixture");

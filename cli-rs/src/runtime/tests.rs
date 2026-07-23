@@ -226,6 +226,7 @@ mod tests {
         }
     }
 
+    #[cfg(not(target_os = "macos"))]
     #[test]
     fn idea_launch_is_skipped_unless_enabled_and_idea_is_selected() {
         let workspace = PathBuf::from("/work/kast");
@@ -243,6 +244,26 @@ mod tests {
 
         assert!(selected.is_none());
         assert!(ops.launches.borrow().is_empty());
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn idea_launch_is_required_for_macos_idea_workspaces() {
+        let workspace = PathBuf::from("/work/kast");
+        let config = KastConfig::defaults();
+        let ops = FakeIdeaLaunchOps::ready();
+
+        let selected = maybe_launch_idea_backend(
+            &workspace,
+            &config,
+            RuntimeBackendPreference::Fixed(BackendName::Idea),
+            false,
+            &ops,
+        )
+        .unwrap();
+
+        assert!(selected.is_some());
+        assert_eq!(ops.launches.borrow().len(), 1);
     }
 
     #[test]

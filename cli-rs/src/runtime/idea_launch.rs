@@ -12,10 +12,13 @@ trait IdeaBackendLaunchOps {
 struct SystemIdeaBackendLaunchOps;
 
 impl IdeaBackendLaunchOps for SystemIdeaBackendLaunchOps {
-    fn launch(&self, command: &Path, workspace_root: &Path) -> Result<()> {
-        if command == Path::new("idea") && launch_default_jetbrains_app(workspace_root) {
-            return Ok(());
-        }
+    fn launch(&self, _command: &Path, workspace_root: &Path) -> Result<()> {
+        #[cfg(target_os = "macos")]
+        let selected_command = macos_intellij_bin()?;
+        #[cfg(target_os = "macos")]
+        let command = selected_command.as_path();
+        #[cfg(not(target_os = "macos"))]
+        let command = _command;
         let launch_error = match Command::new(command).arg(workspace_root).spawn() {
             Ok(_) => return Ok(()),
             Err(error) => error,
@@ -55,19 +58,33 @@ impl IdeaBackendLaunchOps for SystemIdeaBackendLaunchOps {
 }
 
 #[cfg(target_os = "macos")]
-fn launch_default_jetbrains_app(workspace_root: &Path) -> bool {
-    ["IntelliJ IDEA", "Android Studio"].into_iter().any(|app_name| {
-        Command::new("open")
-            .args(["-g", "-n", "-a", app_name])
-            .arg(workspace_root)
-            .output()
-            .is_ok_and(|output| output.status.success())
-    })
-}
+fn macos_intellij_bin() -> Result<PathBuf> {
+    use std::os::unix::fs::PermissionsExt;
 
-#[cfg(not(target_os = "macos"))]
-fn launch_default_jetbrains_app(_workspace_root: &Path) -> bool {
-    false
+    let Some(value) =
+        std::env::var_os("KAST_INTELLIJ_BIN").filter(|value| !value.is_empty())
+    else {
+        return Err(CliError::new(
+            "KAST_INTELLIJ_BIN_REQUIRED",
+            "macOS IDEA autolaunch requires KAST_INTELLIJ_BIN. Set it to the exact IntelliJ executable, for example `/Applications/IntelliJ IDEA.app/Contents/MacOS/idea`.",
+        ));
+    };
+    let path = PathBuf::from(value);
+    let valid = path.is_absolute()
+        && fs::metadata(&path).is_ok_and(|metadata| {
+            metadata.is_file() && metadata.permissions().mode() & 0o111 != 0
+        });
+    if !valid {
+        let mut error = CliError::new(
+            "KAST_INTELLIJ_BIN_INVALID",
+            "KAST_INTELLIJ_BIN must be an absolute path to an executable IntelliJ binary.",
+        );
+        error
+            .details
+            .insert("KAST_INTELLIJ_BIN".to_string(), path.display().to_string());
+        return Err(error);
+    }
+    Ok(path)
 }
 
 fn maybe_launch_idea_backend(
@@ -81,7 +98,7 @@ fn maybe_launch_idea_backend(
         return Ok(None);
     }
     let launch_config = &config.runtime.idea_launch;
-    if !launch_config.enabled {
+    if !launch_config.enabled && !cfg!(target_os = "macos") {
         return Ok(None);
     }
     if !config.backends.idea.enabled {
