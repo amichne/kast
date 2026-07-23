@@ -95,7 +95,7 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation(gradlePluginLibs)
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:6.1.0")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.0")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.2")
 }
 
 val headlessRuntimeElements: Configuration by configurations.creating {
