@@ -31,9 +31,10 @@ Options:
   -h, --help              Show this help.
 
 Environment:
-  KAST_HOME          Active install root. Defaults to ~/.local/share/kast.
-  KAST_RELEASES_URL  Release base URL. Defaults to the Kast GitHub releases.
-  NONINTERACTIVE=1   Never close a detected JetBrains IDE.
+  KAST_HOME           Active install root. Defaults to ~/.local/share/kast.
+  KAST_INTELLIJ_BIN   Exact IntelliJ executable required for macOS autolaunch.
+  KAST_RELEASES_URL   Release base URL. Defaults to the Kast GitHub releases.
+  NONINTERACTIVE=1    Never close a detected JetBrains IDE.
 USAGE
 }
 
@@ -170,6 +171,7 @@ reconcile_codex() {
 JETBRAINS_PROCESS_PIDS=()
 JETBRAINS_PROCESS_PRODUCTS=()
 JETBRAINS_PROCESS_EXECUTABLES=()
+DETECTED_INTELLIJ_BIN=""
 
 detect_running_jetbrains_ides() {
   local process_table pid executable product
@@ -191,9 +193,23 @@ detect_running_jetbrains_ides() {
   done <<<"$process_table"
 }
 
+remember_running_intellij_bin() {
+  local index executable
+  for ((index = 0; index < ${#JETBRAINS_PROCESS_EXECUTABLES[@]}; index += 1)); do
+    [[ "${JETBRAINS_PROCESS_PRODUCTS[$index]}" == "IntelliJ IDEA" ]] || continue
+    executable="${JETBRAINS_PROCESS_EXECUTABLES[$index]}"
+    if [[ -n "$DETECTED_INTELLIJ_BIN" && "$DETECTED_INTELLIJ_BIN" != "$executable" ]]; then
+      DETECTED_INTELLIJ_BIN=""
+      return
+    fi
+    DETECTED_INTELLIJ_BIN="$executable"
+  done
+}
+
 require_jetbrains_ides_closed() {
   local index reply="" deadline
   detect_running_jetbrains_ides
+  remember_running_intellij_bin
   ((${#JETBRAINS_PROCESS_PIDS[@]} > 0)) || return 0
   ui_warning "A JetBrains IDE must close before its plugin is updated"
   for ((index = 0; index < ${#JETBRAINS_PROCESS_PIDS[@]}; index += 1)); do
@@ -216,6 +232,48 @@ require_jetbrains_ides_closed() {
     sleep 1
   done
   die "timed out waiting for the detected JetBrains IDE to stop"
+}
+
+detect_installed_intellij_bin() {
+  local candidate found=""
+  if [[ -n "${KAST_INTELLIJ_BIN:-}" ]]; then
+    if [[ "$KAST_INTELLIJ_BIN" == /* && -f "$KAST_INTELLIJ_BIN" && -x "$KAST_INTELLIJ_BIN" ]]; then
+      DETECTED_INTELLIJ_BIN="$KAST_INTELLIJ_BIN"
+    else
+      DETECTED_INTELLIJ_BIN=""
+      ui_warning "KAST_INTELLIJ_BIN is not an absolute executable file"
+    fi
+    return 0
+  fi
+  [[ -z "$DETECTED_INTELLIJ_BIN" ]] || return 0
+  while IFS= read -r candidate; do
+    [[ -f "$candidate" && -x "$candidate" ]] || continue
+    if [[ -n "$found" && "$found" != "$candidate" ]]; then
+      ui_warning "Multiple IntelliJ executables detected; set KAST_INTELLIJ_BIN explicitly"
+      return
+    fi
+    found="$candidate"
+  done < <(
+    find \
+      "$HOME/Applications" \
+      /Applications \
+      "$HOME/Library/Application Support/JetBrains/Toolbox/apps" \
+      -path '*/IntelliJ IDEA*.app/Contents/MacOS/idea' \
+      -print 2>/dev/null
+  )
+  DETECTED_INTELLIJ_BIN="$found"
+}
+
+report_intellij_bin() {
+  local quoted
+  detect_installed_intellij_bin
+  if [[ -z "$DETECTED_INTELLIJ_BIN" ]]; then
+    ui_warning "IntelliJ was not detected; set KAST_INTELLIJ_BIN before using macOS autolaunch"
+    return
+  fi
+  printf -v quoted '%q' "$DETECTED_INTELLIJ_BIN"
+  ui_success "IntelliJ executable detected"
+  ui_detail "export KAST_INTELLIJ_BIN=${quoted}"
 }
 
 prompt_boolean() {
@@ -455,6 +513,7 @@ main() {
       ui_success "Installer prepared"
       require ps
       require_jetbrains_ides_closed
+      report_intellij_bin
       if ((configure == 1)); then
         config_defaults="${setup_scratch}/config.toml"
         configure_idea_defaults "$config_defaults"

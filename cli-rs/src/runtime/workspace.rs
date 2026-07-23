@@ -33,7 +33,18 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         config::PathResolutionMode::Cli,
     )?;
     let preference = runtime_backend_preference(&config, args.backend_name);
-    validate_macos_workspace_for_preference(&workspace_root, preference)?;
+    #[cfg(target_os = "macos")]
+    if preference.fixed_backend() == Some(BackendName::Idea)
+        && !is_gradle_workspace(&workspace_root)
+    {
+        return Err(CliError::new(
+            "SEMANTIC_WORKSPACE_UNSUPPORTED",
+            format!(
+                "{} is not a supported Kotlin Gradle workspace. Select a workspace containing settings.gradle(.kts) or build.gradle(.kts).",
+                workspace_root.display()
+            ),
+        ));
+    }
     let stale_descriptor_policy = if args.no_auto_start.unwrap_or(false) {
         StaleDescriptorPolicy::Preserve
     } else {
@@ -55,6 +66,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         preference.backend_filter(),
         args.accept_indexing.unwrap_or(false),
     ) {
+        validate_macos_workspace_for_preference(&workspace_root, preference)?;
         return Ok(WorkspaceEnsureResult {
             workspace_root: workspace_root.display().to_string(),
             descriptor_directory: inspection.descriptor_directory.display().to_string(),
@@ -68,6 +80,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     }
 
     if args.no_auto_start.unwrap_or(false) {
+        validate_macos_workspace_for_preference(&workspace_root, preference)?;
         return Err(no_backend_error(
             &workspace_root,
             preference.backend_filter(),
@@ -82,6 +95,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         args.accept_indexing.unwrap_or(false),
         &idea_launch_ops,
     )? {
+        validate_macos_workspace_for_preference(&workspace_root, preference)?;
         return Ok(WorkspaceEnsureResult {
             workspace_root: workspace_root.display().to_string(),
             descriptor_directory: inspection.descriptor_directory.display().to_string(),
@@ -94,6 +108,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         });
     }
 
+    validate_macos_workspace_for_preference(&workspace_root, preference)?;
     let Some(launch_backend) = fallback_launch_backend(preference) else {
         return Err(CliError::new(
             "IDEA_NOT_RUNNING",
