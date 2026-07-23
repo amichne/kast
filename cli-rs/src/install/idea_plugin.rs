@@ -70,9 +70,9 @@ fn setup_idea_plugin(
             ));
         }
 
-        if directory_sha256(&installed_plugin).ok().as_deref()
-            != Some(extracted_plugin_digest.as_str())
-        {
+        let plugin_is_current = directory_sha256(&installed_plugin).ok().as_deref()
+            == Some(extracted_plugin_digest.as_str());
+        if !plugin_is_current {
             require_jetbrains_ides_closed()?;
         }
         let config_defaults = idea_config_defaults(&targets, config_defaults.as_deref())?;
@@ -86,11 +86,15 @@ fn setup_idea_plugin(
             &bundle_manifest,
             &manifest_digest,
         )?;
-        let plugin_backup = match install_idea_plugin(&extracted_plugin, &installed_plugin) {
-            Ok(backup) => backup,
-            Err(error) => {
-                rollback_activated_bundle(&targets, previous.as_deref())?;
-                return Err(error);
+        let plugin_backup = if plugin_is_current {
+            None
+        } else {
+            match install_idea_plugin(&extracted_plugin, &installed_plugin) {
+                Ok(backup) => Some(backup),
+                Err(error) => {
+                    rollback_activated_bundle(&targets, previous.as_deref())?;
+                    return Err(error);
+                }
             }
         };
         if let Err(error) = verify_idea_plugin_setup(
@@ -101,13 +105,17 @@ fn setup_idea_plugin(
             &release_digest,
             &manifest_digest,
         ) {
-            rollback_idea_plugin(&installed_plugin, plugin_backup.as_deref())?;
+            if let Some(plugin_backup) = &plugin_backup {
+                rollback_idea_plugin(&installed_plugin, plugin_backup.as_deref())?;
+            }
             rollback_activated_bundle(&targets, previous.as_deref())?;
             return Err(error);
         }
 
         if let Err(error) = install_user_command(&targets) {
-            rollback_idea_plugin(&installed_plugin, plugin_backup.as_deref())?;
+            if let Some(plugin_backup) = &plugin_backup {
+                rollback_idea_plugin(&installed_plugin, plugin_backup.as_deref())?;
+            }
             rollback_activated_bundle(&targets, previous.as_deref())?;
             return Err(error);
         }

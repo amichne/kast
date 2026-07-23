@@ -449,6 +449,18 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
+    fn stale_plugin_in_a_running_idea_host_is_rejected() {
+        let mut host = candidate("idea", RuntimeState::Ready, false).descriptor;
+        host.backend_version = "stale".to_string();
+
+        let error = require_current_running_idea_plugin(&host)
+            .expect_err("a stale loaded plugin must be rejected before project opening");
+
+        assert_eq!(error.code, "IDEA_PLUGIN_UPDATE_REQUIRED");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
     fn open_project_request_is_private_exact_root_and_one_shot() {
         use std::os::unix::fs::PermissionsExt;
 

@@ -128,7 +128,9 @@ fn setup_rejects_multiple_supported_plugin_profiles_without_selection() {
 }
 
 #[test]
-fn current_plugin_does_not_require_a_running_ide_to_close() {
+fn matching_plugin_is_not_replaced_while_idea_runs() {
+    use std::os::unix::fs::MetadataExt;
+
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
@@ -155,15 +157,24 @@ fn current_plugin_does_not_require_a_running_ide_to_close() {
         command("closed").status.success(),
         "initial setup should succeed",
     );
+    let installed_plugin = plugins.join("kast/lib/plugin.jar");
+    let plugin_inode = std::fs::metadata(&installed_plugin)
+        .expect("installed plugin")
+        .ino();
+    std::fs::write(kast_home.join("current/bin/kast"), "drifted CLI").expect("drift active CLI");
     let current = command("open");
 
     assert!(
         current.status.success(),
-        "current plugin should remain usable while IDEA runs: {}",
+        "CLI repair should preserve the matching plugin while IDEA runs: {}",
         String::from_utf8_lossy(&current.stdout),
     );
-    let result: serde_json::Value = serde_json::from_slice(&current.stdout).expect("setup result");
-    assert_eq!(result["status"], "CURRENT");
+    assert_eq!(
+        std::fs::metadata(installed_plugin)
+            .expect("preserved plugin")
+            .ino(),
+        plugin_inode,
+    );
 }
 
 #[test]
