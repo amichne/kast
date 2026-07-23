@@ -492,7 +492,7 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn new_worktree_defers_plugin_metadata_until_idea_bootstrap() {
+    fn idea_autolaunch_defers_plugin_metadata_until_bootstrap() {
         let temp = tempfile::tempdir().unwrap();
         std::fs::write(temp.path().join("settings.gradle.kts"), "").unwrap();
         let mut config = KastConfig::defaults();
@@ -505,6 +505,12 @@ mod tests {
         ));
         std::fs::create_dir_all(temp.path().join(".kast/setup")).unwrap();
         std::fs::write(temp.path().join(".kast/setup/workspace.json"), "{}").unwrap();
+        assert!(should_defer_macos_workspace_validation(
+            temp.path(),
+            RuntimeBackendPreference::Fixed(BackendName::Idea),
+            &config,
+        ));
+        config.runtime.idea_launch.enabled = false;
         assert!(!should_defer_macos_workspace_validation(
             temp.path(),
             RuntimeBackendPreference::Fixed(BackendName::Idea),

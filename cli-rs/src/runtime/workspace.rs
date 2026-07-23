@@ -311,20 +311,19 @@ fn validate_macos_workspace_for_preference(
 }
 
 fn should_defer_macos_workspace_validation(
-    workspace_root: &Path,
+    _workspace_root: &Path,
     preference: RuntimeBackendPreference,
     config: &KastConfig,
 ) -> bool {
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (workspace_root, preference, config);
+        let _ = (preference, config);
         false
     }
     #[cfg(target_os = "macos")]
     {
         preference.fixed_backend() == Some(BackendName::Idea)
             && config.runtime.idea_launch.enabled
-            && !workspace_root.join(".kast/setup/workspace.json").is_file()
     }
 }
 
