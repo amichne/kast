@@ -151,9 +151,9 @@ class SqliteSourceIndexStore private constructor(
                     conn.commit()
                     conn.autoCommit = true
                 }
-                initializeRepositoryOverlay(conn)
                 if (requireCurrentSchema) {
                     validateCurrentSchema(conn)
+                    initializeRepositoryOverlay(conn)
                     loadInterningTables(conn)
                 }
                 cachedConnection = conn
@@ -242,6 +242,7 @@ class SqliteSourceIndexStore private constructor(
             val version = readSchemaVersion(conn)
             if (version == SOURCE_INDEX_SCHEMA_VERSION) {
                 validateCurrentSchema(conn)
+                initializeRepositoryOverlay(conn)
                 validatedSchemaConnection = conn
                 loadInterningTables(conn)
                 return true
@@ -253,14 +254,15 @@ class SqliteSourceIndexStore private constructor(
                 createAllTables(conn)
                 writeGenerationInTransaction(conn, SourceIndexGeneration(Math.addExact(previousGeneration.value, 1L)))
                 conn.commit()
-                validateCurrentSchema(conn)
-                validatedSchemaConnection = conn
             } catch (e: Exception) {
                 conn.rollback()
                 throw e
             } finally {
                 conn.autoCommit = true
             }
+            validateCurrentSchema(conn)
+            initializeRepositoryOverlay(conn)
+            validatedSchemaConnection = conn
             loadInterningTables(conn)
             return false
         }

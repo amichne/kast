@@ -24,6 +24,7 @@ import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -233,6 +234,55 @@ class NativeSemanticGraphStoreTest {
         DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
             assertEquals(
                 0,
+                scalarLong(
+                    connection,
+                    "SELECT COUNT(*) FROM repository_overlay_tombstones WHERE path = '${sourcePath.value}'",
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `schema mismatch overlay rebuilds before tombstone seeding`() {
+        val sourcePath = SemanticGraphSourcePath.parse("src/A.kt")
+        val target = snapshotKey('b')
+        val database = sourceIndexDatabasePath(workspaceRoot)
+        Files.createDirectories(database.parent)
+        Files.writeString(
+            database.resolveSibling("repository-overlay.json"),
+            Json.encodeToString(
+                OverlayManifest(
+                    base = snapshotKey('a'),
+                    target = target,
+                    tombstones = emptySet(),
+                    shards = mapOf(
+                        sourcePath.value to ExtractionShardKey(target.compatibility, gitObjectId('c')),
+                    ),
+                ),
+            ),
+        )
+        DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.execute(
+                    "CREATE TABLE schema_version(version INTEGER NOT NULL, generation INTEGER NOT NULL)",
+                )
+                statement.execute(
+                    "INSERT INTO schema_version(version, generation) VALUES (${SOURCE_INDEX_SCHEMA_VERSION - 1}, 0)",
+                )
+            }
+        }
+
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            assertFalse(store.ensureSchema())
+        }
+
+        DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
+            assertEquals(
+                SOURCE_INDEX_SCHEMA_VERSION.toLong(),
+                scalarLong(connection, "SELECT version FROM schema_version"),
+            )
+            assertEquals(
+                1,
                 scalarLong(
                     connection,
                     "SELECT COUNT(*) FROM repository_overlay_tombstones WHERE path = '${sourcePath.value}'",
