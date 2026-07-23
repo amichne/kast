@@ -25,7 +25,7 @@ struct NativeGraph {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct NativeGraphOverlayDescriptor {
-    base_database: PathBuf,
+    base_database: Option<PathBuf>,
 }
 
 fn execute_agent_native_graph(args: AgentNativeGraphArgs) -> AgentEnvelope {
@@ -192,7 +192,9 @@ fn native_graph_attach_repository_base(
             format!("Cannot decode {}: {error}", descriptor_path.display()),
         )
     })?;
-    let base = descriptor.base_database;
+    let Some(base) = descriptor.base_database else {
+        return Ok(false);
+    };
     if !base.is_absolute() || !base.is_file() {
         return Err(agent_error(
             "NATIVE_GRAPH_OVERLAY_UNAVAILABLE",
@@ -1191,9 +1193,13 @@ mod native_graph_tests {
     }
 
     #[test]
-    fn native_graph_overlay_descriptor_requires_repository_base() {
-        let error = serde_json::from_str::<NativeGraphOverlayDescriptor>("{}").unwrap_err();
-        assert!(error.to_string().contains("baseDatabase"));
+    fn native_graph_ignores_legacy_overlay_descriptor_without_repository_base() {
+        let temp = tempfile::tempdir().unwrap();
+        let database = temp.path().join("source-index.db");
+        let connection = rusqlite::Connection::open(&database).unwrap();
+        std::fs::write(temp.path().join("repository-overlay.json"), "{}").unwrap();
+
+        assert!(!native_graph_attach_repository_base(&connection, &database).unwrap());
     }
 
     #[test]
