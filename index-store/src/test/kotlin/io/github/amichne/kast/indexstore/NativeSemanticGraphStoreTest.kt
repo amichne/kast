@@ -12,9 +12,17 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphSymbol
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
+import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
+import io.github.amichne.kast.indexstore.snapshot.ExtractionShardKey
+import io.github.amichne.kast.indexstore.snapshot.GitObjectId
+import io.github.amichne.kast.indexstore.snapshot.OverlayManifest
+import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
+import io.github.amichne.kast.indexstore.snapshot.SnapshotKey
 import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -192,6 +200,44 @@ class NativeSemanticGraphStoreTest {
             )
 
             assertTrue(store.readSemanticGraph(listOf(sourcePath)).relations.isEmpty())
+        }
+    }
+
+    @Test
+    fun `reopening an overlay keeps refreshed shard tombstones cleared`() {
+        val sourcePath = SemanticGraphSourcePath.parse("src/A.kt")
+        val target = snapshotKey('b')
+        val overlay = OverlayManifest(
+            base = snapshotKey('a'),
+            target = target,
+            tombstones = emptySet(),
+            shards = mapOf(
+                sourcePath.value to ExtractionShardKey(target.compatibility, gitObjectId('c')),
+            ),
+        )
+        val database = sourceIndexDatabasePath(workspaceRoot)
+        Files.createDirectories(database.parent)
+        Files.writeString(
+            database.resolveSibling("repository-overlay.json"),
+            Json.encodeToString(overlay),
+        )
+
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            store.replaceSemanticGraphFiles(
+                listOf(semanticUpdate(sourcePath, "a", listOf(semanticSymbol("a#source", "source", sourcePath)))),
+            )
+        }
+        SqliteSourceIndexStore(workspaceRoot).use { store -> store.readGeneration() }
+
+        DriverManager.getConnection("jdbc:sqlite:$database").use { connection ->
+            assertEquals(
+                0,
+                scalarLong(
+                    connection,
+                    "SELECT COUNT(*) FROM repository_overlay_tombstones WHERE path = '${sourcePath.value}'",
+                ),
+            )
         }
     }
 
@@ -380,6 +426,15 @@ class NativeSemanticGraphStoreTest {
         boundarySymbols = boundarySymbols,
         relations = relations,
     )
+
+    private fun snapshotKey(character: Char) = SnapshotKey(
+        treeOid = gitObjectId(character),
+        buildClasspathFingerprint = BuildClasspathFingerprint.parse("d".repeat(64)),
+        indexSchema = SOURCE_INDEX_SCHEMA_VERSION,
+        producerVersion = ProducerVersion.parse("test"),
+    )
+
+    private fun gitObjectId(character: Char) = GitObjectId.parse(character.toString().repeat(40))
 
     private companion object {
         const val SCALE_FILE_COUNT = 200

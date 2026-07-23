@@ -184,14 +184,39 @@ class SqliteSourceIndexStore private constructor(
 
     private fun initializeRepositoryOverlay(conn: Connection) {
         val manifest = overlayManifest ?: return
-        conn.prepareStatement(
-            "INSERT OR IGNORE INTO repository_overlay_tombstones(path) VALUES (?)",
-        ).use { statement ->
-            (manifest.tombstones + manifest.shards.keys).sorted().forEach { path ->
-                statement.setString(1, path)
-                statement.addBatch()
+        conn.createStatement().use { statement ->
+            statement.execute(
+                """CREATE TABLE IF NOT EXISTS repository_overlay_state (
+                    target_snapshot TEXT PRIMARY KEY
+                ) WITHOUT ROWID""",
+            )
+        }
+        val previousAutoCommit = conn.autoCommit
+        conn.autoCommit = false
+        try {
+            val shouldSeed = conn.prepareStatement(
+                "INSERT OR IGNORE INTO repository_overlay_state(target_snapshot) VALUES (?)",
+            ).use { statement ->
+                statement.setString(1, manifest.target.directoryName)
+                statement.executeUpdate() == 1
             }
-            statement.executeBatch()
+            if (shouldSeed) {
+                conn.prepareStatement(
+                    "INSERT OR IGNORE INTO repository_overlay_tombstones(path) VALUES (?)",
+                ).use { statement ->
+                    (manifest.tombstones + manifest.shards.keys).sorted().forEach { path ->
+                        statement.setString(1, path)
+                        statement.addBatch()
+                    }
+                    statement.executeBatch()
+                }
+            }
+            conn.commit()
+        } catch (error: Exception) {
+            conn.rollback()
+            throw error
+        } finally {
+            conn.autoCommit = previousAutoCommit
         }
     }
 
@@ -456,6 +481,7 @@ class SqliteSourceIndexStore private constructor(
         stmt.execute("DROP TABLE IF EXISTS semantic_symbols")
         stmt.execute("DROP TABLE IF EXISTS semantic_types")
         stmt.execute("DROP TABLE IF EXISTS semantic_files")
+        stmt.execute("DROP TABLE IF EXISTS repository_overlay_state")
         stmt.execute("DROP TABLE IF EXISTS repository_overlay_tombstones")
         stmt.execute("DROP TABLE IF EXISTS semantic_graph_relations")
         stmt.execute("DROP TABLE IF EXISTS semantic_graph_symbols")
