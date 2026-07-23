@@ -2,6 +2,7 @@ package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.idea.snapshot.CommittedGitTreeResolver
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
+import io.github.amichne.kast.idea.snapshot.gitWorkspaceScope
 import io.github.amichne.kast.idea.snapshot.stableClasspathRootUrl
 import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
@@ -63,6 +64,8 @@ class RepositorySnapshotIntegrationTest {
 
         assertEquals(setOf("A.kt"), subdirectoryTree.files.keys)
         assertNotEquals(repositoryTree.treeOid, subdirectoryTree.treeOid)
+        assertEquals("", gitWorkspaceScope(workspace))
+        assertEquals(" app /", gitWorkspaceScope(projectDirectory))
     }
 
     @Test
@@ -135,14 +138,19 @@ class RepositorySnapshotIntegrationTest {
         git("add", "-A")
         git("commit", "-m", "target")
         val targetDatabase = repositoryDirectory.resolveSibling("${workspace.fileName}-worktree/source-index.db")
-        val overlay = RepositorySnapshotCoordinator(workspace, repositoryDirectory, fingerprint, producer)
-            .prepareWorktreeDatabase(targetDatabase)
+        val coordinator = RepositorySnapshotCoordinator(workspace, repositoryDirectory, fingerprint, producer)
+        val overlay = coordinator.prepareWorktreeDatabase(targetDatabase)
 
         assertEquals(setOf("B.kt"), overlay?.tombstones)
         assertEquals(setOf("A.kt", "C.kt"), overlay?.shards?.keys)
         assertEquals("immutable base", Files.readString(targetDatabase))
         overlay?.shards?.values?.forEach { shard ->
             assertTrue(RepositorySnapshotStore(repositoryDirectory).contentShard(shard)?.let(Files::isRegularFile) == true)
+        }
+        val restartedCoordinator = RepositorySnapshotCoordinator(workspace, repositoryDirectory, fingerprint, producer)
+        assertNull(restartedCoordinator.prepareWorktreeDatabase(targetDatabase))
+        SqliteSourceIndexStore(workspace).use { store ->
+            assertNull(restartedCoordinator.publishCompletedIndex(store))
         }
     }
 

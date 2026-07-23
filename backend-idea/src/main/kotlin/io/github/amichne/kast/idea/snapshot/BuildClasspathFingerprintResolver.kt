@@ -9,6 +9,7 @@ import java.security.MessageDigest
 object BuildClasspathFingerprintResolver {
     fun resolve(project: Project, workspaceIdentity: WorkspaceIdentity): BuildClasspathFingerprint {
         val entries = buildList {
+            add("workspace:${gitWorkspaceScope(workspaceIdentity.workspaceRootPath)}")
             workspaceIdentity.gradleRoot?.let { gradleRoot ->
                 add("settings:${gradleRoot.settingsFileHash.value}")
             }
@@ -21,6 +22,17 @@ object BuildClasspathFingerprintResolver {
         return BuildClasspathFingerprint.parse(digest)
     }
 }
+
+internal fun gitWorkspaceScope(workspaceRoot: java.nio.file.Path): String = runCatching {
+    val process = ProcessBuilder("git", "rev-parse", "--show-prefix")
+        .directory(workspaceRoot.toFile())
+        .redirectError(ProcessBuilder.Redirect.DISCARD)
+        .start()
+    val output = process.inputStream.use { it.readAllBytes() }.toString(Charsets.UTF_8)
+        .removeSuffix("\n")
+        .removeSuffix("\r")
+    output.takeIf { process.waitFor() == 0 } ?: ""
+}.getOrDefault("")
 
 internal fun stableClasspathRootUrl(url: String, workspaceRoot: java.nio.file.Path): String {
     val workspacePath = workspaceRoot.toAbsolutePath().normalize().toString().replace('\\', '/').trimEnd('/')

@@ -22,9 +22,15 @@ class RepositorySnapshotCoordinator(
     private val buildClasspathFingerprint: BuildClasspathFingerprint,
     private val producerVersion: ProducerVersion,
 ) {
+    private var preparedFromSnapshot = false
+
     fun prepareWorktreeDatabase(databasePath: Path): OverlayManifest? {
-        if (Files.exists(databasePath)) return null
         val overlayPath = databasePath.resolveSibling("repository-overlay.json")
+        if (Files.exists(databasePath)) {
+            preparedFromSnapshot = Files.isRegularFile(overlayPath)
+            return null
+        }
+        var stagedDatabase: Path? = null
         return runCatching {
             val committedTree = CommittedGitTreeResolver.resolve(workspaceRoot) ?: return null
             val target = SnapshotManifest(
@@ -44,17 +50,23 @@ class RepositorySnapshotCoordinator(
                 gitBlob(shard.blobOid)?.let { content -> snapshotStore.putContentShard(shard, content) }
             }
             Files.createDirectories(databasePath.parent)
-            Files.copy(snapshotStore.snapshotDatabase(base.key), databasePath)
+            val staged = Files.createTempFile(databasePath.parent, ".source-index-", ".preparing")
+            stagedDatabase = staged
+            Files.copy(snapshotStore.snapshotDatabase(base.key), staged, StandardCopyOption.REPLACE_EXISTING)
             Files.writeString(overlayPath, Json { prettyPrint = true }.encodeToString(overlay))
-            overlay
+            Files.move(staged, databasePath, StandardCopyOption.ATOMIC_MOVE)
+            stagedDatabase = null
+            overlay.also { preparedFromSnapshot = true }
         }.getOrElse {
-            runCatching { Files.deleteIfExists(databasePath) }
+            stagedDatabase?.let { staged -> runCatching { Files.deleteIfExists(staged) } }
             runCatching { Files.deleteIfExists(overlayPath) }
             null
         }
     }
 
     fun publishCompletedIndex(store: SqliteSourceIndexStore): SnapshotPublicationResult? {
+        // ponytail: copied progress has no run identity; compact after publication evidence gains one.
+        if (preparedFromSnapshot) return null
         if (currentBranch() != "main") return null
         val committedTree = CommittedGitTreeResolver.resolve(workspaceRoot) ?: return null
         val key = SnapshotKey(
