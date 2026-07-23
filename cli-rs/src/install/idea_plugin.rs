@@ -215,7 +215,7 @@ fn idea_install_manifest(
         owned_paths: manifest::owned_paths(&targets.resolved),
         shell_rc_patches: vec![],
         repos: vec![],
-        schema_version: crate::SCHEMA_VERSION,
+        schema_version: crate::protocol_schema_versions::INSTALL_RECEIPT_SCHEMA_VERSION,
     }
 }
 

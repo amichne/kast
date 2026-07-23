@@ -32,6 +32,26 @@ fn main() {
     .expect("write generated source-index schema");
     println!("cargo:rustc-env=KAST_SOURCE_INDEX_SCHEMA_VERSION={version}");
 
+    let api_schema_version_file = manifest_dir.join("protocol/api-schema-version.txt");
+    let api_schema_version = read_positive_u32_version(&api_schema_version_file);
+    let install_receipt_schema_version_file =
+        manifest_dir.join("protocol/install-receipt-schema-version.txt");
+    let install_receipt_schema_version =
+        read_positive_u32_version(&install_receipt_schema_version_file);
+    let protocol_schema_versions = format!(
+        "pub(crate) const API_SCHEMA_VERSION: u32 = {api_schema_version};\n\
+         pub(crate) const INSTALL_RECEIPT_SCHEMA_VERSION: u32 = {install_receipt_schema_version};\n"
+    );
+    fs::write(
+        out_dir.join("protocol_schema_versions.rs"),
+        protocol_schema_versions,
+    )
+    .expect("write generated protocol schema versions");
+    println!("cargo:rustc-env=KAST_API_SCHEMA_VERSION={api_schema_version}");
+    println!(
+        "cargo:rustc-env=KAST_INSTALL_RECEIPT_SCHEMA_VERSION={install_receipt_schema_version}"
+    );
+
     let command_catalog = manifest_dir.join("protocol/source/commands.json");
     println!("cargo:rerun-if-changed={}", command_catalog.display());
     let catalog_content = fs::read_to_string(&command_catalog).unwrap_or_else(|error| {
@@ -42,6 +62,18 @@ fn main() {
     });
     fs::write(out_dir.join("lsp_custom_routes.rs"), routes)
         .expect("write generated LSP custom routes");
+}
+
+fn read_positive_u32_version(path: &std::path::Path) -> u32 {
+    println!("cargo:rerun-if-changed={}", path.display());
+    let content = fs::read_to_string(path)
+        .unwrap_or_else(|error| panic!("failed to read {}: {error}", path.display()));
+    let version = content
+        .trim()
+        .parse::<u32>()
+        .unwrap_or_else(|error| panic!("invalid {}: {error}", path.display()));
+    assert!(version > 0, "{} must be positive", path.display());
+    version
 }
 
 fn source_index_schema_version(content: &str) -> Result<i64, String> {

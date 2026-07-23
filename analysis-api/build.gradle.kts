@@ -19,6 +19,27 @@ dependencies {
     testFixturesImplementation(libs.jimfs)
 }
 
+val apiSchemaVersionFile = rootProject.layout.projectDirectory.file(
+    "cli-rs/protocol/api-schema-version.txt",
+)
+val installReceiptSchemaVersionFile = rootProject.layout.projectDirectory.file(
+    "cli-rs/protocol/install-receipt-schema-version.txt",
+)
+val generatedProtocolSchemaVersionsDir = layout.buildDirectory.dir(
+    "generated/protocol-schema-versions/kotlin",
+)
+val generateProtocolSchemaVersions by tasks.registering(WriteProtocolSchemaVersionsTask::class) {
+    apiSchemaVersion.set(apiSchemaVersionFile)
+    installReceiptSchemaVersion.set(installReceiptSchemaVersionFile)
+    outputDirectory.set(generatedProtocolSchemaVersionsDir)
+}
+
+kotlin {
+    sourceSets.named("main") {
+        kotlin.srcDir(generateProtocolSchemaVersions)
+    }
+}
+
 val workspaceFilesContinuationSamples = rootProject.layout.projectDirectory.dir(
     "cli-rs/protocol/source/requests/raw/workspace-files-continuation",
 )

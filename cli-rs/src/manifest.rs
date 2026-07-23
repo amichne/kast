@@ -1,5 +1,5 @@
-use crate::SCHEMA_VERSION;
 use crate::error::{CliError, Result};
+use crate::protocol_schema_versions::INSTALL_RECEIPT_SCHEMA_VERSION;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
@@ -574,7 +574,7 @@ fn default_profile() -> String {
 }
 
 fn schema_version() -> u32 {
-    SCHEMA_VERSION
+    INSTALL_RECEIPT_SCHEMA_VERSION
 }
 
 pub fn home_dir() -> PathBuf {

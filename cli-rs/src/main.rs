@@ -17,6 +17,7 @@ mod metrics;
 mod metrics_database;
 mod output;
 mod package;
+mod protocol_schema_versions;
 mod rpc;
 mod runtime;
 mod self_mgmt;
@@ -35,7 +36,7 @@ use std::env;
 use std::io::{self, IsTerminal};
 use std::path::{Path, PathBuf};
 
-const SCHEMA_VERSION: u32 = 4;
+const SCHEMA_VERSION: u32 = protocol_schema_versions::API_SCHEMA_VERSION;
 const AGENT_JSON_DEPRECATION_WARNING: &str =
     "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.";
 
