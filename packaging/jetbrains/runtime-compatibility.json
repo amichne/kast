@@ -9,7 +9,7 @@
       "relation": "same-release",
       "pluginVersion": "{releaseVersion}",
       "cliVersion": "{releaseVersion}",
-      "protocolRevision": 1,
+      "protocolRevision": 2,
       "workspaceMetadataRevision": 3,
       "runtime": {
         "implementationVersion": "{releaseVersion}",

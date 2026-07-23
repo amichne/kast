@@ -1,7 +1,7 @@
 {
     "result": {
         "actions": [],
-        "schemaVersion": 3
+        "schemaVersion": 4
     },
     "id": 1,
     "jsonrpc": "2.0"

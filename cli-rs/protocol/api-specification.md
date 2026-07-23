@@ -117,7 +117,7 @@ uses a discriminated response envelope.
 | `raw/workspace-symbol` | `raw` | backend | Search the workspace for symbols by name pattern | `pattern` | `kind`<br>`maxResults`<br>`regex`<br>`includeDeclarationScope` | `WorkspaceSymbolResult` | single result |
 | `raw/workspace-search` | `raw` | backend | Search workspace file contents by text or regex | `pattern` | `regex`<br>`maxResults`<br>`fileGlob`<br>`caseSensitive` | `WorkspaceSearchResult` | single result |
 | `raw/workspace-files` | `raw` | backend | List generation-bound workspace modules and Kotlin file pages | none | `kindDomain`<br>`moduleName`<br>`includeFiles`<br>`maxFilesPerModule`<br>`snapshotToken`<br>`pageToken` | `WorkspaceFilesResult` | single result |
-| `raw/semantic-graph` | `raw` | backend | Project compiler-backed Kotlin symbols and relations | none | `filePaths`<br>`removedFilePaths`<br>`pageSize`<br>`continuation` | `SemanticGraphResult` | single result |
+| `raw/semantic-graph` | `raw` | backend | Project compiler-backed Kotlin symbols and relations | none | `filePaths`<br>`removedFilePaths` | `SemanticGraphResult` | single result |
 | `raw/workspace-files-continuation` | `raw` | backend | Issue or consume server-held public workspace-file continuation state | `action`<br>`ISSUE`: `identity`, `state`<br>`CONSUME`: `identity`, `pageToken` | none | `WorkspaceFilesContinuationResult` | `ISSUED`<br>`CONSUMED` |
 | `raw/implementations` | `raw` | backend | Find concrete implementations and subclasses for a declaration | `position` | `maxResults` | `ImplementationsResult` | single result |
 | `raw/code-actions` | `raw` | backend | Return available code actions at a file position | `position` | `diagnosticCode` | `CodeActionsResult` | single result |
@@ -728,16 +728,13 @@ Notes:
 | --- | --- | --- | --- | --- |
 | `filePaths` | `array of string` | no | no |  |
 | `removedFilePaths` | `array of string` | no | no |  |
-| `pageSize` | `integer` | no | no |  |
-| `continuation` | `string` | no | yes |  |
 
 Response type: `SemanticGraphResult`.
 
 Notes:
 
 - The scope must contain at least one selected or removed Kotlin path.
-- Continuation is an opaque single-use token bound to the selected and removed path scope.
-- Direct workspace targets outside the selected file scope are returned in boundarySymbols; every relation target is present in symbols or boundarySymbols.
+- The result reports only generation and persisted fact counts; enumerate native graph nodes with generation-pinned keyset queries.
 
 </details>
 

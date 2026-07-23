@@ -6,21 +6,15 @@
 package io.github.amichne.kast.idea.backend.semantic
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
-import io.github.amichne.kast.api.continuation.ContinuationConsumeResult
-import io.github.amichne.kast.api.continuation.ContinuationIssueResult
-import io.github.amichne.kast.api.continuation.ContinuationOwnedState
-import io.github.amichne.kast.api.continuation.ContinuationProjection
-import io.github.amichne.kast.api.continuation.ContinuationStateTransition
-import io.github.amichne.kast.api.continuation.ContinuationTransition
 import io.github.amichne.kast.api.contract.ByteOffset
 import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.FqName
 import io.github.amichne.kast.api.contract.LineNumber
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NonNegativeInt
-import io.github.amichne.kast.api.contract.query.SemanticGraphPageToken
 import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.contract.result.SemanticGraphCoverage
 import io.github.amichne.kast.api.contract.result.SemanticGraphDiagnosticEvidence
@@ -34,80 +28,63 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphResult
 import io.github.amichne.kast.api.contract.result.SemanticGraphSha256
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbol
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolFlags
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
+import io.github.amichne.kast.api.contract.result.SemanticGraphModality
+import io.github.amichne.kast.api.contract.result.SemanticGraphOrigin
+import io.github.amichne.kast.api.contract.result.SemanticGraphTypeEdge
+import io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact
+import io.github.amichne.kast.api.contract.result.SemanticGraphTypeKind
+import io.github.amichne.kast.api.contract.result.SemanticGraphTypeNullability
+import io.github.amichne.kast.api.contract.result.SemanticGraphTypeRole
+import io.github.amichne.kast.api.contract.result.SemanticGraphTypeVariance
+import io.github.amichne.kast.api.contract.result.SemanticGraphVisibility
 import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
-import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.idea.backend.diagnostics.analyzeDiagnosticsFileInReadEpoch
 import io.github.amichne.kast.idea.backend.workspace.isWorkspaceFile
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
-import io.github.amichne.kast.indexstore.api.graph.SemanticGraphIndexSnapshot
 import kotlinx.coroutines.withContext
 import org.jetbrains.kotlin.analysis.api.analyze
+import org.jetbrains.kotlin.analysis.api.components.directlyOverriddenSymbols
+import org.jetbrains.kotlin.analysis.api.components.getExpectsForActual
+import org.jetbrains.kotlin.analysis.api.components.sealedClassInheritors
 import org.jetbrains.kotlin.analysis.api.resolution.singleFunctionCallOrNull
+import org.jetbrains.kotlin.analysis.api.symbols.KaCallableSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaFunctionSymbol
+import org.jetbrains.kotlin.analysis.api.symbols.KaNamedClassSymbol
 import org.jetbrains.kotlin.analysis.api.symbols.KaNamedFunctionSymbol
 import org.jetbrains.kotlin.idea.references.KtReference
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtConstructor
+import org.jetbrains.kotlin.psi.KtDelegatedSuperTypeEntry
 import org.jetbrains.kotlin.psi.KtEnumEntry
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.psi.KtFunctionType
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
+import org.jetbrains.kotlin.psi.KtPropertyAccessor
 import org.jetbrains.kotlin.psi.KtSuperTypeListEntry
+import org.jetbrains.kotlin.psi.KtTypeAlias
+import org.jetbrains.kotlin.psi.KtTypeConstraint
+import org.jetbrains.kotlin.psi.KtTypeParameter
 import org.jetbrains.kotlin.psi.KtTypeProjection
 import org.jetbrains.kotlin.psi.KtTypeReference
 import org.jetbrains.kotlin.psi.KtUserType
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
-
-internal data class SemanticGraphQueryIdentity(
-    val filePaths: List<SemanticGraphPath>,
-    val removedFilePaths: List<SemanticGraphPath>,
-    val pageSize: io.github.amichne.kast.api.contract.PositiveInt,
-)
-
-internal data class SemanticGraphSnapshot(
-    val generation: SemanticGraphGeneration,
-    val scopeFingerprint: SemanticGraphSha256,
-    val coverage: SemanticGraphCoverage,
-    val symbols: List<SemanticGraphSymbol>,
-    val boundarySymbols: List<SemanticGraphSymbol>,
-    val relations: List<SemanticGraphRelation>,
-)
-
-internal class SemanticGraphContinuationState(
-    val snapshot: SemanticGraphSnapshot,
-    nextOffset: Int,
-) : ContinuationOwnedState() {
-    var nextOffset: Int = nextOffset
-        private set
-
-    fun advanceTo(offset: Int) {
-        require(offset > nextOffset) { "Semantic graph continuation offset must advance" }
-        nextOffset = offset
-    }
-}
-
-internal data class SemanticGraphContinuationProjection(
-    val snapshot: SemanticGraphSnapshot,
-    val pageOffset: Int,
-) : ContinuationProjection()
-
-private sealed interface SemanticGraphRecord {
-    data class Symbol(val value: SemanticGraphSymbol) : SemanticGraphRecord
-    data class BoundarySymbol(val value: SemanticGraphSymbol) : SemanticGraphRecord
-    data class Relation(val value: SemanticGraphRelation) : SemanticGraphRecord
-}
 
 private data class ExtractedSemanticGraphFile(
     val update: SemanticGraphFileIndexUpdate,
@@ -132,68 +109,17 @@ internal suspend fun KastPluginBackend.semanticGraphOperation(query: ParsedSeman
             message = "Semantic graph extraction requires the IDEA source index",
         )
         store.ensureSchema()
-        val identity = SemanticGraphQueryIdentity(query.filePaths, query.removedFilePaths, query.pageSize)
-        val continuation = query.continuation
-        if (continuation != null) {
-            val consumed = semanticGraphContinuations.consume(
-                continuation,
-                identity,
-                ContinuationStateTransition { state ->
-                    if (store.readGeneration().value != state.snapshot.generation.value) {
-                        throw ConflictException("Semantic graph generation changed after the preceding page")
-                    }
-                    val projection = SemanticGraphContinuationProjection(state.snapshot, state.nextOffset)
-                    val nextOffset = semanticGraphNextOffset(
-                        state.snapshot,
-                        state.nextOffset,
-                        identity.pageSize.value,
-                    )
-                    if (semanticGraphRecordCount(state.snapshot) > nextOffset) {
-                        state.advanceTo(nextOffset)
-                        ContinuationTransition.Reissue(projection, identity)
-                    } else {
-                        ContinuationTransition.Complete(projection)
-                    }
-                },
-            )
-            return@withContext when (consumed) {
-                is ContinuationConsumeResult.Completed ->
-                    semanticGraphPage(consumed.output, identity.pageSize.value, null)
-                is ContinuationConsumeResult.Reissued ->
-                    semanticGraphPage(consumed.output, identity.pageSize.value, consumed.token)
-                is ContinuationConsumeResult.Rejected -> throw ConflictException(
-                    "The semantic graph page token is unknown, expired, consumed, or belongs to another query",
-                )
-            }
-        }
-
-        val snapshot = ApplicationManager.getApplication().runReadAction<SemanticGraphSnapshot> {
+        ApplicationManager.getApplication().runReadAction<SemanticGraphResult> {
             buildSemanticGraphSnapshot(query)
         }
-        val nextOffset = semanticGraphNextOffset(snapshot, 0, identity.pageSize.value)
-        val nextToken = if (semanticGraphRecordCount(snapshot) > nextOffset) {
-            when (val issued = semanticGraphContinuations.issue(
-                identity,
-                SemanticGraphContinuationState(snapshot, nextOffset),
-            )) {
-                is ContinuationIssueResult.Issued -> issued.token
-                is ContinuationIssueResult.Rejected -> throw ConflictException(
-                    "Semantic graph continuation store is unavailable",
-                )
-            }
-        } else {
-            null
-        }
-        semanticGraphPage(SemanticGraphContinuationProjection(snapshot, 0), identity.pageSize.value, nextToken)
     }
 
-private fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSemanticGraphQuery): SemanticGraphSnapshot {
+private fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSemanticGraphQuery): SemanticGraphResult {
     val store = requireNotNull(semanticGraphStore)
     val selectedPaths = query.filePaths.map(::toRelativeSemanticGraphPath)
     val removedPaths = query.removedFilePaths.map(::toRelativeSemanticGraphPath)
     val updates = mutableListOf<SemanticGraphFileIndexUpdate>()
     val coverage = mutableListOf<SemanticGraphFileCoverage>()
-    val extractedBoundarySymbols = mutableMapOf<SemanticGraphSymbolKey, SemanticGraphSymbol>()
     var omittedExternalTargetCount = 0
 
     query.filePaths.zip(selectedPaths).forEach { (absolutePath, relativePath) ->
@@ -216,9 +142,6 @@ private fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSemanticGr
         }
         val extracted = extractSemanticGraphFile(file, relativePath, contentHash, evidence)
         updates += extracted.update
-        extracted.boundarySymbols.forEach { symbol ->
-            extractedBoundarySymbols[symbol.canonicalKey] = symbol
-        }
         coverage += SemanticGraphFileCoverage(
             path = relativePath,
             contentHash = contentHash,
@@ -231,38 +154,23 @@ private fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSemanticGr
         )
     }
 
-    if (updates.isNotEmpty() || removedPaths.isNotEmpty()) {
+    val writeResult = if (updates.isNotEmpty() || removedPaths.isNotEmpty()) {
         store.replaceSemanticGraphFiles(updates, removedPaths)
+    } else {
+        null
     }
     coverage += removedPaths.map { path ->
         SemanticGraphFileCoverage(path, null, SemanticGraphFileStatus.REMOVED)
     }
-    val persisted = store.readSemanticGraph(selectedPaths)
-    val selectedSymbolKeys = persisted.symbols.mapTo(mutableSetOf(), SemanticGraphSymbol::canonicalKey)
-    val boundarySymbols = extractedBoundarySymbols.values
-        .filterNot { symbol -> symbol.canonicalKey in selectedSymbolKeys }
-        .sortedBy(SemanticGraphSymbol::canonicalKey)
-    val availableTargetKeys = selectedSymbolKeys + boundarySymbols.map(SemanticGraphSymbol::canonicalKey)
-    val missingTargets = persisted.relations
-        .map(SemanticGraphRelation::targetKey)
-        .filterNot(availableTargetKeys::contains)
-        .distinct()
-    if (missingTargets.isNotEmpty()) {
-        error(
-            "Semantic graph extraction produced relations without selected or boundary targets: " +
-                missingTargets.joinToString { it.value },
-        )
-    }
-    return SemanticGraphSnapshot(
-        generation = SemanticGraphGeneration(persisted.generation.value),
+    return SemanticGraphResult(
+        generation = SemanticGraphGeneration(writeResult?.generation?.value ?: store.readGeneration().value),
         scopeFingerprint = semanticGraphScopeFingerprint(selectedPaths, removedPaths),
         coverage = SemanticGraphCoverage(
             files = coverage.sortedBy(SemanticGraphFileCoverage::path),
             omittedExternalTargetCount = NonNegativeInt(omittedExternalTargetCount),
         ),
-        symbols = persisted.symbols.sortedBy(SemanticGraphSymbol::canonicalKey),
-        boundarySymbols = boundarySymbols,
-        relations = persisted.relations.sortedWith(semanticGraphRelationOrder),
+        symbolCount = NonNegativeInt(writeResult?.symbolCount ?: 0),
+        edgeOccurrenceCount = NonNegativeInt(writeResult?.edgeOccurrenceCount ?: 0),
     )
 }
 
@@ -285,9 +193,91 @@ private fun KastPluginBackend.extractSemanticGraphFile(
         endOffset = ByteOffset(file.textLength),
         line = LineNumber(1),
     )
-    val symbols = listOf(fileSymbol) + symbolByDeclaration.values
+    val syntheticSymbols = mutableListOf<SemanticGraphSymbol>()
+    val syntheticRelations = mutableListOf<SemanticGraphRelation>()
+    PsiTreeUtil.findChildrenOfType(file, KtConstructor::class.java)
+        .sortedBy { constructor -> constructor.textRange.startOffset }
+        .forEach { constructor ->
+            val ownerDeclaration = PsiTreeUtil.getParentOfType(constructor, KtClassOrObject::class.java, true)
+                ?: return@forEach
+            val owner = symbolByDeclaration[ownerDeclaration] ?: return@forEach
+            val signature = constructor.compilerStableSignature() ?: constructor.valueParameters.joinToString(
+                prefix = "(",
+                postfix = ")",
+            ) { parameter -> parameter.typeReference?.text?.canonicalTypeText() ?: "?" }
+            val symbol = syntheticSemanticGraphSymbol(
+                element = constructor,
+                path = path,
+                key = semanticConstructorKey(owner.canonicalKey, constructor, signature),
+                kind = SemanticGraphSymbolKind.CONSTRUCTOR,
+                name = "<init>",
+                owner = owner,
+                signature = signature,
+            )
+            syntheticSymbols += symbol
+            syntheticRelations += relation(
+                owner,
+                symbol.canonicalKey,
+                SemanticGraphRelationKind.METHOD,
+                SemanticGraphRelationContext.NONE,
+                constructor,
+                path,
+            )
+        }
+    symbolByDeclaration.forEach { (declaration, owner) ->
+        val callable = declaration as? org.jetbrains.kotlin.psi.KtCallableDeclaration ?: return@forEach
+        callable.receiverTypeReference?.let { receiver ->
+            val symbol = syntheticSemanticGraphSymbol(
+                element = receiver,
+                path = path,
+                key = SemanticGraphSymbolKey.parse("receiver:${owner.canonicalKey.value}"),
+                kind = SemanticGraphSymbolKind.RECEIVER_PARAMETER,
+                name = "<receiver>",
+                owner = owner,
+                declaredTypeKey = semanticTypeKey(receiver),
+            )
+            syntheticSymbols += symbol
+            syntheticRelations += relation(
+                owner,
+                symbol.canonicalKey,
+                SemanticGraphRelationKind.CONTAINS,
+                SemanticGraphRelationContext.RECEIVER_TYPE,
+                receiver,
+                path,
+            )
+        }
+        val property = declaration as? KtProperty ?: return@forEach
+        listOfNotNull(
+            property.getter to SemanticGraphSymbolKind.GETTER,
+            (property.setter to SemanticGraphSymbolKind.SETTER).takeIf { property.isVar },
+        ).forEach { (accessor, kind) ->
+            val evidence = accessor ?: property
+            val symbol = syntheticSemanticGraphSymbol(
+                element = evidence,
+                path = path,
+                key = SemanticGraphSymbolKey.parse(
+                    "accessor:${owner.canonicalKey.value}:${if (kind == SemanticGraphSymbolKind.GETTER) "get" else "set"}",
+                ),
+                kind = kind,
+                name = if (kind == SemanticGraphSymbolKind.GETTER) "<get>" else "<set>",
+                owner = owner,
+                origin = if (accessor == null) SemanticGraphOrigin.SYNTHETIC else SemanticGraphOrigin.SOURCE,
+                returnTypeKey = owner.declaredTypeKey,
+            )
+            syntheticSymbols += symbol
+            syntheticRelations += relation(
+                owner,
+                symbol.canonicalKey,
+                SemanticGraphRelationKind.CONTAINS,
+                SemanticGraphRelationContext.NONE,
+                evidence,
+                path,
+            )
+        }
+    }
+    val symbols = listOf(fileSymbol) + symbolByDeclaration.values + syntheticSymbols
     val boundarySymbols = mutableMapOf<SemanticGraphSymbolKey, SemanticGraphSymbol>()
-    val relations = mutableListOf<SemanticGraphRelation>()
+    val relations = syntheticRelations.toMutableList()
     declarations.forEach { declaration ->
         val symbol = symbolByDeclaration.getValue(declaration)
         val owner = nearestProjectedOwner(declaration, symbolByDeclaration) ?: fileSymbol
@@ -302,6 +292,25 @@ private fun KastPluginBackend.extractSemanticGraphFile(
             else -> SemanticGraphRelationKind.CONTAINS
         }
         relations += relation(owner, symbol.canonicalKey, relationKind, SemanticGraphRelationContext.NONE, declaration, path)
+    }
+    declarations.forEach { declaration ->
+        val source = symbolByDeclaration.getValue(declaration)
+        declaration.semanticCompilerRelations().forEach { (target, kind) ->
+            val semanticTarget = semanticTarget(target, path)
+            if (semanticTarget != null) {
+                semanticTarget.boundarySymbol?.let { symbol ->
+                    boundarySymbols[symbol.canonicalKey] = symbol
+                }
+                relations += relation(
+                    source,
+                    semanticTarget.key,
+                    kind,
+                    SemanticGraphRelationContext.NONE,
+                    declaration,
+                    path,
+                )
+            }
+        }
     }
 
     var omittedExternalTargetCount = 0
@@ -326,8 +335,11 @@ private fun KastPluginBackend.extractSemanticGraphFile(
                     boundarySymbols[symbol.canonicalKey] = symbol
                 }
                 val resolvedTargetKey = target.exactConstructorSignature?.let { signature ->
-                    val targetPath = relativePathOr(requireNotNull(target.element), path)
-                    SemanticGraphSymbolKey.parse("constructor:${targetPath.value}:$signature")
+                    val constructor = target.element as? KtConstructor<*> ?: return@let null
+                    val owner = PsiTreeUtil.getParentOfType(constructor, KtClassOrObject::class.java, true)
+                        ?: return@let null
+                    val targetPath = relativePathOr(constructor, path)
+                    semanticConstructorKey(owner.semanticKey(targetPath), constructor, signature)
                 }
                 relations += relation(
                     source,
@@ -357,12 +369,23 @@ private fun KastPluginBackend.extractSemanticGraphFile(
                 semanticTarget.boundarySymbol?.let { symbol ->
                     boundarySymbols[symbol.canonicalKey] = symbol
                 }
-                val kind = if ((target as? KtClass)?.isInterface() == true) {
-                    SemanticGraphRelationKind.IMPLEMENTS
-                } else {
-                    SemanticGraphRelationKind.INHERITS
+                val kind = when {
+                    entry is KtDelegatedSuperTypeEntry -> SemanticGraphRelationKind.DELEGATES
+                    (target as? KtClass)?.isInterface() == true -> SemanticGraphRelationKind.IMPLEMENTS
+                    else -> SemanticGraphRelationKind.INHERITS
                 }
-                relations += relation(source, semanticTarget.key, kind, SemanticGraphRelationContext.NONE, entry, path)
+                relations += relation(
+                    source,
+                    semanticTarget.key,
+                    kind,
+                    if (entry is KtDelegatedSuperTypeEntry) {
+                        SemanticGraphRelationContext.DELEGATE
+                    } else {
+                        SemanticGraphRelationContext.NONE
+                    },
+                    entry,
+                    path,
+                )
             } else if (target == null || target.containingFile !is KtFile || !isWorkspaceFile(target.containingFile.virtualFile.path)) {
                 omittedExternalTargetCount++
             }
@@ -404,10 +427,14 @@ private fun KastPluginBackend.extractSemanticGraphFile(
     return ExtractedSemanticGraphFile(
         update = SemanticGraphFileIndexUpdate(
             path = path,
+            packageName = file.packageFqName.asString().takeIf(String::isNotBlank),
+            moduleName = ProjectFileIndex.getInstance(project).getModuleForFile(file.virtualFile)?.name,
             contentHash = contentHash,
             status = SemanticGraphFileStatus.REFRESHED,
             diagnostics = diagnostics,
+            types = semanticTypeFacts(file),
             symbols = symbols,
+            boundarySymbols = boundarySymbols.values.sortedBy(SemanticGraphSymbol::canonicalKey),
             relations = relations.distinct().sortedWith(semanticGraphRelationOrder),
         ),
         boundarySymbols = boundarySymbols.values.sortedBy(SemanticGraphSymbol::canonicalKey),
@@ -423,6 +450,8 @@ private fun KastPluginBackend.semanticGraphSymbol(
     val canonicalKey = declaration.semanticKey(path)
     val callableSignature = (declaration as? KtNamedFunction)?.compilerStableSignature()
     val owner = nearestProjectedDeclaration(declaration.parent)?.semanticKey(path)
+    val declaredType = declaration.declaredSemanticTypeReference()
+    val receiverType = (declaration as? org.jetbrains.kotlin.psi.KtCallableDeclaration)?.receiverTypeReference
     return SemanticGraphSymbol(
         canonicalKey = canonicalKey,
         kind = kind,
@@ -430,11 +459,165 @@ private fun KastPluginBackend.semanticGraphSymbol(
         fqName = declaration.fqName?.asString()?.let(::FqName),
         signature = callableSignature?.let(::NonBlankString),
         ownerKey = owner,
+        visibility = declaration.semanticVisibility(),
+        modality = declaration.semanticModality(),
+        flags = SemanticGraphSymbolFlags(
+            isExpect = declaration.hasModifier(KtTokens.EXPECT_KEYWORD),
+            isActual = declaration.hasModifier(KtTokens.ACTUAL_KEYWORD),
+            isOverride = declaration.hasModifier(KtTokens.OVERRIDE_KEYWORD),
+            isSealed = declaration.hasModifier(KtTokens.SEALED_KEYWORD),
+            isDelegated = (declaration as? KtProperty)?.delegate != null,
+        ),
+        annotations = declaration.annotationEntries.mapNotNull { annotation ->
+            val resolved = annotation.typeReference
+                ?.resolveTypeTarget()
+                ?.let { target -> target as? KtNamedDeclaration }
+                ?.fqName
+                ?.asString()
+            (resolved ?: annotation.shortName?.asString())?.let(::NonBlankString)
+        }.distinct().sortedBy(NonBlankString::value),
+        declaredTypeKey = declaredType?.let(::semanticTypeKey),
+        receiverTypeKey = receiverType?.let(::semanticTypeKey),
+        returnTypeKey = (declaration as? KtNamedFunction)?.typeReference?.let(::semanticTypeKey),
         path = path,
         startOffset = ByteOffset(declaration.textRange.startOffset),
         endOffset = ByteOffset(declaration.textRange.endOffset),
         line = LineNumber(declaration.line()),
     )
+}
+
+private fun syntheticSemanticGraphSymbol(
+    element: PsiElement,
+    path: SemanticGraphSourcePath,
+    key: SemanticGraphSymbolKey,
+    kind: SemanticGraphSymbolKind,
+    name: String,
+    owner: SemanticGraphSymbol,
+    signature: String? = null,
+    origin: SemanticGraphOrigin = SemanticGraphOrigin.SOURCE,
+    declaredTypeKey: NonBlankString? = null,
+    returnTypeKey: NonBlankString? = null,
+): SemanticGraphSymbol = SemanticGraphSymbol(
+    canonicalKey = key,
+    kind = kind,
+    name = NonBlankString(name),
+    signature = signature?.let(::NonBlankString),
+    ownerKey = owner.canonicalKey,
+    visibility = owner.visibility,
+    modality = owner.modality,
+    origin = origin,
+    declaredTypeKey = declaredTypeKey,
+    returnTypeKey = returnTypeKey,
+    path = path,
+    startOffset = ByteOffset(element.textRange.startOffset),
+    endOffset = ByteOffset(element.textRange.endOffset),
+    line = LineNumber(element.line()),
+)
+
+private fun KtNamedDeclaration.declaredSemanticTypeReference(): KtTypeReference? = when (this) {
+    is KtNamedFunction -> typeReference
+    is KtProperty -> typeReference
+    is KtParameter -> typeReference
+    is KtTypeAlias -> getTypeReference()
+    else -> null
+}
+
+private fun KtNamedDeclaration.semanticVisibility(): SemanticGraphVisibility = when {
+    hasModifier(KtTokens.PRIVATE_KEYWORD) -> SemanticGraphVisibility.PRIVATE
+    hasModifier(KtTokens.PROTECTED_KEYWORD) -> SemanticGraphVisibility.PROTECTED
+    hasModifier(KtTokens.INTERNAL_KEYWORD) -> SemanticGraphVisibility.INTERNAL
+    fqName == null -> SemanticGraphVisibility.LOCAL
+    else -> SemanticGraphVisibility.PUBLIC
+}
+
+private fun KtNamedDeclaration.semanticModality(): SemanticGraphModality? = when {
+    hasModifier(KtTokens.SEALED_KEYWORD) -> SemanticGraphModality.SEALED
+    hasModifier(KtTokens.ABSTRACT_KEYWORD) -> SemanticGraphModality.ABSTRACT
+    hasModifier(KtTokens.OPEN_KEYWORD) -> SemanticGraphModality.OPEN
+    this is KtClassOrObject || this is KtNamedFunction || this is KtProperty -> SemanticGraphModality.FINAL
+    else -> null
+}
+
+private fun semanticTypeFacts(file: KtFile): List<SemanticGraphTypeFact> =
+    PsiTreeUtil.findChildrenOfType(file, KtTypeReference::class.java)
+        .map(::semanticTypeFact)
+        .distinctBy(SemanticGraphTypeFact::stableKey)
+        .sortedBy { type -> type.stableKey.value }
+
+private fun semanticTypeFact(reference: KtTypeReference): SemanticGraphTypeFact {
+    val text = reference.text.canonicalTypeText()
+    val functionType = reference.typeElement as? KtFunctionType
+    val childReferences = buildList {
+        functionType?.receiverTypeReference?.let { receiver ->
+            add(Triple(receiver, SemanticGraphTypeRole.RECEIVER, SemanticGraphTypeVariance.INVARIANT))
+        }
+        functionType?.parameters?.forEach { parameter ->
+            parameter.typeReference?.let { argument ->
+                add(Triple(argument, SemanticGraphTypeRole.ARGUMENT, SemanticGraphTypeVariance.INVARIANT))
+            }
+        }
+        functionType?.returnTypeReference?.let { returned ->
+            add(Triple(returned, SemanticGraphTypeRole.RETURN, SemanticGraphTypeVariance.OUT))
+        }
+        PsiTreeUtil.findChildrenOfType(reference, KtTypeProjection::class.java)
+            .filter { projection -> projection.parent?.parent == reference.typeElement }
+            .forEach { projection ->
+                projection.typeReference?.let { argument ->
+                    add(
+                        Triple(
+                            argument,
+                            SemanticGraphTypeRole.ARGUMENT,
+                            when {
+                                projection.text.trimStart().startsWith("in ") -> SemanticGraphTypeVariance.IN
+                                projection.text.trimStart().startsWith("out ") -> SemanticGraphTypeVariance.OUT
+                                else -> SemanticGraphTypeVariance.INVARIANT
+                            },
+                        ),
+                    )
+                }
+            }
+    }
+    val classifier = runCatching {
+        PsiTreeUtil.findChildOfType(reference, KtUserType::class.java)
+            ?.resolveTarget()
+            ?.let { target -> target as? KtNamedDeclaration }
+            ?.fqName
+            ?.asString()
+    }.getOrNull() ?: PsiTreeUtil.findChildOfType(reference, KtUserType::class.java)?.referencedName
+    return SemanticGraphTypeFact(
+        stableKey = semanticTypeKey(reference),
+        kind = when {
+            text.contains("<ERROR", ignoreCase = true) -> SemanticGraphTypeKind.ERROR
+            "suspend(" in text || text.startsWith("suspend") -> SemanticGraphTypeKind.SUSPEND_FUNCTION
+            "->" in text -> SemanticGraphTypeKind.FUNCTION
+            '&' in text -> SemanticGraphTypeKind.INTERSECTION
+            text == "dynamic" -> SemanticGraphTypeKind.DYNAMIC
+            classifier != null -> SemanticGraphTypeKind.CLASS
+            else -> SemanticGraphTypeKind.UNKNOWN
+        },
+        classifier = classifier?.takeIf(String::isNotBlank)?.let(::NonBlankString),
+        nullability = when {
+            text.endsWith('?') -> SemanticGraphTypeNullability.NULLABLE
+            text.endsWith('!') -> SemanticGraphTypeNullability.PLATFORM
+            else -> SemanticGraphTypeNullability.NON_NULL
+        },
+        debugText = NonBlankString(text),
+        edges = childReferences.mapIndexed { index, (child, role, variance) ->
+            SemanticGraphTypeEdge(
+                childKey = semanticTypeKey(child),
+                role = role,
+                position = NonNegativeInt(index),
+                variance = variance,
+            )
+        },
+    )
+}
+
+private fun semanticTypeKey(reference: KtTypeReference): NonBlankString {
+    val resolved = runCatching {
+        analyze(reference) { reference.type.toString().canonicalTypeText() }
+    }.getOrNull()?.takeIf(String::isNotBlank)
+    return NonBlankString("type:${resolved ?: reference.text.canonicalTypeText()}")
 }
 
 private fun KtNamedDeclaration.semanticKey(path: SemanticGraphSourcePath): SemanticGraphSymbolKey = when (this) {
@@ -461,9 +644,8 @@ private fun KastPluginBackend.semanticTarget(
 ): ResolvedSemanticTarget? {
     val targetFile = target.containingFile as? KtFile ?: return null
     if (!isWorkspaceFile(targetFile.virtualFile.path)) return null
-    val declaration = when (target) {
-        is KtNamedFunction -> target
-        is KtClassOrObject -> target
+    val declaration = when {
+        target is KtNamedDeclaration && projectableKind(target) != null -> target
         else -> PsiTreeUtil.getParentOfType(target, KtClassOrObject::class.java, false)
     } ?: return null
     val targetPath = relativePathOr(declaration, sourcePath)
@@ -499,6 +681,37 @@ private fun KtUserType.resolveTarget(): PsiElement? = analyze(this) {
 
 private fun KtNamedFunction.compilerStableSignature(): String? = analyze(this) { symbol.compilerStableSignature() }
 
+private fun KtConstructor<*>.compilerStableSignature(): String? =
+    analyze(this) { symbol.compilerStableSignature() }
+
+private fun semanticConstructorKey(
+    ownerKey: SemanticGraphSymbolKey,
+    constructor: KtConstructor<*>,
+    signature: String,
+): SemanticGraphSymbolKey = SemanticGraphSymbolKey.parse(
+    "constructor:${ownerKey.value}:${constructor.textRange.startOffset}:$signature",
+)
+
+private fun KtNamedDeclaration.semanticCompilerRelations(): List<Pair<PsiElement, SemanticGraphRelationKind>> =
+    analyze(this) {
+        buildList {
+            val declarationSymbol = symbol
+            (declarationSymbol as? KaCallableSymbol)
+                ?.directlyOverriddenSymbols
+                ?.mapNotNull { overridden -> overridden.psi }
+                ?.forEach { target -> add(target to SemanticGraphRelationKind.OVERRIDES) }
+            declarationSymbol.getExpectsForActual()
+                .mapNotNull { expected -> expected.psi }
+                .forEach { target -> add(target to SemanticGraphRelationKind.EXPECT_ACTUAL) }
+            if (this@semanticCompilerRelations.hasModifier(KtTokens.SEALED_KEYWORD)) {
+                (declarationSymbol as? KaNamedClassSymbol)
+                    ?.sealedClassInheritors
+                    ?.mapNotNull { inheritor -> inheritor.psi }
+                    ?.forEach { target -> add(target to SemanticGraphRelationKind.SEALED_MEMBER) }
+            }
+        }
+    }
+
 private fun KaFunctionSymbol.compilerStableSignature(): String? {
     val callableIdentity = when (this) {
         is KaConstructorSymbol -> "${containingClassId?.asSingleFqName()?.asString() ?: return null}.<init>"
@@ -520,9 +733,11 @@ private fun KaFunctionSymbol.compilerStableSignature(): String? {
 private fun String.canonicalTypeText(): String = replace('/', '.')
 
 private fun KtTypeReference.referenceContext(): SemanticGraphRelationContext? = when (parent) {
+    is KtAnnotationEntry -> SemanticGraphRelationContext.ANNOTATION
     is KtProperty -> SemanticGraphRelationContext.FIELD
     is KtParameter -> SemanticGraphRelationContext.PARAMETER_TYPE
     is KtNamedFunction -> SemanticGraphRelationContext.RETURN_TYPE
+    is KtTypeConstraint -> SemanticGraphRelationContext.TYPE_CONSTRAINT
     else -> null
 }
 
@@ -539,6 +754,10 @@ private fun projectableKind(declaration: KtNamedDeclaration): SemanticGraphSymbo
     } else {
         SemanticGraphSymbolKind.FUNCTION
     }
+    is KtProperty -> SemanticGraphSymbolKind.PROPERTY
+    is KtParameter -> SemanticGraphSymbolKind.VALUE_PARAMETER
+    is KtTypeParameter -> SemanticGraphSymbolKind.TYPE_PARAMETER
+    is KtTypeAlias -> SemanticGraphSymbolKind.TYPE_ALIAS
     else -> null
 }
 
@@ -619,43 +838,3 @@ private val semanticGraphRelationOrder = compareBy<SemanticGraphRelation>(
     SemanticGraphRelation::sourcePath,
     SemanticGraphRelation::startOffset,
 )
-
-private fun semanticGraphRecordCount(snapshot: SemanticGraphSnapshot): Int =
-    Math.addExact(
-        Math.addExact(snapshot.symbols.size, snapshot.boundarySymbols.size),
-        snapshot.relations.size,
-    )
-
-private fun semanticGraphNextOffset(
-    snapshot: SemanticGraphSnapshot,
-    offset: Int,
-    pageSize: Int,
-): Int {
-    val recordCount = semanticGraphRecordCount(snapshot)
-    if (offset !in 0..recordCount) {
-        throw ConflictException("Server-held semantic graph continuation offset exceeded exact cardinality")
-    }
-    return Math.addExact(offset, minOf(pageSize, recordCount - offset))
-}
-
-private fun semanticGraphPage(
-    projection: SemanticGraphContinuationProjection,
-    pageSize: Int,
-    nextToken: SemanticGraphPageToken?,
-): SemanticGraphResult {
-    val snapshot = projection.snapshot
-    val records = snapshot.symbols.map(SemanticGraphRecord::Symbol) +
-        snapshot.boundarySymbols.map(SemanticGraphRecord::BoundarySymbol) +
-        snapshot.relations.map(SemanticGraphRecord::Relation)
-    val page = records.drop(projection.pageOffset).take(pageSize)
-    return SemanticGraphResult(
-        generation = snapshot.generation,
-        scopeFingerprint = snapshot.scopeFingerprint,
-        coverage = snapshot.coverage,
-        symbols = page.filterIsInstance<SemanticGraphRecord.Symbol>().map(SemanticGraphRecord.Symbol::value),
-        boundarySymbols = page.filterIsInstance<SemanticGraphRecord.BoundarySymbol>()
-            .map(SemanticGraphRecord.BoundarySymbol::value),
-        relations = page.filterIsInstance<SemanticGraphRecord.Relation>().map(SemanticGraphRecord.Relation::value),
-        nextPageToken = nextToken,
-    )
-}

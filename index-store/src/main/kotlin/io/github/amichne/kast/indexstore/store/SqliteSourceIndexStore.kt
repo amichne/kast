@@ -16,10 +16,15 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
 import io.github.amichne.kast.api.contract.result.SemanticGraphSha256
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbol
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolFlags
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
+import io.github.amichne.kast.api.contract.result.SemanticGraphModality
+import io.github.amichne.kast.api.contract.result.SemanticGraphOrigin
+import io.github.amichne.kast.api.contract.result.SemanticGraphVisibility
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphIndexSnapshot
+import io.github.amichne.kast.indexstore.api.graph.SemanticGraphWriteResult
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleProjectIdentity
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleSourceSetIdentity
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
@@ -41,6 +46,7 @@ import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
 import io.github.amichne.kast.indexstore.snapshot.GitObjectId
+import io.github.amichne.kast.indexstore.snapshot.OverlayManifest
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.indexstore.snapshot.PublicationEvidence
 import io.github.amichne.kast.indexstore.store.cache.defaultCacheJson
@@ -78,6 +84,13 @@ class SqliteSourceIndexStore private constructor(
 
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     private val dbPath: Path = workspaceIdentity.sourceIndexDatabaseFile
+    private val overlayManifest: OverlayManifest? = dbPath.resolveSibling(REPOSITORY_OVERLAY_FILE)
+        .takeIf(Files::isRegularFile)
+        ?.let { path -> Json.decodeFromString(Files.readString(path)) }
+    private val repositoryBasePath: Path? = overlayManifest?.baseDatabase
+        ?.let(Path::of)
+        ?.toAbsolutePath()
+        ?.normalize()
     private val pathCodec = PathInterningCodec(workspaceRoot)
     private val fqCodec = StringInterningCodec(
         tableName = "fq_names",
@@ -131,6 +144,7 @@ class SqliteSourceIndexStore private constructor(
                     stmt.execute("PRAGMA wal_autocheckpoint=1000")
                     stmt.execute("PRAGMA foreign_keys=ON")
                 }
+                attachRepositoryBase(conn)
                 if (readSchemaVersion(conn) == null) {
                     conn.autoCommit = false
                     createAllTables(conn)
@@ -139,6 +153,7 @@ class SqliteSourceIndexStore private constructor(
                 }
                 if (requireCurrentSchema) {
                     validateCurrentSchema(conn)
+                    initializeRepositoryOverlay(conn)
                     loadInterningTables(conn)
                 }
                 cachedConnection = conn
@@ -151,6 +166,62 @@ class SqliteSourceIndexStore private constructor(
             } finally {
                 if (!conn.isClosed) conn.autoCommit = true
             }
+        }
+    }
+
+    private fun attachRepositoryBase(conn: Connection) {
+        val base = repositoryBasePath ?: return
+        check(Files.isRegularFile(base)) { "Repository snapshot base is unavailable: $base" }
+        val uri = "${base.toUri().toASCIIString()}?mode=ro&immutable=1".replace("'", "''")
+        conn.createStatement().use { statement ->
+            statement.execute("ATTACH DATABASE '$uri' AS repository_base")
+            val rows = statement.executeQuery("SELECT version FROM repository_base.schema_version LIMIT 1")
+            check(rows.next() && rows.getInt(1) == SOURCE_INDEX_SCHEMA_VERSION) {
+                "Repository snapshot base schema does not match $SOURCE_INDEX_SCHEMA_VERSION"
+            }
+        }
+    }
+
+    private fun initializeRepositoryOverlay(conn: Connection) {
+        val manifest = overlayManifest ?: return
+        conn.createStatement().use { statement ->
+            statement.execute(
+                """CREATE TABLE IF NOT EXISTS repository_overlay_state (
+                    target_snapshot TEXT PRIMARY KEY
+                ) WITHOUT ROWID""",
+            )
+        }
+        val previousAutoCommit = conn.autoCommit
+        conn.autoCommit = false
+        try {
+            val shouldSeed = conn.prepareStatement(
+                "INSERT OR IGNORE INTO repository_overlay_state(target_snapshot) VALUES (?)",
+            ).use { statement ->
+                statement.setString(1, manifest.target.directoryName)
+                statement.executeUpdate() == 1
+            }
+            val seededGraphState = if (shouldSeed) {
+                conn.prepareStatement(
+                    "INSERT OR IGNORE INTO repository_overlay_tombstones(path) VALUES (?)",
+                ).use { statement ->
+                    (manifest.tombstones + manifest.shards.keys).sorted().forEach { path ->
+                        statement.setString(1, path)
+                        statement.addBatch()
+                    }
+                    statement.executeBatch().any { updateCount -> updateCount != 0 }
+                }
+            } else {
+                false
+            }
+            if (seededGraphState) {
+                incrementGenerationInTransaction(conn)
+            }
+            conn.commit()
+        } catch (error: Exception) {
+            conn.rollback()
+            throw error
+        } finally {
+            conn.autoCommit = previousAutoCommit
         }
     }
 
@@ -176,6 +247,7 @@ class SqliteSourceIndexStore private constructor(
             val version = readSchemaVersion(conn)
             if (version == SOURCE_INDEX_SCHEMA_VERSION) {
                 validateCurrentSchema(conn)
+                initializeRepositoryOverlay(conn)
                 validatedSchemaConnection = conn
                 loadInterningTables(conn)
                 return true
@@ -187,21 +259,22 @@ class SqliteSourceIndexStore private constructor(
                 createAllTables(conn)
                 writeGenerationInTransaction(conn, SourceIndexGeneration(Math.addExact(previousGeneration.value, 1L)))
                 conn.commit()
-                validateCurrentSchema(conn)
-                validatedSchemaConnection = conn
             } catch (e: Exception) {
                 conn.rollback()
                 throw e
             } finally {
                 conn.autoCommit = true
             }
+            validateCurrentSchema(conn)
+            initializeRepositoryOverlay(conn)
+            validatedSchemaConnection = conn
             loadInterningTables(conn)
             return false
         }
     }
 
     private fun readSchemaVersion(conn: Connection): Int? = try {
-        conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
+        conn.prepareStatement("SELECT version FROM main.schema_version LIMIT 1").use { stmt ->
             stmt.executeQuery().let { rs -> if (rs.next()) rs.getInt(1) else null }
         }
     } catch (_: Exception) {
@@ -236,28 +309,46 @@ class SqliteSourceIndexStore private constructor(
                 "project_path" to true,
                 "source_set_name" to true,
             ),
-            "semantic_graph_files" to mapOf(
+            "semantic_files" to mapOf(
+                "id" to false,
                 "path" to true,
-                "content_hash" to true,
+                "content_hash" to false,
                 "refresh_status" to true,
                 "diagnostics_json" to true,
             ),
-            "semantic_graph_symbols" to mapOf(
-                "canonical_key" to true,
+            "semantic_types" to mapOf(
+                "id" to false,
+                "stable_key" to true,
+                "kind" to true,
+                "nullability" to true,
+                "debug_text" to true,
+            ),
+            "semantic_type_edges" to mapOf(
+                "id" to false,
+                "parent_type_id" to true,
+                "child_type_id" to false,
+                "role" to true,
+                "position" to true,
+                "variance" to true,
+            ),
+            "semantic_symbols" to mapOf(
+                "id" to false,
+                "stable_key" to true,
+                "file_id" to true,
+                "owner_id" to false,
                 "kind" to true,
                 "name" to true,
-                "path" to true,
                 "start_offset" to true,
                 "end_offset" to true,
                 "line" to true,
             ),
-            "semantic_graph_relations" to mapOf(
-                "source_key" to true,
-                "target_key" to true,
-                "resolved_target_key" to false,
+            "semantic_edge_occurrences" to mapOf(
+                "id" to false,
+                "source_id" to true,
+                "target_id" to true,
+                "source_file_id" to true,
                 "kind" to true,
                 "context" to true,
-                "source_path" to true,
                 "start_offset" to true,
                 "end_offset" to true,
                 "line" to true,
@@ -293,16 +384,11 @@ class SqliteSourceIndexStore private constructor(
                 "project_path",
                 "source_set_name",
             ),
-            "semantic_graph_files" to listOf("path"),
-            "semantic_graph_symbols" to listOf("canonical_key"),
-            "semantic_graph_relations" to listOf(
-                "source_key",
-                "target_key",
-                "kind",
-                "context",
-                "source_path",
-                "start_offset",
-            ),
+            "semantic_files" to listOf("id"),
+            "semantic_types" to listOf("id"),
+            "semantic_type_edges" to listOf("id"),
+            "semantic_symbols" to listOf("id"),
+            "semantic_edge_occurrences" to listOf("id"),
         )
         requiredPrimaryKeys.forEach { (tableName, requiredPrimaryKey) ->
             val actualPrimaryKey = conn.createStatement().use { stmt ->
@@ -387,12 +473,23 @@ class SqliteSourceIndexStore private constructor(
     }
 
     private fun dropSourceIndexTables(stmt: java.sql.Statement) {
+        stmt.execute("DROP VIEW IF EXISTS semantic_module_quotient")
+        stmt.execute("DROP VIEW IF EXISTS semantic_package_quotient")
+        stmt.execute("DROP VIEW IF EXISTS semantic_file_quotient")
         stmt.execute("DROP TRIGGER IF EXISTS fq_names_ai")
         stmt.execute("DROP TRIGGER IF EXISTS fq_names_ad")
         stmt.execute("DROP TRIGGER IF EXISTS fq_names_au")
         stmt.execute("DROP TABLE IF EXISTS fq_names_fts")
         stmt.execute("DROP TABLE IF EXISTS pending_updates")
         stmt.execute("DROP TABLE IF EXISTS module_index_progress")
+        stmt.execute("DROP TABLE IF EXISTS semantic_edge_occurrences")
+        stmt.execute("DROP TABLE IF EXISTS semantic_symbol_annotations")
+        stmt.execute("DROP TABLE IF EXISTS semantic_type_edges")
+        stmt.execute("DROP TABLE IF EXISTS semantic_symbols")
+        stmt.execute("DROP TABLE IF EXISTS semantic_types")
+        stmt.execute("DROP TABLE IF EXISTS semantic_files")
+        stmt.execute("DROP TABLE IF EXISTS repository_overlay_state")
+        stmt.execute("DROP TABLE IF EXISTS repository_overlay_tombstones")
         stmt.execute("DROP TABLE IF EXISTS semantic_graph_relations")
         stmt.execute("DROP TABLE IF EXISTS semantic_graph_symbols")
         stmt.execute("DROP TABLE IF EXISTS semantic_graph_files")
@@ -629,42 +726,152 @@ class SqliteSourceIndexStore private constructor(
         )
 
         stmt.execute(
-            """CREATE TABLE IF NOT EXISTS semantic_graph_files (
-                path TEXT PRIMARY KEY NOT NULL,
-                content_hash TEXT NOT NULL,
+            """CREATE TABLE IF NOT EXISTS semantic_files (
+                id INTEGER PRIMARY KEY,
+                path TEXT NOT NULL UNIQUE,
+                package_name TEXT,
+                module_name TEXT,
+                content_hash TEXT,
                 refresh_status TEXT NOT NULL CHECK(refresh_status IN ('REFRESHED','CACHED','REMOVED')),
                 diagnostics_json TEXT NOT NULL
             )""",
         )
 
         stmt.execute(
-            """CREATE TABLE IF NOT EXISTS semantic_graph_symbols (
-                canonical_key TEXT PRIMARY KEY NOT NULL,
+            """CREATE TABLE IF NOT EXISTS repository_overlay_tombstones (
+                path TEXT PRIMARY KEY
+            ) WITHOUT ROWID""",
+        )
+
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS semantic_types (
+                id INTEGER PRIMARY KEY,
+                stable_key TEXT NOT NULL UNIQUE,
                 kind TEXT NOT NULL,
-                name TEXT NOT NULL,
-                fq_name TEXT,
-                signature TEXT,
-                owner_key TEXT,
-                path TEXT NOT NULL,
-                start_offset INTEGER NOT NULL,
-                end_offset INTEGER NOT NULL,
-                line INTEGER NOT NULL
+                classifier TEXT,
+                nullability TEXT NOT NULL,
+                debug_text TEXT NOT NULL,
+                flexible_lower_id INTEGER,
+                flexible_upper_id INTEGER,
+                receiver_type_id INTEGER,
+                return_type_id INTEGER
             )""",
         )
 
         stmt.execute(
-            """CREATE TABLE IF NOT EXISTS semantic_graph_relations (
-                source_key TEXT NOT NULL,
-                target_key TEXT NOT NULL,
-                resolved_target_key TEXT,
+            """CREATE TABLE IF NOT EXISTS semantic_symbols (
+                id INTEGER PRIMARY KEY,
+                stable_key TEXT NOT NULL UNIQUE,
+                file_id INTEGER NOT NULL,
+                owner_id INTEGER,
                 kind TEXT NOT NULL,
-                context TEXT NOT NULL,
-                source_path TEXT NOT NULL,
+                name TEXT NOT NULL,
+                fq_name TEXT,
+                signature TEXT,
+                visibility TEXT NOT NULL DEFAULT 'PUBLIC',
+                modality TEXT,
+                origin TEXT NOT NULL DEFAULT 'SOURCE',
+                is_expect INTEGER NOT NULL DEFAULT 0,
+                is_actual INTEGER NOT NULL DEFAULT 0,
+                is_override INTEGER NOT NULL DEFAULT 0,
+                is_sealed INTEGER NOT NULL DEFAULT 0,
+                is_delegated INTEGER NOT NULL DEFAULT 0,
+                declared_type_id INTEGER,
+                receiver_type_id INTEGER,
+                return_type_id INTEGER,
                 start_offset INTEGER NOT NULL,
                 end_offset INTEGER NOT NULL,
                 line INTEGER NOT NULL,
-                PRIMARY KEY (source_key, target_key, kind, context, source_path, start_offset)
+                FOREIGN KEY(file_id) REFERENCES semantic_files(id) ON DELETE CASCADE,
+                FOREIGN KEY(owner_id) REFERENCES semantic_symbols(id) ON DELETE CASCADE,
+                FOREIGN KEY(declared_type_id) REFERENCES semantic_types(id),
+                FOREIGN KEY(receiver_type_id) REFERENCES semantic_types(id),
+                FOREIGN KEY(return_type_id) REFERENCES semantic_types(id)
             )""",
+        )
+
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS semantic_type_edges (
+                id INTEGER PRIMARY KEY,
+                parent_type_id INTEGER NOT NULL,
+                child_type_id INTEGER,
+                role TEXT NOT NULL,
+                position INTEGER NOT NULL,
+                variance TEXT NOT NULL,
+                FOREIGN KEY(parent_type_id) REFERENCES semantic_types(id) ON DELETE CASCADE,
+                FOREIGN KEY(child_type_id) REFERENCES semantic_types(id)
+            )""",
+        )
+
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS semantic_symbol_annotations (
+                symbol_id INTEGER NOT NULL,
+                annotation_name TEXT NOT NULL,
+                PRIMARY KEY(symbol_id, annotation_name),
+                FOREIGN KEY(symbol_id) REFERENCES semantic_symbols(id) ON DELETE CASCADE
+            )""",
+        )
+
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS semantic_edge_occurrences (
+                id INTEGER PRIMARY KEY,
+                source_id INTEGER NOT NULL,
+                target_id INTEGER NOT NULL,
+                source_file_id INTEGER NOT NULL,
+                kind TEXT NOT NULL,
+                context TEXT NOT NULL,
+                resolved_target_id INTEGER,
+                start_offset INTEGER NOT NULL,
+                end_offset INTEGER NOT NULL,
+                line INTEGER NOT NULL,
+                FOREIGN KEY(source_id) REFERENCES semantic_symbols(id) ON DELETE CASCADE,
+                FOREIGN KEY(target_id) REFERENCES semantic_symbols(id) ON DELETE CASCADE,
+                FOREIGN KEY(source_file_id) REFERENCES semantic_files(id) ON DELETE CASCADE,
+                FOREIGN KEY(resolved_target_id) REFERENCES semantic_symbols(id) ON DELETE SET NULL
+            )""",
+        )
+
+        stmt.execute(
+            """CREATE VIEW semantic_file_quotient AS
+               SELECT source.file_id AS source_container_id,
+                      target.file_id AS target_container_id,
+                      edges.kind AS kind,
+                      edges.context AS context,
+                      COUNT(*) AS weight
+               FROM semantic_edge_occurrences edges
+               JOIN semantic_symbols source ON source.id = edges.source_id
+               JOIN semantic_symbols target ON target.id = edges.target_id
+               GROUP BY source.file_id, target.file_id, edges.kind, edges.context""",
+        )
+        stmt.execute(
+            """CREATE VIEW semantic_package_quotient AS
+               SELECT source_file.package_name AS source_container,
+                      target_file.package_name AS target_container,
+                      edges.kind AS kind,
+                      edges.context AS context,
+                      COUNT(*) AS weight
+               FROM semantic_edge_occurrences edges
+               JOIN semantic_symbols source ON source.id = edges.source_id
+               JOIN semantic_files source_file ON source_file.id = source.file_id
+               JOIN semantic_symbols target ON target.id = edges.target_id
+               JOIN semantic_files target_file ON target_file.id = target.file_id
+               WHERE source_file.package_name IS NOT NULL AND target_file.package_name IS NOT NULL
+               GROUP BY source_file.package_name, target_file.package_name, edges.kind, edges.context""",
+        )
+        stmt.execute(
+            """CREATE VIEW semantic_module_quotient AS
+               SELECT source_file.module_name AS source_container,
+                      target_file.module_name AS target_container,
+                      edges.kind AS kind,
+                      edges.context AS context,
+                      COUNT(*) AS weight
+               FROM semantic_edge_occurrences edges
+               JOIN semantic_symbols source ON source.id = edges.source_id
+               JOIN semantic_files source_file ON source_file.id = source.file_id
+               JOIN semantic_symbols target ON target.id = edges.target_id
+               JOIN semantic_files target_file ON target_file.id = target.file_id
+               WHERE source_file.module_name IS NOT NULL AND target_file.module_name IS NOT NULL
+               GROUP BY source_file.module_name, target_file.module_name, edges.kind, edges.context""",
         )
     }
 
@@ -696,6 +903,20 @@ class SqliteSourceIndexStore private constructor(
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_declarations_file ON declarations(prefix_id, filename)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_decl_supertypes_supertype ON declaration_supertypes(supertype_fq_id)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_pending_updates_unapplied ON pending_updates(applied, seq)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_semantic_symbols_file_id_id ON semantic_symbols(file_id, id)")
+        stmt.execute("CREATE INDEX IF NOT EXISTS idx_semantic_symbols_owner_id_id ON semantic_symbols(owner_id, id)")
+        stmt.execute(
+            "CREATE INDEX IF NOT EXISTS idx_semantic_edges_source_file_id_id " +
+                "ON semantic_edge_occurrences(source_file_id, id)",
+        )
+        stmt.execute(
+            "CREATE INDEX IF NOT EXISTS idx_semantic_edges_source_kind_target " +
+                "ON semantic_edge_occurrences(source_id, kind, target_id)",
+        )
+        stmt.execute(
+            "CREATE INDEX IF NOT EXISTS idx_semantic_edges_target_kind_source " +
+                "ON semantic_edge_occurrences(target_id, kind, source_id)",
+        )
     }
 
     fun saveFullIndex(
@@ -1773,7 +1994,7 @@ class SqliteSourceIndexStore private constructor(
     fun replaceSemanticGraphFiles(
         updates: List<SemanticGraphFileIndexUpdate>,
         removedPaths: List<SemanticGraphSourcePath> = emptyList(),
-    ): SourceIndexGeneration {
+    ): SemanticGraphWriteResult {
         require(updates.isNotEmpty() || removedPaths.isNotEmpty()) {
             "Semantic graph replacement requires an updated or removed file"
         }
@@ -1781,73 +2002,59 @@ class SqliteSourceIndexStore private constructor(
             val conn = connection()
             conn.autoCommit = false
             return try {
-                removedPaths.distinct().sorted().forEach { path -> deleteSemanticGraphFile(conn, path.value) }
+                removedPaths
+                    .distinct()
+                    .sorted()
+                    .forEach { path -> deleteSemanticGraphFile(conn, path.value) }
                 updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
-                    deleteSemanticGraphFile(conn, update.path.value)
-                    conn.prepareStatement(
-                        """INSERT INTO semantic_graph_files(path, content_hash, refresh_status, diagnostics_json)
-                           VALUES (?, ?, ?, ?)""",
-                    ).use { statement ->
-                        statement.setString(1, update.path.value)
-                        statement.setString(2, update.contentHash.value)
-                        statement.setString(3, update.status.name)
-                        statement.setString(4, Json.encodeToString(update.diagnostics))
-                        statement.executeUpdate()
-                    }
-                    conn.prepareStatement(
-                        """INSERT INTO semantic_graph_symbols(
-                               canonical_key, kind, name, fq_name, signature, owner_key,
-                               path, start_offset, end_offset, line
-                           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    ).use { statement ->
-                        update.symbols.sortedBy(SemanticGraphSymbol::canonicalKey).forEach { symbol ->
-                            statement.setString(1, symbol.canonicalKey.value)
-                            statement.setString(2, symbol.kind.name)
-                            statement.setString(3, symbol.name.value)
-                            statement.setString(4, symbol.fqName?.value)
-                            statement.setString(5, symbol.signature?.value)
-                            statement.setString(6, symbol.ownerKey?.value)
-                            statement.setString(7, symbol.path.value)
-                            statement.setInt(8, symbol.startOffset.value)
-                            statement.setInt(9, symbol.endOffset.value)
-                            statement.setInt(10, symbol.line.value)
-                            statement.addBatch()
-                        }
-                        statement.executeBatch()
-                    }
-                    conn.prepareStatement(
-                        """INSERT INTO semantic_graph_relations(
-                               source_key, target_key, resolved_target_key, kind, context, source_path,
-                               start_offset, end_offset, line
-                           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                    ).use { statement ->
-                        update.relations.sortedWith(
-                            compareBy<SemanticGraphRelation>(
-                                SemanticGraphRelation::sourceKey,
-                                SemanticGraphRelation::targetKey,
-                                { it.kind.name },
-                                { it.context.name },
-                                SemanticGraphRelation::startOffset,
-                            ),
-                        ).forEach { relation ->
-                            statement.setString(1, relation.sourceKey.value)
-                            statement.setString(2, relation.targetKey.value)
-                            statement.setString(3, relation.resolvedTargetKey?.value)
-                            statement.setString(4, relation.kind.name)
-                            statement.setString(5, relation.context.name)
-                            statement.setString(6, relation.sourcePath.value)
-                            statement.setInt(7, relation.startOffset.value)
-                            statement.setInt(8, relation.endOffset.value)
-                            statement.setInt(9, relation.line.value)
-                            statement.addBatch()
-                        }
-                        statement.executeBatch()
-                    }
+                    prepareSemanticGraphFileUpdate(conn, update)
+                }
+
+                updates.asSequence()
+                    .flatMap { update -> update.boundarySymbols.asSequence() }
+                    .distinctBy { symbol -> symbol.path }
+                    .sortedBy(SemanticGraphSymbol::path)
+                    .forEach { symbol -> insertBoundarySemanticFile(conn, symbol.path) }
+                updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
+                    insertSemanticFile(conn, update)
+                }
+                updates.asSequence()
+                    .flatMap { update -> update.types.asSequence() }
+                    .distinctBy { type -> type.stableKey }
+                    .sortedBy { type -> type.stableKey.value }
+                    .forEach { type -> insertSemanticType(conn, type) }
+                updates.asSequence()
+                    .flatMap { update -> update.types.asSequence() }
+                    .distinctBy { type -> type.stableKey }
+                    .sortedBy { type -> type.stableKey.value }
+                    .forEach { type -> replaceSemanticTypeEdges(conn, type) }
+                updates.asSequence()
+                    .flatMap { update -> update.boundarySymbols.asSequence() }
+                    .distinctBy(SemanticGraphSymbol::canonicalKey)
+                    .sortedBy(SemanticGraphSymbol::canonicalKey)
+                    .forEach { symbol -> insertSemanticSymbol(conn, symbol, authoritative = false) }
+                updates.asSequence()
+                    .flatMap { update -> update.symbols.asSequence() }
+                    .distinctBy(SemanticGraphSymbol::canonicalKey)
+                    .sortedBy(SemanticGraphSymbol::canonicalKey)
+                    .forEach { symbol -> insertSemanticSymbol(conn, symbol, authoritative = true) }
+                updates.asSequence()
+                    .flatMap { update -> (update.boundarySymbols + update.symbols).asSequence() }
+                    .distinctBy(SemanticGraphSymbol::canonicalKey)
+                    .sortedBy(SemanticGraphSymbol::canonicalKey)
+                    .forEach { symbol -> updateSemanticSymbolOwner(conn, symbol) }
+                updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
+                    insertSemanticEdges(conn, update)
                 }
                 incrementGenerationInTransaction(conn)
                 val generation = readGenerationInTransaction(conn)
                 conn.commit()
-                generation
+                SemanticGraphWriteResult(
+                    generation = generation,
+                    fileCount = updates.size,
+                    symbolCount = updates.sumOf { update -> update.symbols.size },
+                    edgeOccurrenceCount = updates.sumOf { update -> update.relations.size },
+                )
             } catch (failure: Exception) {
                 conn.rollback()
                 throw failure
@@ -1857,93 +2064,439 @@ class SqliteSourceIndexStore private constructor(
         }
     }
 
+    private fun insertBoundarySemanticFile(conn: Connection, path: SemanticGraphSourcePath) {
+        conn.prepareStatement(
+            """INSERT INTO semantic_files(path, package_name, module_name, content_hash, refresh_status, diagnostics_json)
+               VALUES (?, NULL, NULL, NULL, 'CACHED', '[]')
+               ON CONFLICT(path) DO NOTHING""",
+        ).use { statement ->
+            statement.setString(1, path.value)
+            statement.executeUpdate()
+        }
+    }
+
+    private fun prepareSemanticGraphFileUpdate(conn: Connection, update: SemanticGraphFileIndexUpdate) {
+        val fileId = optionalSemanticId(
+            conn,
+            "SELECT id FROM semantic_files WHERE path = ?",
+            update.path.value,
+        ) ?: return
+        conn.prepareStatement("DELETE FROM semantic_edge_occurrences WHERE source_file_id = ?").use { statement ->
+            statement.setLong(1, fileId)
+            statement.executeUpdate()
+        }
+        conn.prepareStatement("UPDATE semantic_symbols SET owner_id = NULL WHERE file_id = ?").use { statement ->
+            statement.setLong(1, fileId)
+            statement.executeUpdate()
+        }
+
+        val retainedKeys = update.symbols.mapTo(mutableSetOf()) { symbol -> symbol.canonicalKey.value }
+        val removedKeys = conn.prepareStatement(
+            "SELECT stable_key FROM semantic_symbols WHERE file_id = ? ORDER BY stable_key",
+        ).use { statement ->
+            statement.setLong(1, fileId)
+            val rows = statement.executeQuery()
+            buildList {
+                while (rows.next()) {
+                    rows.getString(1).takeUnless(retainedKeys::contains)?.let(::add)
+                }
+            }
+        }
+        conn.prepareStatement(
+            "DELETE FROM semantic_symbols WHERE file_id = ? AND stable_key = ?",
+        ).use { statement ->
+            removedKeys.forEach { key ->
+                statement.setLong(1, fileId)
+                statement.setString(2, key)
+                statement.addBatch()
+            }
+            statement.executeBatch()
+        }
+    }
+
+    private fun insertSemanticFile(conn: Connection, update: SemanticGraphFileIndexUpdate) {
+        clearRepositoryOverlayTombstone(conn, update.path.value)
+        conn.prepareStatement(
+            """INSERT INTO semantic_files(
+                   path, package_name, module_name, content_hash, refresh_status, diagnostics_json
+               ) VALUES (?, ?, ?, ?, ?, ?)
+               ON CONFLICT(path) DO UPDATE SET
+                   package_name = excluded.package_name,
+                   module_name = excluded.module_name,
+                   content_hash = excluded.content_hash,
+                   refresh_status = excluded.refresh_status,
+                   diagnostics_json = excluded.diagnostics_json""",
+        ).use { statement ->
+            statement.setString(1, update.path.value)
+            statement.setString(2, update.packageName)
+            statement.setString(3, update.moduleName)
+            statement.setString(4, update.contentHash.value)
+            statement.setString(5, update.status.name)
+            statement.setString(6, Json.encodeToString(update.diagnostics))
+            statement.executeUpdate()
+        }
+    }
+
+    private fun insertSemanticType(
+        conn: Connection,
+        type: io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact,
+    ) {
+        conn.prepareStatement(
+            """INSERT INTO semantic_types(stable_key, kind, classifier, nullability, debug_text)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(stable_key) DO UPDATE SET
+                   kind = excluded.kind,
+                   classifier = excluded.classifier,
+                   nullability = excluded.nullability,
+                   debug_text = excluded.debug_text""",
+        ).use { statement ->
+            statement.setString(1, type.stableKey.value)
+            statement.setString(2, type.kind.name)
+            statement.setString(3, type.classifier?.value)
+            statement.setString(4, type.nullability.name)
+            statement.setString(5, type.debugText.value)
+            statement.executeUpdate()
+        }
+    }
+
+    private fun replaceSemanticTypeEdges(
+        conn: Connection,
+        type: io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact,
+    ) {
+        val parentId = semanticTypeId(conn, type.stableKey.value)
+        conn.prepareStatement("DELETE FROM semantic_type_edges WHERE parent_type_id = ?").use { statement ->
+            statement.setLong(1, parentId)
+            statement.executeUpdate()
+        }
+        conn.prepareStatement(
+            """INSERT INTO semantic_type_edges(parent_type_id, child_type_id, role, position, variance)
+               VALUES (?, ?, ?, ?, ?)""",
+        ).use { statement ->
+            type.edges.sortedWith(compareBy({ edge -> edge.role.name }, { edge -> edge.position.value }))
+                .forEach { edge ->
+                    statement.setLong(1, parentId)
+                    statement.setObject(2, edge.childKey?.value?.let { key -> semanticTypeId(conn, key) })
+                    statement.setString(3, edge.role.name)
+                    statement.setInt(4, edge.position.value)
+                    statement.setString(5, edge.variance.name)
+                    statement.addBatch()
+                }
+            statement.executeBatch()
+        }
+    }
+
+    private fun insertSemanticSymbol(conn: Connection, symbol: SemanticGraphSymbol, authoritative: Boolean) {
+        val sql = buildString {
+            append(
+                """INSERT INTO semantic_symbols(
+                       stable_key, file_id, owner_id, kind, name, fq_name, signature,
+                       visibility, modality, origin, is_expect, is_actual, is_override,
+                       is_sealed, is_delegated, declared_type_id, receiver_type_id, return_type_id,
+                       start_offset, end_offset, line
+                   ) VALUES (
+                       ?, (SELECT id FROM semantic_files WHERE path = ?), NULL, ?, ?, ?, ?,
+                       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                   )""",
+            )
+            if (authoritative) {
+                append(
+                    """ ON CONFLICT(stable_key) DO UPDATE SET
+                            file_id = excluded.file_id,
+                            kind = excluded.kind,
+                            name = excluded.name,
+                            fq_name = excluded.fq_name,
+                            signature = excluded.signature,
+                            visibility = excluded.visibility,
+                            modality = excluded.modality,
+                            origin = excluded.origin,
+                            is_expect = excluded.is_expect,
+                            is_actual = excluded.is_actual,
+                            is_override = excluded.is_override,
+                            is_sealed = excluded.is_sealed,
+                            is_delegated = excluded.is_delegated,
+                            declared_type_id = excluded.declared_type_id,
+                            receiver_type_id = excluded.receiver_type_id,
+                            return_type_id = excluded.return_type_id,
+                            start_offset = excluded.start_offset,
+                            end_offset = excluded.end_offset,
+                            line = excluded.line""",
+                )
+            } else {
+                append(" ON CONFLICT(stable_key) DO NOTHING")
+            }
+        }
+        conn.prepareStatement(sql).use { statement ->
+            statement.setString(1, symbol.canonicalKey.value)
+            statement.setString(2, symbol.path.value)
+            statement.setString(3, symbol.kind.name)
+            statement.setString(4, symbol.name.value)
+            statement.setString(5, symbol.fqName?.value)
+            statement.setString(6, symbol.signature?.value)
+            statement.setString(7, symbol.visibility.name)
+            statement.setString(8, symbol.modality?.name)
+            statement.setString(9, symbol.origin.name)
+            statement.setInt(10, if (symbol.flags.isExpect) 1 else 0)
+            statement.setInt(11, if (symbol.flags.isActual) 1 else 0)
+            statement.setInt(12, if (symbol.flags.isOverride) 1 else 0)
+            statement.setInt(13, if (symbol.flags.isSealed) 1 else 0)
+            statement.setInt(14, if (symbol.flags.isDelegated) 1 else 0)
+            statement.setObject(15, symbol.declaredTypeKey?.value?.let { key -> semanticTypeIdOrNull(conn, key) })
+            statement.setObject(16, symbol.receiverTypeKey?.value?.let { key -> semanticTypeIdOrNull(conn, key) })
+            statement.setObject(17, symbol.returnTypeKey?.value?.let { key -> semanticTypeIdOrNull(conn, key) })
+            statement.setInt(18, symbol.startOffset.value)
+            statement.setInt(19, symbol.endOffset.value)
+            statement.setInt(20, symbol.line.value)
+            statement.executeUpdate()
+        }
+        if (authoritative) {
+            val symbolId = semanticSymbolId(conn, symbol.canonicalKey.value)
+            conn.prepareStatement("DELETE FROM semantic_symbol_annotations WHERE symbol_id = ?").use { statement ->
+                statement.setLong(1, symbolId)
+                statement.executeUpdate()
+            }
+            conn.prepareStatement(
+                "INSERT INTO semantic_symbol_annotations(symbol_id, annotation_name) VALUES (?, ?)",
+            ).use { statement ->
+                symbol.annotations.distinct().sortedBy(NonBlankString::value).forEach { annotation ->
+                    statement.setLong(1, symbolId)
+                    statement.setString(2, annotation.value)
+                    statement.addBatch()
+                }
+                statement.executeBatch()
+            }
+        }
+    }
+
+    private fun updateSemanticSymbolOwner(conn: Connection, symbol: SemanticGraphSymbol) {
+        val ownerKey = symbol.ownerKey ?: return
+        conn.prepareStatement(
+            """UPDATE semantic_symbols
+               SET owner_id = (SELECT id FROM semantic_symbols WHERE stable_key = ?)
+               WHERE stable_key = ?""",
+        ).use { statement ->
+            statement.setString(1, ownerKey.value)
+            statement.setString(2, symbol.canonicalKey.value)
+            statement.executeUpdate()
+        }
+    }
+
+    private fun insertSemanticEdges(conn: Connection, update: SemanticGraphFileIndexUpdate) {
+        val sourceFileId = semanticFileId(conn, update.path.value)
+        conn.prepareStatement(
+            """INSERT INTO semantic_edge_occurrences(
+                   source_id, target_id, source_file_id, kind, context, resolved_target_id,
+                   start_offset, end_offset, line
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        ).use { statement ->
+            update.relations.sortedWith(
+                compareBy<SemanticGraphRelation>(
+                    SemanticGraphRelation::sourceKey,
+                    SemanticGraphRelation::targetKey,
+                    { relation -> relation.kind.name },
+                    { relation -> relation.context.name },
+                    SemanticGraphRelation::startOffset,
+                ),
+            ).forEach { relation ->
+                statement.setLong(1, semanticSymbolId(conn, relation.sourceKey.value))
+                statement.setLong(2, semanticSymbolId(conn, relation.targetKey.value))
+                statement.setLong(3, sourceFileId)
+                statement.setString(4, relation.kind.name)
+                statement.setString(5, relation.context.name)
+                statement.setObject(
+                    6,
+                    relation.resolvedTargetKey?.value?.let { key -> semanticSymbolIdOrNull(conn, key) },
+                )
+                statement.setInt(7, relation.startOffset.value)
+                statement.setInt(8, relation.endOffset.value)
+                statement.setInt(9, relation.line.value)
+                statement.addBatch()
+            }
+            statement.executeBatch()
+        }
+    }
+
+    private fun semanticFileId(conn: Connection, path: String): Long =
+        requiredSemanticId(conn, "SELECT id FROM semantic_files WHERE path = ?", path)
+
+    private fun semanticSymbolId(conn: Connection, key: String): Long =
+        requiredSemanticId(conn, "SELECT id FROM semantic_symbols WHERE stable_key = ?", key)
+
+    private fun semanticSymbolIdOrNull(conn: Connection, key: String): Long? =
+        optionalSemanticId(conn, "SELECT id FROM semantic_symbols WHERE stable_key = ?", key)
+
+    private fun semanticTypeId(conn: Connection, key: String): Long =
+        requiredSemanticId(conn, "SELECT id FROM semantic_types WHERE stable_key = ?", key)
+
+    private fun semanticTypeIdOrNull(conn: Connection, key: String): Long? =
+        optionalSemanticId(conn, "SELECT id FROM semantic_types WHERE stable_key = ?", key)
+
+    private fun requiredSemanticId(conn: Connection, sql: String, value: String): Long =
+        requireNotNull(optionalSemanticId(conn, sql, value)) { "Missing canonical semantic identity: $value" }
+
+    private fun optionalSemanticId(conn: Connection, sql: String, value: String): Long? =
+        conn.prepareStatement(sql).use { statement ->
+            statement.setString(1, value)
+            val rows = statement.executeQuery()
+            if (rows.next()) rows.getLong(1) else null
+        }
+
     fun readSemanticGraph(filePaths: Collection<SemanticGraphSourcePath>): SemanticGraphIndexSnapshot {
-        val scope = filePaths.mapTo(mutableSetOf(), SemanticGraphSourcePath::value)
         synchronized(writeLock) {
             val conn = connection()
             val generation = readGenerationInTransaction(conn)
+            prepareSemanticGraphScope(conn, filePaths)
             val files = conn.prepareStatement(
-                "SELECT path, content_hash, refresh_status, diagnostics_json FROM semantic_graph_files ORDER BY path",
+                """SELECT files.path, files.content_hash, files.refresh_status, files.diagnostics_json
+                   FROM requested_semantic_file_ids requested
+                   JOIN semantic_files files ON files.id = requested.id
+                   ORDER BY files.path""",
             ).use { statement ->
                 val rows = statement.executeQuery()
                 buildList {
                     while (rows.next()) {
-                        val path = rows.getString(1)
-                        if (path in scope) {
-                            add(
-                                SemanticGraphFileCoverage(
-                                    path = SemanticGraphSourcePath.parse(path),
-                                    contentHash = rows.getString(2)?.let(SemanticGraphSha256::parse),
-                                    status = SemanticGraphFileStatus.valueOf(rows.getString(3)),
-                                    diagnostics = Json.decodeFromString(rows.getString(4)),
-                                ),
-                            )
-                        }
+                        add(
+                            SemanticGraphFileCoverage(
+                                path = SemanticGraphSourcePath.parse(rows.getString(1)),
+                                contentHash = rows.getString(2)?.let(SemanticGraphSha256::parse),
+                                status = SemanticGraphFileStatus.valueOf(rows.getString(3)),
+                                diagnostics = Json.decodeFromString(rows.getString(4)),
+                            ),
+                        )
                     }
                 }
             }
             val symbols = conn.prepareStatement(
-                """SELECT canonical_key, kind, name, fq_name, signature, owner_key,
-                          path, start_offset, end_offset, line
-                   FROM semantic_graph_symbols ORDER BY canonical_key""",
+                semanticSymbolSelect(
+                    """FROM requested_semantic_file_ids requested
+                       JOIN semantic_symbols symbols INDEXED BY idx_semantic_symbols_file_id_id
+                         ON symbols.file_id = requested.id
+                       JOIN semantic_files files ON files.id = symbols.file_id
+                       LEFT JOIN semantic_symbols owner ON owner.id = symbols.owner_id""",
+                    "ORDER BY symbols.id",
+                ),
             ).use { statement ->
                 val rows = statement.executeQuery()
-                buildList {
-                    while (rows.next()) {
-                        val path = rows.getString(7)
-                        if (path in scope) {
-                            add(
-                                SemanticGraphSymbol(
-                                    canonicalKey = SemanticGraphSymbolKey.parse(rows.getString(1)),
-                                    kind = SemanticGraphSymbolKind.valueOf(rows.getString(2)),
-                                    name = NonBlankString(rows.getString(3)),
-                                    fqName = rows.getString(4)?.let(::FqName),
-                                    signature = rows.getString(5)?.let(::NonBlankString),
-                                    ownerKey = rows.getString(6)?.let(SemanticGraphSymbolKey::parse),
-                                    path = SemanticGraphSourcePath.parse(path),
-                                    startOffset = ByteOffset(rows.getInt(8)),
-                                    endOffset = ByteOffset(rows.getInt(9)),
-                                    line = LineNumber(rows.getInt(10)),
-                                ),
-                            )
-                        }
-                    }
-                }
+                buildList { while (rows.next()) add(readSemanticSymbol(rows)) }
+            }
+            val boundarySymbols = conn.prepareStatement(
+                semanticSymbolSelect(
+                    """FROM semantic_symbols symbols
+                       JOIN semantic_files files ON files.id = symbols.file_id
+                       LEFT JOIN semantic_symbols owner ON owner.id = symbols.owner_id""",
+                    """WHERE symbols.id IN (
+                           SELECT edges.target_id
+                           FROM semantic_edge_occurrences edges INDEXED BY idx_semantic_edges_source_file_id_id
+                           WHERE edges.source_file_id IN (SELECT id FROM requested_semantic_file_ids)
+                       )
+                       AND symbols.file_id NOT IN (SELECT id FROM requested_semantic_file_ids)
+                       ORDER BY symbols.id""",
+                ),
+            ).use { statement ->
+                val rows = statement.executeQuery()
+                buildList { while (rows.next()) add(readSemanticSymbol(rows)) }
             }
             val relations = conn.prepareStatement(
-                """SELECT source_key, target_key, resolved_target_key, kind, context, source_path, start_offset, end_offset, line
-                   FROM semantic_graph_relations
-                   ORDER BY source_key, target_key, kind, context, source_path, start_offset""",
+                """SELECT source.stable_key, target.stable_key, resolved.stable_key,
+                          edges.kind, edges.context, files.path,
+                          edges.start_offset, edges.end_offset, edges.line
+                   FROM semantic_edge_occurrences edges INDEXED BY idx_semantic_edges_source_file_id_id
+                   JOIN semantic_symbols source ON source.id = edges.source_id
+                   JOIN semantic_symbols target ON target.id = edges.target_id
+                   LEFT JOIN semantic_symbols resolved ON resolved.id = edges.resolved_target_id
+                   JOIN semantic_files files ON files.id = edges.source_file_id
+                   WHERE edges.source_file_id IN (SELECT id FROM requested_semantic_file_ids)
+                   ORDER BY edges.id""",
             ).use { statement ->
                 val rows = statement.executeQuery()
                 buildList {
                     while (rows.next()) {
-                        val path = rows.getString(6)
-                        if (path in scope) {
-                            add(
-                                SemanticGraphRelation(
-                                    sourceKey = SemanticGraphSymbolKey.parse(rows.getString(1)),
-                                    targetKey = SemanticGraphSymbolKey.parse(rows.getString(2)),
-                                    resolvedTargetKey = rows.getString(3)?.let(SemanticGraphSymbolKey::parse),
-                                    kind = SemanticGraphRelationKind.valueOf(rows.getString(4)),
-                                    context = SemanticGraphRelationContext.valueOf(rows.getString(5)),
-                                    sourcePath = SemanticGraphSourcePath.parse(path),
-                                    startOffset = ByteOffset(rows.getInt(7)),
-                                    endOffset = ByteOffset(rows.getInt(8)),
-                                    line = LineNumber(rows.getInt(9)),
-                                ),
-                            )
-                        }
+                        add(
+                            SemanticGraphRelation(
+                                sourceKey = SemanticGraphSymbolKey.parse(rows.getString(1)),
+                                targetKey = SemanticGraphSymbolKey.parse(rows.getString(2)),
+                                resolvedTargetKey = rows.getString(3)?.let(SemanticGraphSymbolKey::parse),
+                                kind = SemanticGraphRelationKind.valueOf(rows.getString(4)),
+                                context = SemanticGraphRelationContext.valueOf(rows.getString(5)),
+                                sourcePath = SemanticGraphSourcePath.parse(rows.getString(6)),
+                                startOffset = ByteOffset(rows.getInt(7)),
+                                endOffset = ByteOffset(rows.getInt(8)),
+                                line = LineNumber(rows.getInt(9)),
+                            ),
+                        )
                     }
                 }
             }
-            return SemanticGraphIndexSnapshot(generation, files, symbols, relations)
+            return SemanticGraphIndexSnapshot(generation, files, symbols, boundarySymbols, relations)
         }
     }
 
+    private fun prepareSemanticGraphScope(conn: Connection, filePaths: Collection<SemanticGraphSourcePath>) {
+        conn.createStatement().use { statement ->
+            statement.execute(
+                "CREATE TEMP TABLE IF NOT EXISTS requested_semantic_file_ids(id INTEGER PRIMARY KEY) WITHOUT ROWID",
+            )
+            statement.execute("DELETE FROM requested_semantic_file_ids")
+        }
+        conn.prepareStatement(
+            """INSERT OR IGNORE INTO requested_semantic_file_ids(id)
+               SELECT id FROM semantic_files WHERE path = ?""",
+        ).use { statement ->
+            filePaths.distinct().sorted().forEach { path ->
+                statement.setString(1, path.value)
+                statement.addBatch()
+            }
+            statement.executeBatch()
+        }
+    }
+
+    private fun semanticSymbolSelect(from: String, tail: String): String =
+        """SELECT symbols.stable_key, symbols.kind, symbols.name, symbols.fq_name, symbols.signature,
+                  owner.stable_key, symbols.visibility, symbols.modality, symbols.origin,
+                  symbols.is_expect, symbols.is_actual, symbols.is_override, symbols.is_sealed,
+                  symbols.is_delegated, declared.stable_key, receiver.stable_key, returned.stable_key,
+                  files.path, symbols.start_offset, symbols.end_offset, symbols.line,
+                  COALESCE((
+                      SELECT json_group_array(annotation_name)
+                      FROM semantic_symbol_annotations annotations
+                      WHERE annotations.symbol_id = symbols.id
+                  ), '[]')
+           $from
+           LEFT JOIN semantic_types declared ON declared.id = symbols.declared_type_id
+           LEFT JOIN semantic_types receiver ON receiver.id = symbols.receiver_type_id
+           LEFT JOIN semantic_types returned ON returned.id = symbols.return_type_id
+           $tail"""
+
+    private fun readSemanticSymbol(rows: java.sql.ResultSet): SemanticGraphSymbol =
+        SemanticGraphSymbol(
+            canonicalKey = SemanticGraphSymbolKey.parse(rows.getString(1)),
+            kind = SemanticGraphSymbolKind.valueOf(rows.getString(2)),
+            name = NonBlankString(rows.getString(3)),
+            fqName = rows.getString(4)?.let(::FqName),
+            signature = rows.getString(5)?.let(::NonBlankString),
+            ownerKey = rows.getString(6)?.let(SemanticGraphSymbolKey::parse),
+            visibility = SemanticGraphVisibility.valueOf(rows.getString(7)),
+            modality = rows.getString(8)?.let(SemanticGraphModality::valueOf),
+            origin = SemanticGraphOrigin.valueOf(rows.getString(9)),
+            flags = SemanticGraphSymbolFlags(
+                isExpect = rows.getInt(10) != 0,
+                isActual = rows.getInt(11) != 0,
+                isOverride = rows.getInt(12) != 0,
+                isSealed = rows.getInt(13) != 0,
+                isDelegated = rows.getInt(14) != 0,
+            ),
+            declaredTypeKey = rows.getString(15)?.let(::NonBlankString),
+            receiverTypeKey = rows.getString(16)?.let(::NonBlankString),
+            returnTypeKey = rows.getString(17)?.let(::NonBlankString),
+            path = SemanticGraphSourcePath.parse(rows.getString(18)),
+            startOffset = ByteOffset(rows.getInt(19)),
+            endOffset = ByteOffset(rows.getInt(20)),
+            line = LineNumber(rows.getInt(21)),
+            annotations = Json.decodeFromString<List<String>>(rows.getString(22)).map(::NonBlankString),
+        )
+
     fun semanticGraphSymbolKeys(): Set<SemanticGraphSymbolKey> = synchronized(writeLock) {
         connection().prepareStatement(
-            "SELECT canonical_key FROM semantic_graph_symbols ORDER BY canonical_key",
+            "SELECT stable_key FROM semantic_symbols ORDER BY stable_key",
         ).use { statement ->
             val rows = statement.executeQuery()
             buildSet {
@@ -1953,15 +2506,22 @@ class SqliteSourceIndexStore private constructor(
     }
 
     private fun deleteSemanticGraphFile(conn: Connection, path: String) {
-        conn.prepareStatement("DELETE FROM semantic_graph_relations WHERE source_path = ?").use { statement ->
+        conn.prepareStatement("DELETE FROM semantic_files WHERE path = ?").use { statement ->
             statement.setString(1, path)
             statement.executeUpdate()
         }
-        conn.prepareStatement("DELETE FROM semantic_graph_symbols WHERE path = ?").use { statement ->
-            statement.setString(1, path)
-            statement.executeUpdate()
+        if (repositoryBasePath != null) {
+            conn.prepareStatement(
+                "INSERT OR IGNORE INTO repository_overlay_tombstones(path) VALUES (?)",
+            ).use { statement ->
+                statement.setString(1, path)
+                statement.executeUpdate()
+            }
         }
-        conn.prepareStatement("DELETE FROM semantic_graph_files WHERE path = ?").use { statement ->
+    }
+
+    private fun clearRepositoryOverlayTombstone(conn: Connection, path: String) {
+        conn.prepareStatement("DELETE FROM repository_overlay_tombstones WHERE path = ?").use { statement ->
             statement.setString(1, path)
             statement.executeUpdate()
         }
@@ -2752,6 +3312,7 @@ class SqliteSourceIndexStore private constructor(
     }
 
     private companion object {
+        const val REPOSITORY_OVERLAY_FILE = "repository-overlay.json"
         const val PENDING_UPDATE_RETENTION_MS = 7L * 24 * 60 * 60 * 1_000
         const val absolutePathPrefix = "__kast_abs__/"
         const val sourceRootProbeFileName = ".kast-source-root-probe.kt"

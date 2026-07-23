@@ -302,7 +302,7 @@ fn spawn_operation_backend(
   "transport": "uds",
   "socketPath": "{}",
   "pid": {},
-  "schemaVersion": 3
+  "schemaVersion": 4
 }}]"#,
             workspace.display(),
             socket_path.display(),
@@ -337,7 +337,7 @@ fn spawn_operation_backend(
                     "backendName": "idea",
                     "backendVersion": "test",
                     "workspaceRoot": workspace,
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "capabilities" => json!({
                     "backendName": "idea",
@@ -350,7 +350,7 @@ fn spawn_operation_backend(
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "mutation/submit" => match terminal_result.as_ref() {
                     Some(result) => {

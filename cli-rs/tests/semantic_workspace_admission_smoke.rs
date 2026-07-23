@@ -1248,7 +1248,7 @@ fn write_stale_runtime_descriptor(
             "transport": "uds",
             "socketPath": socket_path.display().to_string(),
             "pid": 0,
-            "schemaVersion": 3
+            "schemaVersion": 4
         }]))
         .expect("descriptor JSON"),
     )
@@ -1271,7 +1271,7 @@ fn write_runtime_descriptors(home: &Path, descriptors: &[(&Path, &Path, &str)]) 
                         "transport": "uds",
                         "socketPath": socket_path.display().to_string(),
                         "pid": std::process::id(),
-                        "schemaVersion": 3
+                        "schemaVersion": 4
                     })
                 })
                 .collect::<Vec<_>>(),
@@ -1320,7 +1320,7 @@ impl ObservedSemanticBackend {
                         "ok": true,
                         "backendName": backend_name,
                         "backendVersion": "admission-test",
-                        "schemaVersion": 3
+                        "schemaVersion": 4
                     }),
                     "runtime/status" => serde_json::json!({
                         "state": "READY",
@@ -1332,7 +1332,7 @@ impl ObservedSemanticBackend {
                         "workspaceRoot": workspace.display().to_string(),
                         "sourceModuleNames": [":fixture"],
                         "referenceIndexReady": true,
-                        "schemaVersion": 3
+                        "schemaVersion": 4
                     }),
                     "capabilities" => serde_json::json!({
                         "backendName": backend_name,
@@ -1345,7 +1345,7 @@ impl ObservedSemanticBackend {
                             "maxResults": 1000,
                             "maxConcurrentRequests": 4
                         },
-                        "schemaVersion": 3
+                        "schemaVersion": 4
                     }),
                     "mutation/submit" => serde_json::json!({
                         "type": "SUCCEEDED",
@@ -1434,7 +1434,7 @@ fn spawn_verify_backend(
                     "ok": true,
                     "backendName": backend_name,
                     "backendVersion": "admission-test",
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "runtime/status" => serde_json::json!({
                     "state": "READY",
@@ -1446,7 +1446,7 @@ fn spawn_verify_backend(
                     "workspaceRoot": workspace.display().to_string(),
                     "sourceModuleNames": [":analysis-api", format!(":backend:{backend_name}")],
                     "referenceIndexReady": false,
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "capabilities" => serde_json::json!({
                     "backendName": backend_name,
@@ -1459,7 +1459,7 @@ fn spawn_verify_backend(
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "symbol/resolve" => serde_json::json!({
                     "type": "RESOLVE_SUCCESS",
@@ -1474,7 +1474,7 @@ fn spawn_verify_backend(
                             "startOffset": 0
                         }
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "raw/workspace-refresh" => {
                     let file_paths = request["params"]["filePaths"]
@@ -1503,7 +1503,7 @@ fn spawn_verify_backend(
                         "removedFileCount": 0,
                         "attemptCount": 1,
                         "elapsedMillis": 0,
-                        "schemaVersion": 3
+                        "schemaVersion": 4
                     })
                 }
                 "raw/diagnostics" => {
@@ -1535,7 +1535,7 @@ fn spawn_verify_backend(
                             "type": "EXACT",
                             "totalCount": 0
                         },
-                        "schemaVersion": 3
+                        "schemaVersion": 4
                     })
                 }
                 other => panic!("unexpected fake verification method: {other}"),

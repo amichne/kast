@@ -117,7 +117,7 @@ fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operation
                     "subject": identity,
                     "references": [],
                     "evidence": complete_relationship_evidence(0),
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
             ),
             (
@@ -132,7 +132,7 @@ fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operation
                         "visitedCandidateCount": 0,
                         "truncated": false
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
             ),
         ],

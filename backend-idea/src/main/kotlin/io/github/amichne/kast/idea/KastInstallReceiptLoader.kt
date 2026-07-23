@@ -1,6 +1,7 @@
 package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.api.contract.compatibility.CliImplementationVersion
+import io.github.amichne.kast.api.protocol.INSTALL_RECEIPT_SCHEMA_VERSION
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.intOrNull
@@ -12,7 +13,6 @@ import java.nio.file.Path
 import java.security.MessageDigest
 
 internal object KastInstallReceiptLoader {
-    private const val schemaVersion = 3
     private val digestPattern = Regex("[0-9a-f]{64}")
 
     fun defaultPath(
@@ -35,11 +35,11 @@ internal object KastInstallReceiptLoader {
         }
         if (
             receipt.string("tool") != "kast" ||
-            receipt.int("schemaVersion") != schemaVersion ||
+            receipt.int("schemaVersion") != INSTALL_RECEIPT_SCHEMA_VERSION ||
             receipt.string("releaseDigest")?.matches(digestPattern) != true ||
             receipt.string("manifestDigest")?.matches(digestPattern) != true
         ) {
-            return invalid(path, "invalid schema-3 active install receipt")
+            return invalid(path, "invalid schema-$INSTALL_RECEIPT_SCHEMA_VERSION active install receipt")
         }
         val installRoot = receipt.objectValue("roots")?.string("install")
             ?.let { value -> runCatching { Path.of(value).toAbsolutePath().normalize() }.getOrNull() }

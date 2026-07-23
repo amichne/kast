@@ -17,9 +17,7 @@ fn semantic_graph_request_is_catalog_valid() {
         "method": "raw/semantic-graph",
         "params": {
             "filePaths": ["/workspace/Example.kt"],
-            "removedFilePaths": ["/workspace/Removed.kt"],
-            "pageSize": 500,
-            "continuation": "00000000-0000-4000-8000-000000000337"
+            "removedFilePaths": ["/workspace/Removed.kt"]
         }
     })
     .to_string();

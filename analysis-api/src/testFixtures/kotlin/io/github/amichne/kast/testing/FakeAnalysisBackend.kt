@@ -39,6 +39,7 @@ import io.github.amichne.kast.api.contract.Location
 import io.github.amichne.kast.api.contract.LineNumber
 import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.NonBlankString
+import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.InvalidWorkspaceFileCursorException
 import io.github.amichne.kast.api.protocol.InvalidWorkspaceFileCursorScope
@@ -251,8 +252,8 @@ class FakeAnalysisBackend private constructor(
             generation = SemanticGraphGeneration(0),
             scopeFingerprint = SemanticGraphSha256.parse("0".repeat(64)),
             coverage = SemanticGraphCoverage(coverage + removed),
-            symbols = symbols,
-            relations = emptyList(),
+            symbolCount = NonNegativeInt(symbols.size),
+            edgeOccurrenceCount = NonNegativeInt(0),
         )
     }
 

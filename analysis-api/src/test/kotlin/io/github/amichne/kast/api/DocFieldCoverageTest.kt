@@ -15,7 +15,6 @@ import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
-import io.github.amichne.kast.api.contract.query.SemanticGraphPageToken
 import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
@@ -185,7 +184,6 @@ class DocFieldCoverageTest {
         "WorkspaceFilesQuery" to WorkspaceFilesQuery.serializer(),
         "WorkspaceFilesResult" to WorkspaceFilesResult.serializer(),
         "SemanticGraphPath" to SemanticGraphPath.serializer(),
-        "SemanticGraphPageToken" to SemanticGraphPageToken.serializer(),
         "SemanticGraphQuery" to SemanticGraphQuery.serializer(),
         "SemanticGraphSymbolKey" to SemanticGraphSymbolKey.serializer(),
         "SemanticGraphSourcePath" to SemanticGraphSourcePath.serializer(),

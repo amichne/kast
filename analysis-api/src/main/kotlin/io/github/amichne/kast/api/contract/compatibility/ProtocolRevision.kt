@@ -14,6 +14,6 @@ value class ProtocolRevision(
     }
 
     companion object {
-        val CURRENT = ProtocolRevision(1)
+        val CURRENT = ProtocolRevision(2)
     }
 }

@@ -125,7 +125,7 @@ fn symbol_default_is_a_stable_compact_projection_within_budget() {
                 "preview": "target()"
             },
             "relationships": [],
-            "schemaVersion": 3
+            "schemaVersion": 4
         })
     );
     assert!(stdout.get("request").is_none(), "{stdout}");
@@ -1025,7 +1025,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
         "backendName": "idea",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
-        "schemaVersion": 3
+        "schemaVersion": 4
     });
     let capabilities = json!({
         "backendName": "idea",
@@ -1039,7 +1039,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
             "maxConcurrentRequests": 4
         },
         "explanation": "capability explanation ".repeat(200),
-        "schemaVersion": 3
+        "schemaVersion": 4
     });
     #[cfg(target_os = "macos")]
     let responses = vec![
@@ -1153,7 +1153,7 @@ fn complete_refresh_for(file: &Path) -> Value {
         "removedFileCount": 0,
         "attemptCount": 1,
         "elapsedMillis": 0,
-        "schemaVersion": 3
+        "schemaVersion": 4
     })
 }
 

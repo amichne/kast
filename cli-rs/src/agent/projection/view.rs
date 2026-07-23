@@ -54,7 +54,7 @@ impl AgentProjectionRequest {
             AgentCommand::WorkspaceFiles(args) => {
                 Self::WorkspaceFiles(workspace_files_result_view(&args.view))
             }
-            AgentCommand::Graphify(_) => Self::Passthrough,
+            AgentCommand::Graph(_) => Self::Passthrough,
             AgentCommand::Symbol(args) => Self::Symbol {
                 view: symbol_result_view(&args.view),
             },

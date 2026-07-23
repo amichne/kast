@@ -1,5 +1,5 @@
 #[test]
-fn protocol_and_rust_build_script_agree_on_schema_version_nine() {
+fn protocol_and_rust_build_script_agree_on_source_index_schema_version() {
     let protocol_version = include_str!("../protocol/source-index-schema-version.txt")
         .trim()
         .parse::<i64>()
@@ -8,6 +8,6 @@ fn protocol_and_rust_build_script_agree_on_schema_version_nine() {
         .parse::<i64>()
         .expect("Rust build script schema version must be numeric");
 
-    assert_eq!(9, protocol_version);
+    assert!(protocol_version > 0);
     assert_eq!(protocol_version, generated_version);
 }

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Kast Analysis API
-  version: "3.0.0"
+  version: "4.0.0"
   description: >
     JSON-RPC 2.0 analysis protocol for the Kast daemon. Each operation is
     modelled as a logical POST whose request body is the JSON-RPC params
@@ -2370,20 +2370,9 @@ components:
           type: array
           items:
             type: string
-        pageSize:
-          "$ref": "#/components/schemas/PositiveInt"
-        continuation:
-          anyOf:
-            - "$ref": "#/components/schemas/SemanticGraphPageToken"
-            - type: "null"
       additionalProperties: false
       required:
         - filePaths
-    PositiveInt:
-      type: integer
-      format: int32
-    SemanticGraphPageToken:
-      type: string
     SemanticGraphResult:
       type: object
       properties:
@@ -2393,29 +2382,17 @@ components:
           "$ref": "#/components/schemas/SemanticGraphSha256"
         coverage:
           "$ref": "#/components/schemas/SemanticGraphCoverage"
-        symbols:
-          type: array
-          items:
-            "$ref": "#/components/schemas/SemanticGraphSymbol"
-        boundarySymbols:
-          type: array
-          items:
-            "$ref": "#/components/schemas/SemanticGraphSymbol"
-        relations:
-          type: array
-          items:
-            "$ref": "#/components/schemas/SemanticGraphRelation"
-        nextPageToken:
-          anyOf:
-            - "$ref": "#/components/schemas/SemanticGraphPageToken"
-            - type: "null"
+        symbolCount:
+          "$ref": "#/components/schemas/NonNegativeInt"
+        edgeOccurrenceCount:
+          "$ref": "#/components/schemas/NonNegativeInt"
       additionalProperties: false
       required:
         - generation
         - scopeFingerprint
         - coverage
-        - symbols
-        - relations
+        - symbolCount
+        - edgeOccurrenceCount
     SemanticGraphGeneration:
       type: integer
       format: int64
@@ -2492,111 +2469,6 @@ components:
     NonNegativeInt:
       type: integer
       format: int32
-    SemanticGraphSymbol:
-      type: object
-      properties:
-        canonicalKey:
-          "$ref": "#/components/schemas/SemanticGraphSymbolKey"
-        kind:
-          "$ref": "#/components/schemas/SemanticGraphSymbolKind"
-        name:
-          "$ref": "#/components/schemas/NonBlankString"
-        fqName:
-          anyOf:
-            - "$ref": "#/components/schemas/FqName"
-            - type: "null"
-        signature:
-          anyOf:
-            - "$ref": "#/components/schemas/NonBlankString"
-            - type: "null"
-        ownerKey:
-          anyOf:
-            - "$ref": "#/components/schemas/SemanticGraphSymbolKey"
-            - type: "null"
-        path:
-          "$ref": "#/components/schemas/SemanticGraphSourcePath"
-        startOffset:
-          "$ref": "#/components/schemas/ByteOffset"
-        endOffset:
-          "$ref": "#/components/schemas/ByteOffset"
-        line:
-          "$ref": "#/components/schemas/LineNumber"
-      additionalProperties: false
-      required:
-        - canonicalKey
-        - kind
-        - name
-        - path
-        - startOffset
-        - endOffset
-        - line
-    SemanticGraphSymbolKey:
-      type: string
-    SemanticGraphSymbolKind:
-      type: string
-      enum:
-        - FILE
-        - CLASS
-        - INTERFACE
-        - OBJECT
-        - ENUM_CLASS
-        - ENUM_ENTRY
-        - FUNCTION
-        - MEMBER_FUNCTION
-        - CONSTRUCTOR
-    FqName:
-      type: string
-    SemanticGraphRelation:
-      type: object
-      properties:
-        sourceKey:
-          "$ref": "#/components/schemas/SemanticGraphSymbolKey"
-        targetKey:
-          "$ref": "#/components/schemas/SemanticGraphSymbolKey"
-        resolvedTargetKey:
-          anyOf:
-            - "$ref": "#/components/schemas/SemanticGraphSymbolKey"
-            - type: "null"
-        kind:
-          "$ref": "#/components/schemas/SemanticGraphRelationKind"
-        context:
-          "$ref": "#/components/schemas/SemanticGraphRelationContext"
-        sourcePath:
-          "$ref": "#/components/schemas/SemanticGraphSourcePath"
-        startOffset:
-          "$ref": "#/components/schemas/ByteOffset"
-        endOffset:
-          "$ref": "#/components/schemas/ByteOffset"
-        line:
-          "$ref": "#/components/schemas/LineNumber"
-      additionalProperties: false
-      required:
-        - sourceKey
-        - targetKey
-        - kind
-        - sourcePath
-        - startOffset
-        - endOffset
-        - line
-    SemanticGraphRelationKind:
-      type: string
-      enum:
-        - CONTAINS
-        - METHOD
-        - CASE_OF
-        - INHERITS
-        - IMPLEMENTS
-        - CALLS
-        - REFERENCES
-    SemanticGraphRelationContext:
-      type: string
-      enum:
-        - NONE
-        - FIELD
-        - PARAMETER_TYPE
-        - RETURN_TYPE
-        - GENERIC_ARG
-        - CALL
     WorkspaceFilesContinuationAction:
       type: string
       enum:

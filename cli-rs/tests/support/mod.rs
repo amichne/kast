@@ -171,7 +171,7 @@ pub(crate) fn write_macos_plugin_workspace_metadata_for_cli(
                 "compatibility": {
                     "pluginVersion": cli_version,
                     "cliVersion": cli_version,
-                    "protocolRevision": 1,
+                    "protocolRevision": 2,
                     "workspaceMetadataRevision": 3,
                     "readCapabilities": [
                         "RESOLVE_SYMBOL",
@@ -318,7 +318,7 @@ fn spawn_scripted_backend(
             "transport": "uds",
             "socketPath": socket_path.display().to_string(),
             "pid": std::process::id(),
-            "schemaVersion": 3
+            "schemaVersion": 4
         }]))
         .expect("descriptor json"),
     )
@@ -364,7 +364,7 @@ fn spawn_scripted_backend(
                     "backendName": server_backend_name.as_str(),
                     "backendVersion": "scripted-test",
                     "workspaceRoot": server_workspace.display().to_string(),
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 "capabilities" => serde_json::json!({
                     "backendName": server_backend_name.as_str(),
@@ -386,7 +386,7 @@ fn spawn_scripted_backend(
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 3
+                    "schemaVersion": 4
                 }),
                 _ => {
                     let (expected_method, result) = scripted_results
@@ -435,7 +435,7 @@ pub(crate) fn spawn_sequenced_idea_backend(
             "transport": "uds",
             "socketPath": socket_path.display().to_string(),
             "pid": std::process::id(),
-            "schemaVersion": 3
+            "schemaVersion": 4
         }]))
         .expect("descriptor json"),
     )

@@ -92,10 +92,6 @@ import io.github.amichne.kast.idea.backend.diagnostics.*
 import io.github.amichne.kast.idea.backend.mutation.*
 import io.github.amichne.kast.idea.backend.workspace.*
 import io.github.amichne.kast.idea.backend.semantic.semanticGraphOperation
-import io.github.amichne.kast.idea.backend.semantic.SemanticGraphContinuationProjection
-import io.github.amichne.kast.idea.backend.semantic.SemanticGraphContinuationState
-import io.github.amichne.kast.idea.backend.semantic.SemanticGraphQueryIdentity
-import io.github.amichne.kast.api.contract.query.SemanticGraphPageToken
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 
 internal class KastPluginBackend(
@@ -157,17 +153,6 @@ internal class KastPluginBackend(
         capacity = limits.typedContinuationCapacity,
         timeToLive = limits.typedContinuationTtl,
         tokenIssuer = ContinuationTokenIssuer(DiagnosticPageToken::random),
-        stateDisposer = ContinuationStateDisposer { },
-    )
-    internal val semanticGraphContinuations = SharedContinuationStore<
-        SemanticGraphPageToken,
-        SemanticGraphQueryIdentity,
-        SemanticGraphContinuationState,
-        SemanticGraphContinuationProjection,
-    >(
-        capacity = limits.typedContinuationCapacity,
-        timeToLive = limits.typedContinuationTtl,
-        tokenIssuer = ContinuationTokenIssuer(SemanticGraphPageToken::random),
         stateDisposer = ContinuationStateDisposer { },
     )
     internal val relationshipContinuations = RelationshipContinuationStore(limits)
@@ -411,7 +396,6 @@ internal class KastPluginBackend(
         val failures = listOf(
             runCatching(referenceContinuations::close).exceptionOrNull(),
             runCatching(diagnosticContinuations::close).exceptionOrNull(),
-            runCatching(semanticGraphContinuations::close).exceptionOrNull(),
             runCatching(relationshipContinuations::close).exceptionOrNull(),
             runCatching(workspaceFilePaging::close).exceptionOrNull(),
         ).filterNotNull()

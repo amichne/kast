@@ -91,7 +91,7 @@ class KastProjectOpenProfileAutoInitTest {
                 artifact.jsonPrimitive.content
             },
         )
-        assertEquals(1, compatibility.getValue("protocolRevision").jsonPrimitive.int)
+        assertEquals(2, compatibility.getValue("protocolRevision").jsonPrimitive.int)
         assertEquals(3, compatibility.getValue("workspaceMetadataRevision").jsonPrimitive.int)
         assertEquals("IDEA", compatibility.getValue("runtimeIdentity").jsonObject.getValue("backendKind").jsonPrimitive.content)
         assertTrue(

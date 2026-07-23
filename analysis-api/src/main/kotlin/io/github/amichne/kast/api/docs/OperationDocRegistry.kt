@@ -274,15 +274,15 @@ object OperationDocRegistry {
         OperationDoc(
             operationId = "semanticGraph",
             jsonRpcMethod = "raw/semantic-graph",
-            summary = "Export a compiler-backed Kotlin semantic graph page",
+            summary = "Refresh and persist a compiler-backed Kotlin semantic graph",
             tag = "read",
             capability = "SEMANTIC_GRAPH",
             requestSchema = "SemanticGraphQuery",
             responseSchema = "SemanticGraphResult",
-            description = "Refreshes selected Kotlin files through K2 analysis and exports provider-neutral symbols, relations, and coverage evidence.",
+            description = "Refreshes selected Kotlin files through K2 analysis, atomically persists provider-neutral graph facts, and returns coverage plus persisted fact counts.",
             behavioralNotes = listOf(
                 "PSI is used only inside the IDEA backend for enumeration and source ranges; no PSI or Analysis API object crosses the contract boundary.",
-                "Continuation tokens are single-use and bound to the exact path scope, page size, and shared source-index generation.",
+                "The result is an atomic refresh acknowledgement; enumerate native graph nodes separately with generation-pinned keyset queries.",
                 "Compiler-resolved library and JDK targets are omitted and counted in coverage evidence.",
             ),
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED", "VALIDATION_ERROR", "CONFLICT"),
