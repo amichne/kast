@@ -37,7 +37,7 @@ kotlin {
 }
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val ideaDistributionVersion = catalog.findVersion("idea").get().requiredVersion
+private val ideaDistributionVersion = catalog.findVersion("idea-plugin").get().requiredVersion
 
 val ideaDistribution: Configuration by configurations.creating {
     isCanBeConsumed = false

@@ -251,7 +251,7 @@ fn validate_macos_workspace_for_preference(
     #[cfg(not(target_os = "macos"))]
     {
         let _ = preference;
-        return self_mgmt::validate_macos_plugin_workspace(workspace_root);
+        self_mgmt::validate_macos_plugin_workspace(workspace_root)
     }
     #[cfg(target_os = "macos")]
     if preference.fixed_backend() == Some(BackendName::Headless) {
