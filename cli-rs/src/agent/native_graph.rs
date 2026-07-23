@@ -42,6 +42,15 @@ fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value
             "--resolution must be a finite number greater than zero.",
         ));
     }
+    if args.operation == NativeGraphOperation::Nodes
+        && args.after_id > 0
+        && args.generation.is_none()
+    {
+        return Err(agent_error(
+            "AGENT_USAGE",
+            "--generation is required when resuming nodes with --after-id.",
+        ));
+    }
     let database = native_graph_database_path(args)?;
     let connection = rusqlite::Connection::open_with_flags(
         &database,
@@ -1158,6 +1167,27 @@ mod native_graph_tests {
                 })
                 .collect(),
         )
+    }
+
+    #[test]
+    fn native_graph_resumed_nodes_require_generation_before_database_access() {
+        let temp = tempfile::tempdir().unwrap();
+        let args = AgentNativeGraphArgs {
+            runtime: AgentRuntimeArgs::default(),
+            database: Some(temp.path().join("missing.db")),
+            scope: NativeGraphScope::Symbol,
+            operation: NativeGraphOperation::Nodes,
+            symbol: None,
+            generation: None,
+            after_id: 1,
+            limit: 100,
+            resolution: 1.0,
+        };
+
+        let error = native_graph_result(&args).unwrap_err();
+
+        assert_eq!(error.code, "AGENT_USAGE");
+        assert!(error.message.contains("--generation"));
     }
 
     #[test]
