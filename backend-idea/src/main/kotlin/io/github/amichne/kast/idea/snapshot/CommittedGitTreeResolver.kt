@@ -11,8 +11,14 @@ data class CommittedGitTree(
 object CommittedGitTreeResolver {
     fun resolve(workspaceRoot: Path): CommittedGitTree? {
         if (git(workspaceRoot, "status", "--porcelain", "--untracked-files=normal")?.isNotEmpty() != false) return null
-        val treeOid = git(workspaceRoot, "rev-parse", "HEAD^{tree}")?.let(GitObjectId::parse) ?: return null
-        val rawManifest = gitBytes(workspaceRoot, "ls-tree", "-r", "-z", "HEAD") ?: return null
+        val workspacePrefix = gitBytes(workspaceRoot, "rev-parse", "--show-prefix")
+            ?.toString(Charsets.UTF_8)
+            ?.removeSuffix("\n")
+            ?.removeSuffix("\r")
+            ?: return null
+        val tree = workspacePrefix.removeSuffix("/").takeIf(String::isNotEmpty)?.let { "HEAD:$it" } ?: "HEAD^{tree}"
+        val treeOid = git(workspaceRoot, "rev-parse", tree)?.let(GitObjectId::parse) ?: return null
+        val rawManifest = gitBytes(workspaceRoot, "ls-tree", "--full-tree", "-r", "-z", treeOid.value) ?: return null
         val files = rawManifest.toString(Charsets.UTF_8)
             .split('\u0000')
             .asSequence()

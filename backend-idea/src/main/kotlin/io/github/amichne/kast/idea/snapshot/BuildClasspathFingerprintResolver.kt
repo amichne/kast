@@ -13,11 +13,23 @@ object BuildClasspathFingerprintResolver {
                 add("settings:${gradleRoot.settingsFileHash.value}")
             }
             OrderEnumerator.orderEntries(project).recursively().classes().roots
-                .mapTo(this) { root -> "classpath:${root.url}" }
+                .mapTo(this) { root -> "classpath:${stableClasspathRootUrl(root.url, workspaceIdentity.workspaceRootPath)}" }
         }.sorted()
         val digest = MessageDigest.getInstance("SHA-256")
             .digest(entries.joinToString("\n").toByteArray())
             .joinToString("") { byte -> "%02x".format(byte) }
         return BuildClasspathFingerprint.parse(digest)
+    }
+}
+
+internal fun stableClasspathRootUrl(url: String, workspaceRoot: java.nio.file.Path): String {
+    val workspacePath = workspaceRoot.toAbsolutePath().normalize().toString().replace('\\', '/').trimEnd('/')
+    if (workspacePath.isEmpty()) return url
+    val start = url.indexOf("://").takeIf { it >= 0 }?.plus(3) ?: return url
+    val end = start + workspacePath.length
+    return if (url.startsWith(workspacePath, start) && (end == url.length || url[end] == '/' || url[end] == '!')) {
+        url.replaceRange(start, end, "\$WORKSPACE")
+    } else {
+        url
     }
 }

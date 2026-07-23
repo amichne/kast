@@ -24,30 +24,34 @@ class RepositorySnapshotCoordinator(
 ) {
     fun prepareWorktreeDatabase(databasePath: Path): OverlayManifest? {
         if (Files.exists(databasePath)) return null
-        val committedTree = CommittedGitTreeResolver.resolve(workspaceRoot) ?: return null
-        val target = SnapshotManifest(
-            key = SnapshotKey(
-                committedTree.treeOid,
-                buildClasspathFingerprint,
-                SOURCE_INDEX_SCHEMA_VERSION,
-                producerVersion,
-            ),
-            files = committedTree.files,
-            createdAtEpochMillis = System.currentTimeMillis(),
-        )
-        val snapshotStore = RepositorySnapshotStore(repositoryDirectory)
-        val base = RepositorySnapshotSelector.choose(target, snapshotStore.retainedManifests()) ?: return null
-        val overlay = OverlayManifest.between(base, target)
-        overlay.shards.values.toSet().forEach { shard ->
-            gitBlob(shard.blobOid)?.let { content -> snapshotStore.putContentShard(shard, content) }
+        val overlayPath = databasePath.resolveSibling("repository-overlay.json")
+        return runCatching {
+            val committedTree = CommittedGitTreeResolver.resolve(workspaceRoot) ?: return null
+            val target = SnapshotManifest(
+                key = SnapshotKey(
+                    committedTree.treeOid,
+                    buildClasspathFingerprint,
+                    SOURCE_INDEX_SCHEMA_VERSION,
+                    producerVersion,
+                ),
+                files = committedTree.files,
+                createdAtEpochMillis = System.currentTimeMillis(),
+            )
+            val snapshotStore = RepositorySnapshotStore(repositoryDirectory)
+            val base = RepositorySnapshotSelector.choose(target, snapshotStore.retainedManifests()) ?: return null
+            val overlay = OverlayManifest.between(base, target)
+            overlay.shards.values.toSet().forEach { shard ->
+                gitBlob(shard.blobOid)?.let { content -> snapshotStore.putContentShard(shard, content) }
+            }
+            Files.createDirectories(databasePath.parent)
+            Files.copy(snapshotStore.snapshotDatabase(base.key), databasePath)
+            Files.writeString(overlayPath, Json { prettyPrint = true }.encodeToString(overlay))
+            overlay
+        }.getOrElse {
+            runCatching { Files.deleteIfExists(databasePath) }
+            runCatching { Files.deleteIfExists(overlayPath) }
+            null
         }
-        Files.createDirectories(databasePath.parent)
-        Files.copy(snapshotStore.snapshotDatabase(base.key), databasePath)
-        Files.writeString(
-            databasePath.resolveSibling("repository-overlay.json"),
-            Json { prettyPrint = true }.encodeToString(overlay),
-        )
-        return overlay
     }
 
     fun publishCompletedIndex(store: SqliteSourceIndexStore): SnapshotPublicationResult? {
