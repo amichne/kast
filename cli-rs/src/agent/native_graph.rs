@@ -191,7 +191,7 @@ fn native_graph_attach_repository_base(
             |row| row.get(0),
         )
         .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_OVERLAY_UNAVAILABLE", error))?;
-    if base_version != crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION as i64 {
+    if base_version != crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION {
         return Err(agent_error(
             "NATIVE_GRAPH_SCHEMA_MISMATCH",
             format!("Repository base uses source-index schema {base_version}."),
@@ -236,7 +236,7 @@ fn native_graph_generation(
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_SCHEMA_UNAVAILABLE", error))?;
-    if version != crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION as i64 {
+    if version != crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION {
         return Err(agent_error(
             "NATIVE_GRAPH_SCHEMA_MISMATCH",
             format!(

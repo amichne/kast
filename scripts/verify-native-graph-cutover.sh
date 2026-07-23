@@ -23,6 +23,5 @@ rg -q 'NativeGraph' cli-rs/src/agent.rs cli-rs/src/agent cli-rs/src/cli/agent.rs
 ./gradlew :analysis-api:test --no-daemon
 ./gradlew :index-store:test --tests '*NativeSemanticGraphStoreTest*' --no-daemon
 ./gradlew :backend-idea:test --tests '*NativeSemanticGraphBackendTest*' \
-  --tests '*RepositorySnapshotIntegrationTest*' --no-daemon \
-  -x :backend-idea:instrumentCode -x :backend-idea:instrumentTestCode
+  --tests '*RepositorySnapshotIntegrationTest*' --no-daemon
 cargo test --manifest-path cli-rs/Cargo.toml --locked native_graph

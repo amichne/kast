@@ -174,7 +174,9 @@ class RepositorySnapshotIntegrationTest {
         }
         assertTrue(Files.size(targetDatabase) < Files.size(immutableBase))
 
-        val siblingDatabase = targetDatabase.parent.resolveSibling("sibling-worktree").resolve("source-index.db")
+        val siblingDatabase = targetDatabase.parent
+            .resolveSibling("${workspace.fileName}-sibling-worktree")
+            .resolve("source-index.db")
         val siblingOverlay = RepositorySnapshotCoordinator(workspace, repositoryDirectory, fingerprint, producer)
             .prepareWorktreeDatabase(siblingDatabase)
         assertEquals(overlay?.base, siblingOverlay?.base)

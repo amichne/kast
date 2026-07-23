@@ -1341,8 +1341,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "filePaths": [
                         "/workspace/src/Sample.kt"
                     ],
-                    "removedFilePaths": [],
-                    "pageSize": 500
+                    "removedFilePaths": []
                 },
                 "id": 1,
                 "jsonrpc": "2.0"

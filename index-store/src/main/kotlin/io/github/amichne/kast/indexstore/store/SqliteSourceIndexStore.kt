@@ -242,7 +242,7 @@ class SqliteSourceIndexStore private constructor(
     }
 
     private fun readSchemaVersion(conn: Connection): Int? = try {
-        conn.prepareStatement("SELECT version FROM schema_version LIMIT 1").use { stmt ->
+        conn.prepareStatement("SELECT version FROM main.schema_version LIMIT 1").use { stmt ->
             stmt.executeQuery().let { rs -> if (rs.next()) rs.getInt(1) else null }
         }
     } catch (_: Exception) {

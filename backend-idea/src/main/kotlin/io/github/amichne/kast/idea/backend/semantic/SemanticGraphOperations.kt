@@ -687,10 +687,12 @@ private fun KtNamedDeclaration.semanticCompilerRelations(): List<Pair<PsiElement
             declarationSymbol.getExpectsForActual()
                 .mapNotNull { expected -> expected.psi }
                 .forEach { target -> add(target to SemanticGraphRelationKind.EXPECT_ACTUAL) }
-            (declarationSymbol as? KaNamedClassSymbol)
-                ?.sealedClassInheritors
-                ?.mapNotNull { inheritor -> inheritor.psi }
-                ?.forEach { target -> add(target to SemanticGraphRelationKind.SEALED_MEMBER) }
+            if (this@semanticCompilerRelations.hasModifier(KtTokens.SEALED_KEYWORD)) {
+                (declarationSymbol as? KaNamedClassSymbol)
+                    ?.sealedClassInheritors
+                    ?.mapNotNull { inheritor -> inheritor.psi }
+                    ?.forEach { target -> add(target to SemanticGraphRelationKind.SEALED_MEMBER) }
+            }
         }
     }
 
