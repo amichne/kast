@@ -71,6 +71,10 @@ fn setup_installs_native_cli_and_idea_plugin() {
         String::from_utf8_lossy(&output.stderr),
     );
     assert!(kast_home.join("current/bin/kast").is_file());
+    assert_eq!(
+        std::fs::read_link(home.join(".local/bin/kast")).expect("user command"),
+        kast_home.join("current/bin/kast"),
+    );
     assert!(plugins.join("kast/lib/plugin.jar").is_file());
     let receipt: serde_json::Value = serde_json::from_slice(
         &std::fs::read(kast_home.join("current/receipt.json")).expect("setup receipt"),
@@ -296,7 +300,10 @@ fn setup_activates_one_validated_release_and_converges_on_rerun() {
         std::fs::canonicalize(kast_home.join("current/bin/kast")).expect("active command"),
         std::fs::canonicalize(release.join("bin/kast")).expect("active binary"),
     );
-    assert!(!home.join(".local/bin/kast").exists());
+    assert_eq!(
+        std::fs::read_link(home.join(".local/bin/kast")).expect("user command"),
+        kast_home.join("current/bin/kast"),
+    );
     assert!(!kast_home.join("install.json").exists());
     assert!(!home.join(".config/kast").exists());
 

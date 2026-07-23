@@ -38,17 +38,20 @@ require_count() {
 }
 
 repo_root="$(resolve_repo_root)"
-kast_script="${repo_root}/kast.sh"
+root_build="${repo_root}/build.gradle.kts"
 headless_build="${repo_root}/backend-headless/build.gradle.kts"
 idea_build="${repo_root}/backend-idea/build.gradle.kts"
 headless_project_opener="${repo_root}/backend-headless/src/main/kotlin/io/github/amichne/kast/headless/HeadlessProjectOpener.kt"
 runtime_app_plugin="${repo_root}/build-logic/src/main/kotlin/kast.runtime-app.gradle.kts"
 verify_layout_task="${repo_root}/build-logic/src/main/kotlin/VerifyClasspathLayoutTask.kt"
+api_spec="${repo_root}/cli-rs/protocol/api-specification.md"
 
-for path in "$kast_script" "$headless_build" "$idea_build" "$headless_project_opener" "$runtime_app_plugin" "$verify_layout_task"; do
+for path in "$root_build" "$headless_build" "$idea_build" "$headless_project_opener" "$runtime_app_plugin" "$verify_layout_task" "$api_spec"; do
   [[ -f "$path" ]] || die "Required build contract file is missing: $path"
 done
 
+require_contains "$root_build" 'tasks.register("stageHeadlessDist")' "Root Gradle build must expose the headless staging task"
+require_contains "$root_build" 'tasks.register("buildHeadlessPortableZip")' "Root Gradle build must expose the portable zip task"
 require_contains "$runtime_app_plugin" "kastIncludeShadowJar" "Shared app packaging must expose a shadow-jar inclusion property"
 require_contains "$headless_build" 'extra["kastIncludeShadowJar"] = "false"' "Headless backend must opt out of the shadow fat jar"
 require_contains "$idea_build" "val headlessRuntimeElements: Configuration" "IDEA must publish a typed headless-only runtime variant"
@@ -65,9 +68,7 @@ require_contains "$headless_build" '"plugins/toml/**"' "Agent profile must inclu
 require_contains "$headless_build" '"plugins/yaml/**"' "Agent profile must include YAML support for common project configuration"
 require_not_contains "$headless_project_opener" "waitForSmartMode()" "Headless startup must not block the application starter before the analysis server registers"
 require_contains "$verify_layout_task" "forbiddenPortableDistJarSuffixes" "Headless layout verifier must reject forbidden portable-dist jars"
-
-require_contains "$kast_script" "full|minimal|agent" "kast.sh must accept the agent headless IDEA-home profile"
-require_contains "$kast_script" "--headless-idea-home-profile=full|minimal|agent" "kast.sh help must document the agent profile"
-require_contains "$kast_script" "must not include fat jars" "kast.sh must reject staged headless fat jars"
+require_contains "$api_spec" "./gradlew stageOpenApiSpec" "Protocol guidance must use the native Gradle distribution task"
+require_not_contains "$api_spec" "./kast.sh" "Protocol guidance must not reference the deleted build wrapper"
 
 printf '%s\n' "Kast build contract passed"

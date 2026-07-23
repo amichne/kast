@@ -322,26 +322,6 @@ select_one() {
   done
 }
 
-ensure_fzf() {
-  interactive_terminal || return 0
-  command -v fzf >/dev/null 2>&1 && return 0
-  command -v brew >/dev/null 2>&1 || {
-    ui_info "fzf is unavailable; using plain prompts"
-    return 0
-  }
-  if [[ "$(prompt_boolean 'Install fzf with Homebrew for interactive selection?' true)" != "true" ]]; then
-    ui_info "Using plain prompts"
-    return 0
-  fi
-  ui_step "Installing fzf with Homebrew"
-  if brew install fzf; then
-    hash -r
-    ui_success "fzf installed"
-  else
-    ui_warning "fzf installation failed; using plain prompts"
-  fi
-}
-
 choose_install_mode() {
   local choice
   choice="$(select_one 'Choose setup' \
@@ -415,9 +395,14 @@ run_setup() {
 }
 
 finish_install() {
+  local bin_dir="${HOME}/.local/bin"
   local path="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin/kast"
   ui_success "Kast is ready"
-  ui_detail "$path"
+  ui_detail "${bin_dir}/kast -> ${path}"
+  if [[ ":${PATH:-}:" != *":${bin_dir}:"* ]]; then
+    ui_warning "${bin_dir} is not on PATH"
+    ui_detail 'export PATH="$HOME/.local/bin:$PATH"'
+  fi
 }
 
 main() {
@@ -452,11 +437,8 @@ main() {
     platform_id="$(platform)"
     ui_info "${version} · ${platform_id}"
     if [[ "$platform_id" == macos-* ]]; then
-      if ((configure == 1)); then
-        ensure_fzf
-      elif ((autostart == 0)) && [[ -z "$config_defaults" ]] && interactive_terminal; then
+      if ((configure == 0 && autostart == 0)) && [[ -z "$config_defaults" ]] && interactive_terminal; then
         choose_install_mode || return 0
-        ((configure == 0)) || ensure_fzf
       fi
       require unzip
       cli_archive="${setup_scratch}/kast-${version}-${platform_id}.zip"

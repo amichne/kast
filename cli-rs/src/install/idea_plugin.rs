@@ -41,6 +41,7 @@ fn setup_idea_plugin(
     let extracted_plugin_digest = directory_sha256(&extracted_plugin)?;
 
     manifest::with_install_lock(&targets.resolved, || {
+        let legacy_backup = archive_legacy_installations(&targets)?;
         if current_release_matches(&targets)
             && verify_idea_plugin_setup(
                 &targets,
@@ -58,9 +59,10 @@ fn setup_idea_plugin(
                     config_defaults,
                 )?;
             }
+            install_user_command(&targets)?;
             return Ok(idea_setup_result(
                 &targets,
-                (SetupStatus::Current, None),
+                (SetupStatus::Current, legacy_backup.as_deref()),
                 &release_digest,
                 &cli_sha256,
                 &extracted_plugin_digest,
@@ -69,7 +71,6 @@ fn setup_idea_plugin(
             ));
         }
 
-        let legacy_backup = archive_legacy_installations(&targets)?;
         let (previous, release_backup) = install_idea_release(
             &targets,
             &current_exe,
@@ -100,6 +101,7 @@ fn setup_idea_plugin(
             return Err(error);
         }
 
+        install_user_command(&targets)?;
         Ok(idea_setup_result(
             &targets,
             (

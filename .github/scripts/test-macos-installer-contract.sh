@@ -34,7 +34,9 @@ grep -Fqx -- "setup --source $bundle" "$log"
 grep -Fqx -- "plugin marketplace add amichne/kast-marketplace --ref main --json" "$codex_log"
 grep -Fqx -- "plugin add kast@kast --json" "$codex_log"
 grep -Fq -- 'kast setup --source <bundle>' "$repo_root/install.sh"
-! grep -Eiq -- 'homebrew|\bbrew\b|kast machine|kast repair|\.local/bin' "$repo_root/install.sh"
+grep -Fq -- 'local bin_dir="${HOME}/.local/bin"' "$repo_root/install.sh"
+grep -Fq -- 'export PATH="$HOME/.local/bin:$PATH"' "$repo_root/install.sh"
+! grep -Eiq -- 'homebrew|\bbrew\b|kast machine|kast repair' "$repo_root/install.sh"
 bash -n "$repo_root/install.sh"
 
 printf '%s\n' 'cross-platform setup bootstrap contract passed'

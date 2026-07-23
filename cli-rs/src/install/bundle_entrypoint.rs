@@ -28,6 +28,7 @@ fn setup_bundle(source: PathBuf) -> Result<SetupResult> {
         fs::create_dir_all(targets.resolved.install_root.join("staging"))?;
 
         if current_release_matches(&targets) && verify_activated_bundle(&bundle, &targets).is_ok() {
+            install_user_command(&targets)?;
             return Ok(setup_result(
                 &bundle,
                 &targets,
@@ -50,6 +51,7 @@ fn setup_bundle(source: PathBuf) -> Result<SetupResult> {
             );
             return Err(failure);
         }
+        install_user_command(&targets)?;
         Ok(setup_result(
             &bundle,
             &targets,
@@ -63,12 +65,13 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
     let backups = targets.resolved.install_root.join("backups");
     fs::create_dir_all(&backups)?;
     let home = manifest::home_dir();
-    let legacy = [
+    let user_command = home.join(".local/bin/kast");
+    let user_command_target = targets.current_link.join("bin/kast");
+    let mut legacy = vec![
         (
             targets.resolved.install_root.join("install.json"),
             "legacy-install.json",
         ),
-        (home.join(".local/bin/kast"), "legacy-local-bin-kast"),
         (home.join(".config/kast"), "legacy-config"),
         (
             home.join("Library/Application Support/Kast/machine"),
@@ -79,6 +82,9 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
             "legacy-homebrew-install.json",
         ),
     ];
+    if fs::read_link(&user_command).ok().as_deref() != Some(user_command_target.as_path()) {
+        legacy.push((user_command, "legacy-local-bin-kast"));
+    }
     let mut archived = None;
     for (source, name) in legacy {
         if fs::symlink_metadata(&source).is_err() {
@@ -90,6 +96,15 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
         archived = Some(target);
     }
     Ok(archived)
+}
+
+fn install_user_command(targets: &ActivationTargetPaths) -> Result<()> {
+    #[cfg(unix)]
+    manifest::replace_symlink_or_copy(
+        &targets.current_link.join("bin/kast"),
+        &manifest::home_dir().join(".local/bin/kast"),
+    )?;
+    Ok(())
 }
 
 fn current_release_matches(targets: &ActivationTargetPaths) -> bool {
