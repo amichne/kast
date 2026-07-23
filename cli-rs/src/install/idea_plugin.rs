@@ -58,10 +58,10 @@ fn setup_idea_plugin(
                     config_defaults,
                 )?;
             }
-            install_user_command(&targets)?;
+            let legacy_backup = install_current_idea_user_command(&targets)?;
             return Ok(idea_setup_result(
                 &targets,
-                (SetupStatus::Current, None),
+                (SetupStatus::Current, legacy_backup.as_deref()),
                 &release_digest,
                 &cli_sha256,
                 &extracted_plugin_digest,
@@ -132,6 +132,30 @@ fn setup_idea_plugin(
             &installed_plugin,
         ))
     })
+}
+
+fn install_current_idea_user_command(targets: &ActivationTargetPaths) -> Result<Option<PathBuf>> {
+    let user_command = manifest::home_dir().join(".local/bin/kast");
+    let is_managed = fs::read_link(&user_command)
+        .is_ok_and(|target| target.starts_with(&targets.current_link));
+    if is_managed || fs::symlink_metadata(&user_command).is_err() {
+        install_user_command(targets)?;
+        return Ok(None);
+    }
+
+    let backup = targets
+        .resolved
+        .install_root
+        .join("backups/legacy-local-bin-kast");
+    fs::create_dir_all(backup.parent().expect("backup parent"))?;
+    manifest::remove_path(&backup)?;
+    fs::rename(&user_command, &backup)?;
+    if let Err(error) = install_user_command(targets) {
+        manifest::remove_path(&user_command)?;
+        fs::rename(&backup, &user_command)?;
+        return Err(error);
+    }
+    Ok(Some(backup))
 }
 
 fn idea_activation_target_paths(
