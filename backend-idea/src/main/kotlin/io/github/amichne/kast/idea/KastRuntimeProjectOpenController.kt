@@ -34,7 +34,8 @@ internal class KastRuntimeProjectOpenController(
         }
         ProjectManager.getInstance().openProjects
             .firstOrNull { project -> project.basePath?.let(::canonicalRootOrNull) == canonicalRoot }
-            ?.let {
+            ?.let { project ->
+                KastPluginService.getInstance(project).startServer()
                 return RuntimeOpenProjectResponse(RuntimeOpenProjectResult.ALREADY_OPEN)
             }
 

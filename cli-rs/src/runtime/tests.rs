@@ -494,6 +494,7 @@ mod tests {
     #[test]
     fn new_worktree_defers_plugin_metadata_until_idea_bootstrap() {
         let temp = tempfile::tempdir().unwrap();
+        std::fs::write(temp.path().join("settings.gradle.kts"), "").unwrap();
         let mut config = KastConfig::defaults();
         config.runtime.idea_launch.enabled = true;
 
@@ -509,6 +510,20 @@ mod tests {
             RuntimeBackendPreference::Fixed(BackendName::Idea),
             &config,
         ));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn non_gradle_workspace_is_rejected_before_idea_launch() {
+        let temp = tempfile::tempdir().unwrap();
+
+        let error = validate_macos_idea_gradle_workspace(
+            temp.path(),
+            RuntimeBackendPreference::Fixed(BackendName::Idea),
+        )
+        .expect_err("IDEA launch must not defer validation for a non-Gradle root");
+
+        assert_eq!(error.code, "SEMANTIC_WORKSPACE_UNSUPPORTED");
     }
 
     #[cfg(target_os = "macos")]
