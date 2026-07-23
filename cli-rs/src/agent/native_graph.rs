@@ -378,7 +378,9 @@ fn load_native_graph(
             native_graph_nodes(
                 connection,
                 &format!(
-                    "SELECT NULL, {package_key} FROM semantic_files GROUP BY 2 ORDER BY 2"
+                    "SELECT NULL, {package_key} FROM semantic_files
+                       WHERE package_name IS NOT NULL OR refresh_status != 'CACHED'
+                       GROUP BY 2 ORDER BY 2"
                 ),
                 false,
             )?
@@ -450,6 +452,8 @@ fn load_native_graph(
                        JOIN semantic_files source_file ON source_file.id = source.file_id
                        JOIN semantic_symbols target ON target.id = edges.target_id
                        JOIN semantic_files target_file ON target_file.id = target.file_id
+                       WHERE (source_file.package_name IS NOT NULL OR source_file.refresh_status != 'CACHED')
+                         AND (target_file.package_name IS NOT NULL OR target_file.refresh_status != 'CACHED')
                        GROUP BY 1, 2, edges.kind, edges.context
                        ORDER BY 1, 2, 3, 4"
                 ),
@@ -470,14 +474,14 @@ fn load_native_graph(
 fn native_graph_overlay_cte() -> &'static str {
     r#"WITH
        effective_file_rows AS (
-           SELECT path, package_name, module_name
+           SELECT path, package_name, module_name, refresh_status
            FROM semantic_files overlay
            WHERE NOT EXISTS (
                    SELECT 1 FROM repository_overlay_tombstones tombstone
                    WHERE tombstone.path = overlay.path
                )
            UNION ALL
-           SELECT base.path, base.package_name, base.module_name
+           SELECT base.path, base.package_name, base.module_name, base.refresh_status
            FROM repository_base.semantic_files base
            WHERE NOT EXISTS (
                    SELECT 1 FROM repository_overlay_tombstones tombstone
@@ -489,7 +493,8 @@ fn native_graph_overlay_cte() -> &'static str {
                )
        ),
        effective_files AS (
-           SELECT path, MAX(package_name) AS package_name, MAX(module_name) AS module_name
+           SELECT path, MAX(package_name) AS package_name, MAX(module_name) AS module_name,
+                  MAX(refresh_status) AS refresh_status
            FROM effective_file_rows
            GROUP BY path
        ),
@@ -568,7 +573,9 @@ fn load_native_overlay_graph(
         NativeGraphScope::Package => {
             let package_key = native_graph_package_key_sql("package_name");
             format!(
-                "{} SELECT NULL, {package_key} FROM effective_files GROUP BY 2 ORDER BY 2",
+                "{} SELECT NULL, {package_key} FROM effective_files
+                    WHERE package_name IS NOT NULL OR refresh_status != 'CACHED'
+                    GROUP BY 2 ORDER BY 2",
                 native_graph_overlay_cte(),
             )
         }
@@ -613,7 +620,10 @@ fn load_native_overlay_graph(
         NativeGraphScope::Symbol | NativeGraphScope::File => "",
     };
     let non_null_filter = match scope {
-        NativeGraphScope::Package => "",
+        NativeGraphScope::Package => {
+            "AND (source_file.package_name IS NOT NULL OR source_file.refresh_status != 'CACHED')
+             AND (target_file.package_name IS NOT NULL OR target_file.refresh_status != 'CACHED')"
+        }
         NativeGraphScope::Module => {
             "AND source_file.module_name IS NOT NULL AND target_file.module_name IS NOT NULL"
         }
@@ -1385,6 +1395,62 @@ mod native_graph_tests {
                     .collect::<Vec<_>>(),
                 vec![("<root>", "demo", 1.0), ("demo", "<root>", 1.0)]
             );
+        }
+    }
+
+    #[test]
+    fn native_graph_package_scope_excludes_cached_boundary_placeholders() {
+        let connection = rusqlite::Connection::open_in_memory().unwrap();
+        connection
+            .execute_batch(
+                "ATTACH DATABASE ':memory:' AS repository_base;
+                 CREATE TABLE semantic_files(
+                     id INTEGER PRIMARY KEY, path TEXT, package_name TEXT, module_name TEXT,
+                     refresh_status TEXT
+                 );
+                 CREATE TABLE semantic_symbols(
+                     id INTEGER PRIMARY KEY, stable_key TEXT, kind TEXT, name TEXT, file_id INTEGER
+                 );
+                 CREATE TABLE semantic_edge_occurrences(
+                     id INTEGER PRIMARY KEY, source_id INTEGER, target_id INTEGER,
+                     source_file_id INTEGER, kind TEXT, context TEXT
+                 );
+                 CREATE TABLE repository_overlay_tombstones(path TEXT PRIMARY KEY) WITHOUT ROWID;
+                 CREATE TABLE repository_base.semantic_files(
+                     id INTEGER PRIMARY KEY, path TEXT, package_name TEXT, module_name TEXT,
+                     refresh_status TEXT
+                 );
+                 CREATE TABLE repository_base.semantic_symbols(
+                     id INTEGER PRIMARY KEY, stable_key TEXT, kind TEXT, name TEXT, file_id INTEGER
+                 );
+                 CREATE TABLE repository_base.semantic_edge_occurrences(
+                     id INTEGER PRIMARY KEY, source_id INTEGER, target_id INTEGER,
+                     source_file_id INTEGER, kind TEXT, context TEXT
+                 );
+                 INSERT INTO semantic_files VALUES
+                     (1, 'Named.kt', 'demo', 'main', 'REFRESHED'),
+                     (2, 'Boundary.kt', NULL, NULL, 'CACHED');
+                 INSERT INTO semantic_symbols VALUES
+                     (1, 'named', 'FUNCTION', 'named', 1),
+                     (2, 'boundary', 'CLASS', 'Boundary', 2);
+                 INSERT INTO semantic_edge_occurrences VALUES
+                     (1, 1, 2, 1, 'REFERENCES', 'NONE');",
+            )
+            .unwrap();
+
+        for graph in [
+            load_native_graph(&connection, NativeGraphScope::Package, false).unwrap(),
+            load_native_overlay_graph(&connection, NativeGraphScope::Package).unwrap(),
+        ] {
+            assert_eq!(
+                graph
+                    .nodes
+                    .iter()
+                    .map(|node| node.key.as_str())
+                    .collect::<Vec<_>>(),
+                vec!["demo"]
+            );
+            assert!(graph.edges.is_empty());
         }
     }
 
