@@ -40,6 +40,9 @@ import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
+import io.github.amichne.kast.indexstore.snapshot.GitObjectId
+import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
+import io.github.amichne.kast.indexstore.snapshot.PublicationEvidence
 import io.github.amichne.kast.indexstore.store.cache.defaultCacheJson
 import io.github.amichne.kast.indexstore.store.codec.PathInterningCodec
 import io.github.amichne.kast.indexstore.store.codec.StringInterningCodec
@@ -1973,6 +1976,45 @@ class SqliteSourceIndexStore private constructor(
                 SourceIndexGeneration(0)
             }
         }
+    }
+
+    fun exportSnapshotDatabase(
+        target: Path,
+        treeOid: GitObjectId,
+        producerVersion: ProducerVersion,
+    ): PublicationEvidence = synchronized(writeLock) {
+        require(!Files.exists(target)) { "Snapshot export target already exists: $target" }
+        Files.createDirectories(target.toAbsolutePath().normalize().parent)
+        val conn = connection()
+        val generationBefore = readGenerationInTransaction(conn).value
+        val (moduleProgressCount, incompleteModuleCount) = conn.createStatement().use { statement ->
+            val result = statement.executeQuery(
+                """SELECT COUNT(*) AS total,
+                          SUM(CASE WHEN phase2_status != 'COMPLETE' OR indexed_file_count != total_file_count
+                                   THEN 1 ELSE 0 END) AS incomplete
+                   FROM module_index_progress""",
+            )
+            check(result.next())
+            result.getInt("total") to result.getInt("incomplete")
+        }
+        val pendingCount = conn.createStatement().use { statement ->
+            val result = statement.executeQuery("SELECT COUNT(*) FROM pending_updates WHERE applied = 0")
+            check(result.next())
+            result.getInt(1)
+        }
+        val escapedTarget = target.toAbsolutePath().normalize().toString().replace("'", "''")
+        conn.createStatement().use { statement -> statement.execute("VACUUM INTO '$escapedTarget'") }
+        val generationAfter = readGenerationInTransaction(conn).value
+        PublicationEvidence(
+            generationBefore = generationBefore,
+            generationAfter = generationAfter,
+            moduleProgressCount = moduleProgressCount,
+            incompleteModuleCount = incompleteModuleCount,
+            pendingCount = pendingCount,
+            treeOid = treeOid,
+            indexSchema = SOURCE_INDEX_SCHEMA_VERSION,
+            producerVersion = producerVersion,
+        )
     }
 
     private fun readGenerationInTransaction(conn: Connection): SourceIndexGeneration =

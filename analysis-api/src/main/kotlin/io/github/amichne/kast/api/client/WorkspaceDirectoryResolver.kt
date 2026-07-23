@@ -44,6 +44,12 @@ class WorkspaceDirectoryResolver(
         }.toAbsolutePath().normalize()
     }
 
+    fun repositoryDataDirectory(workspaceRoot: Path): Path? {
+        val normalizedRoot = workspaceRoot.toAbsolutePath().normalize()
+        val workspace = gitWorkspaceResolver(normalizedRoot) ?: return null
+        return gitRepositoryDataDirectory(workspace, workspace.remote ?: gitRemoteResolver(normalizedRoot))
+    }
+
     fun workspaceCacheDirectory(workspaceRoot: Path): Path = workspaceDataDirectory(workspaceRoot).resolve("cache")
 
     fun workspaceDatabasePath(workspaceRoot: Path): Path = workspaceCacheDirectory(workspaceRoot).resolve("source-index.db")
@@ -65,7 +71,15 @@ class WorkspaceDirectoryResolver(
     private fun workspacesRoot(): Path = dataRoot().resolve("workspaces").toAbsolutePath().normalize()
 
     private fun gitWorkspaceDataDirectory(workspace: GitWorkspace, remote: GitRemote?): Path {
-        val repoRoot = if (remote != null) {
+        return gitRepositoryDataDirectory(workspace, remote)
+            .resolve("worktrees")
+            .resolve("${workspaceSlug(workspace.toplevel)}--${gitWorktreeHash(workspace.toplevel, workspace.gitDir)}")
+            .toAbsolutePath()
+            .normalize()
+    }
+
+    private fun gitRepositoryDataDirectory(workspace: GitWorkspace, remote: GitRemote?): Path =
+        if (remote != null) {
             workspacesRoot()
                 .resolve("git")
                 .resolve(remote.host)
@@ -77,12 +91,6 @@ class WorkspaceDirectoryResolver(
                 .resolve("local")
                 .resolve(gitCommonDirHash(workspace.commonDir))
         }
-        return repoRoot
-            .resolve("worktrees")
-            .resolve("${workspaceSlug(workspace.toplevel)}--${gitWorktreeHash(workspace.toplevel, workspace.gitDir)}")
-            .toAbsolutePath()
-            .normalize()
-    }
 
     private fun localWorkspaceId(workspaceRoot: Path): String {
         val registryPath = workspacesRoot().resolve("local-workspaces.json").toAbsolutePath().normalize()

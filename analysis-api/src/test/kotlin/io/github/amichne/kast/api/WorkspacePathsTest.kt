@@ -2,6 +2,7 @@ package io.github.amichne.kast.api.client
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -141,12 +142,28 @@ class WorkspacePathsTest {
 
         val first = resolver.workspaceDataDirectory(firstRoot)
         val second = resolver.workspaceDataDirectory(secondRoot)
+        val repository = installRoot.resolve("state/workspaces/git/github.com/amichne/kast")
 
-        assertTrue(first.startsWith(installRoot.resolve("state/workspaces/git/github.com/amichne/kast/worktrees")))
-        assertTrue(second.startsWith(installRoot.resolve("state/workspaces/git/github.com/amichne/kast/worktrees")))
+        assertEquals(repository, resolver.repositoryDataDirectory(firstRoot))
+        assertEquals(repository, resolver.repositoryDataDirectory(secondRoot))
+        assertTrue(first.startsWith(repository.resolve("worktrees")))
+        assertTrue(second.startsWith(repository.resolve("worktrees")))
         assertTrue(first != second, "sibling worktrees should not share workspace data: first=$first second=$second")
         assertEquals(first, resolver.workspaceCacheDirectory(firstRoot).parent)
         assertEquals(second.resolve("cache/source-index.db"), resolver.workspaceDatabasePath(secondRoot))
+    }
+
+    @Test
+    fun `non git workspace has no repository snapshot directory`() {
+        val workspaceRoot = tempDir.resolve("workspace")
+        val resolver = WorkspaceDirectoryResolver(
+            dataRoot = { tempDir.resolve("data") },
+            gitWorkspaceResolver = { null },
+            gitRemoteResolver = { null },
+        )
+
+        assertNull(resolver.repositoryDataDirectory(workspaceRoot))
+        assertNull(resolver.workspaceIdentity(workspaceRoot).repositoryDataDirectory)
     }
 
     @Test
