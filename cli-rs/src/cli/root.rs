@@ -41,8 +41,12 @@ pub enum Command {
     Setup(SetupArgs),
     /// Verify that Kast is ready for a task.
     Ready(ReadyArgs),
+    /// Start or resume the workspace backend and indexing.
+    Start(RuntimeArgs),
     /// Check the current workspace status.
     Status(RuntimeArgs),
+    /// Stop indexing and the workspace backend.
+    Stop(RuntimeArgs),
     /// Explore a guided semantic story from this Kotlin repository.
     Demo(PublicDemoArgs),
     /// Developer and release-engineering commands.

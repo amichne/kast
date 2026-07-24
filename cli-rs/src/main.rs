@@ -226,7 +226,9 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
         Command::Context(args) => run_context(args, output_format),
         Command::Setup(args) => run_setup(args, output_format),
         Command::Ready(args) => run_ready(args, output_format),
+        Command::Start(args) => run_runtime(cli::RuntimeCommand::Up(args), output_format),
         Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
+        Command::Stop(args) => run_runtime(cli::RuntimeCommand::Stop(args), output_format),
         Command::Demo(args) => demo::run_public(args, output_format),
         Command::Developer(args) => run_developer(args.command, output_format),
         Command::Doctor(args) => run_ready(args.into(), output_format),
@@ -282,8 +284,16 @@ fn run_context(args: cli::RuntimeArgs, output_format: OutputFormat) -> Result<i3
 fn context_command_hints() -> Vec<ContextCommandHint> {
     vec![
         ContextCommandHint {
-            command: "kast setup --source <bundle>".to_string(),
-            purpose: "Install or replace the complete verified Kast release.".to_string(),
+            command: "kast start --workspace-root <repo>".to_string(),
+            purpose: "Start or resume the workspace backend and indexing.".to_string(),
+        },
+        ContextCommandHint {
+            command: "kast status --workspace-root <repo>".to_string(),
+            purpose: "Inspect backend and indexing state.".to_string(),
+        },
+        ContextCommandHint {
+            command: "kast stop --workspace-root <repo>".to_string(),
+            purpose: "Stop indexing and the workspace backend.".to_string(),
         },
         ContextCommandHint {
             command: "kast agent verify --workspace-root <repo>".to_string(),

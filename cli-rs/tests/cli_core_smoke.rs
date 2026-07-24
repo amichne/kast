@@ -9,6 +9,47 @@ fn help_lists_command(stdout: &str, command: &str) -> bool {
 }
 
 #[test]
+fn public_cli_exposes_start_status_and_stop() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+
+    let help = kast(&home, &config_home)
+        .arg("--help")
+        .output()
+        .expect("help");
+    assert!(help.status.success());
+    let stdout = String::from_utf8_lossy(&help.stdout);
+    for command in ["start", "status", "stop"] {
+        assert!(
+            help_lists_command(&stdout, command),
+            "missing {command}: {stdout}"
+        );
+    }
+
+    let context = kast(&home, &config_home)
+        .args([
+            "context",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+        ])
+        .output()
+        .expect("context");
+    assert!(context.status.success());
+    let stdout = String::from_utf8_lossy(&context.stdout);
+    for command in [
+        "kast start --workspace-root <repo>",
+        "kast status --workspace-root <repo>",
+        "kast stop --workspace-root <repo>",
+    ] {
+        assert!(stdout.contains(command), "missing {command}: {stdout}");
+    }
+}
+
+#[test]
 fn public_cli_exposes_setup_and_no_retired_install_mutators() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
