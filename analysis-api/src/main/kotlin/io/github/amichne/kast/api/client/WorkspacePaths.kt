@@ -1,6 +1,7 @@
 package io.github.amichne.kast.api.client
 
 import io.github.amichne.kast.api.client.fields.*
+import io.github.amichne.kast.api.protocol.AnalysisException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -48,12 +49,20 @@ private fun configPath(value: String): Path = Path(value).toAbsolutePath().norma
 
 private fun activeCliDataRoot(installRoot: Path): Path? {
     val receiptPath = installRoot.resolve("current/receipt.json")
-    if (!Files.isRegularFile(receiptPath)) return null
+    if (Files.notExists(receiptPath)) return null
     return runCatching {
+        require(Files.isRegularFile(receiptPath)) { "receipt is not a regular file" }
         val receipt = Json.parseToJsonElement(Files.readString(receiptPath)).jsonObject
-        require(receipt.getValue("tool").jsonPrimitive.content == "kast")
+        require(receipt.getValue("tool").jsonPrimitive.content == "kast") { "tool must be `kast`" }
         Path(receipt.getValue("roots").jsonObject.getValue("data").jsonPrimitive.content)
             .toAbsolutePath()
             .normalize()
-    }.getOrNull()
+    }.getOrElse { cause ->
+        throw AnalysisException(
+            statusCode = 500,
+            errorCode = "INSTALL_MANIFEST_INVALID",
+            message = "Invalid Kast install manifest at $receiptPath: ${cause.message}",
+            details = mapOf("path" to receiptPath.toString()),
+        ).also { it.initCause(cause) }
+    }
 }

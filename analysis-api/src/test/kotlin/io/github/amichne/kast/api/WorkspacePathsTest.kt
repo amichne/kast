@@ -1,8 +1,10 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.api.protocol.AnalysisException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -51,6 +53,27 @@ class WorkspacePathsTest {
             installRoot.resolve("state/data").toAbsolutePath().normalize(),
             kastDataRoot(emptyMap<String, String>()::get, installRoot),
         )
+    }
+
+    @Test
+    fun `invalid active CLI receipt fails closed`() {
+        val installRoot = tempDir.resolve("install-root")
+        val receipt = installRoot.resolve("current/receipt.json")
+        Files.createDirectories(receipt.parent)
+
+        listOf(
+            "{",
+            """{"tool":"other","roots":{"data":"${tempDir.resolve("data")}"}}""",
+            """{"tool":"kast","roots":{}}""",
+        ).forEach { contents ->
+            Files.writeString(receipt, contents)
+
+            val error = assertThrows(AnalysisException::class.java) {
+                kastDataRoot(emptyMap<String, String>()::get, installRoot)
+            }
+
+            assertEquals("INSTALL_MANIFEST_INVALID", error.errorCode)
+        }
     }
 
     @Test
