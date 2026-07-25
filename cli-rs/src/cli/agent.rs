@@ -129,6 +129,11 @@ pub struct AgentVerifyArgs {
 }
 
 #[derive(Debug, Args, Clone)]
+#[command(group(
+    clap::ArgGroup::new("native_graph_query")
+        .multiple(true)
+        .args(["scope", "symbol", "generation", "after_id", "limit", "resolution"])
+))]
 pub struct AgentNativeGraphArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
@@ -142,10 +147,10 @@ pub struct AgentNativeGraphArgs {
     #[arg(long, value_enum, default_value_t = NativeGraphOperation::Summary)]
     pub operation: NativeGraphOperation,
     /// Kotlin file to refresh through the compiler-backed graph. Repeat for multiple files.
-    #[arg(long = "file-path")]
+    #[arg(long = "file-path", conflicts_with = "native_graph_query")]
     pub file_paths: Vec<String>,
     /// Removed Kotlin file to delete from the persisted graph. Repeat for multiple files.
-    #[arg(long = "removed-file-path")]
+    #[arg(long = "removed-file-path", conflicts_with = "native_graph_query")]
     pub removed_file_paths: Vec<String>,
     /// Canonical symbol key used by the neighbors operation.
     #[arg(long)]

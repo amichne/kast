@@ -101,3 +101,42 @@ fn agent_graph_refresh_routes_selected_files_through_compiler_graph() {
             .join("src/Removed.kt")])
     );
 }
+
+#[test]
+fn agent_graph_refresh_rejects_query_only_flags() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let source = workspace.join("Sample.kt");
+
+    for query_args in [
+        ["--scope", "symbol"],
+        ["--symbol", "sample.Sample"],
+        ["--generation", "1"],
+        ["--after-id", "0"],
+        ["--limit", "100"],
+        ["--resolution", "1.0"],
+    ] {
+        let output = kast(&home, &config_home)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "graph",
+                "--operation",
+                "refresh",
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+                "--file-path",
+                source.to_str().expect("source"),
+            ])
+            .args(query_args)
+            .output()
+            .expect("graph refresh with query-only flag");
+        let stdout: Value =
+            serde_json::from_slice(&output.stdout).expect("graph refresh error json");
+
+        assert_eq!(stdout["code"], "CLI_USAGE", "{query_args:?}: {stdout}");
+    }
+}
