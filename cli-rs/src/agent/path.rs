@@ -286,10 +286,6 @@ struct CanonicalKotlinFilePath {
 }
 
 impl CanonicalKotlinFilePath {
-    fn rpc_path(&self) -> &str {
-        &self.rpc_path
-    }
-
     fn into_rpc_path(self) -> String {
         self.rpc_path
     }
@@ -370,7 +366,7 @@ mod agent_file_path_tests {
             .normalize("src/with spaces/App.kt")
             .expect("canonical target");
 
-        assert_eq!(actual.rpc_path(), fixture.canonical_file());
+        assert_eq!(actual.rpc_path, fixture.canonical_file());
     }
 
     #[test]
@@ -382,7 +378,7 @@ mod agent_file_path_tests {
             .normalize(fixture.file.to_str().expect("UTF-8 file"))
             .expect("canonical target");
 
-        assert_eq!(actual.rpc_path(), fixture.canonical_file());
+        assert_eq!(actual.rpc_path, fixture.canonical_file());
     }
 
     #[test]
@@ -394,7 +390,7 @@ mod agent_file_path_tests {
             .normalize("build-logic/settings.gradle.kts")
             .expect("canonical script");
 
-        assert_eq!(actual.rpc_path(), fixture.canonical_file());
+        assert_eq!(actual.rpc_path, fixture.canonical_file());
     }
 
     #[test]
@@ -412,7 +408,7 @@ mod agent_file_path_tests {
             .normalize("src/generated/Deleted.kt")
             .expect("missing Kotlin target");
 
-        assert_eq!(actual.rpc_path(), expected.to_str().expect("UTF-8 expected"));
+        assert_eq!(actual.rpc_path, expected.to_str().expect("UTF-8 expected"));
     }
 
     #[test]
@@ -498,7 +494,7 @@ mod agent_file_path_tests {
             .normalize("src/Alias.kt")
             .expect("safe symlink target");
 
-        assert_eq!(actual.rpc_path(), fixture.canonical_file());
+        assert_eq!(actual.rpc_path, fixture.canonical_file());
     }
 
     #[cfg(unix)]

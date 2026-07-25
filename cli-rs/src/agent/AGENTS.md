@@ -40,8 +40,8 @@ offset. `RESOLVED`, including indexed fallback, requires exactly one complete
 anchor; otherwise project `IDENTITY_ANCHOR_UNAVAILABLE`.
 
 `relations.rs` owns anchored relationship request construction, query-bound
-page tokens, opaque wrapping of #337's UUID `ReferencePageToken`, opaque backend
-traversal handles, and impact offsets. Rust must not decode or serialize the
+page tokens, opaque wrapping of backend `ReferencePageToken` values, opaque
+backend traversal handles, and impact offsets. Rust must not decode or serialize the
 reference source, provider position, returned-before count, query, subject,
 generation, or traversal frontier. A continued page requires the typed
 cardinality proof for at least one additional record.
@@ -50,7 +50,7 @@ cardinality proof for at least one additional record.
 each response family's own degraded-reason enum, non-null mismatch actual, and
 unsupported-kind/stale/invalid variants. Preserve selector and verified subject
 for `UNSUPPORTED_SUBJECT_KIND`; reject a variant whose family or actual kind is
-not allowed by ADR 0022. Impact admits aggregate rows only after compiler
+not allowed by that relationship family. Impact admits aggregate rows only after compiler
 anchor verification and production path/offset/kind index identity; functions
 and properties degrade because the production key cannot prove overload
 isolation.
@@ -62,6 +62,6 @@ Changes to this surface require
 `cli-rs/tests/agent_relationship_navigation_smoke.rs` plus the command-surface,
 result-projection, packaged-content, and generated-contract gates. Runtime
 token changes use existing dependencies. The exact 1,500 `cl100k_base` compact
-budget reuses #338's reviewed `tiktoken-rs` 0.12 test-only dependency;
+budget reuses the existing `tiktoken-rs` 0.12 test-only dependency;
 relationship work does not rewrite `Cargo.toml` or `Cargo.lock` unless the
 landed dependency graph itself changes.

@@ -146,32 +146,6 @@ fn agent_rename_plan_default_toon_matches_explicit_json() {
 }
 
 #[test]
-fn agent_call_removed_errors_can_emit_toon() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-    std::fs::create_dir_all(&home).expect("home");
-
-    let call = kast(&home, &config_home)
-        .args(["agent", "call", "symbol/resolve"])
-        .output()
-        .expect("agent call toon removal");
-    assert!(!call.status.success(), "removed agent call should fail");
-    assert!(
-        serde_json::from_slice::<serde_json::Value>(&call.stdout).is_err(),
-        "toon validation output should not be parseable as JSON"
-    );
-    let output = decode_toon(&call.stdout);
-
-    assert_eq!(output["ok"], false, "{output:#}");
-    assert_eq!(output["method"], "agent/call", "{output:#}");
-    assert_eq!(
-        output["error"]["code"], "AGENT_COMMAND_REMOVED",
-        "{output:#}"
-    );
-}
-
-#[test]
 fn agent_rename_plan_is_read_only_until_apply() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

@@ -942,7 +942,6 @@ fn verify_package_checks(transaction: &Transaction<'_>) -> Result<(), ReadDataba
         "PACKAGE_FQ_IDISNULL",
         "PACKAGE_FQ_IDISNOTNULL",
         "PACKAGE_UNPROVEN_REASONISNULL",
-        "PACKAGE_UNPROVEN_REASONISNOTNULL",
     ];
     if required_tokens
         .iter()

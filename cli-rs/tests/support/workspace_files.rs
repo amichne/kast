@@ -262,7 +262,7 @@ impl WorkspaceIndexFixture {
                     filename TEXT NOT NULL,
                     package_fq_id INTEGER,
                     package_state TEXT NOT NULL CHECK(package_state IN ('PROVEN_ROOT','PROVEN_NAMED','UNPROVEN')),
-                    package_unproven_reason TEXT CHECK(package_unproven_reason IS NULL OR package_unproven_reason IN ('NOT_SCANNED','SEMANTIC_ANALYSIS_UNAVAILABLE','SEMANTIC_ANALYSIS_FAILED','LEGACY_TEXT_ONLY')),
+                    package_unproven_reason TEXT,
                     module_path TEXT,
                     source_set TEXT,
                     PRIMARY KEY(prefix_id, filename),
@@ -270,7 +270,16 @@ impl WorkspaceIndexFixture {
                     CHECK(
                         (package_state = 'PROVEN_ROOT' AND package_fq_id IS NULL AND package_unproven_reason IS NULL)
                         OR (package_state = 'PROVEN_NAMED' AND package_fq_id IS NOT NULL AND package_unproven_reason IS NULL)
-                        OR (package_state = 'UNPROVEN' AND package_fq_id IS NULL AND package_unproven_reason IS NOT NULL)
+                        OR (
+                            package_state = 'UNPROVEN'
+                            AND package_fq_id IS NULL
+                            AND package_unproven_reason IN (
+                                'NOT_SCANNED',
+                                'SEMANTIC_ANALYSIS_UNAVAILABLE',
+                                'SEMANTIC_ANALYSIS_FAILED',
+                                'LEGACY_TEXT_ONLY'
+                            )
+                        )
                     )
                 );
                 CREATE TABLE file_gradle_projects (

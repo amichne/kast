@@ -33,9 +33,6 @@ pub enum InspectCommand {
         #[command(subcommand)]
         command: MetricsCommand,
     },
-    /// Retired developer-only demo; use the root `kast demo` command.
-    #[command(hide = true)]
-    Demo(RemovedDemoArgs),
     /// Validate catalog requests and checked-in sample payloads.
     Catalog(ValidateArgs),
 }

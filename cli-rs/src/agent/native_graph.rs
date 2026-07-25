@@ -19,7 +19,6 @@ struct NativeGraph {
     edges: Vec<NativeGraphEdge>,
     offsets: Vec<usize>,
     targets: Vec<usize>,
-    weights: Vec<f64>,
 }
 
 const NATIVE_GRAPH_ROOT_PACKAGE_KEY: &str = "<root>";
@@ -31,13 +30,113 @@ struct NativeGraphOverlayDescriptor {
 }
 
 fn execute_agent_native_graph(args: AgentNativeGraphArgs) -> AgentEnvelope {
+    if args.operation == NativeGraphOperation::Refresh {
+        return execute_agent_native_graph_refresh(args);
+    }
     match native_graph_result(&args) {
         Ok(result) => result_envelope("agent/graph".to_string(), result),
         Err(error) => error_envelope("agent/graph".to_string(), None, error),
     }
 }
 
+fn execute_agent_native_graph_refresh(args: AgentNativeGraphArgs) -> AgentEnvelope {
+    if args.file_paths.is_empty() && args.removed_file_paths.is_empty() {
+        return error_envelope(
+            "agent/graph".to_string(),
+            None,
+            agent_error(
+                "AGENT_USAGE",
+                "--operation refresh requires --file-path or --removed-file-path.",
+            ),
+        );
+    }
+    if args.database.is_some() {
+        return error_envelope(
+            "agent/graph".to_string(),
+            None,
+            agent_error(
+                "AGENT_USAGE",
+                "--database cannot be used with --operation refresh.",
+            ),
+        );
+    }
+    let normalizer = match AgentFilePathNormalizer::from_runtime(&args.runtime) {
+        Ok(normalizer) => normalizer,
+        Err(error) => return error_envelope("agent/graph".to_string(), None, error),
+    };
+    let mut file_paths = match normalizer.normalize_all(&args.file_paths) {
+        Ok(file_paths) => file_paths,
+        Err(error) => return error_envelope("agent/graph".to_string(), None, error),
+    };
+    let mut removed_file_paths = match normalizer.normalize_all(&args.removed_file_paths) {
+        Ok(file_paths) => file_paths,
+        Err(error) => return error_envelope("agent/graph".to_string(), None, error),
+    };
+    file_paths.sort();
+    file_paths.dedup();
+    removed_file_paths.sort();
+    removed_file_paths.dedup();
+    if file_paths
+        .iter()
+        .any(|path| removed_file_paths.binary_search(path).is_ok())
+    {
+        return error_envelope(
+            "agent/graph".to_string(),
+            None,
+            agent_error(
+                "AGENT_USAGE",
+                "A Kotlin path cannot be both selected and removed.",
+            ),
+        );
+    }
+    let request = json_rpc_request(
+        "raw/semantic-graph",
+        json!({
+            "filePaths": file_paths,
+            "removedFilePaths": removed_file_paths,
+        }),
+    );
+    let response = execute_request(AgentRequest {
+        method: "raw/semantic-graph".to_string(),
+        request: request.clone(),
+        runtime: args.runtime,
+        full_response: true,
+        operation: AgentOperation::ReadOnly,
+    });
+    if !response.ok {
+        return error_envelope(
+            "agent/graph".to_string(),
+            Some(request),
+            response.error.unwrap_or_else(|| {
+                agent_error(
+                    "NATIVE_GRAPH_REFRESH_FAILED",
+                    "Compiler-backed semantic graph refresh failed without a typed error.",
+                )
+            }),
+        );
+    }
+    let Some(Value::Object(mut result)) = response.result else {
+        return invalid_projection_envelope(
+            "agent/graph".to_string(),
+            "Compiler-backed semantic graph refresh returned no object result.",
+        );
+    };
+    result.insert(
+        "type".to_string(),
+        json!("KAST_AGENT_GRAPH_REFRESH"),
+    );
+    result.insert("operation".to_string(), json!(NativeGraphOperation::Refresh));
+    result.insert("schemaVersion".to_string(), json!(SCHEMA_VERSION));
+    result_envelope("agent/graph".to_string(), Value::Object(result))
+}
+
 fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value, AgentError> {
+    if !args.file_paths.is_empty() || !args.removed_file_paths.is_empty() {
+        return Err(agent_error(
+            "AGENT_USAGE",
+            "--file-path and --removed-file-path require --operation refresh.",
+        ));
+    }
     if !args.resolution.is_finite() || args.resolution <= 0.0 {
         return Err(agent_error(
             "AGENT_USAGE",
@@ -109,6 +208,9 @@ fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value
     }
 
     let body = match args.operation {
+        NativeGraphOperation::Refresh => {
+            unreachable!("refresh returned before native graph database access")
+        }
         NativeGraphOperation::Summary => {
             let compute_started = std::time::Instant::now();
             let components = native_connected_components(&graph);
@@ -781,18 +883,16 @@ fn native_graph_text_edges(
 }
 
 fn native_graph_to_csr(nodes: Vec<NativeGraphNode>, edges: Vec<NativeGraphEdge>) -> NativeGraph {
-    let mut rows = vec![BTreeMap::<usize, f64>::new(); nodes.len()];
+    let mut rows = vec![BTreeSet::<usize>::new(); nodes.len()];
     for edge in &edges {
-        *rows[edge.source].entry(edge.target).or_default() += edge.weight;
+        rows[edge.source].insert(edge.target);
     }
     let mut offsets = Vec::with_capacity(nodes.len() + 1);
     let mut targets = Vec::new();
-    let mut weights = Vec::new();
     offsets.push(0);
     for row in rows {
-        for (target, weight) in row {
+        for target in row {
             targets.push(target);
-            weights.push(weight);
         }
         offsets.push(targets.len());
     }
@@ -801,7 +901,6 @@ fn native_graph_to_csr(nodes: Vec<NativeGraphNode>, edges: Vec<NativeGraphEdge>)
         edges,
         offsets,
         targets,
-        weights,
     }
 }
 
@@ -1213,6 +1312,8 @@ mod native_graph_tests {
             database: Some(temp.path().join("missing.db")),
             scope: NativeGraphScope::Symbol,
             operation: NativeGraphOperation::Nodes,
+            file_paths: Vec::new(),
+            removed_file_paths: Vec::new(),
             symbol: None,
             generation: None,
             after_id: 1,
@@ -1310,12 +1411,12 @@ mod native_graph_tests {
     }
 
     #[test]
-    fn native_graph_csr_preserves_parallel_typed_edge_occurrence_weight() {
+    fn native_graph_preserves_parallel_typed_edge_occurrence_weight() {
         let graph = fixture(2, &[(0, 1, 2.0), (0, 1, 3.0)]);
         assert_eq!(graph.edges.len(), 2);
         assert_eq!(graph.offsets, vec![0, 1, 1]);
         assert_eq!(graph.targets, vec![1]);
-        assert_eq!(graph.weights, vec![5.0]);
+        assert_eq!(graph.edges.iter().map(|edge| edge.weight).sum::<f64>(), 5.0);
     }
 
     #[test]
@@ -1555,7 +1656,6 @@ mod native_graph_tests {
         );
         assert_eq!(overlay.offsets, clean.offsets);
         assert_eq!(overlay.targets, clean.targets);
-        assert_eq!(overlay.weights, clean.weights);
     }
 
     #[cfg(unix)]

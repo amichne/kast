@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::env;
-use std::fmt;
 use std::fs;
 use std::fs::OpenOptions;
 use std::io::Read;
@@ -59,8 +58,6 @@ pub struct KastInstallManifest {
     pub owned_paths: Vec<String>,
     #[serde(default)]
     pub shell_rc_patches: Vec<Value>,
-    #[serde(default)]
-    pub repos: Vec<ManagedRepo>,
     #[serde(default = "schema_version")]
     pub schema_version: u32,
 }
@@ -74,80 +71,6 @@ pub struct BackendComponentState {
     pub runtime_libs_dir: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub idea_home: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ManagedRepo {
-    pub path: String,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub copilot_package_version: String,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub resources: Vec<ManagedRepoResource>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ManagedRepoResource {
-    pub kind: ManagedResourceKind,
-    pub target_path: String,
-    pub primitive_version: String,
-    pub source_bundle_sha256: String,
-    pub output_paths: Vec<String>,
-    pub output_checksums: Vec<ManagedResourceOutputChecksum>,
-    pub installed_at: String,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub history: Vec<ManagedRepoResourceHistory>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ManagedResourceOutputChecksum {
-    pub path: String,
-    pub sha256: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub region: Option<ManagedResourceChecksumRegion>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum ManagedResourceChecksumRegion {
-    KastManagedFence,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct ManagedRepoResourceHistory {
-    pub primitive_version: String,
-    pub source_bundle_sha256: String,
-    pub installed_at: String,
-    pub output_checksums: Vec<ManagedResourceOutputChecksum>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum ManagedResourceKind {
-    CopilotPackage,
-    Skill,
-    Instructions,
-    AgentGuidance,
-}
-
-impl fmt::Display for ManagedResourceKind {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter.write_str(match self {
-            Self::CopilotPackage => "COPILOT_PACKAGE",
-            Self::Skill => "SKILL",
-            Self::Instructions => "INSTRUCTIONS",
-            Self::AgentGuidance => "AGENT_GUIDANCE",
-        })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ManagedResourceVerification {
-    pub ok: bool,
-    pub issues: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -494,75 +417,6 @@ pub(crate) fn sha256_file(path: &Path) -> Result<String> {
         digest.update(&buffer[..read]);
     }
     Ok(hex::encode(digest.finalize()))
-}
-
-pub(crate) fn kast_managed_fence_sha256(path: &Path) -> Result<String> {
-    let content = fs::read_to_string(path)?;
-    let region = extract_kast_managed_fence(&content).ok_or_else(|| {
-        CliError::new(
-            "INSTALL_MANAGED_REGION_MISSING",
-            format!("Kast managed fence was not found in {}", path.display()),
-        )
-    })?;
-    Ok(sha256_bytes(region.as_bytes()))
-}
-
-fn extract_kast_managed_fence(content: &str) -> Option<&str> {
-    const START: &str = "<kast>";
-    const ATTRIBUTE_START: &str =
-        r#"<kast files="*.kt, *.kts" type="instructions" replaceTools="grep,search,write">"#;
-    const END: &str = "</kast>";
-    const LEGACY_START: &str = "<!-- BEGIN KAST MANAGED -->";
-    const LEGACY_END: &str = "<!-- END KAST MANAGED -->";
-    extract_kast_managed_fence_with_markers(content, START, END)
-        .or_else(|| extract_kast_managed_fence_with_markers(content, ATTRIBUTE_START, END))
-        .or_else(|| extract_kast_managed_fence_with_markers(content, LEGACY_START, LEGACY_END))
-}
-
-fn extract_kast_managed_fence_with_markers<'a>(
-    content: &'a str,
-    start_marker: &str,
-    end_marker: &str,
-) -> Option<&'a str> {
-    let start = content.find(start_marker)?;
-    let after_start = start + start_marker.len();
-    let relative_end = content[after_start..].find(end_marker)?;
-    let end = after_start + relative_end + end_marker.len();
-    Some(&content[start..end])
-}
-
-pub fn verify_managed_resource_outputs(
-    resource: &ManagedRepoResource,
-) -> Result<ManagedResourceVerification> {
-    let mut issues = Vec::new();
-    for output in &resource.output_checksums {
-        let path = Path::new(&output.path);
-        if !path.is_file() {
-            issues.push(format!(
-                "{} output is missing: {}",
-                resource.kind,
-                path.display()
-            ));
-            continue;
-        }
-        let actual = match output.region {
-            Some(ManagedResourceChecksumRegion::KastManagedFence) => {
-                kast_managed_fence_sha256(path)?
-            }
-            None => sha256_file(path)?,
-        };
-        if actual != output.sha256 {
-            issues.push(format!(
-                "{} output checksum mismatch at {}",
-                resource.kind,
-                path.display()
-            ));
-        }
-    }
-    Ok(ManagedResourceVerification {
-        ok: issues.is_empty(),
-        issues,
-    })
 }
 
 fn tool_name() -> String {

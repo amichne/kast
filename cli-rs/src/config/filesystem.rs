@@ -78,7 +78,6 @@ pub fn workspace_data_directory(workspace_root: &Path) -> Result<PathBuf> {
         .join(format!("{}--{id}", sanitized_path(&root))))
 }
 
-#[allow(dead_code)]
 pub fn workspace_database_path(workspace_root: &Path) -> Result<PathBuf> {
     Ok(workspace_data_directory(workspace_root)?.join("cache/source-index.db"))
 }

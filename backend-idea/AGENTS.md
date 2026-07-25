@@ -101,8 +101,8 @@ continuation state for the IDEA runtime.
   Any timeout, engine truncation, or cap overflow returns a typed budget
   limitation before a page or continuation is issued. Only a complete admitted
   snapshot is sorted and paged; no partial snapshot is retained.
-- After exact anchor verification, apply ADR 0022's command-family subject-kind
-  matrix before provider/index work or state creation. Unsupported pairs return
+- After exact anchor verification, apply the command-family subject-kind matrix
+  before provider/index work or state creation. Unsupported pairs return
   the owning response's `UNSUPPORTED_SUBJECT_KIND`; test every pair with a
   zero-work tripwire.
 

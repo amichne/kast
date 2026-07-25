@@ -38,8 +38,7 @@ mod tests {
     fn search_uses_exact_match_then_persistent_trigram_fts() {
         let fixture = seed_fixture();
         let request = fixture.request("search", Some("Foo"), 10, 1);
-        let db = MetricsDatabase::open_with_controls(&request, MetricsQueryControls::default())
-            .expect("open metrics db");
+        let db = MetricsDatabase::open(&request).expect("open metrics db");
 
         let before = db.conn.total_changes();
         let exact = strings(db.search("lib.Foo", 10).expect("exact search"));
@@ -77,27 +76,11 @@ mod tests {
     }
 
     #[test]
-    fn impact_progress_cancellation_maps_to_metrics_query_cancelled() {
-        let fixture = seed_fixture();
-        let request = fixture.request("impact", Some("lib.Popular"), 50, 3);
-        let controls = MetricsQueryControls::for_test_progress_budget(0);
-        let db = MetricsDatabase::open_with_controls(&request, controls).expect("open metrics db");
-
-        let error = db
-            .impact("lib.Popular", 3, 50)
-            .expect_err("impact should be interrupted")
-            .into_cli_error();
-
-        assert_eq!(error.code, "METRICS_QUERY_CANCELLED");
-    }
-
-    #[test]
     fn impact_returns_typed_total_and_truncation_with_bounded_rows() {
         let fixture = seed_fixture();
         seed_high_cardinality_impact(&fixture, 500);
         let request = fixture.request("impact", Some("lib.Popular"), 1, 3);
-        let db = MetricsDatabase::open_with_controls(&request, MetricsQueryControls::default())
-            .expect("open metrics db");
+        let db = MetricsDatabase::open(&request).expect("open metrics db");
 
         let result = db.impact("lib.Popular", 3, 1).expect("bounded impact");
 
@@ -112,8 +95,7 @@ mod tests {
         let fixture = seed_fixture();
         seed_high_cardinality_impact(&fixture, 500);
         let request = fixture.request("impact", Some("lib.Popular"), 4, 3);
-        let db = MetricsDatabase::open_with_controls(&request, MetricsQueryControls::default())
-            .expect("open metrics db");
+        let db = MetricsDatabase::open(&request).expect("open metrics db");
         let subject = ImpactSubjectIdentity::new(
             "lib.Popular".to_string(),
             fixture.workspace.join("lib/Popular.kt"),
@@ -160,8 +142,7 @@ mod tests {
     fn anchored_impact_rejects_unprovable_index_identity_before_impact_rows() {
         let fixture = seed_fixture();
         let request = fixture.request("impact", Some("lib.Popular"), 4, 3);
-        let db = MetricsDatabase::open_with_controls(&request, MetricsQueryControls::default())
-            .expect("open metrics db");
+        let db = MetricsDatabase::open(&request).expect("open metrics db");
         let missing = ImpactSubjectIdentity::new(
             "lib.Popular".to_string(),
             fixture.workspace.join("lib/Popular.kt"),
@@ -188,8 +169,7 @@ mod tests {
             )
             .expect("callable declaration");
         let request = fixture.request("impact", Some("lib.Popular"), 4, 3);
-        let db = MetricsDatabase::open_with_controls(&request, MetricsQueryControls::default())
-            .expect("open metrics db");
+        let db = MetricsDatabase::open(&request).expect("open metrics db");
         let subject = ImpactSubjectIdentity::new(
             "lib.Popular".to_string(),
             fixture.workspace.join("lib/Popular.kt"),
@@ -217,9 +197,7 @@ mod tests {
         let request = fixture.request("impact", Some("lib.Popular"), 10, 3);
         let count_complete = Arc::new(Barrier::new(2));
         let mutation_complete = Arc::new(Barrier::new(2));
-        let mut db =
-            MetricsDatabase::open_with_controls(&request, MetricsQueryControls::default())
-                .expect("open metrics db");
+        let mut db = MetricsDatabase::open(&request).expect("open metrics db");
         db.impact_snapshot_barrier = Some(ImpactSnapshotBarrier {
             count_complete: Arc::clone(&count_complete),
             mutation_complete: Arc::clone(&mutation_complete),
@@ -319,8 +297,7 @@ mod tests {
     fn metrics_connection_applies_read_only_pragmas() {
         let fixture = seed_fixture();
         let request = fixture.request("fanIn", None, 10, 1);
-        let db = MetricsDatabase::open_with_controls(&request, MetricsQueryControls::default())
-            .expect("open metrics db");
+        let db = MetricsDatabase::open(&request).expect("open metrics db");
 
         assert_eq!(pragma_i64(&db.conn, "query_only"), 1);
         assert_eq!(pragma_i64(&db.conn, "mmap_size"), 268_435_456);

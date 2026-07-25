@@ -15,7 +15,7 @@ pub enum AgentCommand {
     Verify(AgentVerifyArgs),
     /// Discover Kotlin source and script files with typed workspace evidence.
     WorkspaceFiles(AgentWorkspaceFilesArgs),
-    /// Query compiler-backed graph facts and native topology directly from SQLite.
+    /// Refresh compiler-backed graph facts or query persisted native topology.
     Graph(AgentNativeGraphArgs),
     /// Query and resolve a symbol identity.
     Symbol(AgentSymbolArgs),
@@ -45,15 +45,6 @@ pub enum AgentCommand {
     AddStatement(AgentStatementMutationArgs),
     /// Replace a named declaration by symbol identity.
     ReplaceDeclaration(AgentReplaceDeclarationArgs),
-    /// List catalog-backed tools for CLI-capable agent hosts.
-    #[command(hide = true)]
-    Tools(RemovedAgentCommandArgs),
-    /// Call any catalog method with params from flags, file, or stdin.
-    #[command(hide = true)]
-    Call(RemovedAgentCommandArgs),
-    /// Run a file-backed multi-step workflow.
-    #[command(hide = true)]
-    Workflow(RemovedAgentCommandArgs),
 }
 
 #[derive(Debug, Args, Clone, Default)]
@@ -129,13 +120,6 @@ pub struct AgentLeaseAccessArgs {
     pub workspace_root: PathBuf,
 }
 
-#[derive(Debug, Args, Clone, Default)]
-pub struct RemovedAgentCommandArgs {
-    /// Raw stale command arguments preserved only so removed commands can emit a tombstone.
-    #[arg(allow_hyphen_values = true, trailing_var_arg = true)]
-    pub args: Vec<String>,
-}
-
 #[derive(Debug, Args, Clone)]
 pub struct AgentVerifyArgs {
     #[command(flatten)]
@@ -145,6 +129,11 @@ pub struct AgentVerifyArgs {
 }
 
 #[derive(Debug, Args, Clone)]
+#[command(group(
+    clap::ArgGroup::new("native_graph_query")
+        .multiple(true)
+        .args(["scope", "symbol", "generation", "after_id", "limit", "resolution"])
+))]
 pub struct AgentNativeGraphArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
@@ -157,6 +146,12 @@ pub struct AgentNativeGraphArgs {
     /// Native graph operation to execute.
     #[arg(long, value_enum, default_value_t = NativeGraphOperation::Summary)]
     pub operation: NativeGraphOperation,
+    /// Kotlin file to refresh through the compiler-backed graph. Repeat for multiple files.
+    #[arg(long = "file-path", conflicts_with = "native_graph_query")]
+    pub file_paths: Vec<String>,
+    /// Removed Kotlin file to delete from the persisted graph. Repeat for multiple files.
+    #[arg(long = "removed-file-path", conflicts_with = "native_graph_query")]
+    pub removed_file_paths: Vec<String>,
     /// Canonical symbol key used by the neighbors operation.
     #[arg(long)]
     pub symbol: Option<String>,
@@ -186,6 +181,7 @@ pub enum NativeGraphScope {
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum NativeGraphOperation {
+    Refresh,
     Summary,
     Nodes,
     Neighbors,

@@ -31,46 +31,11 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
             AgentError::from_cli_error(error),
         );
     }
-    if let AgentCommand::Workflow(_) = command {
-        return removed_agent_command(
-            "agent/workflow",
-            "`kast agent workflow` is no longer public. Use `kast agent verify`, `kast agent symbol`, `kast agent diagnostics`, `kast agent impact`, `kast agent rename`, or rerun `kast setup --source <bundle>`.",
-            replacement_commands([
-                "kast agent verify --workspace-root <repo>",
-                "kast agent symbol --query <name> --workspace-root <repo>",
-                "kast agent diagnostics --file-path <path> --workspace-root <repo>",
-                "kast setup --source <bundle>",
-            ]),
-        );
-    }
-    if let AgentCommand::Tools(args) = command {
-        let _ = args;
-        return removed_agent_command(
-            "agent/tools",
-            "`kast agent tools` is no longer public. Use `kast`, `kast help`, and the installed Kast skill for the CLI dialect.",
-            replacement_commands([
-                "kast",
-                "kast help agent",
-                "kast agent verify --workspace-root <repo>",
-            ]),
-        );
-    }
     match command {
         AgentCommand::Lsp(_) => {
             unreachable!("operator agent commands are handled before request prep")
         }
         AgentCommand::Lease(args) => execute_agent_lease(args),
-        AgentCommand::Tools(_) => unreachable!("agent tools is handled before request prep"),
-        AgentCommand::Call(_) => removed_agent_command(
-            "agent/call",
-            "`kast agent call <method>` is no longer public. Use typed `kast agent` commands; generated catalogs remain internal contracts.",
-            replacement_commands([
-                "kast agent symbol --query <name> --workspace-root <repo>",
-                "kast agent diagnostics --file-path <path> --workspace-root <repo>",
-                "kast agent rename --symbol <fq-name> --new-name <name> --apply --workspace-root <repo>",
-            ]),
-        ),
-        AgentCommand::Workflow(_) => unreachable!("workflow is handled before request prep"),
         AgentCommand::Verify(args) => execute_agent_verify(args),
         AgentCommand::WorkspaceFiles(args) => execute_agent_workspace_files(args),
         AgentCommand::Graph(args) => execute_agent_native_graph(args),
@@ -122,11 +87,7 @@ fn agent_command_runtime(command: &AgentCommand) -> Option<&AgentRuntimeArgs> {
         }
         AgentCommand::AddStatement(args) => Some(&args.runtime),
         AgentCommand::ReplaceDeclaration(args) => Some(&args.runtime),
-        AgentCommand::Lsp(_)
-        | AgentCommand::Lease(_)
-        | AgentCommand::Tools(_)
-        | AgentCommand::Call(_)
-        | AgentCommand::Workflow(_) => None,
+        AgentCommand::Lsp(_) | AgentCommand::Lease(_) => None,
     }
 }
 
@@ -162,21 +123,6 @@ fn execute_agent_lease(args: AgentLeaseArgs) -> AgentEnvelope {
             AgentError::from_cli_error(error),
         ),
     }
-}
-
-fn replacement_commands<const N: usize>(commands: [&str; N]) -> Vec<Value> {
-    commands
-        .into_iter()
-        .map(|command| Value::String(command.to_string()))
-        .collect()
-}
-
-fn removed_agent_command(method: &str, message: &str, replacements: Vec<Value>) -> AgentEnvelope {
-    let mut error = agent_error("AGENT_COMMAND_REMOVED", message);
-    error
-        .details
-        .insert("replacements".to_string(), Value::Array(replacements));
-    error_envelope(method.to_string(), None, error)
 }
 
 fn execute_agent_verify(args: AgentVerifyArgs) -> AgentEnvelope {

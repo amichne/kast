@@ -154,6 +154,7 @@ impl From<SourceCapability> for RuntimeCapability {
     }
 }
 
+#[cfg(test)]
 pub(crate) fn assess_runtime_compatibility(
     facts: &RuntimeCompatibilityFacts,
     operation_capability: Option<RuntimeCapability>,

@@ -87,10 +87,7 @@ impl AgentProjectionRequest {
             | AgentCommand::Implementations(_)
             | AgentCommand::Hierarchy(_)
             | AgentCommand::Lsp(_)
-            | AgentCommand::Lease(_)
-            | AgentCommand::Tools(_)
-            | AgentCommand::Call(_)
-            | AgentCommand::Workflow(_) => Self::Passthrough,
+            | AgentCommand::Lease(_) => Self::Passthrough,
         }
     }
 
@@ -228,7 +225,6 @@ struct AgentSemanticBackendCandidateProjection {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentStepProjectionInput {
-    name: String,
     method: String,
     ok: bool,
     #[serde(default)]

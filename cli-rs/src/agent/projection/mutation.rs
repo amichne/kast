@@ -310,22 +310,6 @@ struct AgentMutationResultEvidence {
     diagnostics: AgentDiagnosticSeverityCounts,
 }
 
-impl AgentMutationResultEvidence {
-    fn empty() -> Self {
-        Self {
-            edit_count: 0,
-            edits: Vec::new(),
-            files: Vec::new(),
-            diagnostics: AgentDiagnosticSeverityCounts {
-                error: 0,
-                warning: 0,
-                info: 0,
-                total: 0,
-            },
-        }
-    }
-}
-
 #[derive(Debug)]
 struct AgentMutationFailureEvidence {
     failure: AgentMutationFailureProjection,

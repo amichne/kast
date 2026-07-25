@@ -20,7 +20,7 @@ mod agent_readiness;
 use agent_readiness::agent_environment_diagnostic;
 pub use agent_readiness::{AgentResourceState, DoctorAgentEnvironmentDiagnostic};
 
-pub use crate::manifest::{KastInstallManifest as InstallState, ManagedRepo, ManagedResourceKind};
+pub use crate::manifest::KastInstallManifest as InstallState;
 
 #[cfg(target_os = "macos")]
 const MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE: &str = ".kast/setup/workspace.json";
@@ -191,38 +191,6 @@ pub fn doctor(target: ReadyTarget, workspace_root: Option<&Path>) -> Result<Self
                 )),
             }
         }
-        for repo in install
-            .repos
-            .iter()
-            .filter(|repo| should_verify_repo_resources_for_target(target, workspace_root, repo))
-        {
-            if !repo.copilot_package_version.trim().is_empty()
-                && !repo
-                    .resources
-                    .iter()
-                    .any(|resource| resource.kind == ManagedResourceKind::CopilotPackage)
-            {
-                issues.push(format!(
-                    "Managed repo {} uses retired copilotPackageVersion state; rerun `kast setup --source <bundle>`",
-                    repo.path
-                ));
-            }
-            for resource in &repo.resources {
-                let verification = manifest::verify_managed_resource_outputs(resource)?;
-                if !verification.ok {
-                    issues.extend(verification.issues);
-                }
-                if resource.primitive_version != cli::version() {
-                    warnings.push(format!(
-                        "{} resource at {} was installed by version {}, current binary is {}",
-                        resource.kind,
-                        resource.target_path,
-                        resource.primitive_version,
-                        cli::version()
-                    ));
-                }
-            }
-        }
     } else {
         issues.push(format!(
             "Install manifest is missing at {}",
@@ -304,30 +272,6 @@ fn apply_ready_target_checks(
             }
         }
     }
-}
-
-#[cfg(target_os = "macos")]
-fn should_verify_repo_resources_for_target(
-    target: ReadyTarget,
-    _workspace_root: Option<&Path>,
-    _repo: &ManagedRepo,
-) -> bool {
-    !matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin)
-}
-
-#[cfg(not(target_os = "macos"))]
-fn should_verify_repo_resources_for_target(
-    target: ReadyTarget,
-    workspace_root: Option<&Path>,
-    repo: &ManagedRepo,
-) -> bool {
-    if matches!(target, ReadyTarget::Agent | ReadyTarget::Kotlin) {
-        return workspace_root.is_some_and(|workspace_root| {
-            config::normalize(PathBuf::from(&repo.path))
-                == config::normalize(workspace_root.to_path_buf())
-        });
-    }
-    true
 }
 
 #[cfg(target_os = "macos")]
@@ -849,61 +793,6 @@ mod tests {
             },
             required_artifacts: vec![PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE)],
         }
-    }
-
-    #[test]
-    fn agent_readiness_scopes_repo_resource_verification_to_requested_workspace() {
-        let workspace_root = Path::new("/workspace/kast/.worktrees/feature");
-        let parent_repo = ManagedRepo {
-            path: "/workspace/kast".to_string(),
-            copilot_package_version: String::new(),
-            resources: vec![],
-        };
-        #[cfg(not(target_os = "macos"))]
-        let workspace_repo = ManagedRepo {
-            path: workspace_root.display().to_string(),
-            copilot_package_version: String::new(),
-            resources: vec![],
-        };
-
-        assert!(!should_verify_repo_resources_for_target(
-            ReadyTarget::Agent,
-            Some(workspace_root),
-            &parent_repo
-        ));
-        #[cfg(not(target_os = "macos"))]
-        assert!(should_verify_repo_resources_for_target(
-            ReadyTarget::Agent,
-            Some(workspace_root),
-            &workspace_repo
-        ));
-        assert!(should_verify_repo_resources_for_target(
-            ReadyTarget::Machine,
-            Some(workspace_root),
-            &parent_repo
-        ));
-    }
-
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn macos_agent_readiness_uses_plugin_metadata_instead_of_manifest_repo_resources() {
-        let workspace_root = Path::new("/workspace/kast/.worktrees/feature");
-        let workspace_repo = ManagedRepo {
-            path: workspace_root.display().to_string(),
-            copilot_package_version: String::new(),
-            resources: vec![],
-        };
-
-        assert!(!should_verify_repo_resources_for_target(
-            ReadyTarget::Agent,
-            Some(workspace_root),
-            &workspace_repo
-        ));
-        assert!(!should_verify_repo_resources_for_target(
-            ReadyTarget::Kotlin,
-            Some(workspace_root),
-            &workspace_repo
-        ));
     }
 
     #[test]
