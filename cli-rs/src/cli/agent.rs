@@ -15,7 +15,7 @@ pub enum AgentCommand {
     Verify(AgentVerifyArgs),
     /// Discover Kotlin source and script files with typed workspace evidence.
     WorkspaceFiles(AgentWorkspaceFilesArgs),
-    /// Query compiler-backed graph facts and native topology directly from SQLite.
+    /// Refresh compiler-backed graph facts or query persisted native topology.
     Graph(AgentNativeGraphArgs),
     /// Query and resolve a symbol identity.
     Symbol(AgentSymbolArgs),
@@ -141,6 +141,12 @@ pub struct AgentNativeGraphArgs {
     /// Native graph operation to execute.
     #[arg(long, value_enum, default_value_t = NativeGraphOperation::Summary)]
     pub operation: NativeGraphOperation,
+    /// Kotlin file to refresh through the compiler-backed graph. Repeat for multiple files.
+    #[arg(long = "file-path")]
+    pub file_paths: Vec<String>,
+    /// Removed Kotlin file to delete from the persisted graph. Repeat for multiple files.
+    #[arg(long = "removed-file-path")]
+    pub removed_file_paths: Vec<String>,
     /// Canonical symbol key used by the neighbors operation.
     #[arg(long)]
     pub symbol: Option<String>,
@@ -170,6 +176,7 @@ pub enum NativeGraphScope {
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum NativeGraphOperation {
+    Refresh,
     Summary,
     Nodes,
     Neighbors,
