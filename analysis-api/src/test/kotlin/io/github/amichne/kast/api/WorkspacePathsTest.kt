@@ -21,23 +21,34 @@ class WorkspacePathsTest {
     }
 
     @Test
-    fun `kast data root follows explicit environment authority`() {
-        val installRoot = tempDir.resolve("install-root")
-        val dataRoot = tempDir.resolve("generation-data")
-        val env = mapOf(kastDataHomeEnv to dataRoot.toString())
+    fun `kast data root follows active CLI receipt authority`() {
+        val configuredInstallRoot = tempDir.resolve("configured-install-root")
+        val cliInstallRoot = tempDir.resolve("cli-install-root")
+        val cliDataRoot = tempDir.resolve("cli-data-root")
+        val ignoredDataRoot = tempDir.resolve("ignored-data-root")
+        val receipt = cliInstallRoot.resolve("current/receipt.json")
+        Files.createDirectories(receipt.parent)
+        Files.writeString(
+            receipt,
+            """{"tool":"kast","roots":{"data":"$cliDataRoot"}}""",
+        )
+        val env = mapOf(
+            kastHomeEnv to cliInstallRoot.toString(),
+            kastDataHomeEnv to ignoredDataRoot.toString(),
+        )
 
         assertEquals(
-            dataRoot.toAbsolutePath().normalize(),
-            kastDataRoot(env::get, installRoot),
+            cliDataRoot.toAbsolutePath().normalize(),
+            kastDataRoot(env::get, configuredInstallRoot),
         )
     }
 
     @Test
-    fun `kast data root falls back to install state`() {
+    fun `kast data root falls back to CLI install state data`() {
         val installRoot = tempDir.resolve("install-root")
 
         assertEquals(
-            installRoot.resolve("state").toAbsolutePath().normalize(),
+            installRoot.resolve("state/data").toAbsolutePath().normalize(),
             kastDataRoot(emptyMap<String, String>()::get, installRoot),
         )
     }
@@ -84,7 +95,7 @@ class WorkspacePathsTest {
         val worktreeHash = gitWorktreeHash(workspaceRoot, gitDir)
 
         assertEquals(
-            installRoot.resolve("state/workspaces/git/github.com/amichne/kast/worktrees/workspace--$worktreeHash"),
+            installRoot.resolve("state/data/workspaces/git/github.com/amichne/kast/worktrees/workspace--$worktreeHash"),
             resolver.workspaceDataDirectory(workspaceRoot),
         )
     }
@@ -142,7 +153,7 @@ class WorkspacePathsTest {
 
         val first = resolver.workspaceDataDirectory(firstRoot)
         val second = resolver.workspaceDataDirectory(secondRoot)
-        val repository = installRoot.resolve("state/workspaces/git/github.com/amichne/kast")
+        val repository = installRoot.resolve("state/data/workspaces/git/github.com/amichne/kast")
 
         assertEquals(repository, resolver.repositoryDataDirectory(firstRoot))
         assertEquals(repository, resolver.repositoryDataDirectory(secondRoot))
@@ -185,7 +196,7 @@ class WorkspacePathsTest {
         )
 
         assertEquals(
-            installRoot.resolve("state/workspaces/git/local/${gitCommonDirHash(commonDir)}/worktrees/workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"),
+            installRoot.resolve("state/data/workspaces/git/local/${gitCommonDirHash(commonDir)}/worktrees/workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"),
             resolver.workspaceDataDirectory(workspaceRoot),
         )
     }
@@ -309,6 +320,7 @@ class WorkspacePathsTest {
     private companion object {
         val kastConfigHomeEnv: String = env("KAST", "CONFIG", "HOME")
         val kastDataHomeEnv: String = env("KAST", "DATA", "HOME")
+        val kastHomeEnv: String = env("KAST", "HOME")
 
         fun env(vararg parts: String): String = parts.joinToString("_")
     }

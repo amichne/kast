@@ -266,7 +266,7 @@ class KastConfigTest {
         val dataDirectory = resolver.workspaceDataDirectory(workspaceRoot)
 
         assertEquals(
-            installRoot.resolve("state/workspaces/git/github.com/amichne/kast/worktrees/workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"),
+            installRoot.resolve("state/data/workspaces/git/github.com/amichne/kast/worktrees/workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"),
             dataDirectory,
         )
         assertEquals(dataDirectory.resolve("cache"), resolver.workspaceCacheDirectory(workspaceRoot))
@@ -286,9 +286,9 @@ class KastConfigTest {
         val second = resolver.workspaceDataDirectory(workspaceRoot)
 
         assertEquals(first, second)
-        assertTrue(first.startsWith(installRoot.resolve("state/workspaces/local")))
+        assertTrue(first.startsWith(installRoot.resolve("state/data/workspaces/local")))
         assertTrue(
-            installRoot.resolve("state/workspaces/local-workspaces.json")
+            installRoot.resolve("state/data/workspaces/local-workspaces.json")
                 .readText()
                 .contains(workspaceRoot.toAbsolutePath().normalize().toString())
         )

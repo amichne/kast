@@ -1,6 +1,10 @@
 package io.github.amichne.kast.api.client
 
 import io.github.amichne.kast.api.client.fields.*
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.Path
 
@@ -25,11 +29,14 @@ fun kastDataRoot(): Path = kastDataRoot(System::getenv, kastInstallRoot())
 fun kastDataRoot(
     envLookup: (String) -> String?,
     installRoot: Path,
-): Path = envLookup("KAST_DATA_HOME")
-    ?.trim()
-    ?.takeIf(String::isNotEmpty)
-    ?.let { Path(it).toAbsolutePath().normalize() }
-    ?: installRoot.resolve("state").toAbsolutePath().normalize()
+): Path {
+    val cliInstallRoot = envLookup("KAST_HOME")
+        ?.takeIf(String::isNotEmpty)
+        ?.let { Path(it).toAbsolutePath().normalize() }
+        ?: installRoot.toAbsolutePath().normalize()
+    return activeCliDataRoot(cliInstallRoot)
+        ?: cliInstallRoot.resolve("state/data").toAbsolutePath().normalize()
+}
 
 fun defaultDescriptorDirectory(): Path =
     configPath(KastConfig.defaults().paths.descriptorDir.value)
@@ -38,3 +45,15 @@ fun defaultSocketPath(workspaceRoot: Path): Path =
     WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).defaultSocketFile
 
 private fun configPath(value: String): Path = Path(value).toAbsolutePath().normalize()
+
+private fun activeCliDataRoot(installRoot: Path): Path? {
+    val receiptPath = installRoot.resolve("current/receipt.json")
+    if (!Files.isRegularFile(receiptPath)) return null
+    return runCatching {
+        val receipt = Json.parseToJsonElement(Files.readString(receiptPath)).jsonObject
+        require(receipt.getValue("tool").jsonPrimitive.content == "kast")
+        Path(receipt.getValue("roots").jsonObject.getValue("data").jsonPrimitive.content)
+            .toAbsolutePath()
+            .normalize()
+    }.getOrNull()
+}
