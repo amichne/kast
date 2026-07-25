@@ -1,27 +1,14 @@
-# Metrics Database Instructions
+# Metrics database instructions
 
-This directory contains direct SQLite metrics queries over the source-index
-cache that must migrate behind typed backend APIs under
-`.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`.
-Do not add new direct queries, public results, or consumers here. Until its
-follow-on migration lands, changes are limited to correctness fixes required
-to preserve the existing surface or to remove it.
+This directory owns the current read-only SQLite implementation behind
+`kast developer inspect metrics` and agent impact fallback.
 
-Keep query controls and result models separate from SQL execution and helper
-serialization. Existing functions return typed direct metrics results or typed
-direct metrics errors. New typed metrics contracts belong in `analysis-api` and
-are served by the active backend through `analysis-server`.
-
-Presentation belongs in `output` or the calling command.
-
-Impact identity is fail-closed. Verify the compiler anchor, then require a
-production declaration row matching FQ name, canonical path, non-null offset,
-and kind. The production declaration primary key cannot represent same-FQ
-same-file overloads, so functions and properties must return typed overload
-granularity degradation rather than aggregate FQ edges. A declaration-row FQ
-count may reject additional stored non-callable rows; it is never callable
-overload proof.
-
-Impact admits only class, interface, object, function, and property subjects.
-Verified parameter or unknown kinds return `UNSUPPORTED_SUBJECT_KIND` before
-any declaration, count, or impact-row query; keep zero-SQL regression tests.
+- Do not add a second database-path authority; use
+  `config::workspace_database_path`.
+- Keep result and error models separate from SQL execution.
+- Keep presentation in `output` or the calling command.
+- Impact identity fails closed on FQ name, canonical path, declaration offset,
+  and kind. Functions and properties degrade when the index cannot prove
+  overload isolation.
+- Add no cancellation, deadline, or progress-control branch unless a real
+  production request can set and exercise it.

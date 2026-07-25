@@ -132,9 +132,10 @@ struct AgentDiagnosticsRequest {
 #[serde(rename_all = "camelCase")]
 struct AgentDiagnosticsRequestParams {
     file_paths: Vec<String>,
-    max_results: usize,
-    #[serde(default)]
-    page_token: Option<String>,
+    #[serde(rename = "maxResults")]
+    _max_results: usize,
+    #[serde(default, rename = "pageToken")]
+    _page_token: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -354,7 +355,8 @@ struct AgentRefreshResult {
     summary: AgentSemanticAnalysisSummary,
     removed_file_count: usize,
     attempt_count: usize,
-    elapsed_millis: u64,
+    #[serde(rename = "elapsedMillis")]
+    _elapsed_millis: u64,
     schema_version: u32,
 }
 

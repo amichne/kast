@@ -5,7 +5,8 @@ description: Why Kast models Kotlin symbols, relations, coverage, and failures a
 tags: [compiler, kotlin, semantic-graph, evidence, coverage]
 code_sources:
   - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt
-  - path: cli-rs/src/agent/graphify.rs
+  - path: cli-rs/src/agent/native_graph.rs
+  - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt
   - path: cli-rs/src/runtime/workspace_admission.rs
 ---
 
@@ -50,16 +51,19 @@ Relationship operations use the same principle. Complete, limited, and
 resumable outcomes are different evidence states. An empty limited result is
 not proof that no relationship exists.
 
-## Graph projection preserves compiler provenance
+## The native graph preserves compiler provenance
 
-The compiler-backed Graphify projection accepts only absolute Kotlin paths
-contained by the exact workspace. It requests semantic pages from the active
-backend, maps canonical keys to stable public node IDs, retains relation
-context and resolved targets, and writes the fragment atomically.
+The active backend writes compiler-derived symbols and relations into the
+workspace source index selected by the CLI. `kast agent graph` reads that
+database directly and exposes generation-pinned symbol pages, neighbors,
+topology, communities, and summaries at symbol, file, package, or module
+scope.
 
-Incremental extraction requires a compatible base graph. Kotlin deletions
-require a full rebuild. Those constraints keep one graph from quietly mixing
-incompatible symbol identities.
+Every query verifies the source-index schema and generation. Worktree overlays
+retain their base-database identity, and a generation change during a graph
+calculation fails instead of mixing snapshots. Plugins and backends derive the
+database location from the active CLI receipt, so an independently guessed
+cache path cannot become a second graph authority.
 
 ## Failures remain explicit
 

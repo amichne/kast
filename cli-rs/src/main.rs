@@ -1,5 +1,3 @@
-#![cfg_attr(target_os = "macos", allow(dead_code))]
-
 mod agent;
 mod bundle;
 mod catalog_schema;
@@ -388,73 +386,6 @@ fn current_executable_argument() -> String {
         .unwrap_or_else(|| "kast".to_string())
 }
 
-#[cfg(target_os = "macos")]
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RemovedOperatorCommandEnvelope<'a> {
-    ok: bool,
-    method: &'a str,
-    error: RemovedOperatorCommandError<'a>,
-    schema_version: u32,
-}
-
-#[cfg(target_os = "macos")]
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RemovedOperatorCommandError<'a> {
-    code: &'static str,
-    message: &'a str,
-    details: RemovedOperatorCommandDetails<'a>,
-}
-
-#[cfg(target_os = "macos")]
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RemovedOperatorCommandDetails<'a> {
-    replacements: &'a [&'a str],
-}
-
-#[cfg(target_os = "macos")]
-fn removed_operator_command(
-    method: &'static str,
-    message: &'static str,
-    replacements: &'static [&'static str],
-    output_format: OutputFormat,
-) -> Result<i32> {
-    output::print_structured(
-        &RemovedOperatorCommandEnvelope {
-            ok: false,
-            method,
-            error: RemovedOperatorCommandError {
-                code: "AGENT_COMMAND_REMOVED",
-                message,
-                details: RemovedOperatorCommandDetails { replacements },
-            },
-            schema_version: SCHEMA_VERSION,
-        },
-        output_format,
-    )?;
-    Ok(1)
-}
-
-#[cfg(target_os = "macos")]
-fn macos_plugin_bootstrap_required(
-    method: &'static str,
-    output_format: OutputFormat,
-) -> Result<i32> {
-    removed_operator_command(
-        method,
-        "The active Kast release is missing. Install or replace the complete release with `kast setup --source <bundle>` before opening the workspace in IntelliJ IDEA or Android Studio.",
-        &[
-            "/bin/bash -c \"$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)\"",
-            "kast setup --source <bundle>",
-            "Open the workspace in IntelliJ IDEA or Android Studio with the Kast plugin enabled",
-            "kast agent verify --workspace-root <repo>",
-        ],
-        output_format,
-    )
-}
-
 fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Result<i32> {
     match command {
         cli::RuntimeCommand::Up(args) => {
@@ -518,18 +449,6 @@ fn run_inspect(command: cli::InspectCommand, output_format: OutputFormat) -> Res
     match command {
         cli::InspectCommand::Paths(args) => run_paths(args, output_format),
         cli::InspectCommand::Metrics { command } => metrics::run(command, output_format),
-        cli::InspectCommand::Demo(args) => {
-            let _ = args;
-            let mut error = CliError::new(
-                "DEMO_COMMAND_MOVED",
-                "`kast developer inspect demo` moved to the public `kast demo` experience.",
-            );
-            error.details.insert(
-                "replacement".to_string(),
-                "kast demo --workspace-root <repo>".to_string(),
-            );
-            Err(error)
-        }
         cli::InspectCommand::Catalog(args) => run_validate(args),
     }
 }

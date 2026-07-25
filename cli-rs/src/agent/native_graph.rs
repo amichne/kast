@@ -19,7 +19,6 @@ struct NativeGraph {
     edges: Vec<NativeGraphEdge>,
     offsets: Vec<usize>,
     targets: Vec<usize>,
-    weights: Vec<f64>,
 }
 
 const NATIVE_GRAPH_ROOT_PACKAGE_KEY: &str = "<root>";
@@ -781,18 +780,16 @@ fn native_graph_text_edges(
 }
 
 fn native_graph_to_csr(nodes: Vec<NativeGraphNode>, edges: Vec<NativeGraphEdge>) -> NativeGraph {
-    let mut rows = vec![BTreeMap::<usize, f64>::new(); nodes.len()];
+    let mut rows = vec![BTreeSet::<usize>::new(); nodes.len()];
     for edge in &edges {
-        *rows[edge.source].entry(edge.target).or_default() += edge.weight;
+        rows[edge.source].insert(edge.target);
     }
     let mut offsets = Vec::with_capacity(nodes.len() + 1);
     let mut targets = Vec::new();
-    let mut weights = Vec::new();
     offsets.push(0);
     for row in rows {
-        for (target, weight) in row {
+        for target in row {
             targets.push(target);
-            weights.push(weight);
         }
         offsets.push(targets.len());
     }
@@ -801,7 +798,6 @@ fn native_graph_to_csr(nodes: Vec<NativeGraphNode>, edges: Vec<NativeGraphEdge>)
         edges,
         offsets,
         targets,
-        weights,
     }
 }
 
@@ -1310,12 +1306,12 @@ mod native_graph_tests {
     }
 
     #[test]
-    fn native_graph_csr_preserves_parallel_typed_edge_occurrence_weight() {
+    fn native_graph_preserves_parallel_typed_edge_occurrence_weight() {
         let graph = fixture(2, &[(0, 1, 2.0), (0, 1, 3.0)]);
         assert_eq!(graph.edges.len(), 2);
         assert_eq!(graph.offsets, vec![0, 1, 1]);
         assert_eq!(graph.targets, vec![1]);
-        assert_eq!(graph.weights, vec![5.0]);
+        assert_eq!(graph.edges.iter().map(|edge| edge.weight).sum::<f64>(), 5.0);
     }
 
     #[test]
@@ -1555,7 +1551,6 @@ mod native_graph_tests {
         );
         assert_eq!(overlay.offsets, clean.offsets);
         assert_eq!(overlay.targets, clean.targets);
-        assert_eq!(overlay.weights, clean.weights);
     }
 
     #[cfg(unix)]

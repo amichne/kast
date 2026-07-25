@@ -150,7 +150,6 @@ fn project_install_manifest(
             .collect(),
         owned_paths: manifest::owned_paths(&targets.resolved),
         shell_rc_patches: vec![],
-        repos: vec![],
         schema_version: crate::protocol_schema_versions::INSTALL_RECEIPT_SCHEMA_VERSION,
     }
 }

@@ -1,5 +1,3 @@
-#![allow(dead_code)]
-
 use crate::SCHEMA_VERSION;
 use crate::cli::OutputFormat;
 use crate::cli::{

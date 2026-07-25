@@ -61,12 +61,6 @@ fn dead_code_reason(visibility: &str) -> &'static str {
 }
 
 fn sql_error(error: rusqlite::Error) -> DirectMetricsError {
-    if error.sqlite_error_code() == Some(ErrorCode::OperationInterrupted) {
-        return DirectMetricsError::Query(CliError::new(
-            "METRICS_QUERY_CANCELLED",
-            "metrics query was cancelled before it completed",
-        ));
-    }
     DirectMetricsError::Query(CliError::new("SQLITE_ERROR", error.to_string()))
 }
 

@@ -137,15 +137,6 @@ class KastSettingsConfigurableTest {
     }
 
     @Test
-    fun `telemetry detail level maps config values for settings UI`() {
-        assertEquals(KastTelemetryDetailLevel.BASIC, KastTelemetryDetailLevel.fromConfigValue(null))
-        assertEquals(KastTelemetryDetailLevel.BASIC, KastTelemetryDetailLevel.fromConfigValue(" "))
-        assertEquals(KastTelemetryDetailLevel.BASIC, KastTelemetryDetailLevel.fromConfigValue("unexpected"))
-        assertEquals(KastTelemetryDetailLevel.BASIC, KastTelemetryDetailLevel.fromConfigValue("BaSiC"))
-        assertEquals(KastTelemetryDetailLevel.VERBOSE, KastTelemetryDetailLevel.fromConfigValue(" verbose "))
-    }
-
-    @Test
     fun `global hook settings preserve unrelated config and omit enabled defaults`() {
         val state = KastSettingsState().apply {
             loadFromConfig(KastConfig.defaults())

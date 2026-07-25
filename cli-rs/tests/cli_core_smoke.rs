@@ -116,7 +116,7 @@ fn public_cli_exposes_setup_and_no_retired_install_mutators() {
 }
 
 #[test]
-fn agent_surface_keeps_semantic_commands_and_rejects_raw_call() {
+fn agent_surface_keeps_semantic_commands() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -134,12 +134,4 @@ fn agent_surface_keeps_semantic_commands_and_rejects_raw_call() {
             "missing {command}: {stdout}"
         );
     }
-
-    let call = kast(&home, &config_home)
-        .args(["--output", "json", "agent", "call", "symbol/resolve"])
-        .output()
-        .expect("removed call");
-    assert!(!call.status.success());
-    let payload: serde_json::Value = serde_json::from_slice(&call.stdout).expect("call JSON");
-    assert_eq!(payload["error"]["code"], "AGENT_COMMAND_REMOVED");
 }

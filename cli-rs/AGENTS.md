@@ -46,19 +46,14 @@ orchestration, source-index CLI reads, and release packaging.
   schemas and request samples. Other `protocol/` outputs serve release and
   integration consumers.
 
-The broader public product surface, workflows, and AXI contract live in
-`.agents/adr/0006-forward-system-definition-and-audit-scope.md`. IDEA runtime
-compatibility, index privacy, lifecycle, and semantic cockpit authority live
-in `.agents/adr/0023-signed-idea-plugin-distribution-and-runtime-authority.md`;
-`.agents/adr/0028-unsigned-github-idea-plugin-distribution.md` supersedes its
-plugin distribution decisions. Exact-root agent lease identity, ownership,
-recovery, and release authority live in
-`.agents/adr/0028-exact-root-agent-workspace-leases.md`. The Codex CLI-only
-plugin, exhaustive Rust exposure classifier, hook state, and
-release coupling live in
-`.agents/adr/0026-codex-cli-plugin-and-rust-exposure-authority.md`.
-The sole installation boundary lives in
-`.agents/adr/0031-sole-transactional-setup-authority.md`.
+The retained cross-module boundaries are:
+
+- `.agents/adr/0025-backend-bound-opaque-selector-handles.md`
+- `.agents/adr/0026-proof-carrying-relationship-coverage.md`
+- `.agents/adr/0027-effective-agent-environment-readiness.md`
+- `.agents/adr/0028-exact-root-agent-workspace-leases.md`
+- `.agents/adr/0031-cli-install-and-data-authority.md`
+- `.agents/adr/0032-macos-idea-golden-pathway.md`
 
 ## Edit rules
 

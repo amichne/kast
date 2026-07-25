@@ -45,15 +45,6 @@ pub enum AgentCommand {
     AddStatement(AgentStatementMutationArgs),
     /// Replace a named declaration by symbol identity.
     ReplaceDeclaration(AgentReplaceDeclarationArgs),
-    /// List catalog-backed tools for CLI-capable agent hosts.
-    #[command(hide = true)]
-    Tools(RemovedAgentCommandArgs),
-    /// Call any catalog method with params from flags, file, or stdin.
-    #[command(hide = true)]
-    Call(RemovedAgentCommandArgs),
-    /// Run a file-backed multi-step workflow.
-    #[command(hide = true)]
-    Workflow(RemovedAgentCommandArgs),
 }
 
 #[derive(Debug, Args, Clone, Default)]
@@ -127,13 +118,6 @@ pub struct AgentLeaseAccessArgs {
     /// Absolute semantic workspace root the lease must bind.
     #[arg(long)]
     pub workspace_root: PathBuf,
-}
-
-#[derive(Debug, Args, Clone, Default)]
-pub struct RemovedAgentCommandArgs {
-    /// Raw stale command arguments preserved only so removed commands can emit a tombstone.
-    #[arg(allow_hyphen_values = true, trailing_var_arg = true)]
-    pub args: Vec<String>,
 }
 
 #[derive(Debug, Args, Clone)]

@@ -131,7 +131,6 @@ copilot-session-*.md
 dist/
 !setup-kast/dist/
 !setup-kast/dist/index.js
-.agents/skills/kast/.kast-version
 .benchmarks/
 
 # Python bytecode (from evaluation/scripts/ and friends)
@@ -143,41 +142,5 @@ __pycache__/
 skills-lock.json
 graphify-out/
 cli-rs/graphify-out/
-
-# Generated Kast Copilot plugin install outputs. Source lives in cli-rs/resources/plugin/.
-kast-copilot-plugin/
-.github/lsp.json
-.github/.kast-copilot-version
-.github/hooks/
-.github/agents/
-.github/instructions/kast-kotlin.md
-.github/instructions/kast-kotlin.instructions.md
-.github/extensions/kast/
 /AGENTS.local.md
 /.kast/
-.agents/skills/kast-api-surface-change/
-.agents/skills/kast-callgraph-review/
-.agents/skills/kast-safe-rename/
-.agents/skills/kast-symbol-investigation/
-
-.agents/agents/
-.agents/skills/author-zensical-docs/
-.agents/skills/improve-codebase-architecture/
-.agents/skills/kast-value-proof-runner/
-.agents/skills/kotlin-gradle-loop/
-.agents/skills/kotlin-standards/
-/.claude/skills/grill-with-docs/**
-
-# Share Graphify's canonical map; keep local and redundant output out of Git.
-/graphify-out/*
-!/graphify-out/graph.json
-!/graphify-out/graph.html
-!/graphify-out/GRAPH_REPORT.md
-!/graphify-out/manifest.json
-!/graphify-out/.graphify_labels.json
-!/graphify-out/.graphify_learning.json
-!/graphify-out/memory/
-!/graphify-out/memory/**
-!/graphify-out/reflections/
-!/graphify-out/reflections/**
-/cli-rs/graphify-out/

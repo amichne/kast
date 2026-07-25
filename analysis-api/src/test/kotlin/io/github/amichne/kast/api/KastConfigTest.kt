@@ -92,20 +92,15 @@ class KastConfigTest {
         assertEquals(true, config.projectOpen.profileAutoInit.value)
         assertEquals(ProjectOpenProfile.JETBRAINS_PLUGIN, config.projectOpen.profile.value)
         assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
+        assertEquals(
+            ConfigurationDefault(ProjectOpenProfile.JETBRAINS_PLUGIN),
+            config.projectOpen.profile.default,
+        )
         assertEquals(true, config.projectOpen.autoExcludeGit.value)
         assertEquals("projectOpen", config.projectOpen.gradleLoadEnabled.section)
         assertEquals("gradleLoadEnabled", config.projectOpen.gradleLoadEnabled.key)
         assertEquals(ConfigurationDefault(true), config.projectOpen.gradleLoadEnabled.default)
         assertEquals(true, config.projectOpen.gradleLoadEnabled.value)
-    }
-
-    @Test
-    fun `legacy copilot project open profile remains a compatibility alias`() {
-        val profile = ProjectOpenProfile(ProjectOpenProfile.JETBRAINS_PLUGIN)
-
-        assertEquals(ProjectOpenProfile.JETBRAINS_PLUGIN, profile.value)
-        assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, profile.kind)
-        assertEquals(ConfigurationDefault(ProjectOpenProfile.JETBRAINS_PLUGIN), profile.default)
     }
 
     @Test

@@ -1,15 +1,14 @@
 pub(crate) struct MetricsDatabase<'a> {
     request: &'a MetricsRequest,
     conn: Connection,
-    controls: MetricsQueryControls,
     #[cfg(test)]
     impact_snapshot_barrier: Option<ImpactSnapshotBarrier>,
 }
 
 #[cfg(test)]
 struct ImpactSnapshotBarrier {
-    count_complete: Arc<std::sync::Barrier>,
-    mutation_complete: Arc<std::sync::Barrier>,
+    count_complete: std::sync::Arc<std::sync::Barrier>,
+    mutation_complete: std::sync::Arc<std::sync::Barrier>,
 }
 
 fn sql_row_bound(value: usize) -> i64 {
@@ -18,13 +17,6 @@ fn sql_row_bound(value: usize) -> i64 {
 
 impl<'a> MetricsDatabase<'a> {
     pub(crate) fn open(request: &'a MetricsRequest) -> DirectResult<Self> {
-        Self::open_with_controls(request, MetricsQueryControls::default())
-    }
-
-    pub(crate) fn open_with_controls(
-        request: &'a MetricsRequest,
-        controls: MetricsQueryControls,
-    ) -> DirectResult<Self> {
         if !request.database().is_file() {
             return Err(DirectMetricsError::Unavailable(format!(
                 "No source-index database exists at {}",
@@ -40,7 +32,6 @@ impl<'a> MetricsDatabase<'a> {
         let db = Self {
             request,
             conn,
-            controls,
             #[cfg(test)]
             impact_snapshot_barrier: None,
         };
@@ -696,7 +687,7 @@ impl<'a> MetricsDatabase<'a> {
         limit: usize,
         offset: usize,
     ) -> DirectResult<Vec<ChangeImpactNode>> {
-        self.with_query_progress(|| {
+        {
             let mut stmt = self
                 .conn
                 .prepare(
@@ -740,11 +731,11 @@ impl<'a> MetricsDatabase<'a> {
                 ],
                 |row| self.impact_row(row, confidence),
             ))
-        })
+        }
     }
 
     fn symbol_level_impact_count(&self, fq_name: &str, depth: usize) -> DirectResult<usize> {
-        self.with_query_progress(|| {
+        {
             self.conn
                 .query_row(
                     r#"
@@ -780,7 +771,7 @@ impl<'a> MetricsDatabase<'a> {
                 )
                 .map(|count| usize::try_from(count).expect("non-negative impact count"))
                 .map_err(sql_error)
-        })
+        }
     }
 
     fn file_level_impact(
@@ -791,7 +782,7 @@ impl<'a> MetricsDatabase<'a> {
         limit: usize,
         offset: usize,
     ) -> DirectResult<Vec<ChangeImpactNode>> {
-        self.with_query_progress(|| {
+        {
             let mut stmt = self
                 .conn
                 .prepare(
@@ -858,11 +849,11 @@ impl<'a> MetricsDatabase<'a> {
                 ],
                 |row| self.impact_row(row, confidence),
             ))
-        })
+        }
     }
 
     fn file_level_impact_count(&self, fq_name: &str, depth: usize) -> DirectResult<usize> {
-        self.with_query_progress(|| {
+        {
             self.conn
                 .query_row(
                     r#"
@@ -911,7 +902,7 @@ impl<'a> MetricsDatabase<'a> {
                 )
                 .map(|count| usize::try_from(count).expect("non-negative impact count"))
                 .map_err(sql_error)
-        })
+        }
     }
 
     fn impact_rows<I>(&self, rows: rusqlite::Result<I>) -> DirectResult<Vec<ChangeImpactNode>>
@@ -938,33 +929,6 @@ impl<'a> MetricsDatabase<'a> {
             occurrence_count: row.get(5)?,
             confidence: confidence.clone(),
         })
-    }
-
-    fn with_query_progress<T>(
-        &self,
-        operation: impl FnOnce() -> DirectResult<T>,
-    ) -> DirectResult<T> {
-        if !self.controls.needs_progress_handler() {
-            return operation();
-        }
-        let controls = self.controls.clone();
-        let mut remaining_budget = controls.progress_budget;
-        self.conn
-            .progress_handler(
-                controls.progress_ops,
-                Some(move || controls.should_cancel(&mut remaining_budget)),
-            )
-            .map_err(sql_error)?;
-        let result = operation();
-        let clear_result = self
-            .conn
-            .progress_handler(0, None::<fn() -> bool>)
-            .map_err(sql_error);
-        match (result, clear_result) {
-            (Ok(value), Ok(())) => Ok(value),
-            (Err(error), _) => Err(error),
-            (Ok(_), Err(error)) => Err(error),
-        }
     }
 
     fn popular_symbols(&self, limit: usize) -> DirectResult<Vec<String>> {
@@ -1003,7 +967,7 @@ impl<'a> MetricsDatabase<'a> {
     }
 
     fn short_symbol_matches(&self, query: &str, limit: usize) -> DirectResult<Vec<String>> {
-        self.with_query_progress(|| {
+        {
             let needle = source_index_db::escape_like(&query.to_lowercase());
             let fq_prefix = format!("{needle}%");
             let segment_prefix = format!("%.{}%", needle);
@@ -1030,11 +994,11 @@ impl<'a> MetricsDatabase<'a> {
                 params![fq_prefix, segment_prefix, fq_prefix, limit as i64],
                 |row| row.get(0),
             ))
-        })
+        }
     }
 
     fn fts_symbol_matches(&self, query: &str, limit: usize) -> DirectResult<Vec<String>> {
-        self.with_query_progress(|| {
+        {
             let query = source_index_db::trigram_fts_query(query);
             let mut stmt = self
                 .conn
@@ -1049,7 +1013,7 @@ impl<'a> MetricsDatabase<'a> {
                 )
                 .map_err(sql_error)?;
             string_column(stmt.query_map(params![query, limit as i64], |row| row.get(0)))
-        })
+        }
     }
 
     fn schema_is_current(&self) -> rusqlite::Result<bool> {

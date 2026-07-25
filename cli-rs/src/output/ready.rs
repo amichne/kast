@@ -79,14 +79,6 @@ fn print_self_check(title: &str, result: &SelfDoctorResult) -> Result<()> {
                 backend.runtime_libs_dir
             );
         }
-        for repo in &install.repos {
-            mdln!(
-                document,
-                "- Copilot repo `{}`: `{}`",
-                repo.path,
-                repo.copilot_package_version
-            );
-        }
     }
     if result.ok {
         mdln!(document);
