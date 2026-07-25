@@ -103,6 +103,20 @@ class NativeSemanticGraphBackendTest {
                 return localValue
             }
         """
+
+        private const val functionTypeParameterSource = """
+            package demo
+
+            typealias Resolver = (workspaceRoot: String) -> String
+        """
+
+        private const val enumSource = """
+            package demo
+
+            enum class Mode(val value: Int) {
+                VALUE(1),
+            }
+        """
     }
 
     private val moduleFixture = projectFixture.moduleFixture("main")
@@ -115,6 +129,9 @@ class NativeSemanticGraphBackendTest {
     private val leftTypeConsumerFixture = sourceRootFixture.psiFileFixture("LeftTypeConsumer.kt", leftTypeConsumer)
     private val rightTypeConsumerFixture = sourceRootFixture.psiFileFixture("RightTypeConsumer.kt", rightTypeConsumer)
     private val localPropertyFixture = sourceRootFixture.psiFileFixture("LocalProperty.kt", localPropertySource)
+    private val functionTypeParameterFixture =
+        sourceRootFixture.psiFileFixture("FunctionTypeParameter.kt", functionTypeParameterSource)
+    private val enumFixture = sourceRootFixture.psiFileFixture("Mode.kt", enumSource)
 
     @TempDir
     lateinit var storeRoot: Path
@@ -269,6 +286,58 @@ class NativeSemanticGraphBackendTest {
                 SemanticGraphVisibility.LOCAL,
                 snapshot.symbols.single { symbol -> symbol.name.value == "localValue" }.visibility,
             )
+        }
+    }
+
+    @Test
+    fun `function type parameters do not abort semantic graph extraction`() = runBlocking {
+        val project = projectFixture.get()
+        val sourceFile = functionTypeParameterFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = limits(),
+                semanticGraphStore = store,
+                psiGeneration = { 1L },
+            ).use { backend ->
+                val result = backend.semanticGraph(
+                    SemanticGraphQuery(
+                        filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
+                    ).parsed(),
+                )
+                assertTrue(result.symbolCount.value > 0)
+            }
+        }
+    }
+
+    @Test
+    fun `unnamed declarations do not break semantic graph extraction`() = runBlocking {
+        val project = projectFixture.get()
+        val sourceFile = enumFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = limits(),
+                semanticGraphStore = store,
+                psiGeneration = { 1L },
+            ).use { backend ->
+                val result = backend.semanticGraph(
+                    SemanticGraphQuery(
+                        filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
+                    ).parsed(),
+                )
+                assertTrue(result.symbolCount.value > 0)
+            }
         }
     }
 

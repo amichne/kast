@@ -540,6 +540,7 @@ private fun KtNamedDeclaration.semanticModality(): SemanticGraphModality? = when
 
 private fun semanticTypeFacts(file: KtFile): List<SemanticGraphTypeFact> =
     PsiTreeUtil.findChildrenOfType(file, KtTypeReference::class.java)
+        .filter { reference -> reference.text.isNotBlank() }
         .map(::semanticTypeFact)
         .distinctBy(SemanticGraphTypeFact::stableKey)
         .sortedBy { type -> type.stableKey.value }
@@ -755,7 +756,7 @@ private fun projectableKind(declaration: KtNamedDeclaration): SemanticGraphSymbo
         SemanticGraphSymbolKind.FUNCTION
     }
     is KtProperty -> SemanticGraphSymbolKind.PROPERTY
-    is KtParameter -> SemanticGraphSymbolKind.VALUE_PARAMETER
+    is KtParameter -> if (declaration.parent?.parent is KtFunctionType) null else SemanticGraphSymbolKind.VALUE_PARAMETER
     is KtTypeParameter -> SemanticGraphSymbolKind.TYPE_PARAMETER
     is KtTypeAlias -> SemanticGraphSymbolKind.TYPE_ALIAS
     else -> null
