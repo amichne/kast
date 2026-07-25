@@ -542,6 +542,15 @@ fn claimed_current_schema_without_package_tuple_checks_fails_closed() {
 }
 
 #[test]
+fn current_producer_package_check_contract_is_accepted() {
+    let (_temp, root, _fixture) = fixture();
+
+    let read = read_workspace_index(&root);
+
+    assert!(matches!(read, WorkspaceIndexRead::Snapshot(_)), "{read:?}");
+}
+
+#[test]
 fn reader_leaves_generation_and_manifest_unchanged() {
     let (_temp, root, fixture) = fixture();
     fixture.insert_manifest_file(1, "src/app", "ReadOnly.kt", true);
