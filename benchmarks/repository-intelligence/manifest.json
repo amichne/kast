@@ -1,0 +1,122 @@
+{
+  "schemaVersion": 1,
+  "corpus": {
+    "commit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
+    "materializeCommand": "git worktree add --detach ../kast-repository-intelligence-corpus 2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
+    "trackedFiles": 1115,
+    "compilationOwnedKotlinFiles": 599,
+    "filesByExtension": {
+      "[no extension]": 3,
+      ".bat": 1,
+      ".gitignore": 2,
+      ".jar": 1,
+      ".java": 2,
+      ".json": 215,
+      ".kt": 599,
+      ".kts": 18,
+      ".lock": 1,
+      ".md": 56,
+      ".properties": 2,
+      ".py": 8,
+      ".rs": 155,
+      ".sh": 30,
+      ".svg": 1,
+      ".toml": 4,
+      ".txt": 5,
+      ".xml": 3,
+      ".yaml": 2,
+      ".yml": 7
+    }
+  },
+  "gradle": {
+    "projects": [
+      ":analysis-api",
+      ":analysis-server",
+      ":index-store",
+      ":backend-headless",
+      ":backend-shared",
+      ":backend-idea"
+    ],
+    "includedBuilds": [
+      "build-logic"
+    ],
+    "compilations": [
+      "analysis-api:main",
+      "analysis-api:test",
+      "analysis-api:testFixtures",
+      "analysis-server:main",
+      "analysis-server:test",
+      "backend-headless:main",
+      "backend-headless:test",
+      "backend-idea:main",
+      "backend-idea:test",
+      "backend-shared:main",
+      "backend-shared:test",
+      "build-logic:main",
+      "build-logic:test",
+      "index-store:main",
+      "index-store:test"
+    ],
+    "compilationFileCounts": {
+      "analysis-api:main": 263,
+      "analysis-api:test": 43,
+      "analysis-api:testFixtures": 4,
+      "analysis-server:main": 13,
+      "analysis-server:test": 9,
+      "backend-headless:main": 19,
+      "backend-headless:test": 2,
+      "backend-idea:main": 93,
+      "backend-idea:test": 32,
+      "backend-shared:main": 55,
+      "backend-shared:test": 7,
+      "build-logic:main": 11,
+      "build-logic:test": 5,
+      "index-store:main": 33,
+      "index-store:test": 10
+    }
+  },
+  "systems": {
+    "kast": {
+      "versionAtBaseline": "0.16.1-6-g2c630d3d",
+      "implementationCommitAtBaseline": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
+      "configuration": "macOS IntelliJ IDEA backend; branch-built CLI; native source-index graph"
+    },
+    "graphify": {
+      "version": "0.9.22",
+      "configuration": "code-only AST refresh of the latest pre-feature graph; Graphify 0.9.22 emitted an undirected graph",
+      "archiveIdentity": {
+        "path": "/Users/amichne/code/.kast-cleanup-archive-20260724/graphify-out-pre-refresh",
+        "graphSha256": "1d7c61b5aa1dfc2d8058bb424268fc50eb7eaa335c231bb8b8054b5807912470",
+        "reportSha256": "7e194bb78213bbf5bea3f1787b400018539ad9b94043646ad575b6338ccb9d91",
+        "sameSnapshot": false
+      },
+      "sameSnapshotBaseline": {
+        "corpusCommit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
+        "sourceGraphSha256": "4b21811fa765f3557abe3c0efa5cb009bcebd4688b5208fb20460acb2bbce99a",
+        "graphSha256": "5e8bb3eb77594c252c1ebf7caed0ebe86f4a3c39be243902a0104f2a9f17c9f9",
+        "reportSha256": "666107a3c8964fc56c5226b3935e6b9c661ecc340f9d530314c9eafc6c5408f6",
+        "nodes": 13476,
+        "edges": 27307,
+        "communities": 771,
+        "directed": false
+      }
+    }
+  },
+  "commands": {
+    "FAST_CHECK": "cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_graph_smoke && python3 scripts/benchmark-native-graph.py --self-test && ./benchmarks/repository-intelligence/run.sh --self-test && python3 benchmarks/repository-intelligence/run_graphify.py --self-test",
+    "FULL_CHECK": "./gradlew test --no-daemon && cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check && cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings && cargo test --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features",
+    "BENCHMARK": "./benchmarks/repository-intelligence/run.sh --assert --repeat 2",
+    "BUILD_BRANCH_CLI": "./gradlew buildDevelopmentCli --no-daemon",
+    "KAST_BASELINE": "python3 scripts/benchmark-native-graph.py ../kast-repository-intelligence-corpus --kast ~/.local/share/kast/current/bin/kast --database ~/.local/share/kast/state/data/workspaces/git/github.com/amichne/kast/worktrees/kast-repository-intelligence-corpus--8add60ac3132/cache/source-index.db --iterations 1 --output-root benchmarks/repository-intelligence/baselines/native-graph",
+    "GRAPHIFY_BASELINE": "cp -R ../kast/graphify-out ../kast-repository-intelligence-graphify-corpus/graphify-out && (cd ../kast-repository-intelligence-graphify-corpus && graphify update . --force) && python3 benchmarks/repository-intelligence/run_graphify.py --graph ../kast-repository-intelligence-graphify-corpus/graphify-out/graph.json --database ~/.local/share/kast/state/data/workspaces/git/github.com/amichne/kast/worktrees/kast-repository-intelligence-corpus--8add60ac3132/cache/source-index.db --assert-kast-regression"
+  },
+  "questionCategories": [
+    "architecture",
+    "context",
+    "directional_path",
+    "discovery",
+    "exact_identity",
+    "impact",
+    "negative_ambiguity"
+  ]
+}
