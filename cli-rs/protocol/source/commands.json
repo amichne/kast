@@ -2774,12 +2774,34 @@
                 ],
                 "optional": true
               },
-              "maxDepth": {
-                "type": "integer",
-                "optional": true
-              }
-            }
+          "maxDepth": {
+            "type": "integer",
+            "optional": true
           },
+          "projection": {
+            "type": "string",
+            "enum": [
+              "RUNTIME_CALLS",
+              "SYMBOL_REFERENCES",
+              "TYPE_DEPENDENCIES",
+              "INTERFACE_IMPLEMENTATION",
+              "MODULE_DEPENDENCIES",
+              "CONTAINMENT_OWNERSHIP"
+            ],
+            "optional": true
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "SCC",
+              "COMMUNITIES",
+              "BRIDGES",
+              "PUBLIC_API_CONSUMERS"
+            ],
+            "optional": true
+          }
+        }
+      },
           "evidenceContinuation": {
             "type": "object",
             "optional": true,

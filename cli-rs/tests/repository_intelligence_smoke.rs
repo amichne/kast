@@ -545,6 +545,44 @@ fn repository_paths_carry_exact_identity_occurrences_and_derivations() {
             .is_some_and(|candidates| candidates.len() == 2)
     );
 
+    let (_, architecture) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "architecture",
+            "method": "repository/query",
+            "params": {
+                "question": "Which internal declarations are incoming runtime call hubs?",
+                "intent": "architecture",
+                "scope": {
+                    "language": "kotlin",
+                    "projection": "RUNTIME_CALLS",
+                    "direction": "INCOMING"
+                },
+                "limits": {"depth": 6, "results": 10, "evidence": 5}
+            }
+        }),
+    );
+    assert_eq!(
+        architecture["result"]["status"], "ANSWERED",
+        "{architecture:#}"
+    );
+    assert_eq!(
+        architecture["result"]["findings"][0]["type"],
+        "HIGH_CENTRALITY_INTERNAL_IMPLEMENTATION"
+    );
+    assert_eq!(
+        architecture["result"]["findings"][0]["projection"],
+        "RUNTIME_CALLS"
+    );
+    assert!(
+        architecture["result"]["findings"][0]["supportingSubgraph"]["edges"]
+            .as_array()
+            .is_some_and(|edges| !edges.is_empty())
+    );
+
     let (_, wrong_direction) = rpc(
         &home,
         &config_home,

@@ -90,6 +90,29 @@ On the frozen Phase 3 corpus, all six discovery targets occur within the top
 five at ranks 1, 1, 4, 5, 1, and 1. Both deliberate ambiguity questions remain
 ambiguous, while every Phase 2 exact-key behavior remains unchanged.
 
+## Relation-specific architecture
+
+Architecture requests select one of six closed directed projections:
+`RUNTIME_CALLS` uses `CALLS`; `SYMBOL_REFERENCES` uses `REFERENCES`;
+`TYPE_DEPENDENCIES` uses field, generic-argument, parameter-type, and
+return-type references; `INTERFACE_IMPLEMENTATION` uses case, implementation,
+inheritance, override, and sealed-member relations; `MODULE_DEPENDENCIES`
+retains cross-module call, reference, and type-relationship edges; and
+`CONTAINMENT_OWNERSHIP` uses `CONTAINS` and `METHOD`.
+
+The projections reuse Kast's existing deterministic Tarjan and weighted Leiden
+implementations. Findings apply directed fan-in or fan-out, exact-symbol or
+boundary SCCs, cross-module counts, community cohesion, cross-community bridge
+counts, and public-API consumer boundaries without merging relation types.
+Readable names are derived from deterministic membership and do not participate
+in the metric.
+
+Every finding names its projection, metric, direction, trigger rule, graph
+generation, relation composition, exact representative symbols, and derived
+evidence class. Supporting subgraphs retain compiler occurrences or explicit
+derivations. Cross-boundary SCC findings return one deterministic directed
+cycle, so the bounded evidence subgraph proves the reported connection.
+
 ## Frozen baseline
 
 The benchmark owns two detached worktrees at commit

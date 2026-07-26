@@ -23,7 +23,9 @@
       "direction": "OUTGOING",
       "language": "example-language",
       "maxDepth": 2,
+      "metric": "PUBLIC_API_CONSUMERS",
       "module": "example-module",
+      "projection": "CONTAINMENT_OWNERSHIP",
       "relations": [
         "SEALED_MEMBER"
       ],

@@ -127,7 +127,27 @@
             "maxDepth": {
               "type": "integer"
             },
+            "metric": {
+              "enum": [
+                "SCC",
+                "COMMUNITIES",
+                "BRIDGES",
+                "PUBLIC_API_CONSUMERS"
+              ],
+              "type": "string"
+            },
             "module": {
+              "type": "string"
+            },
+            "projection": {
+              "enum": [
+                "RUNTIME_CALLS",
+                "SYMBOL_REFERENCES",
+                "TYPE_DEPENDENCIES",
+                "INTERFACE_IMPLEMENTATION",
+                "MODULE_DEPENDENCIES",
+                "CONTAINMENT_OWNERSHIP"
+              ],
               "type": "string"
             },
             "relations": {

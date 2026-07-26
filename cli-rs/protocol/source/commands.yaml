@@ -984,7 +984,25 @@ commands:
             maxDepth:
               optional: true
               type: integer
+            metric:
+              enum:
+              - SCC
+              - COMMUNITIES
+              - BRIDGES
+              - PUBLIC_API_CONSUMERS
+              optional: true
+              type: string
             module:
+              optional: true
+              type: string
+            projection:
+              enum:
+              - RUNTIME_CALLS
+              - SYMBOL_REFERENCES
+              - TYPE_DEPENDENCIES
+              - INTERFACE_IMPLEMENTATION
+              - MODULE_DEPENDENCIES
+              - CONTAINMENT_OWNERSHIP
               optional: true
               type: string
             relations:

@@ -1,4 +1,8 @@
 use crate::SCHEMA_VERSION;
+use crate::agent::{
+    NativeGraph, NativeGraphEdge, NativeGraphNode, native_graph_to_csr, native_tarjan_scc,
+    native_weighted_leiden,
+};
 use crate::config;
 use crate::error::{CliError, Result};
 use crate::source_index_db;
@@ -36,6 +40,10 @@ struct RepositoryScope {
     direction: Option<RepositoryDirection>,
     #[serde(default)]
     max_depth: Option<usize>,
+    #[serde(default)]
+    projection: Option<RepositoryArchitectureProjection>,
+    #[serde(default)]
+    metric: Option<RepositoryArchitectureMetric>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -118,6 +126,77 @@ impl RepositoryRelationKind {
 enum RepositoryDirection {
     Incoming,
     Outgoing,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum RepositoryArchitectureProjection {
+    RuntimeCalls,
+    SymbolReferences,
+    TypeDependencies,
+    InterfaceImplementation,
+    ModuleDependencies,
+    ContainmentOwnership,
+}
+
+impl RepositoryArchitectureProjection {
+    fn canonical(self) -> &'static str {
+        match self {
+            Self::RuntimeCalls => "RUNTIME_CALLS",
+            Self::SymbolReferences => "SYMBOL_REFERENCES",
+            Self::TypeDependencies => "TYPE_DEPENDENCIES",
+            Self::InterfaceImplementation => "INTERFACE_IMPLEMENTATION",
+            Self::ModuleDependencies => "MODULE_DEPENDENCIES",
+            Self::ContainmentOwnership => "CONTAINMENT_OWNERSHIP",
+        }
+    }
+
+    fn relation_kinds(self) -> &'static [RepositoryRelationKind] {
+        match self {
+            Self::RuntimeCalls => &[RepositoryRelationKind::Calls],
+            Self::SymbolReferences | Self::TypeDependencies => {
+                &[RepositoryRelationKind::References]
+            }
+            Self::InterfaceImplementation => &[
+                RepositoryRelationKind::CaseOf,
+                RepositoryRelationKind::Implements,
+                RepositoryRelationKind::Inherits,
+                RepositoryRelationKind::Overrides,
+                RepositoryRelationKind::SealedMember,
+            ],
+            Self::ModuleDependencies => &[
+                RepositoryRelationKind::Calls,
+                RepositoryRelationKind::Implements,
+                RepositoryRelationKind::Inherits,
+                RepositoryRelationKind::Overrides,
+                RepositoryRelationKind::References,
+            ],
+            Self::ContainmentOwnership => &[
+                RepositoryRelationKind::Contains,
+                RepositoryRelationKind::Method,
+            ],
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum RepositoryArchitectureMetric {
+    Scc,
+    Communities,
+    Bridges,
+    PublicApiConsumers,
+}
+
+impl RepositoryArchitectureMetric {
+    fn canonical(self) -> &'static str {
+        match self {
+            Self::Scc => "STRONGLY_CONNECTED_COMPONENT",
+            Self::Communities => "COMMUNITIES",
+            Self::Bridges => "BRIDGES",
+            Self::PublicApiConsumers => "PUBLIC_API_CONSUMERS",
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -223,6 +302,13 @@ struct RepositoryEdgeOccurrence {
     occurrence: RepositoryOccurrence,
     lifted_source: Option<i64>,
     source_local_key: Option<String>,
+}
+
+struct RepositoryArchitectureGraph {
+    nodes: Vec<RepositoryNode>,
+    positions: BTreeMap<i64, usize>,
+    occurrences: Vec<RepositoryEdgeOccurrence>,
+    native: NativeGraph,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -509,7 +595,13 @@ fn repository_query(workspace_root: &Path, params: Value) -> Result<Value> {
             &params.limits,
             params.evidence_continuation.as_ref(),
         )?,
-        RepositoryIntent::Architecture | RepositoryIntent::ContextRelationship => json!({
+        RepositoryIntent::Architecture => architecture_repository_question(
+            &connection,
+            snapshot.generation,
+            &params.scope,
+            &params.limits,
+        )?,
+        RepositoryIntent::ContextRelationship => json!({
             "answered": false,
             "ambiguous": false,
             "nodes": [],
@@ -546,7 +638,9 @@ fn repository_query(workspace_root: &Path, params: Value) -> Result<Value> {
             "intent": params.intent.canonical(),
             "discovery": if params.canonical_key.is_some() { "EXACT_KEY" } else { "LEXICAL" },
             "candidateLookup": "deterministic compiler-symbol ranking",
-            "execution": "generation-pinned source-index"
+            "execution": "generation-pinned source-index",
+            "projection": params.scope.projection,
+            "metric": params.scope.metric
         },
         "workspaceIdentity": {
             "canonicalRoot": std::fs::canonicalize(workspace_root)
@@ -559,7 +653,11 @@ fn repository_query(workspace_root: &Path, params: Value) -> Result<Value> {
         "coverage": snapshot.coverage,
         "appliedFilters": params.scope,
         "bounds": params.limits,
-        "ordering": "canonicalKey ascending",
+        "ordering": if params.intent == RepositoryIntent::Architecture {
+            "metric descending, canonicalKey ascending"
+        } else {
+            "canonicalKey ascending"
+        },
         "truncated": result.get("truncated").cloned().unwrap_or(Value::Bool(false)),
         "continuation": result.get("continuation").cloned().unwrap_or(Value::Null),
         "qualification": qualification,
@@ -1498,6 +1596,1054 @@ fn explicit_repository_names(question: &str) -> BTreeSet<String> {
         (uppercase >= 2 || word.contains('_')).then(|| word.to_string())
     }));
     names
+}
+
+fn architecture_repository_question(
+    connection: &Connection,
+    generation: u64,
+    scope: &RepositoryScope,
+    limits: &RepositoryLimits,
+) -> Result<Value> {
+    let projection = scope.projection.ok_or_else(|| {
+        CliError::new(
+            "INVALID_REPOSITORY_SCOPE",
+            "architecture queries require an explicit relation-specific projection",
+        )
+    })?;
+    let graph = load_repository_architecture_graph(connection, scope, projection)?;
+    let mut findings = match scope.metric {
+        Some(RepositoryArchitectureMetric::Scc) => {
+            architecture_cycle_findings(connection, &graph, generation, scope, projection, limits)?
+        }
+        Some(RepositoryArchitectureMetric::Communities) => architecture_community_findings(
+            connection, &graph, generation, scope, projection, limits,
+        )?,
+        Some(RepositoryArchitectureMetric::Bridges) => {
+            architecture_bridge_findings(connection, &graph, generation, scope, projection, limits)?
+        }
+        Some(RepositoryArchitectureMetric::PublicApiConsumers) => architecture_public_api_findings(
+            connection, &graph, generation, scope, projection, limits,
+        )?,
+        None if matches!(
+            projection,
+            RepositoryArchitectureProjection::TypeDependencies
+                | RepositoryArchitectureProjection::ModuleDependencies
+        ) =>
+        {
+            architecture_boundary_findings(
+                connection, &graph, generation, scope, projection, limits,
+            )?
+        }
+        None => {
+            architecture_hub_findings(connection, &graph, generation, scope, projection, limits)?
+        }
+    };
+    let truncated = findings.len() > limits.results;
+    findings.truncate(limits.results);
+    Ok(json!({
+        "answered": !findings.is_empty(),
+        "ambiguous": false,
+        "findings": findings,
+        "nodes": [],
+        "identityCollisions": 0,
+        "truncated": truncated
+    }))
+}
+
+fn load_repository_architecture_graph(
+    connection: &Connection,
+    scope: &RepositoryScope,
+    projection: RepositoryArchitectureProjection,
+) -> Result<RepositoryArchitectureGraph> {
+    let mut nodes = load_repository_node(connection, "1 = ?1", 1i64)?
+        .into_iter()
+        .filter(|node| node_matches_scope(node, scope))
+        .collect::<Vec<_>>();
+    nodes.sort_by(|left, right| left.canonical_key.cmp(&right.canonical_key));
+    let positions = nodes
+        .iter()
+        .enumerate()
+        .map(|(position, node)| (node.database_id, position))
+        .collect::<BTreeMap<_, _>>();
+    let by_id = nodes
+        .iter()
+        .map(|node| (node.database_id, node))
+        .collect::<BTreeMap<_, _>>();
+    let occurrences = load_relation_occurrences(connection, projection.relation_kinds())?
+        .into_iter()
+        .filter(|occurrence| {
+            let source_id = occurrence.lifted_source.unwrap_or(occurrence.source_id);
+            let Some(source) = by_id.get(&source_id) else {
+                return false;
+            };
+            let Some(target) = by_id.get(&occurrence.target_id) else {
+                return false;
+            };
+            projection_accepts_occurrence(projection, occurrence, source, target)
+        })
+        .collect::<Vec<_>>();
+    let mut grouped = BTreeMap::<(usize, usize, RepositoryRelationKind, String), usize>::new();
+    for occurrence in &occurrences {
+        let source_id = occurrence.lifted_source.unwrap_or(occurrence.source_id);
+        let source = positions[&source_id];
+        let target = positions[&occurrence.target_id];
+        *grouped
+            .entry((source, target, occurrence.kind, occurrence.context.clone()))
+            .or_default() += 1;
+    }
+    let native_nodes = nodes
+        .iter()
+        .map(|node| NativeGraphNode {
+            database_id: u64::try_from(node.database_id).ok(),
+            key: node.canonical_key.clone(),
+        })
+        .collect();
+    let native_edges = grouped
+        .into_iter()
+        .map(
+            |((source, target, kind, context), occurrence_count)| NativeGraphEdge {
+                source,
+                target,
+                kind: kind.canonical().to_string(),
+                context,
+                weight: occurrence_count as f64,
+            },
+        )
+        .collect();
+    Ok(RepositoryArchitectureGraph {
+        nodes,
+        positions,
+        occurrences,
+        native: native_graph_to_csr(native_nodes, native_edges),
+    })
+}
+
+fn projection_accepts_occurrence(
+    projection: RepositoryArchitectureProjection,
+    occurrence: &RepositoryEdgeOccurrence,
+    source: &RepositoryNode,
+    target: &RepositoryNode,
+) -> bool {
+    match projection {
+        RepositoryArchitectureProjection::TypeDependencies => {
+            occurrence.kind == RepositoryRelationKind::References
+                && matches!(
+                    occurrence.context.as_str(),
+                    "FIELD" | "GENERIC_ARG" | "PARAMETER_TYPE" | "RETURN_TYPE"
+                )
+        }
+        RepositoryArchitectureProjection::ModuleDependencies => {
+            architecture_module(source) != architecture_module(target)
+        }
+        RepositoryArchitectureProjection::RuntimeCalls
+        | RepositoryArchitectureProjection::SymbolReferences
+        | RepositoryArchitectureProjection::InterfaceImplementation
+        | RepositoryArchitectureProjection::ContainmentOwnership => true,
+    }
+}
+
+fn architecture_hub_findings(
+    connection: &Connection,
+    graph: &RepositoryArchitectureGraph,
+    generation: u64,
+    scope: &RepositoryScope,
+    projection: RepositoryArchitectureProjection,
+    limits: &RepositoryLimits,
+) -> Result<Vec<Value>> {
+    let direction = scope.direction.unwrap_or(RepositoryDirection::Incoming);
+    let mut by_subject =
+        BTreeMap::<i64, (BTreeSet<i64>, usize, Vec<RepositoryEdgeOccurrence>)>::new();
+    for occurrence in &graph.occurrences {
+        let source = occurrence.lifted_source.unwrap_or(occurrence.source_id);
+        let target = occurrence.target_id;
+        let (subject, neighbor) = match direction {
+            RepositoryDirection::Incoming => (target, source),
+            RepositoryDirection::Outgoing => (source, target),
+        };
+        let entry = by_subject.entry(subject).or_default();
+        entry.0.insert(neighbor);
+        entry.1 += 1;
+        entry.2.push(occurrence.clone());
+    }
+    let mut ranked = by_subject
+        .into_iter()
+        .filter(|(id, _)| {
+            graph
+                .positions
+                .get(id)
+                .is_some_and(|position| is_callable_kind(&graph.nodes[*position].kind))
+        })
+        .collect::<Vec<_>>();
+    ranked.sort_by(|left, right| {
+        right
+            .1
+            .0
+            .len()
+            .cmp(&left.1.0.len())
+            .then_with(|| right.1.1.cmp(&left.1.1))
+            .then_with(|| {
+                architecture_node(graph, left.0)
+                    .canonical_key
+                    .cmp(&architecture_node(graph, right.0).canonical_key)
+            })
+    });
+    let internal = ranked
+        .iter()
+        .filter(|(id, _)| architecture_node(graph, *id).visibility != "PUBLIC")
+        .cloned()
+        .collect::<Vec<_>>();
+    let ranked = if internal.is_empty() {
+        ranked
+    } else {
+        internal
+    };
+    ranked
+        .into_iter()
+        .take(limits.results.min(5))
+        .enumerate()
+        .map(|(rank, (id, (neighbors, occurrence_count, occurrences)))| {
+            let node = architecture_node(graph, id);
+            architecture_finding(
+                connection,
+                graph,
+                generation,
+                scope,
+                projection,
+                rank + 1,
+                "HIGH_CENTRALITY_INTERNAL_IMPLEMENTATION",
+                format!("{} {} call hub", node.name, direction_label(direction)),
+                format!(
+                    "{} has {} distinct {} neighbors across {} compiler occurrences.",
+                    node.name,
+                    neighbors.len(),
+                    direction_label(direction),
+                    occurrence_count
+                ),
+                match direction {
+                    RepositoryDirection::Incoming => "INCOMING_CENTRALITY",
+                    RepositoryDirection::Outgoing => "OUTGOING_CENTRALITY",
+                },
+                Some(direction),
+                json!({
+                    "rule": "distinctNeighborCount ranks first, occurrenceCount breaks ties",
+                    "distinctNeighborCount": neighbors.len(),
+                    "occurrenceCount": occurrence_count
+                }),
+                vec![id],
+                &occurrences,
+                None,
+                limits,
+            )
+        })
+        .collect()
+}
+
+fn architecture_cycle_findings(
+    connection: &Connection,
+    graph: &RepositoryArchitectureGraph,
+    generation: u64,
+    scope: &RepositoryScope,
+    projection: RepositoryArchitectureProjection,
+    limits: &RepositoryLimits,
+) -> Result<Vec<Value>> {
+    let membership = native_tarjan_scc(&graph.native);
+    let mut components = BTreeMap::<usize, Vec<i64>>::new();
+    for (position, component) in membership.into_iter().enumerate() {
+        components
+            .entry(component)
+            .or_default()
+            .push(graph.nodes[position].database_id);
+    }
+    let mut cycles = components
+        .into_values()
+        .filter_map(|members| {
+            if members.len() < 2 {
+                return None;
+            }
+            let member_set = members.iter().copied().collect::<BTreeSet<_>>();
+            let boundaries = members
+                .iter()
+                .map(|id| architecture_package_boundary(architecture_node(graph, *id)))
+                .collect::<BTreeSet<_>>();
+            if boundaries.len() < 2 {
+                return None;
+            }
+            let occurrences = graph
+                .occurrences
+                .iter()
+                .filter(|occurrence| {
+                    member_set.contains(&occurrence.lifted_source.unwrap_or(occurrence.source_id))
+                        && member_set.contains(&occurrence.target_id)
+                })
+                .cloned()
+                .collect::<Vec<_>>();
+            (!occurrences.is_empty()).then_some((members, boundaries, occurrences))
+        })
+        .collect::<Vec<_>>();
+    cycles.sort_by(|left, right| {
+        right
+            .0
+            .len()
+            .cmp(&left.0.len())
+            .then_with(|| right.2.len().cmp(&left.2.len()))
+            .then_with(|| {
+                architecture_node(graph, left.0[0])
+                    .canonical_key
+                    .cmp(&architecture_node(graph, right.0[0]).canonical_key)
+            })
+    });
+    if cycles.is_empty() {
+        return architecture_boundary_cycle_findings(
+            connection, graph, generation, scope, projection, limits,
+        );
+    }
+    cycles
+        .into_iter()
+        .take(limits.results.min(3))
+        .enumerate()
+        .map(|(rank, (members, boundaries, occurrences))| {
+            let first = architecture_node(graph, members[0]);
+            architecture_finding(
+                connection,
+                graph,
+                generation,
+                scope,
+                projection,
+                rank + 1,
+                "CYCLE_CROSSING_BOUNDARY",
+                format!("{} cross-boundary call cycle", first.name),
+                format!(
+                    "{} exact symbols form a strongly connected component across {} boundaries.",
+                    members.len(),
+                    boundaries.len()
+                ),
+                RepositoryArchitectureMetric::Scc.canonical(),
+                None,
+                json!({
+                    "rule": "componentSize > 1 and packageOrModuleBoundaryCount > 1",
+                    "componentSize": members.len(),
+                    "boundaryCount": boundaries.len()
+                }),
+                members,
+                &occurrences,
+                None,
+                limits,
+            )
+        })
+        .collect()
+}
+
+fn architecture_boundary_cycle_findings(
+    connection: &Connection,
+    graph: &RepositoryArchitectureGraph,
+    generation: u64,
+    scope: &RepositoryScope,
+    projection: RepositoryArchitectureProjection,
+    limits: &RepositoryLimits,
+) -> Result<Vec<Value>> {
+    let boundaries = graph
+        .occurrences
+        .iter()
+        .flat_map(|occurrence| {
+            let source = architecture_node(
+                graph,
+                occurrence.lifted_source.unwrap_or(occurrence.source_id),
+            );
+            let target = architecture_node(graph, occurrence.target_id);
+            [
+                architecture_package_boundary(source),
+                architecture_package_boundary(target),
+            ]
+        })
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
+    let positions = boundaries
+        .iter()
+        .enumerate()
+        .map(|(position, boundary)| (boundary.clone(), position))
+        .collect::<BTreeMap<_, _>>();
+    let mut grouped = BTreeMap::<(usize, usize), usize>::new();
+    for occurrence in &graph.occurrences {
+        let source = architecture_package_boundary(architecture_node(
+            graph,
+            occurrence.lifted_source.unwrap_or(occurrence.source_id),
+        ));
+        let target = architecture_package_boundary(architecture_node(graph, occurrence.target_id));
+        if source != target {
+            *grouped
+                .entry((positions[&source], positions[&target]))
+                .or_default() += 1;
+        }
+    }
+    let boundary_graph = native_graph_to_csr(
+        boundaries
+            .iter()
+            .map(|boundary| NativeGraphNode {
+                database_id: None,
+                key: boundary.clone(),
+            })
+            .collect(),
+        grouped
+            .into_iter()
+            .map(|((source, target), weight)| NativeGraphEdge {
+                source,
+                target,
+                kind: RepositoryRelationKind::Calls.canonical().to_string(),
+                context: "BOUNDARY".to_string(),
+                weight: weight as f64,
+            })
+            .collect(),
+    );
+    let membership = native_tarjan_scc(&boundary_graph);
+    let mut components = BTreeMap::<usize, BTreeSet<String>>::new();
+    for (position, component) in membership.into_iter().enumerate() {
+        components
+            .entry(component)
+            .or_default()
+            .insert(boundaries[position].clone());
+    }
+    let mut cycles = components
+        .into_values()
+        .filter_map(|component| {
+            if component.len() < 2 {
+                return None;
+            }
+            let occurrences = graph
+                .occurrences
+                .iter()
+                .filter(|occurrence| {
+                    let source = architecture_package_boundary(architecture_node(
+                        graph,
+                        occurrence.lifted_source.unwrap_or(occurrence.source_id),
+                    ));
+                    let target = architecture_package_boundary(architecture_node(
+                        graph,
+                        occurrence.target_id,
+                    ));
+                    source != target && component.contains(&source) && component.contains(&target)
+                })
+                .cloned()
+                .collect::<Vec<_>>();
+            let proof = architecture_boundary_cycle_proof(graph, &component, &occurrences);
+            (!proof.is_empty()).then_some((component, occurrences.len(), proof))
+        })
+        .collect::<Vec<_>>();
+    cycles.sort_by(|left, right| {
+        right
+            .0
+            .len()
+            .cmp(&left.0.len())
+            .then_with(|| right.1.cmp(&left.1))
+            .then_with(|| left.0.cmp(&right.0))
+    });
+    cycles
+        .into_iter()
+        .take(limits.results.min(3))
+        .enumerate()
+        .map(|(rank, (boundaries, occurrence_count, proof))| {
+            architecture_finding(
+                connection,
+                graph,
+                generation,
+                scope,
+                projection,
+                rank + 1,
+                "CYCLE_CROSSING_BOUNDARY",
+                format!("{}-boundary runtime-call cycle", boundaries.len()),
+                format!(
+                    "{} package or module boundaries form a directed strongly connected component.",
+                    boundaries.len()
+                ),
+                RepositoryArchitectureMetric::Scc.canonical(),
+                None,
+                json!({
+                    "rule": "boundary-projected strongly connected component has more than one member",
+                    "boundaryCount": boundaries.len(),
+                    "boundaries": boundaries,
+                    "projectedOccurrenceCount": occurrence_count,
+                    "supportingCycleLength": proof.len()
+                }),
+                architecture_occurrence_nodes(&proof),
+                &proof,
+                None,
+                limits,
+            )
+        })
+        .collect()
+}
+
+fn architecture_boundary_cycle_proof(
+    graph: &RepositoryArchitectureGraph,
+    component: &BTreeSet<String>,
+    occurrences: &[RepositoryEdgeOccurrence],
+) -> Vec<RepositoryEdgeOccurrence> {
+    let mut edges = BTreeMap::<(String, String), RepositoryEdgeOccurrence>::new();
+    let mut adjacency = BTreeMap::<String, BTreeSet<String>>::new();
+    for occurrence in occurrences {
+        let source = architecture_package_boundary(architecture_node(
+            graph,
+            occurrence.lifted_source.unwrap_or(occurrence.source_id),
+        ));
+        let target = architecture_package_boundary(architecture_node(graph, occurrence.target_id));
+        edges
+            .entry((source.clone(), target.clone()))
+            .or_insert_with(|| occurrence.clone());
+        adjacency.entry(source).or_default().insert(target);
+    }
+    for start in component {
+        for next in adjacency.get(start).into_iter().flatten() {
+            let mut queue = std::collections::VecDeque::from([(next.clone(), vec![next.clone()])]);
+            let mut visited = BTreeSet::from([next.clone()]);
+            while let Some((current, path)) = queue.pop_front() {
+                if current == *start {
+                    let mut cycle = vec![start.clone()];
+                    cycle.extend(path);
+                    return cycle
+                        .windows(2)
+                        .filter_map(|step| edges.get(&(step[0].clone(), step[1].clone())).cloned())
+                        .collect();
+                }
+                for target in adjacency.get(&current).into_iter().flatten() {
+                    if visited.insert(target.clone()) {
+                        let mut candidate = path.clone();
+                        candidate.push(target.clone());
+                        queue.push_back((target.clone(), candidate));
+                    }
+                }
+            }
+        }
+    }
+    Vec::new()
+}
+
+fn architecture_boundary_findings(
+    connection: &Connection,
+    graph: &RepositoryArchitectureGraph,
+    generation: u64,
+    scope: &RepositoryScope,
+    projection: RepositoryArchitectureProjection,
+    limits: &RepositoryLimits,
+) -> Result<Vec<Value>> {
+    let mut groups = BTreeMap::<(String, String), Vec<RepositoryEdgeOccurrence>>::new();
+    for occurrence in &graph.occurrences {
+        let source = architecture_node(
+            graph,
+            occurrence.lifted_source.unwrap_or(occurrence.source_id),
+        );
+        let target = architecture_node(graph, occurrence.target_id);
+        let source_module = architecture_module(source);
+        let target_module = architecture_module(target);
+        if source_module != target_module {
+            groups
+                .entry((source_module, target_module))
+                .or_default()
+                .push(occurrence.clone());
+        }
+    }
+    let mut ranked = groups.into_iter().collect::<Vec<_>>();
+    ranked.sort_by(|left, right| {
+        right
+            .1
+            .len()
+            .cmp(&left.1.len())
+            .then_with(|| left.0.cmp(&right.0))
+    });
+    ranked
+        .into_iter()
+        .take(limits.results.min(5))
+        .enumerate()
+        .map(|(rank, ((source_module, target_module), occurrences))| {
+            let representatives = architecture_occurrence_nodes(&occurrences);
+            architecture_finding(
+                connection,
+                graph,
+                generation,
+                scope,
+                projection,
+                rank + 1,
+                "BOUNDARY_CROSSING",
+                format!("{source_module} to {target_module} type boundary"),
+                format!(
+                    "{} explicit type-dependency occurrences cross from {source_module} to {target_module}.",
+                    occurrences.len()
+                ),
+                "CROSS_BOUNDARY_EDGE_COUNT",
+                Some(scope.direction.unwrap_or(RepositoryDirection::Outgoing)),
+                json!({
+                    "rule": "sourceModule != targetModule, ranked by occurrenceCount",
+                    "sourceModule": source_module,
+                    "targetModule": target_module,
+                    "occurrenceCount": occurrences.len()
+                }),
+                representatives,
+                &occurrences,
+                None,
+                limits,
+            )
+        })
+        .collect()
+}
+
+fn architecture_community_findings(
+    connection: &Connection,
+    graph: &RepositoryArchitectureGraph,
+    generation: u64,
+    scope: &RepositoryScope,
+    projection: RepositoryArchitectureProjection,
+    limits: &RepositoryLimits,
+) -> Result<Vec<Value>> {
+    let membership = native_weighted_leiden(&graph.native, 1.0);
+    let mut communities = BTreeMap::<usize, Vec<i64>>::new();
+    for (position, community) in membership.into_iter().enumerate() {
+        communities
+            .entry(community)
+            .or_default()
+            .push(graph.nodes[position].database_id);
+    }
+    let mut ranked = communities
+        .into_values()
+        .filter_map(|members| {
+            if members.len() < 2 {
+                return None;
+            }
+            let member_set = members.iter().copied().collect::<BTreeSet<_>>();
+            let occurrences = graph
+                .occurrences
+                .iter()
+                .filter(|occurrence| {
+                    member_set.contains(&occurrence.lifted_source.unwrap_or(occurrence.source_id))
+                        && member_set.contains(&occurrence.target_id)
+                })
+                .cloned()
+                .collect::<Vec<_>>();
+            (!occurrences.is_empty()).then_some((members, occurrences))
+        })
+        .collect::<Vec<_>>();
+    ranked.sort_by(|left, right| {
+        right
+            .1
+            .len()
+            .cmp(&left.1.len())
+            .then_with(|| right.0.len().cmp(&left.0.len()))
+            .then_with(|| {
+                architecture_node(graph, left.0[0])
+                    .canonical_key
+                    .cmp(&architecture_node(graph, right.0[0]).canonical_key)
+            })
+    });
+    ranked
+        .into_iter()
+        .take(limits.results.min(5))
+        .enumerate()
+        .map(|(rank, (members, occurrences))| {
+            let unique_edges = occurrences
+                .iter()
+                .map(architecture_occurrence_identity)
+                .collect::<BTreeSet<_>>()
+                .len();
+            let possible = members
+                .len()
+                .saturating_mul(members.len().saturating_sub(1));
+            let cohesion = unique_edges as f64 / possible.max(1) as f64;
+            let representative = architecture_node(
+                graph,
+                architecture_highest_degree_member(&members, &occurrences),
+            );
+            architecture_finding(
+                connection,
+                graph,
+                generation,
+                scope,
+                projection,
+                rank + 1,
+                "COMMUNITY",
+                format!(
+                    "{} / {} runtime call community",
+                    architecture_module(representative),
+                    representative.name
+                ),
+                format!(
+                    "{} exact symbols share {} internal runtime-call edges.",
+                    members.len(),
+                    unique_edges
+                ),
+                RepositoryArchitectureMetric::Communities.canonical(),
+                None,
+                json!({
+                    "rule": "deterministic weighted Leiden at resolution 1.0",
+                    "memberCount": members.len(),
+                    "internalEdgeCount": unique_edges,
+                    "resolution": 1.0
+                }),
+                members,
+                &occurrences,
+                Some(cohesion),
+                limits,
+            )
+        })
+        .collect()
+}
+
+fn architecture_bridge_findings(
+    connection: &Connection,
+    graph: &RepositoryArchitectureGraph,
+    generation: u64,
+    scope: &RepositoryScope,
+    projection: RepositoryArchitectureProjection,
+    limits: &RepositoryLimits,
+) -> Result<Vec<Value>> {
+    let membership = native_weighted_leiden(&graph.native, 1.0);
+    let mut bridges = BTreeMap::<(usize, usize), Vec<RepositoryEdgeOccurrence>>::new();
+    for occurrence in &graph.occurrences {
+        let source = graph.positions[&occurrence.lifted_source.unwrap_or(occurrence.source_id)];
+        let target = graph.positions[&occurrence.target_id];
+        let source_community = membership[source];
+        let target_community = membership[target];
+        if source_community != target_community {
+            let pair = if source_community < target_community {
+                (source_community, target_community)
+            } else {
+                (target_community, source_community)
+            };
+            bridges.entry(pair).or_default().push(occurrence.clone());
+        }
+    }
+    let mut ranked = bridges
+        .into_iter()
+        .map(|(pair, occurrences)| {
+            let edge_count = occurrences
+                .iter()
+                .map(architecture_occurrence_identity)
+                .collect::<BTreeSet<_>>()
+                .len();
+            (pair, edge_count, occurrences)
+        })
+        .collect::<Vec<_>>();
+    ranked.sort_by(|left, right| left.1.cmp(&right.1).then_with(|| left.0.cmp(&right.0)));
+    ranked
+        .into_iter()
+        .take(limits.results.min(5))
+        .enumerate()
+        .map(|(rank, ((left, right), edge_count, occurrences))| {
+            let first = &occurrences[0];
+            let source = architecture_node(
+                graph,
+                first.lifted_source.unwrap_or(first.source_id),
+            );
+            let target = architecture_node(graph, first.target_id);
+            architecture_finding(
+                connection,
+                graph,
+                generation,
+                scope,
+                projection,
+                rank + 1,
+                "THIN_BRIDGE",
+                format!(
+                    "{} to {} reference bridge",
+                    architecture_module(source),
+                    architecture_module(target)
+                ),
+                format!(
+                    "{edge_count} exact reference edges connect otherwise separate deterministic communities."
+                ),
+                RepositoryArchitectureMetric::Bridges.canonical(),
+                None,
+                json!({
+                    "rule": "cross-community edge count ranked ascending",
+                    "leftCommunity": left,
+                    "rightCommunity": right,
+                    "edgeCount": edge_count,
+                    "resolution": 1.0
+                }),
+                architecture_occurrence_nodes(&occurrences),
+                &occurrences,
+                None,
+                limits,
+            )
+        })
+        .collect()
+}
+
+fn architecture_public_api_findings(
+    connection: &Connection,
+    graph: &RepositoryArchitectureGraph,
+    generation: u64,
+    scope: &RepositoryScope,
+    projection: RepositoryArchitectureProjection,
+    limits: &RepositoryLimits,
+) -> Result<Vec<Value>> {
+    let mut consumers = BTreeMap::<i64, (BTreeSet<String>, Vec<RepositoryEdgeOccurrence>)>::new();
+    for occurrence in &graph.occurrences {
+        let target = architecture_node(graph, occurrence.target_id);
+        if target.visibility != "PUBLIC" || !is_type_kind(&target.kind) {
+            continue;
+        }
+        let source = architecture_node(
+            graph,
+            occurrence.lifted_source.unwrap_or(occurrence.source_id),
+        );
+        let entry = consumers.entry(target.database_id).or_default();
+        entry.0.insert(architecture_package_boundary(source));
+        entry.1.push(occurrence.clone());
+    }
+    let mut ranked = consumers
+        .into_iter()
+        .filter(|(_, (boundaries, _))| boundaries.len() >= 2)
+        .collect::<Vec<_>>();
+    ranked.sort_by(|left, right| {
+        right
+            .1
+            .0
+            .len()
+            .cmp(&left.1.0.len())
+            .then_with(|| right.1.1.len().cmp(&left.1.1.len()))
+            .then_with(|| {
+                architecture_node(graph, left.0)
+                    .canonical_key
+                    .cmp(&architecture_node(graph, right.0).canonical_key)
+            })
+    });
+    ranked
+        .into_iter()
+        .take(limits.results.min(5))
+        .enumerate()
+        .map(|(rank, (target_id, (boundaries, occurrences)))| {
+            let target = architecture_node(graph, target_id);
+            let mut representatives = vec![target_id];
+            representatives.extend(architecture_occurrence_nodes(&occurrences));
+            architecture_finding(
+                connection,
+                graph,
+                generation,
+                scope,
+                projection,
+                rank + 1,
+                "PUBLIC_API_CONSUMED_BY_UNRELATED_COMPONENTS",
+                format!("{} cross-component public API", target.name),
+                format!(
+                    "{} is consumed from {} unrelated package or module boundaries.",
+                    target.name,
+                    boundaries.len()
+                ),
+                RepositoryArchitectureMetric::PublicApiConsumers.canonical(),
+                None,
+                json!({
+                    "rule": "public type has incoming type dependencies from at least two package or module boundaries",
+                    "consumerBoundaryCount": boundaries.len(),
+                    "occurrenceCount": occurrences.len()
+                }),
+                representatives,
+                &occurrences,
+                None,
+                limits,
+            )
+        })
+        .collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn architecture_finding(
+    connection: &Connection,
+    graph: &RepositoryArchitectureGraph,
+    generation: u64,
+    scope: &RepositoryScope,
+    projection: RepositoryArchitectureProjection,
+    rank: usize,
+    finding_type: &'static str,
+    name: String,
+    summary: String,
+    metric: &'static str,
+    direction: Option<RepositoryDirection>,
+    trigger: Value,
+    representative_ids: Vec<i64>,
+    occurrences: &[RepositoryEdgeOccurrence],
+    cohesion: Option<f64>,
+    limits: &RepositoryLimits,
+) -> Result<Value> {
+    let mut representative_symbols = representative_ids
+        .into_iter()
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .filter_map(|id| {
+            graph
+                .positions
+                .get(&id)
+                .map(|position| graph.nodes[*position].clone())
+        })
+        .collect::<Vec<_>>();
+    representative_symbols.sort_by(|left, right| left.canonical_key.cmp(&right.canonical_key));
+    representative_symbols.truncate(5);
+    let relation_composition = occurrences.iter().fold(
+        BTreeMap::<&'static str, usize>::new(),
+        |mut counts, occurrence| {
+            *counts.entry(occurrence.kind.canonical()).or_default() += 1;
+            counts
+        },
+    );
+    let supporting_subgraph =
+        architecture_supporting_subgraph(connection, graph, occurrences, limits)?;
+    Ok(json!({
+        "rank": rank,
+        "type": finding_type,
+        "name": name,
+        "summary": summary,
+        "projection": projection.canonical(),
+        "relationTypes": projection
+            .relation_kinds()
+            .iter()
+            .map(|relation| relation.canonical())
+            .collect::<Vec<_>>(),
+        "direction": direction,
+        "metric": metric,
+        "trigger": trigger,
+        "graphGeneration": generation,
+        "scope": scope,
+        "representativeSymbols": representative_symbols,
+        "supportingSubgraph": supporting_subgraph,
+        "relationComposition": relation_composition,
+        "cohesion": cohesion,
+        "evidenceClass": "derived",
+        "derivation": {
+            "rule": "DETERMINISTIC_RELATION_SPECIFIC_ARCHITECTURE",
+            "projection": projection.canonical(),
+            "metric": metric
+        }
+    }))
+}
+
+fn architecture_supporting_subgraph(
+    connection: &Connection,
+    graph: &RepositoryArchitectureGraph,
+    occurrences: &[RepositoryEdgeOccurrence],
+    limits: &RepositoryLimits,
+) -> Result<Value> {
+    let selected_identities = occurrences
+        .iter()
+        .map(architecture_occurrence_identity)
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .take(limits.results.min(10))
+        .collect::<BTreeSet<_>>();
+    let selected = occurrences
+        .iter()
+        .filter(|occurrence| {
+            selected_identities.contains(&architecture_occurrence_identity(occurrence))
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    let mut node_cache = graph
+        .nodes
+        .iter()
+        .map(|node| (node.database_id, node.clone()))
+        .collect::<BTreeMap<_, _>>();
+    let edges = repository_edges(
+        connection,
+        &selected,
+        RepositoryDirection::Outgoing,
+        limits.evidence,
+        None,
+        &mut node_cache,
+    )?;
+    let mut node_ids = BTreeSet::new();
+    for occurrence in &selected {
+        node_ids.insert(occurrence.lifted_source.unwrap_or(occurrence.source_id));
+        node_ids.insert(occurrence.target_id);
+    }
+    let nodes = node_ids
+        .into_iter()
+        .filter_map(|id| node_cache.get(&id).cloned())
+        .collect::<Vec<_>>();
+    Ok(json!({
+        "nodes": nodes,
+        "edges": edges,
+        "truncated": selected_identities.len()
+            < occurrences
+                .iter()
+                .map(architecture_occurrence_identity)
+                .collect::<BTreeSet<_>>()
+                .len()
+    }))
+}
+
+fn architecture_occurrence_identity(
+    occurrence: &RepositoryEdgeOccurrence,
+) -> (i64, i64, RepositoryRelationKind, String) {
+    (
+        occurrence.lifted_source.unwrap_or(occurrence.source_id),
+        occurrence.target_id,
+        occurrence.kind,
+        occurrence.context.clone(),
+    )
+}
+
+fn architecture_occurrence_nodes(occurrences: &[RepositoryEdgeOccurrence]) -> Vec<i64> {
+    occurrences
+        .iter()
+        .flat_map(|occurrence| {
+            [
+                occurrence.lifted_source.unwrap_or(occurrence.source_id),
+                occurrence.target_id,
+            ]
+        })
+        .collect()
+}
+
+fn architecture_highest_degree_member(
+    members: &[i64],
+    occurrences: &[RepositoryEdgeOccurrence],
+) -> i64 {
+    let mut degree = BTreeMap::<i64, usize>::new();
+    for occurrence in occurrences {
+        *degree
+            .entry(occurrence.lifted_source.unwrap_or(occurrence.source_id))
+            .or_default() += 1;
+        *degree.entry(occurrence.target_id).or_default() += 1;
+    }
+    members
+        .iter()
+        .copied()
+        .max_by_key(|id| {
+            (
+                degree.get(id).copied().unwrap_or_default(),
+                std::cmp::Reverse(*id),
+            )
+        })
+        .expect("architecture community is non-empty")
+}
+
+fn architecture_node(graph: &RepositoryArchitectureGraph, id: i64) -> &RepositoryNode {
+    &graph.nodes[graph.positions[&id]]
+}
+
+fn architecture_module(node: &RepositoryNode) -> String {
+    node.module
+        .clone()
+        .unwrap_or_else(|| node.path.split('/').next().unwrap_or("<root>").to_string())
+}
+
+fn architecture_package_boundary(node: &RepositoryNode) -> String {
+    let package = node
+        .fq_name
+        .as_deref()
+        .and_then(|name| name.rsplit_once('.').map(|(package, _)| package))
+        .unwrap_or("<root>");
+    format!("{}:{package}", architecture_module(node))
+}
+
+fn direction_label(direction: RepositoryDirection) -> &'static str {
+    match direction {
+        RepositoryDirection::Incoming => "incoming",
+        RepositoryDirection::Outgoing => "outgoing",
+    }
+}
+
+fn is_type_kind(kind: &str) -> bool {
+    matches!(
+        kind,
+        "CLASS" | "ENUM_CLASS" | "INTERFACE" | "OBJECT" | "TYPE_ALIAS"
+    )
 }
 
 fn graph_repository_question(

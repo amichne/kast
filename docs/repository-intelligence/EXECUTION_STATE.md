@@ -1,13 +1,13 @@
 # Repository Intelligence Execution State
 
 - Benchmark corpus commit: `2c630d3d156574eb4548fd97df3bd61fe9deb1a6`
-- Active implementation commit: `460487ecf76bbc2fd8de3536de3672672f85d24b` plus the current Phase 3 worktree
-- Current phase: Phase 4 — architecture analysis
-- Last passing fast check: canonical `FAST_CHECK` passed for Phase 3 on 2026-07-26
-- Last passing full check: canonical `FULL_CHECK` passed for Phase 3 on 2026-07-26 (`./gradlew test`, Rust format, clippy, and all-target tests)
-- Last benchmark result: Phase 3 passes 30/42 cumulatively, including every Phase 1 through Phase 3 assertion; Phase 4 and Phase 5 assertions remain RED
+- Active implementation commit: `6a873915c552ade53115a7f26bccbba31b4ab073` plus the current Phase 4 worktree
+- Current phase: Phase 5 — repository context
+- Last passing fast check: canonical `FAST_CHECK` passed for Phase 4 on 2026-07-26
+- Last passing full check: canonical `FULL_CHECK` passed for Phase 4 on 2026-07-26 (`./gradlew test`, Rust format, clippy, and all-target tests)
+- Last benchmark result: Phase 4 passes 36/42 cumulatively, including every Phase 1 through Phase 4 assertion; the six Phase 5 context assertions remain RED
 - Current blocker, if any: none
-- Next concrete action: commit and push the verified Phase 3 boundary, then add the focused Phase 4 architecture RED
+- Next concrete action: commit and push the verified Phase 4 boundary, then add the focused Phase 5 context RED
 - Known scope exceptions: the frozen commit contains 599 Gradle-compilation-owned `.kt` files and 18 `.kts` scripts; the task's older observation of 1,145 discoverable Kotlin files is not present in this snapshot
 
 ## Canonical Commands
@@ -52,3 +52,12 @@
 - Two normalized frozen-corpus runs are deterministic and pass all 30 Phase 1–3 questions. Median latency is 1,510.277 ms, p95 latency is 2,697.827 ms, median response size is 24,709 bytes, and maximum response size is 226,428 bytes.
 - Persisted Phase 3 result: `benchmarks/repository-intelligence/results/phase3.json` (`sha256:24ddcc256864a21d99d6f738a1e61745abe12a9afe54f4c741f05d0e6d5608de`).
 - Branch CLI and IDEA plugin `0.16.1-9-g460487ec` were installed from the verified Phase 3 worktree after force-stopping PID 77605; the golden runtime reopened only the frozen root and reached `READY` on PID 93288.
+
+## Phase 4 Evidence
+
+- Six explicit directed projections preserve runtime calls, symbol references, type dependencies, interface and implementation relations, module dependencies, and containment or ownership without creating an undifferentiated graph.
+- Deterministic Tarjan SCC and weighted Leiden implementations are reused from Kast's native graph authority. Hubs are direction-specific; boundaries, communities, bridges, and public-API consumers each expose their triggering metric or rule.
+- All findings include exact representative symbols and bounded supporting compiler edges. The frozen cross-boundary SCC includes a four-edge directed cycle as its proof subgraph; all returned supporting edges carry occurrences or explicit derivations.
+- Two normalized frozen-corpus runs are deterministic and pass all 36 Phase 1–4 questions. Median latency is 1,007.356 ms, p95 latency is 2,771.278 ms, median response size is 25,867 bytes, and maximum response size is 226,524 bytes.
+- Persisted Phase 4 result: `benchmarks/repository-intelligence/results/phase4.json` (`sha256:d9f4711a69e0bc3bd8b63f83a176893626c8f8673985de2a8424a7f45a9df5dc`).
+- Branch CLI and IDEA plugin `0.16.1-10-g6a873915` were installed from the verified Phase 4 worktree after force-stopping PID 93288; the golden runtime reopened only the frozen root and reached `READY` on PID 9409.

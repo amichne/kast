@@ -1,21 +1,21 @@
 #[derive(Debug, Clone)]
-struct NativeGraphNode {
-    database_id: Option<u64>,
-    key: String,
+pub(crate) struct NativeGraphNode {
+    pub(crate) database_id: Option<u64>,
+    pub(crate) key: String,
 }
 
 #[derive(Debug, Clone)]
-struct NativeGraphEdge {
-    source: usize,
-    target: usize,
-    kind: String,
-    context: String,
-    weight: f64,
+pub(crate) struct NativeGraphEdge {
+    pub(crate) source: usize,
+    pub(crate) target: usize,
+    pub(crate) kind: String,
+    pub(crate) context: String,
+    pub(crate) weight: f64,
 }
 
 #[derive(Debug, Clone)]
-struct NativeGraph {
-    nodes: Vec<NativeGraphNode>,
+pub(crate) struct NativeGraph {
+    pub(crate) nodes: Vec<NativeGraphNode>,
     edges: Vec<NativeGraphEdge>,
     offsets: Vec<usize>,
     targets: Vec<usize>,
@@ -882,7 +882,10 @@ fn native_graph_text_edges(
         .collect())
 }
 
-fn native_graph_to_csr(nodes: Vec<NativeGraphNode>, edges: Vec<NativeGraphEdge>) -> NativeGraph {
+pub(crate) fn native_graph_to_csr(
+    nodes: Vec<NativeGraphNode>,
+    edges: Vec<NativeGraphEdge>,
+) -> NativeGraph {
     let mut rows = vec![BTreeSet::<usize>::new(); nodes.len()];
     for edge in &edges {
         rows[edge.source].insert(edge.target);
@@ -935,7 +938,7 @@ fn native_connected_components(graph: &NativeGraph) -> Vec<usize> {
     component
 }
 
-fn native_tarjan_scc(graph: &NativeGraph) -> Vec<usize> {
+pub(crate) fn native_tarjan_scc(graph: &NativeGraph) -> Vec<usize> {
     #[derive(Clone, Copy)]
     struct VisitFrame {
         node: usize,
@@ -1043,7 +1046,7 @@ fn native_condensation_topological_order(
     order
 }
 
-fn native_weighted_leiden(graph: &NativeGraph, resolution: f64) -> Vec<usize> {
+pub(crate) fn native_weighted_leiden(graph: &NativeGraph, resolution: f64) -> Vec<usize> {
     let mut adjacency = native_undirected_adjacency(graph);
     let mut original_to_current = (0..graph.nodes.len()).collect::<Vec<_>>();
     loop {
