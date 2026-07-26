@@ -91,10 +91,6 @@ val resolvedCargoExecutable = resolveCargoExecutable()
 val developmentIdeaPluginArchive: RegularFile = layout.projectDirectory.file(
     "backend-idea/build/distributions/backend-idea-${version}.zip",
 )
-val developmentCliArchive = layout.buildDirectory.file("setup/kast-cli.zip")
-val developmentBundle = layout.buildDirectory.file(
-    "setup/kast-ubuntu-debian-headless-x86_64-${version}.tar.gz",
-)
 
 val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
     group = "build"
@@ -109,44 +105,16 @@ val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
     )
 }
 
-val packageDevelopmentCli: TaskProvider<Zip> by tasks.registering(Zip::class) {
-    group = "distribution"
-    description = "Packages the development CLI for the setup bundle."
-    dependsOn(buildDevelopmentCli)
-    from(cliDevelopmentBinary)
-    archiveFileName.set("kast-cli.zip")
-    destinationDirectory.set(layout.buildDirectory.dir("setup"))
-}
-
-val packageDevelopmentSetupBundle: TaskProvider<Exec> by tasks.registering(Exec::class) {
-    group = "distribution"
-    description = "Builds one complete development setup bundle."
-    dependsOn(packageDevelopmentCli, ":backend-headless:portableDistZip", ":backend-idea:buildPlugin")
-    val backendArchive = project(":backend-headless").tasks.named<Zip>("portableDistZip")
-        .flatMap { task -> task.archiveFile }
-    commandLine(
-        cliDevelopmentBinary.asFile.absolutePath,
-        "developer", "release", "package", "ubuntu-debian-bundle",
-        "--repo-root", layout.projectDirectory.asFile.absolutePath,
-        "--cli-archive", developmentCliArchive.get().asFile.absolutePath,
-        "--backend-archive", backendArchive.get().asFile.absolutePath,
-        "--plugin-archive",
-        developmentIdeaPluginArchive.asFile.absolutePath,
-        "--version", project.version.toString(),
-        "--bundle-output", developmentBundle.get().asFile.absolutePath,
-    )
-}
-
 tasks.register<Exec>("refreshDevelopmentMachine") {
     group = "distribution"
     description = "Replaces the active installation through the sole setup transaction."
-    dependsOn(packageDevelopmentSetupBundle)
+    dependsOn(buildDevelopmentCli, ":backend-idea:buildPlugin")
     commandLine(
         cliDevelopmentBinary.asFile.absolutePath,
         "--output",
         "json",
         "setup",
-        "--source",
-        developmentBundle.get().asFile.absolutePath,
+        "--idea-plugin",
+        developmentIdeaPluginArchive.asFile.absolutePath,
     )
 }

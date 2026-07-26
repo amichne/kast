@@ -29,7 +29,7 @@ require "$ci" '.github/scripts/test-setup-contract.sh' 'CI must execute the sole
 require "$ci" '--plugin-archive "$plugin_asset"' 'CI setup bundles must include the verified IDEA plugin'
 require "$ci" 'scripts/verify-setup-bundle.sh' 'hosted-agent CI must enter through kast setup'
 require "$build" '"setup",' 'local development refresh must invoke kast setup'
-require "$build" '"--source",' 'local development refresh must pass one setup bundle'
+require "$build" '"--idea-plugin",' 'local development refresh must pass the IDEA plugin'
 
 require "$release" 'for platform in linux-x64 linux-arm64 macos-x64 macos-arm64' 'release must package every supported setup platform'
 for platform in linux-x64 linux-arm64 macos-x64 macos-arm64; do

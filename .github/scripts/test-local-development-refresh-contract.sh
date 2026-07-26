@@ -12,19 +12,23 @@ grep -Fq 'Replaces the active installation through the sole setup transaction.' 
 dry_run="$($repo_root/gradlew -m refreshDevelopmentMachine --no-daemon)"
 for task in \
   ':buildDevelopmentCli' \
-  ':packageDevelopmentCli' \
-  ':backend-headless:portableDistZip' \
   ':backend-idea:buildPlugin' \
-  ':packageDevelopmentSetupBundle' \
   ':refreshDevelopmentMachine'; do
   grep -Fq "$task" <<<"$dry_run" || { printf 'error: missing development setup task %s\n' "$task" >&2; exit 1; }
 done
 
-for retired in ':activateDevelopmentMachine' ':reconcileDevelopmentMachine'; do
-  ! grep -Fq "$retired" <<<"$dry_run" || { printf 'error: retired task remains: %s\n' "$retired" >&2; exit 1; }
+for unwanted in \
+  ':packageDevelopmentCli' \
+  ':backend-headless:portableDistZip' \
+  ':packageDevelopmentSetupBundle' \
+  ':activateDevelopmentMachine' \
+  ':reconcileDevelopmentMachine'; do
+  ! grep -Fq "$unwanted" <<<"$dry_run" || { printf 'error: unwanted development setup task remains: %s\n' "$unwanted" >&2; exit 1; }
 done
 
-grep -Fq '"setup",' "$repo_root/build.gradle.kts"
-grep -Fq '"--source",' "$repo_root/build.gradle.kts"
+refresh_task="$(sed -n '/tasks.register<Exec>("refreshDevelopmentMachine")/,/^}/p' "$repo_root/build.gradle.kts")"
+grep -Fq '"setup",' <<<"$refresh_task"
+grep -Fq '"--idea-plugin",' <<<"$refresh_task"
+! grep -Fq '"--source",' <<<"$refresh_task"
 
 printf '%s\n' 'local setup refresh contract passed'
