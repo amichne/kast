@@ -2,6 +2,8 @@ $schema: ./commands.schema.json
 categories:
   database:
   - database/metrics
+  graph:
+  - graph/coverage
   mutation:
   - mutation/submit
   raw:
@@ -24,6 +26,8 @@ categories:
   - raw/implementations
   - raw/code-actions
   - raw/completions
+  repository:
+  - repository/query
   symbol:
   - symbol/scaffold
   - symbol/discover
@@ -133,6 +137,41 @@ commands:
     tool:
       description: 'Query source-index metrics: fanIn, fanOut, deadCode, impact, coupling, search, graph. Use this database-backed view for architecture, blast-radius, and impact questions before wider semantic traversal.'
       name: kast_metrics
+  graph/coverage:
+    category: graph
+    dataSource: sqlite
+    method: graph/coverage
+    notes:
+    - Every compilation-owned Kotlin file is classified as indexed, excluded, failed, or stale.
+    - Complete negative answers require complete eligible coverage at the returned generation.
+    request:
+      fields:
+        afterPath:
+          nullable: true
+          optional: true
+          type: string
+        limit:
+          optional: true
+          type: integer
+        scope:
+          fields:
+            language:
+              optional: true
+              type: string
+            module:
+              optional: true
+              type: string
+            sourceSet:
+              optional: true
+              type: string
+          optional: true
+          type: object
+        workspaceRoot:
+          nullable: true
+          optional: true
+          type: string
+    responseType: KastGraphCoverageResult
+    summary: Report generation-pinned Kotlin graph coverage by file, module, and compilation
   health:
     category: system
     dataSource: backend
@@ -861,6 +900,55 @@ commands:
     tool:
       description: Search the workspace for Kotlin symbols by name pattern. Supports substring matching (default) and regex. Use to find declarations across the codebase because it understands Kotlin symbol names, kinds, and declaration scopes.
       name: kast_workspace_symbol
+  repository/query:
+    category: repository
+    dataSource: sqlite
+    method: repository/query
+    notes:
+    - Approximate discovery terminates in exact canonical identities or bounded ambiguity.
+    - Every response exposes generation, scope, coverage, filters, bounds, ordering, truncation, and continuation.
+    request:
+      fields:
+        intent:
+          type: string
+        limits:
+          fields:
+            depth:
+              type: integer
+            evidence:
+              type: integer
+            results:
+              type: integer
+          required:
+          - depth
+          - results
+          - evidence
+          type: object
+        question:
+          type: string
+        scope:
+          fields:
+            language:
+              optional: true
+              type: string
+            module:
+              optional: true
+              type: string
+            sourceSet:
+              optional: true
+              type: string
+          optional: true
+          type: object
+        workspaceRoot:
+          nullable: true
+          optional: true
+          type: string
+      required:
+      - question
+      - intent
+      - limits
+    responseType: KastRepositoryQueryResult
+    summary: Answer one bounded repository question with visible scope, coverage, and evidence
   runtime/open-project:
     category: system
     dataSource: backend

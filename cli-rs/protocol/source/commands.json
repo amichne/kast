@@ -52,6 +52,12 @@
       "raw/code-actions",
       "raw/completions"
     ],
+    "graph": [
+      "graph/coverage"
+    ],
+    "repository": [
+      "repository/query"
+    ],
     "database": [
       "database/metrics"
     ]
@@ -2647,6 +2653,121 @@
         ]
       },
       "responseType": "CompletionsResult"
+    },
+    "graph/coverage": {
+      "method": "graph/coverage",
+      "category": "graph",
+      "summary": "Report generation-pinned Kotlin graph coverage by file, module, and compilation",
+      "dataSource": "sqlite",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "scope": {
+            "type": "object",
+            "optional": true,
+            "fields": {
+              "language": {
+                "type": "string",
+                "optional": true
+              },
+              "module": {
+                "type": "string",
+                "optional": true
+              },
+              "sourceSet": {
+                "type": "string",
+                "optional": true
+              }
+            }
+          },
+          "afterPath": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "limit": {
+            "type": "integer",
+            "optional": true
+          }
+        }
+      },
+      "responseType": "KastGraphCoverageResult",
+      "notes": [
+        "Every compilation-owned Kotlin file is classified as indexed, excluded, failed, or stale.",
+        "Complete negative answers require complete eligible coverage at the returned generation."
+      ]
+    },
+    "repository/query": {
+      "method": "repository/query",
+      "category": "repository",
+      "summary": "Answer one bounded repository question with visible scope, coverage, and evidence",
+      "dataSource": "sqlite",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "question": {
+            "type": "string"
+          },
+          "intent": {
+            "type": "string"
+          },
+          "scope": {
+            "type": "object",
+            "optional": true,
+            "fields": {
+              "language": {
+                "type": "string",
+                "optional": true
+              },
+              "module": {
+                "type": "string",
+                "optional": true
+              },
+              "sourceSet": {
+                "type": "string",
+                "optional": true
+              }
+            }
+          },
+          "limits": {
+            "type": "object",
+            "fields": {
+              "depth": {
+                "type": "integer"
+              },
+              "results": {
+                "type": "integer"
+              },
+              "evidence": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "depth",
+              "results",
+              "evidence"
+            ]
+          }
+        },
+        "required": [
+          "question",
+          "intent",
+          "limits"
+        ]
+      },
+      "responseType": "KastRepositoryQueryResult",
+      "notes": [
+        "Approximate discovery terminates in exact canonical identities or bounded ambiguity.",
+        "Every response exposes generation, scope, coverage, filters, bounds, ordering, truncation, and continuation."
+      ]
     },
     "database/metrics": {
       "method": "database/metrics",

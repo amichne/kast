@@ -1,0 +1,6223 @@
+{
+  "corpusCommit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
+  "implementationCommit": "b28b3a0e89e4c491547ce27e3f90217f3d425997",
+  "kastBinary": "/Users/amichne/code/kast-repository-intelligence/cli-rs/target/debug/kast",
+  "results": [
+    {
+      "category": "exact_identity",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "containsMatch",
+          "path": "result.nodes",
+          "value": {
+            "evidenceClass": "compiler",
+            "name": "parse",
+            "ownerName": "SemanticGraphSha256",
+            "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt"
+          }
+        },
+        {
+          "op": "eq",
+          "path": "result.identityCollisions",
+          "value": 0
+        }
+      ],
+      "id": "exact-01-semantic-graph-sha-parse",
+      "latencyMillis": 234.857,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "id": "exact-01-semantic-graph-sha-parse",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 1131,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 13,
+                "name": ".#:analysis-server[main]",
+                "stale": 0,
+                "total": 13
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 9,
+                "name": ".#:analysis-server[test]",
+                "stale": 0,
+                "total": 9
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 19,
+                "name": ".#:backend-headless[main]",
+                "stale": 0,
+                "total": 19
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 2,
+                "name": ".#:backend-headless[test]",
+                "stale": 0,
+                "total": 2
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 55,
+                "name": ".#:backend-shared[main]",
+                "stale": 0,
+                "total": 55
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 7,
+                "name": ".#:backend-shared[test]",
+                "stale": 0,
+                "total": 7
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 33,
+                "name": ".#:index-store[main]",
+                "stale": 0,
+                "total": 33
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 10,
+                "name": ".#:index-store[test]",
+                "stale": 0,
+                "total": 10
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 11,
+                "name": "build-logic#:[main]",
+                "stale": 0,
+                "total": 543
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 5,
+                "name": "build-logic#:[test]",
+                "stale": 0,
+                "total": 5
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 532,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 599,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 22,
+                "name": ".#:analysis-server",
+                "stale": 0,
+                "total": 22
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 21,
+                "name": ".#:backend-headless",
+                "stale": 0,
+                "total": 21
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 62,
+                "name": ".#:backend-shared",
+                "stale": 0,
+                "total": 62
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:index-store",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 16,
+                "name": "build-logic#:",
+                "stale": 0,
+                "total": 548
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 1131
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [
+            {
+              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:2440:io.github.amichne.kast.api.contract.result.SemanticGraphSha256",
+              "evidenceClass": "compiler",
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphSha256",
+              "kind": "CLASS",
+              "name": "SemanticGraphSha256",
+              "signature": null
+            }
+          ],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Resolve the exact SemanticGraphSha256.parse declaration used by semantic graph scope hashing, without merging it with other parse methods.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "status": "ANSWERED",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 4794,
+      "returnCode": 0
+    },
+    {
+      "category": "exact_identity",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "containsMatch",
+          "path": "result.nodes",
+          "value": {
+            "evidenceClass": "compiler",
+            "name": "parse",
+            "ownerName": "SemanticGraphSymbolKey",
+            "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt"
+          }
+        },
+        {
+          "op": "eq",
+          "path": "result.identityCollisions",
+          "value": 0
+        }
+      ],
+      "id": "exact-02-symbol-key-parse",
+      "latencyMillis": 224.067,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "id": "exact-02-symbol-key-parse",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 1131,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 13,
+                "name": ".#:analysis-server[main]",
+                "stale": 0,
+                "total": 13
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 9,
+                "name": ".#:analysis-server[test]",
+                "stale": 0,
+                "total": 9
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 19,
+                "name": ".#:backend-headless[main]",
+                "stale": 0,
+                "total": 19
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 2,
+                "name": ".#:backend-headless[test]",
+                "stale": 0,
+                "total": 2
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 55,
+                "name": ".#:backend-shared[main]",
+                "stale": 0,
+                "total": 55
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 7,
+                "name": ".#:backend-shared[test]",
+                "stale": 0,
+                "total": 7
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 33,
+                "name": ".#:index-store[main]",
+                "stale": 0,
+                "total": 33
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 10,
+                "name": ".#:index-store[test]",
+                "stale": 0,
+                "total": 10
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 11,
+                "name": "build-logic#:[main]",
+                "stale": 0,
+                "total": 543
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 5,
+                "name": "build-logic#:[test]",
+                "stale": 0,
+                "total": 5
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 532,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 599,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 22,
+                "name": ".#:analysis-server",
+                "stale": 0,
+                "total": 22
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 21,
+                "name": ".#:backend-headless",
+                "stale": 0,
+                "total": 21
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 62,
+                "name": ".#:backend-shared",
+                "stale": 0,
+                "total": 62
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:index-store",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 16,
+                "name": "build-logic#:",
+                "stale": 0,
+                "total": 548
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 1131
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [
+            {
+              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:479:io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey",
+              "evidenceClass": "compiler",
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey",
+              "kind": "CLASS",
+              "name": "SemanticGraphSymbolKey",
+              "signature": null
+            }
+          ],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Resolve SemanticGraphSymbolKey.parse, preserving its identity separately from every sibling parse function in SemanticGraphResult.kt.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "status": "ANSWERED",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 4789,
+      "returnCode": 0
+    },
+    {
+      "category": "exact_identity",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.nodes",
+          "value": {
+            "evidenceClass": "compiler",
+            "name": "parse",
+            "ownerName": "SemanticGraphSourcePath",
+            "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt"
+          }
+        },
+        {
+          "op": "eq",
+          "path": "result.identityCollisions",
+          "value": 0
+        }
+      ],
+      "id": "exact-03-source-path-parse",
+      "latencyMillis": 189.684,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "id": "exact-03-source-path-parse",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 1131,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 13,
+                "name": ".#:analysis-server[main]",
+                "stale": 0,
+                "total": 13
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 9,
+                "name": ".#:analysis-server[test]",
+                "stale": 0,
+                "total": 9
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 19,
+                "name": ".#:backend-headless[main]",
+                "stale": 0,
+                "total": 19
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 2,
+                "name": ".#:backend-headless[test]",
+                "stale": 0,
+                "total": 2
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 55,
+                "name": ".#:backend-shared[main]",
+                "stale": 0,
+                "total": 55
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 7,
+                "name": ".#:backend-shared[test]",
+                "stale": 0,
+                "total": 7
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 33,
+                "name": ".#:index-store[main]",
+                "stale": 0,
+                "total": 33
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 10,
+                "name": ".#:index-store[test]",
+                "stale": 0,
+                "total": 10
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 11,
+                "name": "build-logic#:[main]",
+                "stale": 0,
+                "total": 543
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 5,
+                "name": "build-logic#:[test]",
+                "stale": 0,
+                "total": 5
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 532,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 599,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 22,
+                "name": ".#:analysis-server",
+                "stale": 0,
+                "total": 22
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 21,
+                "name": ".#:backend-headless",
+                "stale": 0,
+                "total": 21
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 62,
+                "name": ".#:backend-shared",
+                "stale": 0,
+                "total": 62
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:index-store",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 16,
+                "name": "build-logic#:",
+                "stale": 0,
+                "total": 548
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 1131
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Find the parse function that validates normalized repository-relative Kotlin semantic graph source paths.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "status": "EMPTY",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 4396,
+      "returnCode": 0
+    },
+    {
+      "category": "exact_identity",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "containsMatch",
+          "path": "result.nodes",
+          "value": {
+            "evidenceClass": "compiler",
+            "name": "sha256",
+            "parameterTypes": [
+              "kotlin.String"
+            ],
+            "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/FileHashing.kt"
+          }
+        },
+        {
+          "op": "eq",
+          "path": "result.identityCollisions",
+          "value": 0
+        }
+      ],
+      "id": "exact-04-string-sha-overload",
+      "latencyMillis": 159.575,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "id": "exact-04-string-sha-overload",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": "analysis-api",
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 310,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 0,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 310,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 310
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [
+            {
+              "canonicalKey": "class:OBJECT:analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/FileHashing.kt:124:io.github.amichne.kast.api.validation.FileHashing",
+              "evidenceClass": "compiler",
+              "fqName": "io.github.amichne.kast.api.validation.FileHashing",
+              "kind": "OBJECT",
+              "name": "FileHashing",
+              "signature": null
+            }
+          ],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Resolve the FileHashing.sha256 overload whose input is Kotlin String.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": "analysis-api",
+            "sourceSet": null
+          },
+          "status": "ANSWERED",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 3070,
+      "returnCode": 0
+    },
+    {
+      "category": "exact_identity",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "containsMatch",
+          "path": "result.nodes",
+          "value": {
+            "evidenceClass": "compiler",
+            "name": "sha256",
+            "parameterTypes": [
+              "kotlin.ByteArray"
+            ],
+            "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/FileHashing.kt"
+          }
+        },
+        {
+          "op": "eq",
+          "path": "result.identityCollisions",
+          "value": 0
+        }
+      ],
+      "id": "exact-05-byte-array-sha-overload",
+      "latencyMillis": 160.248,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "id": "exact-05-byte-array-sha-overload",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": "analysis-api",
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 310,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 0,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 310,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 310
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [
+            {
+              "canonicalKey": "class:OBJECT:analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/FileHashing.kt:124:io.github.amichne.kast.api.validation.FileHashing",
+              "evidenceClass": "compiler",
+              "fqName": "io.github.amichne.kast.api.validation.FileHashing",
+              "kind": "OBJECT",
+              "name": "FileHashing",
+              "signature": null
+            }
+          ],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Resolve the FileHashing.sha256 overload whose input is Kotlin ByteArray.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": "analysis-api",
+            "sourceSet": null
+          },
+          "status": "ANSWERED",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 3077,
+      "returnCode": 0
+    },
+    {
+      "category": "exact_identity",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "containsMatch",
+          "path": "result.nodes",
+          "value": {
+            "evidenceClass": "compiler",
+            "name": "parse",
+            "ownerName": "WorkspaceFilePageToken",
+            "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/WorkspaceFilePageToken.kt"
+          }
+        },
+        {
+          "op": "eq",
+          "path": "result.identityCollisions",
+          "value": 0
+        }
+      ],
+      "id": "exact-06-workspace-page-token-parse",
+      "latencyMillis": 162.226,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "id": "exact-06-workspace-page-token-parse",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": "analysis-api",
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 310,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 0,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 310,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 310
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [
+            {
+              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/WorkspaceFilePageToken.kt:70:io.github.amichne.kast.api.validation.WorkspaceFilePageToken",
+              "evidenceClass": "compiler",
+              "fqName": "io.github.amichne.kast.api.validation.WorkspaceFilePageToken",
+              "kind": "CLASS",
+              "name": "WorkspaceFilePageToken",
+              "signature": null
+            }
+          ],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Resolve WorkspaceFilePageToken.parse rather than another token parse function.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": "analysis-api",
+            "sourceSet": null
+          },
+          "status": "ANSWERED",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 3127,
+      "returnCode": 0
+    },
+    {
+      "category": "directional_path",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.paths",
+          "value": {
+            "direction": "OUTGOING",
+            "nodes": [
+              {
+                "name": "semanticGraphOperation"
+              },
+              {
+                "name": "buildSemanticGraphSnapshot"
+              },
+              {
+                "name": "semanticGraphScopeFingerprint"
+              },
+              {
+                "name": "sha256"
+              },
+              {
+                "name": "parse",
+                "ownerName": "SemanticGraphSha256"
+              }
+            ],
+            "relationKinds": [
+              "CALLS"
+            ]
+          }
+        },
+        {
+          "op": "minLength",
+          "path": "result.edges",
+          "value": 4
+        }
+      ],
+      "id": "path-01-known-sha-chain",
+      "latencyMillis": 5.996,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `path` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 147,
+      "returnCode": 1
+    },
+    {
+      "category": "directional_path",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.edges",
+          "value": {
+            "direction": "OUTGOING",
+            "evidenceClass": "compiler",
+            "kind": "CALLS",
+            "sourceName": "semanticGraphOperation",
+            "targetName": "buildSemanticGraphSnapshot"
+          }
+        }
+      ],
+      "id": "path-02-operation-to-snapshot",
+      "latencyMillis": 5.661,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `path` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 147,
+      "returnCode": 1
+    },
+    {
+      "category": "directional_path",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.edges",
+          "value": {
+            "direction": "OUTGOING",
+            "evidenceClass": "compiler",
+            "kind": "CALLS",
+            "sourceName": "buildSemanticGraphSnapshot",
+            "targetName": "extractSemanticGraphFile"
+          }
+        }
+      ],
+      "id": "path-03-snapshot-to-extractor",
+      "latencyMillis": 5.834,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `path` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 147,
+      "returnCode": 1
+    },
+    {
+      "category": "directional_path",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.paths",
+          "value": {
+            "direction": "OUTGOING",
+            "nodes": [
+              {
+                "name": "buildSemanticGraphSnapshot"
+              },
+              {
+                "name": "replaceSemanticGraphFiles"
+              }
+            ],
+            "relationKinds": [
+              "CALLS"
+            ]
+          }
+        }
+      ],
+      "id": "path-04-snapshot-to-store-write",
+      "latencyMillis": 5.387,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `path` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 147,
+      "returnCode": 1
+    },
+    {
+      "category": "directional_path",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.paths",
+          "value": {
+            "direction": "OUTGOING",
+            "nodes": [
+              {
+                "name": "replaceSemanticGraphFiles"
+              },
+              {
+                "name": "prepareSemanticGraphFileUpdate"
+              }
+            ]
+          }
+        }
+      ],
+      "id": "path-05-store-write-to-preparation",
+      "latencyMillis": 5.402,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `path` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 147,
+      "returnCode": 1
+    },
+    {
+      "category": "directional_path",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.edges",
+          "value": {
+            "direction": "OUTGOING",
+            "kind": "CALLS",
+            "sourceName": "semanticGraphSymbol",
+            "targetName": "compilerStableSignature"
+          }
+        },
+        {
+          "op": "eq",
+          "path": "result.appliedFilters.relations",
+          "value": [
+            "CALLS"
+          ]
+        }
+      ],
+      "id": "path-06-symbol-to-signature",
+      "latencyMillis": 5.674,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `path` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 147,
+      "returnCode": 1
+    },
+    {
+      "category": "impact",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.edges",
+          "value": {
+            "direction": "INCOMING",
+            "evidenceClass": "compiler",
+            "kind": "CALLS",
+            "targetName": "parse",
+            "targetOwnerName": "SemanticGraphSha256"
+          }
+        },
+        {
+          "op": "minLength",
+          "path": "result.edges.*.occurrences",
+          "value": 1
+        }
+      ],
+      "id": "impact-01-sha-parse-callers",
+      "latencyMillis": 5.25,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `incoming_impact` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 158,
+      "returnCode": 1
+    },
+    {
+      "category": "impact",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "eq",
+          "path": "result.queryPlan.intent",
+          "value": "OUTGOING_IMPACT"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.edges",
+          "value": {
+            "direction": "OUTGOING",
+            "kind": "CALLS",
+            "sourceName": "buildSemanticGraphSnapshot"
+          }
+        }
+      ],
+      "id": "impact-02-snapshot-outgoing",
+      "latencyMillis": 5.48,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `outgoing_impact` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 158,
+      "returnCode": 1
+    },
+    {
+      "category": "impact",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.edges",
+          "value": {
+            "direction": "INCOMING",
+            "evidenceClass": "compiler",
+            "kind": "CALLS",
+            "targetName": "replaceSemanticGraphFiles"
+          }
+        }
+      ],
+      "id": "impact-03-store-write-callers",
+      "latencyMillis": 5.518,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `incoming_impact` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 158,
+      "returnCode": 1
+    },
+    {
+      "category": "impact",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.nodes",
+          "value": {
+            "name": "ensureSchema",
+            "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt"
+          }
+        },
+        {
+          "op": "eq",
+          "path": "result.coverage.complete",
+          "value": true
+        }
+      ],
+      "id": "impact-04-ensure-schema-outgoing",
+      "latencyMillis": 5.264,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `outgoing_impact` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 158,
+      "returnCode": 1
+    },
+    {
+      "category": "impact",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.edges",
+          "value": {
+            "direction": "INCOMING",
+            "kind": "CALLS",
+            "targetName": "semanticGraphScopeFingerprint"
+          }
+        },
+        {
+          "op": "eq",
+          "path": "result.coverage.complete",
+          "value": true
+        }
+      ],
+      "id": "impact-05-scope-fingerprint-callers",
+      "latencyMillis": 5.397,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `incoming_impact` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 158,
+      "returnCode": 1
+    },
+    {
+      "category": "impact",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "eq",
+          "path": "result.queryPlan.intent",
+          "value": "OUTGOING_IMPACT"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.edges",
+          "value": {
+            "direction": "OUTGOING",
+            "kind": "CALLS",
+            "sourceName": "semanticGraphSymbol"
+          }
+        }
+      ],
+      "id": "impact-06-symbol-builder-outgoing",
+      "latencyMillis": 5.833,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `outgoing_impact` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 158,
+      "returnCode": 1
+    },
+    {
+      "category": "discovery",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "eq",
+          "path": "result.queryPlan.discovery",
+          "value": "LEXICAL"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.candidates",
+          "value": {
+            "name": "semanticGraphScopeFingerprint",
+            "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt"
+          }
+        },
+        {
+          "op": "minLength",
+          "path": "result.candidates.*.matchReasons",
+          "value": 1
+        }
+      ],
+      "id": "discovery-01-scope-hasher",
+      "latencyMillis": 187.861,
+      "passed": false,
+      "phase": 3,
+      "response": {
+        "id": "discovery-01-scope-hasher",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 1131,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 13,
+                "name": ".#:analysis-server[main]",
+                "stale": 0,
+                "total": 13
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 9,
+                "name": ".#:analysis-server[test]",
+                "stale": 0,
+                "total": 9
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 19,
+                "name": ".#:backend-headless[main]",
+                "stale": 0,
+                "total": 19
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 2,
+                "name": ".#:backend-headless[test]",
+                "stale": 0,
+                "total": 2
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 55,
+                "name": ".#:backend-shared[main]",
+                "stale": 0,
+                "total": 55
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 7,
+                "name": ".#:backend-shared[test]",
+                "stale": 0,
+                "total": 7
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 33,
+                "name": ".#:index-store[main]",
+                "stale": 0,
+                "total": 33
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 10,
+                "name": ".#:index-store[test]",
+                "stale": 0,
+                "total": 10
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 11,
+                "name": "build-logic#:[main]",
+                "stale": 0,
+                "total": 543
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 5,
+                "name": "build-logic#:[test]",
+                "stale": 0,
+                "total": 5
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 532,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 599,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 22,
+                "name": ".#:analysis-server",
+                "stale": 0,
+                "total": 22
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 21,
+                "name": ".#:backend-headless",
+                "stale": 0,
+                "total": 21
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 62,
+                "name": ".#:backend-shared",
+                "stale": 0,
+                "total": 62
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:index-store",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 16,
+                "name": "build-logic#:",
+                "stale": 0,
+                "total": 548
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 1131
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Find the declaration that hashes the selected and removed semantic graph path scope.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "status": "EMPTY",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 4374,
+      "returnCode": 0
+    },
+    {
+      "category": "discovery",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.candidates",
+          "value": {
+            "name": "replaceSemanticGraphFiles",
+            "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt"
+          }
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.nodes",
+          "value": {
+            "evidenceClass": "compiler",
+            "name": "replaceSemanticGraphFiles"
+          }
+        }
+      ],
+      "id": "discovery-02-persists-graph-files",
+      "latencyMillis": 188.261,
+      "passed": false,
+      "phase": 3,
+      "response": {
+        "id": "discovery-02-persists-graph-files",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 1131,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 13,
+                "name": ".#:analysis-server[main]",
+                "stale": 0,
+                "total": 13
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 9,
+                "name": ".#:analysis-server[test]",
+                "stale": 0,
+                "total": 9
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 19,
+                "name": ".#:backend-headless[main]",
+                "stale": 0,
+                "total": 19
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 2,
+                "name": ".#:backend-headless[test]",
+                "stale": 0,
+                "total": 2
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 55,
+                "name": ".#:backend-shared[main]",
+                "stale": 0,
+                "total": 55
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 7,
+                "name": ".#:backend-shared[test]",
+                "stale": 0,
+                "total": 7
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 33,
+                "name": ".#:index-store[main]",
+                "stale": 0,
+                "total": 33
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 10,
+                "name": ".#:index-store[test]",
+                "stale": 0,
+                "total": 10
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 11,
+                "name": "build-logic#:[main]",
+                "stale": 0,
+                "total": 543
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 5,
+                "name": "build-logic#:[test]",
+                "stale": 0,
+                "total": 5
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 532,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 599,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 22,
+                "name": ".#:analysis-server",
+                "stale": 0,
+                "total": 22
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 21,
+                "name": ".#:backend-headless",
+                "stale": 0,
+                "total": 21
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 62,
+                "name": ".#:backend-shared",
+                "stale": 0,
+                "total": 62
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:index-store",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 16,
+                "name": "build-logic#:",
+                "stale": 0,
+                "total": 548
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 1131
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Which declaration atomically persists compiler semantic graph files and removed paths?",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "status": "EMPTY",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 4384,
+      "returnCode": 0
+    },
+    {
+      "category": "discovery",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.candidates",
+          "value": {
+            "name": "SemanticGraphRelation",
+            "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt"
+          }
+        }
+      ],
+      "id": "discovery-03-relation-source-evidence",
+      "latencyMillis": 188.735,
+      "passed": false,
+      "phase": 3,
+      "response": {
+        "id": "discovery-03-relation-source-evidence",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 1131,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 13,
+                "name": ".#:analysis-server[main]",
+                "stale": 0,
+                "total": 13
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 9,
+                "name": ".#:analysis-server[test]",
+                "stale": 0,
+                "total": 9
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 19,
+                "name": ".#:backend-headless[main]",
+                "stale": 0,
+                "total": 19
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 2,
+                "name": ".#:backend-headless[test]",
+                "stale": 0,
+                "total": 2
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 55,
+                "name": ".#:backend-shared[main]",
+                "stale": 0,
+                "total": 55
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 7,
+                "name": ".#:backend-shared[test]",
+                "stale": 0,
+                "total": 7
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 33,
+                "name": ".#:index-store[main]",
+                "stale": 0,
+                "total": 33
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 10,
+                "name": ".#:index-store[test]",
+                "stale": 0,
+                "total": 10
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 11,
+                "name": "build-logic#:[main]",
+                "stale": 0,
+                "total": 543
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 5,
+                "name": "build-logic#:[test]",
+                "stale": 0,
+                "total": 5
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 532,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 599,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 22,
+                "name": ".#:analysis-server",
+                "stale": 0,
+                "total": 22
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 21,
+                "name": ".#:backend-headless",
+                "stale": 0,
+                "total": 21
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 62,
+                "name": ".#:backend-shared",
+                "stale": 0,
+                "total": 62
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:index-store",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 16,
+                "name": "build-logic#:",
+                "stale": 0,
+                "total": 548
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 1131
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Find the Kotlin model that records both ends and the source occurrence of one semantic graph relationship.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "status": "EMPTY",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 4408,
+      "returnCode": 0
+    },
+    {
+      "category": "discovery",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.candidates",
+          "value": {
+            "name": "SemanticGraphSourcePath",
+            "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt"
+          }
+        },
+        {
+          "op": "minLength",
+          "path": "result.candidates.*.matchReasons",
+          "value": 1
+        }
+      ],
+      "id": "discovery-04-normalized-source-path",
+      "latencyMillis": 189.682,
+      "passed": false,
+      "phase": 3,
+      "response": {
+        "id": "discovery-04-normalized-source-path",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 1131,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 13,
+                "name": ".#:analysis-server[main]",
+                "stale": 0,
+                "total": 13
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 9,
+                "name": ".#:analysis-server[test]",
+                "stale": 0,
+                "total": 9
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 19,
+                "name": ".#:backend-headless[main]",
+                "stale": 0,
+                "total": 19
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 2,
+                "name": ".#:backend-headless[test]",
+                "stale": 0,
+                "total": 2
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 55,
+                "name": ".#:backend-shared[main]",
+                "stale": 0,
+                "total": 55
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 7,
+                "name": ".#:backend-shared[test]",
+                "stale": 0,
+                "total": 7
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 33,
+                "name": ".#:index-store[main]",
+                "stale": 0,
+                "total": 33
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 10,
+                "name": ".#:index-store[test]",
+                "stale": 0,
+                "total": 10
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 11,
+                "name": "build-logic#:[main]",
+                "stale": 0,
+                "total": 543
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 5,
+                "name": "build-logic#:[test]",
+                "stale": 0,
+                "total": 5
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 532,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 599,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 22,
+                "name": ".#:analysis-server",
+                "stale": 0,
+                "total": 22
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 21,
+                "name": ".#:backend-headless",
+                "stale": 0,
+                "total": 21
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 62,
+                "name": ".#:backend-shared",
+                "stale": 0,
+                "total": 62
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:index-store",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 16,
+                "name": "build-logic#:",
+                "stale": 0,
+                "total": 548
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 1131
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Find the type that rejects absolute, parent-traversing, or non-Kotlin semantic graph source paths.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "status": "EMPTY",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 4398,
+      "returnCode": 0
+    },
+    {
+      "category": "discovery",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.candidates",
+          "value": {
+            "name": "buildSemanticGraphSnapshot",
+            "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt"
+          }
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.nodes",
+          "value": {
+            "evidenceClass": "compiler",
+            "name": "buildSemanticGraphSnapshot"
+          }
+        }
+      ],
+      "id": "discovery-05-builds-snapshot",
+      "latencyMillis": 117.521,
+      "passed": false,
+      "phase": 3,
+      "response": {
+        "id": "discovery-05-builds-snapshot",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": "backend-idea",
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 125,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 0,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 125,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 125
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Find the function that builds a semantic graph snapshot from selected Kotlin files and removed paths.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": "backend-idea",
+            "sourceSet": null
+          },
+          "status": "EMPTY",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 2691,
+      "returnCode": 0
+    },
+    {
+      "category": "discovery",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.candidates",
+          "value": {
+            "name": "compilerStableSignature",
+            "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt"
+          }
+        },
+        {
+          "op": "minLength",
+          "path": "result.candidates.*.matchReasons",
+          "value": 1
+        }
+      ],
+      "id": "discovery-06-compiler-signature",
+      "latencyMillis": 118.46,
+      "passed": false,
+      "phase": 3,
+      "response": {
+        "id": "discovery-06-compiler-signature",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": "backend-idea",
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 125,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 0,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 125,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 125
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Find the helper that constructs an overload-safe compiler-stable Kotlin callable signature.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": "backend-idea",
+            "sourceSet": null
+          },
+          "status": "EMPTY",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 2684,
+      "returnCode": 0
+    },
+    {
+      "category": "architecture",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.findings",
+          "value": {
+            "direction": "INCOMING",
+            "evidenceClass": "derived",
+            "projection": "RUNTIME_CALLS",
+            "type": "HIGH_CENTRALITY_INTERNAL_IMPLEMENTATION"
+          }
+        },
+        {
+          "op": "minLength",
+          "path": "result.findings.*.supportingSubgraph.edges",
+          "value": 1
+        }
+      ],
+      "id": "architecture-01-runtime-call-hubs",
+      "latencyMillis": 6.356,
+      "passed": false,
+      "phase": 4,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `architecture` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 155,
+      "returnCode": 1
+    },
+    {
+      "category": "architecture",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.findings",
+          "value": {
+            "evidenceClass": "derived",
+            "metric": "STRONGLY_CONNECTED_COMPONENT",
+            "projection": "RUNTIME_CALLS",
+            "type": "CYCLE_CROSSING_BOUNDARY"
+          }
+        },
+        {
+          "op": "truthy",
+          "path": "result.graphGeneration"
+        }
+      ],
+      "id": "architecture-02-cross-boundary-cycles",
+      "latencyMillis": 5.185,
+      "passed": false,
+      "phase": 4,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `architecture` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 155,
+      "returnCode": 1
+    },
+    {
+      "category": "architecture",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.findings",
+          "value": {
+            "evidenceClass": "derived",
+            "projection": "TYPE_DEPENDENCIES",
+            "type": "BOUNDARY_CROSSING"
+          }
+        },
+        {
+          "op": "minLength",
+          "path": "result.findings.*.representativeSymbols",
+          "value": 1
+        }
+      ],
+      "id": "architecture-03-type-boundaries",
+      "latencyMillis": 5.187,
+      "passed": false,
+      "phase": 4,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `architecture` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 155,
+      "returnCode": 1
+    },
+    {
+      "category": "architecture",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.findings",
+          "value": {
+            "evidenceClass": "derived",
+            "projection": "RUNTIME_CALLS",
+            "type": "COMMUNITY"
+          }
+        },
+        {
+          "op": "truthy",
+          "path": "result.findings.*.name"
+        },
+        {
+          "op": "truthy",
+          "path": "result.findings.*.cohesion"
+        }
+      ],
+      "id": "architecture-04-communities",
+      "latencyMillis": 5.747,
+      "passed": false,
+      "phase": 4,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `architecture` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 155,
+      "returnCode": 1
+    },
+    {
+      "category": "architecture",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.findings",
+          "value": {
+            "evidenceClass": "derived",
+            "projection": "SYMBOL_REFERENCES",
+            "type": "THIN_BRIDGE"
+          }
+        },
+        {
+          "op": "minLength",
+          "path": "result.findings.*.supportingSubgraph.edges",
+          "value": 1
+        }
+      ],
+      "id": "architecture-05-thin-bridges",
+      "latencyMillis": 5.123,
+      "passed": false,
+      "phase": 4,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `architecture` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 155,
+      "returnCode": 1
+    },
+    {
+      "category": "architecture",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.findings",
+          "value": {
+            "evidenceClass": "derived",
+            "projection": "TYPE_DEPENDENCIES",
+            "type": "PUBLIC_API_CONSUMED_BY_UNRELATED_COMPONENTS"
+          }
+        },
+        {
+          "op": "truthy",
+          "path": "result.findings.*.trigger"
+        }
+      ],
+      "id": "architecture-06-public-api-consumers",
+      "latencyMillis": 5.316,
+      "passed": false,
+      "phase": 4,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `architecture` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 155,
+      "returnCode": 1
+    },
+    {
+      "category": "context",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.contextRelations",
+          "value": {
+            "direction": "OUTGOING",
+            "evidenceClass": "extracted",
+            "kind": "DOCUMENTS",
+            "sourcePath": "docs/explanation/compiler-evidence.md",
+            "targetName": "SemanticGraphRelation"
+          }
+        },
+        {
+          "op": "contains",
+          "path": "result.evidenceClasses",
+          "value": "extracted"
+        }
+      ],
+      "id": "context-01-compiler-evidence-doc",
+      "latencyMillis": 5.817,
+      "passed": false,
+      "phase": 5,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `context_relationship` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 163,
+      "returnCode": 1
+    },
+    {
+      "category": "context",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.contextRelations",
+          "value": {
+            "evidenceClass": "derived",
+            "kind": "CONFIGURES_MODULE",
+            "sourcePath": "backend-idea/build.gradle.kts",
+            "targetName": "semanticGraphOperation"
+          }
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.nodes",
+          "value": {
+            "module": "backend-idea",
+            "name": "semanticGraphOperation",
+            "sourceSet": "main"
+          }
+        }
+      ],
+      "id": "context-02-gradle-owner",
+      "latencyMillis": 5.15,
+      "passed": false,
+      "phase": 5,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `context_relationship` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 163,
+      "returnCode": 1
+    },
+    {
+      "category": "context",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.contextRelations",
+          "value": {
+            "evidenceClass": "derived",
+            "kind": "IMPLEMENTS_PROTOCOL",
+            "sourcePath": "cli-rs/protocol/source/requests/raw/semantic-graph/request.schema.json",
+            "targetName": "semanticGraphOperation"
+          }
+        },
+        {
+          "op": "contains",
+          "path": "result.evidenceClasses",
+          "value": "derived"
+        }
+      ],
+      "id": "context-03-semantic-graph-schema",
+      "latencyMillis": 5.277,
+      "passed": false,
+      "phase": 5,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `context_relationship` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 163,
+      "returnCode": 1
+    },
+    {
+      "category": "context",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.contextRelations",
+          "value": {
+            "evidenceClass": "extracted",
+            "kind": "DOCUMENTS",
+            "sourcePath": ".agents/adr/0026-proof-carrying-relationship-coverage.md",
+            "targetName": "RelationshipResultEvidence"
+          }
+        }
+      ],
+      "id": "context-04-relationship-coverage-adr",
+      "latencyMillis": 5.454,
+      "passed": false,
+      "phase": 5,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `context_relationship` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 163,
+      "returnCode": 1
+    },
+    {
+      "category": "context",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.contextRelations",
+          "value": {
+            "evidenceClass": "derived",
+            "kind": "CONSUMES_SCHEMA",
+            "sourcePath": "cli-rs/src/agent/native_graph.rs",
+            "targetName": "SqliteSourceIndexStore"
+          }
+        },
+        {
+          "op": "contains",
+          "path": "result.evidenceClasses",
+          "value": "derived"
+        }
+      ],
+      "id": "context-05-rust-consumes-schema",
+      "latencyMillis": 5.137,
+      "passed": false,
+      "phase": 5,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `context_relationship` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 163,
+      "returnCode": 1
+    },
+    {
+      "category": "context",
+      "critical": false,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "ANSWERED"
+        },
+        {
+          "op": "containsMatch",
+          "path": "result.contextRelations",
+          "value": {
+            "evidenceClass": "derived",
+            "kind": "CONFIGURES_MODULE",
+            "sourcePath": ".github/workflows/ci.yml",
+            "targetName": "semanticGraphOperation"
+          }
+        },
+        {
+          "op": "truthy",
+          "path": "result.schemaVersion"
+        },
+        {
+          "op": "eq",
+          "path": "result.canonicalResultModel",
+          "value": true
+        }
+      ],
+      "id": "context-06-workflow-to-implementation",
+      "latencyMillis": 5.118,
+      "passed": false,
+      "phase": 6,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `context_relationship` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 163,
+      "returnCode": 1
+    },
+    {
+      "category": "negative_ambiguity",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "AMBIGUOUS"
+        },
+        {
+          "op": "minLength",
+          "path": "result.candidates",
+          "value": 2
+        }
+      ],
+      "id": "negative-01-bare-parse-ambiguity",
+      "latencyMillis": 190.689,
+      "passed": false,
+      "phase": 3,
+      "response": {
+        "id": "negative-01-bare-parse-ambiguity",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 1131,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 13,
+                "name": ".#:analysis-server[main]",
+                "stale": 0,
+                "total": 13
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 9,
+                "name": ".#:analysis-server[test]",
+                "stale": 0,
+                "total": 9
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 19,
+                "name": ".#:backend-headless[main]",
+                "stale": 0,
+                "total": 19
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 2,
+                "name": ".#:backend-headless[test]",
+                "stale": 0,
+                "total": 2
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 55,
+                "name": ".#:backend-shared[main]",
+                "stale": 0,
+                "total": 55
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 7,
+                "name": ".#:backend-shared[test]",
+                "stale": 0,
+                "total": 7
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 33,
+                "name": ".#:index-store[main]",
+                "stale": 0,
+                "total": 33
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 10,
+                "name": ".#:index-store[test]",
+                "stale": 0,
+                "total": 10
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 11,
+                "name": "build-logic#:[main]",
+                "stale": 0,
+                "total": 543
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 5,
+                "name": "build-logic#:[test]",
+                "stale": 0,
+                "total": 5
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 532,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 599,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 22,
+                "name": ".#:analysis-server",
+                "stale": 0,
+                "total": 22
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 21,
+                "name": ".#:backend-headless",
+                "stale": 0,
+                "total": 21
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 62,
+                "name": ".#:backend-shared",
+                "stale": 0,
+                "total": 62
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:index-store",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 16,
+                "name": "build-logic#:",
+                "stale": 0,
+                "total": 548
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 1131
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Resolve parse.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "status": "EMPTY",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 4311,
+      "returnCode": 0
+    },
+    {
+      "category": "negative_ambiguity",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "AMBIGUOUS"
+        },
+        {
+          "op": "minLength",
+          "path": "result.candidates",
+          "value": 2
+        }
+      ],
+      "id": "negative-02-bare-sha-ambiguity",
+      "latencyMillis": 189.918,
+      "passed": false,
+      "phase": 3,
+      "response": {
+        "id": "negative-02-bare-sha-ambiguity",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 1131,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 13,
+                "name": ".#:analysis-server[main]",
+                "stale": 0,
+                "total": 13
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 9,
+                "name": ".#:analysis-server[test]",
+                "stale": 0,
+                "total": 9
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 19,
+                "name": ".#:backend-headless[main]",
+                "stale": 0,
+                "total": 19
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 2,
+                "name": ".#:backend-headless[test]",
+                "stale": 0,
+                "total": 2
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 55,
+                "name": ".#:backend-shared[main]",
+                "stale": 0,
+                "total": 55
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 7,
+                "name": ".#:backend-shared[test]",
+                "stale": 0,
+                "total": 7
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 33,
+                "name": ".#:index-store[main]",
+                "stale": 0,
+                "total": 33
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 10,
+                "name": ".#:index-store[test]",
+                "stale": 0,
+                "total": 10
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 11,
+                "name": "build-logic#:[main]",
+                "stale": 0,
+                "total": 543
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 5,
+                "name": "build-logic#:[test]",
+                "stale": 0,
+                "total": 5
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 532,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 599,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 22,
+                "name": ".#:analysis-server",
+                "stale": 0,
+                "total": 22
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 21,
+                "name": ".#:backend-headless",
+                "stale": 0,
+                "total": 21
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 62,
+                "name": ".#:backend-shared",
+                "stale": 0,
+                "total": 62
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:index-store",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 16,
+                "name": "build-logic#:",
+                "stale": 0,
+                "total": 548
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 1131
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Resolve sha256 without choosing between text, bytes, or semantic graph hashing.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "status": "EMPTY",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 4374,
+      "returnCode": 0
+    },
+    {
+      "category": "negative_ambiguity",
+      "critical": true,
+      "failedAssertions": [],
+      "id": "negative-03-complete-empty",
+      "latencyMillis": 224.2,
+      "passed": true,
+      "phase": 1,
+      "response": {
+        "id": "negative-03-complete-empty",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 1131,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 13,
+                "name": ".#:analysis-server[main]",
+                "stale": 0,
+                "total": 13
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 9,
+                "name": ".#:analysis-server[test]",
+                "stale": 0,
+                "total": 9
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 19,
+                "name": ".#:backend-headless[main]",
+                "stale": 0,
+                "total": 19
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 2,
+                "name": ".#:backend-headless[test]",
+                "stale": 0,
+                "total": 2
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 55,
+                "name": ".#:backend-shared[main]",
+                "stale": 0,
+                "total": 55
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 7,
+                "name": ".#:backend-shared[test]",
+                "stale": 0,
+                "total": 7
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 33,
+                "name": ".#:index-store[main]",
+                "stale": 0,
+                "total": 33
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 10,
+                "name": ".#:index-store[test]",
+                "stale": 0,
+                "total": 10
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 11,
+                "name": "build-logic#:[main]",
+                "stale": 0,
+                "total": 543
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 5,
+                "name": "build-logic#:[test]",
+                "stale": 0,
+                "total": 5
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 532,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 599,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 22,
+                "name": ".#:analysis-server",
+                "stale": 0,
+                "total": 22
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 21,
+                "name": ".#:backend-headless",
+                "stale": 0,
+                "total": 21
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 62,
+                "name": ".#:backend-shared",
+                "stale": 0,
+                "total": 62
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:index-store",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 16,
+                "name": "build-logic#:",
+                "stale": 0,
+                "total": 548
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 1131
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Does a Kotlin declaration named DefinitelyMissingRepositoryIntelligenceSymbol exist anywhere in the complete compilation scope?",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "status": "EMPTY",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 4418,
+      "returnCode": 0
+    },
+    {
+      "category": "negative_ambiguity",
+      "critical": true,
+      "failedAssertions": [],
+      "id": "negative-04-module-empty",
+      "latencyMillis": 147.444,
+      "passed": true,
+      "phase": 1,
+      "response": {
+        "id": "negative-04-module-empty",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": "backend-idea",
+            "sourceSet": "main"
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 93,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              }
+            ],
+            "complete": true,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": true,
+            "excluded": 0,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 93,
+            "limitations": [],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 93
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 93
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [],
+          "ordering": "canonicalKey ascending",
+          "qualification": null,
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Does backend-idea main contain a declaration named DefinitelyMissingBackendSymbol?",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": null,
+            "language": "kotlin",
+            "module": "backend-idea",
+            "sourceSet": "main"
+          },
+          "status": "EMPTY",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 2576,
+      "returnCode": 0
+    },
+    {
+      "category": "negative_ambiguity",
+      "critical": true,
+      "failedAssertions": [],
+      "id": "negative-05-incomplete-qualified-empty",
+      "latencyMillis": 224.108,
+      "passed": true,
+      "phase": 1,
+      "response": {
+        "id": "negative-05-incomplete-qualified-empty",
+        "jsonrpc": "2.0",
+        "result": {
+          "appliedFilters": {
+            "fixture": "incomplete-coverage",
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "bounds": {
+            "depth": 6,
+            "evidence": 5,
+            "results": 50
+          },
+          "continuation": null,
+          "coverage": {
+            "accounted": 1131,
+            "compilations": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 263,
+                "name": ".#:analysis-api[main]",
+                "stale": 0,
+                "total": 263
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 4,
+                "name": ".#:analysis-api[testFixtures]",
+                "stale": 0,
+                "total": 4
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:analysis-api[test]",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 13,
+                "name": ".#:analysis-server[main]",
+                "stale": 0,
+                "total": 13
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 9,
+                "name": ".#:analysis-server[test]",
+                "stale": 0,
+                "total": 9
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 19,
+                "name": ".#:backend-headless[main]",
+                "stale": 0,
+                "total": 19
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 2,
+                "name": ".#:backend-headless[test]",
+                "stale": 0,
+                "total": 2
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 93,
+                "name": ".#:backend-idea[main]",
+                "stale": 0,
+                "total": 93
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 32,
+                "name": ".#:backend-idea[test]",
+                "stale": 0,
+                "total": 32
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 55,
+                "name": ".#:backend-shared[main]",
+                "stale": 0,
+                "total": 55
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 7,
+                "name": ".#:backend-shared[test]",
+                "stale": 0,
+                "total": 7
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 33,
+                "name": ".#:index-store[main]",
+                "stale": 0,
+                "total": 33
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 10,
+                "name": ".#:index-store[test]",
+                "stale": 0,
+                "total": 10
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 11,
+                "name": "build-logic#:[main]",
+                "stale": 0,
+                "total": 543
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 5,
+                "name": "build-logic#:[test]",
+                "stale": 0,
+                "total": 5
+              }
+            ],
+            "complete": false,
+            "eligibilityProven": true,
+            "eligibleForCompleteNegative": false,
+            "excluded": 532,
+            "failed": 0,
+            "indexModules": [
+              {
+                "indexedFileCount": 310,
+                "name": ":analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 310
+              },
+              {
+                "indexedFileCount": 22,
+                "name": ":analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 22
+              },
+              {
+                "indexedFileCount": 21,
+                "name": ":backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 21
+              },
+              {
+                "indexedFileCount": 125,
+                "name": ":backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 125
+              },
+              {
+                "indexedFileCount": 62,
+                "name": ":backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 62
+              },
+              {
+                "indexedFileCount": 16,
+                "name": ":build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 16
+              },
+              {
+                "indexedFileCount": 43,
+                "name": ":index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 43
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "build-logic",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 532,
+                "name": "build-logic.main",
+                "status": "COMPLETE",
+                "totalFileCount": 532
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-api",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.analysis-server",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-headless",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-idea",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.backend-shared",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              },
+              {
+                "indexedFileCount": 0,
+                "name": "kast.index-store",
+                "status": "COMPLETE",
+                "totalFileCount": 0
+              }
+            ],
+            "indexed": 599,
+            "limitations": [
+              "REQUESTED_SCOPE_INCOMPLETE"
+            ],
+            "modules": [
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 310,
+                "name": ".#:analysis-api",
+                "stale": 0,
+                "total": 310
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 22,
+                "name": ".#:analysis-server",
+                "stale": 0,
+                "total": 22
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 21,
+                "name": ".#:backend-headless",
+                "stale": 0,
+                "total": 21
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 125,
+                "name": ".#:backend-idea",
+                "stale": 0,
+                "total": 125
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 62,
+                "name": ".#:backend-shared",
+                "stale": 0,
+                "total": 62
+              },
+              {
+                "excluded": 0,
+                "failed": 0,
+                "indexed": 43,
+                "name": ".#:index-store",
+                "stale": 0,
+                "total": 43
+              },
+              {
+                "excluded": 532,
+                "failed": 0,
+                "indexed": 16,
+                "name": "build-logic#:",
+                "stale": 0,
+                "total": 548
+              }
+            ],
+            "pendingUpdateCount": 0,
+            "stale": 0,
+            "total": 1131
+          },
+          "generation": 647,
+          "intent": "resolve",
+          "nodes": [],
+          "ordering": "canonicalKey ascending",
+          "qualification": "No matching declaration was found in the completely accounted indexed portion of this scope.",
+          "queryPlan": {
+            "candidateLookup": "deterministic declaration-name match",
+            "execution": "generation-pinned source-index",
+            "intent": "RESOLVE"
+          },
+          "question": "Within a deliberately incomplete Kotlin compilation scope, find DefinitelyMissingPartialSymbol.",
+          "schemaVersion": 5,
+          "scope": {
+            "fixture": "incomplete-coverage",
+            "language": "kotlin",
+            "module": null,
+            "sourceSet": null
+          },
+          "status": "QUALIFIED_EMPTY",
+          "truncated": false,
+          "type": "KAST_REPOSITORY_QUERY_RESULT"
+        }
+      },
+      "responseBytes": 4562,
+      "returnCode": 0
+    },
+    {
+      "category": "negative_ambiguity",
+      "critical": true,
+      "failedAssertions": [
+        {
+          "op": "eq",
+          "path": "result.status",
+          "value": "EMPTY"
+        },
+        {
+          "op": "eq",
+          "path": "result.coverage.complete",
+          "value": true
+        },
+        {
+          "op": "minLength",
+          "path": "result.edges",
+          "value": 0
+        },
+        {
+          "op": "eq",
+          "path": "result.appliedFilters.relations",
+          "value": [
+            "CALLS"
+          ]
+        }
+      ],
+      "id": "negative-06-wrong-direction-empty",
+      "latencyMillis": 5.912,
+      "passed": false,
+      "phase": 2,
+      "response": {
+        "code": "REPOSITORY_INTENT_UNAVAILABLE",
+        "message": "repository intent `outgoing_impact` is not implemented yet",
+        "ok": false,
+        "schemaVersion": 5
+      },
+      "responseBytes": 158,
+      "returnCode": 1
+    }
+  ],
+  "schemaVersion": 1,
+  "summary": {
+    "categories": {
+      "architecture": {
+        "passed": 0,
+        "total": 6
+      },
+      "context": {
+        "passed": 0,
+        "total": 6
+      },
+      "directional_path": {
+        "passed": 0,
+        "total": 6
+      },
+      "discovery": {
+        "passed": 0,
+        "total": 6
+      },
+      "exact_identity": {
+        "passed": 0,
+        "total": 6
+      },
+      "impact": {
+        "passed": 0,
+        "total": 6
+      },
+      "negative_ambiguity": {
+        "passed": 3,
+        "total": 6
+      }
+    },
+    "criticalFailures": [
+      "exact-01-semantic-graph-sha-parse",
+      "exact-02-symbol-key-parse",
+      "exact-03-source-path-parse",
+      "exact-04-string-sha-overload",
+      "exact-05-byte-array-sha-overload",
+      "exact-06-workspace-page-token-parse",
+      "path-01-known-sha-chain",
+      "path-02-operation-to-snapshot",
+      "path-03-snapshot-to-extractor",
+      "path-04-snapshot-to-store-write",
+      "path-05-store-write-to-preparation",
+      "path-06-symbol-to-signature",
+      "impact-01-sha-parse-callers",
+      "impact-02-snapshot-outgoing",
+      "impact-03-store-write-callers",
+      "impact-04-ensure-schema-outgoing",
+      "impact-05-scope-fingerprint-callers",
+      "impact-06-symbol-builder-outgoing",
+      "negative-01-bare-parse-ambiguity",
+      "negative-02-bare-sha-ambiguity",
+      "negative-06-wrong-direction-empty"
+    ],
+    "deterministic": true,
+    "questions": {
+      "passed": 3,
+      "total": 42
+    },
+    "status": "fail"
+  }
+}

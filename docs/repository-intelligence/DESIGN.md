@@ -36,6 +36,21 @@ The default answer is the smallest evidence subgraph that satisfies the query.
 Richer node metadata and complete occurrence sets are explicit bounded
 projections.
 
+## Kotlin coverage contract
+
+`graph/coverage` joins the existing Gradle-aware `WorkspaceIndexSnapshot` to
+the generation-pinned `semantic_files` table. Each expected Kotlin file has
+exactly one closed state: `INDEXED`, `EXCLUDED`, `FAILED`, or `STALE`.
+Generated sources under Gradle's `build/generated-sources` tree are explicit
+`GENERATED_SOURCE` exclusions; missing or non-authoritative semantic rows are
+structured failures; content-hash divergence is stale. Complete negative
+answers are permitted only when inventory eligibility, module progress,
+pending updates, and every eligible file are complete at the same generation.
+
+The frozen snapshot accounts for 1,131 Gradle-associated Kotlin files. Its
+599 eligible sources are indexed, and 532 Kotlin-DSL generated accessors are
+explicitly excluded. No eligible file is silently omitted.
+
 ## Frozen baseline
 
 The benchmark owns two detached worktrees at commit

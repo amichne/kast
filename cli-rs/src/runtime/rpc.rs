@@ -89,6 +89,12 @@ fn try_handle_local_raw_rpc(
     raw_request: &str,
     requested_workspace_root: Option<PathBuf>,
 ) -> Result<Option<String>> {
+    if let Some(response) = crate::repository_intelligence::try_handle_raw_rpc(
+        raw_request,
+        requested_workspace_root.clone(),
+    )? {
+        return Ok(Some(response));
+    }
     if let Some(response) =
         crate::metrics::try_handle_raw_rpc(raw_request, requested_workspace_root.clone())?
     {

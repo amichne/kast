@@ -1,0 +1,14 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "repository/query",
+  "params": {
+    "intent": "example-intent",
+    "limits": {
+      "depth": 2,
+      "evidence": 1,
+      "results": 1
+    },
+    "question": "example-question"
+  }
+}

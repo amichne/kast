@@ -68,6 +68,7 @@ fn public_cli_exposes_setup_and_no_retired_install_mutators() {
         "setup",
         "ready",
         "status",
+        "rpc",
         "developer",
         "agent",
     ] {

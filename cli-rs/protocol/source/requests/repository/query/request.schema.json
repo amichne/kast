@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "repository/query"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": false,
+      "properties": {
+        "intent": {
+          "type": "string"
+        },
+        "limits": {
+          "additionalProperties": false,
+          "properties": {
+            "depth": {
+              "type": "integer"
+            },
+            "evidence": {
+              "type": "integer"
+            },
+            "results": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "depth",
+            "results",
+            "evidence"
+          ],
+          "type": "object"
+        },
+        "question": {
+          "type": "string"
+        },
+        "scope": {
+          "additionalProperties": false,
+          "properties": {
+            "language": {
+              "type": "string"
+            },
+            "module": {
+              "type": "string"
+            },
+            "sourceSet": {
+              "type": "string"
+            }
+          },
+          "type": "object"
+        },
+        "workspaceRoot": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "question",
+        "intent",
+        "limits"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast repository/query JSON-RPC request",
+  "type": "object"
+}

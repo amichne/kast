@@ -103,7 +103,7 @@
     }
   },
   "commands": {
-    "FAST_CHECK": "cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_graph_smoke && python3 scripts/benchmark-native-graph.py --self-test && ./benchmarks/repository-intelligence/run.sh --self-test && python3 benchmarks/repository-intelligence/run_graphify.py --self-test",
+    "FAST_CHECK": "cargo test --manifest-path cli-rs/Cargo.toml --locked --test agent_graph_smoke --test repository_intelligence_smoke && python3 scripts/benchmark-native-graph.py --self-test && ./benchmarks/repository-intelligence/run.sh --self-test && python3 benchmarks/repository-intelligence/run_graphify.py --self-test",
     "FULL_CHECK": "./gradlew test --no-daemon && cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check && cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings && cargo test --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features",
     "BENCHMARK": "./benchmarks/repository-intelligence/run.sh --assert --repeat 2",
     "BUILD_BRANCH_CLI": "./gradlew buildDevelopmentCli --no-daemon",

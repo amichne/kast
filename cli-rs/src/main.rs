@@ -15,6 +15,7 @@ mod metrics_database;
 mod output;
 mod package;
 mod protocol_schema_versions;
+mod repository_intelligence;
 mod rpc;
 mod runtime;
 mod self_mgmt;
@@ -227,10 +228,18 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
         Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
         Command::Stop(args) => run_runtime(cli::RuntimeCommand::Stop(args), output_format),
         Command::Demo(args) => demo::run_public(args, output_format),
+        Command::Rpc(args) => run_rpc(args),
         Command::Developer(args) => run_developer(args.command, output_format),
         Command::Doctor(args) => run_ready(args.into(), output_format),
         Command::Agent(args) => run_agent(args, output_format),
     }
+}
+
+fn run_rpc(args: cli::RpcArgs) -> Result<i32> {
+    let response =
+        runtime::raw_request_passthrough(args.request, args.workspace_root, args.backend_name)?;
+    println!("{response}");
+    Ok(0)
 }
 
 #[derive(Debug, Serialize)]

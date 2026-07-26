@@ -49,6 +49,8 @@ pub enum Command {
     Stop(RuntimeArgs),
     /// Explore a guided semantic story from this Kotlin repository.
     Demo(PublicDemoArgs),
+    /// Send one JSON-RPC request through Kast's canonical machine surface.
+    Rpc(RpcArgs),
     /// Developer and release-engineering commands.
     Developer(DeveloperArgs),
     /// Backward-compatible alias for `ready`. Used by kast-action v2.
@@ -56,6 +58,19 @@ pub enum Command {
     Doctor(DoctorArgs),
     /// Agent setup, readiness, and pipe-friendly semantic requests.
     Agent(AgentArgs),
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct RpcArgs {
+    /// Absolute workspace root for local database or backend requests.
+    #[arg(long)]
+    pub workspace_root: Option<PathBuf>,
+    /// Pin backend-routed requests to one runtime.
+    #[arg(long = "backend", value_enum)]
+    pub backend_name: Option<BackendName>,
+    /// Complete JSON-RPC request object.
+    #[arg(long)]
+    pub request: String,
 }
 
 #[derive(Debug, Args, Clone)]

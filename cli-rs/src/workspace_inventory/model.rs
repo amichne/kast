@@ -97,7 +97,6 @@ impl SourceIndexGeneration {
     }
 }
 
-#[cfg(test)]
 impl SourceIndexGeneration {
     pub(crate) fn value(self) -> u64 {
         self.0
@@ -131,7 +130,6 @@ impl SourceIndexModuleName {
     }
 }
 
-#[cfg(test)]
 impl SourceIndexModuleName {
     pub(crate) fn as_str(&self) -> &str {
         &self.0
@@ -154,6 +152,15 @@ impl SourceIndexProgressStatus {
             "COMPLETE" => Some(Self::Complete),
             "FAILED" => Some(Self::Failed),
             _ => None,
+        }
+    }
+
+    pub(crate) fn canonical(self) -> &'static str {
+        match self {
+            Self::Pending => "PENDING",
+            Self::Indexing => "INDEXING",
+            Self::Complete => "COMPLETE",
+            Self::Failed => "FAILED",
         }
     }
 }
@@ -192,14 +199,12 @@ impl SourceIndexModuleProgress {
     pub(crate) fn total_file_count(&self) -> u64 {
         self.total_file_count
     }
-}
 
-#[cfg(test)]
-impl SourceIndexModuleProgress {
     pub(crate) fn module_name(&self) -> &SourceIndexModuleName {
         &self.module_name
     }
 
+    #[cfg(test)]
     fn is_exact(&self) -> bool {
         self.status == SourceIndexProgressStatus::Complete
             && self.indexed_file_count == self.total_file_count
@@ -238,12 +243,12 @@ impl SourceIndexSnapshotStamp {
     }
 }
 
-#[cfg(test)]
 impl SourceIndexSnapshotStamp {
     pub(crate) fn generation(&self) -> SourceIndexGeneration {
         self.generation
     }
 
+    #[cfg(test)]
     pub(crate) fn is_exact(&self) -> bool {
         self.progress_compatible
             && !self.module_progress.is_empty()
