@@ -44,7 +44,7 @@ so the page exposes the internal JSON-RPC catalog used by typed
 families, flow-oriented building blocks, and request fields that
 callers compose into larger automation flows.
 
-Catalog version: `dev`. Methods: `43`.
+Catalog version: `dev`. Methods: `45`.
 
 #### Method families
 
@@ -56,6 +56,8 @@ The families below are internal JSON-RPC namespaces, not public CLI commands.
 | `mutation` | Cataloged JSON-RPC methods. | backend | `mutation/submit` |
 | `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`selector/identity`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/implementations`<br>`symbol/hierarchy`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
 | `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/semantic-graph`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
+| `graph` | Cataloged JSON-RPC methods. | sqlite | `graph/coverage` |
+| `repository` | Cataloged JSON-RPC methods. | sqlite | `repository/query` |
 | `database` | Source-index queries for metrics and impact views. | sqlite | `database/metrics` |
 
 #### Composition building blocks
@@ -123,6 +125,8 @@ uses a discriminated response envelope.
 | `raw/implementations` | `raw` | backend | Find concrete implementations and subclasses for a declaration | `position` | `maxResults` | `ImplementationsResult` | single result |
 | `raw/code-actions` | `raw` | backend | Return available code actions at a file position | `position` | `diagnosticCode` | `CodeActionsResult` | single result |
 | `raw/completions` | `raw` | backend | Return completion candidates available at a file position | `position` | `maxResults`<br>`kindFilter` | `CompletionsResult` | single result |
+| `graph/coverage` | `graph` | sqlite | Report generation-pinned Kotlin graph coverage by file, module, and compilation | none | `workspaceRoot`<br>`scope`<br>`afterPath`<br>`limit` | `KastGraphCoverageResult` | single result |
+| `repository/query` | `repository` | sqlite | Answer one bounded repository question with visible scope, coverage, and evidence | `question`<br>`intent`<br>`limits` | `workspaceRoot`<br>`scope`<br>`evidenceContinuation` | `KastRepositoryQueryResult` | single result |
 | `database/metrics` | `database` | sqlite | Query source-index metrics | `metric` | `workspaceRoot`<br>`limit`<br>`symbol`<br>`depth`<br>`offset`<br>`subject`<br>`fileGlob`<br>`folderFilter` | `RustMetricsResponse` | `METRICS_SUCCESS`<br>`METRICS_FAILURE` |
 
 #### Command field details
@@ -810,6 +814,46 @@ Response type: `CodeActionsResult`.
 | `kindFilter` | `array of string` | no | yes |  |
 
 Response type: `CompletionsResult`.
+
+</details>
+
+<details markdown="1">
+<summary><code>graph/coverage</code> - Report generation-pinned Kotlin graph coverage by file, module, and compilation</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `scope` | `object` | no | no |  |
+| `afterPath` | `string` | no | yes |  |
+| `limit` | `integer` | no | no |  |
+
+Response type: `KastGraphCoverageResult`.
+
+Notes:
+
+- Every compilation-owned Kotlin file is classified as indexed, excluded, failed, or stale.
+- Complete negative answers require complete eligible coverage at the returned generation.
+
+</details>
+
+<details markdown="1">
+<summary><code>repository/query</code> - Answer one bounded repository question with visible scope, coverage, and evidence</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `workspaceRoot` | `string` | no | yes |  |
+| `question` | `string` | yes | no |  |
+| `intent` | `string` | yes | no | `resolve`<br>`path`<br>`incoming_impact`<br>`outgoing_impact` |
+| `scope` | `object` | no | no |  |
+| `evidenceContinuation` | `object` | no | no |  |
+| `limits` | `object` | yes | no |  |
+
+Response type: `KastRepositoryQueryResult`.
+
+Notes:
+
+- Approximate discovery terminates in exact canonical identities or bounded ambiguity.
+- Every response exposes generation, scope, coverage, filters, bounds, ordering, truncation, and continuation.
 
 </details>
 

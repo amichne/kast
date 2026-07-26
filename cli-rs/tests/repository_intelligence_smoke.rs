@@ -256,3 +256,229 @@ fn repository_negative_answers_follow_coverage_state() {
         false
     );
 }
+
+#[test]
+fn repository_paths_carry_exact_identity_occurrences_and_derivations() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    fixture
+        .connection()
+        .execute_batch(
+            "
+            CREATE TABLE semantic_types (
+                id INTEGER PRIMARY KEY,
+                stable_key TEXT NOT NULL UNIQUE,
+                kind TEXT NOT NULL,
+                classifier TEXT,
+                nullability TEXT NOT NULL,
+                debug_text TEXT NOT NULL,
+                flexible_lower_id INTEGER,
+                flexible_upper_id INTEGER,
+                receiver_type_id INTEGER,
+                return_type_id INTEGER
+            );
+            CREATE TABLE semantic_symbols (
+                id INTEGER PRIMARY KEY,
+                stable_key TEXT NOT NULL UNIQUE,
+                file_id INTEGER NOT NULL,
+                owner_id INTEGER,
+                kind TEXT NOT NULL,
+                name TEXT NOT NULL,
+                fq_name TEXT,
+                signature TEXT,
+                visibility TEXT NOT NULL DEFAULT 'PUBLIC',
+                modality TEXT,
+                origin TEXT NOT NULL DEFAULT 'SOURCE',
+                is_expect INTEGER NOT NULL DEFAULT 0,
+                is_actual INTEGER NOT NULL DEFAULT 0,
+                is_override INTEGER NOT NULL DEFAULT 0,
+                is_sealed INTEGER NOT NULL DEFAULT 0,
+                is_delegated INTEGER NOT NULL DEFAULT 0,
+                declared_type_id INTEGER,
+                receiver_type_id INTEGER,
+                return_type_id INTEGER,
+                start_offset INTEGER NOT NULL,
+                end_offset INTEGER NOT NULL,
+                line INTEGER NOT NULL
+            );
+            CREATE TABLE semantic_symbol_annotations (
+                symbol_id INTEGER NOT NULL,
+                annotation_name TEXT NOT NULL,
+                PRIMARY KEY(symbol_id, annotation_name)
+            );
+            CREATE TABLE semantic_edge_occurrences (
+                id INTEGER PRIMARY KEY,
+                source_id INTEGER NOT NULL,
+                target_id INTEGER NOT NULL,
+                source_file_id INTEGER NOT NULL,
+                kind TEXT NOT NULL,
+                context TEXT NOT NULL,
+                resolved_target_id INTEGER,
+                start_offset INTEGER NOT NULL,
+                end_offset INTEGER NOT NULL,
+                line INTEGER NOT NULL
+            );
+            INSERT INTO semantic_types
+                (id, stable_key, kind, classifier, nullability, debug_text)
+                VALUES (1, 'type:kotlin.String', 'CLASS', 'kotlin.String', 'NON_NULL', 'String');
+            INSERT INTO semantic_symbols
+                (id, stable_key, file_id, owner_id, kind, name, fq_name, signature, return_type_id, start_offset, end_offset, line)
+                VALUES
+                (1, 'class:SemanticGraphSha256', 1, NULL, 'CLASS', 'SemanticGraphSha256', 'sample.SemanticGraphSha256', NULL, NULL, 0, 100, 1),
+                (2, 'object:SemanticGraphSha256.Companion', 1, 1, 'OBJECT', 'Companion', 'sample.SemanticGraphSha256.Companion', NULL, NULL, 10, 90, 2),
+                (3, 'callable:semanticGraphOperation', 1, NULL, 'FUNCTION', 'semanticGraphOperation', 'sample.semanticGraphOperation', 'sample.semanticGraphOperation|-|||0', NULL, 100, 200, 10),
+                (4, 'callable:buildSemanticGraphSnapshot', 1, NULL, 'FUNCTION', 'buildSemanticGraphSnapshot', 'sample.buildSemanticGraphSnapshot', 'sample.buildSemanticGraphSnapshot|-|||0', NULL, 210, 400, 20),
+                (5, 'local:hash', 1, 4, 'PROPERTY', 'hash', NULL, NULL, NULL, 250, 300, 25),
+                (6, 'callable:SemanticGraphSha256.parse', 1, 2, 'MEMBER_FUNCTION', 'parse', 'sample.SemanticGraphSha256.Companion.parse', 'sample.SemanticGraphSha256.Companion.parse|-||kotlin.String|0', 1, 40, 80, 4),
+                (7, 'callable:calls', 1, NULL, 'FUNCTION', 'calls', 'sample.calls', 'sample.calls|-|||0', NULL, 410, 420, 41);
+            INSERT INTO semantic_edge_occurrences
+                (id, source_id, target_id, source_file_id, kind, context, resolved_target_id, start_offset, end_offset, line)
+                VALUES
+                (1, 3, 4, 1, 'CALLS', 'CALL', 4, 150, 170, 15),
+                (2, 4, 5, 1, 'CONTAINS', 'NONE', 5, 250, 300, 25),
+                (3, 5, 6, 1, 'CALLS', 'CALL', 6, 270, 280, 27),
+                (4, 5, 6, 1, 'CALLS', 'CALL', 6, 281, 290, 28),
+                (5, 5, 6, 1, 'CALLS', 'CALL', 6, 291, 300, 29);
+            ",
+        )
+        .expect("semantic graph facts");
+
+    let (_, exact) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "exact",
+            "method": "repository/query",
+            "params": {
+                "question": "Resolve SemanticGraphSha256.parse exactly.",
+                "intent": "resolve",
+                "scope": {"language": "kotlin"},
+                "limits": {"depth": 6, "results": 10, "evidence": 5}
+            }
+        }),
+    );
+    assert_eq!(exact["result"]["status"], "ANSWERED", "{exact:#}");
+    assert_eq!(exact["result"]["nodes"][0]["name"], "parse");
+    assert_eq!(
+        exact["result"]["nodes"][0]["ownerName"],
+        "SemanticGraphSha256"
+    );
+    assert_eq!(
+        exact["result"]["nodes"][0]["parameterTypes"],
+        serde_json::json!(["kotlin.String"])
+    );
+
+    let (_, path) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "path",
+            "method": "repository/query",
+            "params": {
+                "question": "Trace outgoing CALLS from semanticGraphOperation to SemanticGraphSha256.parse.",
+                "intent": "path",
+                "scope": {
+                    "language": "kotlin",
+                    "relations": ["CALLS"],
+                    "direction": "OUTGOING"
+                },
+                "limits": {"depth": 6, "results": 10, "evidence": 1}
+            }
+        }),
+    );
+    assert_eq!(path["result"]["status"], "ANSWERED", "{path:#}");
+    assert!(path["result"]["paths"].as_array().is_some_and(|paths| {
+        paths.iter().any(|path| {
+            path["nodes"].as_array().is_some_and(|nodes| {
+                nodes
+                    .first()
+                    .is_some_and(|node| node["name"] == "semanticGraphOperation")
+                    && nodes.last().is_some_and(|node| node["name"] == "parse")
+            })
+        })
+    }));
+    assert!(path["result"]["edges"].as_array().is_some_and(|edges| {
+        edges.iter().all(|edge| {
+            edge["occurrences"]
+                .as_array()
+                .is_some_and(|values| !values.is_empty())
+                || edge["derivation"].is_object()
+        })
+    }));
+    assert!(path["result"]["edges"].as_array().is_some_and(|edges| {
+        edges.iter().any(|edge| {
+            edge["evidenceClass"] == "compiler"
+                && edge["derivation"]["rule"] == "LIFT_LOCAL_CALL_TO_CALLABLE_OWNER"
+        })
+    }));
+    let derived_edge = path["result"]["edges"]
+        .as_array()
+        .and_then(|edges| {
+            edges
+                .iter()
+                .find(|edge| edge["derivation"]["rule"] == "LIFT_LOCAL_CALL_TO_CALLABLE_OWNER")
+        })
+        .expect("derived path edge");
+    assert_eq!(derived_edge["occurrenceCount"], 3);
+    assert_eq!(derived_edge["evidenceTruncated"], true);
+    let continuation = derived_edge["evidenceContinuation"].clone();
+    assert!(continuation.is_object());
+
+    let (_, remaining_evidence) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "remaining-evidence",
+            "method": "repository/query",
+            "params": {
+                "question": "Trace outgoing CALLS from semanticGraphOperation to SemanticGraphSha256.parse.",
+                "intent": "path",
+                "scope": {
+                    "language": "kotlin",
+                    "relations": ["CALLS"],
+                    "direction": "OUTGOING"
+                },
+                "limits": {"depth": 6, "results": 10, "evidence": 10},
+                "evidenceContinuation": continuation
+            }
+        }),
+    );
+    assert_eq!(
+        remaining_evidence["result"]["edges"][0]["occurrences"]
+            .as_array()
+            .map(Vec::len),
+        Some(2),
+        "{remaining_evidence:#}"
+    );
+    assert_eq!(
+        remaining_evidence["result"]["edges"][0]["evidenceTruncated"],
+        false
+    );
+    assert!(remaining_evidence["result"]["continuation"].is_null());
+
+    let (_, wrong_direction) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "wrong-direction",
+            "method": "repository/query",
+            "params": {
+                "question": "List outgoing CALLS made by SemanticGraphSha256.parse.",
+                "intent": "outgoing_impact",
+                "scope": {"language": "kotlin", "relations": ["CALLS"], "maxDepth": 1},
+                "limits": {"depth": 6, "results": 10, "evidence": 5}
+            }
+        }),
+    );
+    assert_eq!(
+        wrong_direction["result"]["status"], "EMPTY",
+        "{wrong_direction:#}"
+    );
+}

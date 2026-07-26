@@ -1,13 +1,13 @@
 # Repository Intelligence Execution State
 
 - Benchmark corpus commit: `2c630d3d156574eb4548fd97df3bd61fe9deb1a6`
-- Active implementation commit: `b28b3a0e89e4c491547ce27e3f90217f3d425997` plus the current Phase 1 worktree
-- Current phase: Phase 2 — proof-carrying graph results
-- Last passing fast check: canonical `FAST_CHECK` passed for Phase 1 on 2026-07-26
-- Last passing full check: canonical `FULL_CHECK` passed for Phase 1 on 2026-07-26 (`./gradlew test`, Rust format, clippy, and all-target tests)
-- Last benchmark result: Phase 1 passes 3/42, including all three Phase 1 assertions; later-phase assertions remain RED
+- Active implementation commit: `4498ff90b0dda8d3fb22e5854aa6d6583ebb720a` plus the current Phase 2 worktree
+- Current phase: Phase 3 — natural-language discovery
+- Last passing fast check: canonical `FAST_CHECK` passed for Phase 2 on 2026-07-26
+- Last passing full check: canonical `FULL_CHECK` passed for Phase 2 on 2026-07-26 (`./gradlew test`, Rust format, clippy, and all-target tests)
+- Last benchmark result: Phase 2 passes 22/42 cumulatively, including every Phase 1 and Phase 2 assertion; Phase 3 through Phase 5 assertions remain RED
 - Current blocker, if any: none
-- Next concrete action: commit and push the verified Phase 1 boundary, then add the focused Phase 2 relationship-evidence RED
+- Next concrete action: commit and push the verified Phase 2 boundary, then add the focused Phase 3 ambiguity and ranked-discovery RED
 - Known scope exceptions: the frozen commit contains 599 Gradle-compilation-owned `.kt` files and 18 `.kts` scripts; the task's older observation of 1,145 discoverable Kotlin files is not present in this snapshot
 
 ## Canonical Commands
@@ -33,3 +33,13 @@
 - Missing graph rows, stale content hashes, unavailable ownership metadata, module/source-set filters, complete negatives, and qualified negatives have focused executable coverage.
 - Persisted Phase 1 result: `benchmarks/repository-intelligence/results/phase1.json`.
 - Branch CLI `0.16.1-7-gb28b3a0e` built, installed with its matching IDEA plugin, and reached `READY` on the exact frozen root after a forced IntelliJ restart.
+
+## Phase 2 Evidence
+
+- `repository/query` resolves exact overloaded identities and projects compiler metadata, typed directions, relation filters, occurrence locations, counts, and explicit local-owner derivations from the existing semantic SQLite authority.
+- Targeted paths select a deterministic question-relevant route within the requested depth; the permanent four-hop `semanticGraphOperation` to `SemanticGraphSha256.parse(String)` scope-hashing chain passes with one inspectable compiler occurrence per hop.
+- Truncated per-edge occurrence samples return an identity-bound cursor. The focused proof retrieves a three-occurrence derived edge as one occurrence followed by the remaining two, with no terminal continuation.
+- Every response exposes canonical workspace identity, generation 695, complete coverage, scope, filters, bounds, stable ordering, truncation, and continuation state.
+- Two normalized frozen-corpus runs are deterministic and pass all 19 Phase 2 questions. Across the 22 cumulative Phase 1–2 questions, median latency is 239.814 ms, p95 latency is 292.906 ms, median response size is 10,158 bytes, and maximum response size is 226,406 bytes.
+- Persisted Phase 2 result: `benchmarks/repository-intelligence/results/phase2.json` (`sha256:5f5e01e8b496031fc14f94561e95ec6eec2a156682241177e2b637011e0e2a3e`).
+- Branch CLI and IDEA plugin `0.16.1-8-g4498ff90` were installed from the verified Phase 2 worktree after force-stopping PID 63967; the golden runtime reopened only the frozen root and reached `READY` on PID 77605.

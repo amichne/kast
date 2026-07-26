@@ -3,7 +3,15 @@
   "jsonrpc": "2.0",
   "method": "repository/query",
   "params": {
-    "intent": "example-intent",
+    "evidenceContinuation": {
+      "afterOccurrenceId": 1,
+      "context": "example-context",
+      "derived": true,
+      "kind": "SEALED_MEMBER",
+      "sourceKey": "example-sourceKey",
+      "targetKey": "example-targetKey"
+    },
+    "intent": "outgoing_impact",
     "limits": {
       "depth": 2,
       "evidence": 1,
@@ -11,8 +19,13 @@
     },
     "question": "example-question",
     "scope": {
+      "direction": "OUTGOING",
       "language": "example-language",
+      "maxDepth": 2,
       "module": "example-module",
+      "relations": [
+        "SEALED_MEMBER"
+      ],
       "sourceSet": "main"
     },
     "workspaceRoot": "/absolute/path/to/workspace"

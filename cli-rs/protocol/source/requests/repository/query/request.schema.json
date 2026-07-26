@@ -30,7 +30,57 @@
     "params": {
       "additionalProperties": false,
       "properties": {
+        "evidenceContinuation": {
+          "additionalProperties": false,
+          "properties": {
+            "afterOccurrenceId": {
+              "type": "integer"
+            },
+            "context": {
+              "type": "string"
+            },
+            "derived": {
+              "type": "boolean"
+            },
+            "kind": {
+              "enum": [
+                "CALLS",
+                "CASE_OF",
+                "CONTAINS",
+                "DELEGATES",
+                "IMPLEMENTS",
+                "INHERITS",
+                "METHOD",
+                "OVERRIDES",
+                "REFERENCES",
+                "SEALED_MEMBER"
+              ],
+              "type": "string"
+            },
+            "sourceKey": {
+              "type": "string"
+            },
+            "targetKey": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "sourceKey",
+            "targetKey",
+            "kind",
+            "context",
+            "derived",
+            "afterOccurrenceId"
+          ],
+          "type": "object"
+        },
         "intent": {
+          "enum": [
+            "resolve",
+            "path",
+            "incoming_impact",
+            "outgoing_impact"
+          ],
           "type": "string"
         },
         "limits": {
@@ -59,11 +109,39 @@
         "scope": {
           "additionalProperties": false,
           "properties": {
+            "direction": {
+              "enum": [
+                "INCOMING",
+                "OUTGOING"
+              ],
+              "type": "string"
+            },
             "language": {
               "type": "string"
             },
+            "maxDepth": {
+              "type": "integer"
+            },
             "module": {
               "type": "string"
+            },
+            "relations": {
+              "items": {
+                "enum": [
+                  "CALLS",
+                  "CASE_OF",
+                  "CONTAINS",
+                  "DELEGATES",
+                  "IMPLEMENTS",
+                  "INHERITS",
+                  "METHOD",
+                  "OVERRIDES",
+                  "REFERENCES",
+                  "SEALED_MEMBER"
+                ],
+                "type": "string"
+              },
+              "type": "array"
             },
             "sourceSet": {
               "type": "string"

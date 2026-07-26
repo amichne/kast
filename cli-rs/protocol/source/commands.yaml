@@ -909,7 +909,46 @@ commands:
     - Every response exposes generation, scope, coverage, filters, bounds, ordering, truncation, and continuation.
     request:
       fields:
+        evidenceContinuation:
+          fields:
+            afterOccurrenceId:
+              type: integer
+            context:
+              type: string
+            derived:
+              type: boolean
+            kind:
+              enum:
+              - CALLS
+              - CASE_OF
+              - CONTAINS
+              - DELEGATES
+              - IMPLEMENTS
+              - INHERITS
+              - METHOD
+              - OVERRIDES
+              - REFERENCES
+              - SEALED_MEMBER
+              type: string
+            sourceKey:
+              type: string
+            targetKey:
+              type: string
+          optional: true
+          required:
+          - sourceKey
+          - targetKey
+          - kind
+          - context
+          - derived
+          - afterOccurrenceId
+          type: object
         intent:
+          enum:
+          - resolve
+          - path
+          - incoming_impact
+          - outgoing_impact
           type: string
         limits:
           fields:
@@ -928,12 +967,37 @@ commands:
           type: string
         scope:
           fields:
+            direction:
+              enum:
+              - INCOMING
+              - OUTGOING
+              optional: true
+              type: string
             language:
               optional: true
               type: string
+            maxDepth:
+              optional: true
+              type: integer
             module:
               optional: true
               type: string
+            relations:
+              items:
+                enum:
+                - CALLS
+                - CASE_OF
+                - CONTAINS
+                - DELEGATES
+                - IMPLEMENTS
+                - INHERITS
+                - METHOD
+                - OVERRIDES
+                - REFERENCES
+                - SEALED_MEMBER
+                type: string
+              optional: true
+              type: array
             sourceSet:
               optional: true
               type: string

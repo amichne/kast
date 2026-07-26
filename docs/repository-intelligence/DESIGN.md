@@ -51,6 +51,25 @@ The frozen snapshot accounts for 1,131 Gradle-associated Kotlin files. Its
 599 eligible sources are indexed, and 532 Kotlin-DSL generated accessors are
 explicitly excluded. No eligible file is silently omitted.
 
+## Proof-carrying graph projection
+
+`repository/query` projects the existing semantic symbol, type, and edge
+occurrence tables without introducing another graph. Resolved nodes retain
+canonical keys, signatures, owner and type identities, source ranges, flags,
+annotations, module, source set, and evidence class. Typed directional edges
+retain compiler occurrence locations and counts. Calls found in a local
+declaration are projected to their callable owner only with the explicit
+`LIFT_LOCAL_CALL_TO_CALLABLE_OWNER` derivation and its supporting `CONTAINS`
+and `CALLS` facts.
+
+Every graph response names the canonical workspace root and one graph
+generation. Path planning is deterministic: an exact direct route wins unless
+question terms identify a more relevant bounded route, such as the permanent
+scope-fingerprint hashing chain. Occurrence samples are ordered by persisted
+occurrence id. A truncated edge returns an identity-bound
+`evidenceContinuation`; submitting it to the same request pages the remaining
+occurrences without replaying or skipping evidence.
+
 ## Frozen baseline
 
 The benchmark owns two detached worktrees at commit

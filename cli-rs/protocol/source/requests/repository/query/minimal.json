@@ -3,7 +3,7 @@
   "jsonrpc": "2.0",
   "method": "repository/query",
   "params": {
-    "intent": "example-intent",
+    "intent": "resolve",
     "limits": {
       "depth": 2,
       "evidence": 1,

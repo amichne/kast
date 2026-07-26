@@ -2717,6 +2717,12 @@
             "type": "string"
           },
           "intent": {
+            "enum": [
+              "resolve",
+              "path",
+              "incoming_impact",
+              "outgoing_impact"
+            ],
             "type": "string"
           },
           "scope": {
@@ -2734,8 +2740,83 @@
               "sourceSet": {
                 "type": "string",
                 "optional": true
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "CALLS",
+                    "CASE_OF",
+                    "CONTAINS",
+                    "DELEGATES",
+                    "IMPLEMENTS",
+                    "INHERITS",
+                    "METHOD",
+                    "OVERRIDES",
+                    "REFERENCES",
+                    "SEALED_MEMBER"
+                  ]
+                },
+                "optional": true
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "INCOMING",
+                  "OUTGOING"
+                ],
+                "optional": true
+              },
+              "maxDepth": {
+                "type": "integer",
+                "optional": true
               }
             }
+          },
+          "evidenceContinuation": {
+            "type": "object",
+            "optional": true,
+            "fields": {
+              "sourceKey": {
+                "type": "string"
+              },
+              "targetKey": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "CALLS",
+                  "CASE_OF",
+                  "CONTAINS",
+                  "DELEGATES",
+                  "IMPLEMENTS",
+                  "INHERITS",
+                  "METHOD",
+                  "OVERRIDES",
+                  "REFERENCES",
+                  "SEALED_MEMBER"
+                ]
+              },
+              "context": {
+                "type": "string"
+              },
+              "derived": {
+                "type": "boolean"
+              },
+              "afterOccurrenceId": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "sourceKey",
+              "targetKey",
+              "kind",
+              "context",
+              "derived",
+              "afterOccurrenceId"
+            ]
           },
           "limits": {
             "type": "object",
