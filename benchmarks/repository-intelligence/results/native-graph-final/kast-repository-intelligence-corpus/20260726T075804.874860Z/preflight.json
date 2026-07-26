@@ -1,0 +1,830 @@
+{
+  "receipt": {
+    "tool": "kast",
+    "installId": "kast-macos-idea-0.16.1-13-g5ac947c0",
+    "releaseDigest": "2b252c9c52d93c9950b9e75899909124e53b82f91283b815baeb136ea22e1d09",
+    "manifestDigest": "07d58fee7e99ff387fbdcba46dbf4a15f81f7f9e590c3809614cbccd538b6db5",
+    "profile": "macos-idea",
+    "activeVersion": "0.16.1-13-g5ac947c0",
+    "createdAt": "unix:1785052522",
+    "updatedAt": "unix:1785052522",
+    "roots": {
+      "install": "/Users/amichne/.local/share/kast",
+      "bin": "/Users/amichne/.local/share/kast/current/bin",
+      "config": "/Users/amichne/.local/share/kast/current/config",
+      "data": "/Users/amichne/.local/share/kast/state/data",
+      "cache": "/Users/amichne/.local/share/kast/state/cache",
+      "runtime": "/Users/amichne/.local/share/kast/state/runtime",
+      "logs": "/Users/amichne/.local/share/kast/state/logs",
+      "locks": "/Users/amichne/.local/share/kast"
+    },
+    "entrypoints": {
+      "shim": "/Users/amichne/.local/share/kast/current/bin/kast",
+      "activeBinary": "/Users/amichne/.local/share/kast/current/bin/kast"
+    },
+    "schemas": {
+      "manifest": 1,
+      "workspaceRegistry": 1,
+      "symbolIndex": 3
+    },
+    "version": "0.16.1-13-g5ac947c0",
+    "installedAt": "macos-idea:0.16.1-13-g5ac947c0",
+    "platform": "macos-arm64",
+    "components": [
+      "cli",
+      "idea-plugin"
+    ],
+    "managedPaths": [
+      "bin/kast",
+      "idea/kast.zip"
+    ],
+    "ownedPaths": [
+      "/Users/amichne/.local/share/kast/current/bin/kast",
+      "/Users/amichne/.local/share/kast/current",
+      "/Users/amichne/.local/share/kast/previous",
+      "/Users/amichne/.local/share/kast/releases",
+      "/Users/amichne/.local/share/kast/staging",
+      "/Users/amichne/.local/share/kast/state/runtime",
+      "/Users/amichne/.local/share/kast",
+      "/Users/amichne/.local/bin/kast"
+    ],
+    "shellRcPatches": [],
+    "schemaVersion": 3
+  },
+  "up": {
+    "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus",
+    "descriptorDirectory": "/Users/amichne/.local/share/kast/state/runtime/daemons",
+    "pathResolution": {
+      "root": "/Users/amichne/.local/share/kast",
+      "configFiles": [
+        {
+          "scope": "install-manifest",
+          "path": "/Users/amichne/.local/share/kast/current/receipt.json",
+          "exists": true
+        },
+        {
+          "scope": "global",
+          "path": "/Users/amichne/.local/share/kast/current/config/config.toml",
+          "exists": true
+        },
+        {
+          "scope": "workspace",
+          "path": "/Users/amichne/.local/share/kast/state/data/workspaces/git/github.com/amichne/kast/worktrees/kast-repository-intelligence-corpus--8add60ac3132/config.toml",
+          "exists": false
+        }
+      ],
+      "entries": [
+        {
+          "key": "paths.installRoot",
+          "value": "/Users/amichne/.local/share/kast",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.binDir",
+          "value": "/Users/amichne/.local/share/kast/current/bin",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.libDir",
+          "value": "/Users/amichne/.local/share/kast/current/lib",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.installRoot",
+          "exists": false,
+          "expectedKind": "directory",
+          "usedByIdea": false
+        },
+        {
+          "key": "paths.cacheDir",
+          "value": "/Users/amichne/.local/share/kast/state/cache",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.logsDir",
+          "value": "/Users/amichne/.local/share/kast/state/logs",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.runtimeDir",
+          "value": "/Users/amichne/.local/share/kast/state/runtime",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.descriptorDir",
+          "value": "/Users/amichne/.local/share/kast/state/runtime/daemons",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.runtimeDir",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.socketDir",
+          "value": "/Users/amichne/.local/share/kast/state/runtime",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.runtimeDir",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": false
+        },
+        {
+          "key": "cli.binaryPath",
+          "value": "/Users/amichne/.local/share/kast/current/bin/kast",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.binDir",
+          "exists": true,
+          "expectedKind": "file",
+          "usedByIdea": true
+        },
+        {
+          "key": "backends.headless.runtimeLibsDir",
+          "value": "/Users/amichne/.local/share/kast/current/lib/backends/headless/current/runtime-libs",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.libDir",
+          "exists": false,
+          "expectedKind": "directory",
+          "usedByIdea": false
+        },
+        {
+          "key": "backends.headless.runtimeLibsClasspath",
+          "value": "/Users/amichne/.local/share/kast/current/lib/backends/headless/current/runtime-libs/classpath.txt",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "backends.headless.runtimeLibsDir",
+          "exists": false,
+          "expectedKind": "file",
+          "usedByIdea": false
+        }
+      ],
+      "warnings": [],
+      "schemaVersion": 5
+    },
+    "started": false,
+    "launchDisposition": "REUSED_OPEN_PROJECT",
+    "selected": {
+      "descriptorPath": "/Users/amichne/code/kast-repository-intelligence-corpus:idea:39781",
+      "descriptor": {
+        "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus",
+        "backendName": "idea",
+        "backendVersion": "0.16.1-13-g5ac947c0",
+        "transport": "uds",
+        "socketPath": "/Users/amichne/.local/share/kast/state/runtime/kast-513b99ed9c63.sock",
+        "pid": 39781,
+        "schemaVersion": 5
+      },
+      "pidAlive": true,
+      "reachable": true,
+      "ready": false,
+      "runtimeStatus": {
+        "state": "INDEXING",
+        "healthy": true,
+        "active": true,
+        "indexing": true,
+        "backendName": "idea",
+        "backendVersion": "0.16.1-13-g5ac947c0",
+        "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus",
+        "message": "Kast reference index is indexing",
+        "sourceModuleNames": [
+          "build-logic",
+          "build-logic.main",
+          "build-logic.test",
+          "kast",
+          "kast.analysis-api",
+          "kast.analysis-api.main",
+          "kast.analysis-api.test",
+          "kast.analysis-api.testFixtures",
+          "kast.analysis-server",
+          "kast.analysis-server.main",
+          "kast.analysis-server.test",
+          "kast.backend-headless",
+          "kast.backend-headless.main",
+          "kast.backend-headless.test",
+          "kast.backend-idea",
+          "kast.backend-idea.main",
+          "kast.backend-idea.test",
+          "kast.backend-shared",
+          "kast.backend-shared.main",
+          "kast.backend-shared.test",
+          "kast.index-store",
+          "kast.index-store.main",
+          "kast.index-store.test"
+        ],
+        "referenceIndexReady": false,
+        "schemaVersion": 5
+      },
+      "capabilities": {
+        "backendName": "idea",
+        "backendVersion": "0.16.1-13-g5ac947c0",
+        "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus",
+        "readCapabilities": [
+          "RESOLVE_SYMBOL",
+          "FIND_REFERENCES",
+          "CALL_HIERARCHY",
+          "TYPE_HIERARCHY",
+          "SEMANTIC_INSERTION_POINT",
+          "DIAGNOSTICS",
+          "FILE_OUTLINE",
+          "WORKSPACE_SYMBOL_SEARCH",
+          "WORKSPACE_SEARCH",
+          "WORKSPACE_FILES",
+          "IMPLEMENTATIONS",
+          "CODE_ACTIONS",
+          "COMPLETIONS",
+          "SEMANTIC_GRAPH"
+        ],
+        "mutationCapabilities": [
+          "RENAME",
+          "APPLY_EDITS",
+          "FILE_OPERATIONS",
+          "OPTIMIZE_IMPORTS",
+          "REFRESH_WORKSPACE"
+        ],
+        "limits": {
+          "maxResults": 500,
+          "requestTimeoutMillis": 30000,
+          "maxConcurrentRequests": 4,
+          "perFileScanBudgetMillis": 5000,
+          "continuationTtlMillis": 60000,
+          "continuationCapacity": 256
+        },
+        "schemaVersion": 5
+      },
+      "schemaVersion": 5
+    },
+    "schemaVersion": 5
+  },
+  "ready": {
+    "target": "agent",
+    "installed": true,
+    "installAuthority": "active-release",
+    "configPath": "/Users/amichne/.local/share/kast/current/config/config.toml",
+    "manifestPath": "/Users/amichne/.local/share/kast/current/receipt.json",
+    "configuration": {
+      "configHome": "/Users/amichne/.local/share/kast/current/config",
+      "configPath": "/Users/amichne/.local/share/kast/current/config/config.toml",
+      "exists": true,
+      "valid": true,
+      "schemaVersion": 5
+    },
+    "canonicalDirectory": {
+      "root": "/Users/amichne/.local/share/kast",
+      "binDir": "/Users/amichne/.local/share/kast/current/bin",
+      "libDir": "/Users/amichne/.local/share/kast/current/lib",
+      "cacheDir": "/Users/amichne/.local/share/kast/state/cache",
+      "logsDir": "/Users/amichne/.local/share/kast/state/logs",
+      "runtimeDir": "/Users/amichne/.local/share/kast/state/runtime",
+      "descriptorDir": "/Users/amichne/.local/share/kast/state/runtime/daemons",
+      "socketDir": "/Users/amichne/.local/share/kast/state/runtime",
+      "schemaVersion": 5
+    },
+    "binary": {
+      "runningBinary": "/Users/amichne/.local/share/kast/current/bin/kast",
+      "configuredBinary": "/Users/amichne/.local/share/kast/current/bin/kast",
+      "configuredExists": true,
+      "configuredMatchesRunning": true,
+      "schemaVersion": 5
+    },
+    "agentEnvironment": {
+      "installAuthority": "active-release",
+      "binary": {
+        "path": "/Users/amichne/.local/share/kast/current/bin/kast",
+        "version": "0.16.1-13-g5ac947c0",
+        "revision": "0.16.1-13-g5ac947c0",
+        "sourcePath": "/Users/amichne/.local/share/kast/current/bin/kast"
+      },
+      "backend": {
+        "state": "managed",
+        "kind": "idea",
+        "version": "0.16.1-13-g5ac947c0",
+        "revision": "2",
+        "sourcePath": "/Users/amichne/code/kast-repository-intelligence-corpus/.kast/setup/workspace.json"
+      },
+      "ok": true
+    },
+    "pathResolution": {
+      "root": "/Users/amichne/.local/share/kast",
+      "configFiles": [
+        {
+          "scope": "install-manifest",
+          "path": "/Users/amichne/.local/share/kast/current/receipt.json",
+          "exists": true
+        },
+        {
+          "scope": "global",
+          "path": "/Users/amichne/.local/share/kast/current/config/config.toml",
+          "exists": true
+        }
+      ],
+      "entries": [
+        {
+          "key": "paths.installRoot",
+          "value": "/Users/amichne/.local/share/kast",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.binDir",
+          "value": "/Users/amichne/.local/share/kast/current/bin",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.libDir",
+          "value": "/Users/amichne/.local/share/kast/current/lib",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.installRoot",
+          "exists": false,
+          "expectedKind": "directory",
+          "usedByIdea": false
+        },
+        {
+          "key": "paths.cacheDir",
+          "value": "/Users/amichne/.local/share/kast/state/cache",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.logsDir",
+          "value": "/Users/amichne/.local/share/kast/state/logs",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.runtimeDir",
+          "value": "/Users/amichne/.local/share/kast/state/runtime",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.descriptorDir",
+          "value": "/Users/amichne/.local/share/kast/state/runtime/daemons",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.runtimeDir",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.socketDir",
+          "value": "/Users/amichne/.local/share/kast/state/runtime",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.runtimeDir",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": false
+        },
+        {
+          "key": "cli.binaryPath",
+          "value": "/Users/amichne/.local/share/kast/current/bin/kast",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.binDir",
+          "exists": true,
+          "expectedKind": "file",
+          "usedByIdea": true
+        },
+        {
+          "key": "backends.headless.runtimeLibsDir",
+          "value": "/Users/amichne/.local/share/kast/current/lib/backends/headless/current/runtime-libs",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.libDir",
+          "exists": false,
+          "expectedKind": "directory",
+          "usedByIdea": false
+        },
+        {
+          "key": "backends.headless.runtimeLibsClasspath",
+          "value": "/Users/amichne/.local/share/kast/current/lib/backends/headless/current/runtime-libs/classpath.txt",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "backends.headless.runtimeLibsDir",
+          "exists": false,
+          "expectedKind": "file",
+          "usedByIdea": false
+        }
+      ],
+      "warnings": [],
+      "schemaVersion": 5
+    },
+    "minimumBackendVersion": "0.7.11",
+    "install": {
+      "tool": "kast",
+      "installId": "kast-macos-idea-0.16.1-13-g5ac947c0",
+      "releaseDigest": "2b252c9c52d93c9950b9e75899909124e53b82f91283b815baeb136ea22e1d09",
+      "manifestDigest": "07d58fee7e99ff387fbdcba46dbf4a15f81f7f9e590c3809614cbccd538b6db5",
+      "profile": "macos-idea",
+      "activeVersion": "0.16.1-13-g5ac947c0",
+      "createdAt": "unix:1785052522",
+      "updatedAt": "unix:1785052522",
+      "roots": {
+        "install": "/Users/amichne/.local/share/kast",
+        "bin": "/Users/amichne/.local/share/kast/current/bin",
+        "config": "/Users/amichne/.local/share/kast/current/config",
+        "data": "/Users/amichne/.local/share/kast/state/data",
+        "cache": "/Users/amichne/.local/share/kast/state/cache",
+        "runtime": "/Users/amichne/.local/share/kast/state/runtime",
+        "logs": "/Users/amichne/.local/share/kast/state/logs",
+        "locks": "/Users/amichne/.local/share/kast"
+      },
+      "entrypoints": {
+        "shim": "/Users/amichne/.local/share/kast/current/bin/kast",
+        "activeBinary": "/Users/amichne/.local/share/kast/current/bin/kast"
+      },
+      "schemas": {
+        "manifest": 1,
+        "workspaceRegistry": 1,
+        "symbolIndex": 3
+      },
+      "version": "0.16.1-13-g5ac947c0",
+      "installedAt": "macos-idea:0.16.1-13-g5ac947c0",
+      "platform": "macos-arm64",
+      "components": [
+        "cli",
+        "idea-plugin"
+      ],
+      "managedPaths": [
+        "bin/kast",
+        "idea/kast.zip"
+      ],
+      "ownedPaths": [
+        "/Users/amichne/.local/share/kast/current/bin/kast",
+        "/Users/amichne/.local/share/kast/current",
+        "/Users/amichne/.local/share/kast/previous",
+        "/Users/amichne/.local/share/kast/releases",
+        "/Users/amichne/.local/share/kast/staging",
+        "/Users/amichne/.local/share/kast/state/runtime",
+        "/Users/amichne/.local/share/kast",
+        "/Users/amichne/.local/bin/kast"
+      ],
+      "shellRcPatches": [],
+      "schemaVersion": 3
+    },
+    "ok": true,
+    "issues": [],
+    "warnings": [],
+    "schemaVersion": 5
+  },
+  "status": {
+    "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus",
+    "descriptorDirectory": "/Users/amichne/.local/share/kast/state/runtime/daemons",
+    "pathResolution": {
+      "root": "/Users/amichne/.local/share/kast",
+      "configFiles": [
+        {
+          "scope": "install-manifest",
+          "path": "/Users/amichne/.local/share/kast/current/receipt.json",
+          "exists": true
+        },
+        {
+          "scope": "global",
+          "path": "/Users/amichne/.local/share/kast/current/config/config.toml",
+          "exists": true
+        },
+        {
+          "scope": "workspace",
+          "path": "/Users/amichne/.local/share/kast/state/data/workspaces/git/github.com/amichne/kast/worktrees/kast-repository-intelligence-corpus--8add60ac3132/config.toml",
+          "exists": false
+        }
+      ],
+      "entries": [
+        {
+          "key": "paths.installRoot",
+          "value": "/Users/amichne/.local/share/kast",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.binDir",
+          "value": "/Users/amichne/.local/share/kast/current/bin",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.libDir",
+          "value": "/Users/amichne/.local/share/kast/current/lib",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.installRoot",
+          "exists": false,
+          "expectedKind": "directory",
+          "usedByIdea": false
+        },
+        {
+          "key": "paths.cacheDir",
+          "value": "/Users/amichne/.local/share/kast/state/cache",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.logsDir",
+          "value": "/Users/amichne/.local/share/kast/state/logs",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.runtimeDir",
+          "value": "/Users/amichne/.local/share/kast/state/runtime",
+          "source": "manifest",
+          "owner": "install",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.descriptorDir",
+          "value": "/Users/amichne/.local/share/kast/state/runtime/daemons",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.runtimeDir",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": true
+        },
+        {
+          "key": "paths.socketDir",
+          "value": "/Users/amichne/.local/share/kast/state/runtime",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.runtimeDir",
+          "exists": true,
+          "expectedKind": "directory",
+          "usedByIdea": false
+        },
+        {
+          "key": "cli.binaryPath",
+          "value": "/Users/amichne/.local/share/kast/current/bin/kast",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.binDir",
+          "exists": true,
+          "expectedKind": "file",
+          "usedByIdea": true
+        },
+        {
+          "key": "backends.headless.runtimeLibsDir",
+          "value": "/Users/amichne/.local/share/kast/current/lib/backends/headless/current/runtime-libs",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "paths.libDir",
+          "exists": false,
+          "expectedKind": "directory",
+          "usedByIdea": false
+        },
+        {
+          "key": "backends.headless.runtimeLibsClasspath",
+          "value": "/Users/amichne/.local/share/kast/current/lib/backends/headless/current/runtime-libs/classpath.txt",
+          "source": "manifest",
+          "owner": "install",
+          "derivedFrom": "backends.headless.runtimeLibsDir",
+          "exists": false,
+          "expectedKind": "file",
+          "usedByIdea": false
+        }
+      ],
+      "warnings": [],
+      "schemaVersion": 5
+    },
+    "selected": {
+      "descriptorPath": "/Users/amichne/code/kast-repository-intelligence-corpus:idea:39781",
+      "descriptor": {
+        "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus",
+        "backendName": "idea",
+        "backendVersion": "0.16.1-13-g5ac947c0",
+        "transport": "uds",
+        "socketPath": "/Users/amichne/.local/share/kast/state/runtime/kast-513b99ed9c63.sock",
+        "pid": 39781,
+        "schemaVersion": 5
+      },
+      "pidAlive": true,
+      "reachable": true,
+      "ready": true,
+      "runtimeStatus": {
+        "state": "READY",
+        "healthy": true,
+        "active": true,
+        "indexing": false,
+        "backendName": "idea",
+        "backendVersion": "0.16.1-13-g5ac947c0",
+        "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus",
+        "message": "IDEA analysis backend is ready",
+        "sourceModuleNames": [
+          "build-logic",
+          "build-logic.main",
+          "build-logic.test",
+          "kast",
+          "kast.analysis-api",
+          "kast.analysis-api.main",
+          "kast.analysis-api.test",
+          "kast.analysis-api.testFixtures",
+          "kast.analysis-server",
+          "kast.analysis-server.main",
+          "kast.analysis-server.test",
+          "kast.backend-headless",
+          "kast.backend-headless.main",
+          "kast.backend-headless.test",
+          "kast.backend-idea",
+          "kast.backend-idea.main",
+          "kast.backend-idea.test",
+          "kast.backend-shared",
+          "kast.backend-shared.main",
+          "kast.backend-shared.test",
+          "kast.index-store",
+          "kast.index-store.main",
+          "kast.index-store.test"
+        ],
+        "referenceIndexReady": true,
+        "schemaVersion": 5
+      },
+      "capabilities": {
+        "backendName": "idea",
+        "backendVersion": "0.16.1-13-g5ac947c0",
+        "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus",
+        "readCapabilities": [
+          "RESOLVE_SYMBOL",
+          "FIND_REFERENCES",
+          "CALL_HIERARCHY",
+          "TYPE_HIERARCHY",
+          "SEMANTIC_INSERTION_POINT",
+          "DIAGNOSTICS",
+          "FILE_OUTLINE",
+          "WORKSPACE_SYMBOL_SEARCH",
+          "WORKSPACE_SEARCH",
+          "WORKSPACE_FILES",
+          "IMPLEMENTATIONS",
+          "CODE_ACTIONS",
+          "COMPLETIONS",
+          "SEMANTIC_GRAPH"
+        ],
+        "mutationCapabilities": [
+          "RENAME",
+          "APPLY_EDITS",
+          "FILE_OPERATIONS",
+          "OPTIMIZE_IMPORTS",
+          "REFRESH_WORKSPACE"
+        ],
+        "limits": {
+          "maxResults": 500,
+          "requestTimeoutMillis": 30000,
+          "maxConcurrentRequests": 4,
+          "perFileScanBudgetMillis": 5000,
+          "continuationTtlMillis": 60000,
+          "continuationCapacity": 256
+        },
+        "schemaVersion": 5
+      },
+      "schemaVersion": 5
+    },
+    "candidates": [
+      {
+        "descriptorPath": "/Users/amichne/code/kast-repository-intelligence-corpus:idea:39781",
+        "descriptor": {
+          "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus",
+          "backendName": "idea",
+          "backendVersion": "0.16.1-13-g5ac947c0",
+          "transport": "uds",
+          "socketPath": "/Users/amichne/.local/share/kast/state/runtime/kast-513b99ed9c63.sock",
+          "pid": 39781,
+          "schemaVersion": 5
+        },
+        "pidAlive": true,
+        "reachable": true,
+        "ready": true,
+        "runtimeStatus": {
+          "state": "READY",
+          "healthy": true,
+          "active": true,
+          "indexing": false,
+          "backendName": "idea",
+          "backendVersion": "0.16.1-13-g5ac947c0",
+          "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus",
+          "message": "IDEA analysis backend is ready",
+          "sourceModuleNames": [
+            "build-logic",
+            "build-logic.main",
+            "build-logic.test",
+            "kast",
+            "kast.analysis-api",
+            "kast.analysis-api.main",
+            "kast.analysis-api.test",
+            "kast.analysis-api.testFixtures",
+            "kast.analysis-server",
+            "kast.analysis-server.main",
+            "kast.analysis-server.test",
+            "kast.backend-headless",
+            "kast.backend-headless.main",
+            "kast.backend-headless.test",
+            "kast.backend-idea",
+            "kast.backend-idea.main",
+            "kast.backend-idea.test",
+            "kast.backend-shared",
+            "kast.backend-shared.main",
+            "kast.backend-shared.test",
+            "kast.index-store",
+            "kast.index-store.main",
+            "kast.index-store.test"
+          ],
+          "referenceIndexReady": true,
+          "schemaVersion": 5
+        },
+        "capabilities": {
+          "backendName": "idea",
+          "backendVersion": "0.16.1-13-g5ac947c0",
+          "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus",
+          "readCapabilities": [
+            "RESOLVE_SYMBOL",
+            "FIND_REFERENCES",
+            "CALL_HIERARCHY",
+            "TYPE_HIERARCHY",
+            "SEMANTIC_INSERTION_POINT",
+            "DIAGNOSTICS",
+            "FILE_OUTLINE",
+            "WORKSPACE_SYMBOL_SEARCH",
+            "WORKSPACE_SEARCH",
+            "WORKSPACE_FILES",
+            "IMPLEMENTATIONS",
+            "CODE_ACTIONS",
+            "COMPLETIONS",
+            "SEMANTIC_GRAPH"
+          ],
+          "mutationCapabilities": [
+            "RENAME",
+            "APPLY_EDITS",
+            "FILE_OPERATIONS",
+            "OPTIMIZE_IMPORTS",
+            "REFRESH_WORKSPACE"
+          ],
+          "limits": {
+            "maxResults": 500,
+            "requestTimeoutMillis": 30000,
+            "maxConcurrentRequests": 4,
+            "perFileScanBudgetMillis": 5000,
+            "continuationTtlMillis": 60000,
+            "continuationCapacity": 256
+          },
+          "schemaVersion": 5
+        },
+        "schemaVersion": 5
+      }
+    ],
+    "schemaVersion": 5
+  },
+  "timings": {
+    "bootstrapReadyMs": 33660.661,
+    "agentReadyMs": 60.069
+  }
+}

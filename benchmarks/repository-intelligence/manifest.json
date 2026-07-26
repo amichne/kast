@@ -99,6 +99,17 @@
         "edges": 27307,
         "communities": 771,
         "directed": false
+      },
+      "finalRebuild": {
+        "corpusCommit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
+        "command": "cd ../kast-repository-intelligence-graphify-corpus && graphify update . --force",
+        "incrementalStateSha256": "1952fb6f02a1047b11e482123cd8baf788e6520a6f185b9c65c8a4c2ae9ec8f0",
+        "graphSha256": "9ba3af31f2b0419f34b12956f1d25cd77ca4a4946464208bd8287ad465b80efc",
+        "reportSha256": "ba17b1639ae00dc6886ecce5622e060aaa8dee58c80ccc18095ca34e9b7e9832",
+        "nodes": 12936,
+        "edges": 26314,
+        "communities": 730,
+        "directed": false
       }
     }
   },

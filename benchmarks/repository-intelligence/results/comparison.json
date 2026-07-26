@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "status": "surpasses Graphify on the frozen benchmark",
+  "corpusCommit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
+  "dimensions": [
+    "answerCorrectness",
+    "identityPrecision",
+    "relationFidelity",
+    "evidenceAndProvenance",
+    "scopeAndUncertainty",
+    "discoveryAnswerability",
+    "architecturalUsefulness"
+  ],
+  "maximumPointsPerQuestion": 14,
+  "categories": {
+    "architecture": {
+      "questions": 6,
+      "maximumPoints": 84,
+      "kastPoints": 84,
+      "graphifyPoints": 36
+    },
+    "context": {
+      "questions": 6,
+      "maximumPoints": 84,
+      "kastPoints": 84,
+      "graphifyPoints": 30
+    },
+    "directional_path": {
+      "questions": 6,
+      "maximumPoints": 84,
+      "kastPoints": 84,
+      "graphifyPoints": 12
+    },
+    "discovery": {
+      "questions": 6,
+      "maximumPoints": 84,
+      "kastPoints": 72,
+      "graphifyPoints": 30
+    },
+    "exact_identity": {
+      "questions": 6,
+      "maximumPoints": 84,
+      "kastPoints": 72,
+      "graphifyPoints": 12
+    },
+    "impact": {
+      "questions": 6,
+      "maximumPoints": 84,
+      "kastPoints": 84,
+      "graphifyPoints": 12
+    },
+    "negative_ambiguity": {
+      "questions": 6,
+      "maximumPoints": 84,
+      "kastPoints": 72,
+      "graphifyPoints": 6
+    }
+  },
+  "scoringProfiles": {
+    "kast": {
+      "architecture": [2, 2, 2, 2, 2, 2, 2],
+      "context": [2, 2, 2, 2, 2, 2, 2],
+      "directional_path": [2, 2, 2, 2, 2, 2, 2],
+      "discovery": [2, 2, 2, 2, 2, 2, 0],
+      "exact_identity": [2, 2, 2, 2, 2, 2, 0],
+      "impact": [2, 2, 2, 2, 2, 2, 2],
+      "negative_ambiguity": [2, 2, 2, 2, 2, 2, 0]
+    },
+    "graphify": {
+      "architecture": [1, 1, 0, 1, 1, 1, 1],
+      "context": [1, 1, 0, 1, 1, 1, 0],
+      "directional_path": [0, 0, 0, 1, 1, 0, 0],
+      "discovery": [1, 1, 0, 1, 1, 1, 0],
+      "exact_identity": [0, 0, 0, 1, 1, 0, 0],
+      "impact": [0, 0, 0, 1, 1, 0, 0],
+      "negative_ambiguity": [0, 0, 0, 0, 1, 0, 0]
+    }
+  },
+  "kast": {
+    "implementationCommit": "5ac947c059f25465721a721e447c38246c6006ac",
+    "resultPath": "benchmarks/repository-intelligence/results/final.json",
+    "resultSha256": "1dc6f04c86bf8ad495cd6a59751f7b0fffa07e4890de958d2167bce60de414b0",
+    "questionsPassed": 42,
+    "questionsTotal": 42,
+    "criticalFailures": 0,
+    "deterministic": true,
+    "overallPoints": 552,
+    "overallMaximumPoints": 588,
+    "exactKotlinPoints": 240,
+    "exactKotlinMaximumPoints": 252,
+    "discoveryAnswerable": 6,
+    "discoveryTotal": 6,
+    "architectureAnswerable": 6,
+    "architectureTotal": 6
+  },
+  "graphify": {
+    "version": "graphify 0.9.22",
+    "resultPath": "benchmarks/repository-intelligence/results/graphify-final.json",
+    "resultSha256": "0228b2bf56b96490b6e9529b06f2ec7ae0aaf79e784a0904d2ad43cea17d2156",
+    "graphSha256": "9ba3af31f2b0419f34b12956f1d25cd77ca4a4946464208bd8287ad465b80efc",
+    "directed": false,
+    "nodes": 12936,
+    "edges": 26314,
+    "communities": 730,
+    "overallPoints": 138,
+    "overallMaximumPoints": 588,
+    "exactKotlinPoints": 36,
+    "exactKotlinMaximumPoints": 252,
+    "discoveryAnswerable": 6,
+    "discoveryTotal": 6,
+    "architectureAnswerable": 6,
+    "architectureTotal": 6,
+    "unsupportedOperations": [
+      "overload-safe exact identity selection",
+      "typed directed semantic paths",
+      "relation occurrence or derivation retrieval",
+      "coverage-qualified complete negatives",
+      "explicit bounded ambiguity",
+      "relation-specific architecture metrics with evidence subgraphs",
+      "typed repository-context relations to exact Kotlin identities"
+    ]
+  },
+  "comparisonGates": {
+    "sameFrozenCorpus": true,
+    "kastHasZeroCriticalFailures": true,
+    "kastPassesEveryExactKotlinAssertion": true,
+    "kastExactKotlinScoreStrictlyHigher": true,
+    "kastMatchesDiscoveryAnswerability": true,
+    "kastMatchesArchitectureAnswerability": true,
+    "kastOverallScoreStrictlyHigher": true
+  },
+  "auditNotes": [
+    "Each category profile applies the seven published rubric dimensions to all six questions in that category.",
+    "Architectural usefulness scores zero for both systems when a discovery, exact-identity, or negative question does not request an architectural result.",
+    "Graphify receives partial credit for relevant node material, source locations, visible traversal depth, and explicit truncation.",
+    "A successful Graphify process with NODE output counts as answerable, but does not count as an exact, directed, evidenced answer.",
+    "Graphify relation-sensitive operations are recorded as unsupported because the rebuilt graph is undirected and its query output exposes no typed edge path or relation occurrence."
+  ]
+}

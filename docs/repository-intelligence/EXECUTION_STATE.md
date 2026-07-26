@@ -1,13 +1,13 @@
 # Repository Intelligence Execution State
 
 - Benchmark corpus commit: `2c630d3d156574eb4548fd97df3bd61fe9deb1a6`
-- Active implementation commit: `7e70562685c2ce106939f943fd4eff6322237be6` plus the current Phase 6 worktree
-- Current phase: Phase 6 — canonical result model and output projections
-- Last passing fast check: canonical `FAST_CHECK` passed for Phase 6 on 2026-07-26
-- Last passing full check: canonical `FULL_CHECK` passed for Phase 6 on 2026-07-26 (`./gradlew test`, Rust format, clippy, and all-target/all-feature tests)
-- Last benchmark result: Phase 6 passes 42/42 across all seven categories with deterministic normalized output and zero critical failures
+- Active implementation commit: `5ac947c059f25465721a721e447c38246c6006ac` plus the final evidence worktree
+- Current phase: Phase 7 — final verification and superiority report
+- Last passing fast check: canonical `FAST_CHECK` passed for Phase 7 on 2026-07-26
+- Last passing full check: canonical `FULL_CHECK` passed for Phase 7 on 2026-07-26 (`./gradlew test`, Rust format, clippy, and all-target/all-feature tests)
+- Last benchmark result: final Kast result passes 42/42 across all seven categories with deterministic normalized output and zero critical failures
 - Current blocker, if any: none
-- Next concrete action: commit and push the verified Phase 6 boundary, then run the final clean rebuild and comparison
+- Next concrete action: commit and push the final evidence boundary
 - Known scope exceptions: the frozen commit contains 599 Gradle-compilation-owned `.kt` files and 18 `.kts` scripts; the task's older observation of 1,145 discoverable Kotlin files is not present in this snapshot
 
 ## Canonical Commands
@@ -81,3 +81,16 @@
 - Persisted Phase 6 structured result: `benchmarks/repository-intelligence/results/phase6.json` (`sha256:db37154fbbe41a793f05f3c27ff2a93981d84544e8c680bf4c0523b689a6ca27`).
 - Persisted Phase 6 Markdown report: `benchmarks/repository-intelligence/results/phase6.md` (`sha256:efb2dfad92743c4b05a0a35682ec97a79c7c50052c63388421306a09445dc9a0`).
 - Branch CLI and IDEA plugin `0.16.1-12-g7e705626` were installed from the verified Phase 6 worktree after force-stopping PID 29639; the golden runtime reopened only the frozen root and reached `READY` on PID 37973.
+
+## Phase 7 Evidence
+
+- The branch was clean before `./gradlew clean buildDevelopmentCli --no-daemon`; the clean final-commit CLI build passed.
+- CLI and IDEA plugin `0.16.1-13-g5ac947c0` were installed with verified release digest `2b252c9c52d93c9950b9e75899909124e53b82f91283b815baeb136ea22e1d09` after force-stopping PID 37973. The exact frozen root reached `READY` on PID 39781.
+- The complete native rebuild processed 599/599 Kotlin files with zero failures at generation 1582, 25,311 symbols, and 40,644 edge occurrences. Compiler admission reached `READY` in 33,660.661 ms; per-file build total was 21,552.848 ms; the database is 70,627,328 bytes.
+- The forced Graphify 0.9.22 rebuild on the same detached corpus produced an undirected graph with 12,936 nodes, 26,314 edges, and 730 communities (`sha256:9ba3af31f2b0419f34b12956f1d25cd77ca4a4946464208bd8287ad465b80efc`).
+- Final Kast results pass 42/42, every category is 6/6, all six discovery targets rank first, both deliberate ambiguities are explicit, identity collisions are zero, and normalized results are deterministic.
+- Across returned proof, 437 semantic edges and 61 context relations have zero missing occurrences or derivations. Twenty-eight architecture findings cover all six required finding types on relation-specific directed projections.
+- Final Kast median latency is 640.018 ms, p95 is 2,739.255 ms, and maximum is 4,437.158 ms. Median response size is 25,074 bytes and maximum is 226,601 bytes.
+- Under the shared seven-dimension rubric, Kast scores 240/252 versus Graphify 36/252 on exact Kotlin and 552/588 versus 138/588 overall. Both systems are 6/6 answerable on discovery and architecture.
+- Canonical `FAST_CHECK`, `FULL_CHECK`, the clean branch build, the two-run final benchmark, and the exact Green Proof all pass.
+- Final result hashes: `final.json` `sha256:1dc6f04c86bf8ad495cd6a59751f7b0fffa07e4890de958d2167bce60de414b0`; `final.md` `sha256:63858fb6fb4ef4c7bf6b2eaffcd2b65c3f7ef9256f48bab7b939e95129d149a8`; `graphify-final.json` `sha256:0228b2bf56b96490b6e9529b06f2ec7ae0aaf79e784a0904d2ad43cea17d2156`.
