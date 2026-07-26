@@ -15,6 +15,8 @@ pub enum AgentCommand {
     WorkspaceFiles(AgentWorkspaceFilesArgs),
     /// Refresh compiler-backed graph facts or query persisted native topology.
     Graph(AgentNativeGraphArgs),
+    /// Answer one bounded repository question from persisted compiler evidence.
+    Repository(AgentRepositoryArgs),
     /// Query and resolve a symbol identity.
     Symbol(AgentSymbolArgs),
     /// Find bounded references to one compiler-anchored declaration.
@@ -185,6 +187,177 @@ pub enum NativeGraphOperation {
     Neighbors,
     Topology,
     Communities,
+}
+
+#[derive(Debug, Args, Clone)]
+#[command(
+    after_help = "Examples:\n  kast agent repository --question \"Resolve SemanticGraphSha256.parse exactly.\" --intent resolve\n  kast agent repository --question \"Show callers of parse.\" --intent incoming-impact --relation calls --max-depth 2\n  kast agent repository --question \"Which modules form call cycles?\" --intent architecture --projection runtime-calls --metric scc --verbose"
+)]
+pub struct AgentRepositoryArgs {
+    /// Absolute workspace root for the persisted repository index.
+    #[arg(long)]
+    pub workspace_root: Option<PathBuf>,
+    /// Natural-language repository question.
+    #[arg(long, value_parser = parse_non_blank_repository_value)]
+    pub question: String,
+    /// Bounded repository operation selected for this question.
+    #[arg(long, value_enum)]
+    pub intent: AgentRepositoryIntent,
+    /// Exact canonical identity returned by a preceding repository result.
+    #[arg(long, value_parser = parse_non_blank_repository_value)]
+    pub canonical_key: Option<String>,
+    /// Language scope. Repository intelligence currently supports Kotlin.
+    #[arg(long, value_enum, default_value_t = AgentRepositoryLanguage::Kotlin)]
+    pub language: AgentRepositoryLanguage,
+    /// Gradle module name used to constrain compiler evidence.
+    #[arg(long, value_parser = parse_non_blank_repository_value)]
+    pub module: Option<String>,
+    /// Gradle source-set name used to constrain compiler evidence.
+    #[arg(long, value_parser = parse_non_blank_repository_value)]
+    pub source_set: Option<String>,
+    /// Allowed compiler relation. Repeat or comma-separate values.
+    #[arg(long = "relation", value_enum, value_delimiter = ',')]
+    pub relations: Vec<AgentRepositoryRelation>,
+    /// Relationship traversal direction.
+    #[arg(long, value_enum)]
+    pub direction: Option<AgentRepositoryDirection>,
+    /// Scope-specific traversal ceiling, bounded by --depth.
+    #[arg(long, value_parser = clap::value_parser!(u8).range(0..=6))]
+    pub max_depth: Option<u8>,
+    /// Architecture projection used to derive findings.
+    #[arg(long, value_enum)]
+    pub projection: Option<AgentRepositoryProjection>,
+    /// Architecture metric used to rank findings.
+    #[arg(long, value_enum)]
+    pub metric: Option<AgentRepositoryMetric>,
+    /// Repository-context source kind. Repeat or comma-separate values.
+    #[arg(long = "source", value_enum, value_delimiter = ',')]
+    pub sources: Vec<AgentRepositorySource>,
+    /// Maximum traversal depth.
+    #[arg(long, default_value_t = 2, value_parser = clap::value_parser!(u8).range(0..=6))]
+    pub depth: u8,
+    /// Maximum result records; compact views request at most ten.
+    #[arg(long, default_value_t = 10, value_parser = clap::value_parser!(u16).range(1..=500))]
+    pub results: u16,
+    /// Maximum source occurrences returned per relationship.
+    #[arg(long, default_value_t = 2, value_parser = clap::value_parser!(u8).range(1..=50))]
+    pub evidence: u8,
+    /// Opaque query-bound continuation from a preceding truncated traversal.
+    #[arg(long)]
+    pub continuation: Option<AgentRepositoryContinuation>,
+    /// Opaque query-bound evidence continuation from a preceding relationship.
+    #[arg(long = "evidence-continuation")]
+    pub evidence_continuation: Option<AgentRepositoryContinuation>,
+    #[command(flatten)]
+    pub view: AgentRepositoryViewArgs,
+}
+
+fn parse_non_blank_repository_value(value: &str) -> Result<String, String> {
+    if value.trim().is_empty() || value.trim() != value || value.chars().any(char::is_control) {
+        return Err("repository values must be non-blank and contain no control characters".into());
+    }
+    Ok(value.to_string())
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentRepositoryContinuation(String);
+
+impl AgentRepositoryContinuation {
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::str::FromStr for AgentRepositoryContinuation {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if value.is_empty()
+            || value.len() > 16_384
+            || !value.is_ascii()
+            || value.chars().any(char::is_control)
+            || value.chars().any(char::is_whitespace)
+        {
+            return Err("repository continuations must be bounded opaque ASCII tokens".into());
+        }
+        Ok(Self(value.to_string()))
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentRepositoryIntent {
+    Resolve,
+    Path,
+    IncomingImpact,
+    OutgoingImpact,
+    Architecture,
+    ContextRelationship,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AgentRepositoryLanguage {
+    Kotlin,
+}
+
+impl std::fmt::Display for AgentRepositoryLanguage {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str("kotlin")
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AgentRepositoryRelation {
+    Calls,
+    CaseOf,
+    Contains,
+    Delegates,
+    ExpectActual,
+    Implements,
+    Inherits,
+    Method,
+    Overrides,
+    References,
+    SealedMember,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AgentRepositoryDirection {
+    Incoming,
+    Outgoing,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AgentRepositoryProjection {
+    RuntimeCalls,
+    SymbolReferences,
+    TypeDependencies,
+    InterfaceImplementation,
+    ModuleDependencies,
+    ContainmentOwnership,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AgentRepositoryMetric {
+    Scc,
+    Communities,
+    Bridges,
+    PublicApiConsumers,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentRepositorySource {
+    Markdown,
+    Gradle,
+    Schema,
+    Workflow,
+    Rust,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -1440,6 +1613,44 @@ pub struct AgentReplaceDeclarationArgs {
     pub mutation: AgentMutationApplyArgs,
 }
 
+#[derive(Debug, Args, Clone, Default)]
+#[command(group(
+    clap::ArgGroup::new("repository_result_view")
+        .multiple(false)
+        .args(["verbose", "explain", "fields", "count"])
+))]
+pub struct AgentRepositoryViewArgs {
+    /// Preserve the complete canonical repository result.
+    #[arg(long)]
+    pub verbose: bool,
+    /// Preserve complete evidence needed to explain the answer.
+    #[arg(long)]
+    pub explain: bool,
+    /// Return only selected repository result fields.
+    #[arg(long, value_enum, value_delimiter = ',', num_args = 1..)]
+    pub fields: Vec<AgentRepositoryField>,
+    /// Return repository cardinalities without result records.
+    #[arg(long)]
+    pub count: bool,
+}
+
+impl AgentRepositoryViewArgs {
+    pub(crate) fn detailed(&self) -> bool {
+        self.verbose || self.explain
+    }
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum AgentRepositoryField {
+    Summary,
+    Coverage,
+    Identities,
+    Relationships,
+    Paths,
+    Findings,
+    Context,
+    Continuation,
+}
 
 #[derive(Debug, Args, Clone, Default)]
 #[command(group(

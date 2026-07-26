@@ -144,9 +144,11 @@ commands:
     notes:
     - Every compilation-owned Kotlin file is classified as indexed, excluded, failed, or stale.
     - Complete negative answers require complete eligible coverage at the returned generation.
+    - A truncated result returns an authenticated continuation; a terminal result returns continuation=null.
     request:
       fields:
-        afterPath:
+        continuation:
+          description: Opaque continuation for the next path-ordered coverage page. Reuse only with the identical canonical workspace, request scope, limit, graph generation, resolved scope, and coverage composition.
           nullable: true
           optional: true
           type: string
@@ -912,40 +914,14 @@ commands:
         canonicalKey:
           optional: true
           type: string
-        evidenceContinuation:
-          fields:
-            afterOccurrenceId:
-              type: integer
-            context:
-              type: string
-            derived:
-              type: boolean
-            kind:
-              enum:
-              - CALLS
-              - CASE_OF
-              - CONTAINS
-              - DELEGATES
-              - IMPLEMENTS
-              - INHERITS
-              - METHOD
-              - OVERRIDES
-              - REFERENCES
-              - SEALED_MEMBER
-              type: string
-            sourceKey:
-              type: string
-            targetKey:
-              type: string
+        continuation:
+          description: Opaque continuation for a truncated relationship traversal. Reuse only with the identical workspace, graph and coverage snapshot, question, intent, resolved scope, direction, relations, and limits.
           optional: true
-          required:
-          - sourceKey
-          - targetKey
-          - kind
-          - context
-          - derived
-          - afterOccurrenceId
-          type: object
+          type: string
+        evidenceContinuation:
+          description: Opaque continuation from one returned edge. Reuse only with the identical workspace, graph generation, question, intent, scope, and limits; otherwise start a new unpaged query.
+          optional: true
+          type: string
         intent:
           enum:
           - resolve
@@ -1012,6 +988,7 @@ commands:
                 - CASE_OF
                 - CONTAINS
                 - DELEGATES
+                - EXPECT_ACTUAL
                 - IMPLEMENTS
                 - INHERITS
                 - METHOD

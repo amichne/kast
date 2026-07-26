@@ -30,7 +30,7 @@
     "params": {
       "additionalProperties": false,
       "properties": {
-        "afterPath": {
+        "continuation": {
           "type": [
             "string",
             "null"

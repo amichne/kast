@@ -5,14 +5,18 @@ import argparse
 import json
 import sqlite3
 import subprocess
-import sys
+import tempfile
 import time
+from contextlib import closing
 from pathlib import Path
+
+import provenance
 
 
 BENCHMARK = Path(__file__).resolve().parent
 MANIFEST = BENCHMARK / "manifest.json"
 QUESTIONS = BENCHMARK / "questions.jsonl"
+RUBRIC = BENCHMARK / "rubric.md"
 DEFAULT_GRAPH = (
     BENCHMARK.parent.parent.parent
     / "kast-repository-intelligence-graphify-corpus/graphify-out/graph.json"
@@ -58,7 +62,7 @@ def exact_calls_path(database):
         ORDER BY file.path, edge.start_offset
     """
     edges = []
-    with sqlite3.connect(database) as connection:
+    with closing(sqlite3.connect(database)) as connection:
         for source, target in zip(EXPECTED_PATH, EXPECTED_PATH[1:]):
             rows = connection.execute(query, (source, target)).fetchall()
             if len(rows) != 1:
@@ -94,20 +98,37 @@ def exact_calls_path(database):
     }
 
 
-def graphify_query(graphify, graph, question):
+def graphify_query(
+    graphify,
+    graph,
+    question,
+    query_configuration,
+    environment,
+    working_directory,
+):
     command = [
-        graphify,
+        str(graphify),
         "query",
         question["question"],
         "--budget",
-        "1200",
+        str(query_configuration["budgetTokens"]),
         "--graph",
         str(graph),
     ]
-    if question["intent"] == "path":
+    if (
+        question["intent"] == "path"
+        and query_configuration["pathTraversal"] == "dfs"
+    ):
         command.insert(3, "--dfs")
     started = time.perf_counter()
-    process = subprocess.run(command, capture_output=True, text=True, check=False)
+    process = subprocess.run(
+        command,
+        cwd=working_directory,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
     return {
         "id": question["id"],
         "category": question["category"],
@@ -131,26 +152,48 @@ def main(argv=None):
     args = parse_args(argv)
     if args.self_test:
         return self_test()
-    if not args.graph.is_file():
-        raise RuntimeError(f"Graphify graph is missing: {args.graph}")
     if args.assert_kast_regression and (not args.database or not args.database.is_file()):
         raise RuntimeError("--database must name the frozen corpus source-index.db")
 
-    graph = json.loads(args.graph.read_text(encoding="utf-8"))
-    questions = load_questions()
-    answers = [graphify_query(args.graphify, args.graph, question) for question in questions]
+    snapshot = provenance.load_benchmark_snapshot(MANIFEST, QUESTIONS, RUBRIC)
+    manifest = snapshot.manifest
+    capture = provenance.validate_graphify_capture(
+        manifest,
+        args.graph.resolve(),
+        args.graphify,
+    )
+    questions = list(snapshot.questions)
+    with tempfile.TemporaryDirectory(prefix="kast-graphify-capture-") as directory:
+        isolation_root = Path(directory)
+        environment = provenance.process_environment(
+            provenance.GRAPHIFY_PROCESS_ENVIRONMENT,
+            isolation_root,
+        )
+        graph_snapshot = isolation_root / "graph.json"
+        graph_snapshot.write_bytes(capture.graph_bytes)
+        answers = [
+            graphify_query(
+                capture.executable,
+                graph_snapshot,
+                question,
+                provenance.GRAPHIFY_QUERY_CONFIGURATION,
+                environment,
+                isolation_root,
+            )
+            for question in questions
+        ]
+        provenance.verify_graphify_capture(capture, graph_snapshot)
     exact_regression = exact_calls_path(args.database) if args.database else None
     categories = sorted({question["category"] for question in questions})
     output = {
-        "schemaVersion": 1,
-        "corpusCommit": json.loads(MANIFEST.read_text())["corpus"]["commit"],
+        "schemaVersion": provenance.CAPTURE_SCHEMA_VERSION,
+        "corpusCommit": snapshot.identity.corpus_commit,
         "graphify": {
-            "version": subprocess.run(
-                [args.graphify, "--version"], capture_output=True, text=True, check=False
-            ).stdout.splitlines()[0],
-            "directed": graph.get("directed", False),
-            "nodes": len(graph.get("nodes", [])),
-            "edges": len(graph.get("links", [])),
+            "version": capture.version_output,
+            "directed": capture.directed,
+            "graphSha256": capture.graph_sha256,
+            "nodes": capture.nodes,
+            "edges": capture.edges,
             "questions": {
                 "answerable": sum(answer["answerable"] for answer in answers),
                 "total": len(answers),
@@ -169,6 +212,10 @@ def main(argv=None):
                 },
             },
         },
+        "provenance": provenance.capture_provenance(
+            snapshot.identity,
+            capture.artifact(),
+        ),
         "kastExactCallsRegression": exact_regression,
         "results": answers,
     }
@@ -190,6 +237,17 @@ def main(argv=None):
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (OSError, RuntimeError, sqlite3.Error, ValueError, KeyError) as error:
+    except provenance.ProvenanceError as error:
+        print(json.dumps(error.document(), sort_keys=True))
+        raise SystemExit(1)
+    except (
+        AttributeError,
+        OSError,
+        RuntimeError,
+        sqlite3.Error,
+        TypeError,
+        ValueError,
+        KeyError,
+    ) as error:
         print(json.dumps({"error": {"code": "BASELINE_FAILED", "message": str(error)}}))
         raise SystemExit(1)

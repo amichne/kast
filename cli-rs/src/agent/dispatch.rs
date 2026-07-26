@@ -26,6 +26,7 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         AgentCommand::Verify(args) => execute_agent_verify(args),
         AgentCommand::WorkspaceFiles(args) => execute_agent_workspace_files(args),
         AgentCommand::Graph(args) => execute_agent_native_graph(args),
+        AgentCommand::Repository(args) => execute_agent_repository(args),
         AgentCommand::Symbol(args) => execute_agent_symbol(args),
         AgentCommand::References(args) => execute_agent_references(args),
         AgentCommand::Callers(args) => execute_agent_callers(args),
@@ -60,6 +61,7 @@ fn agent_command_runtime(command: &AgentCommand) -> Option<&AgentRuntimeArgs> {
         AgentCommand::Verify(args) => Some(&args.runtime),
         AgentCommand::WorkspaceFiles(args) => Some(&args.runtime),
         AgentCommand::Graph(args) => Some(&args.runtime),
+        AgentCommand::Repository(_) => None,
         AgentCommand::Symbol(args) => Some(&args.runtime),
         AgentCommand::References(args) => Some(&args.runtime),
         AgentCommand::Callers(args) | AgentCommand::Callees(args) => Some(&args.runtime),
@@ -84,10 +86,9 @@ fn execute_agent_lease(args: AgentLeaseArgs) -> AgentEnvelope {
             "agent/lease/acquire",
             runtime::workspace_lease_acquire(args),
         ),
-        AgentLeaseCommand::Status(args) => (
-            "agent/lease/status",
-            runtime::workspace_lease_status(args),
-        ),
+        AgentLeaseCommand::Status(args) => {
+            ("agent/lease/status", runtime::workspace_lease_status(args))
+        }
         AgentLeaseCommand::Release(args) => (
             "agent/lease/release",
             runtime::workspace_lease_release(args),
@@ -104,11 +105,7 @@ fn execute_agent_lease(args: AgentLeaseArgs) -> AgentEnvelope {
             error: None,
             schema_version: SCHEMA_VERSION,
         },
-        Err(error) => error_envelope(
-            method.to_string(),
-            None,
-            AgentError::from_cli_error(error),
-        ),
+        Err(error) => error_envelope(method.to_string(), None, AgentError::from_cli_error(error)),
     }
 }
 
@@ -122,6 +119,57 @@ fn execute_agent_verify(args: AgentVerifyArgs) -> AgentEnvelope {
             AgentPublicStep::new("capabilities", "capabilities", json!({}), false),
         ],
     )
+}
+
+fn execute_agent_repository(args: AgentRepositoryArgs) -> AgentEnvelope {
+    let result_limit = if args.view.detailed() || args.view.count {
+        args.results
+    } else {
+        args.results.min(10)
+    };
+    let scope = drop_nulls(json!({
+        "language": args.language,
+        "module": args.module,
+        "sourceSet": args.source_set,
+        "relations": args.relations,
+        "direction": args.direction,
+        "maxDepth": args.max_depth,
+        "projection": args.projection,
+        "metric": args.metric,
+        "sources": args.sources,
+    }));
+    let params = drop_nulls(json!({
+        "question": args.question,
+        "intent": args.intent,
+        "canonicalKey": args.canonical_key,
+        "scope": scope,
+        "limits": {
+            "depth": args.depth,
+            "results": result_limit,
+            "evidence": args.evidence,
+        },
+        "continuation": args
+            .continuation
+            .as_ref()
+            .map(|continuation| continuation.as_str()),
+        "evidenceContinuation": args
+            .evidence_continuation
+            .as_ref()
+            .map(|continuation| continuation.as_str()),
+    }));
+    let mut envelope = execute_request(AgentRequest {
+        method: "repository/query".to_string(),
+        request: json_rpc_request("repository/query", params),
+        runtime: AgentRuntimeArgs {
+            workspace_root: args.workspace_root,
+            backend_name: None,
+            lease_id: None,
+        },
+        full_response: true,
+        operation: AgentOperation::ReadOnly,
+    });
+    envelope.method = "agent/repository".to_string();
+    envelope
 }
 
 fn execute_agent_symbol(args: AgentSymbolArgs) -> AgentEnvelope {
@@ -306,44 +354,50 @@ fn execute_agent_rename_symbol_preview(
             );
         }
     };
-    let resolved = match serde_json::from_value::<AgentCompilerResolveResponse>(resolved_value.clone()) {
-        Ok(AgentCompilerResolveResponse::Resolved { symbol, .. }) => symbol,
-        Ok(AgentCompilerResolveResponse::NotFound) => {
-            return error_envelope(
-                "agent/rename".to_string(),
-                Some(identity_request),
-                agent_error("AGENT_RENAME_TARGET_NOT_FOUND", "The requested rename target was not found."),
-            );
-        }
-        Ok(AgentCompilerResolveResponse::Ambiguous { candidates }) => {
-            let mut error = agent_error(
-                "AGENT_RENAME_TARGET_AMBIGUOUS",
-                "The requested rename target was ambiguous.",
-            );
-            error.details.insert("candidates".to_string(), Value::Array(candidates));
-            return error_envelope("agent/rename".to_string(), Some(identity_request), error);
-        }
-        Ok(AgentCompilerResolveResponse::OperationalFailure) => {
-            return error_envelope(
-                "agent/rename".to_string(),
-                Some(identity_request),
-                agent_error(
-                    "AGENT_RENAME_RESOLUTION_FAILED",
-                    "The compiler could not resolve the requested rename target.",
-                ),
-            );
-        }
-        Err(error) => {
-            return error_envelope(
-                "agent/rename".to_string(),
-                Some(identity_request),
-                agent_error(
-                    "INVALID_RENAME_RESOLUTION",
-                    format!("Rename target resolution violated its contract: {error}"),
-                ),
-            );
-        }
-    };
+    let resolved =
+        match serde_json::from_value::<AgentCompilerResolveResponse>(resolved_value.clone()) {
+            Ok(AgentCompilerResolveResponse::Resolved { symbol, .. }) => symbol,
+            Ok(AgentCompilerResolveResponse::NotFound) => {
+                return error_envelope(
+                    "agent/rename".to_string(),
+                    Some(identity_request),
+                    agent_error(
+                        "AGENT_RENAME_TARGET_NOT_FOUND",
+                        "The requested rename target was not found.",
+                    ),
+                );
+            }
+            Ok(AgentCompilerResolveResponse::Ambiguous { candidates }) => {
+                let mut error = agent_error(
+                    "AGENT_RENAME_TARGET_AMBIGUOUS",
+                    "The requested rename target was ambiguous.",
+                );
+                error
+                    .details
+                    .insert("candidates".to_string(), Value::Array(candidates));
+                return error_envelope("agent/rename".to_string(), Some(identity_request), error);
+            }
+            Ok(AgentCompilerResolveResponse::OperationalFailure) => {
+                return error_envelope(
+                    "agent/rename".to_string(),
+                    Some(identity_request),
+                    agent_error(
+                        "AGENT_RENAME_RESOLUTION_FAILED",
+                        "The compiler could not resolve the requested rename target.",
+                    ),
+                );
+            }
+            Err(error) => {
+                return error_envelope(
+                    "agent/rename".to_string(),
+                    Some(identity_request),
+                    agent_error(
+                        "INVALID_RENAME_RESOLUTION",
+                        format!("Rename target resolution violated its contract: {error}"),
+                    ),
+                );
+            }
+        };
     let Some(position) = resolved.rename_position() else {
         return error_envelope(
             "agent/rename".to_string(),
@@ -474,21 +528,13 @@ fn execute_agent_rename_handle_preview(
     let normalizer = match AgentFilePathNormalizer::from_runtime(&args.runtime) {
         Ok(normalizer) => normalizer,
         Err(error) => {
-            return error_envelope(
-                "agent/rename".to_string(),
-                Some(identity_request),
-                error,
-            );
+            return error_envelope("agent/rename".to_string(), Some(identity_request), error);
         }
     };
     identity.declaration_file = match normalizer.normalize(&identity.declaration_file) {
         Ok(file) => file.into_rpc_path(),
         Err(error) => {
-            return error_envelope(
-                "agent/rename".to_string(),
-                Some(identity_request),
-                error,
-            );
+            return error_envelope("agent/rename".to_string(), Some(identity_request), error);
         }
     };
     if identity.declaration_start_offset > i32::MAX as u64 {
@@ -738,12 +784,7 @@ fn execute_agent_mutation(
         Ok(key) => key,
         Err(error) => return error_envelope(agent_method.to_string(), None, error),
     };
-    let request = match applied_mutation_request(
-        mutation_kind,
-        idempotency_key,
-        params,
-        &runtime,
-    ) {
+    let request = match applied_mutation_request(mutation_kind, idempotency_key, params, &runtime) {
         Ok(request) => request,
         Err(error) => return error_envelope(agent_method.to_string(), None, error),
     };

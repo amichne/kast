@@ -1,6 +1,48 @@
 {
-  "schemaVersion": 1,
-  "status": "surpasses Graphify on the frozen benchmark",
+  "categories": {
+    "architecture": {
+      "graphifyPoints": 6,
+      "kastPoints": 84,
+      "maximumPoints": 84,
+      "questions": 6
+    },
+    "context": {
+      "graphifyPoints": 18,
+      "kastPoints": 84,
+      "maximumPoints": 84,
+      "questions": 6
+    },
+    "directional_path": {
+      "graphifyPoints": 14,
+      "kastPoints": 72,
+      "maximumPoints": 84,
+      "questions": 6
+    },
+    "discovery": {
+      "graphifyPoints": 12,
+      "kastPoints": 72,
+      "maximumPoints": 84,
+      "questions": 6
+    },
+    "exact_identity": {
+      "graphifyPoints": 15,
+      "kastPoints": 72,
+      "maximumPoints": 84,
+      "questions": 6
+    },
+    "impact": {
+      "graphifyPoints": 14,
+      "kastPoints": 72,
+      "maximumPoints": 84,
+      "questions": 6
+    },
+    "negative_ambiguity": {
+      "graphifyPoints": 6,
+      "kastPoints": 63,
+      "maximumPoints": 84,
+      "questions": 6
+    }
+  },
   "corpusCommit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
   "dimensions": [
     "answerCorrectness",
@@ -11,129 +53,5518 @@
     "discoveryAnswerability",
     "architecturalUsefulness"
   ],
-  "maximumPointsPerQuestion": 14,
-  "categories": {
-    "architecture": {
-      "questions": 6,
-      "maximumPoints": 84,
-      "kastPoints": 84,
-      "graphifyPoints": 36
-    },
-    "context": {
-      "questions": 6,
-      "maximumPoints": 84,
-      "kastPoints": 84,
-      "graphifyPoints": 30
-    },
-    "directional_path": {
-      "questions": 6,
-      "maximumPoints": 84,
-      "kastPoints": 84,
-      "graphifyPoints": 12
-    },
-    "discovery": {
-      "questions": 6,
-      "maximumPoints": 84,
-      "kastPoints": 72,
-      "graphifyPoints": 30
-    },
-    "exact_identity": {
-      "questions": 6,
-      "maximumPoints": 84,
-      "kastPoints": 72,
-      "graphifyPoints": 12
-    },
-    "impact": {
-      "questions": 6,
-      "maximumPoints": 84,
-      "kastPoints": 84,
-      "graphifyPoints": 12
-    },
-    "negative_ambiguity": {
-      "questions": 6,
-      "maximumPoints": 84,
-      "kastPoints": 72,
-      "graphifyPoints": 6
-    }
+  "gates": {
+    "allQuestionsScored": true,
+    "kastExactKotlinScoreStrictlyHigher": true,
+    "kastHasZeroCriticalFailures": true,
+    "provenanceAdmitted": false,
+    "scoreAdvantageObserved": true
   },
-  "scoringProfiles": {
-    "kast": {
-      "architecture": [2, 2, 2, 2, 2, 2, 2],
-      "context": [2, 2, 2, 2, 2, 2, 2],
-      "directional_path": [2, 2, 2, 2, 2, 2, 2],
-      "discovery": [2, 2, 2, 2, 2, 2, 0],
-      "exact_identity": [2, 2, 2, 2, 2, 2, 0],
-      "impact": [2, 2, 2, 2, 2, 2, 2],
-      "negative_ambiguity": [2, 2, 2, 2, 2, 2, 0]
+  "maximumPointsPerQuestion": 14,
+  "performance": {
+    "declaredQuestions": 42,
+    "eligible": false,
+    "reasons": [
+      "KAST_CAPTURE_SCHEMA_UNSUPPORTED",
+      "GRAPHIFY_CAPTURE_SCHEMA_UNSUPPORTED",
+      "KAST_PROVENANCE_RECEIPT_MISSING",
+      "GRAPHIFY_PROVENANCE_RECEIPT_MISSING",
+      "KAST_BUILD_RECEIPT_MISSING",
+      "GRAPHIFY_GRAPH_RECEIPT_MISSING"
+    ],
+    "systems": {
+      "graphify": {
+        "capturedQuestions": 42,
+        "completedQuestions": 42,
+        "measuredQuestions": 42,
+        "medianLatencyMillis": 882.354,
+        "p95LatencyMillis": 938.844,
+        "reportedQuestions": 42,
+        "totalLatencyMillis": 36555.997,
+        "totalResponseBytes": 159117
+      },
+      "kast": {
+        "capturedQuestions": 42,
+        "completedQuestions": 42,
+        "measuredQuestions": 42,
+        "medianLatencyMillis": 640.018,
+        "p95LatencyMillis": 2753.086,
+        "reportedQuestions": 42,
+        "totalLatencyMillis": 52429.955,
+        "totalResponseBytes": 2251102
+      }
+    },
+    "winnerByTotalLatency": null
+  },
+  "provenance": {
+    "admission": {
+      "admitted": false,
+      "benchmark": {
+        "corpusCommit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
+        "manifestSha256": "58cdddc067b1ff7e10a52e2a23ef1c80a0d61b2d6d08a530f7adee9124392170",
+        "questionsSha256": "adf4777f6f710ee5c8d69502bfbfb334144fb3191ffdde35cd196ed2b784461e",
+        "rubricSha256": "655ec74077b12a9e8ea1b19f9f2eec06429dda5e7d8295f6aaf0ab805381cd36"
+      },
+      "captureDocuments": {
+        "graphifySha256": "d638dd3134bf616f2e1662b5820dc702a58ff21de3b7b09a8c6026a8aacbd09d",
+        "kastSha256": "112daa4137085079b39b5af9dbd4c28b2e982b91d0c9fc9083fd7c170369627e"
+      },
+      "failures": [
+        {
+          "actual": 1,
+          "code": "KAST_CAPTURE_SCHEMA_UNSUPPORTED",
+          "expected": 3,
+          "field": "schemaVersion",
+          "system": "kast"
+        },
+        {
+          "actual": 1,
+          "code": "GRAPHIFY_CAPTURE_SCHEMA_UNSUPPORTED",
+          "expected": 3,
+          "field": "schemaVersion",
+          "system": "graphify"
+        },
+        {
+          "actual": null,
+          "code": "KAST_PROVENANCE_RECEIPT_MISSING",
+          "expected": 1,
+          "field": "provenance",
+          "system": "kast"
+        },
+        {
+          "actual": null,
+          "code": "GRAPHIFY_PROVENANCE_RECEIPT_MISSING",
+          "expected": 1,
+          "field": "provenance",
+          "system": "graphify"
+        },
+        {
+          "actual": null,
+          "code": "KAST_BUILD_RECEIPT_MISSING",
+          "expected": "KAST_BUILD",
+          "field": "provenance.artifact.kind",
+          "system": "kast"
+        },
+        {
+          "actual": null,
+          "code": "GRAPHIFY_GRAPH_RECEIPT_MISSING",
+          "expected": "GRAPHIFY_GRAPH",
+          "field": "provenance.artifact.kind",
+          "system": "graphify"
+        }
+      ]
     },
     "graphify": {
-      "architecture": [1, 1, 0, 1, 1, 1, 1],
-      "context": [1, 1, 0, 1, 1, 1, 0],
-      "directional_path": [0, 0, 0, 1, 1, 0, 0],
-      "discovery": [1, 1, 0, 1, 1, 1, 0],
-      "exact_identity": [0, 0, 0, 1, 1, 0, 0],
-      "impact": [0, 0, 0, 1, 1, 0, 0],
-      "negative_ambiguity": [0, 0, 0, 0, 1, 0, 0]
-    }
-  },
-  "kast": {
-    "implementationCommit": "5ac947c059f25465721a721e447c38246c6006ac",
-    "resultPath": "benchmarks/repository-intelligence/results/final.json",
-    "resultSha256": "1dc6f04c86bf8ad495cd6a59751f7b0fffa07e4890de958d2167bce60de414b0",
-    "questionsPassed": 42,
-    "questionsTotal": 42,
-    "criticalFailures": 0,
-    "deterministic": true,
-    "overallPoints": 552,
-    "overallMaximumPoints": 588,
-    "exactKotlinPoints": 240,
-    "exactKotlinMaximumPoints": 252,
-    "discoveryAnswerable": 6,
-    "discoveryTotal": 6,
-    "architectureAnswerable": 6,
-    "architectureTotal": 6
-  },
-  "graphify": {
-    "version": "graphify 0.9.22",
-    "resultPath": "benchmarks/repository-intelligence/results/graphify-final.json",
-    "resultSha256": "0228b2bf56b96490b6e9529b06f2ec7ae0aaf79e784a0904d2ad43cea17d2156",
-    "graphSha256": "9ba3af31f2b0419f34b12956f1d25cd77ca4a4946464208bd8287ad465b80efc",
-    "directed": false,
-    "nodes": 12936,
-    "edges": 26314,
-    "communities": 730,
-    "overallPoints": 138,
-    "overallMaximumPoints": 588,
-    "exactKotlinPoints": 36,
-    "exactKotlinMaximumPoints": 252,
-    "discoveryAnswerable": 6,
-    "discoveryTotal": 6,
-    "architectureAnswerable": 6,
-    "architectureTotal": 6,
-    "unsupportedOperations": [
-      "overload-safe exact identity selection",
-      "typed directed semantic paths",
-      "relation occurrence or derivation retrieval",
-      "coverage-qualified complete negatives",
-      "explicit bounded ambiguity",
-      "relation-specific architecture metrics with evidence subgraphs",
-      "typed repository-context relations to exact Kotlin identities"
+      "directed": false,
+      "edges": 26314,
+      "graphSha256": null,
+      "nodes": 12936,
+      "version": "graphify 0.9.22"
+    },
+    "hashes": {
+      "graphifyResultSha256": "d638dd3134bf616f2e1662b5820dc702a58ff21de3b7b09a8c6026a8aacbd09d",
+      "implementationIdentitySha256": "d9435fc2738a4104e1bc30ae0481f16632a73a96f2c24bb9f9dfe08626f43482",
+      "kastBinaryRecordedIdentitySha256": "ceb944edaf8b7b43904e37bff4ed5f77017e602f7589014640fe1c5979973028",
+      "kastResultSha256": "112daa4137085079b39b5af9dbd4c28b2e982b91d0c9fc9083fd7c170369627e",
+      "manifestSha256": "58cdddc067b1ff7e10a52e2a23ef1c80a0d61b2d6d08a530f7adee9124392170",
+      "questionsSha256": "adf4777f6f710ee5c8d69502bfbfb334144fb3191ffdde35cd196ed2b784461e",
+      "rubricSha256": "655ec74077b12a9e8ea1b19f9f2eec06429dda5e7d8295f6aaf0ab805381cd36"
+    },
+    "kast": {
+      "binaryEvidence": "RECORDED_PATH_ONLY",
+      "binaryRecordedPath": "/Users/amichne/code/kast-repository-intelligence/cli-rs/target/debug/kast",
+      "binarySha256": null,
+      "implementationCommit": "5ac947c059f25465721a721e447c38246c6006ac"
+    },
+    "limitations": [
+      "KAST_CAPTURE_SCHEMA_UNSUPPORTED",
+      "GRAPHIFY_CAPTURE_SCHEMA_UNSUPPORTED",
+      "KAST_PROVENANCE_RECEIPT_MISSING",
+      "GRAPHIFY_PROVENANCE_RECEIPT_MISSING",
+      "KAST_BUILD_RECEIPT_MISSING",
+      "GRAPHIFY_GRAPH_RECEIPT_MISSING"
     ]
   },
-  "comparisonGates": {
-    "sameFrozenCorpus": true,
-    "kastHasZeroCriticalFailures": true,
-    "kastPassesEveryExactKotlinAssertion": true,
-    "kastExactKotlinScoreStrictlyHigher": true,
-    "kastMatchesDiscoveryAnswerability": true,
-    "kastMatchesArchitectureAnswerability": true,
-    "kastOverallScoreStrictlyHigher": true
+  "questions": [
+    {
+      "category": "exact_identity",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=exact-01-semantic-graph-sha-parse].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=exact-01-semantic-graph-sha-parse].stdout",
+        "kastResult": "results/final.json#results[id=exact-01-semantic-graph-sha-parse].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "exact-01-semantic-graph-sha-parse",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_PARTIAL",
+              "score": 1
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 4
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "exact_identity",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=exact-02-symbol-key-parse].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=exact-02-symbol-key-parse].stdout",
+        "kastResult": "results/final.json#results[id=exact-02-symbol-key-parse].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "exact-02-symbol-key-parse",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_PARTIAL",
+              "score": 1
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 4
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "exact_identity",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=exact-03-source-path-parse].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=exact-03-source-path-parse].stdout",
+        "kastResult": "results/final.json#results[id=exact-03-source-path-parse].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "exact-03-source-path-parse",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_PARTIAL",
+              "score": 1
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 4
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "exact_identity",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=exact-04-string-sha-overload].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=exact-04-string-sha-overload].stdout",
+        "kastResult": "results/final.json#results[id=exact-04-string-sha-overload].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "exact-04-string-sha-overload",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "exact_identity",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=exact-05-byte-array-sha-overload].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=exact-05-byte-array-sha-overload].stdout",
+        "kastResult": "results/final.json#results[id=exact-05-byte-array-sha-overload].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "exact-05-byte-array-sha-overload",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "exact_identity",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=exact-06-workspace-page-token-parse].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=exact-06-workspace-page-token-parse].stdout",
+        "kastResult": "results/final.json#results[id=exact-06-workspace-page-token-parse].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "exact-06-workspace-page-token-parse",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "directional_path",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=path-01-known-sha-chain].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=path-01-known-sha-chain].stdout",
+        "kastResult": "results/final.json#results[id=path-01-known-sha-chain].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "path-01-known-sha-chain",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 2
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "directional_path",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=path-02-operation-to-snapshot].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=path-02-operation-to-snapshot].stdout",
+        "kastResult": "results/final.json#results[id=path-02-operation-to-snapshot].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "path-02-operation-to-snapshot",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 3
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "directional_path",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=path-03-snapshot-to-extractor].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=path-03-snapshot-to-extractor].stdout",
+        "kastResult": "results/final.json#results[id=path-03-snapshot-to-extractor].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "path-03-snapshot-to-extractor",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 3
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "directional_path",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=path-04-snapshot-to-store-write].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=path-04-snapshot-to-store-write].stdout",
+        "kastResult": "results/final.json#results[id=path-04-snapshot-to-store-write].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "path-04-snapshot-to-store-write",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "directional_path",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=path-05-store-write-to-preparation].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=path-05-store-write-to-preparation].stdout",
+        "kastResult": "results/final.json#results[id=path-05-store-write-to-preparation].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "path-05-store-write-to-preparation",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 2
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "directional_path",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=path-06-symbol-to-signature].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=path-06-symbol-to-signature].stdout",
+        "kastResult": "results/final.json#results[id=path-06-symbol-to-signature].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "path-06-symbol-to-signature",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 3
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "impact",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=impact-01-sha-parse-callers].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=impact-01-sha-parse-callers].stdout",
+        "kastResult": "results/final.json#results[id=impact-01-sha-parse-callers].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "impact-01-sha-parse-callers",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "impact",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=impact-02-snapshot-outgoing].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=impact-02-snapshot-outgoing].stdout",
+        "kastResult": "results/final.json#results[id=impact-02-snapshot-outgoing].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "impact-02-snapshot-outgoing",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 3
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "impact",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=impact-03-store-write-callers].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=impact-03-store-write-callers].stdout",
+        "kastResult": "results/final.json#results[id=impact-03-store-write-callers].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "impact-03-store-write-callers",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 3
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "impact",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=impact-04-ensure-schema-outgoing].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=impact-04-ensure-schema-outgoing].stdout",
+        "kastResult": "results/final.json#results[id=impact-04-ensure-schema-outgoing].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "impact-04-ensure-schema-outgoing",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 3
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "impact",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=impact-05-scope-fingerprint-callers].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=impact-05-scope-fingerprint-callers].stdout",
+        "kastResult": "results/final.json#results[id=impact-05-scope-fingerprint-callers].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "impact-05-scope-fingerprint-callers",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "impact",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=impact-06-symbol-builder-outgoing].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=impact-06-symbol-builder-outgoing].stdout",
+        "kastResult": "results/final.json#results[id=impact-06-symbol-builder-outgoing].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "impact-06-symbol-builder-outgoing",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 3
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "discovery",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=discovery-01-scope-hasher].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=discovery-01-scope-hasher].stdout",
+        "kastResult": "results/final.json#results[id=discovery-01-scope-hasher].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "discovery-01-scope-hasher",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "discovery",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=discovery-02-persists-graph-files].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=discovery-02-persists-graph-files].stdout",
+        "kastResult": "results/final.json#results[id=discovery-02-persists-graph-files].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "discovery-02-persists-graph-files",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "discovery",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=discovery-03-relation-source-evidence].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=discovery-03-relation-source-evidence].stdout",
+        "kastResult": "results/final.json#results[id=discovery-03-relation-source-evidence].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "discovery-03-relation-source-evidence",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "discovery",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=discovery-04-normalized-source-path].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=discovery-04-normalized-source-path].stdout",
+        "kastResult": "results/final.json#results[id=discovery-04-normalized-source-path].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "discovery-04-normalized-source-path",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "discovery",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=discovery-05-builds-snapshot].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=discovery-05-builds-snapshot].stdout",
+        "kastResult": "results/final.json#results[id=discovery-05-builds-snapshot].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "discovery-05-builds-snapshot",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_PARTIAL",
+              "score": 1
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 4
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "discovery",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=discovery-06-compiler-signature].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=discovery-06-compiler-signature].stdout",
+        "kastResult": "results/final.json#results[id=discovery-06-compiler-signature].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "discovery-06-compiler-signature",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_PARTIAL",
+              "score": 1
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 4
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "architecture",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=architecture-01-runtime-call-hubs].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=architecture-01-runtime-call-hubs].stdout",
+        "kastResult": "results/final.json#results[id=architecture-01-runtime-call-hubs].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "architecture-01-runtime-call-hubs",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 14
+        }
+      }
+    },
+    {
+      "category": "architecture",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=architecture-02-cross-boundary-cycles].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=architecture-02-cross-boundary-cycles].stdout",
+        "kastResult": "results/final.json#results[id=architecture-02-cross-boundary-cycles].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "architecture-02-cross-boundary-cycles",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 14
+        }
+      }
+    },
+    {
+      "category": "architecture",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=architecture-03-type-boundaries].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=architecture-03-type-boundaries].stdout",
+        "kastResult": "results/final.json#results[id=architecture-03-type-boundaries].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "architecture-03-type-boundaries",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 14
+        }
+      }
+    },
+    {
+      "category": "architecture",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=architecture-04-communities].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=architecture-04-communities].stdout",
+        "kastResult": "results/final.json#results[id=architecture-04-communities].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "architecture-04-communities",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 14
+        }
+      }
+    },
+    {
+      "category": "architecture",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=architecture-05-thin-bridges].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=architecture-05-thin-bridges].stdout",
+        "kastResult": "results/final.json#results[id=architecture-05-thin-bridges].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "architecture-05-thin-bridges",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 14
+        }
+      }
+    },
+    {
+      "category": "architecture",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=architecture-06-public-api-consumers].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=architecture-06-public-api-consumers].stdout",
+        "kastResult": "results/final.json#results[id=architecture-06-public-api-consumers].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "architecture-06-public-api-consumers",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 14
+        }
+      }
+    },
+    {
+      "category": "context",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=context-01-compiler-evidence-doc].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=context-01-compiler-evidence-doc].stdout",
+        "kastResult": "results/final.json#results[id=context-01-compiler-evidence-doc].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "context-01-compiler-evidence-doc",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 14
+        }
+      }
+    },
+    {
+      "category": "context",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=context-02-gradle-owner].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=context-02-gradle-owner].stdout",
+        "kastResult": "results/final.json#results[id=context-02-gradle-owner].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "context-02-gradle-owner",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_PARTIAL",
+              "score": 1
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 4
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 14
+        }
+      }
+    },
+    {
+      "category": "context",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=context-03-semantic-graph-schema].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=context-03-semantic-graph-schema].stdout",
+        "kastResult": "results/final.json#results[id=context-03-semantic-graph-schema].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "context-03-semantic-graph-schema",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_PARTIAL",
+              "score": 1
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 4
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 14
+        }
+      }
+    },
+    {
+      "category": "context",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=context-04-relationship-coverage-adr].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=context-04-relationship-coverage-adr].stdout",
+        "kastResult": "results/final.json#results[id=context-04-relationship-coverage-adr].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "context-04-relationship-coverage-adr",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EXPECTATION_MISSING",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 14
+        }
+      }
+    },
+    {
+      "category": "context",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=context-05-rust-consumes-schema].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=context-05-rust-consumes-schema].stdout",
+        "kastResult": "results/final.json#results[id=context-05-rust-consumes-schema].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "context-05-rust-consumes-schema",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_PARTIAL",
+              "score": 1
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 4
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 14
+        }
+      }
+    },
+    {
+      "category": "context",
+      "critical": false,
+      "evidenceSources": {
+        "assertions": "questions[id=context-06-workflow-to-implementation].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=context-06-workflow-to-implementation].stdout",
+        "kastResult": "results/final.json#results[id=context-06-workflow-to-implementation].response.result"
+      },
+      "expectedDisposition": "ANSWERED",
+      "id": "context-06-workflow-to-implementation",
+      "systems": {
+        "graphify": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_RELEVANT_UNTYPED",
+              "score": 1
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_PARTIAL",
+              "score": 1
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 4
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_TYPED",
+              "score": 2
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 14
+        }
+      }
+    },
+    {
+      "category": "negative_ambiguity",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=negative-01-bare-parse-ambiguity].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=negative-01-bare-parse-ambiguity].stdout",
+        "kastResult": "results/final.json#results[id=negative-01-bare-parse-ambiguity].response.result"
+      },
+      "expectedDisposition": "AMBIGUOUS",
+      "id": "negative-01-bare-parse-ambiguity",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_NEGATIVE_UNSUPPORTED",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "negative_ambiguity",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=negative-02-bare-sha-ambiguity].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=negative-02-bare-sha-ambiguity].stdout",
+        "kastResult": "results/final.json#results[id=negative-02-bare-sha-ambiguity].response.result"
+      },
+      "expectedDisposition": "AMBIGUOUS",
+      "id": "negative-02-bare-sha-ambiguity",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_NEGATIVE_UNSUPPORTED",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PROVEN",
+              "score": 2
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 12
+        }
+      }
+    },
+    {
+      "category": "negative_ambiguity",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=negative-03-complete-empty].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=negative-03-complete-empty].stdout",
+        "kastResult": "results/final.json#results[id=negative-03-complete-empty].response.result"
+      },
+      "expectedDisposition": "EMPTY",
+      "id": "negative-03-complete-empty",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_NEGATIVE_UNSUPPORTED",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PARTIAL",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 10
+        }
+      }
+    },
+    {
+      "category": "negative_ambiguity",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=negative-04-module-empty].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=negative-04-module-empty].stdout",
+        "kastResult": "results/final.json#results[id=negative-04-module-empty].response.result"
+      },
+      "expectedDisposition": "EMPTY",
+      "id": "negative-04-module-empty",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_NEGATIVE_UNSUPPORTED",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PARTIAL",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 10
+        }
+      }
+    },
+    {
+      "category": "negative_ambiguity",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=negative-05-incomplete-qualified-empty].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=negative-05-incomplete-qualified-empty].stdout",
+        "kastResult": "results/final.json#results[id=negative-05-incomplete-qualified-empty].response.result"
+      },
+      "expectedDisposition": "QUALIFIED_EMPTY",
+      "id": "negative-05-incomplete-qualified-empty",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_NEGATIVE_UNSUPPORTED",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_EXACT",
+              "score": 2
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PARTIAL",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 10
+        }
+      }
+    },
+    {
+      "category": "negative_ambiguity",
+      "critical": true,
+      "evidenceSources": {
+        "assertions": "questions[id=negative-06-wrong-direction-empty].assertions",
+        "graphifyMetadata": "results/graphify-final.json#graphify",
+        "graphifyOutput": "results/graphify-final.json#results[id=negative-06-wrong-direction-empty].stdout",
+        "kastResult": "results/final.json#results[id=negative-06-wrong-direction-empty].response.result"
+      },
+      "expectedDisposition": "EMPTY",
+      "id": "negative-06-wrong-direction-empty",
+      "systems": {
+        "graphify": {
+          "criticalFailure": true,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_NEGATIVE_UNSUPPORTED",
+              "score": 0
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_ARCHITECTURE_UNPROVEN",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_EVIDENCE_MISSING",
+              "score": 0
+            },
+            "identityPrecision": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_IDENTITY_UNPROVEN",
+              "score": 0
+            },
+            "relationFidelity": {
+              "evidence": [
+                "graphifyMetadata",
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_UNDIRECTED",
+              "score": 0
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "graphifyOutput"
+              ],
+              "reason": "GRAPHIFY_SCOPE_PARTIAL",
+              "score": 1
+            }
+          },
+          "points": 1
+        },
+        "kast": {
+          "criticalFailure": false,
+          "dimensions": {
+            "answerCorrectness": {
+              "evidence": [
+                "assertions",
+                "kastResult"
+              ],
+              "reason": "HARD_ASSERTIONS_PASS",
+              "score": 2
+            },
+            "architecturalUsefulness": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "ARCHITECTURE_NOT_EVIDENCED",
+              "score": 0
+            },
+            "discoveryAnswerability": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "DISCOVERY_UNPROVEN",
+              "score": 0
+            },
+            "evidenceAndProvenance": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SEMANTIC_EVIDENCE_PARTIAL",
+              "score": 1
+            },
+            "identityPrecision": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "EXACT_IDENTITY_OR_DISPOSITION",
+              "score": 2
+            },
+            "relationFidelity": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "TYPED_RELATION_PROVEN",
+              "score": 2
+            },
+            "scopeAndUncertainty": {
+              "evidence": [
+                "kastResult"
+              ],
+              "reason": "SCOPE_COMPLETE",
+              "score": 2
+            }
+          },
+          "points": 9
+        }
+      }
+    }
+  ],
+  "reasonCatalog": {
+    "ARCHITECTURE_NOT_EVIDENCED": "Architectural usefulness is not requested or not evidenced.",
+    "ARCHITECTURE_TYPED": "The answer provides a typed architectural finding, path, impact, or context relation.",
+    "DISCOVERY_EXACT": "Bounded discovery terminates in exact identity or an explicit typed disposition.",
+    "DISCOVERY_UNPROVEN": "The question does not prove exact discovery termination.",
+    "EXACT_IDENTITY_OR_DISPOSITION": "The answer preserves exact canonical identities or an explicit non-selection disposition.",
+    "EXACT_IDENTITY_UNPROVEN": "The captured answer does not prove exact identity handling.",
+    "GRAPHIFY_ARCHITECTURE_PARTIAL": "Relevant graph material is present, but no named metric with evidence subgraph is returned.",
+    "GRAPHIFY_ARCHITECTURE_UNPROVEN": "No evidenced architectural finding is returned.",
+    "GRAPHIFY_DISCOVERY_PARTIAL": "Relevant material is discoverable, but discovery does not terminate in exact identity.",
+    "GRAPHIFY_DISCOVERY_UNPROVEN": "The output does not prove bounded discovery to an exact identity or typed disposition.",
+    "GRAPHIFY_EVIDENCE_MISSING": "No relevant source-located evidence satisfies the question.",
+    "GRAPHIFY_EXPECTATION_MISSING": "The output does not contain the expected relevant material under the hard assertions.",
+    "GRAPHIFY_IDENTITY_PARTIAL": "A name-and-source pair is visible, but no overload-safe canonical identity is returned.",
+    "GRAPHIFY_IDENTITY_UNPROVEN": "No exact name-and-source identity pair is established.",
+    "GRAPHIFY_LOCATED_MATERIAL": "Relevant node material has a source location, but relation evidence is not retrievable.",
+    "GRAPHIFY_NEGATIVE_UNSUPPORTED": "The output has no explicit empty or ambiguity disposition; arbitrary nodes cannot answer a negative.",
+    "GRAPHIFY_RELEVANT_UNTYPED": "Relevant expected material is present, but the untyped output cannot satisfy every hard assertion.",
+    "GRAPHIFY_SCOPE_MISSING": "Generation, scope, coverage, bounds, and truncation are absent.",
+    "GRAPHIFY_SCOPE_PARTIAL": "Traversal depth is visible, but generation, coverage, semantic scope, and completeness are absent.",
+    "GRAPHIFY_UNDIRECTED": "The captured Graphify graph is undirected and the output exposes no typed relation path or occurrence.",
+    "HARD_ASSERTIONS_FAIL": "At least one frozen hard assertion fails.",
+    "HARD_ASSERTIONS_PASS": "Every frozen hard assertion passes.",
+    "SCOPE_COMPLETE": "Generation, scope, coverage, bounds, and truncation are visible.",
+    "SCOPE_PARTIAL": "Only part of generation, scope, coverage, bounds, and truncation is visible.",
+    "SEMANTIC_EVIDENCE_PARTIAL": "The captured answer does not carry complete source or derivation evidence.",
+    "SEMANTIC_EVIDENCE_PROVEN": "The answer carries source or derivation evidence for its semantic claim.",
+    "TYPED_RELATION_PARTIAL": "The captured answer lacks part of the requested typed relation contract.",
+    "TYPED_RELATION_PROVEN": "All requested relations are represented by typed direction, kind, or projection facts."
   },
-  "auditNotes": [
-    "Each category profile applies the seven published rubric dimensions to all six questions in that category.",
-    "Architectural usefulness scores zero for both systems when a discovery, exact-identity, or negative question does not request an architectural result.",
-    "Graphify receives partial credit for relevant node material, source locations, visible traversal depth, and explicit truncation.",
-    "A successful Graphify process with NODE output counts as answerable, but does not count as an exact, directed, evidenced answer.",
-    "Graphify relation-sensitive operations are recorded as unsupported because the rebuilt graph is undirected and its query output exposes no typed edge path or relation occurrence."
-  ]
+  "schemaVersion": 3,
+  "status": "score advantage observed; capture provenance is not admitted",
+  "systems": {
+    "graphify": {
+      "exactKotlinPoints": 43,
+      "overallMaximumPoints": 588,
+      "overallPoints": 85
+    },
+    "kast": {
+      "criticalFailures": [],
+      "exactKotlinPoints": 216,
+      "overallMaximumPoints": 588,
+      "overallPoints": 519
+    }
+  },
+  "verdict": "SUPERIORITY_NOT_ESTABLISHED"
 }

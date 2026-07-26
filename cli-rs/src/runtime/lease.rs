@@ -1178,6 +1178,55 @@ fn read_workspace_lease_secret(path: &Path) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
+pub(crate) fn sign_install_scoped_token<T: Serialize>(
+    version: &str,
+    claims: &T,
+) -> Result<String> {
+    let paths = WorkspaceLeasePaths::resolve()?;
+    let secret = read_or_create_workspace_lease_secret(&paths.secret)?;
+    let payload = hex::encode(serde_json::to_vec(claims)?);
+    let authenticated = format!("{version}.{payload}");
+    let signature = workspace_lease_hmac_sha256(&secret, authenticated.as_bytes());
+    Ok(format!("{authenticated}.{}", hex::encode(signature)))
+}
+
+pub(crate) fn verify_install_scoped_token<T: serde::de::DeserializeOwned>(
+    version: &str,
+    token: &str,
+) -> Result<Option<T>> {
+    if token.len() > 16_384 || !token.is_ascii() || token.chars().any(char::is_control) {
+        return Ok(None);
+    }
+    let mut parts = token.split('.');
+    let actual_version = parts.next();
+    let payload = parts.next();
+    let signature = parts.next();
+    if actual_version != Some(version)
+        || payload.is_none()
+        || signature.is_none()
+        || parts.next().is_some()
+    {
+        return Ok(None);
+    }
+    let payload = payload.expect("checked token payload");
+    let signature = match hex::decode(signature.expect("checked token signature")) {
+        Ok(signature) => signature,
+        Err(_) => return Ok(None),
+    };
+    let paths = WorkspaceLeasePaths::resolve()?;
+    let secret = read_workspace_lease_secret(&paths.secret)?;
+    let authenticated = format!("{version}.{payload}");
+    let expected = workspace_lease_hmac_sha256(&secret, authenticated.as_bytes());
+    if !constant_time_equal(&signature, &expected) {
+        return Ok(None);
+    }
+    let payload = match hex::decode(payload) {
+        Ok(payload) => payload,
+        Err(_) => return Ok(None),
+    };
+    Ok(serde_json::from_slice(&payload).ok())
+}
+
 fn sign_workspace_lease_token(secret: &[u8], claims: &WorkspaceLeaseTokenClaims) -> Result<String> {
     let payload = serde_json::to_vec(claims)?;
     let signature = workspace_lease_hmac_sha256(secret, &payload);

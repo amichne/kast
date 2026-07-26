@@ -125,8 +125,8 @@ uses a discriminated response envelope.
 | `raw/implementations` | `raw` | backend | Find concrete implementations and subclasses for a declaration | `position` | `maxResults` | `ImplementationsResult` | single result |
 | `raw/code-actions` | `raw` | backend | Return available code actions at a file position | `position` | `diagnosticCode` | `CodeActionsResult` | single result |
 | `raw/completions` | `raw` | backend | Return completion candidates available at a file position | `position` | `maxResults`<br>`kindFilter` | `CompletionsResult` | single result |
-| `graph/coverage` | `graph` | sqlite | Report generation-pinned Kotlin graph coverage by file, module, and compilation | none | `workspaceRoot`<br>`scope`<br>`afterPath`<br>`limit` | `KastGraphCoverageResult` | single result |
-| `repository/query` | `repository` | sqlite | Answer one bounded repository question with visible scope, coverage, and evidence | `question`<br>`intent`<br>`limits` | `workspaceRoot`<br>`canonicalKey`<br>`scope`<br>`evidenceContinuation` | `KastRepositoryQueryResult` | single result |
+| `graph/coverage` | `graph` | sqlite | Report generation-pinned Kotlin graph coverage by file, module, and compilation | none | `workspaceRoot`<br>`scope`<br>`continuation`<br>`limit` | `KastGraphCoverageResult` | single result |
+| `repository/query` | `repository` | sqlite | Answer one bounded repository question with visible scope, coverage, and evidence | `question`<br>`intent`<br>`limits` | `workspaceRoot`<br>`canonicalKey`<br>`scope`<br>`evidenceContinuation`<br>`continuation` | `KastRepositoryQueryResult` | single result |
 | `database/metrics` | `database` | sqlite | Query source-index metrics | `metric` | `workspaceRoot`<br>`limit`<br>`symbol`<br>`depth`<br>`offset`<br>`subject`<br>`fileGlob`<br>`folderFilter` | `RustMetricsResponse` | `METRICS_SUCCESS`<br>`METRICS_FAILURE` |
 
 #### Command field details
@@ -824,7 +824,7 @@ Response type: `CompletionsResult`.
 | --- | --- | --- | --- | --- |
 | `workspaceRoot` | `string` | no | yes |  |
 | `scope` | `object` | no | no |  |
-| `afterPath` | `string` | no | yes |  |
+| `continuation` | `string` | no | yes |  |
 | `limit` | `integer` | no | no |  |
 
 Response type: `KastGraphCoverageResult`.
@@ -833,6 +833,7 @@ Notes:
 
 - Every compilation-owned Kotlin file is classified as indexed, excluded, failed, or stale.
 - Complete negative answers require complete eligible coverage at the returned generation.
+- A truncated result returns an authenticated continuation; a terminal result returns continuation=null.
 
 </details>
 
@@ -846,7 +847,8 @@ Notes:
 | `question` | `string` | yes | no |  |
 | `intent` | `string` | yes | no | `resolve`<br>`path`<br>`incoming_impact`<br>`outgoing_impact`<br>`architecture`<br>`context_relationship` |
 | `scope` | `object` | no | no |  |
-| `evidenceContinuation` | `object` | no | no |  |
+| `evidenceContinuation` | `string` | no | no |  |
+| `continuation` | `string` | no | no |  |
 | `limits` | `object` | yes | no |  |
 
 Response type: `KastRepositoryQueryResult`.

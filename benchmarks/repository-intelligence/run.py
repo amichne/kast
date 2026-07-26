@@ -5,10 +5,12 @@ import argparse
 import json
 import os
 import subprocess
-import sys
+import tempfile
 import time
 from collections import Counter
 from pathlib import Path
+
+import provenance
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -16,9 +18,9 @@ BENCHMARK = Path(__file__).resolve().parent
 MANIFEST = BENCHMARK / "manifest.json"
 QUESTIONS = BENCHMARK / "questions.jsonl"
 DEFAULT_CORPUS = ROOT.parent / "kast-repository-intelligence-corpus"
-DEFAULT_KAST = ROOT / "cli-rs/target/debug/kast"
 DEFAULT_OUTPUT = BENCHMARK / "results/latest.json"
 VOLATILE_KEYS = {"elapsedMillis", "latencyMillis", "generatedAt", "startedAt", "finishedAt"}
+RUBRIC = BENCHMARK / "rubric.md"
 
 
 def parse_args(argv=None):
@@ -26,14 +28,9 @@ def parse_args(argv=None):
     parser.add_argument("--assert", dest="assert_all", action="store_true")
     parser.add_argument("--repeat", type=int, default=1)
     parser.add_argument("--corpus", type=Path, default=Path(os.environ.get("BENCHMARK_CORPUS", DEFAULT_CORPUS)))
-    parser.add_argument("--kast", type=Path, default=Path(os.environ.get("KAST_BIN", DEFAULT_KAST)))
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--self-test", action="store_true")
     return parser.parse_args(argv)
-
-
-def load_json(path):
-    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def load_questions():
@@ -56,7 +53,7 @@ def git(corpus, *args):
     return process.stdout.strip()
 
 
-def validate_inputs(manifest, questions, corpus, kast):
+def validate_inputs(manifest, questions, corpus):
     if len(questions) < 40:
         raise RuntimeError(f"question corpus has {len(questions)} entries; at least 40 are required")
     categories = Counter(question["category"] for question in questions)
@@ -71,10 +68,8 @@ def validate_inputs(manifest, questions, corpus, kast):
     actual = git(corpus, "rev-parse", "HEAD")
     if actual != manifest["corpus"]["commit"]:
         raise RuntimeError(f"frozen corpus is {actual}, expected {manifest['corpus']['commit']}")
-    if git(corpus, "status", "--porcelain", "--untracked-files=no"):
-        raise RuntimeError("frozen corpus has tracked changes")
-    if not kast.is_file():
-        raise RuntimeError(f"branch-built Kast CLI is missing: {kast}")
+    if git(corpus, "status", "--porcelain"):
+        raise RuntimeError("frozen corpus has tracked or untracked changes")
     return categories
 
 
@@ -97,8 +92,12 @@ def is_subset(expected, actual):
             key in actual and is_subset(value, actual[key]) for key, value in expected.items()
         )
     if isinstance(expected, list):
-        return isinstance(actual, list) and all(
-            any(is_subset(item, candidate) for candidate in actual) for item in expected
+        if not isinstance(actual, list):
+            return False
+        candidates = iter(actual)
+        return all(
+            any(is_subset(item, candidate) for candidate in candidates)
+            for item in expected
         )
     return expected == actual
 
@@ -139,7 +138,7 @@ def normalize(value, corpus):
     return value
 
 
-def query(kast, corpus, question):
+def query(kast, corpus, question, environment, manifest):
     request = {
         "jsonrpc": "2.0",
         "id": question["id"],
@@ -151,6 +150,9 @@ def query(kast, corpus, question):
             "limits": {"depth": 6, "results": 50, "evidence": 5},
         },
     }
+    guards_live_context = question["intent"] == "context_relationship"
+    if guards_live_context:
+        provenance.validate_corpus_inputs(manifest, corpus)
     started = time.perf_counter()
     process = subprocess.run(
         [
@@ -163,11 +165,14 @@ def query(kast, corpus, question):
             "--request",
             json.dumps(request, separators=(",", ":")),
         ],
+        env=environment,
         capture_output=True,
         text=True,
         check=False,
     )
     elapsed = round((time.perf_counter() - started) * 1000, 3)
+    if guards_live_context:
+        provenance.validate_corpus_inputs(manifest, corpus)
     try:
         response = json.loads(process.stdout)
     except json.JSONDecodeError:
@@ -195,8 +200,11 @@ def query(kast, corpus, question):
     }
 
 
-def run_once(kast, corpus, questions):
-    return [query(kast, corpus, question) for question in questions]
+def run_once(kast, corpus, questions, environment, manifest):
+    return [
+        query(kast, corpus, question, environment, manifest)
+        for question in questions
+    ]
 
 
 def semantic_projection(results, corpus):
@@ -373,28 +381,101 @@ def main(argv=None):
         raise RuntimeError("--repeat must be at least one")
     if args.self_test:
         return self_test()
-    manifest = load_json(MANIFEST)
-    questions = load_questions()
-    categories = validate_inputs(manifest, questions, args.corpus.resolve(), args.kast.resolve())
-    runs = [
-        run_once(args.kast.resolve(), args.corpus.resolve(), questions)
-        for _ in range(args.repeat)
-    ]
-    projections = [semantic_projection(run, args.corpus.resolve()) for run in runs]
-    deterministic = all(projection == projections[0] for projection in projections[1:])
-    summary = summarize(runs[-1], categories, deterministic)
-    output = {
-        "schemaVersion": 1,
-        "corpusCommit": manifest["corpus"]["commit"],
-        "implementationCommit": git(ROOT, "rev-parse", "HEAD"),
-        "kastBinary": str(args.kast.resolve()),
-        "summary": summary,
-        "results": runs[-1],
-    }
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(output, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    markdown_output = args.output.with_suffix(".md")
-    markdown_output.write_text(render_markdown_report(output), encoding="utf-8")
+    snapshot = provenance.load_benchmark_snapshot(MANIFEST, QUESTIONS, RUBRIC)
+    manifest = snapshot.manifest
+    questions = list(snapshot.questions)
+    corpus = args.corpus.resolve()
+    categories = validate_inputs(manifest, questions, corpus)
+    corpus_inputs = provenance.validate_corpus_inputs(manifest, corpus)
+    authority = provenance.kast_capture_authority(manifest)
+    environment = provenance.process_environment(
+        authority["processEnvironment"]
+    )
+    with tempfile.TemporaryDirectory(prefix="kast-benchmark-build-") as directory:
+        receipt = provenance.build_kast_release(
+            ROOT,
+            Path(directory) / "target",
+            authority,
+        )
+        source_index = provenance.validate_source_index_identity(
+            authority,
+            provenance.source_index_identity(
+                receipt.binary_path,
+                corpus,
+                environment,
+            ),
+        )
+        runs = [
+            run_once(
+                receipt.binary_path,
+                corpus,
+                questions,
+                environment,
+                manifest,
+            )
+            for _ in range(args.repeat)
+        ]
+        projections = [semantic_projection(run, corpus) for run in runs]
+        deterministic = all(
+            projection == projections[0] for projection in projections[1:]
+        )
+        summary = summarize(runs[-1], categories, deterministic)
+        validate_inputs(manifest, questions, corpus)
+        final_corpus_inputs = provenance.validate_corpus_inputs(manifest, corpus)
+        if final_corpus_inputs != corpus_inputs:
+            raise provenance.ProvenanceError(
+                "KAST_CORPUS_INPUT_CHANGED",
+                "Live repository-context inputs changed during benchmark capture.",
+            )
+        final_source_index = provenance.validate_source_index_identity(
+            authority,
+            provenance.source_index_identity(
+                receipt.binary_path,
+                corpus,
+                environment,
+            ),
+        )
+        if final_source_index != source_index:
+            raise provenance.ProvenanceError(
+                "KAST_SOURCE_INDEX_CHANGED",
+                "Kast source-index content changed during benchmark capture.",
+                details={
+                    "expected": source_index,
+                    "actual": final_source_index,
+                },
+            )
+        execution = provenance.validate_kast_execution(
+            {"results": runs[-1]},
+            corpus,
+        )
+        provenance.verify_kast_build_receipt(ROOT, receipt)
+        output = {
+            "schemaVersion": provenance.CAPTURE_SCHEMA_VERSION,
+            "corpusCommit": snapshot.identity.corpus_commit,
+            "implementationCommit": receipt.source_commit,
+            "kastBinary": str(receipt.binary_path),
+            **source_index,
+            "corpusInputs": corpus_inputs,
+            **execution,
+            "provenance": provenance.capture_provenance(
+                snapshot.identity,
+                receipt.artifact(
+                    execution,
+                    source_index,
+                    corpus_inputs,
+                    authority["processEnvironment"],
+                ),
+            ),
+            "summary": summary,
+            "results": runs[-1],
+        }
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(
+            json.dumps(output, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        markdown_output = args.output.with_suffix(".md")
+        markdown_output.write_text(render_markdown_report(output), encoding="utf-8")
     print(
         json.dumps(
             {
@@ -411,6 +492,9 @@ def main(argv=None):
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (OSError, RuntimeError, ValueError, KeyError) as error:
+    except provenance.ProvenanceError as error:
+        print(json.dumps(error.document(), sort_keys=True))
+        raise SystemExit(1)
+    except (AttributeError, OSError, RuntimeError, TypeError, ValueError, KeyError) as error:
         print(json.dumps({"error": {"code": "BENCHMARK_FAILED", "message": str(error)}}))
         raise SystemExit(1)

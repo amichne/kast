@@ -2,6 +2,10 @@
   "schemaVersion": 1,
   "corpus": {
     "commit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
+    "contextInputs": {
+      "files": 282,
+      "sha256": "9a4c2b0f774928a63d42fd3747e52e07e8e87edbb588eccb5b5807db35d78c35"
+    },
     "materializeCommand": "git worktree add --detach ../kast-repository-intelligence-corpus 2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
     "trackedFiles": 1115,
     "compilationOwnedKotlinFiles": 599,
@@ -79,7 +83,34 @@
     "kast": {
       "versionAtBaseline": "0.16.1-6-g2c630d3d",
       "implementationCommitAtBaseline": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
-      "configuration": "macOS IntelliJ IDEA backend; branch-built CLI; native source-index graph"
+      "configuration": "macOS IntelliJ IDEA backend; branch-built CLI; native source-index graph",
+      "capture": {
+        "schemaVersion": 1,
+        "sourceTreeSha256": "e58441a451cfeffa30e1c97f2026087f665e0eb44287cd19b3f537878496a197",
+        "binarySha256": "86d6f3de62194642bbb189e5eb25c215d020ceaf7780bdbee91868835420f0fe",
+        "sourceIndexPath": "/Users/amichne/.local/share/kast/state/data/workspaces/git/github.com/amichne/kast/worktrees/kast-repository-intelligence-corpus--8add60ac3132/cache/source-index.db",
+        "sourceIndexSha256": "f7dc2509581975b9bc69b2f66c3098861bea93308c4b3f80ad21c746e98d6590",
+        "cargo": {
+          "executableSha256": "aeb4105778ca1bd3c6b0e75768f581c656633cd51368fa61289b6a71696ac7e1",
+          "versionOutput": "cargo 1.96.0 (30a34c682 2026-05-25)\nrelease: 1.96.0\ncommit-hash: 30a34c6821b57de0aaec83a901aca39f88f6778c\ncommit-date: 2026-05-25\nhost: aarch64-apple-darwin\nlibgit2: 1.9.2 (sys:0.20.4 vendored)\nlibcurl: 8.7.1 (sys:0.4.87+curl-8.19.0 system ssl:(SecureTransport) LibreSSL/3.3.6)\nssl: OpenSSL 3.5.4 30 Sep 2025\nos: Mac OS 26.5.2 [64-bit]"
+        },
+        "rustc": {
+          "executableSha256": "aeb4105778ca1bd3c6b0e75768f581c656633cd51368fa61289b6a71696ac7e1",
+          "versionOutput": "rustc 1.96.0 (ac68faa20 2026-05-25)\nbinary: rustc\ncommit-hash: ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96\ncommit-date: 2026-05-25\nhost: aarch64-apple-darwin\nrelease: 1.96.0\nLLVM version: 22.1.2"
+        },
+        "processEnvironment": {
+          "base": "empty",
+          "set": {
+            "HOME": "/var/empty",
+            "KAST_HOME": "/Users/amichne/.local/share/kast",
+            "LANG": "C.UTF-8",
+            "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+            "TMPDIR": "/tmp"
+          },
+          "remove": [],
+          "isolatedHomeAndWorkingDirectory": false
+        }
+      }
     },
     "graphify": {
       "version": "0.9.22",
@@ -110,6 +141,28 @@
         "edges": 26314,
         "communities": 730,
         "directed": false
+      },
+      "capture": {
+        "schemaVersion": 1,
+        "versionOutput": "graphify 0.9.22",
+        "executableSha256": "c7b8f490dd9278b75197de478dc52cd5099e021d0c87638533a5f6f32a54967d",
+        "runtimeSha256": "fe46716a94d8efa4514feb3c39ba3e270deee2187556986f6ddcff54aba7bb9a",
+        "environmentSha256": "08a73959eea87d81398dc9b763f39d1566cda327a6ccc12c030aa0c12740adf1",
+        "processEnvironment": {
+          "base": "empty",
+          "set": {
+            "PYTHONHASHSEED": "0",
+            "PYTHONNOUSERSITE": "1",
+            "PYTHONSAFEPATH": "1"
+          },
+          "remove": [],
+          "isolatedHomeAndWorkingDirectory": true
+        },
+        "query": {
+          "budgetTokens": 1200,
+          "defaultTraversal": "bfs",
+          "pathTraversal": "dfs"
+        }
       }
     }
   },

@@ -2684,8 +2684,9 @@
               }
             }
           },
-          "afterPath": {
+          "continuation": {
             "type": "string",
+            "description": "Opaque continuation for the next path-ordered coverage page. Reuse only with the identical canonical workspace, request scope, limit, graph generation, resolved scope, and coverage composition.",
             "optional": true,
             "nullable": true
           },
@@ -2698,7 +2699,8 @@
       "responseType": "KastGraphCoverageResult",
       "notes": [
         "Every compilation-owned Kotlin file is classified as indexed, excluded, failed, or stale.",
-        "Complete negative answers require complete eligible coverage at the returned generation."
+        "Complete negative answers require complete eligible coverage at the returned generation.",
+        "A truncated result returns an authenticated continuation; a terminal result returns continuation=null."
       ]
     },
     "repository/query": {
@@ -2756,6 +2758,7 @@
                     "CASE_OF",
                     "CONTAINS",
                     "DELEGATES",
+                    "EXPECT_ACTUAL",
                     "IMPLEMENTS",
                     "INHERITS",
                     "METHOD",
@@ -2817,48 +2820,14 @@
         }
       },
           "evidenceContinuation": {
-            "type": "object",
-            "optional": true,
-            "fields": {
-              "sourceKey": {
-                "type": "string"
-              },
-              "targetKey": {
-                "type": "string"
-              },
-              "kind": {
-                "type": "string",
-                "enum": [
-                  "CALLS",
-                  "CASE_OF",
-                  "CONTAINS",
-                  "DELEGATES",
-                  "IMPLEMENTS",
-                  "INHERITS",
-                  "METHOD",
-                  "OVERRIDES",
-                  "REFERENCES",
-                  "SEALED_MEMBER"
-                ]
-              },
-              "context": {
-                "type": "string"
-              },
-              "derived": {
-                "type": "boolean"
-              },
-              "afterOccurrenceId": {
-                "type": "integer"
-              }
-            },
-            "required": [
-              "sourceKey",
-              "targetKey",
-              "kind",
-              "context",
-              "derived",
-              "afterOccurrenceId"
-            ]
+            "type": "string",
+            "description": "Opaque continuation from one returned edge. Reuse only with the identical workspace, graph generation, question, intent, scope, and limits; otherwise start a new unpaged query.",
+            "optional": true
+          },
+          "continuation": {
+            "type": "string",
+            "description": "Opaque continuation for a truncated relationship traversal. Reuse only with the identical workspace, graph and coverage snapshot, question, intent, resolved scope, direction, relations, and limits.",
+            "optional": true
           },
           "limits": {
             "type": "object",

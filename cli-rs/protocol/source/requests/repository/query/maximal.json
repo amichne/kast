@@ -4,14 +4,8 @@
   "method": "repository/query",
   "params": {
     "canonicalKey": "example-canonicalKey",
-    "evidenceContinuation": {
-      "afterOccurrenceId": 1,
-      "context": "example-context",
-      "derived": true,
-      "kind": "SEALED_MEMBER",
-      "sourceKey": "example-sourceKey",
-      "targetKey": "example-targetKey"
-    },
+    "continuation": "example-continuation",
+    "evidenceContinuation": "example-evidenceContinuation",
     "intent": "context_relationship",
     "limits": {
       "depth": 2,

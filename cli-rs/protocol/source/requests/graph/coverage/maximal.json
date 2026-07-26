@@ -3,7 +3,7 @@
   "jsonrpc": "2.0",
   "method": "graph/coverage",
   "params": {
-    "afterPath": "example-afterPath",
+    "continuation": "example-continuation",
     "limit": 25,
     "scope": {
       "language": "example-language",

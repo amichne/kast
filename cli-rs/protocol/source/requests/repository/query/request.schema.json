@@ -33,49 +33,11 @@
         "canonicalKey": {
           "type": "string"
         },
+        "continuation": {
+          "type": "string"
+        },
         "evidenceContinuation": {
-          "additionalProperties": false,
-          "properties": {
-            "afterOccurrenceId": {
-              "type": "integer"
-            },
-            "context": {
-              "type": "string"
-            },
-            "derived": {
-              "type": "boolean"
-            },
-            "kind": {
-              "enum": [
-                "CALLS",
-                "CASE_OF",
-                "CONTAINS",
-                "DELEGATES",
-                "IMPLEMENTS",
-                "INHERITS",
-                "METHOD",
-                "OVERRIDES",
-                "REFERENCES",
-                "SEALED_MEMBER"
-              ],
-              "type": "string"
-            },
-            "sourceKey": {
-              "type": "string"
-            },
-            "targetKey": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "sourceKey",
-            "targetKey",
-            "kind",
-            "context",
-            "derived",
-            "afterOccurrenceId"
-          ],
-          "type": "object"
+          "type": "string"
         },
         "intent": {
           "enum": [
@@ -157,6 +119,7 @@
                   "CASE_OF",
                   "CONTAINS",
                   "DELEGATES",
+                  "EXPECT_ACTUAL",
                   "IMPLEMENTS",
                   "INHERITS",
                   "METHOD",

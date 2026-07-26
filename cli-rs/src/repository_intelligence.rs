@@ -5,12 +5,14 @@ use crate::agent::{
 };
 use crate::config;
 use crate::error::{CliError, Result};
+use crate::runtime;
 use crate::source_index_db;
+use crate::symbol_query::{SymbolDiscoveryDocument, SymbolDiscoveryField, rank_symbol_discovery};
 use crate::workspace_inventory;
 use crate::workspace_inventory::model::{
     BuildQualifiedGradleProjectIdentity, BuildQualifiedGradleSourceSetIdentity,
     SourceIndexProgressStatus, WorkspaceCoverageDimension, WorkspaceFileIndexState,
-    WorkspaceIndexRead, WorkspaceInventoryFile, WorkspaceSourceSetEvidence,
+    WorkspaceIndexRead, WorkspaceInventoryFile, WorkspaceRoot, WorkspaceSourceSetEvidence,
 };
 use rusqlite::types::Type;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};
@@ -23,9 +25,25 @@ use std::path::{Path, PathBuf};
 
 const DEFAULT_FILE_LIMIT: usize = 100;
 const MAX_FILE_LIMIT: usize = 200;
+const GRAPH_COVERAGE_CONTINUATION_VERSION: &str = "kgc1";
+const GRAPH_COVERAGE_CONTINUATION_SCHEMA_VERSION: u32 = 1;
+const GRAPH_COVERAGE_ORDERING: &str = "path ascending";
+const REPOSITORY_CONTINUATION_VERSION: &str = "kri2";
+const REPOSITORY_CONTINUATION_SCHEMA_VERSION: u32 = 2;
+const REPOSITORY_TRAVERSAL_CONTINUATION_VERSION: &str = "krit2";
+const REPOSITORY_TRAVERSAL_CONTINUATION_SCHEMA_VERSION: u32 = 2;
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RepositoryRpcRequest {
+    jsonrpc: String,
+    id: Value,
+    method: String,
+    params: Value,
+}
 
 #[derive(Debug, Clone, Default, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct RepositoryScope {
     #[serde(default)]
     language: Option<String>,
@@ -33,8 +51,6 @@ struct RepositoryScope {
     module: Option<String>,
     #[serde(default)]
     source_set: Option<String>,
-    #[serde(default)]
-    fixture: Option<String>,
     #[serde(default)]
     relations: Vec<RepositoryRelationKind>,
     #[serde(default)]
@@ -49,19 +65,61 @@ struct RepositoryScope {
     sources: Vec<RepositoryContextSource>,
 }
 
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct GraphCoverageScope {
+    #[serde(default)]
+    language: Option<String>,
+    #[serde(default)]
+    module: Option<String>,
+    #[serde(default)]
+    source_set: Option<String>,
+}
+
+impl From<GraphCoverageScope> for RepositoryScope {
+    fn from(scope: GraphCoverageScope) -> Self {
+        Self {
+            language: scope.language,
+            module: scope.module,
+            source_set: scope.source_set,
+            ..Self::default()
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct GraphCoverageParams {
+    #[serde(default, rename = "workspaceRoot")]
+    _workspace_root: Option<String>,
     #[serde(default)]
-    scope: RepositoryScope,
+    scope: GraphCoverageScope,
     #[serde(default)]
-    after_path: Option<String>,
+    continuation: Option<GraphCoverageContinuation>,
     #[serde(default = "default_file_limit")]
     limit: usize,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
+struct GraphCoverageContinuation(String);
+
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct GraphCoverageContinuationClaims {
+    #[serde(rename = "v")]
+    schema_version: u32,
+    #[serde(rename = "g")]
+    graph_generation: u64,
+    #[serde(rename = "q")]
+    query_sha256: String,
+    #[serde(rename = "c")]
+    coverage_sha256: String,
+    #[serde(rename = "x")]
+    next_offset: u64,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct RepositoryLimits {
     depth: usize,
     results: usize,
@@ -90,6 +148,13 @@ impl RepositoryIntent {
             Self::ContextRelationship => "CONTEXT_RELATIONSHIP",
         }
     }
+
+    fn is_graph_relationship(self) -> bool {
+        matches!(
+            self,
+            Self::Path | Self::IncomingImpact | Self::OutgoingImpact
+        )
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
@@ -99,6 +164,7 @@ enum RepositoryRelationKind {
     CaseOf,
     Contains,
     Delegates,
+    ExpectActual,
     Implements,
     Inherits,
     Method,
@@ -114,6 +180,7 @@ impl RepositoryRelationKind {
             Self::CaseOf => "CASE_OF",
             Self::Contains => "CONTAINS",
             Self::Delegates => "DELEGATES",
+            Self::ExpectActual => "EXPECT_ACTUAL",
             Self::Implements => "IMPLEMENTS",
             Self::Inherits => "INHERITS",
             Self::Method => "METHOD",
@@ -239,8 +306,10 @@ impl RepositoryArchitectureMetric {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct RepositoryQueryParams {
+    #[serde(default, rename = "workspaceRoot")]
+    _workspace_root: Option<String>,
     question: String,
     intent: RepositoryIntent,
     #[serde(default)]
@@ -249,7 +318,102 @@ struct RepositoryQueryParams {
     scope: RepositoryScope,
     limits: RepositoryLimits,
     #[serde(default)]
+    continuation: Option<RepositoryTraversalContinuation>,
+    #[serde(default)]
     evidence_continuation: Option<RepositoryEvidenceContinuation>,
+}
+
+struct ValidatedRepositoryQueryParams {
+    question: String,
+    intent: RepositoryIntent,
+    canonical_key: Option<String>,
+    scope: RepositoryScope,
+    limits: RepositoryLimits,
+    continuation: Option<RepositoryTraversalContinuation>,
+    evidence_continuation: Option<RepositoryEvidenceContinuation>,
+}
+
+impl RepositoryQueryParams {
+    fn validated(self) -> Result<ValidatedRepositoryQueryParams> {
+        validate_scope(&self.scope)?;
+        validate_limits(&self.limits)?;
+        if self.question.trim().is_empty() {
+            return Err(invalid_repository_query(
+                "repository question must not be blank",
+            ));
+        }
+        if self
+            .scope
+            .max_depth
+            .is_some_and(|max_depth| max_depth > self.limits.depth)
+        {
+            return Err(invalid_repository_query(
+                "scope.maxDepth/--max-depth cannot exceed limits.depth/--depth; lower maxDepth or raise depth to at most 6",
+            ));
+        }
+        let graph_intent = self.intent.is_graph_relationship();
+        if self.canonical_key.is_some() && self.intent != RepositoryIntent::Resolve {
+            return Err(invalid_repository_query(
+                "canonicalKey/--canonical-key is valid only with intent=resolve",
+            ));
+        }
+        if (!self.scope.relations.is_empty() || self.scope.max_depth.is_some()) && !graph_intent {
+            return Err(invalid_repository_query(
+                "scope.relations and scope.maxDepth require intent=path, incoming_impact, or outgoing_impact",
+            ));
+        }
+        if self.scope.direction.is_some()
+            && !matches!(
+                self.intent,
+                RepositoryIntent::Path | RepositoryIntent::Architecture
+            )
+        {
+            return Err(invalid_repository_query(
+                "scope.direction is valid only with intent=path or architecture",
+            ));
+        }
+        if self.intent == RepositoryIntent::Architecture && self.scope.projection.is_none() {
+            return Err(invalid_repository_query(
+                "intent=architecture requires scope.projection/--projection",
+            ));
+        }
+        if (self.scope.projection.is_some() || self.scope.metric.is_some())
+            && self.intent != RepositoryIntent::Architecture
+        {
+            return Err(invalid_repository_query(
+                "scope.projection and scope.metric require intent=architecture",
+            ));
+        }
+        if !self.scope.sources.is_empty() && self.intent != RepositoryIntent::ContextRelationship {
+            return Err(invalid_repository_query(
+                "scope.sources requires intent=context_relationship",
+            ));
+        }
+        if self.continuation.is_some() && self.evidence_continuation.is_some() {
+            return Err(invalid_repository_continuation(
+                "Repository traversal and evidence continuations cannot be consumed together.",
+            ));
+        }
+        if self.continuation.is_some() && !graph_intent {
+            return Err(invalid_repository_continuation(
+                "Repository traversal continuation requires a graph relationship query.",
+            ));
+        }
+        if self.evidence_continuation.is_some() && !graph_intent {
+            return Err(invalid_repository_continuation(
+                "Repository evidence continuation requires a graph relationship query.",
+            ));
+        }
+        Ok(ValidatedRepositoryQueryParams {
+            question: self.question,
+            intent: self.intent,
+            canonical_key: self.canonical_key,
+            scope: self.scope,
+            limits: self.limits,
+            continuation: self.continuation,
+            evidence_continuation: self.evidence_continuation,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -269,10 +433,8 @@ struct RepositoryNode {
     modality: Option<String>,
     origin: String,
     path: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    module: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    source_set: Option<String>,
+    gradle_projects: Vec<String>,
+    source_sets: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     owner_name: Option<String>,
     parameter_types: Vec<String>,
@@ -294,6 +456,12 @@ struct RepositoryCandidate {
     match_reasons: Vec<RepositoryMatchReason>,
     #[serde(flatten)]
     node: RepositoryNode,
+}
+
+enum RepositoryResolutionOutcome {
+    Empty,
+    Ambiguous,
+    Answered(Box<RepositoryNode>),
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -348,6 +516,7 @@ struct RepositoryArchitectureGraph {
     positions: BTreeMap<i64, usize>,
     occurrences: Vec<RepositoryEdgeOccurrence>,
     native: NativeGraph,
+    execution_scope: RepositoryExecutionScope,
 }
 
 #[derive(Clone, Serialize)]
@@ -385,6 +554,20 @@ struct RepositoryContextCandidate {
     relation: RepositoryContextRelation,
 }
 
+struct ContainedRepositoryContextPath {
+    relative_path: String,
+    canonical_path: PathBuf,
+    metadata: std::fs::Metadata,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RepositoryContextAmbiguity {
+    reference: String,
+    candidates: Vec<RepositoryNode>,
+    truncated: bool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct RepositoryEdgeIdentity {
     source_id: i64,
@@ -419,14 +602,70 @@ struct RepositoryEdge {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct RepositoryEvidenceContinuation {
+struct RepositoryEvidenceContinuation(String);
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct RepositoryTraversalContinuation(String);
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RepositoryEvidenceContinuationClaims {
+    schema_version: u32,
+    workspace_root: String,
+    graph_generation: u64,
+    coverage_sha256: String,
+    query_sha256: String,
+    resume: RepositoryEvidenceResume,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct RepositoryEvidenceResume {
     source_key: String,
     target_key: String,
     kind: RepositoryRelationKind,
     context: String,
     derived: bool,
     after_occurrence_id: i64,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+struct RepositoryTraversalContinuationClaims {
+    #[serde(rename = "v")]
+    schema_version: u32,
+    #[serde(rename = "g")]
+    graph_generation: u64,
+    #[serde(rename = "c")]
+    coverage_sha256: String,
+    #[serde(rename = "q")]
+    query_sha256: String,
+    #[serde(rename = "s")]
+    canonical_start_key: String,
+    #[serde(rename = "x")]
+    resume: RepositoryTraversalResume,
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
+struct RepositoryTraversalResume {
+    #[serde(rename = "d")]
+    depth: usize,
+    #[serde(rename = "o")]
+    edge_offset: usize,
+}
+
+struct RepositoryTraversalContinuationState {
+    canonical_start_key: String,
+    resume: RepositoryTraversalResume,
+}
+
+struct RepositoryContinuationContext {
+    workspace_root: String,
+    graph_generation: u64,
+    query_sha256: String,
+    traversal_query_sha256: String,
+    coverage_sha256: String,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -443,6 +682,15 @@ struct RepositoryPath {
     direction: RepositoryDirection,
     relation_kinds: Vec<RepositoryRelationKind>,
     nodes: Vec<RepositoryNode>,
+}
+
+enum RepositoryPathTargetResolution {
+    Missing,
+    Unique(Box<RepositoryNode>),
+    Ambiguous {
+        candidates: Vec<RepositoryNode>,
+        truncated: bool,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -476,6 +724,8 @@ struct GraphFileCoverage {
     diagnostics: Vec<Value>,
     gradle_projects: Vec<String>,
     source_sets: Vec<String>,
+    #[serde(skip)]
+    ownership: RepositoryFileOwnership,
 }
 
 #[derive(Debug, Clone, Copy, Default, Serialize)]
@@ -537,8 +787,88 @@ struct CoverageSummary {
 struct CoverageSnapshot {
     generation: u64,
     scope: RepositoryScope,
+    resolved_scope: ResolvedRepositoryScopeProof,
     coverage: CoverageSummary,
     files: Vec<GraphFileCoverage>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ResolvedRepositoryScopeProof {
+    project: Option<String>,
+    source_set: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct ResolvedRepositoryScope {
+    request: RepositoryScope,
+    project: Option<BuildQualifiedGradleProjectIdentity>,
+    source_set: Option<BuildQualifiedGradleSourceSetIdentity>,
+}
+
+#[derive(Debug, Clone)]
+struct RepositoryExecutionScope {
+    indexed_files: BTreeMap<String, RepositoryFileOwnership>,
+}
+
+#[derive(Debug, Clone)]
+struct RepositoryFileOwnership {
+    gradle_projects: BTreeSet<BuildQualifiedGradleProjectIdentity>,
+    source_sets: BTreeSet<BuildQualifiedGradleSourceSetIdentity>,
+}
+
+struct RepositoryNodeCache<'a> {
+    execution_scope: &'a RepositoryExecutionScope,
+    nodes: BTreeMap<i64, RepositoryNode>,
+}
+
+impl RepositoryExecutionScope {
+    fn from_coverage(snapshot: &CoverageSnapshot) -> Self {
+        Self {
+            indexed_files: snapshot
+                .files
+                .iter()
+                .filter(|file| file.state == GraphFileState::Indexed)
+                .map(|file| (file.path.clone(), file.ownership.clone()))
+                .collect(),
+        }
+    }
+
+    fn admits_path(&self, path: &str) -> bool {
+        self.indexed_files.contains_key(path)
+    }
+
+    fn admit_node(&self, mut node: RepositoryNode) -> Option<RepositoryNode> {
+        let ownership = self.indexed_files.get(&node.path)?;
+        node.gradle_projects = ownership
+            .gradle_projects
+            .iter()
+            .map(canonical_gradle_project)
+            .collect();
+        node.source_sets = ownership
+            .source_sets
+            .iter()
+            .map(canonical_gradle_source_set)
+            .collect();
+        Some(node)
+    }
+
+    fn admit_nodes(&self, nodes: Vec<RepositoryNode>) -> Vec<RepositoryNode> {
+        nodes
+            .into_iter()
+            .filter_map(|node| self.admit_node(node))
+            .collect()
+    }
+
+    fn ownership(&self, node: &RepositoryNode) -> Option<&RepositoryFileOwnership> {
+        self.indexed_files.get(&node.path)
+    }
+}
+
+struct RepositoryGraphExecution<'a> {
+    request_scope: &'a RepositoryScope,
+    admitted: &'a RepositoryExecutionScope,
+    limits: &'a RepositoryLimits,
 }
 
 #[derive(Debug, Serialize)]
@@ -555,8 +885,7 @@ struct GraphCoverageResult {
     files: Vec<GraphFileCoverage>,
     ordering: &'static str,
     truncated: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    next_after_path: Option<String>,
+    continuation: Option<GraphCoverageContinuation>,
     schema_version: u32,
 }
 
@@ -568,47 +897,103 @@ pub(crate) fn try_handle_raw_rpc(
     raw_request: &str,
     workspace_root_arg: Option<PathBuf>,
 ) -> Result<Option<String>> {
-    let request: Value = serde_json::from_str(raw_request)?;
-    let Some(method) = request.get("method").and_then(Value::as_str) else {
+    let request_value: Value = serde_json::from_str(raw_request)?;
+    let Some(method) = request_value
+        .get("method")
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+    else {
         return Ok(None);
     };
-    if !matches!(method, "graph/coverage" | "repository/query") {
+    if !matches!(method.as_str(), "graph/coverage" | "repository/query") {
         return Ok(None);
     }
-    let id = request.get("id").cloned().unwrap_or(Value::Null);
-    let params = request.get("params").cloned().unwrap_or_else(|| json!({}));
-    let workspace_root = params
-        .get("workspaceRoot")
-        .and_then(Value::as_str)
-        .map(PathBuf::from)
-        .or(workspace_root_arg);
-    let workspace_root = config::resolve_workspace_root(workspace_root)?;
-    let result = match method {
-        "graph/coverage" => graph_coverage(&workspace_root, params)?,
-        "repository/query" => repository_query(&workspace_root, params)?,
+    let invalid_code = match method.as_str() {
+        "graph/coverage" => "INVALID_GRAPH_COVERAGE_REQUEST",
+        "repository/query" => "INVALID_REPOSITORY_QUERY",
+        _ => unreachable!("method checked above"),
+    };
+    let request = serde_json::from_value::<RepositoryRpcRequest>(request_value)
+        .map_err(|error| CliError::new(invalid_code, error.to_string()))?;
+    if request.jsonrpc != "2.0" || request.method != method {
+        return Err(CliError::new(
+            invalid_code,
+            "repository RPC request must use jsonrpc=2.0 and the routed method",
+        ));
+    }
+    let valid_id = match &request.id {
+        Value::Null | Value::String(_) => true,
+        Value::Number(number) => number.is_i64() || number.is_u64(),
+        _ => false,
+    };
+    if !valid_id {
+        return Err(CliError::new(
+            invalid_code,
+            "repository RPC id must be an integer, string, or null",
+        ));
+    }
+    let result = match method.as_str() {
+        "graph/coverage" => {
+            let params = serde_json::from_value::<GraphCoverageParams>(request.params)
+                .map_err(|error| CliError::new(invalid_code, error.to_string()))?;
+            let workspace_root = params
+                ._workspace_root
+                .as_deref()
+                .map(PathBuf::from)
+                .or(workspace_root_arg);
+            let workspace_root = config::resolve_workspace_root(workspace_root)?;
+            graph_coverage(&workspace_root, params)?
+        }
+        "repository/query" => {
+            let params = serde_json::from_value::<RepositoryQueryParams>(request.params)
+                .map_err(|error| CliError::new(invalid_code, error.to_string()))?;
+            let workspace_root =
+                repository_workspace_root(workspace_root_arg, params._workspace_root.as_deref())?;
+            let params = params.validated()?;
+            repository_query(&workspace_root, params)?
+        }
         _ => unreachable!("method checked above"),
     };
     Ok(Some(serde_json::to_string(&json!({
         "jsonrpc": "2.0",
         "result": result,
-        "id": id
+        "id": request.id
     }))?))
 }
 
-fn graph_coverage(workspace_root: &Path, params: Value) -> Result<Value> {
-    let params = serde_json::from_value::<GraphCoverageParams>(params)
-        .map_err(|error| CliError::new("INVALID_GRAPH_COVERAGE_REQUEST", error.to_string()))?;
-    validate_scope(&params.scope)?;
+fn graph_coverage(workspace_root: &Path, params: GraphCoverageParams) -> Result<Value> {
+    let scope = RepositoryScope::from(params.scope);
+    validate_scope(&scope)?;
     if !(1..=MAX_FILE_LIMIT).contains(&params.limit) {
         return Err(CliError::new(
             "INVALID_GRAPH_COVERAGE_REQUEST",
             format!("coverage limit must be from 1 through {MAX_FILE_LIMIT}"),
         ));
     }
-    let snapshot = read_coverage(workspace_root, params.scope)?;
-    let start = params.after_path.as_ref().map_or(0, |after| {
-        snapshot.files.partition_point(|file| file.path <= *after)
-    });
+    let query_sha256 = graph_coverage_query_sha256(workspace_root, &scope, params.limit)?;
+    let claims = params
+        .continuation
+        .as_ref()
+        .map(|token| consume_graph_coverage_continuation(token, &query_sha256))
+        .transpose()?;
+    let has_continuation = claims.is_some();
+    let snapshot = read_coverage(workspace_root, scope).map_err(|error| {
+        if has_continuation
+            && matches!(
+                error.code,
+                "INVALID_REPOSITORY_SCOPE" | "AMBIGUOUS_REPOSITORY_SCOPE"
+            )
+        {
+            stale_graph_coverage_continuation()
+        } else {
+            error
+        }
+    })?;
+    let coverage_sha256 = coverage_composition_sha256(&snapshot)?;
+    let start = claims
+        .map(|claims| graph_coverage_resume_offset(&claims, &snapshot, &coverage_sha256))
+        .transpose()?
+        .unwrap_or(0);
     let files = snapshot
         .files
         .iter()
@@ -616,10 +1001,18 @@ fn graph_coverage(workspace_root: &Path, params: Value) -> Result<Value> {
         .take(params.limit)
         .cloned()
         .collect::<Vec<_>>();
-    let truncated = start + files.len() < snapshot.files.len();
-    let next_after_path = truncated
-        .then(|| files.last().map(|file| file.path.clone()))
-        .flatten();
+    let next_offset = start + files.len();
+    let truncated = next_offset < snapshot.files.len();
+    let continuation = truncated
+        .then(|| {
+            issue_graph_coverage_continuation(
+                &query_sha256,
+                &coverage_sha256,
+                snapshot.generation,
+                next_offset,
+            )
+        })
+        .transpose()?;
     serde_json::to_value(GraphCoverageResult {
         result_type: "KAST_GRAPH_COVERAGE_RESULT",
         generation: snapshot.generation,
@@ -629,57 +1022,463 @@ fn graph_coverage(workspace_root: &Path, params: Value) -> Result<Value> {
         applied_filters: snapshot.scope,
         coverage: snapshot.coverage,
         files,
-        ordering: "path ascending",
+        ordering: GRAPH_COVERAGE_ORDERING,
         truncated,
-        next_after_path,
+        continuation,
         schema_version: SCHEMA_VERSION,
     })
     .map_err(Into::into)
 }
 
-fn repository_query(workspace_root: &Path, params: Value) -> Result<Value> {
-    let params = serde_json::from_value::<RepositoryQueryParams>(params)
-        .map_err(|error| CliError::new("INVALID_REPOSITORY_QUERY", error.to_string()))?;
-    validate_scope(&params.scope)?;
-    validate_limits(&params.limits)?;
-    if params.question.trim().is_empty() {
-        return Err(CliError::new(
-            "INVALID_REPOSITORY_QUERY",
-            "repository question must not be blank",
+fn graph_coverage_query_sha256(
+    workspace_root: &Path,
+    scope: &RepositoryScope,
+    limit: usize,
+) -> Result<String> {
+    let workspace_root = std::fs::canonicalize(workspace_root).map_err(|error| {
+        CliError::new(
+            "REPOSITORY_WORKSPACE_UNAVAILABLE",
+            format!("cannot canonicalize repository workspace root: {error}"),
+        )
+    })?;
+    let workspace_root = workspace_root.to_str().ok_or_else(|| {
+        CliError::new(
+            "REPOSITORY_WORKSPACE_UNAVAILABLE",
+            "repository workspace root is not valid UTF-8",
+        )
+    })?;
+    let query = serde_json::to_vec(&(
+        "graph/coverage",
+        GRAPH_COVERAGE_CONTINUATION_SCHEMA_VERSION,
+        workspace_root,
+        scope,
+        limit,
+        GRAPH_COVERAGE_ORDERING,
+    ))?;
+    Ok(hex::encode(Sha256::digest(query)))
+}
+
+fn consume_graph_coverage_continuation(
+    token: &GraphCoverageContinuation,
+    expected_query_sha256: &str,
+) -> Result<GraphCoverageContinuationClaims> {
+    let claims = runtime::verify_install_scoped_token::<GraphCoverageContinuationClaims>(
+        GRAPH_COVERAGE_CONTINUATION_VERSION,
+        &token.0,
+    )
+    .map_err(|_| {
+        CliError::new(
+            "GRAPH_COVERAGE_CONTINUATION_UNAVAILABLE",
+            "Graph coverage continuation authentication is unavailable; start a new unpaged request.",
+        )
+    })?
+    .ok_or_else(|| {
+        invalid_graph_coverage_continuation(
+            "Graph coverage continuation is malformed or failed authentication; start a new unpaged request.",
+        )
+    })?;
+    if claims.schema_version != GRAPH_COVERAGE_CONTINUATION_SCHEMA_VERSION {
+        return Err(invalid_graph_coverage_continuation(
+            "Graph coverage continuation schema is unsupported.",
         ));
     }
-    let snapshot = read_coverage(workspace_root, params.scope.clone())?;
-    let connection = open_repository_connection(workspace_root)?;
+    if claims.query_sha256 != expected_query_sha256 {
+        return Err(invalid_graph_coverage_continuation(
+            "Graph coverage continuation does not match this request; start a new unpaged request.",
+        ));
+    }
+    Ok(claims)
+}
+
+fn graph_coverage_resume_offset(
+    claims: &GraphCoverageContinuationClaims,
+    snapshot: &CoverageSnapshot,
+    coverage_sha256: &str,
+) -> Result<usize> {
+    if claims.graph_generation != snapshot.generation || claims.coverage_sha256 != coverage_sha256 {
+        return Err(stale_graph_coverage_continuation());
+    }
+    let next_offset = usize::try_from(claims.next_offset).map_err(|_| {
+        invalid_graph_coverage_continuation(
+            "Graph coverage continuation has an invalid file offset.",
+        )
+    })?;
+    if next_offset == 0 || next_offset >= snapshot.files.len() {
+        return Err(invalid_graph_coverage_continuation(
+            "Graph coverage continuation has an invalid file offset.",
+        ));
+    }
+    Ok(next_offset)
+}
+
+fn issue_graph_coverage_continuation(
+    query_sha256: &str,
+    coverage_sha256: &str,
+    graph_generation: u64,
+    next_offset: usize,
+) -> Result<GraphCoverageContinuation> {
+    let next_offset = u64::try_from(next_offset).map_err(|_| {
+        invalid_graph_coverage_continuation(
+            "Graph coverage continuation has an invalid file offset.",
+        )
+    })?;
+    runtime::sign_install_scoped_token(
+        GRAPH_COVERAGE_CONTINUATION_VERSION,
+        &GraphCoverageContinuationClaims {
+            schema_version: GRAPH_COVERAGE_CONTINUATION_SCHEMA_VERSION,
+            graph_generation,
+            query_sha256: query_sha256.to_owned(),
+            coverage_sha256: coverage_sha256.to_owned(),
+            next_offset,
+        },
+    )
+    .map(GraphCoverageContinuation)
+    .map_err(|_| {
+        CliError::new(
+            "GRAPH_COVERAGE_CONTINUATION_UNAVAILABLE",
+            "Graph coverage continuation signing is unavailable; retry the initial request.",
+        )
+    })
+}
+
+fn invalid_graph_coverage_continuation(message: &str) -> CliError {
+    CliError::new("INVALID_GRAPH_COVERAGE_CONTINUATION", message)
+}
+
+fn stale_graph_coverage_continuation() -> CliError {
+    CliError::new(
+        "STALE_GRAPH_COVERAGE_CONTINUATION",
+        "Graph generation, resolved scope, or coverage composition changed; start a new unpaged request.",
+    )
+}
+
+fn coverage_composition_sha256(snapshot: &CoverageSnapshot) -> Result<String> {
+    let composition = serde_json::to_vec(&(
+        &snapshot.scope,
+        &snapshot.resolved_scope,
+        &snapshot.coverage,
+        &snapshot.files,
+    ))?;
+    Ok(hex::encode(Sha256::digest(composition)))
+}
+
+fn repository_continuation_context(
+    workspace_root: &WorkspaceRoot,
+    snapshot: &CoverageSnapshot,
+    params: &ValidatedRepositoryQueryParams,
+) -> Result<RepositoryContinuationContext> {
+    let workspace_root = workspace_root.as_path().to_str().ok_or_else(|| {
+        CliError::new(
+            "REPOSITORY_WORKSPACE_UNAVAILABLE",
+            "repository workspace root is not valid UTF-8",
+        )
+    })?;
+    let normalized_query = serde_json::to_vec(&(
+        "repository/query",
+        workspace_root,
+        params.question.as_str(),
+        params.intent,
+        params.canonical_key.as_deref(),
+        &params.scope,
+        &params.limits,
+    ))?;
+    let normalized_traversal_query = serde_json::to_vec(&(
+        "repository/traversal",
+        workspace_root,
+        normalize_repository_question(&params.question),
+        params.intent,
+        params.canonical_key.as_deref(),
+        &params.scope,
+        &snapshot.resolved_scope,
+        &params.limits,
+    ))?;
+    Ok(RepositoryContinuationContext {
+        workspace_root: workspace_root.to_string(),
+        graph_generation: snapshot.generation,
+        query_sha256: hex::encode(Sha256::digest(normalized_query)),
+        traversal_query_sha256: hex::encode(Sha256::digest(normalized_traversal_query)),
+        coverage_sha256: coverage_composition_sha256(snapshot)?,
+    })
+}
+
+fn normalize_repository_question(question: &str) -> String {
+    question
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
+fn consume_repository_continuation(
+    token: &RepositoryEvidenceContinuation,
+    expected: &RepositoryContinuationContext,
+) -> Result<RepositoryEvidenceResume> {
+    let claims = runtime::verify_install_scoped_token::<RepositoryEvidenceContinuationClaims>(
+        REPOSITORY_CONTINUATION_VERSION,
+        &token.0,
+    )
+    .map_err(|_| {
+        CliError::new(
+            "REPOSITORY_CONTINUATION_UNAVAILABLE",
+            "Repository continuation authentication is unavailable; start a new unpaged query.",
+        )
+    })?
+    .ok_or_else(|| {
+        invalid_repository_continuation(
+            "Repository evidence continuation is malformed or failed authentication; start a new unpaged query.",
+        )
+    })?;
+    if claims.schema_version != REPOSITORY_CONTINUATION_SCHEMA_VERSION {
+        return Err(invalid_repository_continuation(
+            "Repository evidence continuation schema is unsupported.",
+        ));
+    }
+    if claims.workspace_root != expected.workspace_root
+        || claims.query_sha256 != expected.query_sha256
+    {
+        return Err(invalid_repository_continuation(
+            "Repository evidence continuation does not match this query; start a new unpaged query.",
+        ));
+    }
+    if claims.graph_generation != expected.graph_generation
+        || claims.coverage_sha256 != expected.coverage_sha256
+    {
+        return Err(CliError::new(
+            "STALE_REPOSITORY_CONTINUATION",
+            "Repository graph or coverage evidence changed; start a new unpaged query.",
+        ));
+    }
+    if claims.resume.after_occurrence_id < 0 {
+        return Err(invalid_repository_continuation(
+            "Repository evidence continuation has an invalid occurrence identity.",
+        ));
+    }
+    Ok(claims.resume)
+}
+
+fn consume_repository_traversal_continuation(
+    token: &RepositoryTraversalContinuation,
+    expected: &RepositoryContinuationContext,
+) -> Result<RepositoryTraversalContinuationState> {
+    let claims = runtime::verify_install_scoped_token::<RepositoryTraversalContinuationClaims>(
+        REPOSITORY_TRAVERSAL_CONTINUATION_VERSION,
+        &token.0,
+    )
+    .map_err(|_| {
+        CliError::new(
+            "REPOSITORY_CONTINUATION_UNAVAILABLE",
+            "Repository traversal continuation authentication is unavailable; start a new unpaged query.",
+        )
+    })?
+    .ok_or_else(|| {
+        invalid_repository_continuation(
+            "Repository traversal continuation is malformed or failed authentication; start a new unpaged query.",
+        )
+    })?;
+    if claims.schema_version != REPOSITORY_TRAVERSAL_CONTINUATION_SCHEMA_VERSION {
+        return Err(invalid_repository_continuation(
+            "Repository traversal continuation schema is unsupported.",
+        ));
+    }
+    if claims.query_sha256 != expected.traversal_query_sha256 {
+        return Err(invalid_repository_continuation(
+            "Repository traversal continuation does not match this query; start a new unpaged query.",
+        ));
+    }
+    if claims.graph_generation != expected.graph_generation
+        || claims.coverage_sha256 != expected.coverage_sha256
+    {
+        return Err(CliError::new(
+            "STALE_REPOSITORY_CONTINUATION",
+            "Repository graph or coverage evidence changed; start a new unpaged query.",
+        ));
+    }
+    Ok(RepositoryTraversalContinuationState {
+        canonical_start_key: claims.canonical_start_key,
+        resume: claims.resume,
+    })
+}
+
+fn issue_repository_continuation(
+    context: &RepositoryContinuationContext,
+    resume: RepositoryEvidenceResume,
+) -> Result<RepositoryEvidenceContinuation> {
+    runtime::sign_install_scoped_token(
+        REPOSITORY_CONTINUATION_VERSION,
+        &RepositoryEvidenceContinuationClaims {
+            schema_version: REPOSITORY_CONTINUATION_SCHEMA_VERSION,
+            workspace_root: context.workspace_root.clone(),
+            graph_generation: context.graph_generation,
+            coverage_sha256: context.coverage_sha256.clone(),
+            query_sha256: context.query_sha256.clone(),
+            resume,
+        },
+    )
+    .map(RepositoryEvidenceContinuation)
+    .map_err(|_| {
+        CliError::new(
+            "REPOSITORY_CONTINUATION_UNAVAILABLE",
+            "Repository continuation signing is unavailable; retry the initial query.",
+        )
+    })
+}
+
+fn issue_repository_traversal_continuation(
+    context: &RepositoryContinuationContext,
+    canonical_start_key: &str,
+    resume: RepositoryTraversalResume,
+) -> Result<RepositoryTraversalContinuation> {
+    runtime::sign_install_scoped_token(
+        REPOSITORY_TRAVERSAL_CONTINUATION_VERSION,
+        &RepositoryTraversalContinuationClaims {
+            schema_version: REPOSITORY_TRAVERSAL_CONTINUATION_SCHEMA_VERSION,
+            graph_generation: context.graph_generation,
+            coverage_sha256: context.coverage_sha256.clone(),
+            query_sha256: context.traversal_query_sha256.clone(),
+            canonical_start_key: canonical_start_key.to_string(),
+            resume,
+        },
+    )
+    .map(RepositoryTraversalContinuation)
+    .map_err(|_| {
+        CliError::new(
+            "REPOSITORY_CONTINUATION_UNAVAILABLE",
+            "Repository traversal continuation signing is unavailable; retry the initial query.",
+        )
+    })
+}
+
+fn invalid_repository_continuation(message: &str) -> CliError {
+    CliError::new("INVALID_REPOSITORY_CONTINUATION", message)
+}
+
+fn invalid_repository_query(message: &str) -> CliError {
+    CliError::new("INVALID_REPOSITORY_QUERY", message)
+}
+
+fn repository_workspace_root(
+    routed_root: Option<PathBuf>,
+    request_root: Option<&str>,
+) -> Result<WorkspaceRoot> {
+    let routed_root = config::resolve_workspace_root(routed_root).map_err(|error| {
+        CliError::new(
+            "REPOSITORY_WORKSPACE_UNAVAILABLE",
+            format!("cannot resolve the routed repository workspace root: {error}"),
+        )
+    })?;
+    let routed_root = WorkspaceRoot::try_from(routed_root.as_path())
+        .map_err(|error| CliError::new("REPOSITORY_WORKSPACE_UNAVAILABLE", error.to_string()))?;
+    if let Some(request_root) = request_root {
+        let request_root_value = request_root;
+        let request_root = config::normalize(PathBuf::from(request_root_value));
+        let request_root =
+            WorkspaceRoot::try_from(request_root.as_path()).map_err(|error| {
+                CliError::new(
+                    "REPOSITORY_WORKSPACE_ROOT_MISMATCH",
+                    format!(
+                        "repository/query workspaceRoot {request_root_value:?} cannot match the CLI-routed workspace {}: {error}; remove workspaceRoot or make it match --workspace-root",
+                        routed_root.as_path().display()
+                    ),
+                )
+            })?;
+        if request_root != routed_root {
+            return Err(CliError::new(
+                "REPOSITORY_WORKSPACE_ROOT_MISMATCH",
+                format!(
+                    "repository/query workspaceRoot resolves to {}, but the CLI route selected {}; remove workspaceRoot or make it match --workspace-root",
+                    request_root.as_path().display(),
+                    routed_root.as_path().display()
+                ),
+            ));
+        }
+    }
+    Ok(routed_root)
+}
+
+fn repository_query(
+    workspace_root: &WorkspaceRoot,
+    params: ValidatedRepositoryQueryParams,
+) -> Result<Value> {
+    let workspace_path = workspace_root.as_path();
+    for _ in 0..2 {
+        let snapshot = read_coverage(workspace_path, params.scope.clone())?;
+        let mut connection = open_repository_connection(workspace_path)?;
+        let transaction = connection
+            .transaction_with_behavior(TransactionBehavior::Deferred)
+            .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
+        if repository_generation(&transaction)? != snapshot.generation {
+            continue;
+        }
+        let response =
+            repository_query_at_snapshot(workspace_root, &transaction, &params, snapshot)?;
+        transaction
+            .commit()
+            .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
+        return Ok(response);
+    }
+    Err(CliError::new(
+        "REPOSITORY_QUERY_UNSTABLE",
+        "source-index generation moved twice between coverage admission and semantic execution",
+    ))
+}
+
+fn repository_query_at_snapshot(
+    workspace_root: &WorkspaceRoot,
+    connection: &Connection,
+    params: &ValidatedRepositoryQueryParams,
+    snapshot: CoverageSnapshot,
+) -> Result<Value> {
+    let execution_scope = RepositoryExecutionScope::from_coverage(&snapshot);
+    let continuation_context = repository_continuation_context(workspace_root, &snapshot, params)?;
+    let traversal_resume = params
+        .continuation
+        .as_ref()
+        .map(|token| consume_repository_traversal_continuation(token, &continuation_context))
+        .transpose()?;
+    let evidence_resume = params
+        .evidence_continuation
+        .as_ref()
+        .map(|token| consume_repository_continuation(token, &continuation_context))
+        .transpose()?;
     let result = match params.intent {
         RepositoryIntent::Resolve => resolve_repository_question(
-            workspace_root,
-            &connection,
+            connection,
             &params.question,
-            &params.scope,
+            &execution_scope,
             params.limits.results,
             params.canonical_key.as_deref(),
         )?,
         RepositoryIntent::Path
         | RepositoryIntent::IncomingImpact
-        | RepositoryIntent::OutgoingImpact => graph_repository_question(
-            &connection,
-            &params.question,
-            params.intent,
-            &params.scope,
-            &params.limits,
-            params.evidence_continuation.as_ref(),
-        )?,
+        | RepositoryIntent::OutgoingImpact => {
+            let execution = RepositoryGraphExecution {
+                request_scope: &params.scope,
+                admitted: &execution_scope,
+                limits: &params.limits,
+            };
+            graph_repository_question(
+                connection,
+                &params.question,
+                params.intent,
+                &execution,
+                &continuation_context,
+                traversal_resume.as_ref(),
+                evidence_resume.as_ref(),
+            )?
+        }
         RepositoryIntent::Architecture => architecture_repository_question(
-            &connection,
+            connection,
             snapshot.generation,
             &params.scope,
+            &execution_scope,
             &params.limits,
         )?,
         RepositoryIntent::ContextRelationship => context_repository_question(
             workspace_root,
-            &connection,
+            connection,
             &params.question,
             &params.scope,
+            &execution_scope,
             &params.limits,
         )?,
     };
@@ -719,8 +1518,7 @@ fn repository_query(workspace_root: &Path, params: Value) -> Result<Value> {
             "contextSources": params.scope.sources
         },
         "workspaceIdentity": {
-            "canonicalRoot": std::fs::canonicalize(workspace_root)
-                .unwrap_or_else(|_| workspace_root.to_path_buf())
+            "canonicalRoot": continuation_context.workspace_root
         },
         "generation": snapshot.generation,
         "inventoryGeneration": snapshot.generation,
@@ -752,6 +1550,20 @@ fn repository_query(workspace_root: &Path, params: Value) -> Result<Value> {
         }
     }
     Ok(response)
+}
+
+fn repository_generation(connection: &Connection) -> Result<u64> {
+    let generation = connection
+        .query_row("SELECT generation FROM schema_version", [], |row| {
+            row.get::<_, i64>(0)
+        })
+        .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
+    u64::try_from(generation).map_err(|_| {
+        CliError::new(
+            "REPOSITORY_INDEX_UNAVAILABLE",
+            "source-index generation is negative",
+        )
+    })
 }
 
 pub(crate) fn render_markdown_report(response: &Value) -> Option<String> {
@@ -929,14 +1741,6 @@ fn validate_scope(scope: &RepositoryScope) -> Result<()> {
             "repository intelligence currently supports language=kotlin",
         ));
     }
-    if let Some(fixture) = scope.fixture.as_deref()
-        && fixture != "incomplete-coverage"
-    {
-        return Err(CliError::new(
-            "INVALID_REPOSITORY_SCOPE",
-            format!("unknown repository scope fixture `{fixture}`"),
-        ));
-    }
     Ok(())
 }
 
@@ -980,6 +1784,7 @@ fn read_coverage(workspace_root: &Path, scope: RepositoryScope) -> Result<Covera
             }
         };
         let generation = index.stamp().generation().value();
+        let resolved_scope = resolve_repository_scope(scope.clone(), index.files())?;
         let (semantic_generation, semantic_files) = read_semantic_files(workspace_root)?;
         if generation != semantic_generation {
             continue;
@@ -988,7 +1793,7 @@ fn read_coverage(workspace_root: &Path, scope: RepositoryScope) -> Result<Covera
             workspace_root,
             index,
             semantic_files,
-            scope,
+            resolved_scope,
         ));
     }
     Err(CliError::new(
@@ -1064,7 +1869,7 @@ fn classify_coverage(
     workspace_root: &Path,
     index: workspace_inventory::model::WorkspaceIndexSnapshot,
     semantic_files: BTreeMap<String, SemanticFileRow>,
-    scope: RepositoryScope,
+    scope: ResolvedRepositoryScope,
 ) -> CoverageSnapshot {
     let mut files = Vec::new();
     let mut eligibility_proven = true;
@@ -1124,14 +1929,12 @@ fn classify_coverage(
     let pending_update_count = index.stamp().pending_count().value();
     let inventory_complete =
         index.coverage().candidate_inventory() == WorkspaceCoverageDimension::Complete;
-    let fixture_complete = scope.fixture.is_none();
     let complete = inventory_complete
         && eligibility_proven
         && progress_complete
         && pending_update_count == 0
         && counts.failed == 0
-        && counts.stale == 0
-        && fixture_complete;
+        && counts.stale == 0;
     let mut limitations = Vec::new();
     if !inventory_complete {
         limitations.push("SOURCE_INVENTORY_INCOMPLETE".to_string());
@@ -1151,12 +1954,14 @@ fn classify_coverage(
     if counts.stale > 0 {
         limitations.push("SEMANTIC_GRAPH_FILES_STALE".to_string());
     }
-    if !fixture_complete {
-        limitations.push("REQUESTED_SCOPE_INCOMPLETE".to_string());
-    }
+    let resolved_scope = ResolvedRepositoryScopeProof {
+        project: scope.project.as_ref().map(canonical_gradle_project),
+        source_set: scope.source_set.as_ref().map(canonical_gradle_source_set),
+    };
     CoverageSnapshot {
         generation: index.stamp().generation().value(),
-        scope,
+        scope: scope.request,
+        resolved_scope,
         coverage: CoverageSummary {
             complete,
             eligible_for_complete_negative: complete,
@@ -1173,25 +1978,161 @@ fn classify_coverage(
     }
 }
 
-fn file_matches_scope(file: &WorkspaceInventoryFile, scope: &RepositoryScope) -> (bool, bool) {
+fn resolve_repository_scope(
+    request: RepositoryScope,
+    files: &[WorkspaceInventoryFile],
+) -> Result<ResolvedRepositoryScope> {
+    let projects = files
+        .iter()
+        .flat_map(|file| file.indexed_gradle_projects().iter().cloned())
+        .collect::<BTreeSet<_>>();
+    let mut project = request
+        .module
+        .as_deref()
+        .map(|selector| resolve_gradle_project(selector, &projects))
+        .transpose()?;
+    let source_sets = files
+        .iter()
+        .filter_map(|file| match file.source_sets() {
+            WorkspaceSourceSetEvidence::Proven(source_sets) => Some(source_sets),
+            WorkspaceSourceSetEvidence::Unproven(_) | WorkspaceSourceSetEvidence::Unavailable => {
+                None
+            }
+        })
+        .flat_map(|source_sets| source_sets.iter().cloned())
+        .collect::<BTreeSet<_>>();
+    let source_set = match request.source_set.as_deref() {
+        Some(source_set_name) => {
+            let matches = source_sets
+                .iter()
+                .filter(|source_set| {
+                    source_set.source_set_name().as_str() == source_set_name
+                        && project
+                            .as_ref()
+                            .is_none_or(|project| source_set.project() == project)
+                })
+                .cloned()
+                .collect::<Vec<_>>();
+            match matches.as_slice() {
+                [source_set] => {
+                    if project.is_none() {
+                        project = Some(source_set.project().clone());
+                    }
+                    Some(source_set.clone())
+                }
+                [] => {
+                    let available = source_sets
+                        .iter()
+                        .filter(|source_set| {
+                            project
+                                .as_ref()
+                                .is_none_or(|project| source_set.project() == project)
+                        })
+                        .map(canonical_gradle_source_set)
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    return Err(CliError::new(
+                        "INVALID_REPOSITORY_SCOPE",
+                        format!(
+                            "repository sourceSet `{source_set_name}` does not identify an authoritative Gradle compilation; available compilations: {available}"
+                        ),
+                    ));
+                }
+                _ => {
+                    let candidates = matches
+                        .iter()
+                        .map(canonical_gradle_source_set)
+                        .collect::<Vec<_>>()
+                        .join(", ");
+                    return Err(CliError::new(
+                        "AMBIGUOUS_REPOSITORY_SCOPE",
+                        format!(
+                            "repository sourceSet `{source_set_name}` is ambiguous; select a module from: {candidates}"
+                        ),
+                    ));
+                }
+            }
+        }
+        None => None,
+    };
+    Ok(ResolvedRepositoryScope {
+        request,
+        project,
+        source_set,
+    })
+}
+
+fn resolve_gradle_project(
+    selector: &str,
+    projects: &BTreeSet<BuildQualifiedGradleProjectIdentity>,
+) -> Result<BuildQualifiedGradleProjectIdentity> {
+    if let Some(project) = projects
+        .iter()
+        .find(|project| canonical_gradle_project(project) == selector)
+    {
+        return Ok(project.clone());
+    }
+    let matches = projects
+        .iter()
+        .filter(|project| {
+            let project_path = project.project_path().as_str();
+            project_path != ":"
+                && project_path
+                    .rsplit(':')
+                    .next()
+                    .is_some_and(|name| name == selector)
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    match matches.as_slice() {
+        [project] => Ok(project.clone()),
+        [] => {
+            let available = projects
+                .iter()
+                .map(canonical_gradle_project)
+                .collect::<Vec<_>>()
+                .join(", ");
+            Err(CliError::new(
+                "INVALID_REPOSITORY_SCOPE",
+                format!(
+                    "repository module selector `{selector}` does not identify an authoritative Gradle project; available projects: {available}"
+                ),
+            ))
+        }
+        _ => {
+            let candidates = matches
+                .iter()
+                .map(canonical_gradle_project)
+                .collect::<Vec<_>>()
+                .join(", ");
+            Err(CliError::new(
+                "AMBIGUOUS_REPOSITORY_SCOPE",
+                format!(
+                    "repository module selector `{selector}` is ambiguous; use one of: {candidates}"
+                ),
+            ))
+        }
+    }
+}
+
+fn file_matches_scope(
+    file: &WorkspaceInventoryFile,
+    scope: &ResolvedRepositoryScope,
+) -> (bool, bool) {
     let projects = file.indexed_gradle_projects();
     let source_sets = match file.source_sets() {
         WorkspaceSourceSetEvidence::Proven(source_sets) => Some(source_sets),
         WorkspaceSourceSetEvidence::Unproven(_) | WorkspaceSourceSetEvidence::Unavailable => None,
     };
-    let module_matches = scope.module.as_deref().is_none_or(|module| {
-        projects
-            .iter()
-            .any(|project| gradle_project_matches(project, module))
-    });
-    let source_set_matches = scope.source_set.as_deref().is_none_or(|source_set| {
-        source_sets.is_some_and(|source_sets| {
-            source_sets
-                .iter()
-                .any(|identity| identity.source_set_name().as_str() == source_set)
-        })
-    });
-    let ownership_proven = scope.module.as_ref().is_none_or(|_| !projects.is_empty())
+    let module_matches = scope
+        .project
+        .as_ref()
+        .is_none_or(|project| projects.contains(project));
+    let source_set_matches = scope
+        .source_set
+        .as_ref()
+        .is_none_or(|source_set| source_sets.is_some_and(|values| values.contains(source_set)));
+    let ownership_proven = scope.project.as_ref().is_none_or(|_| !projects.is_empty())
         && scope
             .source_set
             .as_ref()
@@ -1199,37 +2140,30 @@ fn file_matches_scope(file: &WorkspaceInventoryFile, scope: &RepositoryScope) ->
     (module_matches && source_set_matches, ownership_proven)
 }
 
-fn gradle_project_matches(project: &BuildQualifiedGradleProjectIdentity, expected: &str) -> bool {
-    let project_path = project.project_path().as_str();
-    project_path.trim_start_matches(':').split(':').next_back() == Some(expected)
-        || (project_path == ":"
-            && project
-                .build_root()
-                .as_path()
-                .file_name()
-                .and_then(|name| name.to_str())
-                == Some(expected))
-}
-
 fn classify_file(
     workspace_root: &Path,
     file: &WorkspaceInventoryFile,
     semantic: Option<&SemanticFileRow>,
 ) -> GraphFileCoverage {
-    let gradle_projects = file
-        .indexed_gradle_projects()
+    let ownership = RepositoryFileOwnership {
+        gradle_projects: file.indexed_gradle_projects().clone(),
+        source_sets: match file.source_sets() {
+            WorkspaceSourceSetEvidence::Proven(source_sets) => source_sets.clone(),
+            WorkspaceSourceSetEvidence::Unproven(_) | WorkspaceSourceSetEvidence::Unavailable => {
+                BTreeSet::new()
+            }
+        },
+    };
+    let gradle_projects = ownership
+        .gradle_projects
         .iter()
         .map(canonical_gradle_project)
         .collect::<Vec<_>>();
-    let source_sets = match file.source_sets() {
-        WorkspaceSourceSetEvidence::Proven(source_sets) => source_sets
-            .iter()
-            .map(canonical_gradle_source_set)
-            .collect::<Vec<_>>(),
-        WorkspaceSourceSetEvidence::Unproven(_) | WorkspaceSourceSetEvidence::Unavailable => {
-            Vec::new()
-        }
-    };
+    let source_sets = ownership
+        .source_sets
+        .iter()
+        .map(canonical_gradle_source_set)
+        .collect::<Vec<_>>();
     let current_content_hash = std::fs::read(workspace_root.join(file.path().as_path()))
         .ok()
         .map(|content| hex::encode(Sha256::digest(content)));
@@ -1286,6 +2220,7 @@ fn classify_file(
         diagnostics,
         gradle_projects,
         source_sets,
+        ownership,
     }
 }
 
@@ -1341,17 +2276,20 @@ fn coverage_groups(values: impl Iterator<Item = (String, GraphFileState)>) -> Ve
 }
 
 fn resolve_repository_question(
-    workspace_root: &Path,
     connection: &Connection,
     question: &str,
-    scope: &RepositoryScope,
+    execution_scope: &RepositoryExecutionScope,
     limit: usize,
     canonical_key: Option<&str>,
 ) -> Result<Value> {
     let mut candidates = if let Some(canonical_key) = canonical_key {
-        load_repository_node(connection, "symbol.stable_key = ?1", canonical_key)?
+        execution_scope
+            .admit_nodes(load_repository_node(
+                connection,
+                "symbol.stable_key = ?1",
+                canonical_key,
+            )?)
             .into_iter()
-            .filter(|node| node_matches_scope(node, scope))
             .map(|node| RepositoryCandidate {
                 rank: 1,
                 match_score: usize::MAX,
@@ -1364,301 +2302,151 @@ fn resolve_repository_question(
             })
             .collect()
     } else {
-        rank_repository_candidates(workspace_root, connection, question, scope)?
+        rank_repository_candidates(connection, question, execution_scope)?
     };
-    if let Some(missing_name) =
-        likely_declaration_term(question).filter(|name| name.contains("Missing"))
-        && !candidates
-            .iter()
-            .any(|candidate| candidate.node.name == missing_name)
-    {
-        candidates.clear();
-    }
-    let deliberately_ambiguous = question.to_ascii_lowercase().contains("without choosing");
-    let bare_name = bare_resolution_name(question);
-    if let Some(name) = bare_name.as_deref() {
-        candidates.retain(|candidate| candidate.node.name.eq_ignore_ascii_case(name));
-    } else if deliberately_ambiguous {
-        let question_lower = question.to_ascii_lowercase();
-        if let Some(name) = candidates
-            .first()
-            .map(|candidate| candidate.node.name.clone())
-            .filter(|name| {
-                identifier_position(&question_lower, &name.to_ascii_lowercase()).is_some()
-            })
-        {
-            candidates.retain(|candidate| candidate.node.name == name);
-        }
-    }
-    let bare_name_ambiguity = bare_name.is_some_and(|name| {
-        candidates
-            .iter()
-            .filter(|candidate| candidate.node.name.eq_ignore_ascii_case(&name))
-            .take(2)
-            .count()
-            > 1
-    });
     let tied = candidates
         .first()
         .zip(candidates.get(1))
         .is_some_and(|(first, second)| first.match_score == second.match_score);
-    let ambiguous = canonical_key.is_none()
-        && candidates.len() > 1
-        && (deliberately_ambiguous || bare_name_ambiguity || tied);
-    let answered = !candidates.is_empty() && !ambiguous;
-    let selected = answered.then(|| candidates[0].node.clone());
+    let outcome = match candidates.first() {
+        None => RepositoryResolutionOutcome::Empty,
+        Some(_) if canonical_key.is_none() && tied => RepositoryResolutionOutcome::Ambiguous,
+        Some(candidate) => RepositoryResolutionOutcome::Answered(Box::new(candidate.node.clone())),
+    };
     let candidate_limit = limit.min(10);
     let truncated = candidates.len() > candidate_limit;
     candidates.truncate(candidate_limit);
-    let mut result = json!({
-        "answered": answered,
-        "ambiguous": ambiguous,
-        "nodes": selected.iter().cloned().collect::<Vec<_>>(),
-        "candidates": candidates,
-        "identityCollisions": 0,
-        "truncated": truncated
-    });
-    if let Some(selected) = selected {
-        result
-            .as_object_mut()
-            .expect("repository result is an object")
-            .insert(
-                "selectedIdentity".to_string(),
-                Value::String(selected.canonical_key),
-            );
-    }
-    Ok(result)
+    Ok(match outcome {
+        RepositoryResolutionOutcome::Empty => json!({
+            "answered": false,
+            "ambiguous": false,
+            "nodes": [],
+            "candidates": candidates,
+            "identityCollisions": 0,
+            "truncated": truncated
+        }),
+        RepositoryResolutionOutcome::Ambiguous => json!({
+            "answered": false,
+            "ambiguous": true,
+            "nodes": [],
+            "candidates": candidates,
+            "identityCollisions": 0,
+            "truncated": truncated
+        }),
+        RepositoryResolutionOutcome::Answered(selected) => {
+            let selected_identity = selected.canonical_key.clone();
+            json!({
+                "answered": true,
+                "ambiguous": false,
+                "selectedIdentity": selected_identity,
+                "nodes": [*selected],
+                "candidates": candidates,
+                "identityCollisions": 0,
+                "truncated": truncated
+            })
+        }
+    })
 }
 
 fn rank_repository_candidates(
-    workspace_root: &Path,
     connection: &Connection,
     question: &str,
-    scope: &RepositoryScope,
+    execution_scope: &RepositoryExecutionScope,
 ) -> Result<Vec<RepositoryCandidate>> {
     if !semantic_graph_tables_exist(connection)? {
         return Ok(Vec::new());
     }
-    let terms = discovery_query_terms(question);
-    let explicit_names = explicit_repository_names(question);
     let neighbors = load_discovery_neighbor_tokens(connection)?;
-    let fts_names = load_discovery_fts_names(connection, &terms)?;
-    let mut candidates = load_repository_node(connection, "1 = ?1", 1i64)?
-        .into_iter()
-        .filter(|node| node_matches_scope(node, scope))
-        .filter_map(|node| {
-            let mut candidate = RepositoryCandidate {
-                rank: 0,
-                match_score: 0,
-                match_reasons: Vec::new(),
-                node,
-            };
-            let database_id = candidate.node.database_id;
-            score_repository_candidate(
-                &mut candidate,
-                question,
-                &terms,
-                &explicit_names,
-                neighbors.get(&database_id),
-                &fts_names,
-            );
-            (candidate.match_score > 0).then_some(candidate)
+    let nodes = execution_scope.admit_nodes(load_repository_node(connection, "1 = ?1", 1i64)?);
+    let documents = nodes
+        .iter()
+        .map(|node| SymbolDiscoveryDocument {
+            identity: node.canonical_key.clone(),
+            simple_name: node.name.clone(),
+            sort_key: node.canonical_key.clone(),
+            fields: vec![
+                SymbolDiscoveryField {
+                    name: "name",
+                    value: node.name.clone(),
+                },
+                SymbolDiscoveryField {
+                    name: "qualifiedName",
+                    value: [
+                        node.owner_name.as_deref().unwrap_or_default(),
+                        node.fq_name.as_deref().unwrap_or_default(),
+                    ]
+                    .join(" "),
+                },
+                SymbolDiscoveryField {
+                    name: "signature",
+                    value: node.signature.clone().unwrap_or_default(),
+                },
+                SymbolDiscoveryField {
+                    name: "parameterTypes",
+                    value: node.parameter_types.join(" "),
+                },
+                SymbolDiscoveryField {
+                    name: "receiverType",
+                    value: node.receiver_type.clone().unwrap_or_default(),
+                },
+                SymbolDiscoveryField {
+                    name: "returnType",
+                    value: node.return_type.clone().unwrap_or_default(),
+                },
+                SymbolDiscoveryField {
+                    name: "annotations",
+                    value: node.annotations.join(" "),
+                },
+                SymbolDiscoveryField {
+                    name: "scope",
+                    value: format!(
+                        "{} {} {}",
+                        node.path,
+                        node.gradle_projects.join(" "),
+                        node.source_sets.join(" ")
+                    ),
+                },
+                SymbolDiscoveryField {
+                    name: "declarationKind",
+                    value: node.kind.clone(),
+                },
+            ],
+            graph_terms: neighbors
+                .get(&node.database_id)
+                .cloned()
+                .unwrap_or_default(),
         })
-        .collect::<Vec<_>>();
-    sort_repository_candidates(&mut candidates);
-
-    let mut source_cache = BTreeMap::<String, String>::new();
-    for candidate in candidates.iter_mut().take(200) {
-        let source = source_cache
-            .entry(candidate.node.path.clone())
-            .or_insert_with(|| {
-                std::fs::read_to_string(workspace_root.join(&candidate.node.path))
-                    .unwrap_or_default()
-            });
-        let snippet = declaration_search_snippet(source, &candidate.node.declaration_range);
-        add_candidate_reason(candidate, "declarationText", &snippet, &terms, 12);
-    }
-    sort_repository_candidates(&mut candidates);
-    for (index, candidate) in candidates.iter_mut().enumerate() {
-        candidate.rank = index + 1;
-    }
-    Ok(candidates)
-}
-
-fn score_repository_candidate(
-    candidate: &mut RepositoryCandidate,
-    question: &str,
-    terms: &BTreeSet<String>,
-    explicit_names: &BTreeSet<String>,
-    neighbor_terms: Option<&BTreeSet<String>>,
-    fts_names: &BTreeSet<String>,
-) {
-    let node = candidate.node.clone();
-    let question_lower = question.to_ascii_lowercase();
-    if explicit_names
-        .iter()
-        .any(|name| name.eq_ignore_ascii_case(&node.name))
-    {
-        candidate.match_score += 180;
-        candidate.match_reasons.push(RepositoryMatchReason {
-            field: "exactName",
-            terms: vec![node.name.clone()],
-            score: 180,
-        });
-    }
-    if let Some(owner) = &node.owner_name {
-        let member = compact_search_text(&format!("{owner}.{}", node.name));
-        if compact_search_text(question).contains(&member) {
-            candidate.match_score += 300;
-            candidate.match_reasons.push(RepositoryMatchReason {
-                field: "exactMember",
-                terms: vec![format!("{owner}.{}", node.name)],
-                score: 300,
-            });
-        }
-    }
-    add_candidate_reason(candidate, "name", &node.name, terms, 50);
-    add_candidate_reason(
-        candidate,
-        "qualifiedName",
-        &[
-            node.owner_name.as_deref().unwrap_or_default(),
-            node.fq_name.as_deref().unwrap_or_default(),
-        ]
-        .join(" "),
-        terms,
-        18,
+        .collect();
+    let ranked = rank_symbol_discovery(
+        question,
+        repository_resolution_name(question).as_deref(),
+        documents,
     );
-    add_candidate_reason(
-        candidate,
-        "signature",
-        node.signature.as_deref().unwrap_or_default(),
-        terms,
-        8,
-    );
-    add_candidate_reason(
-        candidate,
-        "parameterTypes",
-        &node.parameter_types.join(" "),
-        terms,
-        12,
-    );
-    add_candidate_reason(
-        candidate,
-        "receiverType",
-        node.receiver_type.as_deref().unwrap_or_default(),
-        terms,
-        16,
-    );
-    add_candidate_reason(
-        candidate,
-        "returnType",
-        node.return_type.as_deref().unwrap_or_default(),
-        terms,
-        6,
-    );
-    add_candidate_reason(
-        candidate,
-        "annotations",
-        &node.annotations.join(" "),
-        terms,
-        10,
-    );
-    add_candidate_reason(
-        candidate,
-        "scope",
-        &[
-            node.path.as_str(),
-            node.module.as_deref().unwrap_or_default(),
-            node.source_set.as_deref().unwrap_or_default(),
-        ]
-        .join(" "),
-        terms,
-        6,
-    );
-    if let Some(neighbor_terms) = neighbor_terms {
-        add_candidate_terms(candidate, "compilerNeighbors", neighbor_terms, terms, 8);
-    }
-    if node
-        .fq_name
-        .as_ref()
-        .is_some_and(|fq_name| fts_names.contains(fq_name))
-    {
-        candidate.match_score += 18;
-        candidate.match_reasons.push(RepositoryMatchReason {
-            field: "trigramFts",
-            terms: vec![node.fq_name.clone().expect("matched FTS name")],
-            score: 18,
-        });
-    }
-    let asks_for_type = question_lower.contains(" type ")
-        || question_lower.starts_with("find the type")
-        || question_lower.contains(" model ");
-    let asks_for_callable = [" function ", " helper ", " declaration "]
-        .iter()
-        .any(|term| question_lower.contains(term));
-    let kind_match = (asks_for_type
-        && matches!(
-            node.kind.as_str(),
-            "CLASS" | "INTERFACE" | "OBJECT" | "TYPE_ALIAS"
-        ))
-        || (asks_for_callable && is_callable_kind(&node.kind));
-    if kind_match {
-        candidate.match_score += 15;
-        candidate.match_reasons.push(RepositoryMatchReason {
-            field: "declarationKind",
-            terms: vec![node.kind],
-            score: 15,
-        });
-    }
-}
-
-fn add_candidate_reason(
-    candidate: &mut RepositoryCandidate,
-    field: &'static str,
-    value: &str,
-    query_terms: &BTreeSet<String>,
-    weight: usize,
-) {
-    add_candidate_terms(
-        candidate,
-        field,
-        &discovery_lexical_tokens(value),
-        query_terms,
-        weight,
-    );
-}
-
-fn add_candidate_terms(
-    candidate: &mut RepositoryCandidate,
-    field: &'static str,
-    value_terms: &BTreeSet<String>,
-    query_terms: &BTreeSet<String>,
-    weight: usize,
-) {
-    let terms = value_terms
-        .intersection(query_terms)
-        .cloned()
-        .collect::<Vec<_>>();
-    if terms.is_empty() {
-        return;
-    }
-    let score = terms.len() * weight;
-    candidate.match_score += score;
-    candidate.match_reasons.push(RepositoryMatchReason {
-        field,
-        terms,
-        score,
-    });
-}
-
-fn sort_repository_candidates(candidates: &mut [RepositoryCandidate]) {
-    candidates.sort_by(|left, right| {
-        right
-            .match_score
-            .cmp(&left.match_score)
-            .then_with(|| left.node.canonical_key.cmp(&right.node.canonical_key))
-    });
+    let mut nodes_by_identity = nodes
+        .into_iter()
+        .map(|node| (node.canonical_key.clone(), node))
+        .collect::<BTreeMap<_, _>>();
+    Ok(ranked
+        .into_iter()
+        .filter_map(|ranked| {
+            nodes_by_identity
+                .remove(&ranked.identity)
+                .map(|node| RepositoryCandidate {
+                    rank: ranked.rank,
+                    match_score: ranked.score,
+                    match_reasons: ranked
+                        .reasons
+                        .into_iter()
+                        .map(|reason| RepositoryMatchReason {
+                            field: reason.field,
+                            terms: reason.terms,
+                            score: reason.score,
+                        })
+                        .collect(),
+                    node,
+                })
+        })
+        .collect())
 }
 
 fn load_discovery_neighbor_tokens(
@@ -1695,52 +2483,6 @@ fn load_discovery_neighbor_tokens(
             .extend(discovery_lexical_tokens(&name));
     }
     Ok(neighbors)
-}
-
-fn load_discovery_fts_names(
-    connection: &Connection,
-    terms: &BTreeSet<String>,
-) -> Result<BTreeSet<String>> {
-    if !source_index_db::persistent_symbol_fts_exists(connection)
-        .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?
-    {
-        return Ok(BTreeSet::new());
-    }
-    let mut statement = connection
-        .prepare(
-            "SELECT fq_name
-             FROM fq_names_fts
-             WHERE fq_names_fts MATCH ?1
-             ORDER BY rank, LENGTH(fq_name), fq_name
-             LIMIT 100",
-        )
-        .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
-    let mut names = BTreeSet::new();
-    for term in terms.iter().filter(|term| term.len() >= 3).take(16) {
-        let query = source_index_db::trigram_fts_query(term);
-        let rows = statement
-            .query_map([query], |row| row.get::<_, String>(0))
-            .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
-        for row in rows {
-            names.insert(row.map_err(|error| {
-                CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string())
-            })?);
-        }
-    }
-    Ok(names)
-}
-
-fn declaration_search_snippet(source: &str, range: &RepositorySourceRange) -> String {
-    let bytes = source.as_bytes();
-    let start = usize::try_from(range.start_offset)
-        .unwrap_or(0)
-        .saturating_sub(400)
-        .min(bytes.len());
-    let end = usize::try_from(range.end_offset)
-        .unwrap_or(bytes.len())
-        .saturating_add(100)
-        .min(bytes.len());
-    String::from_utf8_lossy(&bytes[start..end.max(start)]).into_owned()
 }
 
 fn discovery_query_terms(question: &str) -> BTreeSet<String> {
@@ -1797,12 +2539,53 @@ fn discovery_lexical_tokens(raw: &str) -> BTreeSet<String> {
     tokens
 }
 
-fn bare_resolution_name(question: &str) -> Option<String> {
+fn repository_resolution_name(question: &str) -> Option<String> {
+    if let Some(member) = dotted_member_name(question) {
+        return Some(member);
+    }
     let words = question
         .split(|character: char| !(character.is_alphanumeric() || character == '_'))
         .filter(|word| !word.is_empty())
         .collect::<Vec<_>>();
-    (words.len() == 2 && words[0].eq_ignore_ascii_case("resolve")).then(|| words[1].to_string())
+    if words
+        .first()
+        .is_some_and(|word| word.eq_ignore_ascii_case("resolve"))
+    {
+        let candidates = words
+            .iter()
+            .skip(1)
+            .copied()
+            .filter(|word| {
+                !matches!(
+                    word.to_ascii_lowercase().as_str(),
+                    "a" | "an"
+                        | "declaration"
+                        | "exact"
+                        | "exactly"
+                        | "function"
+                        | "helper"
+                        | "kotlin"
+                        | "method"
+                        | "model"
+                        | "the"
+                        | "type"
+                )
+            })
+            .collect::<Vec<_>>();
+        return candidates
+            .iter()
+            .find(|word| {
+                word.contains('_')
+                    || word
+                        .chars()
+                        .filter(|character| character.is_uppercase())
+                        .count()
+                        >= 2
+            })
+            .or_else(|| candidates.first())
+            .map(|word| (*word).to_string());
+    }
+    likely_declaration_term(question).map(str::to_string)
 }
 
 fn explicit_repository_names(question: &str) -> BTreeSet<String> {
@@ -1841,14 +2624,15 @@ fn explicit_repository_names(question: &str) -> BTreeSet<String> {
 }
 
 fn context_repository_question(
-    workspace_root: &Path,
+    workspace_root: &WorkspaceRoot,
     connection: &Connection,
     question: &str,
     scope: &RepositoryScope,
+    execution_scope: &RepositoryExecutionScope,
     limits: &RepositoryLimits,
 ) -> Result<Value> {
     let (targets, unresolved_references, ambiguous_references) =
-        context_target_nodes(workspace_root, connection, question, scope)?;
+        context_target_nodes(connection, question, execution_scope, limits.results)?;
     let sources = if scope.sources.is_empty() {
         vec![
             RepositoryContextSource::Markdown,
@@ -1864,40 +2648,89 @@ fn context_repository_question(
         sources
     };
     let mut context_nodes = BTreeMap::<RepositoryContextSource, BTreeSet<String>>::new();
+    let mut markdown_documents = BTreeMap::<String, String>::new();
     let mut candidates = Vec::new();
-    for source in sources {
-        let paths = repository_context_paths(workspace_root, source)?;
-        context_nodes
-            .entry(source)
-            .or_default()
-            .extend(paths.iter().map(|(relative, _)| relative.clone()));
-        for (relative, absolute) in paths {
-            let content = std::fs::read_to_string(&absolute).map_err(|error| {
-                CliError::new(
-                    "REPOSITORY_CONTEXT_UNAVAILABLE",
-                    format!("cannot read {relative}: {error}"),
-                )
-            })?;
-            for target in &targets {
-                let candidate = match source {
-                    RepositoryContextSource::Markdown => {
-                        markdown_context_relation(question, &relative, &content, target)
+    if !targets.is_empty() && ambiguous_references.is_empty() {
+        let mut context_paths = repository_context_paths(workspace_root, &sources)?;
+        for source in sources {
+            context_nodes.entry(source).or_default();
+            for path in context_paths.remove(&source).unwrap_or_default() {
+                let mut file = std::fs::File::open(&path.canonical_path).map_err(|error| {
+                    CliError::new(
+                        "REPOSITORY_CONTEXT_UNAVAILABLE",
+                        format!(
+                            "cannot open repository context candidate {}: {error}",
+                            path.relative_path
+                        ),
+                    )
+                })?;
+                let metadata = file.metadata().map_err(|error| {
+                    CliError::new(
+                        "REPOSITORY_CONTEXT_UNAVAILABLE",
+                        format!(
+                            "cannot inspect opened repository context candidate {}: {error}",
+                            path.relative_path
+                        ),
+                    )
+                })?;
+                if !same_repository_context_file(&path.metadata, &metadata) {
+                    return Err(CliError::new(
+                        "REPOSITORY_CONTEXT_CHANGED",
+                        format!(
+                            "repository context candidate {} changed after containment was proven; retry the query",
+                            path.relative_path
+                        ),
+                    ));
+                }
+                let mut content = String::new();
+                std::io::Read::read_to_string(&mut file, &mut content).map_err(|error| {
+                    CliError::new(
+                        "REPOSITORY_CONTEXT_UNAVAILABLE",
+                        format!("cannot read {}: {error}", path.relative_path),
+                    )
+                })?;
+                context_nodes
+                    .entry(source)
+                    .or_default()
+                    .insert(path.relative_path.clone());
+                for target in &targets {
+                    let ownership = execution_scope
+                        .ownership(target)
+                        .expect("repository targets were admitted with ownership proof");
+                    let candidate = match source {
+                        RepositoryContextSource::Markdown => markdown_context_relation(
+                            question,
+                            &path.relative_path,
+                            &content,
+                            target,
+                        ),
+                        RepositoryContextSource::Gradle => gradle_context_relation(
+                            question,
+                            &path.relative_path,
+                            &content,
+                            target,
+                            ownership,
+                        ),
+                        RepositoryContextSource::Schema => {
+                            schema_context_relation(question, &path.relative_path, &content, target)
+                        }
+                        RepositoryContextSource::Workflow => workflow_context_relation(
+                            question,
+                            &path.relative_path,
+                            &content,
+                            target,
+                            ownership,
+                        ),
+                        RepositoryContextSource::Rust => {
+                            rust_context_relation(question, &path.relative_path, &content, target)
+                        }
+                    };
+                    if let Some(candidate) = candidate {
+                        candidates.push(candidate);
                     }
-                    RepositoryContextSource::Gradle => {
-                        gradle_context_relation(question, &relative, &content, target)
-                    }
-                    RepositoryContextSource::Schema => {
-                        schema_context_relation(question, &relative, &content, target)
-                    }
-                    RepositoryContextSource::Workflow => {
-                        workflow_context_relation(question, &relative, &content, target)
-                    }
-                    RepositoryContextSource::Rust => {
-                        rust_context_relation(question, &relative, &content, target)
-                    }
-                };
-                if let Some(candidate) = candidate {
-                    candidates.push(candidate);
+                }
+                if source == RepositoryContextSource::Markdown {
+                    markdown_documents.insert(path.relative_path, content);
                 }
             }
         }
@@ -1950,17 +2783,20 @@ fn context_repository_question(
     let exact_reference_count =
         targets.len() + unresolved_references.len() + ambiguous_references.len();
     let context_findings = context_gap_findings(
-        workspace_root,
         &all_linked_targets,
         &unresolved_references,
         &context_nodes,
+        &markdown_documents,
         &all_relations,
-    )?;
+    );
     let evidence_classes = all_relations
         .iter()
         .map(|relation| relation.evidence_class)
         .collect::<BTreeSet<_>>();
-    let truncated = candidates.len() > limits.results;
+    let truncated = candidates.len() > limits.results
+        || ambiguous_references
+            .iter()
+            .any(|ambiguity| ambiguity.truncated);
     let context_relations = candidates
         .into_iter()
         .take(limits.results)
@@ -1976,7 +2812,7 @@ fn context_repository_question(
         .collect::<Vec<_>>();
     Ok(json!({
         "answered": !context_relations.is_empty(),
-        "ambiguous": false,
+        "ambiguous": !ambiguous_references.is_empty(),
         "contextRelations": context_relations,
         "nodes": result_targets,
         "evidenceClasses": evidence_classes,
@@ -2005,11 +2841,15 @@ fn context_repository_question(
 }
 
 fn context_target_nodes(
-    workspace_root: &Path,
     connection: &Connection,
     question: &str,
-    scope: &RepositoryScope,
-) -> Result<(Vec<RepositoryNode>, Vec<String>, Vec<String>)> {
+    execution_scope: &RepositoryExecutionScope,
+    result_limit: usize,
+) -> Result<(
+    Vec<RepositoryNode>,
+    Vec<String>,
+    Vec<RepositoryContextAmbiguity>,
+)> {
     let ignored = ["ADR", "CI", "CALLS"];
     let names = explicit_repository_names(question)
         .into_iter()
@@ -2020,8 +2860,11 @@ fn context_target_nodes(
     let mut unresolved = Vec::new();
     let mut ambiguous = Vec::new();
     for name in names {
-        let mut candidates = load_repository_node(connection, "symbol.name = ?1", &name)?;
-        candidates.retain(|node| node_matches_scope(node, scope));
+        let candidates = execution_scope.admit_nodes(load_repository_node(
+            connection,
+            "symbol.name = ?1",
+            &name,
+        )?);
         let scores = candidates
             .iter()
             .map(|candidate| repository_node_score(candidate, question))
@@ -2036,13 +2879,21 @@ fn context_target_nodes(
         match selected.len() {
             0 => unresolved.push(name),
             1 => targets.push(selected.remove(0)),
-            _ => ambiguous.push(name),
+            _ => {
+                let truncated = selected.len() > result_limit;
+                selected.truncate(result_limit);
+                ambiguous.push(RepositoryContextAmbiguity {
+                    reference: name,
+                    candidates: selected,
+                    truncated,
+                });
+            }
         }
     }
     if !has_explicit_names {
         // ponytail: scan 200 existing semantic candidates; add a persisted context index only if this measured ceiling stops holding.
         targets.extend(
-            rank_repository_candidates(workspace_root, connection, question, scope)?
+            rank_repository_candidates(connection, question, execution_scope)?
                 .into_iter()
                 .filter(|candidate| {
                     matches!(
@@ -2060,48 +2911,206 @@ fn context_target_nodes(
 }
 
 fn repository_context_paths(
-    workspace_root: &Path,
-    source: RepositoryContextSource,
-) -> Result<Vec<(String, PathBuf)>> {
-    let patterns: &[&str] = match source {
-        RepositoryContextSource::Markdown => &["**/*.md"],
-        RepositoryContextSource::Gradle => &["**/*.gradle.kts"],
-        RepositoryContextSource::Schema => &["**/*.schema.json"],
-        RepositoryContextSource::Workflow => {
-            &[".github/workflows/*.yml", ".github/workflows/*.yaml"]
-        }
-        RepositoryContextSource::Rust => &["**/*.rs"],
-    };
-    let mut paths = Vec::new();
-    for suffix in patterns {
-        let pattern = workspace_root.join(suffix).to_string_lossy().into_owned();
-        let entries = glob::glob(&pattern)
-            .map_err(|error| CliError::new("REPOSITORY_CONTEXT_UNAVAILABLE", error.to_string()))?;
-        for entry in entries {
-            let absolute = entry.map_err(|error| {
-                CliError::new("REPOSITORY_CONTEXT_UNAVAILABLE", error.to_string())
-            })?;
-            if !absolute.is_file() {
-                continue;
-            }
-            let relative = absolute
-                .strip_prefix(workspace_root)
-                .unwrap_or(&absolute)
-                .to_path_buf();
-            if relative.components().any(|component| {
-                matches!(
-                    component.as_os_str().to_str(),
-                    Some(".git" | ".gradle" | "build" | "graphify-out" | "target")
+    workspace_root: &WorkspaceRoot,
+    sources: &[RepositoryContextSource],
+) -> Result<BTreeMap<RepositoryContextSource, Vec<ContainedRepositoryContextPath>>> {
+    let mut paths = sources
+        .iter()
+        .copied()
+        .map(|source| (source, Vec::new()))
+        .collect::<BTreeMap<_, _>>();
+    let mut directories = vec![workspace_root.as_path().to_path_buf()];
+    while let Some(directory) = directories.pop() {
+        let mut entries = std::fs::read_dir(&directory)
+            .map_err(|error| {
+                CliError::new(
+                    "REPOSITORY_CONTEXT_UNAVAILABLE",
+                    format!(
+                        "cannot read repository context directory {}: {error}",
+                        directory.display()
+                    ),
                 )
-            }) {
+            })?
+            .collect::<std::io::Result<Vec<_>>>()
+            .map_err(|error| CliError::new("REPOSITORY_CONTEXT_UNAVAILABLE", error.to_string()))?;
+        entries.sort_by_key(std::fs::DirEntry::file_name);
+        for entry in entries {
+            let candidate = entry.path();
+            let relative = candidate
+                .strip_prefix(workspace_root.as_path())
+                .map_err(|_| {
+                    CliError::new(
+                        "REPOSITORY_CONTEXT_OUTSIDE_WORKSPACE",
+                        format!(
+                            "repository context candidate {} is outside the routed workspace {}",
+                            candidate.display(),
+                            workspace_root.as_path().display()
+                        ),
+                    )
+                })?
+                .to_path_buf();
+            if repository_context_path_excluded(&relative) {
                 continue;
             }
-            paths.push((relative.to_string_lossy().into_owned(), absolute));
+            let file_type = entry.file_type().map_err(|error| {
+                CliError::new(
+                    "REPOSITORY_CONTEXT_UNAVAILABLE",
+                    format!(
+                        "cannot inspect repository context candidate {}: {error}",
+                        relative.display()
+                    ),
+                )
+            })?;
+            if file_type.is_dir() {
+                let canonical =
+                    contained_repository_context_path(workspace_root, &candidate, &relative)?;
+                if repository_context_directory_matches(sources, &relative) {
+                    directories.push(canonical);
+                }
+                continue;
+            }
+            if file_type.is_symlink() {
+                let canonical =
+                    contained_repository_context_path(workspace_root, &candidate, &relative)?;
+                let metadata = repository_context_metadata(&relative, &canonical)?;
+                if metadata.file_type().is_dir() {
+                    continue;
+                }
+                if metadata.file_type().is_file()
+                    && let Some(source) = sources
+                        .iter()
+                        .copied()
+                        .find(|source| repository_context_path_matches(*source, &relative))
+                {
+                    paths
+                        .entry(source)
+                        .or_default()
+                        .push(ContainedRepositoryContextPath {
+                            relative_path: relative.to_string_lossy().into_owned(),
+                            canonical_path: canonical,
+                            metadata,
+                        });
+                }
+                continue;
+            }
+            if file_type.is_file()
+                && let Some(source) = sources
+                    .iter()
+                    .copied()
+                    .find(|source| repository_context_path_matches(*source, &relative))
+            {
+                let canonical =
+                    contained_repository_context_path(workspace_root, &candidate, &relative)?;
+                let metadata = repository_context_metadata(&relative, &canonical)?;
+                paths
+                    .entry(source)
+                    .or_default()
+                    .push(ContainedRepositoryContextPath {
+                        relative_path: relative.to_string_lossy().into_owned(),
+                        canonical_path: canonical,
+                        metadata,
+                    });
+            }
         }
     }
-    paths.sort_by(|left, right| left.0.cmp(&right.0));
-    paths.dedup_by(|left, right| left.0 == right.0);
+    for source_paths in paths.values_mut() {
+        source_paths.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
+        source_paths.dedup_by(|left, right| left.relative_path == right.relative_path);
+    }
     Ok(paths)
+}
+
+fn contained_repository_context_path(
+    workspace_root: &WorkspaceRoot,
+    candidate: &Path,
+    relative: &Path,
+) -> Result<PathBuf> {
+    let canonical = std::fs::canonicalize(candidate).map_err(|error| {
+        CliError::new(
+            "REPOSITORY_CONTEXT_UNAVAILABLE",
+            format!(
+                "cannot canonicalize repository context candidate {}: {error}",
+                relative.display()
+            ),
+        )
+    })?;
+    if !canonical.starts_with(workspace_root.as_path()) {
+        return Err(CliError::new(
+            "REPOSITORY_CONTEXT_OUTSIDE_WORKSPACE",
+            format!(
+                "repository context candidate {} resolves outside the routed workspace {}; remove the symlink or keep its target under --workspace-root",
+                relative.display(),
+                workspace_root.as_path().display()
+            ),
+        ));
+    }
+    Ok(canonical)
+}
+
+fn repository_context_metadata(relative: &Path, canonical: &Path) -> Result<std::fs::Metadata> {
+    std::fs::metadata(canonical).map_err(|error| {
+        CliError::new(
+            "REPOSITORY_CONTEXT_UNAVAILABLE",
+            format!(
+                "cannot inspect repository context candidate {}: {error}",
+                relative.display()
+            ),
+        )
+    })
+}
+
+fn repository_context_path_excluded(relative: &Path) -> bool {
+    relative.components().any(|component| {
+        matches!(
+            component.as_os_str().to_str(),
+            Some(".git" | ".gradle" | "build" | "graphify-out" | "target")
+        )
+    })
+}
+
+fn repository_context_directory_matches(
+    sources: &[RepositoryContextSource],
+    relative: &Path,
+) -> bool {
+    sources
+        .iter()
+        .any(|source| *source != RepositoryContextSource::Workflow)
+        || matches!(relative.to_str(), Some(".github" | ".github/workflows"))
+}
+
+fn repository_context_path_matches(source: RepositoryContextSource, relative: &Path) -> bool {
+    let file_name = relative.file_name().and_then(|name| name.to_str());
+    let extension = relative
+        .extension()
+        .and_then(|extension| extension.to_str());
+    match source {
+        RepositoryContextSource::Markdown => extension == Some("md"),
+        RepositoryContextSource::Gradle => {
+            file_name.is_some_and(|name| name.ends_with(".gradle.kts"))
+        }
+        RepositoryContextSource::Schema => {
+            file_name.is_some_and(|name| name.ends_with(".schema.json"))
+        }
+        RepositoryContextSource::Workflow => {
+            relative.parent() == Some(Path::new(".github/workflows"))
+                && matches!(extension, Some("yml" | "yaml"))
+        }
+        RepositoryContextSource::Rust => extension == Some("rs"),
+    }
+}
+
+#[cfg(unix)]
+fn same_repository_context_file(admitted: &std::fs::Metadata, opened: &std::fs::Metadata) -> bool {
+    use std::os::unix::fs::MetadataExt;
+
+    opened.file_type().is_file() && admitted.dev() == opened.dev() && admitted.ino() == opened.ino()
+}
+
+#[cfg(not(unix))]
+fn same_repository_context_file(admitted: &std::fs::Metadata, opened: &std::fs::Metadata) -> bool {
+    opened.file_type().is_file()
+        && admitted.len() == opened.len()
+        && admitted.modified().ok() == opened.modified().ok()
 }
 
 fn markdown_context_relation(
@@ -2131,11 +3140,19 @@ fn gradle_context_relation(
     relative: &str,
     content: &str,
     target: &RepositoryNode,
+    ownership: &RepositoryFileOwnership,
 ) -> Option<RepositoryContextCandidate> {
-    let module = target.module.as_deref()?;
-    if relative != format!("{module}/build.gradle.kts") {
-        return None;
-    }
+    let project = ownership
+        .gradle_projects
+        .iter()
+        .find(|project| relative == gradle_build_script_path(project))?;
+    let project_id = canonical_gradle_project(project);
+    let source_sets = ownership
+        .source_sets
+        .iter()
+        .filter(|source_set| source_set.project() == project)
+        .map(canonical_gradle_source_set)
+        .collect::<Vec<_>>();
     Some(context_candidate(
         question,
         relative,
@@ -2146,7 +3163,7 @@ fn gradle_context_relation(
         "derived",
         Some(RepositoryContextDerivation {
             rule: "SEMANTIC_OWNERSHIP_TO_GRADLE_BUILD",
-            facts: json!({"module": module, "sourceSet": target.source_set}),
+            facts: json!({"gradleProject": project_id, "sourceSets": source_sets}),
         }),
         0,
         0,
@@ -2191,10 +3208,21 @@ fn workflow_context_relation(
     relative: &str,
     content: &str,
     target: &RepositoryNode,
+    ownership: &RepositoryFileOwnership,
 ) -> Option<RepositoryContextCandidate> {
-    let module = target.module.as_deref()?;
-    let needle = format!(":{module}:");
-    let start = content.find(&needle)?;
+    let (project, needle, start) = ownership.gradle_projects.iter().find_map(|project| {
+        let project_path = project.project_path().as_str();
+        (project_path != ":")
+            .then(|| format!("{project_path}:"))
+            .and_then(|needle| content.find(&needle).map(|start| (project, needle, start)))
+    })?;
+    let project_id = canonical_gradle_project(project);
+    let source_sets = ownership
+        .source_sets
+        .iter()
+        .filter(|source_set| source_set.project() == project)
+        .map(canonical_gradle_source_set)
+        .collect::<Vec<_>>();
     Some(context_candidate(
         question,
         relative,
@@ -2205,12 +3233,27 @@ fn workflow_context_relation(
         "derived",
         Some(RepositoryContextDerivation {
             rule: "WORKFLOW_GRADLE_TASK_TO_SEMANTIC_MODULE",
-            facts: json!({"module": module, "sourceSet": target.source_set}),
+            facts: json!({"gradleProject": project_id, "sourceSets": source_sets}),
         }),
         start,
         needle.len(),
         350,
     ))
+}
+
+fn gradle_build_script_path(project: &BuildQualifiedGradleProjectIdentity) -> String {
+    let mut path = project.build_root().as_path().to_path_buf();
+    for component in project
+        .project_path()
+        .as_str()
+        .trim_start_matches(':')
+        .split(':')
+        .filter(|component| !component.is_empty())
+    {
+        path.push(component);
+    }
+    path.push("build.gradle.kts");
+    path.to_string_lossy().into_owned()
 }
 
 fn rust_context_relation(
@@ -2341,30 +3384,23 @@ fn kebab_identifier(value: &str) -> String {
 }
 
 fn context_gap_findings(
-    workspace_root: &Path,
     targets: &[RepositoryNode],
     unresolved: &[String],
     context_nodes: &BTreeMap<RepositoryContextSource, BTreeSet<String>>,
+    markdown_documents: &BTreeMap<String, String>,
     relations: &[RepositoryContextRelation],
-) -> Result<Vec<Value>> {
+) -> Vec<Value> {
     let mut findings = Vec::new();
-    if let Some(markdown_paths) = context_nodes.get(&RepositoryContextSource::Markdown) {
+    if context_nodes.contains_key(&RepositoryContextSource::Markdown) {
         for name in unresolved {
-            for source_path in markdown_paths {
-                let content =
-                    std::fs::read_to_string(workspace_root.join(source_path)).map_err(|error| {
-                        CliError::new(
-                            "REPOSITORY_CONTEXT_UNAVAILABLE",
-                            format!("cannot read {source_path}: {error}"),
-                        )
-                    })?;
+            for (source_path, content) in markdown_documents {
                 if let Some(start) = content.find(name) {
                     findings.push(json!({
                         "type": "STALE_DOCUMENT_REFERENCE",
                         "sourcePath": source_path,
                         "reference": name,
                         "trigger": "explicit document identifier resolves to zero exact Kotlin identities",
-                        "sourceLocation": context_location(&content, start, name.len()),
+                        "sourceLocation": context_location(content, start, name.len()),
                         "evidenceClass": "extracted"
                     }));
                 }
@@ -2389,7 +3425,7 @@ fn context_gap_findings(
         }
     }
     findings.sort_by_key(|finding| finding.to_string());
-    Ok(findings)
+    findings
 }
 
 fn repository_context_relation_vocabulary() -> Vec<Value> {
@@ -2451,6 +3487,7 @@ fn architecture_repository_question(
     connection: &Connection,
     generation: u64,
     scope: &RepositoryScope,
+    execution_scope: &RepositoryExecutionScope,
     limits: &RepositoryLimits,
 ) -> Result<Value> {
     let projection = scope.projection.ok_or_else(|| {
@@ -2459,7 +3496,7 @@ fn architecture_repository_question(
             "architecture queries require an explicit relation-specific projection",
         )
     })?;
-    let graph = load_repository_architecture_graph(connection, scope, projection)?;
+    let graph = load_repository_architecture_graph(connection, execution_scope, projection)?;
     let mut findings = match scope.metric {
         Some(RepositoryArchitectureMetric::Scc) => {
             architecture_cycle_findings(connection, &graph, generation, scope, projection, limits)?
@@ -2501,13 +3538,10 @@ fn architecture_repository_question(
 
 fn load_repository_architecture_graph(
     connection: &Connection,
-    scope: &RepositoryScope,
+    execution_scope: &RepositoryExecutionScope,
     projection: RepositoryArchitectureProjection,
 ) -> Result<RepositoryArchitectureGraph> {
-    let mut nodes = load_repository_node(connection, "1 = ?1", 1i64)?
-        .into_iter()
-        .filter(|node| node_matches_scope(node, scope))
-        .collect::<Vec<_>>();
+    let mut nodes = execution_scope.admit_nodes(load_repository_node(connection, "1 = ?1", 1i64)?);
     nodes.sort_by(|left, right| left.canonical_key.cmp(&right.canonical_key));
     let positions = nodes
         .iter()
@@ -2518,19 +3552,20 @@ fn load_repository_architecture_graph(
         .iter()
         .map(|node| (node.database_id, node))
         .collect::<BTreeMap<_, _>>();
-    let occurrences = load_relation_occurrences(connection, projection.relation_kinds())?
-        .into_iter()
-        .filter(|occurrence| {
-            let source_id = occurrence.lifted_source.unwrap_or(occurrence.source_id);
-            let Some(source) = by_id.get(&source_id) else {
-                return false;
-            };
-            let Some(target) = by_id.get(&occurrence.target_id) else {
-                return false;
-            };
-            projection_accepts_occurrence(projection, occurrence, source, target)
-        })
-        .collect::<Vec<_>>();
+    let occurrences =
+        load_relation_occurrences(connection, projection.relation_kinds(), execution_scope)?
+            .into_iter()
+            .filter(|occurrence| {
+                let source_id = occurrence.lifted_source.unwrap_or(occurrence.source_id);
+                let Some(source) = by_id.get(&source_id) else {
+                    return false;
+                };
+                let Some(target) = by_id.get(&occurrence.target_id) else {
+                    return false;
+                };
+                projection_accepts_occurrence(projection, occurrence, source, target)
+            })
+            .collect::<Vec<_>>();
     let mut grouped = BTreeMap::<(usize, usize, RepositoryRelationKind, String), usize>::new();
     for occurrence in &occurrences {
         let source_id = occurrence.lifted_source.unwrap_or(occurrence.source_id);
@@ -2564,6 +3599,7 @@ fn load_repository_architecture_graph(
         positions,
         occurrences,
         native: native_graph_to_csr(native_nodes, native_edges),
+        execution_scope: execution_scope.clone(),
     })
 }
 
@@ -2582,7 +3618,7 @@ fn projection_accepts_occurrence(
                 )
         }
         RepositoryArchitectureProjection::ModuleDependencies => {
-            architecture_module(source) != architecture_module(target)
+            architecture_ownership_boundary(source) != architecture_ownership_boundary(target)
         }
         RepositoryArchitectureProjection::RuntimeCalls
         | RepositoryArchitectureProjection::SymbolReferences
@@ -2648,7 +3684,7 @@ fn architecture_hub_findings(
     };
     ranked
         .into_iter()
-        .take(limits.results.min(5))
+        .take(architecture_finding_probe_limit(limits))
         .enumerate()
         .map(|(rank, (id, (neighbors, occurrence_count, occurrences)))| {
             let node = architecture_node(graph, id);
@@ -2748,7 +3784,7 @@ fn architecture_cycle_findings(
     }
     cycles
         .into_iter()
-        .take(limits.results.min(3))
+        .take(architecture_finding_probe_limit(limits))
         .enumerate()
         .map(|(rank, (members, boundaries, occurrences))| {
             let first = architecture_node(graph, members[0]);
@@ -2888,7 +3924,7 @@ fn architecture_boundary_cycle_findings(
     });
     cycles
         .into_iter()
-        .take(limits.results.min(3))
+        .take(architecture_finding_probe_limit(limits))
         .enumerate()
         .map(|(rank, (boundaries, occurrence_count, proof))| {
             architecture_finding(
@@ -2981,8 +4017,8 @@ fn architecture_boundary_findings(
             occurrence.lifted_source.unwrap_or(occurrence.source_id),
         );
         let target = architecture_node(graph, occurrence.target_id);
-        let source_module = architecture_module(source);
-        let target_module = architecture_module(target);
+        let source_module = architecture_ownership_boundary(source);
+        let target_module = architecture_ownership_boundary(target);
         if source_module != target_module {
             groups
                 .entry((source_module, target_module))
@@ -3000,7 +4036,7 @@ fn architecture_boundary_findings(
     });
     ranked
         .into_iter()
-        .take(limits.results.min(5))
+        .take(architecture_finding_probe_limit(limits))
         .enumerate()
         .map(|(rank, ((source_module, target_module), occurrences))| {
             let representatives = architecture_occurrence_nodes(&occurrences);
@@ -3083,7 +4119,7 @@ fn architecture_community_findings(
     });
     ranked
         .into_iter()
-        .take(limits.results.min(5))
+        .take(architecture_finding_probe_limit(limits))
         .enumerate()
         .map(|(rank, (members, occurrences))| {
             let unique_edges = occurrences
@@ -3109,7 +4145,7 @@ fn architecture_community_findings(
                 "COMMUNITY",
                 format!(
                     "{} / {} runtime call community",
-                    architecture_module(representative),
+                    architecture_ownership_boundary(representative),
                     representative.name
                 ),
                 format!(
@@ -3172,7 +4208,7 @@ fn architecture_bridge_findings(
     ranked.sort_by(|left, right| left.1.cmp(&right.1).then_with(|| left.0.cmp(&right.0)));
     ranked
         .into_iter()
-        .take(limits.results.min(5))
+        .take(architecture_finding_probe_limit(limits))
         .enumerate()
         .map(|(rank, ((left, right), edge_count, occurrences))| {
             let first = &occurrences[0];
@@ -3191,8 +4227,8 @@ fn architecture_bridge_findings(
                 "THIN_BRIDGE",
                 format!(
                     "{} to {} reference bridge",
-                    architecture_module(source),
-                    architecture_module(target)
+                    architecture_ownership_boundary(source),
+                    architecture_ownership_boundary(target)
                 ),
                 format!(
                     "{edge_count} exact reference edges connect otherwise separate deterministic communities."
@@ -3256,7 +4292,7 @@ fn architecture_public_api_findings(
     });
     ranked
         .into_iter()
-        .take(limits.results.min(5))
+        .take(architecture_finding_probe_limit(limits))
         .enumerate()
         .map(|(rank, (target_id, (boundaries, occurrences)))| {
             let target = architecture_node(graph, target_id);
@@ -3382,16 +4418,20 @@ fn architecture_supporting_subgraph(
         })
         .cloned()
         .collect::<Vec<_>>();
-    let mut node_cache = graph
-        .nodes
-        .iter()
-        .map(|node| (node.database_id, node.clone()))
-        .collect::<BTreeMap<_, _>>();
+    let mut node_cache = RepositoryNodeCache {
+        execution_scope: &graph.execution_scope,
+        nodes: graph
+            .nodes
+            .iter()
+            .map(|node| (node.database_id, node.clone()))
+            .collect(),
+    };
     let edges = repository_edges(
         connection,
         &selected,
         RepositoryDirection::Outgoing,
         limits.evidence,
+        None,
         None,
         &mut node_cache,
     )?;
@@ -3402,7 +4442,7 @@ fn architecture_supporting_subgraph(
     }
     let nodes = node_ids
         .into_iter()
-        .filter_map(|id| node_cache.get(&id).cloned())
+        .filter_map(|id| node_cache.nodes.get(&id).cloned())
         .collect::<Vec<_>>();
     Ok(json!({
         "nodes": nodes,
@@ -3425,6 +4465,10 @@ fn architecture_occurrence_identity(
         occurrence.kind,
         occurrence.context.clone(),
     )
+}
+
+fn architecture_finding_probe_limit(limits: &RepositoryLimits) -> usize {
+    limits.results.saturating_add(1)
 }
 
 fn architecture_occurrence_nodes(occurrences: &[RepositoryEdgeOccurrence]) -> Vec<i64> {
@@ -3466,10 +4510,12 @@ fn architecture_node(graph: &RepositoryArchitectureGraph, id: i64) -> &Repositor
     &graph.nodes[graph.positions[&id]]
 }
 
-fn architecture_module(node: &RepositoryNode) -> String {
-    node.module
-        .clone()
-        .unwrap_or_else(|| node.path.split('/').next().unwrap_or("<root>").to_string())
+fn architecture_ownership_boundary(node: &RepositoryNode) -> String {
+    if node.gradle_projects.is_empty() {
+        "<unowned>".to_string()
+    } else {
+        node.gradle_projects.join(" + ")
+    }
 }
 
 fn architecture_package_boundary(node: &RepositoryNode) -> String {
@@ -3478,7 +4524,7 @@ fn architecture_package_boundary(node: &RepositoryNode) -> String {
         .as_deref()
         .and_then(|name| name.rsplit_once('.').map(|(package, _)| package))
         .unwrap_or("<root>");
-    format!("{}:{package}", architecture_module(node))
+    format!("{}:{package}", architecture_ownership_boundary(node))
 }
 
 fn direction_label(direction: RepositoryDirection) -> &'static str {
@@ -3499,9 +4545,10 @@ fn graph_repository_question(
     connection: &Connection,
     question: &str,
     intent: RepositoryIntent,
-    scope: &RepositoryScope,
-    limits: &RepositoryLimits,
-    evidence_continuation: Option<&RepositoryEvidenceContinuation>,
+    execution: &RepositoryGraphExecution<'_>,
+    continuation_context: &RepositoryContinuationContext,
+    traversal_resume: Option<&RepositoryTraversalContinuationState>,
+    evidence_resume: Option<&RepositoryEvidenceResume>,
 ) -> Result<Value> {
     let mentions = repository_symbol_mentions(connection, question)?;
     let fallback = likely_declaration_term(question).map(str::to_string);
@@ -3516,7 +4563,7 @@ fn graph_repository_question(
             "truncated": false
         }));
     };
-    let starts = best_question_nodes(connection, question, scope, Some(&start_name))?;
+    let starts = best_question_nodes(connection, question, execution.admitted, Some(&start_name))?;
     if starts.len() != 1 {
         return Ok(json!({
             "answered": false,
@@ -3529,28 +4576,64 @@ fn graph_repository_question(
         }));
     }
     let start = starts[0].clone();
+    if traversal_resume.is_some_and(|resume| resume.canonical_start_key != start.canonical_key) {
+        return Err(invalid_repository_continuation(
+            "Repository traversal continuation canonical start is unavailable.",
+        ));
+    }
     let direction = match intent {
         RepositoryIntent::IncomingImpact => RepositoryDirection::Incoming,
         RepositoryIntent::OutgoingImpact => RepositoryDirection::Outgoing,
-        RepositoryIntent::Path => scope.direction.unwrap_or(RepositoryDirection::Outgoing),
+        RepositoryIntent::Path => execution
+            .request_scope
+            .direction
+            .unwrap_or(RepositoryDirection::Outgoing),
         RepositoryIntent::Resolve
         | RepositoryIntent::Architecture
         | RepositoryIntent::ContextRelationship => {
             unreachable!("non-graph intent is handled separately")
         }
     };
-    let relations = if scope.relations.is_empty() {
+    let relations = if execution.request_scope.relations.is_empty() {
         vec![RepositoryRelationKind::Calls]
     } else {
-        scope.relations.clone()
+        execution.request_scope.relations.clone()
     };
     let target = if intent == RepositoryIntent::Path && mentions.len() > 1 {
         let target_name = &mentions[mentions.len() - 1].1;
-        let mut candidates = load_repository_node(connection, "symbol.name = ?1", target_name)?;
-        candidates.retain(|node| node_matches_scope(node, scope));
-        select_path_target(
-            connection, &start, candidates, question, direction, &relations,
-        )?
+        let candidates = execution.admitted.admit_nodes(load_repository_node(
+            connection,
+            "symbol.name = ?1",
+            target_name,
+        )?);
+        match resolve_path_target(candidates, question, execution.limits.results) {
+            RepositoryPathTargetResolution::Missing => {
+                return Ok(json!({
+                    "answered": false,
+                    "ambiguous": false,
+                    "nodes": [],
+                    "edges": [],
+                    "paths": [],
+                    "identityCollisions": 0,
+                    "truncated": false
+                }));
+            }
+            RepositoryPathTargetResolution::Unique(target) => Some(*target),
+            RepositoryPathTargetResolution::Ambiguous {
+                candidates,
+                truncated,
+            } => {
+                return Ok(json!({
+                    "answered": false,
+                    "ambiguous": true,
+                    "nodes": candidates,
+                    "edges": [],
+                    "paths": [],
+                    "identityCollisions": 0,
+                    "truncated": truncated
+                }));
+            }
+        }
     } else {
         None
     };
@@ -3560,42 +4643,55 @@ fn graph_repository_question(
         target.as_ref(),
         question,
         direction,
-        scope,
-        limits,
+        execution,
+        traversal_resume.map(|resume| &resume.resume),
     )?;
-    let mut node_cache = BTreeMap::new();
-    node_cache.insert(start.database_id, start.clone());
+    let continuation = traversal
+        .resume
+        .map(|resume| {
+            issue_repository_traversal_continuation(
+                continuation_context,
+                &start.canonical_key,
+                resume,
+            )
+        })
+        .transpose()?;
+    let mut node_cache = RepositoryNodeCache {
+        execution_scope: execution.admitted,
+        nodes: BTreeMap::new(),
+    };
+    node_cache.nodes.insert(start.database_id, start.clone());
     if let Some(target) = target {
-        node_cache.insert(target.database_id, target);
+        node_cache.nodes.insert(target.database_id, target);
     }
     let edges = repository_edges(
         connection,
         &traversal.occurrences,
         direction,
-        limits.evidence,
-        evidence_continuation,
+        execution.limits.evidence,
+        Some(continuation_context),
+        evidence_resume,
         &mut node_cache,
     )?;
-    let paths = repository_paths(
-        connection,
-        start.database_id,
-        &traversal.predecessors,
-        &relations,
+    let path_projection = RepositoryPathProjection {
+        start_id: start.database_id,
+        predecessors: &traversal.predecessors,
+        path_targets: &traversal.path_targets,
+        relations: &relations,
         direction,
-        limits.results,
-        &mut node_cache,
-    )?;
-    let mut nodes = node_cache.into_values().collect::<Vec<_>>();
+        limit: execution.limits.results,
+    };
+    let paths = repository_paths(connection, &path_projection, &mut node_cache)?;
+    let mut nodes = node_cache.nodes.into_values().collect::<Vec<_>>();
     nodes.sort_by(|left, right| left.canonical_key.cmp(&right.canonical_key));
     let target_reached = traversal
         .target_id
         .is_none_or(|target_id| traversal.visited.contains(&target_id));
     let answered = !edges.is_empty() && target_reached;
-    let continuations = edges
-        .iter()
-        .filter_map(|edge| edge.evidence_continuation.clone())
-        .collect::<Vec<_>>();
-    let truncated = traversal.truncated || !continuations.is_empty();
+    let truncated = continuation.is_some()
+        || edges
+            .iter()
+            .any(|edge| edge.evidence_continuation.is_some());
     Ok(json!({
         "answered": answered,
         "ambiguous": false,
@@ -3604,53 +4700,62 @@ fn graph_repository_question(
         "paths": paths,
         "identityCollisions": 0,
         "truncated": truncated,
-        "continuation": (!continuations.is_empty()).then_some(continuations)
+        "continuation": continuation
     }))
 }
 
-fn select_path_target(
-    connection: &Connection,
-    start: &RepositoryNode,
+fn resolve_path_target(
     candidates: Vec<RepositoryNode>,
     question: &str,
-    direction: RepositoryDirection,
-    relations: &[RepositoryRelationKind],
-) -> Result<Option<RepositoryNode>> {
-    if candidates.len() <= 1 {
-        return Ok(candidates.into_iter().next());
-    }
-    let occurrences = load_relation_occurrences(connection, relations)?;
-    let direct = candidates
+    limit: usize,
+) -> RepositoryPathTargetResolution {
+    let question = question.to_ascii_lowercase();
+    let explicitly_named = candidates
         .iter()
-        .find(|candidate| {
-            occurrences.iter().any(|occurrence| {
-                let source_id = occurrence.lifted_source.unwrap_or(occurrence.source_id);
-                let (from, to) = match direction {
-                    RepositoryDirection::Outgoing => (source_id, occurrence.target_id),
-                    RepositoryDirection::Incoming => (occurrence.target_id, source_id),
-                };
-                from == start.database_id && to == candidate.database_id
+        .filter(|candidate| {
+            candidate.fq_name.as_deref().is_some_and(|fq_name| {
+                identifier_position(&question, &fq_name.to_ascii_lowercase()).is_some()
+            }) || candidate.owner_name.as_deref().is_some_and(|owner| {
+                identifier_position(
+                    &question,
+                    &format!("{owner}.{}", candidate.name).to_ascii_lowercase(),
+                )
+                .is_some()
             })
         })
-        .cloned();
-    if direct.is_some() {
-        return Ok(direct);
+        .cloned()
+        .collect::<Vec<_>>();
+    let mut selected = if explicitly_named.is_empty() {
+        candidates
+    } else {
+        explicitly_named
+    };
+    selected.sort_by(|left, right| left.canonical_key.cmp(&right.canonical_key));
+    match selected.len() {
+        0 => RepositoryPathTargetResolution::Missing,
+        1 => selected
+            .pop()
+            .map_or(RepositoryPathTargetResolution::Missing, |target| {
+                RepositoryPathTargetResolution::Unique(Box::new(target))
+            }),
+        _ => {
+            let truncated = selected.len() > limit;
+            selected.truncate(limit);
+            RepositoryPathTargetResolution::Ambiguous {
+                candidates: selected,
+                truncated,
+            }
+        }
     }
-    let best_score = candidates
-        .iter()
-        .map(|candidate| repository_node_score(candidate, question))
-        .max();
-    Ok(candidates
-        .into_iter()
-        .find(|candidate| Some(repository_node_score(candidate, question)) == best_score))
 }
 
 struct RepositoryTraversal {
     occurrences: Vec<RepositoryEdgeOccurrence>,
     predecessors: BTreeMap<i64, i64>,
+    path_targets: BTreeSet<i64>,
     visited: BTreeSet<i64>,
     target_id: Option<i64>,
-    truncated: bool,
+    resume: Option<RepositoryTraversalResume>,
 }
 
 fn traverse_repository_graph(
@@ -3659,17 +4764,26 @@ fn traverse_repository_graph(
     target: Option<&RepositoryNode>,
     question: &str,
     direction: RepositoryDirection,
-    scope: &RepositoryScope,
-    limits: &RepositoryLimits,
+    execution: &RepositoryGraphExecution<'_>,
+    resume: Option<&RepositoryTraversalResume>,
 ) -> Result<RepositoryTraversal> {
-    let relations = if scope.relations.is_empty() {
+    let relations = if execution.request_scope.relations.is_empty() {
         vec![RepositoryRelationKind::Calls]
     } else {
-        scope.relations.clone()
+        execution.request_scope.relations.clone()
     };
-    let max_depth = scope.max_depth.unwrap_or(limits.depth).min(limits.depth);
-    let all_occurrences = load_relation_occurrences(connection, &relations)?;
+    let max_depth = execution
+        .request_scope
+        .max_depth
+        .unwrap_or(execution.limits.depth)
+        .min(execution.limits.depth);
+    let all_occurrences = load_relation_occurrences(connection, &relations, execution.admitted)?;
     if let Some(target) = target {
+        if resume.is_some() {
+            return Err(invalid_repository_continuation(
+                "Repository traversal continuation cannot resume an exact target path.",
+            ));
+        }
         return traverse_repository_path(
             connection,
             all_occurrences,
@@ -3680,44 +4794,168 @@ fn traverse_repository_graph(
             max_depth,
         );
     }
-    let mut frontier = BTreeSet::from([start.database_id]);
-    let mut visited = frontier.clone();
-    let mut predecessors = BTreeMap::new();
+    let grouped = group_repository_edge_occurrences(all_occurrences);
+    let mut state = RepositoryTraversalState::from_resume(
+        resume,
+        start.database_id,
+        max_depth,
+        &grouped,
+        direction,
+    )?;
     let mut occurrences = Vec::new();
-    let mut truncated = false;
-    for _ in 0..max_depth {
-        let mut next_frontier = BTreeSet::new();
-        for occurrence in &all_occurrences {
-            let source_id = occurrence.lifted_source.unwrap_or(occurrence.source_id);
-            let (current_id, next_id) = match direction {
-                RepositoryDirection::Outgoing => (source_id, occurrence.target_id),
-                RepositoryDirection::Incoming => (occurrence.target_id, source_id),
-            };
-            if !frontier.contains(&current_id) {
+    let mut path_targets = BTreeSet::new();
+    let mut returned_relationships = 0usize;
+    while state.depth < max_depth {
+        while state.edge_offset < grouped.len() {
+            let (identity, grouped_occurrences) = &grouped[state.edge_offset];
+            let Some((current_id, next_id)) = state.current_edge(identity, direction) else {
+                state.edge_offset += 1;
                 continue;
+            };
+            if returned_relationships == execution.limits.results {
+                let resume = state.resume();
+                return Ok(RepositoryTraversal {
+                    occurrences,
+                    predecessors: state.predecessors,
+                    path_targets,
+                    visited: state.visited,
+                    target_id: None,
+                    resume: Some(resume),
+                });
             }
-            if visited.insert(next_id) {
-                predecessors.insert(next_id, current_id);
-                next_frontier.insert(next_id);
+            if state.advance_edge(current_id, next_id) {
+                path_targets.insert(next_id);
             }
-            occurrences.push(occurrence.clone());
-            if occurrences.len() >= limits.results {
-                truncated = true;
-                break;
-            }
+            occurrences.extend(grouped_occurrences.iter().cloned());
+            returned_relationships += 1;
         }
-        if truncated || next_frontier.is_empty() {
+        if state.next_frontier.is_empty() || state.depth + 1 >= max_depth {
             break;
         }
-        frontier = next_frontier;
+        state.depth += 1;
+        state.edge_offset = 0;
+        state.frontier = std::mem::take(&mut state.next_frontier);
     }
     Ok(RepositoryTraversal {
         occurrences,
-        predecessors,
-        visited,
+        predecessors: state.predecessors,
+        path_targets,
+        visited: state.visited,
         target_id: None,
-        truncated,
+        resume: None,
     })
+}
+
+struct RepositoryTraversalState {
+    depth: usize,
+    edge_offset: usize,
+    frontier: BTreeSet<i64>,
+    next_frontier: BTreeSet<i64>,
+    visited: BTreeSet<i64>,
+    predecessors: BTreeMap<i64, i64>,
+}
+
+impl RepositoryTraversalState {
+    fn from_resume(
+        resume: Option<&RepositoryTraversalResume>,
+        start_id: i64,
+        max_depth: usize,
+        grouped: &[(RepositoryEdgeIdentity, Vec<RepositoryEdgeOccurrence>)],
+        direction: RepositoryDirection,
+    ) -> Result<Self> {
+        let mut state = Self {
+            depth: 0,
+            edge_offset: 0,
+            frontier: BTreeSet::from([start_id]),
+            next_frontier: BTreeSet::new(),
+            visited: BTreeSet::from([start_id]),
+            predecessors: BTreeMap::new(),
+        };
+        let Some(resume) = resume else {
+            return Ok(state);
+        };
+        if max_depth == 0 || resume.depth >= max_depth || resume.edge_offset >= grouped.len() {
+            return Err(invalid_repository_continuation(
+                "Repository traversal continuation contains invalid resume state.",
+            ));
+        }
+        while state.depth <= resume.depth {
+            while state.edge_offset < grouped.len() {
+                if state.depth == resume.depth && state.edge_offset == resume.edge_offset {
+                    if state
+                        .current_edge(&grouped[state.edge_offset].0, direction)
+                        .is_some()
+                    {
+                        return Ok(state);
+                    }
+                    return Err(invalid_repository_continuation(
+                        "Repository traversal continuation does not identify a resumable edge.",
+                    ));
+                }
+                let identity = &grouped[state.edge_offset].0;
+                if let Some((current_id, next_id)) = state.current_edge(identity, direction) {
+                    state.advance_edge(current_id, next_id);
+                } else {
+                    state.edge_offset += 1;
+                }
+            }
+            if state.next_frontier.is_empty() || state.depth + 1 >= max_depth {
+                break;
+            }
+            state.depth += 1;
+            state.edge_offset = 0;
+            state.frontier = std::mem::take(&mut state.next_frontier);
+        }
+        Err(invalid_repository_continuation(
+            "Repository traversal continuation cannot be reconstructed from this snapshot.",
+        ))
+    }
+
+    fn current_edge(
+        &self,
+        identity: &RepositoryEdgeIdentity,
+        direction: RepositoryDirection,
+    ) -> Option<(i64, i64)> {
+        let endpoints = match direction {
+            RepositoryDirection::Outgoing => (identity.source_id, identity.target_id),
+            RepositoryDirection::Incoming => (identity.target_id, identity.source_id),
+        };
+        self.frontier.contains(&endpoints.0).then_some(endpoints)
+    }
+
+    fn advance_edge(&mut self, current_id: i64, next_id: i64) -> bool {
+        self.edge_offset += 1;
+        if !self.visited.insert(next_id) {
+            return false;
+        }
+        self.predecessors.insert(next_id, current_id);
+        self.next_frontier.insert(next_id);
+        true
+    }
+
+    fn resume(&self) -> RepositoryTraversalResume {
+        RepositoryTraversalResume {
+            depth: self.depth,
+            edge_offset: self.edge_offset,
+        }
+    }
+}
+
+fn group_repository_edge_occurrences(
+    occurrences: Vec<RepositoryEdgeOccurrence>,
+) -> Vec<(RepositoryEdgeIdentity, Vec<RepositoryEdgeOccurrence>)> {
+    let mut grouped = BTreeMap::<RepositoryEdgeIdentity, Vec<RepositoryEdgeOccurrence>>::new();
+    for occurrence in occurrences {
+        let identity = RepositoryEdgeIdentity {
+            source_id: occurrence.lifted_source.unwrap_or(occurrence.source_id),
+            target_id: occurrence.target_id,
+            kind: occurrence.kind,
+            context: occurrence.context.clone(),
+            derived: occurrence.lifted_source.is_some(),
+        };
+        grouped.entry(identity).or_default().push(occurrence);
+    }
+    grouped.into_iter().collect()
 }
 
 fn traverse_repository_path(
@@ -3839,9 +5077,10 @@ fn traverse_repository_path(
         return Ok(RepositoryTraversal {
             occurrences: Vec::new(),
             predecessors: BTreeMap::new(),
+            path_targets: BTreeSet::new(),
             visited: BTreeSet::from([start.database_id]),
             target_id: Some(target.database_id),
-            truncated: false,
+            resume: None,
         });
     };
     let path_steps = path
@@ -3856,12 +5095,14 @@ fn traverse_repository_path(
         .windows(2)
         .map(|step| (step[1], step[0]))
         .collect::<BTreeMap<_, _>>();
+    let path_targets = predecessors.keys().copied().collect();
     Ok(RepositoryTraversal {
         occurrences,
         predecessors,
+        path_targets,
         visited: path.into_iter().collect(),
         target_id: Some(target.database_id),
-        truncated: false,
+        resume: None,
     })
 }
 
@@ -3874,6 +5115,7 @@ fn path_candidate_better(candidate: &(usize, Vec<i64>), existing: &(usize, Vec<i
 fn load_relation_occurrences(
     connection: &Connection,
     relations: &[RepositoryRelationKind],
+    execution_scope: &RepositoryExecutionScope,
 ) -> Result<Vec<RepositoryEdgeOccurrence>> {
     let relation_names = relations
         .iter()
@@ -3893,10 +5135,16 @@ fn load_relation_occurrences(
                 source.stable_key,
                 source.owner_id,
                 source_owner.kind,
-                occurrence_file.path
+                occurrence_file.path,
+                COALESCE(source_owner_file.path, source_file.path),
+                target_file.path
          FROM semantic_edge_occurrences edge
          JOIN semantic_symbols source ON source.id = edge.source_id
+         JOIN semantic_files source_file ON source_file.id = source.file_id
          LEFT JOIN semantic_symbols source_owner ON source_owner.id = source.owner_id
+         LEFT JOIN semantic_files source_owner_file ON source_owner_file.id = source_owner.file_id
+         JOIN semantic_symbols target ON target.id = edge.target_id
+         JOIN semantic_files target_file ON target_file.id = target.file_id
          JOIN semantic_files occurrence_file ON occurrence_file.id = edge.source_file_id
          WHERE edge.kind IN ({relation_names})
          ORDER BY edge.source_id, edge.target_id, edge.kind, edge.context, edge.id"
@@ -3906,6 +5154,15 @@ fn load_relation_occurrences(
         .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
     let rows = statement
         .query_map([], |row| {
+            let occurrence_path = row.get::<_, String>(12)?;
+            let source_path = row.get::<_, String>(13)?;
+            let target_path = row.get::<_, String>(14)?;
+            if !execution_scope.admits_path(&occurrence_path)
+                || !execution_scope.admits_path(&source_path)
+                || !execution_scope.admits_path(&target_path)
+            {
+                return Ok(None);
+            }
             let kind = parse_relation_kind(&row.get::<_, String>(3)?)?;
             let source_kind = row.get::<_, String>(8)?;
             let source_owner_id = row.get::<_, Option<i64>>(10)?;
@@ -3914,24 +5171,25 @@ fn load_relation_occurrences(
                 !is_callable_kind(&source_kind)
                     && source_owner_kind.as_deref().is_some_and(is_callable_kind)
             });
-            Ok(RepositoryEdgeOccurrence {
+            Ok(Some(RepositoryEdgeOccurrence {
                 source_id: row.get(1)?,
                 target_id: row.get(2)?,
                 kind,
                 context: row.get(4)?,
                 occurrence: RepositoryOccurrence {
                     id: row.get(0)?,
-                    path: row.get(12)?,
+                    path: occurrence_path,
                     start_offset: row.get(5)?,
                     end_offset: row.get(6)?,
                     line: row.get(7)?,
                 },
                 lifted_source,
                 source_local_key: lifted_source.map(|_| row.get(9)).transpose()?,
-            })
+            }))
         })
         .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
     rows.collect::<rusqlite::Result<Vec<_>>>()
+        .map(|rows| rows.into_iter().flatten().collect())
         .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))
 }
 
@@ -3941,6 +5199,7 @@ fn parse_relation_kind(raw: &str) -> rusqlite::Result<RepositoryRelationKind> {
         "CASE_OF" => Ok(RepositoryRelationKind::CaseOf),
         "CONTAINS" => Ok(RepositoryRelationKind::Contains),
         "DELEGATES" => Ok(RepositoryRelationKind::Delegates),
+        "EXPECT_ACTUAL" => Ok(RepositoryRelationKind::ExpectActual),
         "IMPLEMENTS" => Ok(RepositoryRelationKind::Implements),
         "INHERITS" => Ok(RepositoryRelationKind::Inherits),
         "METHOD" => Ok(RepositoryRelationKind::Method),
@@ -3970,8 +5229,9 @@ fn repository_edges(
     occurrences: &[RepositoryEdgeOccurrence],
     direction: RepositoryDirection,
     evidence_limit: usize,
-    evidence_continuation: Option<&RepositoryEvidenceContinuation>,
-    node_cache: &mut BTreeMap<i64, RepositoryNode>,
+    continuation_context: Option<&RepositoryContinuationContext>,
+    evidence_resume: Option<&RepositoryEvidenceResume>,
+    node_cache: &mut RepositoryNodeCache<'_>,
 ) -> Result<Vec<RepositoryEdge>> {
     let mut grouped = BTreeMap::<RepositoryEdgeIdentity, Vec<&RepositoryEdgeOccurrence>>::new();
     for occurrence in occurrences {
@@ -3993,7 +5253,7 @@ fn repository_edges(
         let source = cached_repository_node(connection, identity.source_id, node_cache)?;
         let target = cached_repository_node(connection, identity.target_id, node_cache)?;
         let occurrence_count = grouped_occurrences.len();
-        if evidence_continuation.is_some_and(|continuation| {
+        if evidence_resume.is_some_and(|continuation| {
             continuation.source_key != source.canonical_key
                 || continuation.target_key != target.canonical_key
                 || continuation.kind != identity.kind
@@ -4002,7 +5262,7 @@ fn repository_edges(
         }) {
             continue;
         }
-        let after_occurrence_id = evidence_continuation
+        let after_occurrence_id = evidence_resume
             .map(|continuation| continuation.after_occurrence_id)
             .unwrap_or(i64::MIN);
         let remaining = grouped_occurrences
@@ -4010,7 +5270,7 @@ fn repository_edges(
             .copied()
             .filter(|occurrence| occurrence.occurrence.id > after_occurrence_id)
             .collect::<Vec<_>>();
-        if evidence_continuation.is_some() && remaining.is_empty() {
+        if evidence_resume.is_some() && remaining.is_empty() {
             continue;
         }
         let page = remaining
@@ -4019,17 +5279,23 @@ fn repository_edges(
             .map(|occurrence| occurrence.occurrence.clone())
             .collect::<Vec<_>>();
         let evidence_truncated = remaining.len() > page.len();
-        let next_continuation = evidence_truncated.then(|| RepositoryEvidenceContinuation {
-            source_key: source.canonical_key.clone(),
-            target_key: target.canonical_key.clone(),
-            kind: identity.kind,
-            context: identity.context.clone(),
-            derived: identity.derived,
-            after_occurrence_id: page
-                .last()
-                .expect("truncated evidence page is non-empty")
-                .id,
-        });
+        let next_continuation = match (evidence_truncated, continuation_context) {
+            (true, Some(continuation_context)) => Some(issue_repository_continuation(
+                continuation_context,
+                RepositoryEvidenceResume {
+                    source_key: source.canonical_key.clone(),
+                    target_key: target.canonical_key.clone(),
+                    kind: identity.kind,
+                    context: identity.context.clone(),
+                    derived: identity.derived,
+                    after_occurrence_id: page
+                        .last()
+                        .expect("truncated evidence page is non-empty")
+                        .id,
+                },
+            )?),
+            (false, _) | (true, None) => None,
+        };
         let derivation = identity.derived.then(|| RepositoryDerivation {
             rule: "LIFT_LOCAL_CALL_TO_CALLABLE_OWNER",
             source_local_key: grouped_occurrences[0]
@@ -4064,30 +5330,45 @@ fn repository_edges(
             &right.context,
         ))
     });
+    if evidence_resume.is_some() && edges.is_empty() {
+        return Err(invalid_repository_continuation(
+            "Repository evidence continuation resume identity is unavailable.",
+        ));
+    }
     Ok(edges)
+}
+
+struct RepositoryPathProjection<'a> {
+    start_id: i64,
+    predecessors: &'a BTreeMap<i64, i64>,
+    path_targets: &'a BTreeSet<i64>,
+    relations: &'a [RepositoryRelationKind],
+    direction: RepositoryDirection,
+    limit: usize,
 }
 
 fn repository_paths(
     connection: &Connection,
-    start_id: i64,
-    predecessors: &BTreeMap<i64, i64>,
-    relations: &[RepositoryRelationKind],
-    direction: RepositoryDirection,
-    limit: usize,
-    node_cache: &mut BTreeMap<i64, RepositoryNode>,
+    projection: &RepositoryPathProjection<'_>,
+    node_cache: &mut RepositoryNodeCache<'_>,
 ) -> Result<Vec<RepositoryPath>> {
     let mut paths = Vec::new();
-    for target_id in predecessors.keys().copied().take(limit) {
+    for target_id in projection
+        .path_targets
+        .iter()
+        .copied()
+        .take(projection.limit)
+    {
         let mut ids = vec![target_id];
         let mut current = target_id;
-        while let Some(previous) = predecessors.get(&current).copied() {
+        while let Some(previous) = projection.predecessors.get(&current).copied() {
             ids.push(previous);
             current = previous;
-            if current == start_id {
+            if current == projection.start_id {
                 break;
             }
         }
-        if ids.last().copied() != Some(start_id) {
+        if ids.last().copied() != Some(projection.start_id) {
             continue;
         }
         ids.reverse();
@@ -4096,8 +5377,8 @@ fn repository_paths(
             .map(|id| cached_repository_node(connection, id, node_cache))
             .collect::<Result<Vec<_>>>()?;
         paths.push(RepositoryPath {
-            direction,
-            relation_kinds: relations.to_vec(),
+            direction: projection.direction,
+            relation_kinds: projection.relations.to_vec(),
             nodes,
         });
     }
@@ -4120,28 +5401,29 @@ fn repository_paths(
 fn cached_repository_node(
     connection: &Connection,
     id: i64,
-    cache: &mut BTreeMap<i64, RepositoryNode>,
+    cache: &mut RepositoryNodeCache<'_>,
 ) -> Result<RepositoryNode> {
-    if let Some(node) = cache.get(&id) {
+    if let Some(node) = cache.nodes.get(&id) {
         return Ok(node.clone());
     }
     let node = load_repository_node(connection, "symbol.id = ?1", id)?
         .into_iter()
         .next()
+        .and_then(|node| cache.execution_scope.admit_node(node))
         .ok_or_else(|| {
             CliError::new(
                 "REPOSITORY_INDEX_INVALID",
-                format!("semantic edge references missing symbol id {id}"),
+                format!("semantic edge references missing or unadmitted symbol id {id}"),
             )
         })?;
-    cache.insert(id, node.clone());
+    cache.nodes.insert(id, node.clone());
     Ok(node)
 }
 
 fn best_question_nodes(
     connection: &Connection,
     question: &str,
-    scope: &RepositoryScope,
+    execution_scope: &RepositoryExecutionScope,
     forced_name: Option<&str>,
 ) -> Result<Vec<RepositoryNode>> {
     if !semantic_graph_tables_exist(connection)? {
@@ -4157,8 +5439,8 @@ fn best_question_nodes(
     let Some(name) = name else {
         return Ok(Vec::new());
     };
-    let mut candidates = load_repository_node(connection, "symbol.name = ?1", name)?;
-    candidates.retain(|node| node_matches_scope(node, scope));
+    let candidates =
+        execution_scope.admit_nodes(load_repository_node(connection, "symbol.name = ?1", name)?);
     if candidates.is_empty() {
         return Ok(candidates);
     }
@@ -4298,7 +5580,6 @@ fn load_repository_node<T: rusqlite::ToSql>(
                 symbol.modality,
                 symbol.origin,
                 file.path,
-                file.module_name,
                 CASE
                     WHEN owner.name = 'Companion' THEN outer_owner.name
                     ELSE owner.name
@@ -4344,12 +5625,10 @@ fn load_repository_node<T: rusqlite::ToSql>(
 }
 
 fn repository_node_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<RepositoryNode> {
-    let module_name = row.get::<_, Option<String>>(10)?;
-    let (module, source_set) = module_and_source_set(module_name.as_deref());
     let signature = row.get::<_, Option<String>>(5)?;
-    let annotations_json = row.get::<_, String>(24)?;
+    let annotations_json = row.get::<_, String>(23)?;
     let annotations = serde_json::from_str(&annotations_json).map_err(|error| {
-        rusqlite::Error::FromSqlConversionFailure(24, Type::Text, Box::new(error))
+        rusqlite::Error::FromSqlConversionFailure(23, Type::Text, Box::new(error))
     })?;
     Ok(RepositoryNode {
         database_id: row.get(0)?,
@@ -4366,22 +5645,22 @@ fn repository_node_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Reposit
         modality: row.get(7)?,
         origin: row.get(8)?,
         path: row.get(9)?,
-        module,
-        source_set,
-        owner_name: row.get(11)?,
-        receiver_type: preferred_type_name(row.get(12)?, row.get(13)?),
-        return_type: preferred_type_name(row.get(14)?, row.get(15)?),
+        gradle_projects: Vec::new(),
+        source_sets: Vec::new(),
+        owner_name: row.get(10)?,
+        receiver_type: preferred_type_name(row.get(11)?, row.get(12)?),
+        return_type: preferred_type_name(row.get(13)?, row.get(14)?),
         declaration_range: RepositorySourceRange {
-            start_offset: row.get(16)?,
-            end_offset: row.get(17)?,
-            line: row.get(18)?,
+            start_offset: row.get(15)?,
+            end_offset: row.get(16)?,
+            line: row.get(17)?,
         },
         flags: RepositorySymbolFlags {
-            is_expect: row.get::<_, i64>(19)? != 0,
-            is_actual: row.get::<_, i64>(20)? != 0,
-            is_override: row.get::<_, i64>(21)? != 0,
-            is_sealed: row.get::<_, i64>(22)? != 0,
-            is_delegated: row.get::<_, i64>(23)? != 0,
+            is_expect: row.get::<_, i64>(18)? != 0,
+            is_actual: row.get::<_, i64>(19)? != 0,
+            is_override: row.get::<_, i64>(20)? != 0,
+            is_sealed: row.get::<_, i64>(21)? != 0,
+            is_delegated: row.get::<_, i64>(22)? != 0,
         },
         annotations,
         evidence_class: "compiler",
@@ -4390,21 +5669,6 @@ fn repository_node_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Reposit
 
 fn preferred_type_name(classifier: Option<String>, debug_text: Option<String>) -> Option<String> {
     classifier.or(debug_text)
-}
-
-fn module_and_source_set(module_name: Option<&str>) -> (Option<String>, Option<String>) {
-    let Some(module_name) = module_name else {
-        return (None, None);
-    };
-    let parts = module_name
-        .strip_prefix("kast.")
-        .unwrap_or(module_name)
-        .split('.')
-        .collect::<Vec<_>>();
-    (
-        parts.first().map(|value| (*value).to_string()),
-        (parts.len() > 1).then(|| parts[parts.len() - 1].to_string()),
-    )
 }
 
 fn parameter_types_from_signature(signature: &str) -> Vec<String> {
@@ -4430,16 +5694,6 @@ fn parameter_types_from_signature(signature: &str) -> Vec<String> {
     }
     parameters.push(raw[start..].to_string());
     parameters
-}
-
-fn node_matches_scope(node: &RepositoryNode, scope: &RepositoryScope) -> bool {
-    scope.module.as_ref().is_none_or(|module| {
-        node.module.as_deref() == Some(module)
-            || node.path.split('/').next() == Some(module.as_str())
-    }) && scope
-        .source_set
-        .as_ref()
-        .is_none_or(|source_set| node.source_set.as_deref() == Some(source_set))
 }
 
 fn repository_node_score(node: &RepositoryNode, question: &str) -> usize {
@@ -4565,5 +5819,35 @@ mod tests {
         assert!(!is_generated_source(Path::new(
             "build-logic/src/main/kotlin/Plugin.kt"
         )));
+    }
+
+    #[test]
+    fn repository_generation_is_pinned_for_one_sqlite_read_epoch() {
+        let temp = tempfile::tempdir().expect("temporary repository database");
+        let database = temp.path().join("source-index.db");
+        let writer = Connection::open(&database).expect("writer");
+        writer
+            .execute_batch(
+                "PRAGMA journal_mode=WAL;
+                 CREATE TABLE schema_version (generation INTEGER NOT NULL);
+                 INSERT INTO schema_version(generation) VALUES (41);",
+            )
+            .expect("generation schema");
+        let mut reader = Connection::open(&database).expect("reader");
+        let transaction = reader
+            .transaction_with_behavior(TransactionBehavior::Deferred)
+            .expect("read transaction");
+
+        assert_eq!(repository_generation(&transaction).expect("generation"), 41);
+        writer
+            .execute("UPDATE schema_version SET generation = 42", [])
+            .expect("concurrent generation movement");
+        assert_eq!(
+            repository_generation(&transaction).expect("pinned generation"),
+            41
+        );
+
+        transaction.commit().expect("read transaction commit");
+        assert_eq!(repository_generation(&reader).expect("new generation"), 42);
     }
 }

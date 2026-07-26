@@ -356,29 +356,35 @@ fn hard_filters(filters: &SymbolQueryFilters) -> Vec<HardFilter> {
 }
 
 fn rank_components(candidate: &Candidate) -> RankComponents {
+    rank_components_from_evidence(
+        !candidate.exact_matches.is_empty(),
+        &candidate.lexical_matches,
+        candidate.graph_paths.len(),
+        candidate.discovered_by_graph,
+    )
+}
+
+fn rank_components_from_evidence(
+    exact: bool,
+    lexical_matches: &[LexicalMatch],
+    graph_paths: usize,
+    discovered_by_graph: bool,
+) -> RankComponents {
     RankComponents {
-        exact: if candidate.exact_matches.is_empty() {
-            0.0
-        } else {
-            1.0
-        },
-        lexical: (candidate.lexical_matches.len().min(5) as f64) / 5.0,
+        exact: if exact { 1.0 } else { 0.0 },
+        lexical: lexical_rank_score(lexical_matches),
         structural: 1.0,
-        graph: if candidate.graph_paths.is_empty() {
-            if candidate.discovered_by_graph {
-                0.25
-            } else {
-                0.0
-            }
+        graph: if graph_paths == 0 {
+            if discovered_by_graph { 0.25 } else { 0.0 }
         } else {
-            (candidate.graph_paths.len().min(5) as f64) / 5.0
+            (graph_paths.min(5) as f64) / 5.0
         },
         semantic: None,
     }
 }
 
 fn sort_score(components: &RankComponents) -> f64 {
-    components.exact + components.lexical * 0.7 + components.structural * 0.2 + components.graph
+    components.exact + components.lexical + components.structural * 0.2 + components.graph * 0.5
 }
 
 fn compare_candidates(left: &Candidate, right: &Candidate) -> Ordering {
@@ -389,6 +395,104 @@ fn compare_candidates(left: &Candidate, right: &Candidate) -> Ordering {
         .unwrap_or(Ordering::Equal)
         .then_with(|| left.declaration.fq_name.cmp(&right.declaration.fq_name))
         .then_with(|| left.declaration.path.cmp(&right.declaration.path))
+}
+
+pub(crate) fn rank_symbol_discovery(
+    question: &str,
+    exact_name: Option<&str>,
+    documents: Vec<SymbolDiscoveryDocument>,
+) -> Vec<SymbolDiscoveryResult> {
+    struct RankedDocument {
+        document: SymbolDiscoveryDocument,
+        score: usize,
+        reasons: Vec<SymbolDiscoveryReason>,
+    }
+
+    let query_terms = query_terms(question);
+    let query_term_set = query_terms.iter().cloned().collect::<BTreeSet<_>>();
+    let mut ranked = documents
+        .into_iter()
+        .filter(|document| {
+            exact_name.is_none_or(|name| document.simple_name.eq_ignore_ascii_case(name))
+        })
+        .filter_map(|document| {
+            let exact =
+                exact_name.is_some_and(|name| document.simple_name.eq_ignore_ascii_case(name));
+            let mut lexical_matches = document
+                .fields
+                .iter()
+                .flat_map(|field| lexical_field_matches(&query_terms, field.name, &field.value))
+                .collect::<Vec<_>>();
+            lexical_matches.sort_by(|left, right| {
+                left.field
+                    .cmp(right.field)
+                    .then_with(|| left.term.cmp(&right.term))
+            });
+            lexical_matches
+                .dedup_by(|left, right| left.field == right.field && left.term == right.term);
+            let graph_terms = document
+                .graph_terms
+                .intersection(&query_term_set)
+                .cloned()
+                .collect::<Vec<_>>();
+            if !exact && lexical_matches.is_empty() && graph_terms.is_empty() {
+                return None;
+            }
+            let components =
+                rank_components_from_evidence(exact, &lexical_matches, graph_terms.len(), false);
+            let score = (sort_score(&components) * 1_000.0).round() as usize;
+            let mut reasons = Vec::new();
+            if exact {
+                reasons.push(SymbolDiscoveryReason {
+                    field: "exactName",
+                    terms: vec![document.simple_name.clone()],
+                    score: 1_000,
+                });
+            }
+            let mut lexical_by_field = BTreeMap::<&'static str, Vec<String>>::new();
+            for lexical_match in lexical_matches {
+                lexical_by_field
+                    .entry(lexical_match.field)
+                    .or_default()
+                    .push(lexical_match.term);
+            }
+            for (field, terms) in lexical_by_field {
+                reasons.push(SymbolDiscoveryReason {
+                    field,
+                    score: terms.len() * 140,
+                    terms,
+                });
+            }
+            if !graph_terms.is_empty() {
+                reasons.push(SymbolDiscoveryReason {
+                    field: "compilerNeighbors",
+                    score: graph_terms.len() * 200,
+                    terms: graph_terms,
+                });
+            }
+            Some(RankedDocument {
+                document,
+                score,
+                reasons,
+            })
+        })
+        .collect::<Vec<_>>();
+    ranked.sort_by(|left, right| {
+        right
+            .score
+            .cmp(&left.score)
+            .then_with(|| left.document.sort_key.cmp(&right.document.sort_key))
+    });
+    ranked
+        .into_iter()
+        .enumerate()
+        .map(|(index, ranked)| SymbolDiscoveryResult {
+            identity: ranked.document.identity,
+            rank: index + 1,
+            score: ranked.score,
+            reasons: ranked.reasons,
+        })
+        .collect()
 }
 
 fn next_requests(declaration: &DeclarationRow) -> NextRequests {
@@ -442,6 +546,59 @@ fn next_requests(declaration: &DeclarationRow) -> NextRequests {
 
 fn query_terms(query: &str) -> Vec<String> {
     lexical_tokens(query)
+        .into_iter()
+        .filter(|term| {
+            term.len() >= 2
+                && !matches!(
+                    term.as_str(),
+                    "a" | "an"
+                        | "and"
+                        | "are"
+                        | "declaration"
+                        | "does"
+                        | "exact"
+                        | "exactly"
+                        | "find"
+                        | "from"
+                        | "helper"
+                        | "in"
+                        | "kotlin"
+                        | "method"
+                        | "model"
+                        | "of"
+                        | "one"
+                        | "resolve"
+                        | "that"
+                        | "the"
+                        | "to"
+                        | "type"
+                        | "what"
+                        | "which"
+                        | "with"
+                        | "without"
+                )
+        })
+        .collect()
+}
+
+fn lexical_rank_score(matches: &[LexicalMatch]) -> f64 {
+    let mut term_weights = BTreeMap::<&str, f64>::new();
+    for lexical_match in matches {
+        let weight = match lexical_match.field {
+            "name" | "fq_names.fq_name" => 1.0,
+            "qualifiedName" => 0.8,
+            "identifier_paths.identifier" | "signature" => 0.6,
+            "annotations" | "parameterTypes" | "receiverType" | "returnType" => 0.4,
+            "declarationKind" => 0.3,
+            "file_path" | "import_fq_name" | "scope" => 0.2,
+            _ => 0.1,
+        };
+        term_weights
+            .entry(&lexical_match.term)
+            .and_modify(|current| *current = current.max(weight))
+            .or_insert(weight);
+    }
+    (term_weights.values().sum::<f64>() / 5.0).min(1.0)
 }
 
 fn lexical_field_matches(

@@ -313,3 +313,33 @@ struct NextRequest {
     method: &'static str,
     request: Value,
 }
+
+#[derive(Debug, Clone)]
+pub(crate) struct SymbolDiscoveryField {
+    pub(crate) name: &'static str,
+    pub(crate) value: String,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct SymbolDiscoveryDocument {
+    pub(crate) identity: String,
+    pub(crate) simple_name: String,
+    pub(crate) sort_key: String,
+    pub(crate) fields: Vec<SymbolDiscoveryField>,
+    pub(crate) graph_terms: BTreeSet<String>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct SymbolDiscoveryReason {
+    pub(crate) field: &'static str,
+    pub(crate) terms: Vec<String>,
+    pub(crate) score: usize,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct SymbolDiscoveryResult {
+    pub(crate) identity: String,
+    pub(crate) rank: usize,
+    pub(crate) score: usize,
+    pub(crate) reasons: Vec<SymbolDiscoveryReason>,
+}
