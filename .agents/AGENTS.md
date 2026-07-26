@@ -14,8 +14,7 @@ Agent-only ADRs must stay out of `docs/` and out of `zensical.toml`.
 ## Edit rules
 
 - Do not hand-edit generated or installed skill copies unless the change is
-  intentionally to that checked-in source. Prefer authored sources under
-  `cli-rs/resources/` for Kast package material.
+  intentionally to that checked-in source.
 - Keep ADRs current, source-backed, and actionable. Update an ADR in place when
   its decision changes.
 - Remove an ADR when its decision no longer affects current or future work, or

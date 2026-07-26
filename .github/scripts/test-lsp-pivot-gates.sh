@@ -2,13 +2,6 @@
 set -Eeuo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." >/dev/null 2>&1 && pwd)"
-tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-lsp-gates.XXXXXX")"
-trap 'rm -rf -- "$tmp_dir"' EXIT
-
-die() {
-  printf 'error: %s\n' "$*" >&2
-  exit 1
-}
 
 node --input-type=module - "$repo_root" <<'NODE'
 import { readFileSync } from "node:fs";
@@ -22,10 +15,6 @@ function fail(message) {
 
 function readText(path) {
   return readFileSync(join(root, path), "utf8");
-}
-
-function readJson(path) {
-  return JSON.parse(readText(path));
 }
 
 function requireText(path, needles) {
@@ -43,31 +32,6 @@ function requireCombinedText(label, paths, needles) {
   }
   return text;
 }
-
-function assertSameJson(actual, expected, label) {
-  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-    fail(`${label} mismatch`);
-  }
-}
-
-const pluginLsp = readJson("cli-rs/resources/plugin/lsp.json");
-const pluginServer = pluginLsp.lspServers["kotlin"];
-if (pluginServer.command !== "kast" || JSON.stringify(pluginServer.args) !== JSON.stringify(["agent", "lsp", "--stdio"])) {
-  fail("kotlin must launch kast agent lsp --stdio");
-}
-if (pluginServer.initializationOptions.failOnStaleIndex !== true) {
-  fail("kotlin must fail closed on stale indexes");
-}
-
-const manifest = readJson("cli-rs/resources/plugin/plugin.json");
-assertSameJson(
-  manifest.entrypoints,
-  {
-    lsp: "lsp.json",
-    manifest: "primitive-manifest.json",
-  },
-  "plugin manifest entrypoints",
-);
 
 const lspSourcePaths = [
   "cli-rs/src/lsp.rs",
@@ -127,46 +91,6 @@ requireText("cli-rs/src/rpc.rs", {
 });
 
 console.log("LSP pivot static gates passed");
-NODE
-
-"${repo_root}/.github/scripts/test-kast-copilot-plugin.sh" >/dev/null
-
-if [[ -z "${KAST_LSP_TEST_COMMAND:-}" ]]; then
-  if [[ -x "${repo_root}/cli-rs/target/debug/kast" ]]; then
-    export KAST_LSP_TEST_COMMAND="${repo_root}/cli-rs/target/debug/kast"
-  elif [[ -x "${repo_root}/cli-rs/target/release/kast" ]]; then
-    export KAST_LSP_TEST_COMMAND="${repo_root}/cli-rs/target/release/kast"
-  else
-    die "KAST_LSP_TEST_COMMAND is required when no local kast binary has been built"
-  fi
-fi
-export KAST_LSP_REQUEST_TIMEOUT_MS="${KAST_LSP_REQUEST_TIMEOUT_MS:-1000}"
-node "${repo_root}/.github/scripts/test-lsp-config.mjs" >"${tmp_dir}/lsp-smoke.json"
-
-node --input-type=module - "${tmp_dir}/lsp-smoke.json" <<'NODE'
-import { readFileSync } from "node:fs";
-
-const payload = JSON.parse(readFileSync(process.argv[2], "utf8"));
-const allowedFailClosed = new Set([
-  "DAEMON_START_ERROR",
-  "HEADLESS_BACKEND_NOT_INSTALLED",
-  "IDEA_NOT_RUNNING",
-  "MACOS_HOMEBREW_RECEIPT_INVALID",
-  "MACOS_PLUGIN_WORKSPACE_REQUIRED",
-  "NO_BACKEND_AVAILABLE",
-  "RUNTIME_TIMEOUT",
-]);
-const code = payload.initializeErrorCode ?? null;
-if (code !== null && !allowedFailClosed.has(code)) {
-  throw new Error(`unexpected LSP initialize failure code: ${code}`);
-}
-console.log(
-  JSON.stringify({
-    command: payload.command ?? null,
-    initializeErrorCode: code,
-    ok: true,
-  }),
-);
 NODE
 
 printf 'LSP pivot gates passed\n'

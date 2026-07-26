@@ -154,10 +154,6 @@ jobs:
         shell: bash
         run: ./.github/scripts/test-terminal-command-contract.sh
 
-      - name: Test Kast Copilot plugin package
-        shell: bash
-        run: ./.github/scripts/test-kast-copilot-plugin.sh
-
       - name: Test sole setup transaction
         shell: bash
         run: ./.github/scripts/test-setup-contract.sh
@@ -310,19 +306,9 @@ jobs:
       - name: Validate generated CLI contracts
         run: cli-rs/target/release/kast developer release generate contract --check
 
-      - name: Test LSP config smoke
-        shell: bash
-        run: >
-          KAST_LSP_TEST_COMMAND="$GITHUB_WORKSPACE/cli-rs/target/release/kast"
-          KAST_LSP_REQUEST_TIMEOUT_MS=1000
-          node ./.github/scripts/test-lsp-config.mjs
-
       - name: Test LSP pivot gates
         shell: bash
-        run: >
-          KAST_LSP_TEST_COMMAND="$GITHUB_WORKSPACE/cli-rs/target/release/kast"
-          KAST_LSP_REQUEST_TIMEOUT_MS=1000
-          ./.github/scripts/test-lsp-pivot-gates.sh
+        run: ./.github/scripts/test-lsp-pivot-gates.sh
 
       - name: Package Rust CLI CI asset
         shell: bash

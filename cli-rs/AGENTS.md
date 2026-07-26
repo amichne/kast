@@ -1,4 +1,4 @@
-# Rust CLI and agent resource guide
+# Rust CLI guide
 
 This file applies to `cli-rs/` and descendants. Deeper `AGENTS.md` files narrow
 the rules for their subtrees. This tree owns the Rust AXI CLI, typed agent
@@ -40,8 +40,6 @@ orchestration, source-index CLI reads, and release packaging.
 - `https://github.com/amichne/kast-marketplace` owns the Codex marketplace,
   routing skill, hook wiring, launcher, and presentation assets. This crate
   retains only the CLI hook implementation.
-- `resources/plugin/` owns the independent GitHub Copilot package source
-  material used by release validation.
 - `protocol/source/` contains the authored internal catalog plus generated
   schemas and request samples. Other `protocol/` outputs serve release and
   integration consumers.
@@ -114,7 +112,6 @@ The retained cross-module boundaries are:
   `protocol/source/commands.json`.
 - Codex skill and launcher truth lives in `amichne/kast-marketplace`; no
   marketplace payload or generator belongs in this repository.
-- Package artifact output shape lives in `resources/plugin/primitive-manifest.json`.
 - Generated request schemas and samples under `protocol/source/requests/` are
   derived from the catalog. Regenerate them through the contract generator.
 - Generated protocol markdown, OpenAPI YAML, and example fixtures live under
@@ -135,13 +132,12 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked
 .github/scripts/test-runtime-compatibility-contract.sh
 ```
 
-For workspace-files, Copilot package, resource, or catalog changes, run the
-relevant package, LSP, generated-contract, and docs gates below:
+For workspace-files, LSP, or catalog changes, run the relevant LSP,
+generated-contract, and docs gates below:
 
 ```console
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
-.github/scripts/test-kast-copilot-plugin.sh
 .github/scripts/test-lsp-pivot-gates.sh
 .github/scripts/test-docs-content-contract.sh
 .github/scripts/test-docs-navigation-contract.sh

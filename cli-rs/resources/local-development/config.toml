@@ -1,5 +1,0 @@
-[runtime]
-defaultBackend = "headless"
-
-[projectOpen]
-profileAutoInit = false

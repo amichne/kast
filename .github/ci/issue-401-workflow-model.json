@@ -51,7 +51,6 @@
         ],
         "outputs": [
           "terminal-command-contract",
-          "kast-copilot-plugin-contract",
           "ubuntu-debian-bundle-smoke"
         ],
         "durationSamplesSeconds": [
@@ -108,7 +107,6 @@
           "rust-clippy",
           "rust-tests",
           "rust-release-build",
-          "lsp-config-smoke",
           "lsp-pivot-gates",
           "rust-cli-linux-x64-artifact",
           "ci-artifact-ledger-rust-cli-linux-x64"
@@ -310,7 +308,6 @@
         ],
         "outputs": [
           "terminal-command-contract",
-          "kast-copilot-plugin-contract",
           "ubuntu-debian-bundle-smoke"
         ],
         "durationSamplesSeconds": [
@@ -368,7 +365,6 @@
         ],
         "outputs": [
           "rust-release-build",
-          "lsp-config-smoke",
           "lsp-pivot-gates",
           "rust-cli-linux-x64-artifact",
           "ci-artifact-ledger-rust-cli-linux-x64"
