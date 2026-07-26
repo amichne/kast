@@ -228,6 +228,97 @@ def summarize(results, categories, deterministic):
     }
 
 
+def source_references(value):
+    references = set()
+
+    def visit(current):
+        if isinstance(current, dict):
+            path = current.get("sourcePath", current.get("path"))
+            if isinstance(path, str) and "/" in path:
+                location = current.get("sourceLocation", current.get("declarationRange", {}))
+                line = location.get("line") if isinstance(location, dict) else current.get("line")
+                references.add((path, line if isinstance(line, int) else None))
+            for nested in current.values():
+                visit(nested)
+        elif isinstance(current, list):
+            for nested in current:
+                visit(nested)
+
+    visit(value)
+    return sorted(references, key=lambda reference: (reference[0], reference[1] or 0))
+
+
+def inline(value):
+    return str(value).replace("`", "'").replace("\n", " ")
+
+
+def render_markdown_report(output):
+    lines = [
+        "# Kast Repository Intelligence Report",
+        "",
+        f"- Corpus commit: `{output['corpusCommit']}`",
+        f"- Implementation commit: `{output['implementationCommit']}`",
+        f"- Benchmark status: `{output['summary']['status'].upper()}`",
+        f"- Questions: {output['summary']['questions']['passed']}/{output['summary']['questions']['total']}",
+        "",
+    ]
+    for category, title in [
+        ("architecture", "Architecture"),
+        ("context", "Repository context"),
+    ]:
+        lines.extend([f"## {title}", ""])
+        for record in (item for item in output["results"] if item["category"] == category):
+            result = record.get("response", {}).get("result", {})
+            lines.extend(
+                [
+                    f"### {inline(record['id'])}",
+                    "",
+                    f"- Status: `{inline(result.get('status', 'TRANSPORT_FAILURE'))}`",
+                    f"- Question: {inline(result.get('question', 'unavailable'))}",
+                    f"- Graph generation: `{inline(result.get('graphGeneration', 'unavailable'))}`",
+                ]
+            )
+            for finding in result.get("findings", []):
+                lines.append(
+                    f"- Finding: `{inline(finding.get('name', finding.get('type', 'unknown')))}`"
+                    f" — {inline(finding.get('summary', ''))}"
+                )
+            for relation in result.get("contextRelations", []):
+                location = relation.get("sourceLocation", {})
+                line = f":{location['line']}" if "line" in location else ""
+                lines.append(
+                    f"- Relation: `{inline(relation.get('sourcePath', 'unknown'))}{line}` "
+                    f"{inline(relation.get('kind', 'RELATED'))} "
+                    f"`{inline(relation.get('targetName', 'unknown'))}` "
+                    f"({inline(relation.get('evidenceClass', 'unknown'))})"
+                )
+            lines.extend(["", "Source references:", ""])
+            references = source_references(result)
+            lines.extend(
+                f"- `{inline(path)}{f':{line}' if line is not None else ''}`"
+                for path, line in references[:50]
+            )
+            if len(references) > 50:
+                lines.append(
+                    f"- {len(references) - 50} additional references omitted by the presentation bound"
+                )
+            descriptor = {
+                "bounds": result.get("bounds"),
+                "graphGeneration": result.get("graphGeneration"),
+                "intent": result.get("intent"),
+                "ordering": result.get("ordering"),
+                "queryPlan": result.get("queryPlan"),
+                "question": result.get("question"),
+                "scope": result.get("scope"),
+            }
+            lines.extend(["", "Reproducible query descriptor:", ""])
+            lines.extend(
+                f"    {line}" for line in json.dumps(descriptor, indent=2, sort_keys=True).splitlines()
+            )
+            lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def self_test():
     questions = load_questions()
     assert len(questions) >= 40
@@ -241,6 +332,37 @@ def self_test():
         sample,
         {"path": "result.nodes", "op": "containsMatch", "value": {"path": "B.kt"}},
     )
+    report = render_markdown_report(
+        {
+            "corpusCommit": "corpus",
+            "implementationCommit": "implementation",
+            "summary": {"status": "pass", "questions": {"passed": 1, "total": 1}},
+            "results": [
+                {
+                    "id": "context",
+                    "category": "context",
+                    "response": {
+                        "result": {
+                            "status": "ANSWERED",
+                            "question": "Which document?",
+                            "graphGeneration": 1,
+                            "contextRelations": [
+                                {
+                                    "sourcePath": "docs/example.md",
+                                    "sourceLocation": {"line": 3},
+                                    "kind": "DOCUMENTS",
+                                    "targetName": "Example",
+                                    "evidenceClass": "extracted",
+                                }
+                            ],
+                        }
+                    },
+                }
+            ],
+        }
+    )
+    assert "`docs/example.md:3` DOCUMENTS `Example`" in report
+    assert "Reproducible query descriptor:" in report
     print(json.dumps({"selfTest": {"ok": True, "questions": len(questions)}}, sort_keys=True))
     return 0
 
@@ -271,7 +393,18 @@ def main(argv=None):
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(output, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(json.dumps({"benchmark": summary, "output": str(args.output)}, sort_keys=True))
+    markdown_output = args.output.with_suffix(".md")
+    markdown_output.write_text(render_markdown_report(output), encoding="utf-8")
+    print(
+        json.dumps(
+            {
+                "benchmark": summary,
+                "markdownOutput": str(markdown_output),
+                "output": str(args.output),
+            },
+            sort_keys=True,
+        )
+    )
     return 1 if args.assert_all and summary["status"] != "pass" else 0
 
 

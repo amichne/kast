@@ -82,18 +82,7 @@ fn rpc(
     workspace: &std::path::Path,
     request: serde_json::Value,
 ) -> (std::process::ExitStatus, serde_json::Value) {
-    let output = kast(home, config_home)
-        .args([
-            "--output",
-            "json",
-            "rpc",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-            "--request",
-            &request.to_string(),
-        ])
-        .output()
-        .expect("rpc");
+    let output = rpc_output(home, config_home, workspace, "json", &request);
     let response = serde_json::from_slice(&output.stdout).unwrap_or_else(|error| {
         panic!(
             "rpc JSON: {error}; stdout={} stderr={}",
@@ -102,6 +91,27 @@ fn rpc(
         )
     });
     (output.status, response)
+}
+
+fn rpc_output(
+    home: &std::path::Path,
+    config_home: &std::path::Path,
+    workspace: &std::path::Path,
+    output_format: &str,
+    request: &serde_json::Value,
+) -> std::process::Output {
+    kast(home, config_home)
+        .args([
+            "--output",
+            output_format,
+            "rpc",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--request",
+            &request.to_string(),
+        ])
+        .output()
+        .expect("rpc")
 }
 
 #[test]
@@ -589,23 +599,23 @@ fn repository_paths_carry_exact_identity_occurrences_and_derivations() {
         "# Compiler evidence\n\nSemanticGraphSha256 has an exact compiler identity.\n",
     )
     .expect("context fixture document");
-    let (_, context) = rpc(
-        &home,
-        &config_home,
-        &workspace,
-        serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": "context",
-            "method": "repository/query",
-            "params": {
-                "question": "Which document explains SemanticGraphSha256?",
-                "intent": "context_relationship",
-                "scope": {"language": "kotlin", "sources": ["markdown"]},
-                "limits": {"depth": 6, "results": 10, "evidence": 5}
-            }
-        }),
-    );
+    let context_request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": "context",
+        "method": "repository/query",
+        "params": {
+            "question": "Which document explains SemanticGraphSha256?",
+            "intent": "context_relationship",
+            "scope": {"language": "kotlin", "sources": ["markdown"]},
+            "limits": {"depth": 6, "results": 10, "evidence": 5}
+        }
+    });
+    let (_, context) = rpc(&home, &config_home, &workspace, context_request.clone());
     assert_eq!(context["result"]["status"], "ANSWERED", "{context:#}");
+    assert_eq!(
+        context["result"]["canonicalResultModel"], true,
+        "{context:#}"
+    );
     assert_eq!(
         context["result"]["contextRelations"][0]["kind"],
         "DOCUMENTS"
@@ -617,6 +627,41 @@ fn repository_paths_carry_exact_identity_occurrences_and_derivations() {
     assert_eq!(
         context["result"]["contextRelations"][0]["evidenceClass"],
         "extracted"
+    );
+    let toon = rpc_output(&home, &config_home, &workspace, "toon", &context_request);
+    assert!(toon.status.success());
+    let toon_response: serde_json::Value =
+        toon_format::decode_default(String::from_utf8_lossy(&toon.stdout).trim())
+            .expect("TOON repository response");
+    for pointer in [
+        "/result/canonicalResultModel",
+        "/result/status",
+        "/result/question",
+        "/result/intent",
+        "/result/contextRelations",
+        "/result/nodes",
+        "/result/evidenceClasses",
+    ] {
+        assert_eq!(
+            toon_response.pointer(pointer),
+            context.pointer(pointer),
+            "{pointer}"
+        );
+    }
+    let markdown = rpc_output(&home, &config_home, &workspace, "human", &context_request);
+    assert!(markdown.status.success());
+    let markdown = String::from_utf8_lossy(&markdown.stdout);
+    assert!(
+        markdown.contains("Kast repository intelligence"),
+        "{markdown}"
+    );
+    assert!(
+        markdown.contains("docs/explanation/compiler-evidence.md"),
+        "{markdown}"
+    );
+    assert!(
+        markdown.contains("Reproducible query descriptor"),
+        "{markdown}"
     );
 
     std::fs::write(

@@ -1,13 +1,13 @@
 # Repository Intelligence Execution State
 
 - Benchmark corpus commit: `2c630d3d156574eb4548fd97df3bd61fe9deb1a6`
-- Active implementation commit: `0d65dbc82d1398a9d014abf31db13c00e2f09bc3` plus the current Phase 5 worktree
-- Current phase: Phase 5 — repository context
-- Last passing fast check: canonical `FAST_CHECK` passed for Phase 5 on 2026-07-26
-- Last passing full check: canonical `FULL_CHECK` passed for Phase 5 on 2026-07-26 (`./gradlew test`, Rust format, clippy, and all-target/all-feature tests)
-- Last benchmark result: Phase 5 passes 41/42 cumulatively, including every Phase 1 through Phase 5 assertion; only the Phase 6 canonical-result-model assertion remains RED
+- Active implementation commit: `7e70562685c2ce106939f943fd4eff6322237be6` plus the current Phase 6 worktree
+- Current phase: Phase 6 — canonical result model and output projections
+- Last passing fast check: canonical `FAST_CHECK` passed for Phase 6 on 2026-07-26
+- Last passing full check: canonical `FULL_CHECK` passed for Phase 6 on 2026-07-26 (`./gradlew test`, Rust format, clippy, and all-target/all-feature tests)
+- Last benchmark result: Phase 6 passes 42/42 across all seven categories with deterministic normalized output and zero critical failures
 - Current blocker, if any: none
-- Next concrete action: commit and push the verified Phase 5 boundary, then add the focused Phase 6 canonical-result-model RED
+- Next concrete action: commit and push the verified Phase 6 boundary, then run the final clean rebuild and comparison
 - Known scope exceptions: the frozen commit contains 599 Gradle-compilation-owned `.kt` files and 18 `.kts` scripts; the task's older observation of 1,145 discoverable Kotlin files is not present in this snapshot
 
 ## Canonical Commands
@@ -71,3 +71,13 @@
 - Two normalized frozen-corpus runs are deterministic and pass all 41 Phase 1–5 questions. Median latency is 657.647 ms, p95 latency is 2,767.154 ms, median response size is 25,147 bytes, and maximum response size is 226,570 bytes.
 - Persisted Phase 5 result: `benchmarks/repository-intelligence/results/phase5.json` (`sha256:c2b5464b5279a00d5139f8b09930ea3ce168869201ebda39e62fbe511c75f354`).
 - Branch CLI and IDEA plugin `0.16.1-11-g0d65dbc8` were installed from the verified Phase 5 worktree after force-stopping PID 9409; the golden runtime reopened only the frozen root and reached `READY` on PID 29639.
+
+## Phase 6 Evidence
+
+- Every `repository/query` response explicitly identifies the canonical result model. Stable JSON, compact TOON, and human Markdown are direct projections of that same value through existing output infrastructure.
+- The focused workflow query is 9,918 bytes as JSON and 8,730 bytes as TOON. Its human projection names both workflow source locations, the exact `semanticGraphOperation` target, graph generation, scope, bounds, ordering, and query plan.
+- The benchmark runner derives one architecture and repository-context Markdown report from the same canonical RPC responses; it does not rerun semantic discovery, traversal, metrics, or linking.
+- Two normalized frozen-corpus runs are deterministic and pass all 42 questions with every category at 6/6 and zero critical failures. Median latency is 660.995 ms, p95 latency is 2,775.652 ms, median response size is 25,175 bytes, and maximum response size is 226,598 bytes.
+- Persisted Phase 6 structured result: `benchmarks/repository-intelligence/results/phase6.json` (`sha256:db37154fbbe41a793f05f3c27ff2a93981d84544e8c680bf4c0523b689a6ca27`).
+- Persisted Phase 6 Markdown report: `benchmarks/repository-intelligence/results/phase6.md` (`sha256:efb2dfad92743c4b05a0a35682ec97a79c7c50052c63388421306a09445dc9a0`).
+- Branch CLI and IDEA plugin `0.16.1-12-g7e705626` were installed from the verified Phase 6 worktree after force-stopping PID 29639; the golden runtime reopened only the frozen root and reached `READY` on PID 37973.

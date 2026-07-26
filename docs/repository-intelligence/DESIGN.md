@@ -135,6 +135,21 @@ the bounded result. This measured on-demand scan is intentionally simpler than
 a new ingestion authority; a persistent context index is warranted only if the
 200-candidate ceiling or observed latency becomes inadequate.
 
+## Canonical result projections
+
+`repository/query` produces one canonical JSON value marked
+`canonicalResultModel`. Explicit JSON preserves the stable integration and
+benchmark contract. Captured or agent execution projects the same value through
+the existing TOON encoder, while human execution renders a bounded Markdown
+answer with exact source references and the complete reproducible query
+descriptor.
+
+The benchmark runner retains those canonical RPC results as structured JSON and
+derives one aggregate Markdown architecture and repository-context report from
+them. Presentation never reruns discovery, traversal, architecture metrics, or
+context resolution. No second semantic result hierarchy, export graph, HTML
+surface, or compatibility database is introduced.
+
 ## Frozen baseline
 
 The benchmark owns two detached worktrees at commit
