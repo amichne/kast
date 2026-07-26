@@ -54,7 +54,7 @@ pub enum Command {
     /// Backward-compatible alias for `ready`. Used by kast-action v2.
     #[command(hide = true)]
     Doctor(DoctorArgs),
-    /// Agent setup, readiness, LSP, and pipe-friendly semantic requests.
+    /// Agent setup, readiness, and pipe-friendly semantic requests.
     Agent(AgentArgs),
 }
 

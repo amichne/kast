@@ -7,16 +7,6 @@ pub fn run(command: AgentCommand, output_format: OutputFormat) -> Result<i32> {
 }
 
 fn execute(command: AgentCommand) -> AgentEnvelope {
-    if matches!(command, AgentCommand::Lsp(_)) {
-        return error_envelope(
-            "agent/operator".to_string(),
-            None,
-            agent_error(
-                "AGENT_COMMAND_UNSUPPORTED",
-                "`kast agent lsp` is an operator command handled before JSON envelope dispatch.",
-            ),
-        );
-    }
     if let Some(runtime) = agent_command_runtime(&command)
         && let Some(lease_id) = runtime.lease_id.as_ref()
         && let Err(error) = runtime::validate_workspace_lease_for_command(
@@ -32,9 +22,6 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         );
     }
     match command {
-        AgentCommand::Lsp(_) => {
-            unreachable!("operator agent commands are handled before request prep")
-        }
         AgentCommand::Lease(args) => execute_agent_lease(args),
         AgentCommand::Verify(args) => execute_agent_verify(args),
         AgentCommand::WorkspaceFiles(args) => execute_agent_workspace_files(args),
@@ -87,7 +74,7 @@ fn agent_command_runtime(command: &AgentCommand) -> Option<&AgentRuntimeArgs> {
         }
         AgentCommand::AddStatement(args) => Some(&args.runtime),
         AgentCommand::ReplaceDeclaration(args) => Some(&args.runtime),
-        AgentCommand::Lsp(_) | AgentCommand::Lease(_) => None,
+        AgentCommand::Lease(_) => None,
     }
 }
 

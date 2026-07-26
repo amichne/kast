@@ -16,8 +16,7 @@ same-named family files.
 Agent-facing semantic flows use `kast agent verify`, `kast agent
 workspace-files`, `kast agent symbol`, standalone
 `references`/`callers`/`callees`/`implementations`/`hierarchy`, `kast agent
-diagnostics`, `kast agent impact`, `kast agent rename`, and `kast agent lsp`.
-
+diagnostics`, `kast agent impact`, and `kast agent rename`.
 
 `workspace_files.rs` owns exact-root admission, typed conjunctive discovery
 filters, the query-bound public continuation, and command execution.
