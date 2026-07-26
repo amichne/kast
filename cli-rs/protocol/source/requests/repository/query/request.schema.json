@@ -170,6 +170,19 @@
             },
             "sourceSet": {
               "type": "string"
+            },
+            "sources": {
+              "items": {
+                "enum": [
+                  "markdown",
+                  "gradle",
+                  "schema",
+                  "workflow",
+                  "rust"
+                ],
+                "type": "string"
+              },
+              "type": "array"
             }
           },
           "type": "object"

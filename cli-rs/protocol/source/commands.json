@@ -2799,6 +2799,20 @@
               "PUBLIC_API_CONSUMERS"
             ],
             "optional": true
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "markdown",
+                "gradle",
+                "schema",
+                "workflow",
+                "rust"
+              ]
+            },
+            "optional": true
           }
         }
       },

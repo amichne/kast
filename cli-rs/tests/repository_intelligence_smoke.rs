@@ -583,6 +583,79 @@ fn repository_paths_carry_exact_identity_occurrences_and_derivations() {
             .is_some_and(|edges| !edges.is_empty())
     );
 
+    std::fs::create_dir_all(workspace.join("docs/explanation")).expect("context fixture directory");
+    std::fs::write(
+        workspace.join("docs/explanation/compiler-evidence.md"),
+        "# Compiler evidence\n\nSemanticGraphSha256 has an exact compiler identity.\n",
+    )
+    .expect("context fixture document");
+    let (_, context) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "context",
+            "method": "repository/query",
+            "params": {
+                "question": "Which document explains SemanticGraphSha256?",
+                "intent": "context_relationship",
+                "scope": {"language": "kotlin", "sources": ["markdown"]},
+                "limits": {"depth": 6, "results": 10, "evidence": 5}
+            }
+        }),
+    );
+    assert_eq!(context["result"]["status"], "ANSWERED", "{context:#}");
+    assert_eq!(
+        context["result"]["contextRelations"][0]["kind"],
+        "DOCUMENTS"
+    );
+    assert_eq!(
+        context["result"]["contextRelations"][0]["targetName"],
+        "SemanticGraphSha256"
+    );
+    assert_eq!(
+        context["result"]["contextRelations"][0]["evidenceClass"],
+        "extracted"
+    );
+
+    std::fs::write(
+        workspace.join("docs/explanation/compiler-evidence.md"),
+        "# Compiler evidence\n\nThe compiler model lives under `src/main/kotlin/sample/`.\n",
+    )
+    .expect("path-only context document");
+    let (_, inferred_target) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "path-only-context",
+            "method": "repository/query",
+            "params": {
+                "question": "Which exact Kotlin model carries semantic graph hashing evidence?",
+                "intent": "context_relationship",
+                "scope": {"language": "kotlin", "sources": ["markdown"]},
+                "limits": {"depth": 6, "results": 10, "evidence": 5}
+            }
+        }),
+    );
+    assert_eq!(
+        inferred_target["result"]["status"], "ANSWERED",
+        "{inferred_target:#}"
+    );
+    assert!(
+        inferred_target["result"]["contextRelations"]
+            .as_array()
+            .is_some_and(|relations| relations.iter().any(|relation| {
+                relation["sourcePath"] == "docs/explanation/compiler-evidence.md"
+                    && relation["targetName"] == "SemanticGraphSha256"
+                    && relation["kind"] == "DOCUMENTS"
+                    && relation["evidenceClass"] == "extracted"
+            })),
+        "{inferred_target:#}"
+    );
+
     let (_, wrong_direction) = rpc(
         &home,
         &config_home,

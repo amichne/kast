@@ -1024,6 +1024,17 @@ commands:
             sourceSet:
               optional: true
               type: string
+            sources:
+              items:
+                enum:
+                - markdown
+                - gradle
+                - schema
+                - workflow
+                - rust
+                type: string
+              optional: true
+              type: array
           optional: true
           type: object
         workspaceRoot:

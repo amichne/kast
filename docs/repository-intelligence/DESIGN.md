@@ -113,6 +113,28 @@ evidence class. Supporting subgraphs retain compiler occurrences or explicit
 derivations. Cross-boundary SCC findings return one deterministic directed
 cycle, so the bounded evidence subgraph proves the reported connection.
 
+## Repository context
+
+Context relationships are a read-only projection over repository files and the
+existing semantic symbol index. Sources are scanned in the closed order
+Markdown and ADRs, Gradle scripts, JSON schemas, workflows, and Rust. No second
+graph, crawler, embedding store, or persistent context index is introduced.
+
+Every link points from an exact repository path and source location to one
+canonical Kotlin identity. Literal names and paths are `extracted`; module,
+protocol, workflow, and shared-schema links carry named `derived` rules.
+Compiler, extracted, derived, and inferred evidence remain visibly distinct.
+The response also retains unresolved and ambiguous references, source-type
+counts, evidence distribution, exact-link and orphan rates, and deterministic
+documentation-gap findings.
+
+If a context question names no symbol, the existing semantic discovery ranker
+supplies at most 200 declaration-model candidates. Exact source paths and path
+prefixes outrank incidental prose mentions, and only linked identities enter
+the bounded result. This measured on-demand scan is intentionally simpler than
+a new ingestion authority; a persistent context index is warranted only if the
+200-candidate ceiling or observed latency becomes inadequate.
+
 ## Frozen baseline
 
 The benchmark owns two detached worktrees at commit

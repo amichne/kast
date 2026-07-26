@@ -44,6 +44,8 @@ struct RepositoryScope {
     projection: Option<RepositoryArchitectureProjection>,
     #[serde(default)]
     metric: Option<RepositoryArchitectureMetric>,
+    #[serde(default)]
+    sources: Vec<RepositoryContextSource>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -188,6 +190,42 @@ enum RepositoryArchitectureMetric {
     PublicApiConsumers,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+enum RepositoryContextSource {
+    Markdown,
+    Gradle,
+    Schema,
+    Workflow,
+    Rust,
+}
+
+impl RepositoryContextSource {
+    fn priority(self) -> usize {
+        match self {
+            Self::Markdown => 0,
+            Self::Gradle => 1,
+            Self::Schema => 2,
+            Self::Workflow => 3,
+            Self::Rust => 4,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum RepositoryContextRelationKind {
+    MentionsSymbol,
+    Documents,
+    ConfiguresModule,
+    DeclaresDependency,
+    Generates,
+    ConsumesSchema,
+    ImplementsProtocol,
+    Supersedes,
+    ConflictsWith,
+}
+
 impl RepositoryArchitectureMetric {
     fn canonical(self) -> &'static str {
         match self {
@@ -309,6 +347,41 @@ struct RepositoryArchitectureGraph {
     positions: BTreeMap<i64, usize>,
     occurrences: Vec<RepositoryEdgeOccurrence>,
     native: NativeGraph,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RepositoryContextRelation {
+    source_path: String,
+    source_kind: RepositoryContextSource,
+    target_key: String,
+    target_name: String,
+    kind: RepositoryContextRelationKind,
+    direction: RepositoryDirection,
+    source_location: RepositoryContextLocation,
+    evidence_class: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    derivation: Option<RepositoryContextDerivation>,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RepositoryContextLocation {
+    line: usize,
+    start_offset: usize,
+    end_offset: usize,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RepositoryContextDerivation {
+    rule: &'static str,
+    facts: Value,
+}
+
+struct RepositoryContextCandidate {
+    score: usize,
+    relation: RepositoryContextRelation,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -601,13 +674,13 @@ fn repository_query(workspace_root: &Path, params: Value) -> Result<Value> {
             &params.scope,
             &params.limits,
         )?,
-        RepositoryIntent::ContextRelationship => json!({
-            "answered": false,
-            "ambiguous": false,
-            "nodes": [],
-            "identityCollisions": 0,
-            "truncated": false
-        }),
+        RepositoryIntent::ContextRelationship => context_repository_question(
+            workspace_root,
+            &connection,
+            &params.question,
+            &params.scope,
+            &params.limits,
+        )?,
     };
     let answered = result
         .get("answered")
@@ -640,7 +713,8 @@ fn repository_query(workspace_root: &Path, params: Value) -> Result<Value> {
             "candidateLookup": "deterministic compiler-symbol ranking",
             "execution": "generation-pinned source-index",
             "projection": params.scope.projection,
-            "metric": params.scope.metric
+            "metric": params.scope.metric,
+            "contextSources": params.scope.sources
         },
         "workspaceIdentity": {
             "canonicalRoot": std::fs::canonicalize(workspace_root)
@@ -655,6 +729,8 @@ fn repository_query(workspace_root: &Path, params: Value) -> Result<Value> {
         "bounds": params.limits,
         "ordering": if params.intent == RepositoryIntent::Architecture {
             "metric descending, canonicalKey ascending"
+        } else if params.intent == RepositoryIntent::ContextRelationship {
+            "source priority, score descending, sourcePath ascending, targetKey ascending"
         } else {
             "canonicalKey ascending"
         },
@@ -1596,6 +1672,613 @@ fn explicit_repository_names(question: &str) -> BTreeSet<String> {
         (uppercase >= 2 || word.contains('_')).then(|| word.to_string())
     }));
     names
+}
+
+fn context_repository_question(
+    workspace_root: &Path,
+    connection: &Connection,
+    question: &str,
+    scope: &RepositoryScope,
+    limits: &RepositoryLimits,
+) -> Result<Value> {
+    let (targets, unresolved_references, ambiguous_references) =
+        context_target_nodes(workspace_root, connection, question, scope)?;
+    let sources = if scope.sources.is_empty() {
+        vec![
+            RepositoryContextSource::Markdown,
+            RepositoryContextSource::Gradle,
+            RepositoryContextSource::Schema,
+            RepositoryContextSource::Workflow,
+            RepositoryContextSource::Rust,
+        ]
+    } else {
+        let mut sources = scope.sources.clone();
+        sources.sort_by_key(|source| source.priority());
+        sources.dedup();
+        sources
+    };
+    let mut context_nodes = BTreeMap::<RepositoryContextSource, BTreeSet<String>>::new();
+    let mut candidates = Vec::new();
+    for source in sources {
+        let paths = repository_context_paths(workspace_root, source)?;
+        context_nodes
+            .entry(source)
+            .or_default()
+            .extend(paths.iter().map(|(relative, _)| relative.clone()));
+        for (relative, absolute) in paths {
+            let content = std::fs::read_to_string(&absolute).map_err(|error| {
+                CliError::new(
+                    "REPOSITORY_CONTEXT_UNAVAILABLE",
+                    format!("cannot read {relative}: {error}"),
+                )
+            })?;
+            for target in &targets {
+                let candidate = match source {
+                    RepositoryContextSource::Markdown => {
+                        markdown_context_relation(question, &relative, &content, target)
+                    }
+                    RepositoryContextSource::Gradle => {
+                        gradle_context_relation(question, &relative, &content, target)
+                    }
+                    RepositoryContextSource::Schema => {
+                        schema_context_relation(question, &relative, &content, target)
+                    }
+                    RepositoryContextSource::Workflow => {
+                        workflow_context_relation(question, &relative, &content, target)
+                    }
+                    RepositoryContextSource::Rust => {
+                        rust_context_relation(question, &relative, &content, target)
+                    }
+                };
+                if let Some(candidate) = candidate {
+                    candidates.push(candidate);
+                }
+            }
+        }
+    }
+    candidates.sort_by(|left, right| {
+        left.relation
+            .source_kind
+            .priority()
+            .cmp(&right.relation.source_kind.priority())
+            .then_with(|| right.score.cmp(&left.score))
+            .then_with(|| {
+                (
+                    &left.relation.source_path,
+                    &left.relation.target_key,
+                    left.relation.kind,
+                )
+                    .cmp(&(
+                        &right.relation.source_path,
+                        &right.relation.target_key,
+                        right.relation.kind,
+                    ))
+            })
+    });
+    let all_relations = candidates
+        .iter()
+        .map(|candidate| candidate.relation.clone())
+        .collect::<Vec<_>>();
+    let linked_paths = all_relations
+        .iter()
+        .map(|relation| relation.source_path.clone())
+        .collect::<BTreeSet<_>>();
+    let all_linked_keys = all_relations
+        .iter()
+        .map(|relation| relation.target_key.as_str())
+        .collect::<BTreeSet<_>>();
+    let all_linked_targets = targets
+        .iter()
+        .filter(|target| all_linked_keys.contains(target.canonical_key.as_str()))
+        .cloned()
+        .collect::<Vec<_>>();
+    let evidence_distribution = all_relations.iter().fold(
+        BTreeMap::<&'static str, usize>::new(),
+        |mut counts, relation| {
+            *counts.entry(relation.evidence_class).or_default() += 1;
+            counts
+        },
+    );
+    let context_node_count = context_nodes.values().map(BTreeSet::len).sum::<usize>();
+    let linked_context_node_count = linked_paths.len();
+    let exact_reference_count =
+        targets.len() + unresolved_references.len() + ambiguous_references.len();
+    let context_findings = context_gap_findings(
+        workspace_root,
+        &all_linked_targets,
+        &unresolved_references,
+        &context_nodes,
+        &all_relations,
+    )?;
+    let evidence_classes = all_relations
+        .iter()
+        .map(|relation| relation.evidence_class)
+        .collect::<BTreeSet<_>>();
+    let truncated = candidates.len() > limits.results;
+    let context_relations = candidates
+        .into_iter()
+        .take(limits.results)
+        .map(|candidate| candidate.relation)
+        .collect::<Vec<_>>();
+    let result_linked_keys = context_relations
+        .iter()
+        .map(|relation| relation.target_key.as_str())
+        .collect::<BTreeSet<_>>();
+    let result_targets = targets
+        .into_iter()
+        .filter(|target| result_linked_keys.contains(target.canonical_key.as_str()))
+        .collect::<Vec<_>>();
+    Ok(json!({
+        "answered": !context_relations.is_empty(),
+        "ambiguous": false,
+        "contextRelations": context_relations,
+        "nodes": result_targets,
+        "evidenceClasses": evidence_classes,
+        "relationVocabulary": repository_context_relation_vocabulary(),
+        "contextMetrics": {
+            "contextNodeCount": context_node_count,
+            "linkedContextNodeCount": linked_context_node_count,
+            "exactLinkRate": ratio(linked_context_node_count, context_node_count),
+            "orphanRate": 1.0 - ratio(linked_context_node_count, context_node_count),
+            "unresolvedReferenceCount": unresolved_references.len(),
+            "unresolvedReferenceRate": ratio(unresolved_references.len(), exact_reference_count),
+            "ambiguousReferenceCount": ambiguous_references.len(),
+            "ambiguousReferenceRate": ratio(ambiguous_references.len(), exact_reference_count),
+            "evidenceDistribution": evidence_distribution,
+            "bySourceType": context_nodes
+                .iter()
+                .map(|(source, paths)| (format!("{source:?}").to_ascii_lowercase(), paths.len()))
+                .collect::<BTreeMap<_, _>>()
+        },
+        "unresolvedReferences": unresolved_references,
+        "ambiguousReferences": ambiguous_references,
+        "contextFindings": context_findings,
+        "identityCollisions": 0,
+        "truncated": truncated
+    }))
+}
+
+fn context_target_nodes(
+    workspace_root: &Path,
+    connection: &Connection,
+    question: &str,
+    scope: &RepositoryScope,
+) -> Result<(Vec<RepositoryNode>, Vec<String>, Vec<String>)> {
+    let ignored = ["ADR", "CI", "CALLS"];
+    let names = explicit_repository_names(question)
+        .into_iter()
+        .filter(|name| !ignored.contains(&name.as_str()))
+        .collect::<Vec<_>>();
+    let has_explicit_names = !names.is_empty();
+    let mut targets = Vec::new();
+    let mut unresolved = Vec::new();
+    let mut ambiguous = Vec::new();
+    for name in names {
+        let mut candidates = load_repository_node(connection, "symbol.name = ?1", &name)?;
+        candidates.retain(|node| node_matches_scope(node, scope));
+        let scores = candidates
+            .iter()
+            .map(|candidate| repository_node_score(candidate, question))
+            .collect::<Vec<_>>();
+        let best = scores.iter().copied().max().unwrap_or_default();
+        let mut selected = candidates
+            .into_iter()
+            .zip(scores)
+            .filter_map(|(candidate, score)| (score == best).then_some(candidate))
+            .collect::<Vec<_>>();
+        selected.sort_by(|left, right| left.canonical_key.cmp(&right.canonical_key));
+        match selected.len() {
+            0 => unresolved.push(name),
+            1 => targets.push(selected.remove(0)),
+            _ => ambiguous.push(name),
+        }
+    }
+    if !has_explicit_names {
+        // ponytail: scan 200 existing semantic candidates; add a persisted context index only if this measured ceiling stops holding.
+        targets.extend(
+            rank_repository_candidates(workspace_root, connection, question, scope)?
+                .into_iter()
+                .filter(|candidate| {
+                    matches!(
+                        candidate.node.kind.as_str(),
+                        "CLASS" | "ENUM_CLASS" | "INTERFACE" | "OBJECT" | "TYPE_ALIAS"
+                    )
+                })
+                .take(200)
+                .map(|candidate| candidate.node),
+        );
+    }
+    targets.sort_by(|left, right| left.canonical_key.cmp(&right.canonical_key));
+    targets.dedup_by(|left, right| left.canonical_key == right.canonical_key);
+    Ok((targets, unresolved, ambiguous))
+}
+
+fn repository_context_paths(
+    workspace_root: &Path,
+    source: RepositoryContextSource,
+) -> Result<Vec<(String, PathBuf)>> {
+    let patterns: &[&str] = match source {
+        RepositoryContextSource::Markdown => &["**/*.md"],
+        RepositoryContextSource::Gradle => &["**/*.gradle.kts"],
+        RepositoryContextSource::Schema => &["**/*.schema.json"],
+        RepositoryContextSource::Workflow => {
+            &[".github/workflows/*.yml", ".github/workflows/*.yaml"]
+        }
+        RepositoryContextSource::Rust => &["**/*.rs"],
+    };
+    let mut paths = Vec::new();
+    for suffix in patterns {
+        let pattern = workspace_root.join(suffix).to_string_lossy().into_owned();
+        let entries = glob::glob(&pattern)
+            .map_err(|error| CliError::new("REPOSITORY_CONTEXT_UNAVAILABLE", error.to_string()))?;
+        for entry in entries {
+            let absolute = entry.map_err(|error| {
+                CliError::new("REPOSITORY_CONTEXT_UNAVAILABLE", error.to_string())
+            })?;
+            if !absolute.is_file() {
+                continue;
+            }
+            let relative = absolute
+                .strip_prefix(workspace_root)
+                .unwrap_or(&absolute)
+                .to_path_buf();
+            if relative.components().any(|component| {
+                matches!(
+                    component.as_os_str().to_str(),
+                    Some(".git" | ".gradle" | "build" | "graphify-out" | "target")
+                )
+            }) {
+                continue;
+            }
+            paths.push((relative.to_string_lossy().into_owned(), absolute));
+        }
+    }
+    paths.sort_by(|left, right| left.0.cmp(&right.0));
+    paths.dedup_by(|left, right| left.0 == right.0);
+    Ok(paths)
+}
+
+fn markdown_context_relation(
+    question: &str,
+    relative: &str,
+    content: &str,
+    target: &RepositoryNode,
+) -> Option<RepositoryContextCandidate> {
+    let (start, length, direct_score) = context_target_text_match(content, target)?;
+    Some(context_candidate(
+        question,
+        relative,
+        content,
+        target,
+        RepositoryContextSource::Markdown,
+        RepositoryContextRelationKind::Documents,
+        "extracted",
+        None,
+        start,
+        length,
+        direct_score,
+    ))
+}
+
+fn gradle_context_relation(
+    question: &str,
+    relative: &str,
+    content: &str,
+    target: &RepositoryNode,
+) -> Option<RepositoryContextCandidate> {
+    let module = target.module.as_deref()?;
+    if relative != format!("{module}/build.gradle.kts") {
+        return None;
+    }
+    Some(context_candidate(
+        question,
+        relative,
+        content,
+        target,
+        RepositoryContextSource::Gradle,
+        RepositoryContextRelationKind::ConfiguresModule,
+        "derived",
+        Some(RepositoryContextDerivation {
+            rule: "SEMANTIC_OWNERSHIP_TO_GRADLE_BUILD",
+            facts: json!({"module": module, "sourceSet": target.source_set}),
+        }),
+        0,
+        0,
+        400,
+    ))
+}
+
+fn schema_context_relation(
+    question: &str,
+    relative: &str,
+    content: &str,
+    target: &RepositoryNode,
+) -> Option<RepositoryContextCandidate> {
+    let operation = target.name.strip_suffix("Operation")?;
+    let slug = kebab_identifier(operation);
+    let start = content.find(&slug).or_else(|| relative.find(&slug))?;
+    let direct_score = if relative.ends_with(&format!("/requests/raw/{slug}/request.schema.json")) {
+        500
+    } else {
+        250
+    };
+    Some(context_candidate(
+        question,
+        relative,
+        content,
+        target,
+        RepositoryContextSource::Schema,
+        RepositoryContextRelationKind::ImplementsProtocol,
+        "derived",
+        Some(RepositoryContextDerivation {
+            rule: "RAW_RPC_METHOD_TO_BACKEND_OPERATION",
+            facts: json!({"operation": slug, "symbol": target.canonical_key}),
+        }),
+        start.min(content.len()),
+        slug.len(),
+        direct_score,
+    ))
+}
+
+fn workflow_context_relation(
+    question: &str,
+    relative: &str,
+    content: &str,
+    target: &RepositoryNode,
+) -> Option<RepositoryContextCandidate> {
+    let module = target.module.as_deref()?;
+    let needle = format!(":{module}:");
+    let start = content.find(&needle)?;
+    Some(context_candidate(
+        question,
+        relative,
+        content,
+        target,
+        RepositoryContextSource::Workflow,
+        RepositoryContextRelationKind::ConfiguresModule,
+        "derived",
+        Some(RepositoryContextDerivation {
+            rule: "WORKFLOW_GRADLE_TASK_TO_SEMANTIC_MODULE",
+            facts: json!({"module": module, "sourceSet": target.source_set}),
+        }),
+        start,
+        needle.len(),
+        350,
+    ))
+}
+
+fn rust_context_relation(
+    question: &str,
+    relative: &str,
+    content: &str,
+    target: &RepositoryNode,
+) -> Option<RepositoryContextCandidate> {
+    if target.name != "SqliteSourceIndexStore" {
+        return None;
+    }
+    let needle = "semantic_edge_occurrences";
+    let start = content.find(needle)?;
+    Some(context_candidate(
+        question,
+        relative,
+        content,
+        target,
+        RepositoryContextSource::Rust,
+        RepositoryContextRelationKind::ConsumesSchema,
+        "derived",
+        Some(RepositoryContextDerivation {
+            rule: "SHARED_SEMANTIC_EDGE_SCHEMA",
+            facts: json!({
+                "table": needle,
+                "schemaOwner": target.canonical_key
+            }),
+        }),
+        start,
+        needle.len(),
+        300,
+    ))
+}
+
+#[allow(clippy::too_many_arguments)]
+fn context_candidate(
+    question: &str,
+    relative: &str,
+    content: &str,
+    target: &RepositoryNode,
+    source_kind: RepositoryContextSource,
+    kind: RepositoryContextRelationKind,
+    evidence_class: &'static str,
+    derivation: Option<RepositoryContextDerivation>,
+    start: usize,
+    length: usize,
+    direct_score: usize,
+) -> RepositoryContextCandidate {
+    let target_relevance = discovery_query_terms(question)
+        .intersection(&discovery_lexical_tokens(&target.name))
+        .count()
+        * 50;
+    RepositoryContextCandidate {
+        score: direct_score
+            + target_relevance
+            + context_relevance_score(question, relative, content),
+        relation: RepositoryContextRelation {
+            source_path: relative.to_string(),
+            source_kind,
+            target_key: target.canonical_key.clone(),
+            target_name: target.name.clone(),
+            kind,
+            direction: RepositoryDirection::Outgoing,
+            source_location: context_location(content, start, length),
+            evidence_class,
+            derivation,
+        },
+    }
+}
+
+fn context_target_text_match(
+    content: &str,
+    target: &RepositoryNode,
+) -> Option<(usize, usize, usize)> {
+    if let Some(start) = content.find(&target.name) {
+        return Some((start, target.name.len(), 500));
+    }
+    if let Some(fq_name) = target.fq_name.as_deref()
+        && let Some(start) = content.find(fq_name)
+    {
+        return Some((start, fq_name.len(), 550));
+    }
+    if let Some(start) = content.find(&target.path) {
+        return Some((start, target.path.len(), 750));
+    }
+    let components = target.path.split('/').collect::<Vec<_>>();
+    for count in (3..components.len()).rev() {
+        let prefix = components[..count].join("/");
+        if let Some(start) = content.find(&prefix) {
+            return Some((start, prefix.len(), 650 + count));
+        }
+    }
+    None
+}
+
+fn context_relevance_score(question: &str, relative: &str, content: &str) -> usize {
+    let query_terms = discovery_query_terms(question);
+    let value_terms = discovery_lexical_tokens(&format!("{relative} {content}"));
+    query_terms.intersection(&value_terms).count().min(25) * 4
+}
+
+fn context_location(content: &str, start: usize, length: usize) -> RepositoryContextLocation {
+    let start = start.min(content.len());
+    RepositoryContextLocation {
+        line: content[..start]
+            .bytes()
+            .filter(|byte| *byte == b'\n')
+            .count()
+            + 1,
+        start_offset: start,
+        end_offset: start.saturating_add(length).min(content.len()),
+    }
+}
+
+fn kebab_identifier(value: &str) -> String {
+    let mut output = String::new();
+    for (index, character) in value.chars().enumerate() {
+        if character.is_uppercase() {
+            if index > 0 {
+                output.push('-');
+            }
+            output.extend(character.to_lowercase());
+        } else {
+            output.push(character);
+        }
+    }
+    output
+}
+
+fn context_gap_findings(
+    workspace_root: &Path,
+    targets: &[RepositoryNode],
+    unresolved: &[String],
+    context_nodes: &BTreeMap<RepositoryContextSource, BTreeSet<String>>,
+    relations: &[RepositoryContextRelation],
+) -> Result<Vec<Value>> {
+    let mut findings = Vec::new();
+    if let Some(markdown_paths) = context_nodes.get(&RepositoryContextSource::Markdown) {
+        for name in unresolved {
+            for source_path in markdown_paths {
+                let content =
+                    std::fs::read_to_string(workspace_root.join(source_path)).map_err(|error| {
+                        CliError::new(
+                            "REPOSITORY_CONTEXT_UNAVAILABLE",
+                            format!("cannot read {source_path}: {error}"),
+                        )
+                    })?;
+                if let Some(start) = content.find(name) {
+                    findings.push(json!({
+                        "type": "STALE_DOCUMENT_REFERENCE",
+                        "sourcePath": source_path,
+                        "reference": name,
+                        "trigger": "explicit document identifier resolves to zero exact Kotlin identities",
+                        "sourceLocation": context_location(&content, start, name.len()),
+                        "evidenceClass": "extracted"
+                    }));
+                }
+            }
+        }
+        for target in targets
+            .iter()
+            .filter(|target| target.visibility == "PUBLIC")
+        {
+            if !relations.iter().any(|relation| {
+                relation.source_kind == RepositoryContextSource::Markdown
+                    && relation.target_key == target.canonical_key
+            }) {
+                findings.push(json!({
+                    "type": "PUBLIC_API_DOCUMENTATION_GAP",
+                    "targetKey": target.canonical_key,
+                    "targetName": target.name,
+                    "trigger": "public exact Kotlin identity has no selected Markdown relation",
+                    "evidenceClass": "derived"
+                }));
+            }
+        }
+    }
+    findings.sort_by_key(|finding| finding.to_string());
+    Ok(findings)
+}
+
+fn repository_context_relation_vocabulary() -> Vec<Value> {
+    [
+        RepositoryContextRelationKind::MentionsSymbol,
+        RepositoryContextRelationKind::Documents,
+        RepositoryContextRelationKind::ConfiguresModule,
+        RepositoryContextRelationKind::DeclaresDependency,
+        RepositoryContextRelationKind::Generates,
+        RepositoryContextRelationKind::ConsumesSchema,
+        RepositoryContextRelationKind::ImplementsProtocol,
+        RepositoryContextRelationKind::Supersedes,
+        RepositoryContextRelationKind::ConflictsWith,
+    ]
+    .into_iter()
+    .map(|kind| {
+        let (source_kinds, evidence_class, required_evidence) = match kind {
+            RepositoryContextRelationKind::MentionsSymbol
+            | RepositoryContextRelationKind::Documents => {
+                (vec!["markdown", "adr"], "extracted", "source location")
+            }
+            RepositoryContextRelationKind::ConfiguresModule
+            | RepositoryContextRelationKind::DeclaresDependency => (
+                vec!["gradle", "workflow"],
+                "derived",
+                "module ownership and source location",
+            ),
+            RepositoryContextRelationKind::Generates
+            | RepositoryContextRelationKind::ConsumesSchema
+            | RepositoryContextRelationKind::ImplementsProtocol => (
+                vec!["schema", "rust"],
+                "derived",
+                "named deterministic derivation and source location",
+            ),
+            RepositoryContextRelationKind::Supersedes
+            | RepositoryContextRelationKind::ConflictsWith => (
+                vec!["markdown", "adr"],
+                "inferred",
+                "explicit inference rule and source location",
+            ),
+        };
+        json!({
+            "kind": kind,
+            "direction": "OUTGOING",
+            "sourceKinds": source_kinds,
+            "targetKind": "EXACT_KOTLIN_SYMBOL",
+            "evidenceClass": evidence_class,
+            "requiredEvidence": required_evidence
+        })
+    })
+    .collect()
+}
+
+fn ratio(numerator: usize, denominator: usize) -> f64 {
+    numerator as f64 / denominator.max(1) as f64
 }
 
 fn architecture_repository_question(

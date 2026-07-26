@@ -1,13 +1,13 @@
 # Repository Intelligence Execution State
 
 - Benchmark corpus commit: `2c630d3d156574eb4548fd97df3bd61fe9deb1a6`
-- Active implementation commit: `6a873915c552ade53115a7f26bccbba31b4ab073` plus the current Phase 4 worktree
+- Active implementation commit: `0d65dbc82d1398a9d014abf31db13c00e2f09bc3` plus the current Phase 5 worktree
 - Current phase: Phase 5 — repository context
-- Last passing fast check: canonical `FAST_CHECK` passed for Phase 4 on 2026-07-26
-- Last passing full check: canonical `FULL_CHECK` passed for Phase 4 on 2026-07-26 (`./gradlew test`, Rust format, clippy, and all-target tests)
-- Last benchmark result: Phase 4 passes 36/42 cumulatively, including every Phase 1 through Phase 4 assertion; the six Phase 5 context assertions remain RED
+- Last passing fast check: canonical `FAST_CHECK` passed for Phase 5 on 2026-07-26
+- Last passing full check: canonical `FULL_CHECK` passed for Phase 5 on 2026-07-26 (`./gradlew test`, Rust format, clippy, and all-target/all-feature tests)
+- Last benchmark result: Phase 5 passes 41/42 cumulatively, including every Phase 1 through Phase 5 assertion; only the Phase 6 canonical-result-model assertion remains RED
 - Current blocker, if any: none
-- Next concrete action: commit and push the verified Phase 4 boundary, then add the focused Phase 5 context RED
+- Next concrete action: commit and push the verified Phase 5 boundary, then add the focused Phase 6 canonical-result-model RED
 - Known scope exceptions: the frozen commit contains 599 Gradle-compilation-owned `.kt` files and 18 `.kts` scripts; the task's older observation of 1,145 discoverable Kotlin files is not present in this snapshot
 
 ## Canonical Commands
@@ -61,3 +61,13 @@
 - Two normalized frozen-corpus runs are deterministic and pass all 36 Phase 1–4 questions. Median latency is 1,007.356 ms, p95 latency is 2,771.278 ms, median response size is 25,867 bytes, and maximum response size is 226,524 bytes.
 - Persisted Phase 4 result: `benchmarks/repository-intelligence/results/phase4.json` (`sha256:d9f4711a69e0bc3bd8b63f83a176893626c8f8673985de2a8424a7f45a9df5dc`).
 - Branch CLI and IDEA plugin `0.16.1-10-g6a873915` were installed from the verified Phase 4 worktree after force-stopping PID 93288; the golden runtime reopened only the frozen root and reached `READY` on PID 9409.
+
+## Phase 5 Evidence
+
+- Markdown and ADR, Gradle, JSON schema, workflow, and Rust sources are scanned in a closed deterministic priority without introducing another graph or persistent index.
+- Context relations use the explicit `DOCUMENTS`, `CONFIGURES_MODULE`, `IMPLEMENTS_PROTOCOL`, and `CONSUMES_SCHEMA` vocabulary required by the frozen questions. Each relation carries a source path, source location, exact Kotlin target, direction, and extracted or named derived evidence.
+- The prose-only ADR question reuses existing semantic discovery with a 200-declaration candidate bound; path evidence outranks incidental name mentions, and returned nodes are bounded by the selected relations.
+- Responses report context node and link counts, exact-link and orphan rates, unresolved and ambiguous reference rates, evidence distribution, a complete relation vocabulary, and deterministic stale-document or public-API documentation-gap findings.
+- Two normalized frozen-corpus runs are deterministic and pass all 41 Phase 1–5 questions. Median latency is 657.647 ms, p95 latency is 2,767.154 ms, median response size is 25,147 bytes, and maximum response size is 226,570 bytes.
+- Persisted Phase 5 result: `benchmarks/repository-intelligence/results/phase5.json` (`sha256:c2b5464b5279a00d5139f8b09930ea3ce168869201ebda39e62fbe511c75f354`).
+- Branch CLI and IDEA plugin `0.16.1-11-g0d65dbc8` were installed from the verified Phase 5 worktree after force-stopping PID 9409; the golden runtime reopened only the frozen root and reached `READY` on PID 29639.

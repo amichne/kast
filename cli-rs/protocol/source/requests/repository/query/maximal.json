@@ -29,7 +29,10 @@
       "relations": [
         "SEALED_MEMBER"
       ],
-      "sourceSet": "main"
+      "sourceSet": "main",
+      "sources": [
+        "rust"
+      ]
     },
     "workspaceRoot": "/absolute/path/to/workspace"
   }
