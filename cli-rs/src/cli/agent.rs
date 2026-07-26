@@ -7,8 +7,6 @@ pub struct AgentArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum AgentCommand {
-    /// Run the Language Server Protocol adapter over stdio.
-    Lsp(LspArgs),
     /// Acquire, inspect, or release an exact-root semantic workspace lease.
     Lease(AgentLeaseArgs),
     /// Verify backend health, runtime state, and capabilities.

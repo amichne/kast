@@ -86,7 +86,6 @@ impl AgentProjectionRequest {
             | AgentCommand::Callees(_)
             | AgentCommand::Implementations(_)
             | AgentCommand::Hierarchy(_)
-            | AgentCommand::Lsp(_)
             | AgentCommand::Lease(_) => Self::Passthrough,
         }
     }

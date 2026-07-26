@@ -108,22 +108,6 @@ pub struct DaemonStartArgs {
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct LspArgs {
-    /// Enable stdio transport.
-    #[arg(long)]
-    pub stdio: bool,
-    /// Absolute workspace root for daemon lifecycle and LSP requests.
-    #[arg(long)]
-    pub workspace_root: Option<PathBuf>,
-    /// Pin LSP requests to a specific backend.
-    #[arg(long = "backend", value_enum)]
-    pub backend_name: Option<BackendName>,
-    /// Maximum time to wait for a ready daemon when LSP needs one.
-    #[arg(long, default_value_t = 60_000)]
-    pub request_timeout_ms: u64,
-}
-
-#[derive(Debug, Args, Clone)]
 #[command(disable_help_subcommand = true)]
 pub struct RuntimeCommandArgs {
     #[command(subcommand)]

@@ -1,8 +1,7 @@
 # GitHub integration guide
 
-This file applies to `.github/` and descendants. This tree contains both
-authored GitHub automation and repository-local Copilot package outputs, so
-agents must identify which surface they are touching before editing.
+This file applies to `.github/` and descendants and owns the repository's
+authored GitHub automation.
 
 ## Authored surfaces
 
@@ -91,21 +90,7 @@ Downstream Ubuntu/Debian and `kast-action` packaging consumes the verified
 release components without creating a developer-machine generation.
 Raw CLI archives contain the revision-matched `kast` binary.
 
-## Copilot Package Source
-
-Repository-local Copilot install outputs are not checked-in V1 sources. The
-retained package source lives under `cli-rs/resources/plugin/` for LSP config
-and prompt-time typed command guidance. Do not add generated `.github`
-package copies or local installer shims here.
-
 ## Verify
-
-For Copilot package source changes, run:
-
-```console
-.github/scripts/test-kast-copilot-plugin.sh
-.github/scripts/test-lsp-config.mjs
-```
 
 For docs contract changes, run:
 

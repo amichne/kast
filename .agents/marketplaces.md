@@ -35,7 +35,7 @@ or security reason.
 - Start with `AGENTS.md`, then any deeper `AGENTS.md` for the unit being
   changed.
 - `.github/skill-shadowing.json` maps the repo-local `kast` skill to the
-  CLI/RPC contract. The packaged Copilot integration itself is LSP-only.
+  CLI/RPC contract.
 
 ## Refresh
 

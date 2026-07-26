@@ -12,8 +12,8 @@ orchestration, source-index CLI reads, and release packaging.
 - `src/cli/agent.rs` and `src/agent/` own typed compiler-backed agent commands:
   the cross-provider `task begin|status|finish|abort` proof lifecycle plus
   `lease`, `verify`, `workspace-files`, `symbol`, `diagnostics`, `impact`,
-  `rename`, and `lsp`. Task ownership is persisted and cross-process; it is
-  distinct from the IDEA runtime lease used by individual semantic requests.
+  and `rename`. Task ownership is persisted and cross-process; it is distinct
+  from the IDEA runtime lease used by individual semantic requests.
 - `src/runtime/` owns IDEA lifecycle inspection and exact-root leases on macOS,
   plus release headless lifecycle on supported non-macOS hosts.
 - `src/install/` owns the sole persistent setup transaction: bundle validation,
@@ -40,8 +40,6 @@ orchestration, source-index CLI reads, and release packaging.
 - `https://github.com/amichne/kast-marketplace` owns the Codex marketplace,
   routing skill, hook wiring, launcher, and presentation assets. This crate
   retains only the CLI hook implementation.
-- `resources/plugin/` owns the independent GitHub Copilot package source
-  material used by release validation.
 - `protocol/source/` contains the authored internal catalog plus generated
   schemas and request samples. Other `protocol/` outputs serve release and
   integration consumers.
@@ -68,8 +66,7 @@ The retained cross-module boundaries are:
   test-report policy.
 - Agent-facing semantic workflows acquire and release one typed exact-root
   lease, then use `kast agent verify`,
-  `workspace-files`, `symbol`, `diagnostics`, `impact`, `rename`, and `lsp`
-  commands.
+  `workspace-files`, `symbol`, `diagnostics`, `impact`, and `rename` commands.
 - Keep raw workspace paging handles and public workspace-file continuation
   handles distinct and opaque. Public continuations bind every result-affecting
   query field and the coherent multi-source composition stamp, including each
@@ -114,7 +111,6 @@ The retained cross-module boundaries are:
   `protocol/source/commands.json`.
 - Codex skill and launcher truth lives in `amichne/kast-marketplace`; no
   marketplace payload or generator belongs in this repository.
-- Package artifact output shape lives in `resources/plugin/primitive-manifest.json`.
 - Generated request schemas and samples under `protocol/source/requests/` are
   derived from the catalog. Regenerate them through the contract generator.
 - Generated protocol markdown, OpenAPI YAML, and example fixtures live under
@@ -135,14 +131,12 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked
 .github/scripts/test-runtime-compatibility-contract.sh
 ```
 
-For workspace-files, Copilot package, resource, or catalog changes, run the
-relevant package, LSP, generated-contract, and docs gates below:
+For workspace-files, resource, or catalog changes, run the relevant
+generated-contract and docs gates below:
 
 ```console
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
-.github/scripts/test-kast-copilot-plugin.sh
-.github/scripts/test-lsp-pivot-gates.sh
 .github/scripts/test-docs-content-contract.sh
 .github/scripts/test-docs-navigation-contract.sh
 zensical build --clean

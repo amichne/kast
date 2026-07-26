@@ -9,7 +9,6 @@ mod daemon;
 mod demo;
 mod error;
 mod install;
-mod lsp;
 mod manifest;
 mod metrics;
 mod metrics_database;
@@ -373,7 +372,6 @@ fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
             "CLI_USAGE",
             "An agent command is required; run `kast agent --help`.",
         )),
-        Some(cli::AgentCommand::Lsp(args)) => lsp::run(args),
         Some(command) => agent::run(command, output_format),
     }
 }

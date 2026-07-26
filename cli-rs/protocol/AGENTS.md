@@ -20,7 +20,7 @@ the exhaustive Rust types in `cli-rs/src/codex/exposure.rs`.
 ## Edit rules
 
 - Change the authored catalog, then regenerate derived YAML, schemas, samples,
-  protocol docs, and LSP route metadata.
+  and protocol docs.
 - Keep generated files deterministic and review source and output together.
 - Do not copy catalog or request material into provider package trees.
 - Preserve the distinction between public typed CLI commands and internal RPC
@@ -33,5 +33,4 @@ cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- \
   developer release generate contract --check
 python3 .github/scripts/render-rpc-contract-summary.py --check
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke
-.github/scripts/test-lsp-pivot-gates.sh
 ```
