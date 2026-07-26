@@ -222,9 +222,7 @@ fn setup_rejects_multiple_supported_plugin_profiles_without_selection() {
 }
 
 #[test]
-fn matching_plugin_is_not_replaced_while_idea_runs() {
-    use std::os::unix::fs::MetadataExt;
-
+fn changed_cli_requires_a_running_ide_to_close() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
@@ -251,23 +249,15 @@ fn matching_plugin_is_not_replaced_while_idea_runs() {
         command("closed").status.success(),
         "initial setup should succeed",
     );
-    let installed_plugin = plugins.join("kast/lib/plugin.jar");
-    let plugin_inode = std::fs::metadata(&installed_plugin)
-        .expect("installed plugin")
-        .ino();
     std::fs::write(kast_home.join("current/bin/kast"), "drifted CLI").expect("drift active CLI");
-    let current = command("open");
+    let blocked = command("open");
 
-    assert!(
-        current.status.success(),
-        "CLI repair should preserve the matching plugin while IDEA runs: {}",
-        String::from_utf8_lossy(&current.stdout),
-    );
+    assert!(!blocked.status.success());
+    let result: serde_json::Value = serde_json::from_slice(&blocked.stdout).expect("setup failure");
+    assert_eq!(result["code"], "IDE_RESTART_REQUIRED");
     assert_eq!(
-        std::fs::metadata(installed_plugin)
-            .expect("preserved plugin")
-            .ino(),
-        plugin_inode,
+        std::fs::read(plugins.join("kast/lib/plugin.jar")).expect("installed plugin"),
+        b"plugin",
     );
 }
 
@@ -305,6 +295,108 @@ fn changed_plugin_requires_a_running_ide_to_close() {
     assert_eq!(
         std::fs::read(plugins.join("kast/lib/plugin.jar")).expect("installed plugin"),
         b"plugin",
+    );
+}
+
+#[test]
+fn macos_idea_setup_closes_plugin_and_config_authority() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let headless = write_install_bundle_source(temp.path(), "v9.8.7");
+    let headless_setup = setup(&home, &kast_home, &headless);
+    assert!(
+        headless_setup.status.success(),
+        "headless setup should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&headless_setup.stdout),
+        String::from_utf8_lossy(&headless_setup.stderr),
+    );
+    let plugins = home.join("Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins");
+    std::fs::create_dir_all(plugins.join("kast/lib")).expect("existing IDEA plugin");
+    std::fs::write(plugins.join("kast/lib/plugin.jar"), b"old plugin")
+        .expect("existing plugin contents");
+    let plugin = write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"new plugin");
+
+    let output = kast(&home, &kast_home.join("unused-config"))
+        .env_remove("KAST_CONFIG_HOME")
+        .env("KAST_HOME", &kast_home)
+        .env("KAST_MACHINE_IDE_STATE", "closed")
+        .args([
+            "setup",
+            "--idea-plugin",
+            plugin.to_str().expect("plugin path"),
+            "--idea-plugins-dir",
+            plugins.to_str().expect("plugins path"),
+        ])
+        .output()
+        .expect("kast setup");
+
+    assert!(
+        output.status.success(),
+        "IDEA setup should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let mut plugin_backups = std::fs::read_dir(&plugins)
+        .expect("plugins directory")
+        .filter_map(std::result::Result::ok)
+        .map(|entry| entry.file_name())
+        .filter(|name| name.to_string_lossy().starts_with(".kast-backup-"))
+        .collect::<Vec<_>>();
+    plugin_backups.sort();
+    let config = std::fs::read_to_string(kast_home.join("current/config/config.toml"))
+        .expect("IDEA defaults");
+    assert_eq!(
+        (plugin_backups, config),
+        (
+            vec![],
+            "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\n\n[backends.headless]\nenabled = false\n\n[backends.idea]\nenabled = true\n"
+                .to_string(),
+        ),
+    );
+}
+
+#[test]
+fn macos_idea_setup_repairs_headless_defaults_from_prior_broken_setup() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let plugins = home.join("Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins");
+    std::fs::create_dir_all(&plugins).expect("IDEA profile");
+    let plugin = write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin revision 1");
+    let run = || {
+        kast(&home, &kast_home.join("unused-config"))
+            .env_remove("KAST_CONFIG_HOME")
+            .env("KAST_HOME", &kast_home)
+            .env("KAST_MACHINE_IDE_STATE", "closed")
+            .args([
+                "setup",
+                "--idea-plugin",
+                plugin.to_str().expect("plugin path"),
+            ])
+            .output()
+            .expect("kast setup")
+    };
+    assert!(run().status.success(), "initial setup should succeed");
+    std::fs::write(
+        kast_home.join("current/config/config.toml"),
+        "[runtime]\ndefaultBackend = \"headless\"\n\n[backends.headless]\nenabled = true\n",
+    )
+    .expect("broken headless defaults");
+    write_idea_plugin_zip(temp.path(), "kast-idea.zip", b"plugin revision 2");
+
+    let output = run();
+
+    assert!(
+        output.status.success(),
+        "repair setup should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert_eq!(
+        std::fs::read_to_string(kast_home.join("current/config/config.toml"))
+            .expect("repaired IDEA defaults"),
+        "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\n\n[backends.headless]\nenabled = false\n\n[backends.idea]\nenabled = true\n",
     );
 }
 

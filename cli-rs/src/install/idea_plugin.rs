@@ -72,9 +72,7 @@ fn setup_idea_plugin(
 
         let plugin_is_current = directory_sha256(&installed_plugin).ok().as_deref()
             == Some(extracted_plugin_digest.as_str());
-        if !plugin_is_current {
-            require_jetbrains_ides_closed()?;
-        }
+        require_jetbrains_ides_closed()?;
         let config_defaults = idea_config_defaults(&targets, config_defaults.as_deref())?;
         let legacy_backup = archive_legacy_installations(&targets)?;
         let (previous, release_backup) = install_idea_release(
@@ -225,6 +223,14 @@ fn idea_config_defaults(
     if !previous.is_file() {
         return Ok(DEFAULT_IDEA_CONFIG.to_string());
     }
+    let previous_receipt = targets
+        .current_link
+        .join(manifest::INSTALL_MANIFEST_FILE);
+    if !manifest_from_file(&previous_receipt)
+        .is_ok_and(|receipt| receipt.profile == "macos-idea")
+    {
+        return Ok(DEFAULT_IDEA_CONFIG.to_string());
+    }
     let contents = fs::read_to_string(previous)?;
     config::validate_toml(&contents)?;
     migrate_missing_idea_launch_choice(contents)
@@ -232,6 +238,15 @@ fn idea_config_defaults(
 
 fn migrate_missing_idea_launch_choice(mut contents: String) -> Result<String> {
     let mut value: toml::Value = toml::from_str(&contents)?;
+    if value
+        .get("runtime")
+        .and_then(toml::Value::as_table)
+        .and_then(|runtime| runtime.get("defaultBackend"))
+        .and_then(toml::Value::as_str)
+        == Some("headless")
+    {
+        return Ok(DEFAULT_IDEA_CONFIG.to_string());
+    }
     if let Some(launch) = value
         .get_mut("runtime")
         .and_then(toml::Value::as_table_mut)
@@ -302,12 +317,18 @@ fn install_idea_plugin(source: &Path, target: &Path) -> Result<Option<PathBuf>> 
     let parent = target
         .parent()
         .ok_or_else(|| CliError::new("IDE_PROFILE_INVALID", "IDE plugin target has no parent."))?;
+    let profile = parent.parent().ok_or_else(|| {
+        CliError::new(
+            "IDE_PROFILE_INVALID",
+            "IDE plugin directory has no profile root.",
+        )
+    })?;
     fs::create_dir_all(parent)?;
     let staging = parent.join(format!(".kast-staging-{}", std::process::id()));
     manifest::remove_path(&staging)?;
     copy_bundle_tree(source, &staging)?;
     let backup = if fs::symlink_metadata(target).is_ok() {
-        let backup = parent.join(format!(".kast-backup-{}", std::process::id()));
+        let backup = profile.join(".kast-plugin-backup");
         manifest::remove_path(&backup)?;
         fs::rename(target, &backup)?;
         Some(backup)
