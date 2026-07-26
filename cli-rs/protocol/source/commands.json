@@ -2708,21 +2708,27 @@
       "dataSource": "sqlite",
       "request": {
         "fields": {
-          "workspaceRoot": {
-            "type": "string",
-            "optional": true,
-            "nullable": true
-          },
-          "question": {
-            "type": "string"
-          },
+      "workspaceRoot": {
+        "type": "string",
+        "optional": true,
+        "nullable": true
+      },
+      "canonicalKey": {
+        "type": "string",
+        "optional": true
+      },
+      "question": {
+        "type": "string"
+      },
           "intent": {
             "enum": [
-              "resolve",
-              "path",
-              "incoming_impact",
-              "outgoing_impact"
-            ],
+          "resolve",
+          "path",
+          "incoming_impact",
+          "outgoing_impact",
+          "architecture",
+          "context_relationship"
+        ],
             "type": "string"
           },
           "scope": {

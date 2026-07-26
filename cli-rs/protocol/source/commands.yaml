@@ -909,6 +909,9 @@ commands:
     - Every response exposes generation, scope, coverage, filters, bounds, ordering, truncation, and continuation.
     request:
       fields:
+        canonicalKey:
+          optional: true
+          type: string
         evidenceContinuation:
           fields:
             afterOccurrenceId:
@@ -949,6 +952,8 @@ commands:
           - path
           - incoming_impact
           - outgoing_impact
+          - architecture
+          - context_relationship
           type: string
         limits:
           fields:

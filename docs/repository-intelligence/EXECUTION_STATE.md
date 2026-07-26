@@ -1,13 +1,13 @@
 # Repository Intelligence Execution State
 
 - Benchmark corpus commit: `2c630d3d156574eb4548fd97df3bd61fe9deb1a6`
-- Active implementation commit: `4498ff90b0dda8d3fb22e5854aa6d6583ebb720a` plus the current Phase 2 worktree
-- Current phase: Phase 3 — natural-language discovery
-- Last passing fast check: canonical `FAST_CHECK` passed for Phase 2 on 2026-07-26
-- Last passing full check: canonical `FULL_CHECK` passed for Phase 2 on 2026-07-26 (`./gradlew test`, Rust format, clippy, and all-target tests)
-- Last benchmark result: Phase 2 passes 22/42 cumulatively, including every Phase 1 and Phase 2 assertion; Phase 3 through Phase 5 assertions remain RED
+- Active implementation commit: `460487ecf76bbc2fd8de3536de3672672f85d24b` plus the current Phase 3 worktree
+- Current phase: Phase 4 — architecture analysis
+- Last passing fast check: canonical `FAST_CHECK` passed for Phase 3 on 2026-07-26
+- Last passing full check: canonical `FULL_CHECK` passed for Phase 3 on 2026-07-26 (`./gradlew test`, Rust format, clippy, and all-target tests)
+- Last benchmark result: Phase 3 passes 30/42 cumulatively, including every Phase 1 through Phase 3 assertion; Phase 4 and Phase 5 assertions remain RED
 - Current blocker, if any: none
-- Next concrete action: commit and push the verified Phase 2 boundary, then add the focused Phase 3 ambiguity and ranked-discovery RED
+- Next concrete action: commit and push the verified Phase 3 boundary, then add the focused Phase 4 architecture RED
 - Known scope exceptions: the frozen commit contains 599 Gradle-compilation-owned `.kt` files and 18 `.kts` scripts; the task's older observation of 1,145 discoverable Kotlin files is not present in this snapshot
 
 ## Canonical Commands
@@ -43,3 +43,12 @@
 - Two normalized frozen-corpus runs are deterministic and pass all 19 Phase 2 questions. Across the 22 cumulative Phase 1–2 questions, median latency is 239.814 ms, p95 latency is 292.906 ms, median response size is 10,158 bytes, and maximum response size is 226,406 bytes.
 - Persisted Phase 2 result: `benchmarks/repository-intelligence/results/phase2.json` (`sha256:5f5e01e8b496031fc14f94561e95ec6eec2a156682241177e2b637011e0e2a3e`).
 - Branch CLI and IDEA plugin `0.16.1-8-g4498ff90` were installed from the verified Phase 2 worktree after force-stopping PID 63967; the golden runtime reopened only the frozen root and reached `READY` on PID 77605.
+
+## Phase 3 Evidence
+
+- Natural-language resolve ranks exact compiler identities using the existing semantic tables, trigram FTS, compiler neighbors, declaration metadata, and bounded source text. No embedding dependency or additional persisted index was added; the read-only frozen database remains 70,369,280 bytes.
+- Ranked candidates expose scores and field-specific match reasons. Exact `canonicalKey` lookup bypasses lexical ranking, and bare overloaded names return bounded ambiguity without a selected identity.
+- All six frozen discovery targets are in the top five at ranks 1, 1, 4, 5, 1, and 1. Both deliberate ambiguity questions pass, and every Phase 1–2 assertion remains green.
+- Two normalized frozen-corpus runs are deterministic and pass all 30 Phase 1–3 questions. Median latency is 1,510.277 ms, p95 latency is 2,697.827 ms, median response size is 24,709 bytes, and maximum response size is 226,428 bytes.
+- Persisted Phase 3 result: `benchmarks/repository-intelligence/results/phase3.json` (`sha256:24ddcc256864a21d99d6f738a1e61745abe12a9afe54f4c741f05d0e6d5608de`).
+- Branch CLI and IDEA plugin `0.16.1-9-g460487ec` were installed from the verified Phase 3 worktree after force-stopping PID 77605; the golden runtime reopened only the frozen root and reached `READY` on PID 93288.

@@ -329,7 +329,8 @@ fn repository_paths_carry_exact_identity_occurrences_and_derivations() {
                 (4, 'callable:buildSemanticGraphSnapshot', 1, NULL, 'FUNCTION', 'buildSemanticGraphSnapshot', 'sample.buildSemanticGraphSnapshot', 'sample.buildSemanticGraphSnapshot|-|||0', NULL, 210, 400, 20),
                 (5, 'local:hash', 1, 4, 'PROPERTY', 'hash', NULL, NULL, NULL, 250, 300, 25),
                 (6, 'callable:SemanticGraphSha256.parse', 1, 2, 'MEMBER_FUNCTION', 'parse', 'sample.SemanticGraphSha256.Companion.parse', 'sample.SemanticGraphSha256.Companion.parse|-||kotlin.String|0', 1, 40, 80, 4),
-                (7, 'callable:calls', 1, NULL, 'FUNCTION', 'calls', 'sample.calls', 'sample.calls|-|||0', NULL, 410, 420, 41);
+                (7, 'callable:calls', 1, NULL, 'FUNCTION', 'calls', 'sample.calls', 'sample.calls|-|||0', NULL, 410, 420, 41),
+                (8, 'callable:other.parse', 1, NULL, 'FUNCTION', 'parse', 'sample.parse', 'sample.parse|-||kotlin.String|0', 1, 430, 440, 43);
             INSERT INTO semantic_edge_occurrences
                 (id, source_id, target_id, source_file_id, kind, context, resolved_target_id, start_offset, end_offset, line)
                 VALUES
@@ -460,6 +461,89 @@ fn repository_paths_carry_exact_identity_occurrences_and_derivations() {
         false
     );
     assert!(remaining_evidence["result"]["continuation"].is_null());
+
+    let (_, discovery) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "discovery",
+            "method": "repository/query",
+            "params": {
+                "question": "Find the function that builds a semantic graph snapshot.",
+                "intent": "resolve",
+                "scope": {"language": "kotlin"},
+                "limits": {"depth": 6, "results": 10, "evidence": 5}
+            }
+        }),
+    );
+    assert_eq!(discovery["result"]["status"], "ANSWERED", "{discovery:#}");
+    assert_eq!(discovery["result"]["queryPlan"]["discovery"], "LEXICAL");
+    assert_eq!(
+        discovery["result"]["candidates"][0]["name"],
+        "buildSemanticGraphSnapshot"
+    );
+    assert!(
+        discovery["result"]["candidates"][0]["matchReasons"]
+            .as_array()
+            .is_some_and(|reasons| !reasons.is_empty())
+    );
+
+    let canonical_key = discovery["result"]["candidates"][0]["canonicalKey"]
+        .as_str()
+        .expect("discovery candidate has canonical identity");
+    let (_, exact_key) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "exact-key",
+            "method": "repository/query",
+            "params": {
+                "question": "This prose must not affect exact-key lookup.",
+                "intent": "resolve",
+                "canonicalKey": canonical_key,
+                "scope": {"language": "kotlin"},
+                "limits": {"depth": 6, "results": 10, "evidence": 5}
+            }
+        }),
+    );
+    assert_eq!(exact_key["result"]["status"], "ANSWERED", "{exact_key:#}");
+    assert_eq!(exact_key["result"]["queryPlan"]["discovery"], "EXACT_KEY");
+    assert_eq!(
+        exact_key["result"]["selectedIdentity"],
+        serde_json::Value::String(canonical_key.to_string())
+    );
+    assert_eq!(
+        exact_key["result"]["candidates"].as_array().map(Vec::len),
+        Some(1)
+    );
+
+    let (_, ambiguous) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "ambiguous",
+            "method": "repository/query",
+            "params": {
+                "question": "Resolve parse.",
+                "intent": "resolve",
+                "scope": {"language": "kotlin"},
+                "limits": {"depth": 6, "results": 10, "evidence": 5}
+            }
+        }),
+    );
+    assert_eq!(ambiguous["result"]["status"], "AMBIGUOUS", "{ambiguous:#}");
+    assert!(ambiguous["result"]["selectedIdentity"].is_null());
+    assert!(
+        ambiguous["result"]["candidates"]
+            .as_array()
+            .is_some_and(|candidates| candidates.len() == 2)
+    );
 
     let (_, wrong_direction) = rpc(
         &home,

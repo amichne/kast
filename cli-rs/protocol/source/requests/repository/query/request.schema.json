@@ -30,6 +30,9 @@
     "params": {
       "additionalProperties": false,
       "properties": {
+        "canonicalKey": {
+          "type": "string"
+        },
         "evidenceContinuation": {
           "additionalProperties": false,
           "properties": {
@@ -79,7 +82,9 @@
             "resolve",
             "path",
             "incoming_impact",
-            "outgoing_impact"
+            "outgoing_impact",
+            "architecture",
+            "context_relationship"
           ],
           "type": "string"
         },

@@ -70,6 +70,26 @@ occurrence id. A truncated edge returns an identity-bound
 `evidenceContinuation`; submitting it to the same request pages the remaining
 occurrences without replaying or skipping evidence.
 
+## Natural-language discovery
+
+Resolve requests rank the existing compiler symbol rows rather than creating a
+second discovery authority. Deterministic lexical tokens cover declaration
+names, qualified names, signatures, parameter, receiver, and return types,
+annotations, module and source-set scope, compiler neighbors, the existing
+trigram FTS table, and bounded declaration or KDoc text. A small closed
+vocabulary maps repository language such as relationship, endpoint, hash, and
+persist to the compiler model's terms.
+
+Candidates retain their exact canonical identities and expose stable ranks,
+scores, and field-specific match reasons. A supplied `canonicalKey` bypasses
+lexical discovery. Bare overloaded names and tied best candidates produce
+bounded `AMBIGUOUS` results without selecting an identity. No embeddings,
+dependency, or additional persisted index are involved.
+
+On the frozen Phase 3 corpus, all six discovery targets occur within the top
+five at ranks 1, 1, 4, 5, 1, and 1. Both deliberate ambiguity questions remain
+ambiguous, while every Phase 2 exact-key behavior remains unchanged.
+
 ## Frozen baseline
 
 The benchmark owns two detached worktrees at commit

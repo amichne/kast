@@ -3,6 +3,7 @@
   "jsonrpc": "2.0",
   "method": "repository/query",
   "params": {
+    "canonicalKey": "example-canonicalKey",
     "evidenceContinuation": {
       "afterOccurrenceId": 1,
       "context": "example-context",
@@ -11,7 +12,7 @@
       "sourceKey": "example-sourceKey",
       "targetKey": "example-targetKey"
     },
-    "intent": "outgoing_impact",
+    "intent": "context_relationship",
     "limits": {
       "depth": 2,
       "evidence": 1,

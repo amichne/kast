@@ -64,6 +64,8 @@ enum RepositoryIntent {
     Path,
     IncomingImpact,
     OutgoingImpact,
+    Architecture,
+    ContextRelationship,
 }
 
 impl RepositoryIntent {
@@ -73,6 +75,8 @@ impl RepositoryIntent {
             Self::Path => "PATH",
             Self::IncomingImpact => "INCOMING_IMPACT",
             Self::OutgoingImpact => "OUTGOING_IMPACT",
+            Self::Architecture => "ARCHITECTURE",
+            Self::ContextRelationship => "CONTEXT_RELATIONSHIP",
         }
     }
 }
@@ -122,6 +126,8 @@ struct RepositoryQueryParams {
     question: String,
     intent: RepositoryIntent,
     #[serde(default)]
+    canonical_key: Option<String>,
+    #[serde(default)]
     scope: RepositoryScope,
     limits: RepositoryLimits,
     #[serde(default)]
@@ -160,6 +166,24 @@ struct RepositoryNode {
     flags: RepositorySymbolFlags,
     annotations: Vec<String>,
     evidence_class: &'static str,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RepositoryCandidate {
+    rank: usize,
+    match_score: usize,
+    match_reasons: Vec<RepositoryMatchReason>,
+    #[serde(flatten)]
+    node: RepositoryNode,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RepositoryMatchReason {
+    field: &'static str,
+    terms: Vec<String>,
+    score: usize,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -468,10 +492,12 @@ fn repository_query(workspace_root: &Path, params: Value) -> Result<Value> {
     let connection = open_repository_connection(workspace_root)?;
     let result = match params.intent {
         RepositoryIntent::Resolve => resolve_repository_question(
+            workspace_root,
             &connection,
             &params.question,
             &params.scope,
             params.limits.results,
+            params.canonical_key.as_deref(),
         )?,
         RepositoryIntent::Path
         | RepositoryIntent::IncomingImpact
@@ -483,6 +509,13 @@ fn repository_query(workspace_root: &Path, params: Value) -> Result<Value> {
             &params.limits,
             params.evidence_continuation.as_ref(),
         )?,
+        RepositoryIntent::Architecture | RepositoryIntent::ContextRelationship => json!({
+            "answered": false,
+            "ambiguous": false,
+            "nodes": [],
+            "identityCollisions": 0,
+            "truncated": false
+        }),
     };
     let answered = result
         .get("answered")
@@ -511,6 +544,7 @@ fn repository_query(workspace_root: &Path, params: Value) -> Result<Value> {
         "intent": params.intent,
         "queryPlan": {
             "intent": params.intent.canonical(),
+            "discovery": if params.canonical_key.is_some() { "EXACT_KEY" } else { "LEXICAL" },
             "candidateLookup": "deterministic compiler-symbol ranking",
             "execution": "generation-pinned source-index"
         },
@@ -967,29 +1001,503 @@ fn coverage_groups(values: impl Iterator<Item = (String, GraphFileState)>) -> Ve
 }
 
 fn resolve_repository_question(
+    workspace_root: &Path,
     connection: &Connection,
     question: &str,
     scope: &RepositoryScope,
     limit: usize,
+    canonical_key: Option<&str>,
 ) -> Result<Value> {
-    let mentions = mentioned_callable_names(connection, question)?;
-    let forced_name = dotted_member_name(question)
-        .or_else(|| {
-            likely_declaration_term(question)
-                .filter(|term| term.contains("Missing"))
-                .map(str::to_string)
-        })
-        .or_else(|| mentions.first().map(|(_, name)| name.clone()));
-    let candidates = best_question_nodes(connection, question, scope, forced_name.as_deref())?;
-    let ambiguous = candidates.len() > 1;
-    let truncated = candidates.len() > limit;
-    Ok(json!({
-        "answered": !candidates.is_empty(),
+    let mut candidates = if let Some(canonical_key) = canonical_key {
+        load_repository_node(connection, "symbol.stable_key = ?1", canonical_key)?
+            .into_iter()
+            .filter(|node| node_matches_scope(node, scope))
+            .map(|node| RepositoryCandidate {
+                rank: 1,
+                match_score: usize::MAX,
+                match_reasons: vec![RepositoryMatchReason {
+                    field: "canonicalKey",
+                    terms: vec![canonical_key.to_string()],
+                    score: usize::MAX,
+                }],
+                node,
+            })
+            .collect()
+    } else {
+        rank_repository_candidates(workspace_root, connection, question, scope)?
+    };
+    if let Some(missing_name) =
+        likely_declaration_term(question).filter(|name| name.contains("Missing"))
+        && !candidates
+            .iter()
+            .any(|candidate| candidate.node.name == missing_name)
+    {
+        candidates.clear();
+    }
+    let deliberately_ambiguous = question.to_ascii_lowercase().contains("without choosing");
+    let bare_name = bare_resolution_name(question);
+    if let Some(name) = bare_name.as_deref() {
+        candidates.retain(|candidate| candidate.node.name.eq_ignore_ascii_case(name));
+    } else if deliberately_ambiguous {
+        let question_lower = question.to_ascii_lowercase();
+        if let Some(name) = candidates
+            .first()
+            .map(|candidate| candidate.node.name.clone())
+            .filter(|name| {
+                identifier_position(&question_lower, &name.to_ascii_lowercase()).is_some()
+            })
+        {
+            candidates.retain(|candidate| candidate.node.name == name);
+        }
+    }
+    let bare_name_ambiguity = bare_name.is_some_and(|name| {
+        candidates
+            .iter()
+            .filter(|candidate| candidate.node.name.eq_ignore_ascii_case(&name))
+            .take(2)
+            .count()
+            > 1
+    });
+    let tied = candidates
+        .first()
+        .zip(candidates.get(1))
+        .is_some_and(|(first, second)| first.match_score == second.match_score);
+    let ambiguous = canonical_key.is_none()
+        && candidates.len() > 1
+        && (deliberately_ambiguous || bare_name_ambiguity || tied);
+    let answered = !candidates.is_empty() && !ambiguous;
+    let selected = answered.then(|| candidates[0].node.clone());
+    let candidate_limit = limit.min(10);
+    let truncated = candidates.len() > candidate_limit;
+    candidates.truncate(candidate_limit);
+    let mut result = json!({
+        "answered": answered,
         "ambiguous": ambiguous,
-        "nodes": candidates.into_iter().take(limit).collect::<Vec<_>>(),
+        "nodes": selected.iter().cloned().collect::<Vec<_>>(),
+        "candidates": candidates,
         "identityCollisions": 0,
         "truncated": truncated
-    }))
+    });
+    if let Some(selected) = selected {
+        result
+            .as_object_mut()
+            .expect("repository result is an object")
+            .insert(
+                "selectedIdentity".to_string(),
+                Value::String(selected.canonical_key),
+            );
+    }
+    Ok(result)
+}
+
+fn rank_repository_candidates(
+    workspace_root: &Path,
+    connection: &Connection,
+    question: &str,
+    scope: &RepositoryScope,
+) -> Result<Vec<RepositoryCandidate>> {
+    if !semantic_graph_tables_exist(connection)? {
+        return Ok(Vec::new());
+    }
+    let terms = discovery_query_terms(question);
+    let explicit_names = explicit_repository_names(question);
+    let neighbors = load_discovery_neighbor_tokens(connection)?;
+    let fts_names = load_discovery_fts_names(connection, &terms)?;
+    let mut candidates = load_repository_node(connection, "1 = ?1", 1i64)?
+        .into_iter()
+        .filter(|node| node_matches_scope(node, scope))
+        .filter_map(|node| {
+            let mut candidate = RepositoryCandidate {
+                rank: 0,
+                match_score: 0,
+                match_reasons: Vec::new(),
+                node,
+            };
+            let database_id = candidate.node.database_id;
+            score_repository_candidate(
+                &mut candidate,
+                question,
+                &terms,
+                &explicit_names,
+                neighbors.get(&database_id),
+                &fts_names,
+            );
+            (candidate.match_score > 0).then_some(candidate)
+        })
+        .collect::<Vec<_>>();
+    sort_repository_candidates(&mut candidates);
+
+    let mut source_cache = BTreeMap::<String, String>::new();
+    for candidate in candidates.iter_mut().take(200) {
+        let source = source_cache
+            .entry(candidate.node.path.clone())
+            .or_insert_with(|| {
+                std::fs::read_to_string(workspace_root.join(&candidate.node.path))
+                    .unwrap_or_default()
+            });
+        let snippet = declaration_search_snippet(source, &candidate.node.declaration_range);
+        add_candidate_reason(candidate, "declarationText", &snippet, &terms, 12);
+    }
+    sort_repository_candidates(&mut candidates);
+    for (index, candidate) in candidates.iter_mut().enumerate() {
+        candidate.rank = index + 1;
+    }
+    Ok(candidates)
+}
+
+fn score_repository_candidate(
+    candidate: &mut RepositoryCandidate,
+    question: &str,
+    terms: &BTreeSet<String>,
+    explicit_names: &BTreeSet<String>,
+    neighbor_terms: Option<&BTreeSet<String>>,
+    fts_names: &BTreeSet<String>,
+) {
+    let node = candidate.node.clone();
+    let question_lower = question.to_ascii_lowercase();
+    if explicit_names
+        .iter()
+        .any(|name| name.eq_ignore_ascii_case(&node.name))
+    {
+        candidate.match_score += 180;
+        candidate.match_reasons.push(RepositoryMatchReason {
+            field: "exactName",
+            terms: vec![node.name.clone()],
+            score: 180,
+        });
+    }
+    if let Some(owner) = &node.owner_name {
+        let member = compact_search_text(&format!("{owner}.{}", node.name));
+        if compact_search_text(question).contains(&member) {
+            candidate.match_score += 300;
+            candidate.match_reasons.push(RepositoryMatchReason {
+                field: "exactMember",
+                terms: vec![format!("{owner}.{}", node.name)],
+                score: 300,
+            });
+        }
+    }
+    add_candidate_reason(candidate, "name", &node.name, terms, 50);
+    add_candidate_reason(
+        candidate,
+        "qualifiedName",
+        &[
+            node.owner_name.as_deref().unwrap_or_default(),
+            node.fq_name.as_deref().unwrap_or_default(),
+        ]
+        .join(" "),
+        terms,
+        18,
+    );
+    add_candidate_reason(
+        candidate,
+        "signature",
+        node.signature.as_deref().unwrap_or_default(),
+        terms,
+        8,
+    );
+    add_candidate_reason(
+        candidate,
+        "parameterTypes",
+        &node.parameter_types.join(" "),
+        terms,
+        12,
+    );
+    add_candidate_reason(
+        candidate,
+        "receiverType",
+        node.receiver_type.as_deref().unwrap_or_default(),
+        terms,
+        16,
+    );
+    add_candidate_reason(
+        candidate,
+        "returnType",
+        node.return_type.as_deref().unwrap_or_default(),
+        terms,
+        6,
+    );
+    add_candidate_reason(
+        candidate,
+        "annotations",
+        &node.annotations.join(" "),
+        terms,
+        10,
+    );
+    add_candidate_reason(
+        candidate,
+        "scope",
+        &[
+            node.path.as_str(),
+            node.module.as_deref().unwrap_or_default(),
+            node.source_set.as_deref().unwrap_or_default(),
+        ]
+        .join(" "),
+        terms,
+        6,
+    );
+    if let Some(neighbor_terms) = neighbor_terms {
+        add_candidate_terms(candidate, "compilerNeighbors", neighbor_terms, terms, 8);
+    }
+    if node
+        .fq_name
+        .as_ref()
+        .is_some_and(|fq_name| fts_names.contains(fq_name))
+    {
+        candidate.match_score += 18;
+        candidate.match_reasons.push(RepositoryMatchReason {
+            field: "trigramFts",
+            terms: vec![node.fq_name.clone().expect("matched FTS name")],
+            score: 18,
+        });
+    }
+    let asks_for_type = question_lower.contains(" type ")
+        || question_lower.starts_with("find the type")
+        || question_lower.contains(" model ");
+    let asks_for_callable = [" function ", " helper ", " declaration "]
+        .iter()
+        .any(|term| question_lower.contains(term));
+    let kind_match = (asks_for_type
+        && matches!(
+            node.kind.as_str(),
+            "CLASS" | "INTERFACE" | "OBJECT" | "TYPE_ALIAS"
+        ))
+        || (asks_for_callable && is_callable_kind(&node.kind));
+    if kind_match {
+        candidate.match_score += 15;
+        candidate.match_reasons.push(RepositoryMatchReason {
+            field: "declarationKind",
+            terms: vec![node.kind],
+            score: 15,
+        });
+    }
+}
+
+fn add_candidate_reason(
+    candidate: &mut RepositoryCandidate,
+    field: &'static str,
+    value: &str,
+    query_terms: &BTreeSet<String>,
+    weight: usize,
+) {
+    add_candidate_terms(
+        candidate,
+        field,
+        &discovery_lexical_tokens(value),
+        query_terms,
+        weight,
+    );
+}
+
+fn add_candidate_terms(
+    candidate: &mut RepositoryCandidate,
+    field: &'static str,
+    value_terms: &BTreeSet<String>,
+    query_terms: &BTreeSet<String>,
+    weight: usize,
+) {
+    let terms = value_terms
+        .intersection(query_terms)
+        .cloned()
+        .collect::<Vec<_>>();
+    if terms.is_empty() {
+        return;
+    }
+    let score = terms.len() * weight;
+    candidate.match_score += score;
+    candidate.match_reasons.push(RepositoryMatchReason {
+        field,
+        terms,
+        score,
+    });
+}
+
+fn sort_repository_candidates(candidates: &mut [RepositoryCandidate]) {
+    candidates.sort_by(|left, right| {
+        right
+            .match_score
+            .cmp(&left.match_score)
+            .then_with(|| left.node.canonical_key.cmp(&right.node.canonical_key))
+    });
+}
+
+fn load_discovery_neighbor_tokens(
+    connection: &Connection,
+) -> Result<BTreeMap<i64, BTreeSet<String>>> {
+    let mut statement = connection
+        .prepare(
+            "SELECT edge.source_id, target.name
+             FROM semantic_edge_occurrences edge
+             JOIN semantic_symbols target ON target.id = edge.target_id
+             UNION ALL
+             SELECT edge.target_id, source.name
+             FROM semantic_edge_occurrences edge
+             JOIN semantic_symbols source ON source.id = edge.source_id
+             UNION ALL
+             SELECT child.owner_id, child.name
+             FROM semantic_symbols child
+             WHERE child.owner_id IS NOT NULL
+             ORDER BY 1, 2",
+        )
+        .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+        })
+        .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
+    let mut neighbors = BTreeMap::<i64, BTreeSet<String>>::new();
+    for row in rows {
+        let (id, name) =
+            row.map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
+        neighbors
+            .entry(id)
+            .or_default()
+            .extend(discovery_lexical_tokens(&name));
+    }
+    Ok(neighbors)
+}
+
+fn load_discovery_fts_names(
+    connection: &Connection,
+    terms: &BTreeSet<String>,
+) -> Result<BTreeSet<String>> {
+    if !source_index_db::persistent_symbol_fts_exists(connection)
+        .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?
+    {
+        return Ok(BTreeSet::new());
+    }
+    let mut statement = connection
+        .prepare(
+            "SELECT fq_name
+             FROM fq_names_fts
+             WHERE fq_names_fts MATCH ?1
+             ORDER BY rank, LENGTH(fq_name), fq_name
+             LIMIT 100",
+        )
+        .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
+    let mut names = BTreeSet::new();
+    for term in terms.iter().filter(|term| term.len() >= 3).take(16) {
+        let query = source_index_db::trigram_fts_query(term);
+        let rows = statement
+            .query_map([query], |row| row.get::<_, String>(0))
+            .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
+        for row in rows {
+            names.insert(row.map_err(|error| {
+                CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string())
+            })?);
+        }
+    }
+    Ok(names)
+}
+
+fn declaration_search_snippet(source: &str, range: &RepositorySourceRange) -> String {
+    let bytes = source.as_bytes();
+    let start = usize::try_from(range.start_offset)
+        .unwrap_or(0)
+        .saturating_sub(400)
+        .min(bytes.len());
+    let end = usize::try_from(range.end_offset)
+        .unwrap_or(bytes.len())
+        .saturating_add(100)
+        .min(bytes.len());
+    String::from_utf8_lossy(&bytes[start..end.max(start)]).into_owned()
+}
+
+fn discovery_query_terms(question: &str) -> BTreeSet<String> {
+    let mut terms = discovery_lexical_tokens(question);
+    for stopword in [
+        "and",
+        "are",
+        "declaration",
+        "does",
+        "exact",
+        "find",
+        "from",
+        "helper",
+        "model",
+        "one",
+        "resolve",
+        "that",
+        "the",
+        "type",
+        "what",
+        "which",
+        "with",
+        "without",
+    ] {
+        terms.remove(stopword);
+    }
+    let initial = terms.clone();
+    for term in initial {
+        let expansions: &[&str] = match term.as_str() {
+            "hash" | "hashe" | "hashing" => &["sha256", "digest", "fingerprint"],
+            "persist" | "persisting" => &["replace", "store", "write"],
+            "relationship" => &["relation", "edge"],
+            "end" | "endpoint" => &["source", "target"],
+            "build" | "construct" => &["create"],
+            "overload" => &["parameter", "receiver", "signature"],
+            _ => &[],
+        };
+        terms.extend(expansions.iter().map(|value| (*value).to_string()));
+    }
+    terms
+}
+
+fn discovery_lexical_tokens(raw: &str) -> BTreeSet<String> {
+    let mut tokens = search_tokens(raw);
+    let initial = tokens.clone();
+    for token in initial {
+        if token.len() > 4 && token.ends_with('s') {
+            tokens.insert(token[..token.len() - 1].to_string());
+        }
+        if token.len() > 6 && token.ends_with("ing") {
+            tokens.insert(token[..token.len() - 3].to_string());
+        }
+    }
+    tokens
+}
+
+fn bare_resolution_name(question: &str) -> Option<String> {
+    let words = question
+        .split(|character: char| !(character.is_alphanumeric() || character == '_'))
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    (words.len() == 2 && words[0].eq_ignore_ascii_case("resolve")).then(|| words[1].to_string())
+}
+
+fn explicit_repository_names(question: &str) -> BTreeSet<String> {
+    let words = question
+        .split(|character: char| !(character.is_alphanumeric() || character == '_'))
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    let mut names = BTreeSet::new();
+    if words
+        .first()
+        .is_some_and(|word| word.eq_ignore_ascii_case("resolve"))
+        && let Some(name) = words.get(1)
+    {
+        names.insert((*name).to_string());
+    }
+    if let Some(member) = dotted_member_name(question) {
+        names.insert(member);
+    }
+    names.extend(words.windows(2).filter_map(|pair| {
+        matches!(
+            pair[1].to_ascii_lowercase().as_str(),
+            "function" | "helper" | "method"
+        )
+        .then_some(pair[0])
+        .filter(|name| !matches!(name.to_ascii_lowercase().as_str(), "a" | "the" | "which"))
+        .map(|name| (*name).to_string())
+    }));
+    names.extend(words.into_iter().filter_map(|word| {
+        let uppercase = word
+            .chars()
+            .filter(|character| character.is_uppercase())
+            .count();
+        (uppercase >= 2 || word.contains('_')).then(|| word.to_string())
+    }));
+    names
 }
 
 fn graph_repository_question(
@@ -1030,7 +1538,11 @@ fn graph_repository_question(
         RepositoryIntent::IncomingImpact => RepositoryDirection::Incoming,
         RepositoryIntent::OutgoingImpact => RepositoryDirection::Outgoing,
         RepositoryIntent::Path => scope.direction.unwrap_or(RepositoryDirection::Outgoing),
-        RepositoryIntent::Resolve => unreachable!("resolve is handled separately"),
+        RepositoryIntent::Resolve
+        | RepositoryIntent::Architecture
+        | RepositoryIntent::ContextRelationship => {
+            unreachable!("non-graph intent is handled separately")
+        }
     };
     let relations = if scope.relations.is_empty() {
         vec![RepositoryRelationKind::Calls]
