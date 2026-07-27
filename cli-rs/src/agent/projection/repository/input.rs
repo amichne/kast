@@ -284,7 +284,7 @@ impl AgentRepositoryProjectionInput {
             .collect::<Vec<_>>();
         continuations.sort();
         continuations.dedup();
-        let completeness = if self.truncated {
+        let completeness = if self.truncated || !self.coverage.complete {
             AgentRepositoryCardinalityCompleteness::LowerBound
         } else if matches!(
             self.intent,

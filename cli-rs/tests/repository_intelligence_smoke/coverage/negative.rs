@@ -144,6 +144,50 @@ fn repository_partial_coverage_qualifies_positive_answers_truthfully() {
         qualification.contains("coverage is incomplete"),
         "{response:#}"
     );
+
+    let agent_output = kast(&home, &config_home)
+        .args([
+            "agent",
+            "repository",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--question",
+            "Resolve semanticGraphOperation.",
+            "--intent",
+            "resolve",
+            "--canonical-key",
+            "callable:semanticGraphOperation",
+            "--language",
+            "kotlin",
+            "--results",
+            "10",
+            "--evidence",
+            "2",
+        ])
+        .output()
+        .expect("partial-coverage agent projection");
+    assert!(
+        agent_output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&agent_output.stdout),
+        String::from_utf8_lossy(&agent_output.stderr)
+    );
+    let agent_raw = String::from_utf8(agent_output.stdout).expect("partial-coverage agent UTF-8");
+    let agent: serde_json::Value =
+        toon_format::decode_default(agent_raw.trim()).expect("partial-coverage agent TOON");
+    assert_eq!(
+        serde_json::json!({
+            "coverageComplete": agent["result"]["coverage"]["complete"],
+            "truncated": agent["result"]["truncated"],
+            "completeness": agent["result"]["cardinality"]["identities"]["completeness"]
+        }),
+        serde_json::json!({
+            "coverageComplete": false,
+            "truncated": false,
+            "completeness": "LOWER_BOUND"
+        }),
+        "{agent:#}"
+    );
 }
 
 #[test]
