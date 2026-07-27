@@ -139,6 +139,11 @@ fn repository_query_at_snapshot(
             "metric descending, canonicalKey ascending"
         } else if params.intent == RepositoryIntent::ContextRelationship {
             "source priority, score descending, sourcePath ascending, targetKey ascending"
+        } else if params.intent == RepositoryIntent::Resolve
+            && params.canonical_key.is_none()
+            && params.question.natural_language().is_some()
+        {
+            "matchScore descending, canonicalKey ascending"
         } else {
             "canonicalKey ascending"
         },

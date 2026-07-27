@@ -53,6 +53,39 @@ mod regex_discovery {
     }
 
     #[test]
+    fn repository_discovery_reports_syntax_specific_ordering() {
+        let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+        seed_repository_graph(&fixture);
+
+        let (_, natural_language) = rpc(
+            &home,
+            &config_home,
+            &workspace,
+            query(
+                "Find the function that builds a semantic graph snapshot.",
+                None,
+            ),
+        );
+        let (_, regex) = rpc(
+            &home,
+            &config_home,
+            &workspace,
+            query("parse", Some("regex")),
+        );
+
+        assert_eq!(
+            serde_json::json!({
+                "naturalLanguage": natural_language["result"]["ordering"],
+                "regex": regex["result"]["ordering"]
+            }),
+            serde_json::json!({
+                "naturalLanguage": "matchScore descending, canonicalKey ascending",
+                "regex": "canonicalKey ascending"
+            })
+        );
+    }
+
+    #[test]
     fn unique_regex_resolves_through_the_agent_cli() {
         let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
         seed_repository_graph(&fixture);
