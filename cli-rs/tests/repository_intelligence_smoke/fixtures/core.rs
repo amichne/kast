@@ -47,10 +47,13 @@ fn coverage_fixture_with_file_count(
         .chars()
         .take(80)
         .collect::<String>();
-    let database = data
-        .join("local")
-        .join(format!("{sanitized}--repository-intelligence"))
-        .join("cache/source-index.db");
+    let database = if workspace.starts_with(std::env::temp_dir()) {
+        workspace.join(".gradle/kast/cache/source-index.db")
+    } else {
+        data.join("local")
+            .join(format!("{sanitized}--repository-intelligence"))
+            .join("cache/source-index.db")
+    };
     let fixture = WorkspaceIndexFixture::at_database_path(&workspace, &database);
     fixture.seed_high_cardinality_sources(file_count);
     let file_count = i64::try_from(file_count).expect("fixture file count");
