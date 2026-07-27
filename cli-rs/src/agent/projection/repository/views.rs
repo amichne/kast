@@ -105,13 +105,17 @@ fn project_selected_repository(
         cardinality: projection.cardinality,
         selected_identity: projection.selected_identity.clone(),
         truncated: projection.truncated,
-        qualification: projection.qualification,
+        qualification: projection.qualification.clone(),
     });
     result_envelope(
         method,
         AgentRepositorySelectedResult {
             result_type: "KAST_AGENT_REPOSITORY_SELECTION",
             ok: true,
+            status: projection.status,
+            intent: projection.intent,
+            truncated: projection.truncated,
+            qualification: projection.qualification,
             selected_identity: projection.selected_identity,
             summary,
             coverage: selected(AgentRepositoryField::Coverage).then_some(projection.coverage),

@@ -93,6 +93,11 @@ struct AgentRepositorySelectedResult {
     #[serde(rename = "type")]
     result_type: &'static str,
     ok: bool,
+    status: AgentRepositoryStatus,
+    intent: AgentRepositoryIntent,
+    truncated: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    qualification: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     selected_identity: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

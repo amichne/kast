@@ -36,6 +36,39 @@
     }
 
     #[test]
+    fn repository_selected_views_preserve_closed_outcome() {
+        for status in ["EMPTY", "QUALIFIED_EMPTY", "AMBIGUOUS"] {
+            let mut result = repository_result("resolve", status);
+            if status == "AMBIGUOUS" {
+                result["candidates"] =
+                    json!([repository_candidate("callable:one.answer", "answer")]);
+            }
+            let selected = project_repository_envelope(
+                result_envelope("repository/query".to_string(), result),
+                AgentResultView::Fields(vec![AgentRepositoryField::Continuation]),
+            )
+            .result
+            .expect("selected repository projection");
+
+            assert_eq!(selected["status"], status, "{selected}");
+            assert_eq!(selected["intent"], "resolve", "{selected}");
+            assert_eq!(selected["truncated"], false, "{selected}");
+            if status == "QUALIFIED_EMPTY" {
+                assert!(
+                    selected["qualification"]
+                        .as_str()
+                        .is_some_and(|qualification| !qualification.is_empty()),
+                    "{selected}"
+                );
+            } else {
+                assert!(selected.get("qualification").is_none(), "{selected}");
+            }
+            assert!(selected.get("identities").is_none(), "{selected}");
+            assert!(selected.get("coverage").is_none(), "{selected}");
+        }
+    }
+
+    #[test]
     fn repository_projection_preserves_derivations_and_every_continuation() {
         let derivation = json!({
             "rule": "gradle_project_dependency",
