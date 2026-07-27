@@ -90,7 +90,9 @@ fn rank_repository_candidates(
     }
     let neighbors = load_discovery_neighbor_tokens(connection)?;
     let nodes = execution_scope.admit_nodes(load_repository_node(connection, "1 = ?1", 1i64)?);
+    let returned_by = returning_callable_index(&nodes);
     let query_terms = discovery_query_terms(question);
+    let discovery_intent = crate::symbol_query::SymbolDiscoveryIntent::parse(question);
     let compact_question = compact_search_text(question);
     let documents = nodes
         .iter()
@@ -139,6 +141,10 @@ fn rank_repository_candidates(
                     value: node.return_type.clone().unwrap_or_default(),
                 },
                 SymbolDiscoveryField {
+                    name: "returningCallables",
+                    value: returning_callables(&returned_by, node),
+                },
+                SymbolDiscoveryField {
                     name: "annotations",
                     value: node.annotations.join(" "),
                 },
@@ -164,8 +170,9 @@ fn rank_repository_candidates(
         .collect();
     let preferred_names = explicit_repository_names(question);
     let ranked = rank_symbol_discovery(
-        repository_resolution_name(question).as_deref(),
+        repository_resolution_name(question, discovery_intent).as_deref(),
         &preferred_names,
+        discovery_intent,
         &query_terms.iter().cloned().collect::<Vec<_>>(),
         documents,
     );
@@ -296,9 +303,15 @@ fn bare_resolution_name(question: &str) -> Option<String> {
         .then(|| words[1].to_string())
 }
 
-fn repository_resolution_name(question: &str) -> Option<String> {
+fn repository_resolution_name(
+    question: &str,
+    intent: crate::symbol_query::SymbolDiscoveryIntent,
+) -> Option<String> {
     if let Some(member) = dotted_member_name(question) {
         return Some(member);
+    }
+    if intent.is_mixed() {
+        return None;
     }
     let words = question
         .split(|character: char| !(character.is_alphanumeric() || character == '_'))
@@ -315,18 +328,8 @@ fn repository_resolution_name(question: &str) -> Option<String> {
             .filter(|word| {
                 !matches!(
                     word.to_ascii_lowercase().as_str(),
-                    "a" | "an"
-                        | "declaration"
-                        | "exact"
-                        | "exactly"
-                        | "function"
-                        | "helper"
-                        | "kotlin"
-                        | "method"
-                        | "model"
-                        | "the"
-                        | "type"
-                )
+                    "a" | "an" | "declaration" | "exact" | "exactly" | "kotlin" | "the"
+                ) && crate::symbol_query::SymbolDiscoveryFamily::from_word(word).is_none()
             })
             .collect::<Vec<_>>();
         return candidates
@@ -347,37 +350,5 @@ fn repository_resolution_name(question: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-fn explicit_repository_names(question: &str) -> BTreeSet<String> {
-    let words = question
-        .split(|character: char| !(character.is_alphanumeric() || character == '_'))
-        .filter(|word| !word.is_empty())
-        .collect::<Vec<_>>();
-    let mut names = BTreeSet::new();
-    if words
-        .first()
-        .is_some_and(|word| word.eq_ignore_ascii_case("resolve"))
-        && let Some(name) = words.get(1)
-    {
-        names.insert((*name).to_string());
-    }
-    if let Some(member) = dotted_member_name(question) {
-        names.insert(member);
-    }
-    names.extend(words.windows(2).filter_map(|pair| {
-        matches!(
-            pair[1].to_ascii_lowercase().as_str(),
-            "function" | "helper" | "method"
-        )
-        .then_some(pair[0])
-        .filter(|name| !matches!(name.to_ascii_lowercase().as_str(), "a" | "the" | "which"))
-        .map(|name| (*name).to_string())
-    }));
-    names.extend(words.into_iter().filter_map(|word| {
-        let uppercase = word
-            .chars()
-            .filter(|character| character.is_uppercase())
-            .count();
-        (uppercase >= 2 || word.contains('_')).then(|| word.to_string())
-    }));
-    names
-}
+include!("query_names.rs");
+include!("return_evidence.rs");

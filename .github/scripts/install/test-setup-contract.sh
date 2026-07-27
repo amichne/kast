@@ -8,9 +8,6 @@ cargo test \
   --locked \
   --test setup_smoke
 
-grep -Fqx 'graphify-out/' "${repo_root}/.gitignore"
-grep -Fqx 'cli-rs/graphify-out/' "${repo_root}/.gitignore"
-
 if sed '/^[[:space:]]*if brew install fzf; then$/d' "${repo_root}/install.sh" |
   grep -Eq '\bbrew (tap|install|update|upgrade|reinstall)\b'; then
   printf '%s\n' 'error: bootstrap still mutates Homebrew state' >&2

@@ -74,7 +74,8 @@ struct AgentRepositoryFinding {
     graph_generation: u64,
     representative_symbols: Vec<AgentRepositoryIdentity>,
     supporting_subgraph: AgentRepositorySupportingSubgraph,
-    relation_composition: std::collections::BTreeMap<crate::cli::AgentRepositoryRelation, usize>,
+    relation_composition:
+        std::collections::BTreeMap<crate::cli::AgentRepositoryRelation, usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     cohesion: Option<f64>,
     evidence_class: String,
@@ -105,6 +106,41 @@ impl From<AgentRepositoryFindingInput> for AgentRepositoryFinding {
             cohesion: finding.cohesion,
             evidence_class: finding.evidence_class,
             derivation: finding.derivation,
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentRepositoryCompactFinding {
+    rank: usize,
+    #[serde(rename = "type")]
+    finding_type: String,
+    name: String,
+    summary: String,
+    projection: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    direction: Option<crate::cli::AgentRepositoryDirection>,
+    metric: String,
+    graph_generation: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cohesion: Option<f64>,
+    evidence_class: String,
+}
+
+impl From<AgentRepositoryFinding> for AgentRepositoryCompactFinding {
+    fn from(finding: AgentRepositoryFinding) -> Self {
+        Self {
+            rank: finding.rank,
+            finding_type: finding.finding_type,
+            name: finding.name,
+            summary: finding.summary,
+            projection: finding.projection,
+            direction: finding.direction,
+            metric: finding.metric,
+            graph_generation: finding.graph_generation,
+            cohesion: finding.cohesion,
+            evidence_class: finding.evidence_class,
         }
     }
 }

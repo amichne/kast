@@ -79,35 +79,46 @@ fn assert_context_output_views(
         "# Compiler evidence\n\nThe compiler model lives under `src/main/kotlin/sample/`.\n",
     )
     .expect("path-only context document");
-    let (_, inferred_target) = rpc(
-        home,
-        config_home,
-        workspace,
-        serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": "path-only-context",
-            "method": "repository/query",
-            "params": {
-                "question": "Which exact Kotlin model carries semantic graph hashing evidence?",
-                "intent": "context_relationship",
-                "scope": {"language": "kotlin", "sources": ["markdown"]},
-                "limits": {"depth": 6, "results": 10, "evidence": 5}
-            }
-        }),
-    );
-    assert_eq!(
-        inferred_target["result"]["status"], "ANSWERED",
-        "{inferred_target:#}"
-    );
-    assert!(
-        inferred_target["result"]["contextRelations"]
-            .as_array()
-            .is_some_and(|relations| relations.iter().any(|relation| {
-                relation["sourcePath"] == "docs/explanation/compiler-evidence.md"
-                    && relation["targetName"] == "SemanticGraphSha256"
-                    && relation["kind"] == "DOCUMENTS"
-                    && relation["evidenceClass"] == "extracted"
-            })),
-        "{inferred_target:#}"
-    );
+    for (id, question) in [
+        (
+            "path-only-kotlin-context",
+            "Which exact Kotlin model carries semantic graph hashing evidence?",
+        ),
+        (
+            "path-only-exact-context",
+            "Which exact model carries semantic graph hashing evidence?",
+        ),
+    ] {
+        let (_, inferred_target) = rpc(
+            home,
+            config_home,
+            workspace,
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "method": "repository/query",
+                "params": {
+                    "question": question,
+                    "intent": "context_relationship",
+                    "scope": {"language": "kotlin", "sources": ["markdown"]},
+                    "limits": {"depth": 6, "results": 10, "evidence": 5}
+                }
+            }),
+        );
+        assert_eq!(
+            inferred_target["result"]["status"], "ANSWERED",
+            "{inferred_target:#}"
+        );
+        assert!(
+            inferred_target["result"]["contextRelations"]
+                .as_array()
+                .is_some_and(|relations| relations.iter().any(|relation| {
+                    relation["sourcePath"] == "docs/explanation/compiler-evidence.md"
+                        && relation["targetName"] == "SemanticGraphSha256"
+                        && relation["kind"] == "DOCUMENTS"
+                        && relation["evidenceClass"] == "extracted"
+                })),
+            "{inferred_target:#}"
+        );
+    }
 }

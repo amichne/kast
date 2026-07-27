@@ -48,6 +48,16 @@ fn project_compact_repository(
     method: String,
     projection: AgentRepositoryProjection,
 ) -> AgentEnvelope {
+    let findings = projection
+        .findings
+        .into_iter()
+        .map(AgentRepositoryCompactFinding::from)
+        .collect::<Vec<_>>();
+    let finding_evidence = (!findings.is_empty()).then_some(
+        AgentRepositoryCompactFindingEvidence::OmittedInCompactView {
+            help: "Rerun this command with --fields findings or --explain for full finding evidence.",
+        },
+    );
     result_envelope(
         method,
         AgentRepositoryCompactResult {
@@ -64,7 +74,8 @@ fn project_compact_repository(
             identities: projection.identities,
             relationships: projection.relationships,
             paths: projection.paths,
-            findings: projection.findings,
+            findings,
+            finding_evidence,
             context: projection.context,
             truncated: projection.truncated,
             continuation: projection.continuation,

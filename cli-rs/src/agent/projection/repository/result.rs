@@ -54,7 +54,9 @@ struct AgentRepositoryCompactResult {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     paths: Vec<AgentRepositoryPath>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    findings: Vec<AgentRepositoryFinding>,
+    findings: Vec<AgentRepositoryCompactFinding>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    finding_evidence: Option<AgentRepositoryCompactFindingEvidence>,
     #[serde(skip_serializing_if = "AgentRepositoryContextProjection::is_empty")]
     context: AgentRepositoryContextProjection,
     truncated: bool,
@@ -65,6 +67,16 @@ struct AgentRepositoryCompactResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     qualification: Option<String>,
     schema_version: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(
+    tag = "status",
+    rename_all = "SCREAMING_SNAKE_CASE",
+    rename_all_fields = "camelCase"
+)]
+enum AgentRepositoryCompactFindingEvidence {
+    OmittedInCompactView { help: &'static str },
 }
 
 #[derive(Debug, Serialize)]

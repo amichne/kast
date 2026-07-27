@@ -151,7 +151,7 @@ fn repository_context_path_excluded(relative: &Path) -> bool {
     relative.components().any(|component| {
         matches!(
             component.as_os_str().to_str(),
-            Some(".git" | ".gradle" | "build" | "graphify-out" | "target")
+            Some(".git" | ".gradle" | "build" | "target")
         )
     })
 }

@@ -1,4 +1,4 @@
-# Kast Repository Intelligence Design
+# Repository Intelligence Benchmark Design
 
 ## Category
 
@@ -21,8 +21,9 @@ and visible evidence.
   deterministic weighted communities.
 - TOON and JSON projections already share Rust result values.
 
-Repository intelligence extends those authorities through `kast rpc`. It does
-not create a second graph, identity scheme, discovery index, or transport.
+Repository intelligence extends those authorities through the
+`repository/query` operation exposed by `kast agent repository`. It does not
+create a second graph, identity scheme, discovery index, or transport.
 
 ## Result invariants
 
@@ -74,11 +75,11 @@ occurrences without replaying or skipping evidence.
 
 Resolve requests rank the existing compiler symbol rows rather than creating a
 second discovery authority. Deterministic lexical tokens cover declaration
-names, qualified names, signatures, parameter, receiver, and return types,
-annotations, module and source-set scope, compiler neighbors, the existing
-trigram FTS table, and bounded declaration or KDoc text. A small closed
-vocabulary maps repository language such as relationship, endpoint, hash, and
-persist to the compiler model's terms.
+names, owner and qualified names, signatures, parameter, receiver, and return
+types, annotations, declaration kinds, source paths, Gradle and source-set
+scope, and compiler-neighbor names. A small closed vocabulary maps repository
+language such as relationship, endpoint, hash, and persist to the compiler
+model's terms.
 
 Candidates retain their exact canonical identities and expose stable ranks,
 scores, and field-specific match reasons. A supplied `canonicalKey` bypasses
@@ -86,9 +87,9 @@ lexical discovery. Bare overloaded names and tied best candidates produce
 bounded `AMBIGUOUS` results without selecting an identity. No embeddings,
 dependency, or additional persisted index are involved.
 
-On the frozen Phase 3 corpus, all six discovery targets occur within the top
-five at ranks 1, 1, 4, 5, 1, and 1. Both deliberate ambiguity questions remain
-ambiguous, while every Phase 2 exact-key behavior remains unchanged.
+In the admitted final capture, all six discovery targets rank first. Both
+deliberate ambiguity questions remain ambiguous, while every exact-key
+behavior remains unchanged.
 
 ## Relation-specific architecture
 
@@ -155,7 +156,7 @@ surface, or compatibility database is introduced.
 The benchmark owns two detached worktrees at commit
 `2c630d3d156574eb4548fd97df3bd61fe9deb1a6`: one for compiler-backed Kast
 indexing and one for Graphify output. Graphify 0.9.22 emitted an undirected
-13,476-node graph after its code-only refresh; that limitation is recorded
-rather than normalized away. Kast's baseline indexed all 599
+12,936-node, 26,314-edge graph for the admitted capture; that limitation is
+recorded rather than normalized away. Kast's baseline indexed all 599
 compilation-owned Kotlin files and retained the permanent exact four-hop
 `CALLS` path with source occurrences.

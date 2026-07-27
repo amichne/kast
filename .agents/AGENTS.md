@@ -13,9 +13,13 @@ Agent-only ADRs must stay out of `docs/` and out of `zensical.toml`.
 
 ## Edit rules
 
-- Do not hand-edit generated or installed skill copies unless the change is
-  intentionally to that checked-in source. Prefer authored sources under
-  `cli-rs/resources/` for Kast package material.
+- Do not hand-edit installed plugin, skill, or runtime-cache copies. The
+  `kast@kast` plugin is authored and published from
+  [amichne/kast-marketplace](https://github.com/amichne/kast-marketplace);
+  change that repository when the plugin contract changes.
+- Route natural-language repository questions through
+  `kast agent repository` and persisted topology through `kast agent graph`.
+  Read scoped `kast agent --help` before using lower-level semantic commands.
 - Keep ADRs current, source-backed, and actionable. Update an ADR in place when
   its decision changes.
 - Remove an ADR when its decision no longer affects current or future work, or
