@@ -198,44 +198,15 @@ class NativeSemanticGraphBackendTest {
     }
 
     @Test
-    fun `source scope treats an unselected workspace target as external`() = runBlocking {
-        val project = projectFixture.get()
-        val sourceFile = boundarySourceFixture.get()
-        boundaryTargetFixture.get()
-        waitUntilIndexesAreReady(project)
-        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
-
-        SqliteSourceIndexStore(storeRoot).use { store ->
-            store.ensureSchema()
-            KastPluginBackend(
-                project = project,
-                workspaceRoot = workspaceRoot,
-                limits = limits(),
-                semanticGraphStore = store,
-                psiGeneration = { 1L },
-            ).use { backend ->
-                val result = backend.semanticGraph(
-                    SemanticGraphQuery(
-                        filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
-                    ).parsed(),
-                )
-                assertTrue(result.coverage.omittedExternalTargetCount.value > 0)
-            }
-
-            val snapshot = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse("BoundarySource.kt")))
-            assertTrue(snapshot.boundarySymbols.none { symbol -> symbol.name.value == "BoundaryTarget" })
-            assertTrue(snapshot.relations.none { relation -> relation.targetKey.value.contains("BoundaryTarget") })
-        }
-    }
-
-    @Test
-    fun `source scope widens additively without a full graph refresh`() = runBlocking {
+    fun `source scope excludes unselected targets and widens additively`() = runBlocking {
         val project = projectFixture.get()
         val sourceFile = boundarySourceFixture.get()
         val targetFile = boundaryTargetFixture.get()
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
-
+        val sourcePath = SemanticGraphPath.parse(sourceFile.virtualFile.path)
+        val targetPath = SemanticGraphPath.parse(targetFile.virtualFile.path)
+        fun query(path: SemanticGraphPath) = SemanticGraphQuery(filePaths = listOf(path)).parsed()
         SqliteSourceIndexStore(storeRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
@@ -245,18 +216,14 @@ class NativeSemanticGraphBackendTest {
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
             ).use { backend ->
-                backend.semanticGraph(
-                    SemanticGraphQuery(
-                        filePaths = listOf(SemanticGraphPath.parse(targetFile.virtualFile.path)),
-                    ).parsed(),
-                )
-                backend.semanticGraph(
-                    SemanticGraphQuery(
-                        filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
-                    ).parsed(),
-                )
+                val result = backend.semanticGraph(query(sourcePath))
+                assertTrue(result.coverage.omittedExternalTargetCount.value > 0)
+                val excluded = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse("BoundarySource.kt")))
+                assertTrue(excluded.boundarySymbols.none { symbol -> symbol.name.value == "BoundaryTarget" })
+                assertTrue(excluded.relations.none { relation -> relation.targetKey.value.contains("BoundaryTarget") })
+                backend.semanticGraph(query(targetPath))
+                backend.semanticGraph(query(sourcePath))
             }
-
             val snapshot = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse("BoundarySource.kt")))
             val boundary = snapshot.boundarySymbols.single { symbol -> symbol.name.value == "BoundaryTarget" }
             assertTrue(snapshot.relations.any { relation -> relation.targetKey == boundary.canonicalKey })
