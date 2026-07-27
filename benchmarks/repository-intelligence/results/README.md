@@ -4,7 +4,7 @@ The current admitted comparison proves Kast superiority on the frozen
 repository benchmark.
 
 - Corpus commit: `2c630d3d156574eb4548fd97df3bd61fe9deb1a6`
-- Kast source commit: `43da256313b19ba3d8f7d7a6f2d66bfa1bef7613`
+- Kast source commit: `f61514693b3cfb6558c8aeca61e77e7023429447`
 - Kast graph generation: `1582`
 - Benchmark result: 42/42 questions, deterministic output, zero critical
   failures
@@ -16,7 +16,7 @@ repository benchmark.
 | Overall | 519 | 86 | 588 |
 
 The performance comparison is eligible across all 42 questions. Kast records
-15,603.663 ms total latency versus 35,293.734 ms for Graphify and wins the
+15,783.057 ms total latency versus 35,310.500 ms for Graphify and wins the
 declared total-latency comparison.
 
 ## Evidence authority

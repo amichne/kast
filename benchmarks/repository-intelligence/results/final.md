@@ -1,7 +1,7 @@
 # Kast Repository Intelligence Report
 
 - Corpus commit: `2c630d3d156574eb4548fd97df3bd61fe9deb1a6`
-- Implementation commit: `43da256313b19ba3d8f7d7a6f2d66bfa1bef7613`
+- Implementation commit: `f61514693b3cfb6558c8aeca61e77e7023429447`
 - Benchmark status: `PASS`
 - Questions: 42/42
 
@@ -967,20 +967,26 @@ Reproducible query descriptor:
 - Relation: `docs/explanation/compiler-evidence.md:7` DOCUMENTS `SemanticGraphRelation` (extracted)
 - Relation: `docs/explanation/compiler-evidence.md:7` DOCUMENTS `SemanticGraphDiagnosticEvidence` (extracted)
 - Relation: `docs/explanation/compiler-evidence.md:7` DOCUMENTS `SemanticGraphFileCoverage` (extracted)
+- Relation: `docs/explanation/compiler-evidence.md:7` DOCUMENTS `SemanticGraphRelationKind` (extracted)
+- Relation: `docs/explanation/compiler-evidence.md:7` DOCUMENTS `SemanticGraphRelationContext` (extracted)
 - Relation: `docs/how-to/explore-kotlin-code.md:9` DOCUMENTS `ExactRelationshipCardinalitySerializer` (extracted)
 - Relation: `docs/how-to/explore-kotlin-code.md:9` DOCUMENTS `KnownMinimumRelationshipCardinalitySerializer` (extracted)
+- Relation: `.agents/adr/0026-proof-carrying-relationship-coverage.md:32` DOCUMENTS `RelationshipCoverageStatus` (extracted)
 - Relation: `.agents/adr/0026-proof-carrying-relationship-coverage.md:32` DOCUMENTS `RelationshipResultEvidence` (extracted)
 - Relation: `.agents/adr/0026-proof-carrying-relationship-coverage.md:32` DOCUMENTS `RelationshipSearchCoverage` (extracted)
 - Relation: `.agents/adr/0026-proof-carrying-relationship-coverage.md:34` DOCUMENTS `CompleteRelationshipCoverageAdmission` (extracted)
 - Relation: `.agents/adr/0026-proof-carrying-relationship-coverage.md:32` DOCUMENTS `CompleteRelationshipCoverageSerializer` (extracted)
 - Relation: `.agents/adr/0026-proof-carrying-relationship-coverage.md:32` DOCUMENTS `ResumableRelationshipCoverageSerializer` (extracted)
 - Relation: `.agents/adr/0026-proof-carrying-relationship-coverage.md:32` DOCUMENTS `LimitedRelationshipCoverageSerializer` (extracted)
+- Relation: `docs/explanation/compiler-evidence.md:7` DOCUMENTS `RelationshipCoverageStatus` (extracted)
 - Relation: `docs/explanation/compiler-evidence.md:7` DOCUMENTS `RelationshipResultEvidence` (extracted)
 - Relation: `docs/explanation/compiler-evidence.md:7` DOCUMENTS `RelationshipSearchCoverage` (extracted)
 - Relation: `docs/explanation/compiler-evidence.md:7` DOCUMENTS `CompleteRelationshipCoverageSerializer` (extracted)
 - Relation: `docs/explanation/compiler-evidence.md:7` DOCUMENTS `ResumableRelationshipCoverageSerializer` (extracted)
 - Relation: `docs/explanation/compiler-evidence.md:7` DOCUMENTS `LimitedRelationshipCoverageSerializer` (extracted)
+- Relation: `docs/how-to/explore-kotlin-code.md:9` DOCUMENTS `RelationshipCoverageStatus` (extracted)
 - Relation: `docs/how-to/explore-kotlin-code.md:9` DOCUMENTS `RelationshipSearchCoverage` (extracted)
+- Relation: `.agents/adr/0025-backend-bound-opaque-selector-handles.md:42` DOCUMENTS `RelationshipCoverageStatus` (extracted)
 - Relation: `.agents/adr/0025-backend-bound-opaque-selector-handles.md:42` DOCUMENTS `RelationshipResultEvidence` (extracted)
 - Relation: `.agents/adr/0025-backend-bound-opaque-selector-handles.md:42` DOCUMENTS `RelationshipSearchCoverage` (extracted)
 - Relation: `.agents/adr/0025-backend-bound-opaque-selector-handles.md:44` DOCUMENTS `CompleteRelationshipCoverageAdmission` (extracted)
@@ -993,6 +999,7 @@ Reproducible query descriptor:
 - Relation: `docs/tutorials/first-compiler-backed-task.md:8` DOCUMENTS `RelationshipCoverageTestInputs` (extracted)
 - Relation: `docs/tutorials/first-compiler-backed-task.md:7` DOCUMENTS `RelationshipCoverageAuthority` (extracted)
 - Relation: `docs/tutorials/first-compiler-backed-task.md:7` DOCUMENTS `CompleteRelationshipCoverageAdmission` (extracted)
+- Relation: `docs/explanation/architecture.md:8` DOCUMENTS `RelationshipCoverageStatus` (extracted)
 - Relation: `docs/explanation/architecture.md:8` DOCUMENTS `RelationshipResultEvidence` (extracted)
 - Relation: `docs/explanation/architecture.md:8` DOCUMENTS `RelationshipSearchCoverage` (extracted)
 - Relation: `docs/explanation/architecture.md:9` DOCUMENTS `CompleteRelationshipCoverageAdmission` (extracted)
@@ -1002,13 +1009,6 @@ Reproducible query descriptor:
 - Relation: `docs/explanation/architecture.md:9` DOCUMENTS `IdeaRelationshipCoverageAuthority` (extracted)
 - Relation: `docs/explanation/architecture.md:9` DOCUMENTS `RelationshipCoverageAuthority` (extracted)
 - Relation: `docs/how-to/troubleshoot.md:9` DOCUMENTS `IdeaRelationshipCoverageAuthority` (extracted)
-- Relation: `docs/how-to/troubleshoot.md:9` DOCUMENTS `RelationshipCoverageAuthority` (extracted)
-- Relation: `docs/how-to/troubleshoot.md:9` DOCUMENTS `CompleteRelationshipCoverageAdmission` (extracted)
-- Relation: `.agents/adr/0031-cli-install-and-data-authority.md:41` DOCUMENTS `RelationshipModelTest` (extracted)
-- Relation: `.agents/adr/0031-cli-install-and-data-authority.md:38` DOCUMENTS `RelationshipResultEvidence` (extracted)
-- Relation: `.agents/adr/0031-cli-install-and-data-authority.md:38` DOCUMENTS `RelationshipSearchCoverage` (extracted)
-- Relation: `.agents/adr/0031-cli-install-and-data-authority.md:38` DOCUMENTS `CompleteRelationshipCoverageSerializer` (extracted)
-- Relation: `.agents/adr/0031-cli-install-and-data-authority.md:38` DOCUMENTS `ResumableRelationshipCoverageSerializer` (extracted)
 
 Source references:
 
@@ -1016,8 +1016,7 @@ Source references:
 - `.agents/adr/0025-backend-bound-opaque-selector-handles.md:44`
 - `.agents/adr/0026-proof-carrying-relationship-coverage.md:32`
 - `.agents/adr/0026-proof-carrying-relationship-coverage.md:34`
-- `.agents/adr/0031-cli-install-and-data-authority.md:38`
-- `.agents/adr/0031-cli-install-and-data-authority.md:41`
+- `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipCoverageStatus.kt:5`
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipResultEvidence.kt:11`
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipResultEvidence.kt:88`
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipResultEvidence.kt:104`
@@ -1026,11 +1025,12 @@ Source references:
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipResultEvidence.kt:152`
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipSearchCoverage.kt:8`
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:174`
+- `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:201`
+- `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:216`
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:281`
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:307`
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:325`
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:337`
-- `analysis-api/src/test/kotlin/io/github/amichne/kast/api/RelationshipModelTest.kt:29`
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaRelationshipCoverageAuthority.kt:14`
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/RelationshipCoverageAuthority.kt:6`
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/relationships/RelationshipCoverage.kt:249`

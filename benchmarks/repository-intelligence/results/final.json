@@ -6,12 +6,12 @@
   },
   "coverageSha256": "fbbacea3dfc2aca39e070d373019da11d03b0bc5e83b3a9c6073882db624dea7",
   "graphGeneration": 1582,
-  "implementationCommit": "43da256313b19ba3d8f7d7a6f2d66bfa1bef7613",
-  "kastBinary": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-benchmark-build-_fjdsvkm/target/release/kast",
+  "implementationCommit": "f61514693b3cfb6558c8aeca61e77e7023429447",
+  "kastBinary": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-benchmark-build-1ofpxr2w/target/release/kast",
   "provenance": {
     "artifact": {
-      "binaryPath": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-benchmark-build-_fjdsvkm/target/release/kast",
-      "binarySha256": "1cf07ad4e7f82ad2a243e6c6a53fd9deea213b2325e6d0a1190632df81e3d581",
+      "binaryPath": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-benchmark-build-1ofpxr2w/target/release/kast",
+      "binarySha256": "2ef1cbb57212181182ca4edcd9fe3b18cad908f3e4367f53bce660356b85c1b9",
       "buildCommand": [
         "/Users/amichne/.cargo/bin/cargo",
         "build",
@@ -22,7 +22,7 @@
         "--bin",
         "kast",
         "--target-dir",
-        "/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-benchmark-build-_fjdsvkm/target"
+        "/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-benchmark-build-1ofpxr2w/target"
       ],
       "builder": {
         "cargo": {
@@ -55,16 +55,16 @@
           "TMPDIR": "/tmp"
         }
       },
-      "sourceCommit": "43da256313b19ba3d8f7d7a6f2d66bfa1bef7613",
+      "sourceCommit": "f61514693b3cfb6558c8aeca61e77e7023429447",
       "sourceIndexPath": "/Users/amichne/.local/share/kast/state/data/workspaces/git/github.com/amichne/kast/worktrees/kast-repository-intelligence-corpus--8add60ac3132/cache/source-index.db",
       "sourceIndexSha256": "f7dc2509581975b9bc69b2f66c3098861bea93308c4b3f80ad21c746e98d6590",
       "sourceStatus": "CLEAN",
-      "sourceTreeSha256": "2d4d99948c6f542daad8e89ed52d0a9d28235a050968285ca2706c898e3298dc",
+      "sourceTreeSha256": "ded7b0a573d39c27f0d40c5c9b019e7317545aa03937878644d582425be1761e",
       "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus"
     },
     "benchmark": {
       "corpusCommit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
-      "manifestSha256": "eb510890e61dcb770f4a8a877671705521e71bb5cdcb03221355f40c8b9b9bfa",
+      "manifestSha256": "3c465d5fb9e6f5cda12a0ea0a19b8f090660a43eaed050ae386c29e6e5cc0b7e",
       "questionsSha256": "413e0253a6308ea3e1751636183f8d635eca3f837b6588b22873ad73813ca8b5",
       "rubricSha256": "655ec74077b12a9e8ea1b19f9f2eec06429dda5e7d8295f6aaf0ab805381cd36"
     },
@@ -76,7 +76,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "exact-01-semantic-graph-sha-parse",
-      "latencyMillis": 397.648,
+      "latencyMillis": 401.912,
       "passed": true,
       "phase": 2,
       "response": {
@@ -137,6 +137,13 @@
                   ]
                 },
                 {
+                  "field": "exactReturnType",
+                  "score": 300,
+                  "terms": [
+                    "SemanticGraphSha256"
+                  ]
+                },
+                {
                   "field": "name",
                   "score": 50,
                   "terms": [
@@ -190,7 +197,7 @@
                   ]
                 }
               ],
-              "matchScore": 688,
+              "matchScore": 988,
               "modality": "FINAL",
               "name": "parse",
               "origin": "SOURCE",
@@ -1363,7 +1370,7 @@
           }
         }
       },
-      "responseBytes": 21116,
+      "responseBytes": 21188,
       "returnCode": 0
     },
     {
@@ -1371,7 +1378,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "exact-02-symbol-key-parse",
-      "latencyMillis": 396.612,
+      "latencyMillis": 414.764,
       "passed": true,
       "phase": 2,
       "response": {
@@ -1429,6 +1436,13 @@
                   "score": 300,
                   "terms": [
                     "SemanticGraphSymbolKey.parse"
+                  ]
+                },
+                {
+                  "field": "exactReturnType",
+                  "score": 300,
+                  "terms": [
+                    "SemanticGraphSymbolKey"
                   ]
                 },
                 {
@@ -1500,7 +1514,7 @@
                   ]
                 }
               ],
-              "matchScore": 781,
+              "matchScore": 1081,
               "modality": "FINAL",
               "name": "parse",
               "origin": "SOURCE",
@@ -2803,7 +2817,7 @@
           }
         }
       },
-      "responseBytes": 22872,
+      "responseBytes": 22948,
       "returnCode": 0
     },
     {
@@ -2811,7 +2825,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "exact-03-source-path-parse",
-      "latencyMillis": 446.001,
+      "latencyMillis": 477.275,
       "passed": true,
       "phase": 2,
       "response": {
@@ -3064,6 +3078,99 @@
             },
             {
               "annotations": [],
+              "canonicalKey": "callable:index-store/src/test/kotlin/io/github/amichne/kast/indexstore/NativeSemanticGraphStoreTest.kt:23064:io.github.amichne.kast.indexstore.NativeSemanticGraphStoreTest.gitObjectId|-||kotlin.Char|0",
+              "declarationRange": {
+                "endOffset": 23157,
+                "line": 518,
+                "startOffset": 23064
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.indexstore.NativeSemanticGraphStoreTest.gitObjectId",
+              "gradleProjects": [
+                ".#:index-store"
+              ],
+              "kind": "MEMBER_FUNCTION",
+              "matchReasons": [
+                {
+                  "field": "exactReturningCallable",
+                  "score": 300,
+                  "terms": [
+                    "parse"
+                  ]
+                },
+                {
+                  "field": "declarationKind",
+                  "score": 15,
+                  "terms": [
+                    "function"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 18,
+                  "terms": [
+                    "parse"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "signature",
+                  "score": 16,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 24,
+                  "terms": [
+                    "graph",
+                    "parse",
+                    "semantic"
+                  ]
+                }
+              ],
+              "matchScore": 421,
+              "modality": "FINAL",
+              "name": "gitObjectId",
+              "origin": "SOURCE",
+              "ownerName": "NativeSemanticGraphStoreTest",
+              "parameterTypes": [
+                "kotlin.Char"
+              ],
+              "path": "index-store/src/test/kotlin/io/github/amichne/kast/indexstore/NativeSemanticGraphStoreTest.kt",
+              "rank": 3,
+              "signature": "io.github.amichne.kast.indexstore.NativeSemanticGraphStoreTest.gitObjectId|-||kotlin.Char|0",
+              "sourceSets": [
+                ".#:index-store[test]"
+              ],
+              "visibility": "PRIVATE"
+            },
+            {
+              "annotations": [],
               "canonicalKey": "callable:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/SemanticGraphQuery.kt:811:io.github.amichne.kast.api.contract.query.SemanticGraphPath.Companion.parse|-||kotlin.String|0",
               "declarationRange": {
                 "endOffset": 1114,
@@ -3161,13 +3268,103 @@
                 "kotlin.String"
               ],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/SemanticGraphQuery.kt",
-              "rank": 3,
+              "rank": 4,
               "returnType": "io.github.amichne.kast.api.contract.query.SemanticGraphPath",
               "signature": "io.github.amichne.kast.api.contract.query.SemanticGraphPath.Companion.parse|-||kotlin.String|0",
               "sourceSets": [
                 ".#:analysis-api[main]"
               ],
               "visibility": "PUBLIC"
+            },
+            {
+              "annotations": [],
+              "canonicalKey": "callable:backend-shared/src/test/kotlin/io/github/amichne/kast/shared/analysis/PsiSourceIndexScannerTest.kt:5032:io.github.amichne.kast.shared.analysis.PsiSourceIndexScannerTest.canonicalName|-||kotlin.String|0",
+              "declarationRange": {
+                "endOffset": 5166,
+                "line": 125,
+                "startOffset": 5032
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.shared.analysis.PsiSourceIndexScannerTest.canonicalName",
+              "gradleProjects": [
+                ".#:backend-shared"
+              ],
+              "kind": "MEMBER_FUNCTION",
+              "matchReasons": [
+                {
+                  "field": "exactReturningCallable",
+                  "score": 300,
+                  "terms": [
+                    "parse"
+                  ]
+                },
+                {
+                  "field": "declarationKind",
+                  "score": 15,
+                  "terms": [
+                    "function"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 18,
+                  "terms": [
+                    "source"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 18,
+                  "terms": [
+                    "parse"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 6,
+                  "terms": [
+                    "source"
+                  ]
+                },
+                {
+                  "field": "signature",
+                  "score": 8,
+                  "terms": [
+                    "source"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 16,
+                  "terms": [
+                    "parse",
+                    "source"
+                  ]
+                }
+              ],
+              "matchScore": 381,
+              "modality": "FINAL",
+              "name": "canonicalName",
+              "origin": "SOURCE",
+              "ownerName": "PsiSourceIndexScannerTest",
+              "parameterTypes": [
+                "kotlin.String"
+              ],
+              "path": "backend-shared/src/test/kotlin/io/github/amichne/kast/shared/analysis/PsiSourceIndexScannerTest.kt",
+              "rank": 5,
+              "returnType": "io.github.amichne.kast.indexstore.api.index.IndexedPackageEvidence.CanonicalName",
+              "signature": "io.github.amichne.kast.shared.analysis.PsiSourceIndexScannerTest.canonicalName|-||kotlin.String|0",
+              "sourceSets": [
+                ".#:backend-shared[test]"
+              ],
+              "visibility": "PRIVATE"
             },
             {
               "annotations": [],
@@ -3258,7 +3455,7 @@
                 "kotlin.String"
               ],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/WorkspaceFilesPublicContinuationState.kt",
-              "rank": 4,
+              "rank": 6,
               "returnType": "io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationState.LastRelativePath",
               "signature": "io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationState.LastRelativePath.Companion.parse|-||kotlin.String|0",
               "sourceSets": [
@@ -3361,7 +3558,7 @@
                 "kotlin.String"
               ],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
-              "rank": 5,
+              "rank": 7,
               "returnType": "io.github.amichne.kast.api.contract.result.SemanticGraphSha256",
               "signature": "io.github.amichne.kast.api.contract.result.SemanticGraphSha256.Companion.parse|-||kotlin.String|0",
               "sourceSets": [
@@ -3464,7 +3661,7 @@
                 "kotlin.String"
               ],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
-              "rank": 6,
+              "rank": 8,
               "returnType": "io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey",
               "signature": "io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey.Companion.parse|-||kotlin.String|0",
               "sourceSets": [
@@ -3559,7 +3756,7 @@
                 "kotlin.String"
               ],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/CoreTypes.kt",
-              "rank": 7,
+              "rank": 9,
               "returnType": "io.github.amichne.kast.api.contract.NormalizedPath",
               "signature": "io.github.amichne.kast.api.contract.NormalizedPath.Companion.parse|-||kotlin.String|0",
               "sourceSets": [
@@ -3661,223 +3858,9 @@
                 "kotlin.String"
               ],
               "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/WorkspaceRelativeGradleBuildRoot.kt",
-              "rank": 8,
+              "rank": 10,
               "returnType": "io.github.amichne.kast.indexstore.api.index.WorkspaceRelativeGradleBuildRoot",
               "signature": "io.github.amichne.kast.indexstore.api.index.WorkspaceRelativeGradleBuildRoot.Companion.parse|-||kotlin.String|0",
-              "sourceSets": [
-                ".#:index-store[main]"
-              ],
-              "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [],
-              "canonicalKey": "callable:backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt:31787:io.github.amichne.kast.idea.backend.semantic.relativePathOr|io.github.amichne.kast.idea.backend.KastPluginBackend||com.intellij.psi.PsiElement,io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath|0",
-              "declarationRange": {
-                "endOffset": 32286,
-                "line": 660,
-                "startOffset": 31787
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.idea.backend.semantic.relativePathOr",
-              "gradleProjects": [
-                ".#:backend-idea"
-              ],
-              "kind": "FUNCTION",
-              "matchReasons": [
-                {
-                  "field": "declarationKind",
-                  "score": 15,
-                  "terms": [
-                    "function"
-                  ]
-                },
-                {
-                  "field": "name",
-                  "score": 100,
-                  "terms": [
-                    "path",
-                    "relative"
-                  ]
-                },
-                {
-                  "field": "parameterTypes",
-                  "score": 48,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic",
-                    "source"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 54,
-                  "terms": [
-                    "path",
-                    "relative",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "returnType",
-                  "score": 24,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic",
-                    "source"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "signature",
-                  "score": 40,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "relative",
-                    "semantic",
-                    "source"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 40,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "relative",
-                    "semantic",
-                    "source"
-                  ]
-                }
-              ],
-              "matchScore": 333,
-              "modality": "FINAL",
-              "name": "relativePathOr",
-              "origin": "SOURCE",
-              "parameterTypes": [
-                "com.intellij.psi.PsiElement",
-                "io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath"
-              ],
-              "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt",
-              "rank": 9,
-              "receiverType": "io.github.amichne.kast.idea.backend.KastPluginBackend",
-              "returnType": "io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath",
-              "signature": "io.github.amichne.kast.idea.backend.semantic.relativePathOr|io.github.amichne.kast.idea.backend.KastPluginBackend||com.intellij.psi.PsiElement,io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath|0",
-              "sourceSets": [
-                ".#:backend-idea[main]"
-              ],
-              "visibility": "PRIVATE"
-            },
-            {
-              "annotations": [],
-              "canonicalKey": "callable:index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/GradleProjectPath.kt:166:io.github.amichne.kast.indexstore.api.index.GradleProjectPath.Companion.parse|-||kotlin.String|0",
-              "declarationRange": {
-                "endOffset": 878,
-                "line": 6,
-                "startOffset": 166
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.indexstore.api.index.GradleProjectPath.Companion.parse",
-              "gradleProjects": [
-                ".#:index-store"
-              ],
-              "kind": "MEMBER_FUNCTION",
-              "matchReasons": [
-                {
-                  "field": "exactName",
-                  "score": 180,
-                  "terms": [
-                    "parse"
-                  ]
-                },
-                {
-                  "field": "declarationKind",
-                  "score": 15,
-                  "terms": [
-                    "function"
-                  ]
-                },
-                {
-                  "field": "name",
-                  "score": 50,
-                  "terms": [
-                    "parse"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 36,
-                  "terms": [
-                    "parse",
-                    "path"
-                  ]
-                },
-                {
-                  "field": "returnType",
-                  "score": 6,
-                  "terms": [
-                    "path"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 6,
-                  "terms": [
-                    "path"
-                  ]
-                },
-                {
-                  "field": "signature",
-                  "score": 16,
-                  "terms": [
-                    "parse",
-                    "path"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 16,
-                  "terms": [
-                    "path",
-                    "source"
-                  ]
-                }
-              ],
-              "matchScore": 325,
-              "modality": "FINAL",
-              "name": "parse",
-              "origin": "SOURCE",
-              "ownerName": "GradleProjectPath",
-              "parameterTypes": [
-                "kotlin.String"
-              ],
-              "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/index/GradleProjectPath.kt",
-              "rank": 10,
-              "returnType": "io.github.amichne.kast.indexstore.api.index.GradleProjectPath",
-              "signature": "io.github.amichne.kast.indexstore.api.index.GradleProjectPath.Companion.parse|-||kotlin.String|0",
               "sourceSets": [
                 ".#:index-store[main]"
               ],
@@ -4253,7 +4236,7 @@
           }
         }
       },
-      "responseBytes": 23158,
+      "responseBytes": 22605,
       "returnCode": 0
     },
     {
@@ -4261,7 +4244,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "exact-04-string-sha-overload",
-      "latencyMillis": 341.903,
+      "latencyMillis": 353.228,
       "passed": true,
       "phase": 2,
       "response": {
@@ -4741,7 +4724,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "exact-05-byte-array-sha-overload",
-      "latencyMillis": 341.164,
+      "latencyMillis": 356.139,
       "passed": true,
       "phase": 2,
       "response": {
@@ -5210,7 +5193,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "exact-06-workspace-page-token-parse",
-      "latencyMillis": 344.252,
+      "latencyMillis": 352.816,
       "passed": true,
       "phase": 2,
       "response": {
@@ -5268,6 +5251,13 @@
                   "score": 300,
                   "terms": [
                     "WorkspaceFilePageToken.parse"
+                  ]
+                },
+                {
+                  "field": "exactReturnType",
+                  "score": 300,
+                  "terms": [
+                    "WorkspaceFilePageToken"
                   ]
                 },
                 {
@@ -5337,7 +5327,7 @@
                   ]
                 }
               ],
-              "matchScore": 755,
+              "matchScore": 1055,
               "modality": "FINAL",
               "name": "parse",
               "origin": "SOURCE",
@@ -6489,7 +6479,7 @@
           }
         }
       },
-      "responseBytes": 21266,
+      "responseBytes": 21342,
       "returnCode": 0
     },
     {
@@ -6497,7 +6487,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "path-01-known-sha-chain",
-      "latencyMillis": 216.798,
+      "latencyMillis": 223.948,
       "passed": true,
       "phase": 2,
       "response": {
@@ -7666,7 +7656,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "path-02-operation-to-snapshot",
-      "latencyMillis": 217.881,
+      "latencyMillis": 226.123,
       "passed": true,
       "phase": 2,
       "response": {
@@ -8210,7 +8200,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "path-03-snapshot-to-extractor",
-      "latencyMillis": 199.016,
+      "latencyMillis": 192.701,
       "passed": true,
       "phase": 2,
       "response": {
@@ -15495,7 +15485,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "path-04-snapshot-to-store-write",
-      "latencyMillis": 214.154,
+      "latencyMillis": 226.498,
       "passed": true,
       "phase": 2,
       "response": {
@@ -16050,7 +16040,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "path-05-store-write-to-preparation",
-      "latencyMillis": 165.799,
+      "latencyMillis": 153.748,
       "passed": true,
       "phase": 2,
       "response": {
@@ -23188,7 +23178,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "path-06-symbol-to-signature",
-      "latencyMillis": 183.74,
+      "latencyMillis": 191.355,
       "passed": true,
       "phase": 2,
       "response": {
@@ -23586,7 +23576,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "impact-01-sha-parse-callers",
-      "latencyMillis": 196.507,
+      "latencyMillis": 208.721,
       "passed": true,
       "phase": 2,
       "response": {
@@ -27520,7 +27510,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "impact-02-snapshot-outgoing",
-      "latencyMillis": 198.75,
+      "latencyMillis": 198.225,
       "passed": true,
       "phase": 2,
       "response": {
@@ -34805,7 +34795,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "impact-03-store-write-callers",
-      "latencyMillis": 201.827,
+      "latencyMillis": 202.05,
       "passed": true,
       "phase": 2,
       "response": {
@@ -37681,7 +37671,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "impact-04-ensure-schema-outgoing",
-      "latencyMillis": 172.133,
+      "latencyMillis": 153.351,
       "passed": true,
       "phase": 2,
       "response": {
@@ -41587,7 +41577,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "impact-05-scope-fingerprint-callers",
-      "latencyMillis": 205.527,
+      "latencyMillis": 212.192,
       "passed": true,
       "phase": 2,
       "response": {
@@ -44008,7 +43998,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "impact-06-symbol-builder-outgoing",
-      "latencyMillis": 162.39,
+      "latencyMillis": 171.383,
       "passed": true,
       "phase": 2,
       "response": {
@@ -46336,7 +46326,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "discovery-01-scope-hasher",
-      "latencyMillis": 526.594,
+      "latencyMillis": 534.069,
       "passed": true,
       "phase": 3,
       "response": {
@@ -46470,6 +46460,92 @@
               "visibility": "PRIVATE"
             },
             {
+              "annotations": [
+                "JvmInline",
+                "Serializable"
+              ],
+              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:2440:io.github.amichne.kast.api.contract.result.SemanticGraphSha256",
+              "declarationRange": {
+                "endOffset": 2960,
+                "line": 61,
+                "startOffset": 2440
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphSha256",
+              "gradleProjects": [
+                ".#:analysis-api"
+              ],
+              "kind": "CLASS",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 150,
+                  "terms": [
+                    "graph",
+                    "semantic",
+                    "sha256"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 54,
+                  "terms": [
+                    "graph",
+                    "semantic",
+                    "sha256"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 90,
+                  "terms": [
+                    "fingerprint",
+                    "graph",
+                    "scope",
+                    "semantic",
+                    "sha256"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 40,
+                  "terms": [
+                    "fingerprint",
+                    "graph",
+                    "scope",
+                    "semantic",
+                    "sha256"
+                  ]
+                }
+              ],
+              "matchScore": 346,
+              "modality": "FINAL",
+              "name": "SemanticGraphSha256",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
+              "rank": 2,
+              "sourceSets": [
+                ".#:analysis-api[main]"
+              ],
+              "visibility": "PUBLIC"
+            },
+            {
               "annotations": [],
               "canonicalKey": "callable:backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt:38292:io.github.amichne.kast.idea.backend.semantic.toRelativeSemanticGraphPath|io.github.amichne.kast.idea.backend.KastPluginBackend||io.github.amichne.kast.api.contract.query.SemanticGraphPath|0",
               "declarationRange": {
@@ -46562,7 +46638,7 @@
                 "io.github.amichne.kast.api.contract.query.SemanticGraphPath"
               ],
               "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt",
-              "rank": 2,
+              "rank": 3,
               "receiverType": "io.github.amichne.kast.idea.backend.KastPluginBackend",
               "returnType": "io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath",
               "signature": "io.github.amichne.kast.idea.backend.semantic.toRelativeSemanticGraphPath|io.github.amichne.kast.idea.backend.KastPluginBackend||io.github.amichne.kast.api.contract.query.SemanticGraphPath|0",
@@ -46570,6 +46646,90 @@
                 ".#:backend-idea[main]"
               ],
               "visibility": "PRIVATE"
+            },
+            {
+              "annotations": [
+                "JvmInline",
+                "Serializable"
+              ],
+              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:1024:io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath",
+              "declarationRange": {
+                "endOffset": 2438,
+                "line": 29,
+                "startOffset": 1024
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath",
+              "gradleProjects": [
+                ".#:analysis-api"
+              ],
+              "kind": "CLASS",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 150,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 54,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 54,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 40,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "removed",
+                    "selected",
+                    "semantic"
+                  ]
+                }
+              ],
+              "matchScore": 310,
+              "modality": "FINAL",
+              "name": "SemanticGraphSourcePath",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
+              "rank": 4,
+              "sourceSets": [
+                ".#:analysis-api[main]"
+              ],
+              "visibility": "PUBLIC"
             },
             {
               "annotations": [],
@@ -46650,10 +46810,118 @@
                 "kotlin.collections.Collection<io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath>"
               ],
               "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt",
-              "rank": 3,
+              "rank": 5,
               "signature": "io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore.prepareSemanticGraphScope|-||java.sql.Connection,kotlin.collections.Collection<io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath>|0",
               "sourceSets": [
                 ".#:index-store[main]"
+              ],
+              "visibility": "PRIVATE"
+            },
+            {
+              "annotations": [],
+              "canonicalKey": "callable:backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt:21641:io.github.amichne.kast.idea.backend.semantic.semanticGraphSymbol|io.github.amichne.kast.idea.backend.KastPluginBackend||org.jetbrains.kotlin.psi.KtNamedDeclaration,io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath|0",
+              "declarationRange": {
+                "endOffset": 23952,
+                "line": 445,
+                "startOffset": 21641
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.idea.backend.semantic.semanticGraphSymbol",
+              "gradleProjects": [
+                ".#:backend-idea"
+              ],
+              "kind": "FUNCTION",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 100,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "parameterTypes",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "returnType",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "signature",
+                  "score": 24,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 24,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                }
+              ],
+              "matchScore": 280,
+              "modality": "FINAL",
+              "name": "semanticGraphSymbol",
+              "origin": "SOURCE",
+              "parameterTypes": [
+                "org.jetbrains.kotlin.psi.KtNamedDeclaration",
+                "io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath"
+              ],
+              "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt",
+              "rank": 6,
+              "receiverType": "io.github.amichne.kast.idea.backend.KastPluginBackend",
+              "returnType": "io.github.amichne.kast.api.contract.result.SemanticGraphSymbol",
+              "signature": "io.github.amichne.kast.idea.backend.semantic.semanticGraphSymbol|io.github.amichne.kast.idea.backend.KastPluginBackend||org.jetbrains.kotlin.psi.KtNamedDeclaration,io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath|0",
+              "sourceSets": [
+                ".#:backend-idea[main]"
               ],
               "visibility": "PRIVATE"
             },
@@ -46752,7 +47020,7 @@
                 "kotlin.collections.List<io.github.amichne.kast.api.contract.result.SemanticGraphDiagnosticEvidence>"
               ],
               "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt",
-              "rank": 4,
+              "rank": 7,
               "receiverType": "io.github.amichne.kast.idea.backend.KastPluginBackend",
               "returnType": "io.github.amichne.kast.idea.backend.semantic.ExtractedSemanticGraphFile",
               "signature": "io.github.amichne.kast.idea.backend.semantic.extractSemanticGraphFile|io.github.amichne.kast.idea.backend.KastPluginBackend||org.jetbrains.kotlin.psi.KtFile,io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath,io.github.amichne.kast.api.contract.result.SemanticGraphSha256,kotlin.collections.List<io.github.amichne.kast.api.contract.result.SemanticGraphDiagnosticEvidence>|0",
@@ -46853,7 +47121,7 @@
                 "io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery"
               ],
               "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt",
-              "rank": 5,
+              "rank": 8,
               "receiverType": "io.github.amichne.kast.idea.backend.KastPluginBackend",
               "returnType": "io.github.amichne.kast.api.contract.result.SemanticGraphResult",
               "signature": "io.github.amichne.kast.idea.backend.semantic.buildSemanticGraphSnapshot|io.github.amichne.kast.idea.backend.KastPluginBackend||io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery|0",
@@ -46861,156 +47129,6 @@
                 ".#:backend-idea[main]"
               ],
               "visibility": "PRIVATE"
-            },
-            {
-              "annotations": [
-                "JvmInline",
-                "Serializable"
-              ],
-              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:1024:io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath",
-              "declarationRange": {
-                "endOffset": 2438,
-                "line": 29,
-                "startOffset": 1024
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath",
-              "gradleProjects": [
-                ".#:analysis-api"
-              ],
-              "kind": "CLASS",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 150,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 54,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 40,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "removed",
-                    "selected",
-                    "semantic"
-                  ]
-                }
-              ],
-              "matchScore": 256,
-              "modality": "FINAL",
-              "name": "SemanticGraphSourcePath",
-              "origin": "SOURCE",
-              "parameterTypes": [],
-              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
-              "rank": 6,
-              "sourceSets": [
-                ".#:analysis-api[main]"
-              ],
-              "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [
-                "JvmInline",
-                "Serializable"
-              ],
-              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:2440:io.github.amichne.kast.api.contract.result.SemanticGraphSha256",
-              "declarationRange": {
-                "endOffset": 2960,
-                "line": 61,
-                "startOffset": 2440
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphSha256",
-              "gradleProjects": [
-                ".#:analysis-api"
-              ],
-              "kind": "CLASS",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 150,
-                  "terms": [
-                    "graph",
-                    "semantic",
-                    "sha256"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 54,
-                  "terms": [
-                    "graph",
-                    "semantic",
-                    "sha256"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 40,
-                  "terms": [
-                    "fingerprint",
-                    "graph",
-                    "scope",
-                    "semantic",
-                    "sha256"
-                  ]
-                }
-              ],
-              "matchScore": 256,
-              "modality": "FINAL",
-              "name": "SemanticGraphSha256",
-              "origin": "SOURCE",
-              "parameterTypes": [],
-              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
-              "rank": 7,
-              "sourceSets": [
-                ".#:analysis-api[main]"
-              ],
-              "visibility": "PUBLIC"
             },
             {
               "annotations": [
@@ -47080,111 +47198,11 @@
               "origin": "SOURCE",
               "parameterTypes": [],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/SemanticGraphQuery.kt",
-              "rank": 8,
+              "rank": 9,
               "sourceSets": [
                 ".#:analysis-api[main]"
               ],
               "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [],
-              "canonicalKey": "callable:backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt:21641:io.github.amichne.kast.idea.backend.semantic.semanticGraphSymbol|io.github.amichne.kast.idea.backend.KastPluginBackend||org.jetbrains.kotlin.psi.KtNamedDeclaration,io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath|0",
-              "declarationRange": {
-                "endOffset": 23952,
-                "line": 445,
-                "startOffset": 21641
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.idea.backend.semantic.semanticGraphSymbol",
-              "gradleProjects": [
-                ".#:backend-idea"
-              ],
-              "kind": "FUNCTION",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 100,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "parameterTypes",
-                  "score": 36,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 36,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "returnType",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "signature",
-                  "score": 24,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 24,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic"
-                  ]
-                }
-              ],
-              "matchScore": 244,
-              "modality": "FINAL",
-              "name": "semanticGraphSymbol",
-              "origin": "SOURCE",
-              "parameterTypes": [
-                "org.jetbrains.kotlin.psi.KtNamedDeclaration",
-                "io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath"
-              ],
-              "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt",
-              "rank": 9,
-              "receiverType": "io.github.amichne.kast.idea.backend.KastPluginBackend",
-              "returnType": "io.github.amichne.kast.api.contract.result.SemanticGraphSymbol",
-              "signature": "io.github.amichne.kast.idea.backend.semantic.semanticGraphSymbol|io.github.amichne.kast.idea.backend.KastPluginBackend||org.jetbrains.kotlin.psi.KtNamedDeclaration,io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath|0",
-              "sourceSets": [
-                ".#:backend-idea[main]"
-              ],
-              "visibility": "PRIVATE"
             },
             {
               "annotations": [],
@@ -47663,7 +47681,7 @@
           }
         }
       },
-      "responseBytes": 25425,
+      "responseBytes": 25676,
       "returnCode": 0
     },
     {
@@ -47671,7 +47689,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "discovery-02-persists-graph-files",
-      "latencyMillis": 528.328,
+      "latencyMillis": 544.986,
       "passed": true,
       "phase": 3,
       "response": {
@@ -48025,6 +48043,91 @@
             },
             {
               "annotations": [],
+              "canonicalKey": "class:CLASS:index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/graph/SemanticGraphIndex.kt:1532:io.github.amichne.kast.indexstore.api.graph.SemanticGraphWriteResult",
+              "declarationRange": {
+                "endOffset": 1697,
+                "line": 35,
+                "startOffset": 1532
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.indexstore.api.graph.SemanticGraphWriteResult",
+              "gradleProjects": [
+                ".#:index-store"
+              ],
+              "kind": "CLASS",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 150,
+                  "terms": [
+                    "graph",
+                    "semantic",
+                    "write"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 63,
+                  "terms": [
+                    "graph",
+                    "semantic",
+                    "store",
+                    "write"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 81,
+                  "terms": [
+                    "file",
+                    "files",
+                    "graph",
+                    "replace",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 18,
+                  "terms": [
+                    "graph",
+                    "semantic",
+                    "store"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 40,
+                  "terms": [
+                    "file",
+                    "files",
+                    "graph",
+                    "replace",
+                    "semantic"
+                  ]
+                }
+              ],
+              "matchScore": 352,
+              "modality": "FINAL",
+              "name": "SemanticGraphWriteResult",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/graph/SemanticGraphIndex.kt",
+              "rank": 4,
+              "sourceSets": [
+                ".#:index-store[main]"
+              ],
+              "visibility": "PUBLIC"
+            },
+            {
+              "annotations": [],
               "canonicalKey": "callable:index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/cache/CachePaths.kt:752:io.github.amichne.kast.indexstore.store.cache.writeCacheFileAtomically|-||java.nio.file.Path,kotlin.String|0",
               "declarationRange": {
                 "endOffset": 1416,
@@ -48111,7 +48214,7 @@
                 "kotlin.String"
               ],
               "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/cache/CachePaths.kt",
-              "rank": 4,
+              "rank": 5,
               "signature": "io.github.amichne.kast.indexstore.store.cache.writeCacheFileAtomically|-||java.nio.file.Path,kotlin.String|0",
               "sourceSets": [
                 ".#:index-store[main]"
@@ -48203,7 +48306,7 @@
               "ownerName": "ReferenceIndexerTest",
               "parameterTypes": [],
               "path": "index-store/src/test/kotlin/io/github/amichne/kast/indexstore/ReferenceIndexerTest.kt",
-              "rank": 5,
+              "rank": 6,
               "signature": "io.github.amichne.kast.indexstore.ReferenceIndexerTest.reindexFiles replaces references for changed paths only|-|||0",
               "sourceSets": [
                 ".#:index-store[test]"
@@ -48303,7 +48406,7 @@
                 "io.github.amichne.kast.api.contract.query.SemanticGraphPath"
               ],
               "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt",
-              "rank": 6,
+              "rank": 7,
               "receiverType": "io.github.amichne.kast.idea.backend.KastPluginBackend",
               "returnType": "io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath",
               "signature": "io.github.amichne.kast.idea.backend.semantic.toRelativeSemanticGraphPath|io.github.amichne.kast.idea.backend.KastPluginBackend||io.github.amichne.kast.api.contract.query.SemanticGraphPath|0",
@@ -48311,6 +48414,91 @@
                 ".#:backend-idea[main]"
               ],
               "visibility": "PRIVATE"
+            },
+            {
+              "annotations": [
+                "JvmInline",
+                "Serializable"
+              ],
+              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:1024:io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath",
+              "declarationRange": {
+                "endOffset": 2438,
+                "line": 29,
+                "startOffset": 1024
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath",
+              "gradleProjects": [
+                ".#:analysis-api"
+              ],
+              "kind": "CLASS",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 150,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 54,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 54,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 48,
+                  "terms": [
+                    "file",
+                    "graph",
+                    "path",
+                    "paths",
+                    "removed",
+                    "semantic"
+                  ]
+                }
+              ],
+              "matchScore": 318,
+              "modality": "FINAL",
+              "name": "SemanticGraphSourcePath",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
+              "rank": 8,
+              "sourceSets": [
+                ".#:analysis-api[main]"
+              ],
+              "visibility": "PUBLIC"
             },
             {
               "annotations": [],
@@ -48394,7 +48582,7 @@
                 "kotlin.String"
               ],
               "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt",
-              "rank": 7,
+              "rank": 9,
               "signature": "io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore.deleteSemanticGraphFile|-||java.sql.Connection,kotlin.String|0",
               "sourceSets": [
                 ".#:index-store[main]"
@@ -48471,188 +48659,9 @@
               "ownerName": "SemanticGraphQuery",
               "parameterTypes": [],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/SemanticGraphQuery.kt",
-              "rank": 8,
-              "sourceSets": [
-                ".#:analysis-api[main]"
-              ],
-              "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [],
-              "canonicalKey": "local:analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedSemanticGraphQuery.kt:255:VALUE_PARAMETER",
-              "declarationRange": {
-                "endOffset": 300,
-                "line": 8,
-                "startOffset": 255
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery.removedFilePaths",
-              "gradleProjects": [
-                ".#:analysis-api"
-              ],
-              "kind": "VALUE_PARAMETER",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 175,
-                  "terms": [
-                    "file",
-                    "path",
-                    "paths",
-                    "removed"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 99,
-                  "terms": [
-                    "file",
-                    "graph",
-                    "path",
-                    "paths",
-                    "removed",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 24,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic"
-                  ]
-                }
-              ],
-              "matchScore": 310,
-              "name": "removedFilePaths",
-              "origin": "SOURCE",
-              "ownerName": "ParsedSemanticGraphQuery",
-              "parameterTypes": [],
-              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedSemanticGraphQuery.kt",
-              "rank": 9,
-              "sourceSets": [
-                ".#:analysis-api[main]"
-              ],
-              "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [],
-              "canonicalKey": "callable:index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt:107323:io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore.readSemanticGraph|-||kotlin.collections.Collection<io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath>|0",
-              "declarationRange": {
-                "endOffset": 112473,
-                "line": 2343,
-                "startOffset": 107323
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore.readSemanticGraph",
-              "gradleProjects": [
-                ".#:index-store"
-              ],
-              "kind": "MEMBER_FUNCTION",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 100,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "parameterTypes",
-                  "score": 36,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 54,
-                  "terms": [
-                    "graph",
-                    "semantic",
-                    "store"
-                  ]
-                },
-                {
-                  "field": "returnType",
-                  "score": 15,
-                  "terms": [
-                    "graph",
-                    "semantic",
-                    "store"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 6,
-                  "terms": [
-                    "store"
-                  ]
-                },
-                {
-                  "field": "signature",
-                  "score": 32,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic",
-                    "store"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 56,
-                  "terms": [
-                    "file",
-                    "files",
-                    "graph",
-                    "path",
-                    "paths",
-                    "semantic",
-                    "store"
-                  ]
-                }
-              ],
-              "matchScore": 299,
-              "modality": "FINAL",
-              "name": "readSemanticGraph",
-              "origin": "SOURCE",
-              "ownerName": "SqliteSourceIndexStore",
-              "parameterTypes": [
-                "kotlin.collections.Collection<io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath>"
-              ],
-              "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt",
               "rank": 10,
-              "returnType": "io.github.amichne.kast.indexstore.api.graph.SemanticGraphIndexSnapshot",
-              "signature": "io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore.readSemanticGraph|-||kotlin.collections.Collection<io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath>|0",
               "sourceSets": [
-                ".#:index-store[main]"
+                ".#:analysis-api[main]"
               ],
               "visibility": "PUBLIC"
             }
@@ -49027,7 +49036,7 @@
           }
         }
       },
-      "responseBytes": 24085,
+      "responseBytes": 23550,
       "returnCode": 0
     },
     {
@@ -49035,7 +49044,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "discovery-03-relation-source-evidence",
-      "latencyMillis": 402.182,
+      "latencyMillis": 417.44,
       "passed": true,
       "phase": 3,
       "response": {
@@ -49059,79 +49068,6 @@
             "results": 50
           },
           "candidates": [
-            {
-              "annotations": [
-                "Serializable"
-              ],
-              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:8055:io.github.amichne.kast.api.contract.result.SemanticGraphRelation",
-              "declarationRange": {
-                "endOffset": 9336,
-                "line": 281,
-                "startOffset": 8055
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphRelation",
-              "gradleProjects": [
-                ".#:analysis-api"
-              ],
-              "kind": "CLASS",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 150,
-                  "terms": [
-                    "graph",
-                    "relation",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 54,
-                  "terms": [
-                    "graph",
-                    "relation",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 32,
-                  "terms": [
-                    "graph",
-                    "relation",
-                    "semantic",
-                    "source"
-                  ]
-                }
-              ],
-              "matchScore": 248,
-              "modality": "FINAL",
-              "name": "SemanticGraphRelation",
-              "origin": "SOURCE",
-              "parameterTypes": [],
-              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
-              "rank": 1,
-              "sourceSets": [
-                ".#:analysis-api[main]"
-              ],
-              "visibility": "PUBLIC"
-            },
             {
               "annotations": [
                 "JvmInline",
@@ -49176,6 +49112,14 @@
                   ]
                 },
                 {
+                  "field": "returningCallables",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
                   "field": "scope",
                   "score": 12,
                   "terms": [
@@ -49193,9 +49137,89 @@
                   ]
                 }
               ],
-              "matchScore": 240,
+              "matchScore": 276,
               "modality": "FINAL",
               "name": "SemanticGraphSourcePath",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
+              "rank": 1,
+              "sourceSets": [
+                ".#:analysis-api[main]"
+              ],
+              "visibility": "PUBLIC"
+            },
+            {
+              "annotations": [
+                "Serializable"
+              ],
+              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:8055:io.github.amichne.kast.api.contract.result.SemanticGraphRelation",
+              "declarationRange": {
+                "endOffset": 9336,
+                "line": 281,
+                "startOffset": 8055
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphRelation",
+              "gradleProjects": [
+                ".#:analysis-api"
+              ],
+              "kind": "CLASS",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 150,
+                  "terms": [
+                    "graph",
+                    "relation",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 54,
+                  "terms": [
+                    "graph",
+                    "relation",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 18,
+                  "terms": [
+                    "relation"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 32,
+                  "terms": [
+                    "graph",
+                    "relation",
+                    "semantic",
+                    "source"
+                  ]
+                }
+              ],
+              "matchScore": 266,
+              "modality": "FINAL",
+              "name": "SemanticGraphRelation",
               "origin": "SOURCE",
               "parameterTypes": [],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
@@ -49278,6 +49302,460 @@
               "visibility": "PUBLIC"
             },
             {
+              "annotations": [
+                "Serializable"
+              ],
+              "canonicalKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:5202:io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind",
+              "declarationRange": {
+                "endOffset": 5420,
+                "line": 201,
+                "startOffset": 5202
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind",
+              "gradleProjects": [
+                ".#:analysis-api"
+              ],
+              "kind": "ENUM_CLASS",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 150,
+                  "terms": [
+                    "graph",
+                    "relation",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 54,
+                  "terms": [
+                    "graph",
+                    "relation",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 24,
+                  "terms": [
+                    "graph",
+                    "relation",
+                    "semantic"
+                  ]
+                }
+              ],
+              "matchScore": 240,
+              "modality": "FINAL",
+              "name": "SemanticGraphRelationKind",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
+              "rank": 4,
+              "sourceSets": [
+                ".#:analysis-api[main]"
+              ],
+              "visibility": "PUBLIC"
+            },
+            {
+              "annotations": [
+                "Serializable"
+              ],
+              "canonicalKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:5422:io.github.amichne.kast.api.contract.result.SemanticGraphRelationContext",
+              "declarationRange": {
+                "endOffset": 5634,
+                "line": 216,
+                "startOffset": 5422
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphRelationContext",
+              "gradleProjects": [
+                ".#:analysis-api"
+              ],
+              "kind": "ENUM_CLASS",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 150,
+                  "terms": [
+                    "graph",
+                    "relation",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 54,
+                  "terms": [
+                    "graph",
+                    "relation",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 24,
+                  "terms": [
+                    "graph",
+                    "relation",
+                    "semantic"
+                  ]
+                }
+              ],
+              "matchScore": 240,
+              "modality": "FINAL",
+              "name": "SemanticGraphRelationContext",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
+              "rank": 5,
+              "sourceSets": [
+                ".#:analysis-api[main]"
+              ],
+              "visibility": "PUBLIC"
+            },
+            {
+              "annotations": [
+                "Serializable"
+              ],
+              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:10898:io.github.amichne.kast.api.contract.result.SemanticGraphResult",
+              "declarationRange": {
+                "endOffset": 11614,
+                "line": 345,
+                "startOffset": 10898
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphResult",
+              "gradleProjects": [
+                ".#:analysis-api"
+              ],
+              "kind": "CLASS",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 100,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 32,
+                  "terms": [
+                    "edge",
+                    "graph",
+                    "occurrence",
+                    "semantic"
+                  ]
+                }
+              ],
+              "matchScore": 216,
+              "modality": "FINAL",
+              "name": "SemanticGraphResult",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
+              "rank": 6,
+              "sourceSets": [
+                ".#:analysis-api[main]"
+              ],
+              "visibility": "PUBLIC"
+            },
+            {
+              "annotations": [],
+              "canonicalKey": "class:CLASS:index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/graph/SemanticGraphIndex.kt:1532:io.github.amichne.kast.indexstore.api.graph.SemanticGraphWriteResult",
+              "declarationRange": {
+                "endOffset": 1697,
+                "line": 35,
+                "startOffset": 1532
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.indexstore.api.graph.SemanticGraphWriteResult",
+              "gradleProjects": [
+                ".#:index-store"
+              ],
+              "kind": "CLASS",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 100,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 32,
+                  "terms": [
+                    "edge",
+                    "graph",
+                    "occurrence",
+                    "semantic"
+                  ]
+                }
+              ],
+              "matchScore": 216,
+              "modality": "FINAL",
+              "name": "SemanticGraphWriteResult",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/graph/SemanticGraphIndex.kt",
+              "rank": 7,
+              "sourceSets": [
+                ".#:index-store[main]"
+              ],
+              "visibility": "PUBLIC"
+            },
+            {
+              "annotations": [
+                "Serializable"
+              ],
+              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:5730:io.github.amichne.kast.api.contract.result.SemanticGraphSymbol",
+              "declarationRange": {
+                "endOffset": 8053,
+                "line": 237,
+                "startOffset": 5730
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphSymbol",
+              "gradleProjects": [
+                ".#:analysis-api"
+              ],
+              "kind": "CLASS",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 100,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 24,
+                  "terms": [
+                    "graph",
+                    "semantic",
+                    "source"
+                  ]
+                }
+              ],
+              "matchScore": 208,
+              "modality": "FINAL",
+              "name": "SemanticGraphSymbol",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
+              "rank": 8,
+              "sourceSets": [
+                ".#:analysis-api[main]"
+              ],
+              "visibility": "PUBLIC"
+            },
+            {
+              "annotations": [],
+              "canonicalKey": "class:CLASS:index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/graph/SemanticGraphIndex.kt:1699:io.github.amichne.kast.indexstore.api.graph.SemanticGraphIndexSnapshot",
+              "declarationRange": {
+                "endOffset": 1974,
+                "line": 42,
+                "startOffset": 1699
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.indexstore.api.graph.SemanticGraphIndexSnapshot",
+              "gradleProjects": [
+                ".#:index-store"
+              ],
+              "kind": "CLASS",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 100,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 24,
+                  "terms": [
+                    "graph",
+                    "relation",
+                    "semantic"
+                  ]
+                }
+              ],
+              "matchScore": 208,
+              "modality": "FINAL",
+              "name": "SemanticGraphIndexSnapshot",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/graph/SemanticGraphIndex.kt",
+              "rank": 9,
+              "sourceSets": [
+                ".#:index-store[main]"
+              ],
+              "visibility": "PUBLIC"
+            },
+            {
               "annotations": [],
               "canonicalKey": "class:CLASS:analysis-api/src/test/kotlin/io/github/amichne/kast/api/RelationshipModelTest.kt:1640:io.github.amichne.kast.api.RelationshipModelTest",
               "declarationRange": {
@@ -49341,428 +49819,9 @@
               "origin": "SOURCE",
               "parameterTypes": [],
               "path": "analysis-api/src/test/kotlin/io/github/amichne/kast/api/RelationshipModelTest.kt",
-              "rank": 4,
-              "sourceSets": [
-                ".#:analysis-api[test]"
-              ],
-              "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [
-                "Serializable"
-              ],
-              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:10898:io.github.amichne.kast.api.contract.result.SemanticGraphResult",
-              "declarationRange": {
-                "endOffset": 11614,
-                "line": 345,
-                "startOffset": 10898
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphResult",
-              "gradleProjects": [
-                ".#:analysis-api"
-              ],
-              "kind": "CLASS",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 100,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 36,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 32,
-                  "terms": [
-                    "edge",
-                    "graph",
-                    "occurrence",
-                    "semantic"
-                  ]
-                }
-              ],
-              "matchScore": 180,
-              "modality": "FINAL",
-              "name": "SemanticGraphResult",
-              "origin": "SOURCE",
-              "parameterTypes": [],
-              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
-              "rank": 5,
-              "sourceSets": [
-                ".#:analysis-api[main]"
-              ],
-              "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [],
-              "canonicalKey": "class:CLASS:index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/graph/SemanticGraphIndex.kt:1532:io.github.amichne.kast.indexstore.api.graph.SemanticGraphWriteResult",
-              "declarationRange": {
-                "endOffset": 1697,
-                "line": 35,
-                "startOffset": 1532
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.indexstore.api.graph.SemanticGraphWriteResult",
-              "gradleProjects": [
-                ".#:index-store"
-              ],
-              "kind": "CLASS",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 100,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 36,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 32,
-                  "terms": [
-                    "edge",
-                    "graph",
-                    "occurrence",
-                    "semantic"
-                  ]
-                }
-              ],
-              "matchScore": 180,
-              "modality": "FINAL",
-              "name": "SemanticGraphWriteResult",
-              "origin": "SOURCE",
-              "parameterTypes": [],
-              "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/graph/SemanticGraphIndex.kt",
-              "rank": 6,
-              "sourceSets": [
-                ".#:index-store[main]"
-              ],
-              "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [],
-              "canonicalKey": "class:CLASS:index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/graph/SemanticGraphIndex.kt:721:io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate",
-              "declarationRange": {
-                "endOffset": 1530,
-                "line": 13,
-                "startOffset": 721
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate",
-              "gradleProjects": [
-                ".#:index-store"
-              ],
-              "kind": "CLASS",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 100,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 36,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 32,
-                  "terms": [
-                    "edge",
-                    "graph",
-                    "relation",
-                    "semantic"
-                  ]
-                }
-              ],
-              "matchScore": 180,
-              "modality": "FINAL",
-              "name": "SemanticGraphFileIndexUpdate",
-              "origin": "SOURCE",
-              "parameterTypes": [],
-              "path": "index-store/src/main/kotlin/io/github/amichne/kast/indexstore/api/graph/SemanticGraphIndex.kt",
-              "rank": 7,
-              "sourceSets": [
-                ".#:index-store[main]"
-              ],
-              "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [],
-              "canonicalKey": "class:CLASS:index-store/src/test/kotlin/io/github/amichne/kast/indexstore/NativeSemanticGraphStoreTest.kt:1919:io.github.amichne.kast.indexstore.NativeSemanticGraphStoreTest",
-              "declarationRange": {
-                "endOffset": 23328,
-                "line": 36,
-                "startOffset": 1919
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.indexstore.NativeSemanticGraphStoreTest",
-              "gradleProjects": [
-                ".#:index-store"
-              ],
-              "kind": "CLASS",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 100,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 36,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 32,
-                  "terms": [
-                    "edge",
-                    "graph",
-                    "occurrence",
-                    "semantic"
-                  ]
-                }
-              ],
-              "matchScore": 180,
-              "modality": "FINAL",
-              "name": "NativeSemanticGraphStoreTest",
-              "origin": "SOURCE",
-              "parameterTypes": [],
-              "path": "index-store/src/test/kotlin/io/github/amichne/kast/indexstore/NativeSemanticGraphStoreTest.kt",
-              "rank": 8,
-              "sourceSets": [
-                ".#:index-store[test]"
-              ],
-              "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [
-                "Serializable"
-              ],
-              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:4657:io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact",
-              "declarationRange": {
-                "endOffset": 4966,
-                "line": 182,
-                "startOffset": 4657
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact",
-              "gradleProjects": [
-                ".#:analysis-api"
-              ],
-              "kind": "CLASS",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 100,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 36,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 24,
-                  "terms": [
-                    "edge",
-                    "graph",
-                    "semantic"
-                  ]
-                }
-              ],
-              "matchScore": 172,
-              "modality": "FINAL",
-              "name": "SemanticGraphTypeFact",
-              "origin": "SOURCE",
-              "parameterTypes": [],
-              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
-              "rank": 9,
-              "sourceSets": [
-                ".#:analysis-api[main]"
-              ],
-              "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [
-                "JvmInline",
-                "Serializable"
-              ],
-              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:479:io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey",
-              "declarationRange": {
-                "endOffset": 1022,
-                "line": 12,
-                "startOffset": 479
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey",
-              "gradleProjects": [
-                ".#:analysis-api"
-              ],
-              "kind": "CLASS",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 100,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 36,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 24,
-                  "terms": [
-                    "graph",
-                    "semantic",
-                    "source"
-                  ]
-                }
-              ],
-              "matchScore": 172,
-              "modality": "FINAL",
-              "name": "SemanticGraphSymbolKey",
-              "origin": "SOURCE",
-              "parameterTypes": [],
-              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
               "rank": 10,
               "sourceSets": [
-                ".#:analysis-api[main]"
+                ".#:analysis-api[test]"
               ],
               "visibility": "PUBLIC"
             }
@@ -50068,13 +50127,14 @@
           "nodes": [
             {
               "annotations": [
+                "JvmInline",
                 "Serializable"
               ],
-              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:8055:io.github.amichne.kast.api.contract.result.SemanticGraphRelation",
+              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:1024:io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath",
               "declarationRange": {
-                "endOffset": 9336,
-                "line": 281,
-                "startOffset": 8055
+                "endOffset": 2438,
+                "line": 29,
+                "startOffset": 1024
               },
               "evidenceClass": "compiler",
               "flags": {
@@ -50084,13 +50144,13 @@
                 "isOverride": false,
                 "isSealed": false
               },
-              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphRelation",
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath",
               "gradleProjects": [
                 ".#:analysis-api"
               ],
               "kind": "CLASS",
               "modality": "FINAL",
-              "name": "SemanticGraphRelation",
+              "name": "SemanticGraphSourcePath",
               "origin": "SOURCE",
               "parameterTypes": [],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
@@ -50124,7 +50184,7 @@
             "sourceSet": null,
             "sources": []
           },
-          "selectedIdentity": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:8055:io.github.amichne.kast.api.contract.result.SemanticGraphRelation",
+          "selectedIdentity": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:1024:io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath",
           "status": "ANSWERED",
           "truncated": true,
           "type": "KAST_REPOSITORY_QUERY_RESULT",
@@ -50133,7 +50193,7 @@
           }
         }
       },
-      "responseBytes": 16999,
+      "responseBytes": 17514,
       "returnCode": 0
     },
     {
@@ -50141,7 +50201,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "discovery-04-normalized-source-path",
-      "latencyMillis": 403.686,
+      "latencyMillis": 419.248,
       "passed": true,
       "phase": 3,
       "response": {
@@ -50211,6 +50271,15 @@
                   ]
                 },
                 {
+                  "field": "returningCallables",
+                  "score": 54,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                },
+                {
                   "field": "scope",
                   "score": 12,
                   "terms": [
@@ -50230,13 +50299,93 @@
                   ]
                 }
               ],
-              "matchScore": 324,
+              "matchScore": 378,
               "modality": "FINAL",
               "name": "SemanticGraphSourcePath",
               "origin": "SOURCE",
               "parameterTypes": [],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
               "rank": 1,
+              "sourceSets": [
+                ".#:analysis-api[main]"
+              ],
+              "visibility": "PUBLIC"
+            },
+            {
+              "annotations": [
+                "Serializable"
+              ],
+              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:4657:io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact",
+              "declarationRange": {
+                "endOffset": 4966,
+                "line": 182,
+                "startOffset": 4657
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact",
+              "gradleProjects": [
+                ".#:analysis-api"
+              ],
+              "kind": "CLASS",
+              "matchReasons": [
+                {
+                  "field": "name",
+                  "score": 150,
+                  "terms": [
+                    "graph",
+                    "semantic",
+                    "type"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 54,
+                  "terms": [
+                    "graph",
+                    "semantic",
+                    "type"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 36,
+                  "terms": [
+                    "semantic",
+                    "type"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 24,
+                  "terms": [
+                    "graph",
+                    "semantic",
+                    "type"
+                  ]
+                }
+              ],
+              "matchScore": 276,
+              "modality": "FINAL",
+              "name": "SemanticGraphTypeFact",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
+              "rank": 2,
               "sourceSets": [
                 ".#:analysis-api[main]"
               ],
@@ -50307,7 +50456,7 @@
               "origin": "SOURCE",
               "parameterTypes": [],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/SemanticGraphQuery.kt",
-              "rank": 2,
+              "rank": 3,
               "sourceSets": [
                 ".#:analysis-api[main]"
               ],
@@ -50381,7 +50530,7 @@
               "origin": "SOURCE",
               "parameterTypes": [],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/SemanticGraphQuery.kt",
-              "rank": 3,
+              "rank": 4,
               "sourceSets": [
                 ".#:analysis-api[main]"
               ],
@@ -50442,7 +50591,7 @@
               "ownerName": "discoverWorkspaceKotlinFilePaths",
               "parameterTypes": [],
               "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaReferenceIndexEnvironment.kt",
-              "rank": 4,
+              "rank": 5,
               "sourceSets": [
                 ".#:backend-idea[main]"
               ],
@@ -50514,7 +50663,7 @@
               "origin": "SOURCE",
               "parameterTypes": [],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
-              "rank": 5,
+              "rank": 6,
               "sourceSets": [
                 ".#:analysis-api[main]"
               ],
@@ -50524,11 +50673,11 @@
               "annotations": [
                 "Serializable"
               ],
-              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:4657:io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact",
+              "canonicalKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:3837:io.github.amichne.kast.api.contract.result.SemanticGraphTypeKind",
               "declarationRange": {
-                "endOffset": 4966,
-                "line": 182,
-                "startOffset": 4657
+                "endOffset": 4023,
+                "line": 134,
+                "startOffset": 3837
               },
               "evidenceClass": "compiler",
               "flags": {
@@ -50538,11 +50687,11 @@
                 "isOverride": false,
                 "isSealed": false
               },
-              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact",
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphTypeKind",
               "gradleProjects": [
                 ".#:analysis-api"
               ],
-              "kind": "CLASS",
+              "kind": "ENUM_CLASS",
               "matchReasons": [
                 {
                   "field": "name",
@@ -50582,82 +50731,10 @@
               ],
               "matchScore": 240,
               "modality": "FINAL",
-              "name": "SemanticGraphTypeFact",
+              "name": "SemanticGraphTypeKind",
               "origin": "SOURCE",
               "parameterTypes": [],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
-              "rank": 6,
-              "sourceSets": [
-                ".#:analysis-api[main]"
-              ],
-              "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [
-                "Serializable"
-              ],
-              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/SemanticGraphQuery.kt:1214:io.github.amichne.kast.api.contract.query.SemanticGraphQuery",
-              "declarationRange": {
-                "endOffset": 1725,
-                "line": 32,
-                "startOffset": 1214
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.api.contract.query.SemanticGraphQuery",
-              "gradleProjects": [
-                ".#:analysis-api"
-              ],
-              "kind": "CLASS",
-              "matchReasons": [
-                {
-                  "field": "name",
-                  "score": 100,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 36,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 40,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "paths",
-                    "semantic",
-                    "type"
-                  ]
-                }
-              ],
-              "matchScore": 188,
-              "modality": "FINAL",
-              "name": "SemanticGraphQuery",
-              "origin": "SOURCE",
-              "parameterTypes": [],
-              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/query/SemanticGraphQuery.kt",
               "rank": 7,
               "sourceSets": [
                 ".#:analysis-api[main]"
@@ -50668,11 +50745,11 @@
               "annotations": [
                 "Serializable"
               ],
-              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:5730:io.github.amichne.kast.api.contract.result.SemanticGraphSymbol",
+              "canonicalKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:4025:io.github.amichne.kast.api.contract.result.SemanticGraphTypeNullability",
               "declarationRange": {
-                "endOffset": 8053,
-                "line": 237,
-                "startOffset": 5730
+                "endOffset": 4137,
+                "line": 147,
+                "startOffset": 4025
               },
               "evidenceClass": "compiler",
               "flags": {
@@ -50682,26 +50759,28 @@
                 "isOverride": false,
                 "isSealed": false
               },
-              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphSymbol",
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphTypeNullability",
               "gradleProjects": [
                 ".#:analysis-api"
               ],
-              "kind": "CLASS",
+              "kind": "ENUM_CLASS",
               "matchReasons": [
                 {
                   "field": "name",
-                  "score": 100,
+                  "score": 150,
                   "terms": [
                     "graph",
-                    "semantic"
+                    "semantic",
+                    "type"
                   ]
                 },
                 {
                   "field": "qualifiedName",
-                  "score": 36,
+                  "score": 54,
                   "terms": [
                     "graph",
-                    "semantic"
+                    "semantic",
+                    "type"
                   ]
                 },
                 {
@@ -50714,19 +50793,17 @@
                 },
                 {
                   "field": "compilerNeighbors",
-                  "score": 40,
+                  "score": 24,
                   "terms": [
                     "graph",
-                    "path",
-                    "semantic",
-                    "source",
-                    "type"
+                    "non",
+                    "semantic"
                   ]
                 }
               ],
-              "matchScore": 188,
+              "matchScore": 240,
               "modality": "FINAL",
-              "name": "SemanticGraphSymbol",
+              "name": "SemanticGraphTypeNullability",
               "origin": "SOURCE",
               "parameterTypes": [],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
@@ -50740,11 +50817,11 @@
               "annotations": [
                 "Serializable"
               ],
-              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:8055:io.github.amichne.kast.api.contract.result.SemanticGraphRelation",
+              "canonicalKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:4139:io.github.amichne.kast.api.contract.result.SemanticGraphTypeRole",
               "declarationRange": {
-                "endOffset": 9336,
-                "line": 281,
-                "startOffset": 8055
+                "endOffset": 4310,
+                "line": 155,
+                "startOffset": 4139
               },
               "evidenceClass": "compiler",
               "flags": {
@@ -50754,26 +50831,28 @@
                 "isOverride": false,
                 "isSealed": false
               },
-              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphRelation",
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphTypeRole",
               "gradleProjects": [
                 ".#:analysis-api"
               ],
-              "kind": "CLASS",
+              "kind": "ENUM_CLASS",
               "matchReasons": [
                 {
                   "field": "name",
-                  "score": 100,
+                  "score": 150,
                   "terms": [
                     "graph",
-                    "semantic"
+                    "semantic",
+                    "type"
                   ]
                 },
                 {
                   "field": "qualifiedName",
-                  "score": 36,
+                  "score": 54,
                   "terms": [
                     "graph",
-                    "semantic"
+                    "semantic",
+                    "type"
                   ]
                 },
                 {
@@ -50786,18 +50865,16 @@
                 },
                 {
                   "field": "compilerNeighbors",
-                  "score": 32,
+                  "score": 16,
                   "terms": [
                     "graph",
-                    "path",
-                    "semantic",
-                    "source"
+                    "semantic"
                   ]
                 }
               ],
-              "matchScore": 180,
+              "matchScore": 232,
               "modality": "FINAL",
-              "name": "SemanticGraphRelation",
+              "name": "SemanticGraphTypeRole",
               "origin": "SOURCE",
               "parameterTypes": [],
               "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
@@ -50808,12 +50885,14 @@
               "visibility": "PUBLIC"
             },
             {
-              "annotations": [],
-              "canonicalKey": "class:CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedSemanticGraphQuery.kt:170:io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery",
+              "annotations": [
+                "Serializable"
+              ],
+              "canonicalKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:4312:io.github.amichne.kast.api.contract.result.SemanticGraphTypeVariance",
               "declarationRange": {
-                "endOffset": 354,
-                "line": 6,
-                "startOffset": 170
+                "endOffset": 4408,
+                "line": 166,
+                "startOffset": 4312
               },
               "evidenceClass": "compiler",
               "flags": {
@@ -50823,26 +50902,28 @@
                 "isOverride": false,
                 "isSealed": false
               },
-              "fqName": "io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery",
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphTypeVariance",
               "gradleProjects": [
                 ".#:analysis-api"
               ],
-              "kind": "CLASS",
+              "kind": "ENUM_CLASS",
               "matchReasons": [
                 {
                   "field": "name",
-                  "score": 100,
+                  "score": 150,
                   "terms": [
                     "graph",
-                    "semantic"
+                    "semantic",
+                    "type"
                   ]
                 },
                 {
                   "field": "qualifiedName",
-                  "score": 36,
+                  "score": 54,
                   "terms": [
                     "graph",
-                    "semantic"
+                    "semantic",
+                    "type"
                   ]
                 },
                 {
@@ -50855,21 +50936,19 @@
                 },
                 {
                   "field": "compilerNeighbors",
-                  "score": 32,
+                  "score": 16,
                   "terms": [
                     "graph",
-                    "path",
-                    "paths",
                     "semantic"
                   ]
                 }
               ],
-              "matchScore": 180,
+              "matchScore": 232,
               "modality": "FINAL",
-              "name": "ParsedSemanticGraphQuery",
+              "name": "SemanticGraphTypeVariance",
               "origin": "SOURCE",
               "parameterTypes": [],
-              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/validation/ParsedSemanticGraphQuery.kt",
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
               "rank": 10,
               "sourceSets": [
                 ".#:analysis-api[main]"
@@ -51244,7 +51323,7 @@
           }
         }
       },
-      "responseBytes": 18051,
+      "responseBytes": 18307,
       "returnCode": 0
     },
     {
@@ -51252,7 +51331,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "discovery-05-builds-snapshot",
-      "latencyMillis": 355.719,
+      "latencyMillis": 361.546,
       "passed": true,
       "phase": 3,
       "response": {
@@ -51729,6 +51808,121 @@
               "visibility": "PRIVATE"
             },
             {
+              "annotations": [],
+              "canonicalKey": "callable:backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt:21641:io.github.amichne.kast.idea.backend.semantic.semanticGraphSymbol|io.github.amichne.kast.idea.backend.KastPluginBackend||org.jetbrains.kotlin.psi.KtNamedDeclaration,io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath|0",
+              "declarationRange": {
+                "endOffset": 23952,
+                "line": 445,
+                "startOffset": 21641
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.idea.backend.semantic.semanticGraphSymbol",
+              "gradleProjects": [
+                ".#:backend-idea"
+              ],
+              "kind": "FUNCTION",
+              "matchReasons": [
+                {
+                  "field": "declarationKind",
+                  "score": 15,
+                  "terms": [
+                    "function"
+                  ]
+                },
+                {
+                  "field": "name",
+                  "score": 100,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "parameterTypes",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "qualifiedName",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "returnType",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "returningCallables",
+                  "score": 36,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "scope",
+                  "score": 12,
+                  "terms": [
+                    "graph",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "signature",
+                  "score": 24,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                },
+                {
+                  "field": "compilerNeighbors",
+                  "score": 24,
+                  "terms": [
+                    "graph",
+                    "path",
+                    "semantic"
+                  ]
+                }
+              ],
+              "matchScore": 295,
+              "modality": "FINAL",
+              "name": "semanticGraphSymbol",
+              "origin": "SOURCE",
+              "parameterTypes": [
+                "org.jetbrains.kotlin.psi.KtNamedDeclaration",
+                "io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath"
+              ],
+              "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt",
+              "rank": 5,
+              "receiverType": "io.github.amichne.kast.idea.backend.KastPluginBackend",
+              "returnType": "io.github.amichne.kast.api.contract.result.SemanticGraphSymbol",
+              "signature": "io.github.amichne.kast.idea.backend.semantic.semanticGraphSymbol|io.github.amichne.kast.idea.backend.KastPluginBackend||org.jetbrains.kotlin.psi.KtNamedDeclaration,io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath|0",
+              "sourceSets": [
+                ".#:backend-idea[main]"
+              ],
+              "visibility": "PRIVATE"
+            },
+            {
               "annotations": [
                 "Test"
               ],
@@ -51810,7 +52004,7 @@
               "ownerName": "IdeaGradleFileProvenanceTest",
               "parameterTypes": [],
               "path": "backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaGradleFileProvenanceTest.kt",
-              "rank": 5,
+              "rank": 6,
               "signature": "io.github.amichne.kast.idea.IdeaGradleFileProvenanceTest.same Gradle path in root and included builds remains build-qualified|-|||0",
               "sourceSets": [
                 ".#:backend-idea[test]"
@@ -51900,7 +52094,7 @@
               "ownerName": "NativeSemanticGraphBackendTest",
               "parameterTypes": [],
               "path": "backend-idea/src/test/kotlin/io/github/amichne/kast/idea/NativeSemanticGraphBackendTest.kt",
-              "rank": 6,
+              "rank": 7,
               "signature": "io.github.amichne.kast.idea.NativeSemanticGraphBackendTest.function type parameters do not abort semantic graph extraction|-|||0",
               "sourceSets": [
                 ".#:backend-idea[test]"
@@ -51998,120 +52192,13 @@
                 "io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain"
               ],
               "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaWorkspaceModuleSnapshot.kt",
-              "rank": 7,
+              "rank": 8,
               "returnType": "kotlin.collections.List",
               "signature": "io.github.amichne.kast.idea.IdeaWorkspaceModuleSnapshot.filePaths|-||io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain|0",
               "sourceSets": [
                 ".#:backend-idea[main]"
               ],
               "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [],
-              "canonicalKey": "callable:backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt:21641:io.github.amichne.kast.idea.backend.semantic.semanticGraphSymbol|io.github.amichne.kast.idea.backend.KastPluginBackend||org.jetbrains.kotlin.psi.KtNamedDeclaration,io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath|0",
-              "declarationRange": {
-                "endOffset": 23952,
-                "line": 445,
-                "startOffset": 21641
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.idea.backend.semantic.semanticGraphSymbol",
-              "gradleProjects": [
-                ".#:backend-idea"
-              ],
-              "kind": "FUNCTION",
-              "matchReasons": [
-                {
-                  "field": "declarationKind",
-                  "score": 15,
-                  "terms": [
-                    "function"
-                  ]
-                },
-                {
-                  "field": "name",
-                  "score": 100,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "parameterTypes",
-                  "score": 36,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "qualifiedName",
-                  "score": 36,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "returnType",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "scope",
-                  "score": 12,
-                  "terms": [
-                    "graph",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "signature",
-                  "score": 24,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic"
-                  ]
-                },
-                {
-                  "field": "compilerNeighbors",
-                  "score": 24,
-                  "terms": [
-                    "graph",
-                    "path",
-                    "semantic"
-                  ]
-                }
-              ],
-              "matchScore": 259,
-              "modality": "FINAL",
-              "name": "semanticGraphSymbol",
-              "origin": "SOURCE",
-              "parameterTypes": [
-                "org.jetbrains.kotlin.psi.KtNamedDeclaration",
-                "io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath"
-              ],
-              "path": "backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt",
-              "rank": 8,
-              "receiverType": "io.github.amichne.kast.idea.backend.KastPluginBackend",
-              "returnType": "io.github.amichne.kast.api.contract.result.SemanticGraphSymbol",
-              "signature": "io.github.amichne.kast.idea.backend.semantic.semanticGraphSymbol|io.github.amichne.kast.idea.backend.KastPluginBackend||org.jetbrains.kotlin.psi.KtNamedDeclaration,io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath|0",
-              "sourceSets": [
-                ".#:backend-idea[main]"
-              ],
-              "visibility": "PRIVATE"
             },
             {
               "annotations": [],
@@ -52536,7 +52623,7 @@
           }
         }
       },
-      "responseBytes": 24948,
+      "responseBytes": 25019,
       "returnCode": 0
     },
     {
@@ -52544,7 +52631,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "discovery-06-compiler-signature",
-      "latencyMillis": 353.438,
+      "latencyMillis": 368.088,
       "passed": true,
       "phase": 3,
       "response": {
@@ -53562,7 +53649,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "architecture-01-runtime-call-hubs",
-      "latencyMillis": 973.18,
+      "latencyMillis": 998.038,
       "passed": true,
       "phase": 4,
       "response": {
@@ -90702,7 +90789,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "architecture-02-cross-boundary-cycles",
-      "latencyMillis": 474.32,
+      "latencyMillis": 490.493,
       "passed": true,
       "phase": 4,
       "response": {
@@ -94887,7 +94974,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "architecture-03-type-boundaries",
-      "latencyMillis": 389.604,
+      "latencyMillis": 395.126,
       "passed": true,
       "phase": 4,
       "response": {
@@ -103781,7 +103868,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "architecture-04-communities",
-      "latencyMillis": 1001.241,
+      "latencyMillis": 1023.895,
       "passed": true,
       "phase": 4,
       "response": {
@@ -147423,7 +147510,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "architecture-05-thin-bridges",
-      "latencyMillis": 967.592,
+      "latencyMillis": 930.971,
       "passed": true,
       "phase": 4,
       "response": {
@@ -158415,7 +158502,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "architecture-06-public-api-consumers",
-      "latencyMillis": 983.813,
+      "latencyMillis": 909.874,
       "passed": true,
       "phase": 4,
       "response": {
@@ -200789,7 +200876,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "context-01-compiler-evidence-doc",
-      "latencyMillis": 187.635,
+      "latencyMillis": 177.564,
       "passed": true,
       "phase": 5,
       "response": {
@@ -201400,7 +201487,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "context-02-gradle-owner",
-      "latencyMillis": 173.62,
+      "latencyMillis": 171.197,
       "passed": true,
       "phase": 5,
       "response": {
@@ -201953,7 +202040,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "context-03-semantic-graph-schema",
-      "latencyMillis": 179.123,
+      "latencyMillis": 174.289,
       "passed": true,
       "phase": 5,
       "response": {
@@ -202504,7 +202591,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "context-04-relationship-coverage-adr",
-      "latencyMillis": 752.99,
+      "latencyMillis": 731.264,
       "passed": true,
       "phase": 5,
       "response": {
@@ -202540,7 +202627,7 @@
             },
             "contextNodeCount": 56,
             "evidenceDistribution": {
-              "extracted": 662
+              "extracted": 705
             },
             "exactLinkRate": 0.6607142857142857,
             "linkedContextNodeCount": 37,
@@ -202667,6 +202754,34 @@
               "kind": "DOCUMENTS",
               "sourceKind": "markdown",
               "sourceLocation": {
+                "endOffset": 356,
+                "line": 7,
+                "startOffset": 262
+              },
+              "sourcePath": "docs/explanation/compiler-evidence.md",
+              "targetKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:5202:io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind",
+              "targetName": "SemanticGraphRelationKind"
+            },
+            {
+              "direction": "OUTGOING",
+              "evidenceClass": "extracted",
+              "kind": "DOCUMENTS",
+              "sourceKind": "markdown",
+              "sourceLocation": {
+                "endOffset": 356,
+                "line": 7,
+                "startOffset": 262
+              },
+              "sourcePath": "docs/explanation/compiler-evidence.md",
+              "targetKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:5422:io.github.amichne.kast.api.contract.result.SemanticGraphRelationContext",
+              "targetName": "SemanticGraphRelationContext"
+            },
+            {
+              "direction": "OUTGOING",
+              "evidenceClass": "extracted",
+              "kind": "DOCUMENTS",
+              "sourceKind": "markdown",
+              "sourceLocation": {
                 "endOffset": 416,
                 "line": 9,
                 "startOffset": 315
@@ -202688,6 +202803,20 @@
               "sourcePath": "docs/how-to/explore-kotlin-code.md",
               "targetKey": "class:OBJECT:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipResultEvidence.kt:4681:io.github.amichne.kast.api.contract.result.KnownMinimumRelationshipCardinalitySerializer",
               "targetName": "KnownMinimumRelationshipCardinalitySerializer"
+            },
+            {
+              "direction": "OUTGOING",
+              "evidenceClass": "extracted",
+              "kind": "DOCUMENTS",
+              "sourceKind": "markdown",
+              "sourceLocation": {
+                "endOffset": 1106,
+                "line": 32,
+                "startOffset": 1035
+              },
+              "sourcePath": ".agents/adr/0026-proof-carrying-relationship-coverage.md",
+              "targetKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipCoverageStatus.kt:95:io.github.amichne.kast.api.contract.result.RelationshipCoverageStatus",
+              "targetName": "RelationshipCoverageStatus"
             },
             {
               "direction": "OUTGOING",
@@ -202784,6 +202913,20 @@
                 "startOffset": 262
               },
               "sourcePath": "docs/explanation/compiler-evidence.md",
+              "targetKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipCoverageStatus.kt:95:io.github.amichne.kast.api.contract.result.RelationshipCoverageStatus",
+              "targetName": "RelationshipCoverageStatus"
+            },
+            {
+              "direction": "OUTGOING",
+              "evidenceClass": "extracted",
+              "kind": "DOCUMENTS",
+              "sourceKind": "markdown",
+              "sourceLocation": {
+                "endOffset": 333,
+                "line": 7,
+                "startOffset": 262
+              },
+              "sourcePath": "docs/explanation/compiler-evidence.md",
               "targetKey": "class:INTERFACE:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipResultEvidence.kt:368:io.github.amichne.kast.api.contract.result.RelationshipResultEvidence",
               "targetName": "RelationshipResultEvidence"
             },
@@ -202854,8 +202997,36 @@
                 "startOffset": 315
               },
               "sourcePath": "docs/how-to/explore-kotlin-code.md",
+              "targetKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipCoverageStatus.kt:95:io.github.amichne.kast.api.contract.result.RelationshipCoverageStatus",
+              "targetName": "RelationshipCoverageStatus"
+            },
+            {
+              "direction": "OUTGOING",
+              "evidenceClass": "extracted",
+              "kind": "DOCUMENTS",
+              "sourceKind": "markdown",
+              "sourceLocation": {
+                "endOffset": 386,
+                "line": 9,
+                "startOffset": 315
+              },
+              "sourcePath": "docs/how-to/explore-kotlin-code.md",
               "targetKey": "class:INTERFACE:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipSearchCoverage.kt:222:io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage",
               "targetName": "RelationshipSearchCoverage"
+            },
+            {
+              "direction": "OUTGOING",
+              "evidenceClass": "extracted",
+              "kind": "DOCUMENTS",
+              "sourceKind": "markdown",
+              "sourceLocation": {
+                "endOffset": 1317,
+                "line": 42,
+                "startOffset": 1253
+              },
+              "sourcePath": ".agents/adr/0025-backend-bound-opaque-selector-handles.md",
+              "targetKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipCoverageStatus.kt:95:io.github.amichne.kast.api.contract.result.RelationshipCoverageStatus",
+              "targetName": "RelationshipCoverageStatus"
             },
             {
               "direction": "OUTGOING",
@@ -203036,6 +203207,20 @@
                 "startOffset": 296
               },
               "sourcePath": "docs/explanation/architecture.md",
+              "targetKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipCoverageStatus.kt:95:io.github.amichne.kast.api.contract.result.RelationshipCoverageStatus",
+              "targetName": "RelationshipCoverageStatus"
+            },
+            {
+              "direction": "OUTGOING",
+              "evidenceClass": "extracted",
+              "kind": "DOCUMENTS",
+              "sourceKind": "markdown",
+              "sourceLocation": {
+                "endOffset": 360,
+                "line": 8,
+                "startOffset": 296
+              },
+              "sourcePath": "docs/explanation/architecture.md",
               "targetKey": "class:INTERFACE:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipResultEvidence.kt:368:io.github.amichne.kast.api.contract.result.RelationshipResultEvidence",
               "targetName": "RelationshipResultEvidence"
             },
@@ -203150,104 +203335,6 @@
               "sourcePath": "docs/how-to/troubleshoot.md",
               "targetKey": "class:CLASS:backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaRelationshipCoverageAuthority.kt:561:io.github.amichne.kast.idea.IdeaRelationshipCoverageAuthority",
               "targetName": "IdeaRelationshipCoverageAuthority"
-            },
-            {
-              "direction": "OUTGOING",
-              "evidenceClass": "extracted",
-              "kind": "DOCUMENTS",
-              "sourceKind": "markdown",
-              "sourceLocation": {
-                "endOffset": 396,
-                "line": 9,
-                "startOffset": 340
-              },
-              "sourcePath": "docs/how-to/troubleshoot.md",
-              "targetKey": "class:INTERFACE:backend-idea/src/main/kotlin/io/github/amichne/kast/idea/RelationshipCoverageAuthority.kt:194:io.github.amichne.kast.idea.RelationshipCoverageAuthority",
-              "targetName": "RelationshipCoverageAuthority"
-            },
-            {
-              "direction": "OUTGOING",
-              "evidenceClass": "extracted",
-              "kind": "DOCUMENTS",
-              "sourceKind": "markdown",
-              "sourceLocation": {
-                "endOffset": 396,
-                "line": 9,
-                "startOffset": 340
-              },
-              "sourcePath": "docs/how-to/troubleshoot.md",
-              "targetKey": "class:INTERFACE:backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/relationships/RelationshipCoverage.kt:11701:io.github.amichne.kast.idea.backend.relationships.CompleteRelationshipCoverageAdmission",
-              "targetName": "CompleteRelationshipCoverageAdmission"
-            },
-            {
-              "direction": "OUTGOING",
-              "evidenceClass": "extracted",
-              "kind": "DOCUMENTS",
-              "sourceKind": "markdown",
-              "sourceLocation": {
-                "endOffset": 1722,
-                "line": 41,
-                "startOffset": 1667
-              },
-              "sourcePath": ".agents/adr/0031-cli-install-and-data-authority.md",
-              "targetKey": "class:CLASS:analysis-api/src/test/kotlin/io/github/amichne/kast/api/RelationshipModelTest.kt:1640:io.github.amichne.kast.api.RelationshipModelTest",
-              "targetName": "RelationshipModelTest"
-            },
-            {
-              "direction": "OUTGOING",
-              "evidenceClass": "extracted",
-              "kind": "DOCUMENTS",
-              "sourceKind": "markdown",
-              "sourceLocation": {
-                "endOffset": 1506,
-                "line": 38,
-                "startOffset": 1451
-              },
-              "sourcePath": ".agents/adr/0031-cli-install-and-data-authority.md",
-              "targetKey": "class:INTERFACE:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipResultEvidence.kt:368:io.github.amichne.kast.api.contract.result.RelationshipResultEvidence",
-              "targetName": "RelationshipResultEvidence"
-            },
-            {
-              "direction": "OUTGOING",
-              "evidenceClass": "extracted",
-              "kind": "DOCUMENTS",
-              "sourceKind": "markdown",
-              "sourceLocation": {
-                "endOffset": 1506,
-                "line": 38,
-                "startOffset": 1451
-              },
-              "sourcePath": ".agents/adr/0031-cli-install-and-data-authority.md",
-              "targetKey": "class:INTERFACE:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipSearchCoverage.kt:222:io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage",
-              "targetName": "RelationshipSearchCoverage"
-            },
-            {
-              "direction": "OUTGOING",
-              "evidenceClass": "extracted",
-              "kind": "DOCUMENTS",
-              "sourceKind": "markdown",
-              "sourceLocation": {
-                "endOffset": 1506,
-                "line": 38,
-                "startOffset": 1451
-              },
-              "sourcePath": ".agents/adr/0031-cli-install-and-data-authority.md",
-              "targetKey": "class:OBJECT:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipResultEvidence.kt:5458:io.github.amichne.kast.api.contract.result.CompleteRelationshipCoverageSerializer",
-              "targetName": "CompleteRelationshipCoverageSerializer"
-            },
-            {
-              "direction": "OUTGOING",
-              "evidenceClass": "extracted",
-              "kind": "DOCUMENTS",
-              "sourceKind": "markdown",
-              "sourceLocation": {
-                "endOffset": 1506,
-                "line": 38,
-                "startOffset": 1451
-              },
-              "sourcePath": ".agents/adr/0031-cli-install-and-data-authority.md",
-              "targetKey": "class:OBJECT:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipResultEvidence.kt:6309:io.github.amichne.kast.api.contract.result.ResumableRelationshipCoverageSerializer",
-              "targetName": "ResumableRelationshipCoverageSerializer"
             }
           ],
           "continuation": null,
@@ -203718,37 +203805,6 @@
             },
             {
               "annotations": [],
-              "canonicalKey": "class:CLASS:analysis-api/src/test/kotlin/io/github/amichne/kast/api/RelationshipModelTest.kt:1640:io.github.amichne.kast.api.RelationshipModelTest",
-              "declarationRange": {
-                "endOffset": 12795,
-                "line": 29,
-                "startOffset": 1640
-              },
-              "evidenceClass": "compiler",
-              "flags": {
-                "isActual": false,
-                "isDelegated": false,
-                "isExpect": false,
-                "isOverride": false,
-                "isSealed": false
-              },
-              "fqName": "io.github.amichne.kast.api.RelationshipModelTest",
-              "gradleProjects": [
-                ".#:analysis-api"
-              ],
-              "kind": "CLASS",
-              "modality": "FINAL",
-              "name": "RelationshipModelTest",
-              "origin": "SOURCE",
-              "parameterTypes": [],
-              "path": "analysis-api/src/test/kotlin/io/github/amichne/kast/api/RelationshipModelTest.kt",
-              "sourceSets": [
-                ".#:analysis-api[test]"
-              ],
-              "visibility": "PUBLIC"
-            },
-            {
-              "annotations": [],
               "canonicalKey": "class:CLASS:backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaRelationshipCoverageAuthority.kt:561:io.github.amichne.kast.idea.IdeaRelationshipCoverageAuthority",
               "declarationRange": {
                 "endOffset": 6314,
@@ -203808,6 +203864,105 @@
                 ".#:backend-idea[test]"
               ],
               "visibility": "PRIVATE"
+            },
+            {
+              "annotations": [
+                "Serializable"
+              ],
+              "canonicalKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipCoverageStatus.kt:95:io.github.amichne.kast.api.contract.result.RelationshipCoverageStatus",
+              "declarationRange": {
+                "endOffset": 266,
+                "line": 5,
+                "startOffset": 95
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.api.contract.result.RelationshipCoverageStatus",
+              "gradleProjects": [
+                ".#:analysis-api"
+              ],
+              "kind": "ENUM_CLASS",
+              "modality": "FINAL",
+              "name": "RelationshipCoverageStatus",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipCoverageStatus.kt",
+              "sourceSets": [
+                ".#:analysis-api[main]"
+              ],
+              "visibility": "PUBLIC"
+            },
+            {
+              "annotations": [
+                "Serializable"
+              ],
+              "canonicalKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:5202:io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind",
+              "declarationRange": {
+                "endOffset": 5420,
+                "line": 201,
+                "startOffset": 5202
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind",
+              "gradleProjects": [
+                ".#:analysis-api"
+              ],
+              "kind": "ENUM_CLASS",
+              "modality": "FINAL",
+              "name": "SemanticGraphRelationKind",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
+              "sourceSets": [
+                ".#:analysis-api[main]"
+              ],
+              "visibility": "PUBLIC"
+            },
+            {
+              "annotations": [
+                "Serializable"
+              ],
+              "canonicalKey": "class:ENUM_CLASS:analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt:5422:io.github.amichne.kast.api.contract.result.SemanticGraphRelationContext",
+              "declarationRange": {
+                "endOffset": 5634,
+                "line": 216,
+                "startOffset": 5422
+              },
+              "evidenceClass": "compiler",
+              "flags": {
+                "isActual": false,
+                "isDelegated": false,
+                "isExpect": false,
+                "isOverride": false,
+                "isSealed": false
+              },
+              "fqName": "io.github.amichne.kast.api.contract.result.SemanticGraphRelationContext",
+              "gradleProjects": [
+                ".#:analysis-api"
+              ],
+              "kind": "ENUM_CLASS",
+              "modality": "FINAL",
+              "name": "SemanticGraphRelationContext",
+              "origin": "SOURCE",
+              "parameterTypes": [],
+              "path": "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt",
+              "sourceSets": [
+                ".#:analysis-api[main]"
+              ],
+              "visibility": "PUBLIC"
             },
             {
               "annotations": [
@@ -204231,7 +204386,7 @@
           }
         }
       },
-      "responseBytes": 44859,
+      "responseBytes": 46586,
       "returnCode": 0
     },
     {
@@ -204239,7 +204394,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "context-05-rust-consumes-schema",
-      "latencyMillis": 181.847,
+      "latencyMillis": 178.61,
       "passed": true,
       "phase": 5,
       "response": {
@@ -204789,7 +204944,7 @@
       "critical": false,
       "failedAssertions": [],
       "id": "context-06-workflow-to-implementation",
-      "latencyMillis": 175.809,
+      "latencyMillis": 169.68,
       "passed": true,
       "phase": 6,
       "response": {
@@ -205365,7 +205520,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "negative-01-bare-parse-ambiguity",
-      "latencyMillis": 393.2,
+      "latencyMillis": 420.639,
       "passed": true,
       "phase": 3,
       "response": {
@@ -206487,7 +206642,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "negative-02-bare-sha-ambiguity",
-      "latencyMillis": 394.163,
+      "latencyMillis": 410.689,
       "passed": true,
       "phase": 3,
       "response": {
@@ -207439,7 +207594,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "negative-03-complete-empty",
-      "latencyMillis": 395.974,
+      "latencyMillis": 416.94,
       "passed": true,
       "phase": 1,
       "response": {
@@ -207802,7 +207957,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "negative-04-module-empty",
-      "latencyMillis": 329.127,
+      "latencyMillis": 342.654,
       "passed": true,
       "phase": 1,
       "response": {
@@ -208005,7 +208160,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "negative-05-test-fixtures-empty",
-      "latencyMillis": 313.972,
+      "latencyMillis": 311.599,
       "passed": true,
       "phase": 1,
       "response": {
@@ -208208,7 +208363,7 @@
       "critical": true,
       "failedAssertions": [],
       "id": "negative-06-wrong-direction-empty",
-      "latencyMillis": 164.404,
+      "latencyMillis": 167.729,
       "passed": true,
       "phase": 2,
       "response": {

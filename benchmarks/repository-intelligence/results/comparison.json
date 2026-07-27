@@ -70,21 +70,21 @@
         "capturedQuestions": 42,
         "completedQuestions": 42,
         "measuredQuestions": 42,
-        "medianLatencyMillis": 852.297,
-        "p95LatencyMillis": 899.887,
+        "medianLatencyMillis": 852.722,
+        "p95LatencyMillis": 895.419,
         "reportedQuestions": 42,
-        "totalLatencyMillis": 35293.734,
+        "totalLatencyMillis": 35310.5,
         "totalResponseBytes": 158760
       },
       "kast": {
         "capturedQuestions": 42,
         "completedQuestions": 42,
         "measuredQuestions": 42,
-        "medianLatencyMillis": 341.534,
-        "p95LatencyMillis": 973.18,
+        "medianLatencyMillis": 353.022,
+        "p95LatencyMillis": 930.971,
         "reportedQuestions": 42,
-        "totalLatencyMillis": 15603.663,
-        "totalResponseBytes": 6367279
+        "totalLatencyMillis": 15783.057,
+        "totalResponseBytes": 6369235
       }
     },
     "winnerByTotalLatency": "kast"
@@ -94,13 +94,13 @@
       "admitted": true,
       "benchmark": {
         "corpusCommit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
-        "manifestSha256": "eb510890e61dcb770f4a8a877671705521e71bb5cdcb03221355f40c8b9b9bfa",
+        "manifestSha256": "3c465d5fb9e6f5cda12a0ea0a19b8f090660a43eaed050ae386c29e6e5cc0b7e",
         "questionsSha256": "413e0253a6308ea3e1751636183f8d635eca3f837b6588b22873ad73813ca8b5",
         "rubricSha256": "655ec74077b12a9e8ea1b19f9f2eec06429dda5e7d8295f6aaf0ab805381cd36"
       },
       "captureDocuments": {
-        "graphifySha256": "8869ad0b7141b6248b95222d4af673c5c0d4166263102f36ce64292fde6a166d",
-        "kastSha256": "d82f9385394517a74a0681986eed6aedda3693b2fc6882c95371cd90002e5b95"
+        "graphifySha256": "77e59dce4ca9ee9a9941b1d7970b18b1fa6d05535ffd2b105c157cfbbdf3a8e2",
+        "kastSha256": "bfcfda5e6e975f04dbc33458408c4d82fd1bfcc4113036cb2d2bab0fe2a8fa6b"
       },
       "failures": [],
       "graphify": {
@@ -109,13 +109,13 @@
         "graphSha256": "9ba3af31f2b0419f34b12956f1d25cd77ca4a4946464208bd8287ad465b80efc"
       },
       "kast": {
-        "binarySha256": "1cf07ad4e7f82ad2a243e6c6a53fd9deea213b2325e6d0a1190632df81e3d581",
+        "binarySha256": "2ef1cbb57212181182ca4edcd9fe3b18cad908f3e4367f53bce660356b85c1b9",
         "corpusInputsSha256": "9a4c2b0f774928a63d42fd3747e52e07e8e87edbb588eccb5b5807db35d78c35",
         "coverageSha256": "fbbacea3dfc2aca39e070d373019da11d03b0bc5e83b3a9c6073882db624dea7",
         "graphGeneration": 1582,
-        "sourceCommit": "43da256313b19ba3d8f7d7a6f2d66bfa1bef7613",
+        "sourceCommit": "f61514693b3cfb6558c8aeca61e77e7023429447",
         "sourceIndexSha256": "f7dc2509581975b9bc69b2f66c3098861bea93308c4b3f80ad21c746e98d6590",
-        "sourceTreeSha256": "2d4d99948c6f542daad8e89ed52d0a9d28235a050968285ca2706c898e3298dc",
+        "sourceTreeSha256": "ded7b0a573d39c27f0d40c5c9b019e7317545aa03937878644d582425be1761e",
         "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus"
       }
     },
@@ -127,19 +127,19 @@
       "version": "graphify 0.9.22"
     },
     "hashes": {
-      "graphifyResultSha256": "8869ad0b7141b6248b95222d4af673c5c0d4166263102f36ce64292fde6a166d",
-      "implementationIdentitySha256": "35b9b19e19553e92259919d5bd8e8b27af1dcfec436fa97b864a805f73e925c5",
-      "kastBinaryRecordedIdentitySha256": "0cd0f8768553e3dae876e0ae84435af8600060efadc1b0095f8c7fc19fbae11a",
-      "kastResultSha256": "d82f9385394517a74a0681986eed6aedda3693b2fc6882c95371cd90002e5b95",
-      "manifestSha256": "eb510890e61dcb770f4a8a877671705521e71bb5cdcb03221355f40c8b9b9bfa",
+      "graphifyResultSha256": "77e59dce4ca9ee9a9941b1d7970b18b1fa6d05535ffd2b105c157cfbbdf3a8e2",
+      "implementationIdentitySha256": "e31d60ec0b72304a48795e830bfcf322408c0901cf1980860223d287a2047c4e",
+      "kastBinaryRecordedIdentitySha256": "cdb6f3876b4deb6d848a6f92d159cc6b9ecaff72cd978d217bcffeb190311dd3",
+      "kastResultSha256": "bfcfda5e6e975f04dbc33458408c4d82fd1bfcc4113036cb2d2bab0fe2a8fa6b",
+      "manifestSha256": "3c465d5fb9e6f5cda12a0ea0a19b8f090660a43eaed050ae386c29e6e5cc0b7e",
       "questionsSha256": "413e0253a6308ea3e1751636183f8d635eca3f837b6588b22873ad73813ca8b5",
       "rubricSha256": "655ec74077b12a9e8ea1b19f9f2eec06429dda5e7d8295f6aaf0ab805381cd36"
     },
     "kast": {
       "binaryEvidence": "HASHED_BYTES",
-      "binaryRecordedPath": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-benchmark-build-_fjdsvkm/target/release/kast",
-      "binarySha256": "1cf07ad4e7f82ad2a243e6c6a53fd9deea213b2325e6d0a1190632df81e3d581",
-      "implementationCommit": "43da256313b19ba3d8f7d7a6f2d66bfa1bef7613"
+      "binaryRecordedPath": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-benchmark-build-1ofpxr2w/target/release/kast",
+      "binarySha256": "2ef1cbb57212181182ca4edcd9fe3b18cad908f3e4367f53bce660356b85c1b9",
+      "implementationCommit": "f61514693b3cfb6558c8aeca61e77e7023429447"
     },
     "limitations": []
   },
