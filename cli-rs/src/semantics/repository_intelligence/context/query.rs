@@ -6,8 +6,12 @@ fn context_repository_question(
     execution_scope: &RepositoryExecutionScope,
     limits: &RepositoryLimits,
 ) -> Result<Value> {
-    let (targets, unresolved_references, ambiguous_references) =
-        context_target_nodes(connection, question, execution_scope, limits.results)?;
+    let RepositoryContextTargetSelection {
+        nodes: targets,
+        unresolved_references,
+        ambiguous_references,
+        truncated: target_selection_truncated,
+    } = context_target_nodes(connection, question, execution_scope, limits.results)?;
     let sources = if scope.sources.is_empty() {
         vec![
             RepositoryContextSource::Markdown,
@@ -168,7 +172,8 @@ fn context_repository_question(
         .iter()
         .map(|relation| relation.evidence_class)
         .collect::<BTreeSet<_>>();
-    let truncated = candidates.len() > limits.results
+    let truncated = target_selection_truncated
+        || candidates.len() > limits.results
         || ambiguous_references
             .iter()
             .any(|ambiguity| ambiguity.truncated);

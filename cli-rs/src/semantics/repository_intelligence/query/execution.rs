@@ -93,18 +93,31 @@ fn repository_query_at_snapshot(
         .get("ambiguous")
         .and_then(Value::as_bool)
         .unwrap_or(false);
+    let truncated = result
+        .get("truncated")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
     let status = if ambiguous {
         "AMBIGUOUS"
     } else if answered {
         "ANSWERED"
-    } else if snapshot.coverage.complete {
+    } else if snapshot.coverage.complete && !truncated {
         "EMPTY"
     } else {
         "QUALIFIED_EMPTY"
     };
-    let qualification = (!snapshot.coverage.complete).then_some(
-        "This result is limited to the indexed portion of this scope because coverage is incomplete.",
-    );
+    let qualification = match (snapshot.coverage.complete, truncated) {
+        (true, false) => None,
+        (false, false) => Some(
+            "This result is limited to the indexed portion of this scope because coverage is incomplete.",
+        ),
+        (true, true) => Some(
+            "This result is bounded and may omit matching evidence; consume any continuation or narrow the query.",
+        ),
+        (false, true) => Some(
+            "This result is limited by incomplete coverage and bounded execution; complete indexing, consume any continuation, or narrow the query.",
+        ),
+    };
     let mut response = json!({
         "type": "KAST_REPOSITORY_QUERY_RESULT",
         "canonicalResultModel": true,
@@ -147,7 +160,7 @@ fn repository_query_at_snapshot(
         } else {
             "canonicalKey ascending"
         },
-        "truncated": result.get("truncated").cloned().unwrap_or(Value::Bool(false)),
+        "truncated": truncated,
         "continuation": result.get("continuation").cloned().unwrap_or(Value::Null),
         "qualification": qualification,
         "schemaVersion": SCHEMA_VERSION

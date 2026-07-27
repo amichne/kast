@@ -88,7 +88,7 @@ fn repository_context_empty_preserves_unresolved_references() {
 }
 
 #[test]
-fn repository_context_does_not_claim_empty_past_inferred_target_ceiling() {
+fn repository_context_qualifies_empty_at_inferred_target_ceiling() {
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
     seed_repository_graph(&fixture);
     let mut connection = fixture.connection();
@@ -138,15 +138,25 @@ fn repository_context_does_not_claim_empty_past_inferred_target_ceiling() {
         }),
     );
 
-    assert!(
-        status.success()
-            && response["result"]["status"] == "ANSWERED"
-            && response["result"]["contextRelations"]
-                .as_array()
-                .is_some_and(|relations| relations.iter().any(|relation| {
-                    relation["targetKey"] == "class:SemanticGraphSha256"
-                        && relation["sourcePath"] == "docs/compiler-evidence.md"
-                })),
+    assert_eq!(
+        serde_json::json!({
+            "commandSucceeded": status.success(),
+            "status": response["result"]["status"],
+            "coverageComplete": response["result"]["coverage"]["complete"],
+            "truncated": response["result"]["truncated"],
+            "contextRelations": response["result"]["contextRelations"],
+            "qualified": response["result"]["qualification"]
+                .as_str()
+                .is_some_and(|qualification| qualification.contains("bounded"))
+        }),
+        serde_json::json!({
+            "commandSucceeded": true,
+            "status": "QUALIFIED_EMPTY",
+            "coverageComplete": true,
+            "truncated": true,
+            "contextRelations": [],
+            "qualified": true
+        }),
         "{response:#}"
     );
 }

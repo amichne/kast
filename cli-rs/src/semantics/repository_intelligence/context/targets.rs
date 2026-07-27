@@ -1,13 +1,18 @@
+const MAX_INFERRED_CONTEXT_TARGETS: usize = 200;
+
+struct RepositoryContextTargetSelection {
+    nodes: Vec<RepositoryNode>,
+    unresolved_references: Vec<String>,
+    ambiguous_references: Vec<RepositoryContextAmbiguity>,
+    truncated: bool,
+}
+
 fn context_target_nodes(
     connection: &Connection,
     question: &str,
     execution_scope: &RepositoryExecutionScope,
     result_limit: usize,
-) -> Result<(
-    Vec<RepositoryNode>,
-    Vec<String>,
-    Vec<RepositoryContextAmbiguity>,
-)> {
+) -> Result<RepositoryContextTargetSelection> {
     let ignored = ["ADR", "CI", "CALLS"];
     let names = explicit_repository_names(question)
         .into_iter()
@@ -48,20 +53,29 @@ fn context_target_nodes(
             }
         }
     }
+    let mut inferred_targets_truncated = false;
     if !has_explicit_names {
-        targets.extend(
-            rank_repository_candidates(connection, question, execution_scope)?
-                .into_iter()
-                .filter(|candidate| {
-                    matches!(
-                        candidate.node.kind.as_str(),
-                        "CLASS" | "ENUM_CLASS" | "INTERFACE" | "OBJECT" | "TYPE_ALIAS"
-                    )
-                })
-                .map(|candidate| candidate.node),
-        );
+        let mut inferred = rank_repository_candidates(connection, question, execution_scope)?
+            .into_iter()
+            .filter(|candidate| {
+                matches!(
+                    candidate.node.kind.as_str(),
+                    "CLASS" | "ENUM_CLASS" | "INTERFACE" | "OBJECT" | "TYPE_ALIAS"
+                )
+            })
+            .take(MAX_INFERRED_CONTEXT_TARGETS + 1)
+            .map(|candidate| candidate.node)
+            .collect::<Vec<_>>();
+        inferred_targets_truncated = inferred.len() > MAX_INFERRED_CONTEXT_TARGETS;
+        inferred.truncate(MAX_INFERRED_CONTEXT_TARGETS);
+        targets.extend(inferred);
     }
     targets.sort_by(|left, right| left.canonical_key.cmp(&right.canonical_key));
     targets.dedup_by(|left, right| left.canonical_key == right.canonical_key);
-    Ok((targets, unresolved, ambiguous))
+    Ok(RepositoryContextTargetSelection {
+        nodes: targets,
+        unresolved_references: unresolved,
+        ambiguous_references: ambiguous,
+        truncated: inferred_targets_truncated,
+    })
 }
