@@ -10,6 +10,7 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
@@ -45,8 +46,19 @@ class IdeaReferenceIndexEnvironmentTest {
                 val collected = values.stream()
                     .map(String::trim)
                     .collect(Collectors.toList())
+                JavaTarget.value()
                 target()
                 return collected
+            }
+        """
+
+        private const val javaTargetSource = """
+            package demo;
+
+            public final class JavaTarget {
+                public static String value() {
+                    return "java";
+                }
             }
         """
     }
@@ -56,6 +68,7 @@ class IdeaReferenceIndexEnvironmentTest {
     private val targetFileFixture = sourceRootFixture.psiFileFixture("Target.kt", targetSource)
     private val callerFileFixture = sourceRootFixture.psiFileFixture("Caller.kt", callerSource)
     private val collectorsFileFixture = sourceRootFixture.psiFileFixture("CollectorsCaller.kt", collectorsSource)
+    private val javaTargetFileFixture = sourceRootFixture.psiFileFixture("JavaTarget.java", javaTargetSource)
 
     @Test
     fun `shared scanner emits references for IDEA Kotlin files`() {
@@ -81,6 +94,7 @@ class IdeaReferenceIndexEnvironmentTest {
     fun `shared scanner tolerates compiled JDK PSI mirror failures`() {
         val project = projectFixture.get()
         targetFileFixture.get()
+        javaTargetFileFixture.get()
         val collectorsFile = collectorsFileFixture.get()
         waitUntilIndexesAreReady(project)
 
@@ -98,6 +112,10 @@ class IdeaReferenceIndexEnvironmentTest {
         assertTrue(
             rows.any { row -> row.targetFqName == "demo.target" && row.sourcePath == collectorsFile.virtualFile.path },
             "scanner should continue past compiled PSI failures and still index later source references",
+        )
+        assertFalse(
+            rows.any { row -> row.targetFqName.startsWith("demo.JavaTarget") },
+            "phase 2 should not persist non-Kotlin targets",
         )
     }
 
