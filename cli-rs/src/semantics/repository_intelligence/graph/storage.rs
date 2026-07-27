@@ -119,6 +119,39 @@ fn repository_edges(
     evidence_resume: Option<&RepositoryEvidenceResume>,
     node_cache: &mut RepositoryNodeCache<'_>,
 ) -> Result<Vec<RepositoryEdge>> {
+    let evidence_identity = evidence_resume
+        .map(|continuation| {
+            let source = load_repository_node(
+                connection,
+                "symbol.stable_key = ?1",
+                &continuation.source_key,
+            )?
+            .into_iter()
+            .find_map(|node| node_cache.execution_scope.admit_node(node));
+            let target = load_repository_node(
+                connection,
+                "symbol.stable_key = ?1",
+                &continuation.target_key,
+            )?
+            .into_iter()
+            .find_map(|node| node_cache.execution_scope.admit_node(node));
+            let (Some(source), Some(target)) = (source, target) else {
+                return Err(invalid_repository_continuation(
+                    "Repository evidence continuation resume identity is unavailable.",
+                ));
+            };
+            let identity = RepositoryEdgeIdentity {
+                source_id: source.database_id,
+                target_id: target.database_id,
+                kind: continuation.kind,
+                context: continuation.context.clone(),
+                derived: continuation.derived,
+            };
+            node_cache.nodes.insert(source.database_id, source);
+            node_cache.nodes.insert(target.database_id, target);
+            Ok(identity)
+        })
+        .transpose()?;
     let mut grouped = BTreeMap::<RepositoryEdgeIdentity, Vec<&RepositoryEdgeOccurrence>>::new();
     for occurrence in occurrences {
         let source_id = occurrence.lifted_source.unwrap_or(occurrence.source_id);
@@ -135,19 +168,16 @@ fn repository_edges(
     }
     let mut edges = Vec::new();
     for (identity, mut grouped_occurrences) in grouped {
+        if evidence_identity
+            .as_ref()
+            .is_some_and(|expected| expected != &identity)
+        {
+            continue;
+        }
         grouped_occurrences.sort_by_key(|occurrence| occurrence.occurrence.id);
         let source = cached_repository_node(connection, identity.source_id, node_cache)?;
         let target = cached_repository_node(connection, identity.target_id, node_cache)?;
         let occurrence_count = grouped_occurrences.len();
-        if evidence_resume.is_some_and(|continuation| {
-            continuation.source_key != source.canonical_key
-                || continuation.target_key != target.canonical_key
-                || continuation.kind != identity.kind
-                || continuation.context != identity.context
-                || continuation.derived != identity.derived
-        }) {
-            continue;
-        }
         let after_occurrence_id = evidence_resume
             .map(|continuation| continuation.after_occurrence_id)
             .unwrap_or(i64::MIN);

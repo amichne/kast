@@ -242,7 +242,7 @@ fn repository_traversal_continuation_resumes_without_replay_or_drift() {
 }
 
 #[test]
-fn repository_evidence_continuation_preserves_later_traversal_position() {
+fn combined_traversal_evidence_limits_response_nodes() {
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
     seed_repository_graph(&fixture);
     let request = |id: &str,
@@ -329,6 +329,25 @@ fn repository_evidence_continuation_preserves_later_traversal_position() {
     );
 
     assert!(status.success(), "{evidence_page:#}");
+    let node_keys = evidence_page["result"]["nodes"]
+        .as_array()
+        .expect("repository nodes")
+        .iter()
+        .map(|node| {
+            node["canonicalKey"]
+                .as_str()
+                .expect("repository node canonical key")
+        })
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        node_keys,
+        std::collections::BTreeSet::from([
+            "callable:semanticGraphOperation",
+            "callable:buildSemanticGraphSnapshot",
+            "callable:SemanticGraphSha256.parse",
+        ]),
+        "{evidence_page:#}"
+    );
     assert_eq!(
         evidence_page["result"]["edges"][0]["occurrences"][0]["id"],
         4,
