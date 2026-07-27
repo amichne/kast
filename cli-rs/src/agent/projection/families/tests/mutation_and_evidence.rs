@@ -305,6 +305,8 @@
             json!(false);
         let mut empty_without_eligibility_proof = repository_result("resolve", "EMPTY");
         empty_without_eligibility_proof["coverage"]["eligibilityProven"] = json!(false);
+        let mut truncated_empty = repository_result("resolve", "EMPTY");
+        truncated_empty["truncated"] = json!(true);
         let mut qualified_empty_with_negative_eligibility =
             repository_result("resolve", "QUALIFIED_EMPTY");
         qualified_empty_with_negative_eligibility["coverage"]["eligibleForCompleteNegative"] =
@@ -324,6 +326,7 @@
                 "EMPTY without eligibility proof",
                 empty_without_eligibility_proof,
             ),
+            ("truncated EMPTY", truncated_empty),
             (
                 "QUALIFIED_EMPTY with complete-negative eligibility",
                 qualified_empty_with_negative_eligibility,

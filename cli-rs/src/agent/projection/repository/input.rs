@@ -101,7 +101,8 @@ impl AgentRepositoryProjectionInput {
         }
         match self.status {
             AgentRepositoryStatus::Empty
-                if !self.coverage.complete
+                if self.truncated
+                    || !self.coverage.complete
                     || !self.coverage.eligible_for_complete_negative
                     || !self.coverage.eligibility_proven
                     || self.qualification.is_some() =>
