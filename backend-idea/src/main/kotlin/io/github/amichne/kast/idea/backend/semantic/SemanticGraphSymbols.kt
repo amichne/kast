@@ -163,6 +163,7 @@ internal fun KtNamedDeclaration.semanticKey(path: SemanticGraphSourcePath): Sema
 internal fun KastPluginBackend.semanticTarget(
     target: PsiElement,
     sourcePath: SemanticGraphSourcePath,
+    semanticScope: Set<SemanticGraphSourcePath>,
 ): ResolvedSemanticTarget? {
     val targetFile = target.containingFile as? KtFile ?: return null
     if (!isWorkspaceFile(targetFile.virtualFile.path)) return null
@@ -171,11 +172,22 @@ internal fun KastPluginBackend.semanticTarget(
         else -> PsiTreeUtil.getParentOfType(target, KtClassOrObject::class.java, false)
     } ?: return null
     val targetPath = relativePathOr(declaration, sourcePath)
+    if (targetPath !in semanticScope) return null
     val symbol = semanticGraphSymbol(declaration, targetPath)
     return ResolvedSemanticTarget(
         key = symbol.canonicalKey,
         boundarySymbol = symbol.takeUnless { targetPath == sourcePath },
     )
+}
+
+internal fun KastPluginBackend.isOutsideSemanticGraphScope(
+    target: PsiElement?,
+    sourcePath: SemanticGraphSourcePath,
+    semanticScope: Set<SemanticGraphSourcePath>,
+): Boolean {
+    val targetFile = target?.containingFile as? KtFile ?: return true
+    if (!isWorkspaceFile(targetFile.virtualFile.path)) return true
+    return relativePathOr(target, sourcePath) !in semanticScope
 }
 
 internal fun KastPluginBackend.relativePathOr(

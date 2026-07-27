@@ -33,6 +33,16 @@ fn execute_agent_native_graph(args: AgentNativeGraphArgs) -> AgentEnvelope {
     if args.operation == NativeGraphOperation::Refresh {
         return execute_agent_native_graph_refresh(args);
     }
+    if !args.modules.is_empty() || !args.source_sets.is_empty() || args.exclusive {
+        return error_envelope(
+            "agent/graph".to_string(),
+            None,
+            agent_error(
+                "AGENT_USAGE",
+                "Graph refresh selectors require --operation refresh.",
+            ),
+        );
+    }
     match native_graph_result(&args) {
         Ok(result) => result_envelope("agent/graph".to_string(), result),
         Err(error) => error_envelope("agent/graph".to_string(), None, error),
@@ -40,13 +50,17 @@ fn execute_agent_native_graph(args: AgentNativeGraphArgs) -> AgentEnvelope {
 }
 
 fn execute_agent_native_graph_refresh(args: AgentNativeGraphArgs) -> AgentEnvelope {
-    if args.file_paths.is_empty() && args.removed_file_paths.is_empty() {
+    if args.file_paths.is_empty()
+        && args.removed_file_paths.is_empty()
+        && args.modules.is_empty()
+        && args.source_sets.is_empty()
+    {
         return error_envelope(
             "agent/graph".to_string(),
             None,
             agent_error(
                 "AGENT_USAGE",
-                "--operation refresh requires --file-path or --removed-file-path.",
+                "--operation refresh requires --file-path, --removed-file-path, --module, or --source-set.",
             ),
         );
     }
@@ -68,12 +82,49 @@ fn execute_agent_native_graph_refresh(args: AgentNativeGraphArgs) -> AgentEnvelo
         Ok(file_paths) => file_paths,
         Err(error) => return error_envelope("agent/graph".to_string(), None, error),
     };
+    if !args.modules.is_empty() || !args.source_sets.is_empty() {
+        let selected = match native_graph_source_scope_paths(&args) {
+            Ok(selected) => selected,
+            Err(error) => return error_envelope("agent/graph".to_string(), None, error),
+        };
+        let selected = match normalizer.normalize_all(&selected) {
+            Ok(selected) => selected,
+            Err(error) => return error_envelope("agent/graph".to_string(), None, error),
+        };
+        file_paths.extend(selected);
+        if !args.exclusive {
+            let persisted = match native_graph_persisted_source_paths(&args) {
+                Ok(persisted) => persisted,
+                Err(error) => return error_envelope("agent/graph".to_string(), None, error),
+            };
+            let persisted = match normalizer.normalize_all(&persisted) {
+                Ok(persisted) => persisted,
+                Err(error) => return error_envelope("agent/graph".to_string(), None, error),
+            };
+            file_paths.extend(persisted);
+        }
+    }
     let mut removed_file_paths = match normalizer.normalize_all(&args.removed_file_paths) {
         Ok(file_paths) => file_paths,
         Err(error) => return error_envelope("agent/graph".to_string(), None, error),
     };
     file_paths.sort();
     file_paths.dedup();
+    if args.exclusive {
+        let persisted = match native_graph_persisted_source_paths(&args) {
+            Ok(persisted) => persisted,
+            Err(error) => return error_envelope("agent/graph".to_string(), None, error),
+        };
+        let persisted = match normalizer.normalize_all(&persisted) {
+            Ok(persisted) => persisted,
+            Err(error) => return error_envelope("agent/graph".to_string(), None, error),
+        };
+        removed_file_paths.extend(
+            persisted
+                .into_iter()
+                .filter(|path| file_paths.binary_search(path).is_err()),
+        );
+    }
     removed_file_paths.sort();
     removed_file_paths.dedup();
     if file_paths

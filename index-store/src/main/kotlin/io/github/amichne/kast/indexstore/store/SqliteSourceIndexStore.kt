@@ -186,6 +186,9 @@ class SqliteSourceIndexStore private constructor(
     fun semanticGraphSymbolKeys(): Set<SemanticGraphSymbolKey> =
         semanticGraphReader.semanticGraphSymbolKeys()
 
+    fun semanticGraphSourcePaths(): Set<SemanticGraphSourcePath> =
+        semanticGraphReader.semanticGraphSourcePaths()
+
     fun readGeneration(): SourceIndexGeneration = snapshots.readGeneration()
 
     fun exportSnapshotDatabase(

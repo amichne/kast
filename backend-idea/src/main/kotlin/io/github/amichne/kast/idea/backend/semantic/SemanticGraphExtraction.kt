@@ -68,16 +68,16 @@ private fun KastPluginBackend.admitSemanticTarget(
     compilerTarget: SemanticGraphCompilerTarget,
     path: SemanticGraphSourcePath,
     occurrence: PsiElement,
+    semanticScope: Set<SemanticGraphSourcePath>,
 ): SemanticGraphTargetAdmission {
     val element = when (val resolved = compilerTarget.requireResolved(path, occurrence)) {
         SemanticGraphCompilerTarget.External -> return SemanticGraphTargetAdmission.External
         is SemanticGraphCompilerTarget.Source -> resolved.element
     }
-    semanticTarget(element, path)?.let { target ->
+    semanticTarget(element, path, semanticScope)?.let { target ->
         return SemanticGraphTargetAdmission.Workspace(element, target)
     }
-    val targetFile = element.containingFile
-    if (targetFile !is KtFile || !isWorkspaceFile(targetFile.virtualFile.path)) {
+    if (isOutsideSemanticGraphScope(element, path, semanticScope)) {
         return SemanticGraphTargetAdmission.External
     }
     throw ValidationException(
@@ -91,6 +91,7 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
     path: SemanticGraphSourcePath,
     contentHash: SemanticGraphSha256,
     diagnostics: List<SemanticGraphDiagnosticEvidence>,
+    semanticScope: Set<SemanticGraphSourcePath>,
 ): ExtractedSemanticGraphFile {
     val declarations = PsiTreeUtil.findChildrenOfType(file, KtNamedDeclaration::class.java)
         .filter { declaration -> projectableKind(declaration) != null }
@@ -205,10 +206,11 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
         }
         relations += relation(owner, symbol.canonicalKey, relationKind, SemanticGraphRelationContext.NONE, declaration, path)
     }
+    var omittedExternalTargetCount = 0
     declarations.forEach { declaration ->
         val source = symbolByDeclaration.getValue(declaration)
         declaration.semanticCompilerRelations().forEach { (target, kind) ->
-            val semanticTarget = semanticTarget(target, path)
+            val semanticTarget = semanticTarget(target, path, semanticScope)
             if (semanticTarget != null) {
                 semanticTarget.boundarySymbol?.let { symbol ->
                     boundarySymbols[symbol.canonicalKey] = symbol
@@ -221,11 +223,12 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
                     declaration,
                     path,
                 )
+            } else if (isOutsideSemanticGraphScope(target, path, semanticScope)) {
+                omittedExternalTargetCount++
             }
         }
     }
 
-    var omittedExternalTargetCount = 0
     PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
         .sortedBy { it.textRange.startOffset }
         .forEach { call ->
@@ -243,7 +246,7 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
                 )
             }
             val source = nearestProjectedOwner(call, symbolByDeclaration) ?: fileSymbol
-            when (val admitted = admitSemanticTarget(target.compilerTarget, path, call)) {
+            when (val admitted = admitSemanticTarget(target.compilerTarget, path, call, semanticScope)) {
                 SemanticGraphTargetAdmission.External -> omittedExternalTargetCount++
                 is SemanticGraphTargetAdmission.Workspace -> {
                     admitted.target.boundarySymbol?.let { symbol ->
@@ -275,7 +278,7 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
             val source = nearestProjectedOwner(entry, symbolByDeclaration) ?: return@forEach
             val target = entry.typeReference?.resolveCompilerTarget()
                 ?: SemanticGraphCompilerTarget.Unresolved
-            when (val admitted = admitSemanticTarget(target, path, entry)) {
+            when (val admitted = admitSemanticTarget(target, path, entry, semanticScope)) {
                 SemanticGraphTargetAdmission.External -> omittedExternalTargetCount++
                 is SemanticGraphTargetAdmission.Workspace -> {
                     admitted.target.boundarySymbol?.let { symbol ->
@@ -311,7 +314,14 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
                 .sortedBy { it.textRange.startOffset }
                 .forEach { userType ->
                     val source = nearestProjectedOwner(reference, symbolByDeclaration) ?: fileSymbol
-                    when (val admitted = admitSemanticTarget(userType.resolveCompilerTarget(), path, userType)) {
+                    when (
+                        val admitted = admitSemanticTarget(
+                            userType.resolveCompilerTarget(),
+                            path,
+                            userType,
+                            semanticScope,
+                        )
+                    ) {
                         SemanticGraphTargetAdmission.External -> omittedExternalTargetCount++
                         is SemanticGraphTargetAdmission.Workspace -> {
                             admitted.target.boundarySymbol?.let { symbol ->

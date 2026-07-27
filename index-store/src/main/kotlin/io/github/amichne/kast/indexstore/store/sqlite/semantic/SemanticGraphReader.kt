@@ -175,4 +175,31 @@ internal class SemanticGraphReader(
         }
     }
 
+    fun semanticGraphSourcePaths(): Set<SemanticGraphSourcePath> = synchronized(state.writeLock) {
+        val sql = if (state.repositoryBasePath == null) {
+            "SELECT path FROM semantic_files WHERE refresh_status != 'CACHED' ORDER BY path"
+        } else {
+            """SELECT path FROM semantic_files WHERE refresh_status != 'CACHED'
+               UNION
+               SELECT base.path
+               FROM repository_base.semantic_files base
+               WHERE base.refresh_status != 'CACHED'
+                 AND NOT EXISTS (
+                     SELECT 1 FROM repository_overlay_tombstones tombstones
+                     WHERE tombstones.path = base.path
+                 )
+                 AND NOT EXISTS (
+                     SELECT 1 FROM semantic_files overlay
+                     WHERE overlay.path = base.path
+                 )
+               ORDER BY path"""
+        }
+        state.connection().prepareStatement(sql).use { statement ->
+            val rows = statement.executeQuery()
+            buildSet {
+                while (rows.next()) add(SemanticGraphSourcePath.parse(rows.getString(1)))
+            }
+        }
+    }
+
 }

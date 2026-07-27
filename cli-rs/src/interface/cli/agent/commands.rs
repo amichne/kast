@@ -152,6 +152,15 @@ pub struct AgentNativeGraphArgs {
     /// Removed Kotlin file to delete from the persisted graph. Repeat for multiple files.
     #[arg(long = "removed-file-path", conflicts_with = "native_graph_query")]
     pub removed_file_paths: Vec<String>,
+    /// Add files owned by a model-proven Gradle module. Repeat to select multiple modules.
+    #[arg(long = "module", conflicts_with = "native_graph_query")]
+    pub modules: Vec<WorkspaceModuleSelector>,
+    /// Add files from a model-proven Gradle source set. Repeat to select multiple source sets.
+    #[arg(long = "source-set", conflicts_with = "native_graph_query")]
+    pub source_sets: Vec<WorkspaceSourceSetName>,
+    /// Remove persisted graph files outside the selected refresh scope.
+    #[arg(long, conflicts_with = "native_graph_query")]
+    pub exclusive: bool,
     /// Canonical symbol key used by the neighbors operation.
     #[arg(long)]
     pub symbol: Option<String>,

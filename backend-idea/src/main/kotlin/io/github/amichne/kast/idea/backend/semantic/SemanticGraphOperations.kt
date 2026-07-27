@@ -40,6 +40,7 @@ private fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSemanticGr
     val store = requireNotNull(semanticGraphStore)
     val selectedPaths = query.filePaths.map(::toRelativeSemanticGraphPath)
     val removedPaths = query.removedFilePaths.map(::toRelativeSemanticGraphPath)
+    val semanticScope = (store.semanticGraphSourcePaths() - removedPaths.toSet()) + selectedPaths
     val updates = mutableListOf<SemanticGraphFileIndexUpdate>()
     val coverage = mutableListOf<SemanticGraphFileCoverage>()
     var omittedExternalTargetCount = 0
@@ -62,7 +63,7 @@ private fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSemanticGr
                 line = LineNumber(diagnostic.location.startLine.coerceAtLeast(1)),
             )
         }
-        val extracted = extractSemanticGraphFile(file, relativePath, contentHash, evidence)
+        val extracted = extractSemanticGraphFile(file, relativePath, contentHash, evidence, semanticScope)
         updates += extracted.update
         coverage += SemanticGraphFileCoverage(
             path = relativePath,
