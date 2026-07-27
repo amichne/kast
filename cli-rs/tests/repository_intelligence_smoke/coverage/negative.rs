@@ -145,3 +145,47 @@ fn repository_partial_coverage_qualifies_positive_answers_truthfully() {
         "{response:#}"
     );
 }
+
+#[test]
+fn repository_human_partial_result_preserves_certainty() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(2);
+    seed_repository_graph(&fixture);
+    std::fs::write(
+        workspace.join("src/main/kotlin/sample/Source0001.kt"),
+        "package sample\nclass ChangedAfterIndexing\n",
+    )
+    .expect("stale unrelated source");
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": "human-partial-positive",
+        "method": "repository/query",
+        "params": {
+            "question": "Resolve semanticGraphOperation.",
+            "intent": "resolve",
+            "canonicalKey": "callable:semanticGraphOperation",
+            "scope": {"language": "kotlin"},
+            "limits": {"depth": 1, "results": 10, "evidence": 2}
+        }
+    });
+
+    let output = rpc_output(&home, &config_home, &workspace, "human", &request);
+    assert!(
+        output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let human = String::from_utf8(output.stdout).expect("human repository output");
+    for expected in [
+        "- Coverage complete: false",
+        "- Coverage total: 2",
+        "- Coverage indexed: 1",
+        "- Coverage stale: 1",
+        "- Truncated: false",
+        "- Traversal continuation available: false",
+        "- Evidence continuation available: false",
+        "This result is limited to the indexed portion of this scope because coverage is incomplete.",
+    ] {
+        assert!(human.contains(expected), "missing {expected:?}\n{human}");
+    }
+}

@@ -12,10 +12,44 @@ pub(crate) fn render_markdown_report(response: &Value) -> Option<String> {
         ("Intent", "/intent"),
         ("Graph generation", "/graphGeneration"),
         ("Workspace", "/workspaceIdentity/canonicalRoot"),
+        ("Coverage complete", "/coverage/complete"),
+        ("Coverage total", "/coverage/total"),
+        ("Coverage indexed", "/coverage/indexed"),
+        ("Coverage accounted", "/coverage/accounted"),
+        ("Coverage excluded", "/coverage/excluded"),
+        ("Coverage failed", "/coverage/failed"),
+        ("Coverage stale", "/coverage/stale"),
+        ("Pending updates", "/coverage/pendingUpdateCount"),
+        ("Truncated", "/truncated"),
     ] {
         if let Some(value) = result.pointer(pointer).and_then(markdown_scalar) {
             writeln!(report, "- {label}: `{}`", markdown_inline_code(&value)).ok()?;
         }
+    }
+    let traversal_continuation_available = result
+        .get("continuation")
+        .is_some_and(|continuation| !continuation.is_null());
+    let evidence_continuation_available = result
+        .get("edges")
+        .and_then(Value::as_array)
+        .is_some_and(|edges| {
+            edges.iter().any(|edge| {
+                edge.get("evidenceContinuation")
+                    .is_some_and(|continuation| !continuation.is_null())
+            })
+        });
+    writeln!(
+        report,
+        "- Traversal continuation available: `{traversal_continuation_available}`"
+    )
+    .ok()?;
+    writeln!(
+        report,
+        "- Evidence continuation available: `{evidence_continuation_available}`"
+    )
+    .ok()?;
+    if let Some(qualification) = result.get("qualification").and_then(Value::as_str) {
+        writeln!(report, "- Qualification: {qualification}").ok()?;
     }
 
     writeln!(report).ok()?;
@@ -112,7 +146,21 @@ pub(crate) fn render_markdown_report(response: &Value) -> Option<String> {
         "scope": result.get("scope"),
         "bounds": result.get("bounds"),
         "graphGeneration": result.get("graphGeneration"),
-        "ordering": result.get("ordering")
+        "ordering": result.get("ordering"),
+        "coverage": {
+            "complete": result.pointer("/coverage/complete"),
+            "total": result.pointer("/coverage/total"),
+            "indexed": result.pointer("/coverage/indexed"),
+            "accounted": result.pointer("/coverage/accounted"),
+            "excluded": result.pointer("/coverage/excluded"),
+            "failed": result.pointer("/coverage/failed"),
+            "stale": result.pointer("/coverage/stale"),
+            "pendingUpdateCount": result.pointer("/coverage/pendingUpdateCount")
+        },
+        "qualification": result.get("qualification"),
+        "truncated": result.get("truncated"),
+        "traversalContinuationAvailable": traversal_continuation_available,
+        "evidenceContinuationAvailable": evidence_continuation_available
     });
     writeln!(report).ok()?;
     writeln!(report, "## Reproducible query descriptor").ok()?;
@@ -126,6 +174,7 @@ fn markdown_scalar(value: &Value) -> Option<String> {
     match value {
         Value::String(value) => Some(value.clone()),
         Value::Number(value) => Some(value.to_string()),
+        Value::Bool(value) => Some(value.to_string()),
         _ => None,
     }
 }
