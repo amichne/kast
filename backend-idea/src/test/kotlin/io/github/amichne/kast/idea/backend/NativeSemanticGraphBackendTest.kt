@@ -14,6 +14,7 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
 import io.github.amichne.kast.api.contract.result.SemanticGraphVisibility
+import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -117,6 +118,10 @@ class NativeSemanticGraphBackendTest {
                 VALUE(1),
             }
         """
+
+        private const val unresolvedCallSource = "package demo\nfun brokenCall() = missingCall()"
+        private const val unresolvedSupertypeSource = "package demo\ninterface Broken : MissingBase"
+        private const val unresolvedTypeSource = "package demo\nval broken: MissingType? = null"
     }
 
     private val moduleFixture = projectFixture.moduleFixture("main")
@@ -132,6 +137,10 @@ class NativeSemanticGraphBackendTest {
     private val functionTypeParameterFixture =
         sourceRootFixture.psiFileFixture("FunctionTypeParameter.kt", functionTypeParameterSource)
     private val enumFixture = sourceRootFixture.psiFileFixture("Mode.kt", enumSource)
+    private val unresolvedCallFixture = sourceRootFixture.psiFileFixture("UnresolvedCall.kt", unresolvedCallSource)
+    private val unresolvedSupertypeFixture =
+        sourceRootFixture.psiFileFixture("UnresolvedSupertype.kt", unresolvedSupertypeSource)
+    private val unresolvedTypeFixture = sourceRootFixture.psiFileFixture("UnresolvedType.kt", unresolvedTypeSource)
 
     @TempDir
     lateinit var storeRoot: Path
@@ -159,6 +168,7 @@ class NativeSemanticGraphBackendTest {
                 )
                 assertTrue(result.symbolCount.value > 0)
                 assertTrue(result.edgeOccurrenceCount.value > 0)
+                assertTrue(result.coverage.omittedExternalTargetCount.value > 0)
             }
 
             val snapshot = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse("Canonical.kt")))
@@ -338,6 +348,48 @@ class NativeSemanticGraphBackendTest {
                 )
                 assertTrue(result.symbolCount.value > 0)
             }
+        }
+    }
+
+    @Test
+    fun `semantic graph rejects unresolved compiler targets`() = runBlocking {
+        val project = projectFixture.get()
+        val validFile = canonicalFileFixture.get()
+        val files = listOf(
+            unresolvedCallFixture.get(),
+            unresolvedSupertypeFixture.get(),
+            unresolvedTypeFixture.get(),
+        )
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(validFile.virtualFile.path).toRealPath().parent
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = limits(),
+                semanticGraphStore = store,
+                psiGeneration = { 1L },
+            ).use { backend ->
+                files.forEach { file ->
+                    val failure = runCatching {
+                        backend.semanticGraph(
+                            SemanticGraphQuery(
+                                filePaths = listOf(validFile, file)
+                                    .map { SemanticGraphPath.parse(it.virtualFile.path) },
+                            ).parsed(),
+                        )
+                    }.exceptionOrNull()
+                    assertTrue(failure is ValidationException, "${file.name}: $failure")
+                    val message = failure?.message.orEmpty()
+                    assertTrue(message.contains("${file.name}:"), message)
+                    assertTrue(message.contains("Fix Kotlin diagnostics"), message)
+                }
+            }
+            assertTrue(
+                store.readSemanticGraph((files + validFile).map { SemanticGraphSourcePath.parse(it.name) }).files.isEmpty(),
+            )
         }
     }
 
