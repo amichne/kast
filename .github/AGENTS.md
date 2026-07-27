@@ -9,7 +9,7 @@ These files are hand-authored and may be edited directly when they own the
 change:
 
 - `.github/workflows/*.yml`
-- `.github/scripts/*`
+- `.github/scripts/**`
 - `.github/ci/*.json`
 - `.github/dependabot.yml`
 
@@ -18,14 +18,14 @@ path is the headless runtime plus the published `kast-action` contract smoke.
 
 Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
-For release workflow changes, run `.github/scripts/test-release-workflow-contract.sh`.
+For release workflow changes, run `.github/scripts/release/test-release-workflow-contract.sh`.
 The release workflow owns the IDEA ZIP and the four platform setup bundles.
 Every bundle carries the verified plugin and enters validation through
 `kast setup`.
 For CLI terminal command or executable example changes, run
-`.github/scripts/test-terminal-command-contract.sh`.
+`.github/scripts/docs/test-terminal-command-contract.sh`.
 The local transactional setup gate lives in
-`.github/scripts/test-local-development-refresh-contract.sh`. Keep it wired in
+`.github/scripts/install/test-local-development-refresh-contract.sh`. Keep it wired in
 the independent `local-authority-contracts` CI job whenever refresh
 orchestration or bundle activation changes. Its Gradle graph packages one
 complete development bundle and invokes `kast setup --source`.
@@ -60,7 +60,7 @@ successful candidate runs exist; historical baseline-only sampling gaps remain
 explicit warnings rather than weakening the candidate gate. List integrated
 non-PR proofs explicitly in `canaryTaskIds` so
 they remain in the output inventory without inflating the required
-pull-request critical path. Run `.github/scripts/test-ci-workflow-model.sh`
+pull-request critical path. Run `.github/scripts/ci/test-ci-workflow-model.sh`
 whenever jobs, `needs` edges, proof owners, canary classification, or timing
 evidence change.
 Workstation semantic proof runs through an open IDEA project and the active
@@ -95,29 +95,29 @@ Raw CLI archives contain the revision-matched `kast` binary.
 For docs contract changes, run:
 
 ```console
-.github/scripts/test-docs-content-contract.sh
-.github/scripts/test-docs-navigation-contract.sh
+.github/scripts/docs/test-docs-content-contract.sh
+.github/scripts/docs/test-docs-navigation-contract.sh
 zensical build --clean
 ```
 
 For terminal commands and executable examples, run:
 
 ```console
-.github/scripts/test-terminal-command-contract.sh
+.github/scripts/docs/test-terminal-command-contract.sh
 ```
 
 For setup authority changes, run:
 
 ```console
-.github/scripts/test-ci-workflow-model.sh
-.github/scripts/test-local-development-refresh-contract.sh
-.github/scripts/test-setup-contract.sh
+.github/scripts/ci/test-ci-workflow-model.sh
+.github/scripts/install/test-local-development-refresh-contract.sh
+.github/scripts/install/test-setup-contract.sh
 ```
 
 For IDEA GitHub Release distribution changes, run:
 
 ```console
-.github/scripts/test-runtime-compatibility-contract.sh
-.github/scripts/test-release-workflow-contract.sh
-.github/scripts/test-macos-installer-contract.sh
+.github/scripts/runtime/test-runtime-compatibility-contract.sh
+.github/scripts/release/test-release-workflow-contract.sh
+.github/scripts/install/test-macos-installer-contract.sh
 ```

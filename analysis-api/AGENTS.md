@@ -93,7 +93,7 @@ Validate the contract locally before you rely on downstream failures.
 
 - Run `./gradlew :analysis-api:test` for local changes.
 - Runtime compatibility changes also require
-  `.github/scripts/test-runtime-compatibility-contract.sh`; regenerate the
+  `.github/scripts/runtime/test-runtime-compatibility-contract.sh`; regenerate the
   checked-in OpenAPI components through
   `./gradlew :analysis-api:generateOpenApiSpec`.
 - If you change public models, capabilities, or descriptor schema, also run

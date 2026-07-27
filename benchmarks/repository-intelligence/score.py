@@ -15,9 +15,9 @@ import run as benchmark_run
 
 
 BENCHMARK = Path(__file__).resolve().parent
-MANIFEST = BENCHMARK / "manifest.json"
-QUESTIONS = BENCHMARK / "questions.jsonl"
-RUBRIC = BENCHMARK / "rubric.md"
+MANIFEST = BENCHMARK / "spec/manifest.json"
+QUESTIONS = BENCHMARK / "spec/questions.jsonl"
+RUBRIC = BENCHMARK / "spec/rubric.md"
 KAST_RESULTS = BENCHMARK / "results/final.json"
 GRAPHIFY_RESULTS = BENCHMARK / "results/graphify-final.json"
 DEFAULT_OUTPUT = BENCHMARK / "results/comparison.json"

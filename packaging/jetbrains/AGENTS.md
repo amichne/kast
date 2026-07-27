@@ -24,6 +24,6 @@ published as a release asset.
 After changing this boundary, run:
 
 ```console
-.github/scripts/test-runtime-compatibility-contract.sh
-.github/scripts/test-release-workflow-contract.sh
+.github/scripts/runtime/test-runtime-compatibility-contract.sh
+.github/scripts/release/test-release-workflow-contract.sh
 ```

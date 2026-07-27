@@ -23,6 +23,12 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Enforce repository shape
+        shell: bash
+        run: |
+          bash .github/scripts/test-repository-shape-contract.sh
+          python3 .github/scripts/check-repository-shape.py
+
       - name: Capture immutable local source snapshot
         shell: bash
         run: |
@@ -60,39 +66,39 @@ jobs:
 
       - name: Test release workflow contract
         shell: bash
-        run: ./.github/scripts/test-release-workflow-contract.sh
+        run: ./.github/scripts/release/test-release-workflow-contract.sh
 
       - name: Test CI workflow graph model
         shell: bash
-        run: ./.github/scripts/test-ci-workflow-model.sh
+        run: ./.github/scripts/ci/test-ci-workflow-model.sh
 
       - name: Test Kast build contract
         shell: bash
-        run: ./.github/scripts/test-kast-build-contract.sh
+        run: ./.github/scripts/ci/test-kast-build-contract.sh
 
       - name: Test docs navigation contract
         shell: bash
-        run: ./.github/scripts/test-docs-navigation-contract.sh
+        run: ./.github/scripts/docs/test-docs-navigation-contract.sh
 
       - name: Test docs content contract
         shell: bash
-        run: ./.github/scripts/test-docs-content-contract.sh
+        run: ./.github/scripts/docs/test-docs-content-contract.sh
 
       - name: Test macOS installer contract
         shell: bash
-        run: ./.github/scripts/test-macos-installer-contract.sh
+        run: ./.github/scripts/install/test-macos-installer-contract.sh
 
       - name: Test release asset verifier
         shell: bash
-        run: ./.github/scripts/test-release-asset-verifier.sh
+        run: ./.github/scripts/release/test-release-asset-verifier.sh
 
       - name: Test release provenance assembler
         shell: bash
-        run: ./.github/scripts/test-release-provenance-assembler.sh
+        run: ./.github/scripts/release/test-release-provenance-assembler.sh
 
       - name: Test CI artifact ledger
         shell: bash
-        run: ./.github/scripts/test-ci-artifact-ledger.sh
+        run: ./.github/scripts/ci/test-ci-artifact-ledger.sh
 
       - name: Ensure zstd is available
         shell: bash
@@ -105,11 +111,11 @@ jobs:
 
       - name: Test headless runtime packagers
         shell: bash
-        run: ./.github/scripts/test-headless-runtime-packagers.sh
+        run: ./.github/scripts/runtime/test-headless-runtime-packagers.sh
 
       - name: Test CI Gradle retry helper
         shell: bash
-        run: ./.github/scripts/test-ci-gradle-retry.sh
+        run: ./.github/scripts/ci/test-ci-gradle-retry.sh
 
   local-authority-contracts:
     name: Local development authority contracts
@@ -138,7 +144,7 @@ jobs:
 
       - name: Test local development refresh contract
         shell: bash
-        run: ./.github/scripts/test-local-development-refresh-contract.sh
+        run: ./.github/scripts/install/test-local-development-refresh-contract.sh
 
   runtime-contracts:
     name: Runtime command and bundle contracts
@@ -152,11 +158,11 @@ jobs:
 
       - name: Test terminal command contract
         shell: bash
-        run: ./.github/scripts/test-terminal-command-contract.sh
+        run: ./.github/scripts/docs/test-terminal-command-contract.sh
 
       - name: Test sole setup transaction
         shell: bash
-        run: ./.github/scripts/test-setup-contract.sh
+        run: ./.github/scripts/install/test-setup-contract.sh
 
   runtime-compatibility-contract:
     name: Runtime compatibility matrix
@@ -167,7 +173,7 @@ jobs:
 
       - name: Test runtime compatibility contract
         shell: bash
-        run: ./.github/scripts/test-runtime-compatibility-contract.sh
+        run: ./.github/scripts/runtime/test-runtime-compatibility-contract.sh
 
   maven-publication-contract:
     name: Maven publication metadata
@@ -421,7 +427,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          scripts/assemble-prepared-local-generation.sh \
+          scripts/packaging/assemble-prepared-local-generation.sh \
             --source-root "$GITHUB_WORKSPACE" \
             --source-snapshot build/ci-inputs/source-snapshot.json \
             --cli-archive build/ci-inputs/kast-v0.0.0-ci-linux-x64.zip \
@@ -539,7 +545,7 @@ jobs:
           KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG="v0.7.11-ci"
           plugin_asset="$(find "$RUNNER_TEMP/kast-idea-plugin" -maxdepth 1 -name '*.zip' -print -quit)"
           printf 'KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG=%s\n' "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" >> "$GITHUB_ENV"
-          scripts/package-prepared-local-generation-derivatives.sh \
+          scripts/packaging/package-prepared-local-generation-derivatives.sh \
             --kind ubuntu-debian-bundle \
             --source-root "$GITHUB_WORKSPACE" \
             --prepared-generation-archive "$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst" \
@@ -810,7 +816,7 @@ jobs:
         run: |
           set -euo pipefail
           runtime_version="0.0.0-ci"
-          scripts/package-prepared-local-generation-derivatives.sh \
+          scripts/packaging/package-prepared-local-generation-derivatives.sh \
             --kind kast-action-runtime \
             --source-root "$GITHUB_WORKSPACE" \
             --prepared-generation-archive "$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst" \

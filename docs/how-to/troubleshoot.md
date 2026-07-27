@@ -4,8 +4,8 @@ title: Troubleshoot Kast
 description: Diagnose setup, exact-root runtime, indexing, and semantic evidence failures without editing Kast state by hand.
 tags: [troubleshooting, setup, idea, indexing, runtime]
 code_sources:
-  - path: cli-rs/src/self_mgmt.rs
-  - path: cli-rs/src/runtime/workspace_admission.rs
+  - path: cli-rs/src/operations/self_mgmt.rs
+  - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
   - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaIndexSemanticAdmission.kt
 ---
 

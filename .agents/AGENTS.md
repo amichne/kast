@@ -31,7 +31,7 @@ Agent-only ADRs must stay out of `docs/` and out of `zensical.toml`.
 Run these checks after changing agent-only ADRs or source-routing guidance:
 
 ```console
-.github/scripts/test-docs-content-contract.sh
-.github/scripts/test-docs-navigation-contract.sh
+.github/scripts/docs/test-docs-content-contract.sh
+.github/scripts/docs/test-docs-navigation-contract.sh
 git diff --check
 ```

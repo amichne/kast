@@ -1,0 +1,103 @@
+#[test]
+fn repository_negative_answers_follow_coverage_state() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    let request = |scope: serde_json::Value| {
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "negative",
+            "method": "repository/query",
+            "params": {
+                "question": "Does DefinitelyMissing exist?",
+                "intent": "resolve",
+                "scope": scope,
+                "limits": {"depth": 1, "results": 10, "evidence": 2}
+            }
+        })
+    };
+
+    let (status, complete) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        request(serde_json::json!({"language": "kotlin"})),
+    );
+    assert!(status.success(), "{complete:#}");
+    assert_eq!(complete["result"]["status"], "EMPTY");
+    assert_eq!(complete["result"]["coverage"]["complete"], true);
+
+    std::fs::write(
+        workspace.join("src/main/kotlin/sample/Source0000.kt"),
+        "package sample\nclass Changed\n",
+    )
+    .expect("stale source");
+    let (status, stale) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        request(serde_json::json!({"language": "kotlin"})),
+    );
+    assert!(status.success(), "{stale:#}");
+    assert_eq!(stale["result"]["status"], "QUALIFIED_EMPTY");
+    assert_eq!(stale["result"]["coverage"]["stale"], 1);
+    assert!(stale["result"]["qualification"].is_string());
+
+    fixture
+        .connection()
+        .execute("DELETE FROM semantic_files", [])
+        .expect("remove semantic graph file");
+    let (status, failed) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        request(serde_json::json!({"language": "kotlin"})),
+    );
+    assert!(status.success(), "{failed:#}");
+    assert_eq!(failed["result"]["coverage"]["failed"], 1);
+    assert_eq!(failed["result"]["coverage"]["complete"], false);
+    let (_, failed_coverage) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "failed-coverage",
+            "method": "graph/coverage",
+            "params": {"scope": {"language": "kotlin"}}
+        }),
+    );
+    assert_eq!(
+        failed_coverage["result"]["files"][0]["diagnostics"][0]["code"],
+        "SEMANTIC_GRAPH_MISSING"
+    );
+
+    fixture
+        .connection()
+        .execute("DELETE FROM file_metadata", [])
+        .expect("remove compilation ownership evidence");
+    let (status, excluded) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        request(serde_json::json!({"language": "kotlin"})),
+    );
+    assert!(status.success(), "{excluded:#}");
+    assert_eq!(excluded["result"]["coverage"]["excluded"], 1);
+    assert_eq!(excluded["result"]["coverage"]["failed"], 0);
+    assert_eq!(excluded["result"]["coverage"]["eligibilityProven"], false);
+    assert_eq!(excluded["result"]["coverage"]["complete"], false);
+    let (_, excluded_coverage) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "excluded-coverage",
+            "method": "graph/coverage",
+            "params": {"scope": {"language": "kotlin"}}
+        }),
+    );
+    assert_eq!(
+        excluded_coverage["result"]["files"][0]["reasonCode"],
+        "SOURCE_INDEX_METADATA_UNAVAILABLE"
+    );
+}

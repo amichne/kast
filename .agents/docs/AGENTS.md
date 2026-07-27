@@ -32,7 +32,7 @@ already define the reader paths. Generated protocol material remains under
 ## Verify
 
 ```console
-.github/scripts/test-docs-content-contract.sh
-.github/scripts/test-docs-navigation-contract.sh
+.github/scripts/docs/test-docs-content-contract.sh
+.github/scripts/docs/test-docs-navigation-contract.sh
 zensical build --clean
 ```

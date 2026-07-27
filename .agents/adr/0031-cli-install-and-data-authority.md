@@ -32,13 +32,13 @@ generate repository guidance or workspace skills.
 
 ## Source and proof
 
-- `cli-rs/src/manifest.rs`
-- `cli-rs/src/config/`
-- `cli-rs/src/install/`
+- `cli-rs/src/configuration/manifest.rs`
+- `cli-rs/src/configuration/config/`
+- `cli-rs/src/operations/install/`
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/client/WorkspacePaths.kt`
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/client/WorkspaceIdentity.kt`
-- `.github/scripts/test-setup-contract.sh`
-- `analysis-api/src/test/kotlin/io/github/amichne/kast/api/WorkspacePathsTest.kt`
+- `.github/scripts/install/test-setup-contract.sh`
+- `analysis-api/src/test/kotlin/io/github/amichne/kast/api/config/WorkspacePathsTest.kt`
 
 Any new installer, path derivation, database location, or state owner must
 replace this decision explicitly; compatibility aliases do not create a second

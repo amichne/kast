@@ -1,7 +1,7 @@
 # Baselines
 
 This directory stores normalized Kast and Graphify results for the immutable
-commit in `../manifest.json`. The July 23 Graphify archive is diagnostic input
+commit in `../spec/manifest.json`. The July 23 Graphify archive is diagnostic input
 only; it cannot establish same-snapshot superiority.
 
 - `kast-initial.json`: the expected 0/42 RED before the public `kast rpc`

@@ -115,7 +115,7 @@ continuation resume, absent-versus-stale classification, deterministic
 no-overlap paging, and the complete subject-kind zero-work matrix.
 
 Exact-root compatibility metadata changes also require
-`.github/scripts/test-runtime-compatibility-contract.sh` and the focused
+`.github/scripts/runtime/test-runtime-compatibility-contract.sh` and the focused
 `KastProjectOpenProfileAutoInitTest`.
 
 Workspace inventory changes also require:

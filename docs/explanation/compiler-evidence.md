@@ -4,10 +4,10 @@ title: Compiler-Backed Evidence
 description: Why Kast models Kotlin symbols, relations, coverage, and failures as typed evidence rather than text matches.
 tags: [compiler, kotlin, semantic-graph, evidence, coverage]
 code_sources:
-  - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/SemanticGraphResult.kt
-  - path: cli-rs/src/agent/native_graph.rs
+  - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/symbol/SemanticGraphResult.kt
+  - path: cli-rs/src/agent/navigation/native_graph.rs
   - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt
-  - path: cli-rs/src/runtime/workspace_admission.rs
+  - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
 ---
 
 # Compiler-Backed Evidence

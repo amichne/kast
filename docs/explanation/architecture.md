@@ -4,10 +4,10 @@ title: Kast Architecture
 description: How setup, Codex routing, exact-root runtime admission, compiler backends, and typed results fit together.
 tags: [architecture, codex, idea, headless, runtime]
 code_sources:
-  - path: cli-rs/src/runtime/workspace_admission.rs
-  - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/AnalysisBackend.kt
+  - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
+  - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt
   - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/KastPluginBackend.kt
-  - path: cli-rs/src/codex/hook.rs
+  - path: cli-rs/src/interface/codex/hook.rs
 ---
 
 # Kast Architecture

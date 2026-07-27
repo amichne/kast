@@ -5,9 +5,9 @@ description: Activate one verified Kast release on macOS or Linux and prepare a 
 tags: [install, update, macos, linux, idea, headless]
 code_sources:
   - path: install.sh
-  - path: cli-rs/src/install/bundle_install.rs
-  - path: cli-rs/src/install/bundle_validation.rs
-  - path: cli-rs/src/manifest.rs
+  - path: cli-rs/src/operations/install/bundle_install.rs
+  - path: cli-rs/src/operations/install/bundle_validation.rs
+  - path: cli-rs/src/configuration/manifest.rs
 ---
 
 # Install or Update Kast

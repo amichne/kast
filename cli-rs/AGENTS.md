@@ -7,32 +7,33 @@ orchestration, source-index CLI reads, and release packaging.
 
 ## Local purpose
 
-- `src/cli/root.rs` and `src/main.rs` define the root AXI CLI: compact context,
+- `src/interface/cli/root.rs` and `src/main.rs` define the root AXI CLI: compact context,
   transactional setup, readiness, status, and developer operations.
-- `src/cli/agent.rs` and `src/agent/` own typed compiler-backed agent commands:
+- `src/interface/cli/agent.rs` and `src/agent/` own typed compiler-backed agent commands:
   the cross-provider `task begin|status|finish|abort` proof lifecycle plus
   `lease`, `verify`, `workspace-files`, `symbol`, `diagnostics`, `impact`,
   and `rename`. Task ownership is persisted and cross-process; it is distinct
   from the IDEA runtime lease used by individual semantic requests.
-- `src/runtime/` owns IDEA lifecycle inspection and exact-root leases on macOS,
+- `src/execution/runtime/` owns IDEA lifecycle inspection and exact-root leases on macOS,
   plus release headless lifecycle on supported non-macOS hosts.
-- `src/install/` owns the sole persistent setup transaction: bundle validation,
+- `src/operations/install/` owns the sole persistent setup transaction: bundle validation,
   staging, atomic activation, rollback, active-root verification, receipts, and
   bounded legacy backup.
-- `src/symbol_query/` and `src/metrics_database/` own operational source-index
+- `src/semantics/symbol_query/` and `src/storage/metrics_database/` own operational source-index
   reads for the Rust CLI.
-- `src/workspace_inventory.rs` and `src/workspace_inventory/` own uncapped
+- `src/semantics/workspace_inventory.rs` and `src/semantics/workspace_inventory/` own uncapped
   exact-root `.kt` index reads, compiler/project-model candidate composition,
   deepest-existing-ancestor path containment, source generation/progress/
   pending evidence, build-qualified indexed Gradle project identities, the
   structured Gradle source-set and Kotlin package provenance states, the
   kind-relevant backend/index/filesystem/Git coherence barrier, and typed
   limitations used by `agent workspace-files` and Gradle DSL consumers.
-- `src/install.rs`, `src/manifest.rs`, `src/self_mgmt.rs`, and
-  `src/self_mgmt/agent_readiness.rs` own install state, managed resource
+- `src/operations/install.rs`, `src/configuration/manifest.rs`,
+  `src/operations/self_mgmt.rs`, and
+  `src/operations/self_mgmt/agent_readiness.rs` own install state, managed resource
   records, doctor checks, effective binary/backend evidence, and readiness
   behavior.
-- `src/self_mgmt.rs` parses revision-3 exact-root compatibility facts strictly
+- `src/operations/self_mgmt.rs` parses revision-3 exact-root compatibility facts strictly
   and delegates active admission to the authored typed compatibility matrix.
   Unknown fields, capabilities, revisions, unsupported rows, and missing
   required capabilities fail closed; missing optional capabilities remain
@@ -128,7 +129,7 @@ contracts move:
 cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
 cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
 cargo test --manifest-path cli-rs/Cargo.toml --locked
-.github/scripts/test-runtime-compatibility-contract.sh
+.github/scripts/runtime/test-runtime-compatibility-contract.sh
 ```
 
 For workspace-files, resource, or catalog changes, run the relevant
@@ -137,8 +138,8 @@ generated-contract and docs gates below:
 ```console
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
-.github/scripts/test-docs-content-contract.sh
-.github/scripts/test-docs-navigation-contract.sh
+.github/scripts/docs/test-docs-content-contract.sh
+.github/scripts/docs/test-docs-navigation-contract.sh
 zensical build --clean
 ./gradlew test --no-daemon
 ./gradlew buildIdeaPlugin --no-daemon

@@ -4,9 +4,9 @@ title: Plan a Safe Kotlin Edit
 description: Use exact symbol identity, impact evidence, and diagnostics before accepting a Kotlin change.
 tags: [kotlin, refactoring, rename, diagnostics, impact]
 code_sources:
-  - path: cli-rs/src/agent/dispatch.rs
-  - path: cli-rs/src/agent/relations.rs
-  - path: cli-rs/src/runtime/workspace_admission.rs
+  - path: cli-rs/src/agent/core/dispatch/mod.rs
+  - path: cli-rs/src/agent/navigation/relations.rs
+  - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
 ---
 
 # Plan a Safe Kotlin Edit

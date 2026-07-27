@@ -4,9 +4,9 @@ title: Explore Kotlin Code
 description: Resolve Kotlin declarations and navigate their relationships with compiler-backed evidence.
 tags: [kotlin, codex, symbols, references, callers]
 code_sources:
-  - path: cli-rs/src/agent/symbol_lookup.rs
-  - path: cli-rs/src/agent/relations.rs
-  - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/RelationshipResultEvidence.kt
+  - path: cli-rs/src/agent/core/symbol_lookup/mod.rs
+  - path: cli-rs/src/agent/navigation/relations.rs
+  - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/relationships/evidence/RelationshipResultEvidence.kt
 ---
 
 # Explore Kotlin Code

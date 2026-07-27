@@ -33,8 +33,8 @@ omit redundant detail but must not synthesize completeness.
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/coverage/`
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/relationships/`
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaRelationshipCoverageAuthority.kt`
-- `cli-rs/src/agent/projection/relations.rs`
-- `cli-rs/tests/agent_relationship_navigation_smoke.rs`
+- `cli-rs/src/agent/navigation/projection.rs`
+- `cli-rs/tests/agent_relationship_navigation_smoke/main.rs`
 
 Any change that weakens the distinction between returned data and proven
 coverage must update this record.

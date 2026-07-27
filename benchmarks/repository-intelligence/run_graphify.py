@@ -14,9 +14,9 @@ import provenance
 
 
 BENCHMARK = Path(__file__).resolve().parent
-MANIFEST = BENCHMARK / "manifest.json"
-QUESTIONS = BENCHMARK / "questions.jsonl"
-RUBRIC = BENCHMARK / "rubric.md"
+MANIFEST = BENCHMARK / "spec/manifest.json"
+QUESTIONS = BENCHMARK / "spec/questions.jsonl"
+RUBRIC = BENCHMARK / "spec/rubric.md"
 DEFAULT_GRAPH = (
     BENCHMARK.parent.parent.parent
     / "kast-repository-intelligence-graphify-corpus/graphify-out/graph.json"

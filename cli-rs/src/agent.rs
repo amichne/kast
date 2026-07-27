@@ -40,19 +40,19 @@ use serde_json::{Value, json};
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Component, Path, PathBuf};
 
-include!("agent/types.rs");
-include!("agent/path.rs");
-include!("agent/public_capabilities.rs");
+include!("agent/core/types/mod.rs");
+include!("agent/core/path/mod.rs");
+include!("agent/core/public_capabilities.rs");
 include!("agent/workspace_files.rs");
-include!("agent/native_graph.rs");
-include!("agent/relations.rs");
-include!("agent/dispatch.rs");
-include!("agent/request.rs");
-include!("agent/envelope.rs");
+include!("agent/navigation/native_graph.rs");
+include!("agent/navigation/relations.rs");
+include!("agent/core/dispatch/mod.rs");
+include!("agent/core/request.rs");
+include!("agent/core/envelope.rs");
 include!("agent/projection.rs");
-include!("agent/input.rs");
-include!("agent/response.rs");
-include!("agent/symbol_lookup.rs");
+include!("agent/core/input.rs");
+include!("agent/core/response.rs");
+include!("agent/core/symbol_lookup/mod.rs");
 
 #[cfg(test)]
 mod semantic_analysis_evidence_tests {

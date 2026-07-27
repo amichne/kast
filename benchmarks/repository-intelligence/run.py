@@ -15,12 +15,12 @@ import provenance
 
 ROOT = Path(__file__).resolve().parents[2]
 BENCHMARK = Path(__file__).resolve().parent
-MANIFEST = BENCHMARK / "manifest.json"
-QUESTIONS = BENCHMARK / "questions.jsonl"
+MANIFEST = BENCHMARK / "spec/manifest.json"
+QUESTIONS = BENCHMARK / "spec/questions.jsonl"
 DEFAULT_CORPUS = ROOT.parent / "kast-repository-intelligence-corpus"
 DEFAULT_OUTPUT = BENCHMARK / "results/latest.json"
 VOLATILE_KEYS = {"elapsedMillis", "latencyMillis", "generatedAt", "startedAt", "finishedAt"}
-RUBRIC = BENCHMARK / "rubric.md"
+RUBRIC = BENCHMARK / "spec/rubric.md"
 
 
 def parse_args(argv=None):

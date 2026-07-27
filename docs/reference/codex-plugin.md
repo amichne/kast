@@ -4,7 +4,7 @@ title: Codex Plugin Reference
 description: Components and ownership boundaries of the separately published kast@kast plugin.
 tags: [codex, reference, hooks, marketplace]
 code_sources:
-  - path: cli-rs/src/codex/hook.rs
+  - path: cli-rs/src/interface/codex/hook.rs
   - path: install.sh
 ---
 
