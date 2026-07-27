@@ -86,3 +86,67 @@ fn repository_context_empty_preserves_unresolved_references() {
         "{selected:#}"
     );
 }
+
+#[test]
+fn repository_context_does_not_claim_empty_past_inferred_target_ceiling() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    seed_repository_graph(&fixture);
+    let mut connection = fixture.connection();
+    let transaction = connection.transaction().expect("candidate transaction");
+    for id in 1000..1201 {
+        let name = format!("BetaSemanticGraphSha256Evidence{id}");
+        transaction
+            .execute(
+                "INSERT INTO semantic_symbols
+                 (id, stable_key, file_id, owner_id, kind, name, fq_name, signature,
+                  start_offset, end_offset, line)
+                 VALUES (?, ?, 1, NULL, 'CLASS', ?, ?, NULL, ?, ?, ?)",
+                params![
+                    id,
+                    format!("class:{name}"),
+                    name,
+                    format!("sample.{name}"),
+                    id * 10,
+                    id * 10 + 5,
+                    id
+                ],
+            )
+            .expect("higher-ranked context candidate");
+    }
+    transaction.commit().expect("candidate commit");
+    std::fs::create_dir_all(workspace.join("docs")).expect("context fixture directory");
+    std::fs::write(
+        workspace.join("docs/compiler-evidence.md"),
+        "# Compiler evidence\n\nSemanticGraphSha256 is the compiler-backed digest model.\n",
+    )
+    .expect("context fixture document");
+
+    let (status, response) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "inferred-target-past-ceiling",
+            "method": "repository/query",
+            "params": {
+                "question": "Which exact Kotlin model carries semantic graph hashing evidence?",
+                "intent": "context_relationship",
+                "scope": {"language": "kotlin", "sources": ["markdown"]},
+                "limits": {"depth": 6, "results": 10, "evidence": 1}
+            }
+        }),
+    );
+
+    assert!(
+        status.success()
+            && response["result"]["status"] == "ANSWERED"
+            && response["result"]["contextRelations"]
+                .as_array()
+                .is_some_and(|relations| relations.iter().any(|relation| {
+                    relation["targetKey"] == "class:SemanticGraphSha256"
+                        && relation["sourcePath"] == "docs/compiler-evidence.md"
+                })),
+        "{response:#}"
+    );
+}

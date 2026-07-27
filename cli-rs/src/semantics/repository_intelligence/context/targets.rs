@@ -49,7 +49,6 @@ fn context_target_nodes(
         }
     }
     if !has_explicit_names {
-        // ponytail: scan 200 existing semantic candidates; add a persisted context index only if this measured ceiling stops holding.
         targets.extend(
             rank_repository_candidates(connection, question, execution_scope)?
                 .into_iter()
@@ -59,7 +58,6 @@ fn context_target_nodes(
                         "CLASS" | "ENUM_CLASS" | "INTERFACE" | "OBJECT" | "TYPE_ALIAS"
                     )
                 })
-                .take(200)
                 .map(|candidate| candidate.node),
         );
     }
