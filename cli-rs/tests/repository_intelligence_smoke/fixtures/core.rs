@@ -23,6 +23,12 @@ fn coverage_fixture_with_file_count(
     let config_home = temp.path().join("config");
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
+    let git = std::process::Command::new("git")
+        .args(["init", "--quiet"])
+        .current_dir(&workspace)
+        .status()
+        .expect("initialize fixture Git repository");
+    assert!(git.success(), "initialize fixture Git repository");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let data = default_install_root(&home).join("state/data/workspaces");
     std::fs::create_dir_all(data.join("local")).expect("workspace data");
@@ -34,26 +40,17 @@ fn coverage_fixture_with_file_count(
         .expect("workspace registry JSON"),
     )
     .expect("workspace registry");
-    let mut sanitized = String::new();
-    for character in workspace.display().to_string().chars() {
-        if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-') {
-            sanitized.push(character);
-        } else if !sanitized.ends_with('-') {
-            sanitized.push('-');
-        }
-    }
-    let sanitized = sanitized
-        .trim_matches('-')
-        .chars()
-        .take(80)
-        .collect::<String>();
-    let database = if workspace.starts_with(std::env::temp_dir()) {
-        workspace.join(".gradle/kast/cache/source-index.db")
-    } else {
-        data.join("local")
-            .join(format!("{sanitized}--repository-intelligence"))
-            .join("cache/source-index.db")
-    };
+    let git_dir = workspace.join(".git");
+    let common_hash = hex::encode(Sha256::digest(git_dir.to_string_lossy().as_bytes()));
+    let worktree_hash = hex::encode(Sha256::digest(
+        format!("{}\n{}", workspace.display(), git_dir.display()).as_bytes(),
+    ));
+    let database = data
+        .join("git/local")
+        .join(&common_hash[..12])
+        .join("worktrees")
+        .join(format!("workspace--{}", &worktree_hash[..12]))
+        .join("cache/source-index.db");
     let fixture = WorkspaceIndexFixture::at_database_path(&workspace, &database);
     fixture.seed_high_cardinality_sources(file_count);
     let file_count = i64::try_from(file_count).expect("fixture file count");

@@ -56,3 +56,57 @@ fn repository_terminal_context_resolution_skips_content_reads() {
         "{response:#}"
     );
 }
+
+#[test]
+fn repository_context_ignores_unowned_dependency_trees() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    seed_repository_graph(&fixture);
+    std::fs::write(workspace.join(".gitignore"), "node_modules/\n")
+        .expect("dependency ignore rule");
+    std::fs::create_dir_all(workspace.join("docs")).expect("owned context directory");
+    std::fs::write(
+        workspace.join("docs/compiler-evidence.md"),
+        "# Compiler evidence\n\nSemanticGraphSha256 has a compiler identity.\n",
+    )
+    .expect("owned context document");
+    std::fs::create_dir_all(workspace.join("node_modules/dependency"))
+        .expect("ignored dependency directory");
+    std::fs::write(
+        workspace.join("node_modules/dependency/README.md"),
+        [0xff, 0xfe],
+    )
+    .expect("malformed ignored dependency document");
+
+    let (status, response) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "ignored-context-dependency",
+            "method": "repository/query",
+            "params": {
+                "question": "Which document explains SemanticGraphSha256?",
+                "intent": "context_relationship",
+                "scope": {"language": "kotlin", "sources": ["markdown"]},
+                "limits": {"depth": 6, "results": 10, "evidence": 1}
+            }
+        }),
+    );
+
+    assert!(status.success(), "{response:#}");
+    assert_eq!(response["result"]["status"], "ANSWERED", "{response:#}");
+    assert_eq!(
+        response["result"]["contextMetrics"]["contextNodeCount"],
+        1,
+        "{response:#}"
+    );
+    assert!(
+        response["result"]["contextRelations"]
+            .as_array()
+            .is_some_and(|relations| relations.iter().all(|relation| {
+                relation["sourcePath"] == "docs/compiler-evidence.md"
+            })),
+        "{response:#}"
+    );
+}

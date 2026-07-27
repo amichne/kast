@@ -7,105 +7,102 @@ fn repository_context_paths(
         .copied()
         .map(|source| (source, Vec::new()))
         .collect::<BTreeMap<_, _>>();
-    let mut directories = vec![workspace_root.as_path().to_path_buf()];
-    while let Some(directory) = directories.pop() {
-        let mut entries = std::fs::read_dir(&directory)
-            .map_err(|error| {
-                CliError::new(
-                    "REPOSITORY_CONTEXT_UNAVAILABLE",
-                    format!(
-                        "cannot read repository context directory {}: {error}",
-                        directory.display()
-                    ),
-                )
-            })?
-            .collect::<std::io::Result<Vec<_>>>()
-            .map_err(|error| CliError::new("REPOSITORY_CONTEXT_UNAVAILABLE", error.to_string()))?;
-        entries.sort_by_key(std::fs::DirEntry::file_name);
-        for entry in entries {
-            let candidate = entry.path();
-            let relative = candidate
-                .strip_prefix(workspace_root.as_path())
-                .map_err(|_| {
-                    CliError::new(
-                        "REPOSITORY_CONTEXT_OUTSIDE_WORKSPACE",
-                        format!(
-                            "repository context candidate {} is outside the routed workspace {}",
-                            candidate.display(),
-                            workspace_root.as_path().display()
-                        ),
-                    )
-                })?
-                .to_path_buf();
-            if repository_context_path_excluded(&relative) {
-                continue;
-            }
-            let file_type = entry.file_type().map_err(|error| {
-                CliError::new(
+    for relative in repository_context_inventory(workspace_root)? {
+        let candidate = workspace_root.as_path().join(&relative);
+        let entry_metadata = match std::fs::symlink_metadata(&candidate) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => {
+                return Err(CliError::new(
                     "REPOSITORY_CONTEXT_UNAVAILABLE",
                     format!(
                         "cannot inspect repository context candidate {}: {error}",
                         relative.display()
                     ),
-                )
-            })?;
-            if file_type.is_dir() {
-                let canonical =
-                    contained_repository_context_path(workspace_root, &candidate, &relative)?;
-                if repository_context_directory_matches(sources, &relative) {
-                    directories.push(canonical);
-                }
-                continue;
+                ));
             }
-            if file_type.is_symlink() {
-                let canonical =
-                    contained_repository_context_path(workspace_root, &candidate, &relative)?;
-                let metadata = repository_context_metadata(&relative, &canonical)?;
-                if metadata.file_type().is_dir() {
-                    continue;
-                }
-                if metadata.file_type().is_file()
-                    && let Some(source) = sources
-                        .iter()
-                        .copied()
-                        .find(|source| repository_context_path_matches(*source, &relative))
-                {
-                    paths
-                        .entry(source)
-                        .or_default()
-                        .push(ContainedRepositoryContextPath {
-                            relative_path: relative.to_string_lossy().into_owned(),
-                            canonical_path: canonical,
-                            metadata,
-                        });
-                }
-                continue;
-            }
-            if file_type.is_file()
-                && let Some(source) = sources
-                    .iter()
-                    .copied()
-                    .find(|source| repository_context_path_matches(*source, &relative))
-            {
-                let canonical =
-                    contained_repository_context_path(workspace_root, &candidate, &relative)?;
-                let metadata = repository_context_metadata(&relative, &canonical)?;
-                paths
-                    .entry(source)
-                    .or_default()
-                    .push(ContainedRepositoryContextPath {
-                        relative_path: relative.to_string_lossy().into_owned(),
-                        canonical_path: canonical,
-                        metadata,
-                    });
-            }
+        };
+        let source = sources
+            .iter()
+            .copied()
+            .find(|source| repository_context_path_matches(*source, &relative));
+        if !entry_metadata.file_type().is_symlink() && source.is_none() {
+            continue;
+        }
+        let canonical = contained_repository_context_path(workspace_root, &candidate, &relative)?;
+        let metadata = repository_context_metadata(&relative, &canonical)?;
+        if let Some(source) = source
+            && metadata.file_type().is_file()
+        {
+            paths
+                .entry(source)
+                .or_default()
+                .push(ContainedRepositoryContextPath {
+                    relative_path: relative.to_string_lossy().into_owned(),
+                    canonical_path: canonical,
+                    metadata,
+                });
         }
     }
-    for source_paths in paths.values_mut() {
-        source_paths.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
-        source_paths.dedup_by(|left, right| left.relative_path == right.relative_path);
-    }
     Ok(paths)
+}
+
+fn repository_context_inventory(workspace_root: &WorkspaceRoot) -> Result<BTreeSet<PathBuf>> {
+    let output = std::process::Command::new("git")
+        .args([
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "-z",
+            "--",
+            ".",
+        ])
+        .current_dir(workspace_root.as_path())
+        .output()
+        .map_err(|error| {
+            CliError::new(
+                "REPOSITORY_CONTEXT_UNAVAILABLE",
+                format!("cannot execute Git repository context inventory: {error}"),
+            )
+        })?;
+    if !output.status.success() {
+        return Err(CliError::new(
+            "REPOSITORY_CONTEXT_UNAVAILABLE",
+            format!(
+                "Git repository context inventory failed for {}: {}",
+                workspace_root.as_path().display(),
+                String::from_utf8_lossy(&output.stderr).trim()
+            ),
+        ));
+    }
+    let output = std::str::from_utf8(&output.stdout).map_err(|_| {
+        CliError::new(
+            "REPOSITORY_CONTEXT_UNAVAILABLE",
+            "Git repository context inventory contains a non-UTF-8 path",
+        )
+    })?;
+    output
+        .split('\0')
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from)
+        .map(|relative| {
+            if relative
+                .components()
+                .all(|component| matches!(component, std::path::Component::Normal(_)))
+            {
+                Ok(relative)
+            } else {
+                Err(CliError::new(
+                    "REPOSITORY_CONTEXT_OUTSIDE_WORKSPACE",
+                    format!(
+                        "Git repository context inventory returned non-relative path {}",
+                        relative.display()
+                    ),
+                ))
+            }
+        })
+        .collect()
 }
 
 fn contained_repository_context_path(
@@ -145,25 +142,6 @@ fn repository_context_metadata(relative: &Path, canonical: &Path) -> Result<std:
             ),
         )
     })
-}
-
-fn repository_context_path_excluded(relative: &Path) -> bool {
-    relative.components().any(|component| {
-        matches!(
-            component.as_os_str().to_str(),
-            Some(".git" | ".gradle" | "build" | "target")
-        )
-    })
-}
-
-fn repository_context_directory_matches(
-    sources: &[RepositoryContextSource],
-    relative: &Path,
-) -> bool {
-    sources
-        .iter()
-        .any(|source| *source != RepositoryContextSource::Workflow)
-        || matches!(relative.to_str(), Some(".github" | ".github/workflows"))
 }
 
 fn repository_context_path_matches(source: RepositoryContextSource, relative: &Path) -> bool {
