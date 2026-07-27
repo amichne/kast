@@ -103,7 +103,7 @@ fn repository_query_at_snapshot(
         "QUALIFIED_EMPTY"
     };
     let qualification = (!snapshot.coverage.complete).then_some(
-        "No matching declaration was found in the completely accounted indexed portion of this scope.",
+        "This result is limited to the indexed portion of this scope because coverage is incomplete.",
     );
     let mut response = json!({
         "type": "KAST_REPOSITORY_QUERY_RESULT",

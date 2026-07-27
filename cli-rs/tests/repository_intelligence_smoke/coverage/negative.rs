@@ -101,3 +101,47 @@ fn repository_negative_answers_follow_coverage_state() {
         "SOURCE_INDEX_METADATA_UNAVAILABLE"
     );
 }
+
+#[test]
+fn repository_partial_coverage_qualifies_positive_answers_truthfully() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(2);
+    seed_repository_graph(&fixture);
+    std::fs::write(
+        workspace.join("src/main/kotlin/sample/Source0001.kt"),
+        "package sample\nclass ChangedAfterIndexing\n",
+    )
+    .expect("stale unrelated source");
+
+    let (status, response) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "partial-positive",
+            "method": "repository/query",
+            "params": {
+                "question": "Resolve semanticGraphOperation.",
+                "intent": "resolve",
+                "canonicalKey": "callable:semanticGraphOperation",
+                "scope": {"language": "kotlin"},
+                "limits": {"depth": 1, "results": 10, "evidence": 2}
+            }
+        }),
+    );
+
+    assert!(status.success(), "{response:#}");
+    assert_eq!(response["result"]["status"], "ANSWERED", "{response:#}");
+    assert_eq!(response["result"]["coverage"]["stale"], 1, "{response:#}");
+    let qualification = response["result"]["qualification"]
+        .as_str()
+        .expect("incomplete coverage qualification");
+    assert!(
+        !qualification.contains("No matching declaration"),
+        "{response:#}"
+    );
+    assert!(
+        qualification.contains("coverage is incomplete"),
+        "{response:#}"
+    );
+}
