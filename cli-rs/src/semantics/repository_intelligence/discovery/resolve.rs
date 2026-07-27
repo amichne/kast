@@ -31,9 +31,18 @@ fn resolve_repository_question(
         .first()
         .zip(candidates.get(1))
         .is_some_and(|(first, second)| first.match_score == second.match_score);
+    let explicit_nonselection = question
+        .to_ascii_lowercase()
+        .contains("without choosing between");
+    let bare_name_ambiguity = bare_resolution_name(question).is_some() && candidates.len() > 1;
     let outcome = match candidates.first() {
         None => RepositoryResolutionOutcome::Empty,
-        Some(_) if canonical_key.is_none() && tied => RepositoryResolutionOutcome::Ambiguous,
+        Some(_)
+            if canonical_key.is_none()
+                && (tied || explicit_nonselection || bare_name_ambiguity) =>
+        {
+            RepositoryResolutionOutcome::Ambiguous
+        }
         Some(candidate) => RepositoryResolutionOutcome::Answered(Box::new(candidate.node.clone())),
     };
     let candidate_limit = limit.min(10);
@@ -81,6 +90,8 @@ fn rank_repository_candidates(
     }
     let neighbors = load_discovery_neighbor_tokens(connection)?;
     let nodes = execution_scope.admit_nodes(load_repository_node(connection, "1 = ?1", 1i64)?);
+    let query_terms = discovery_query_terms(question);
+    let compact_question = compact_search_text(question);
     let documents = nodes
         .iter()
         .map(|node| SymbolDiscoveryDocument {
@@ -91,6 +102,17 @@ fn rank_repository_candidates(
                 SymbolDiscoveryField {
                     name: "name",
                     value: node.name.clone(),
+                },
+                SymbolDiscoveryField {
+                    name: "exactMember",
+                    value: node
+                        .owner_name
+                        .as_ref()
+                        .map(|owner| format!("{owner}.{}", node.name))
+                        .filter(|member| {
+                            compact_question.contains(&compact_search_text(member))
+                        })
+                        .unwrap_or_default(),
                 },
                 SymbolDiscoveryField {
                     name: "qualifiedName",
@@ -140,9 +162,11 @@ fn rank_repository_candidates(
                 .unwrap_or_default(),
         })
         .collect();
+    let preferred_names = explicit_repository_names(question);
     let ranked = rank_symbol_discovery(
-        question,
         repository_resolution_name(question).as_deref(),
+        &preferred_names,
+        &query_terms.iter().cloned().collect::<Vec<_>>(),
         documents,
     );
     let mut nodes_by_identity = nodes
@@ -216,15 +240,17 @@ fn discovery_query_terms(question: &str) -> BTreeSet<String> {
         "declaration",
         "does",
         "exact",
+        "exactly",
         "find",
         "from",
-        "helper",
-        "model",
+        "in",
+        "kotlin",
+        "of",
         "one",
         "resolve",
         "that",
         "the",
-        "type",
+        "to",
         "what",
         "which",
         "with",
@@ -232,14 +258,13 @@ fn discovery_query_terms(question: &str) -> BTreeSet<String> {
     ] {
         terms.remove(stopword);
     }
-    let initial = terms.clone();
-    for term in initial {
+    for term in terms.clone() {
         let expansions: &[&str] = match term.as_str() {
             "hash" | "hashe" | "hashing" => &["sha256", "digest", "fingerprint"],
             "persist" | "persisting" => &["replace", "store", "write"],
             "relationship" => &["relation", "edge"],
             "end" | "endpoint" => &["source", "target"],
-            "build" | "construct" => &["create"],
+            "build" | "construct" | "create" => &["build", "construct", "create"],
             "overload" => &["parameter", "receiver", "signature"],
             _ => &[],
         };
@@ -260,6 +285,15 @@ fn discovery_lexical_tokens(raw: &str) -> BTreeSet<String> {
         }
     }
     tokens
+}
+
+fn bare_resolution_name(question: &str) -> Option<String> {
+    let words = question
+        .split(|character: char| !(character.is_alphanumeric() || character == '_'))
+        .filter(|word| !word.is_empty())
+        .collect::<Vec<_>>();
+    (words.len() == 2 && words[0].eq_ignore_ascii_case("resolve"))
+        .then(|| words[1].to_string())
 }
 
 fn repository_resolution_name(question: &str) -> Option<String> {
@@ -308,7 +342,9 @@ fn repository_resolution_name(question: &str) -> Option<String> {
             .or_else(|| candidates.first())
             .map(|word| (*word).to_string());
     }
-    likely_declaration_term(question).map(str::to_string)
+    likely_declaration_term(question)
+        .filter(|name| name.chars().any(char::is_lowercase))
+        .map(str::to_string)
 }
 
 fn explicit_repository_names(question: &str) -> BTreeSet<String> {

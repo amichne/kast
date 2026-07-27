@@ -3,6 +3,18 @@ fn repository_discovery_paraphrases_preserve_evidence_derived_outcomes() {
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
     seed_repository_graph(&fixture);
     seed_discovery_name_collision(&fixture);
+    fixture
+        .connection()
+        .execute(
+            "INSERT INTO semantic_symbols
+             (id, stable_key, file_id, owner_id, kind, name, fq_name, signature,
+              start_offset, end_offset, line)
+             VALUES
+             (31, 'callable:missingSymbol', 1, NULL, 'FUNCTION', 'missingSymbol',
+              'sample.missingSymbol', 'sample.missingSymbol|-|||0', 501, 520, 50)",
+            [],
+        )
+        .expect("lexical missing-symbol distractor");
 
     let resolve = |id: &str, question: &str| {
         rpc(
@@ -59,6 +71,15 @@ fn repository_discovery_paraphrases_preserve_evidence_derived_outcomes() {
     assert_eq!(outcome(&missing_wording), outcome(&baseline));
     assert_eq!(outcome(&ambiguity_wording), outcome(&baseline));
 
+    let explicit_nonselection = resolve(
+        "explicit-nonselection",
+        "Resolve semanticGraphOperation without choosing between the two declarations.",
+    );
+    assert_eq!(
+        explicit_nonselection["result"]["status"], "AMBIGUOUS",
+        "{explicit_nonselection:#}"
+    );
+
     let bare_ambiguity = resolve("bare-ambiguity", "Resolve parse.");
     let paraphrased_ambiguity = resolve(
         "paraphrased-ambiguity",
@@ -75,6 +96,15 @@ fn repository_discovery_paraphrases_preserve_evidence_derived_outcomes() {
         "Resolve DefinitelyMissingRepositoryIntelligenceSymbol.",
     );
     assert_eq!(missing["result"]["status"], "EMPTY", "{missing:#}");
+
+    let natural_missing = resolve(
+        "natural-missing",
+        "Does a declaration named DefinitelyMissingRepositoryIntelligenceSymbol exist?",
+    );
+    assert_eq!(
+        natural_missing["result"]["status"], "EMPTY",
+        "{natural_missing:#}"
+    );
 }
 
 fn seed_included_build_app(fixture: &WorkspaceIndexFixture) {

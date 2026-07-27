@@ -338,3 +338,52 @@ impl<'a> SymbolQueryDatabase<'a> {
         Ok(matches)
     }
 }
+
+fn next_requests(declaration: &DeclarationRow) -> NextRequests {
+    let kind = declaration.kind.to_ascii_lowercase();
+    let symbol_request = json!({
+        "symbol": declaration.simple_name,
+        "fileHint": declaration.filename,
+        "kind": kind
+    });
+    NextRequests {
+        symbol_resolve: NextRequest {
+            method: "symbol/resolve",
+            request: json!({
+                "symbol": declaration.simple_name,
+                "fileHint": declaration.filename,
+                "kind": kind,
+                "includeDeclarationScope": true
+            }),
+        },
+        symbol_references: NextRequest {
+            method: "symbol/references",
+            request: json!({
+                "symbol": declaration.simple_name,
+                "fileHint": declaration.filename,
+                "kind": kind,
+                "includeDeclaration": true
+            }),
+        },
+        symbol_callers: NextRequest {
+            method: "symbol/callers",
+            request: json!({
+                "symbol": declaration.simple_name,
+                "fileHint": declaration.filename,
+                "kind": kind,
+                "direction": "incoming",
+                "depth": 1
+            }),
+        },
+        raw_resolve: NextRequest {
+            method: "raw/resolve",
+            request: json!({
+                "position": {
+                    "filePath": declaration.path,
+                    "offset": declaration.declaration_offset
+                },
+                "symbol": symbol_request
+            }),
+        },
+    }
+}

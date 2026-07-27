@@ -63,7 +63,16 @@ fn graph_repository_question(
             "symbol.name = ?1",
             target_name,
         )?);
-        match resolve_path_target(candidates, question, execution.limits.results) {
+        let occurrences =
+            load_relation_occurrences(connection, &relations, execution.admitted)?;
+        match resolve_path_target(
+            candidates,
+            &start,
+            question,
+            direction,
+            &occurrences,
+            execution.limits.results,
+        ) {
             RepositoryPathTargetResolution::Missing => {
                 return Ok(json!({
                     "answered": false,
@@ -163,7 +172,10 @@ fn graph_repository_question(
 
 fn resolve_path_target(
     candidates: Vec<RepositoryNode>,
+    start: &RepositoryNode,
     question: &str,
+    direction: RepositoryDirection,
+    occurrences: &[RepositoryEdgeOccurrence],
     limit: usize,
 ) -> RepositoryPathTargetResolution {
     let question = question.to_ascii_lowercase();
@@ -182,10 +194,26 @@ fn resolve_path_target(
         })
         .cloned()
         .collect::<Vec<_>>();
-    let mut selected = if explicitly_named.is_empty() {
-        candidates
-    } else {
+    let directly_related = candidates
+        .iter()
+        .filter(|candidate| {
+            occurrences.iter().any(|occurrence| {
+                let source = occurrence.lifted_source.unwrap_or(occurrence.source_id);
+                let (from, to) = match direction {
+                    RepositoryDirection::Outgoing => (source, occurrence.target_id),
+                    RepositoryDirection::Incoming => (occurrence.target_id, source),
+                };
+                from == start.database_id && to == candidate.database_id
+            })
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    let mut selected = if !explicitly_named.is_empty() {
         explicitly_named
+    } else if !directly_related.is_empty() {
+        directly_related
+    } else {
+        candidates
     };
     selected.sort_by(|left, right| left.canonical_key.cmp(&right.canonical_key));
     match selected.len() {
