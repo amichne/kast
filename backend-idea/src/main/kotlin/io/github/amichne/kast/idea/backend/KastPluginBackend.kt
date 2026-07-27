@@ -55,7 +55,6 @@ import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.SemanticInsertionResult
 import io.github.amichne.kast.api.contract.ServerLimits
-import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.SymbolVisibility
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
@@ -379,15 +378,6 @@ internal class KastPluginBackend(
         return GlobalSearchScope.moduleWithDependentsScope(module)
     }
 
-    internal fun Symbol.relationshipIdentity(): io.github.amichne.kast.api.contract.SymbolIdentity =
-        io.github.amichne.kast.api.contract.SymbolIdentity(
-            fqName = fqName,
-            kind = kind,
-            declarationFile = NormalizedPath.parse(location.filePath),
-            declarationStartOffset = NonNegativeInt(location.startOffset),
-            containingType = containingDeclaration,
-        )
-
     override fun close() {
         val failures = listOf(
             runCatching(referenceContinuations::close).exceptionOrNull(),
@@ -405,11 +395,6 @@ internal class KastPluginBackend(
         internal const val RELATIONSHIP_STATE_CAPACITY: Int = 16_384
         internal val BACKEND_VERSION = readBackendVersion()
 
-        internal fun readBackendVersion(): String =
-            KastPluginBackend::class.java
-                .getResource("/kast-backend-version.txt")
-                ?.readText()
-                ?.trim()
-                ?: "unknown"
+        internal fun readBackendVersion(): String = loadBackendVersion()
     }
 }

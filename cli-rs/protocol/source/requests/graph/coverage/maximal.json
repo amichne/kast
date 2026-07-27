@@ -1,0 +1,15 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "graph/coverage",
+  "params": {
+    "continuation": "example-continuation",
+    "limit": 25,
+    "scope": {
+      "language": "example-language",
+      "module": "example-module",
+      "sourceSet": "main"
+    },
+    "workspaceRoot": "/absolute/path/to/workspace"
+  }
+}

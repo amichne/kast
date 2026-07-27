@@ -4,10 +4,10 @@ title: Kast Architecture
 description: How setup, Codex routing, exact-root runtime admission, compiler backends, and typed results fit together.
 tags: [architecture, codex, idea, headless, runtime]
 code_sources:
-  - path: cli-rs/src/runtime/workspace_admission.rs
-  - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/AnalysisBackend.kt
+  - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
+  - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt
   - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/KastPluginBackend.kt
-  - path: cli-rs/src/codex/hook.rs
+  - path: cli-rs/src/interface/codex/hook.rs
 ---
 
 # Kast Architecture
@@ -95,3 +95,8 @@ identity survive that projection. So do limitations: indexing, unavailable
 source modules, missing reference indexes, bounded relationship results, and
 unsupported capabilities remain visible instead of being converted into an
 empty success.
+
+The repository-scale query path adds generation-pinned coverage, discovery,
+traversal, topology, and context projections over persisted compiler evidence.
+See [Repository intelligence architecture](repository-intelligence.md) for
+that subsystem's authority chain and current operating limits.

@@ -1,0 +1,399 @@
+{
+  "schemaVersion": 1,
+  "status": "complete",
+  "startedAt": "2026-07-26T07:58:04.875309+00:00",
+  "finishedAt": "2026-07-26T07:59:03.267009+00:00",
+  "elapsedMs": 58391.831,
+  "workspace": "/Users/amichne/code/kast-repository-intelligence-corpus",
+  "git": {
+    "commit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
+    "dirty": false
+  },
+  "installation": {
+    "version": "0.16.1-13-g5ac947c0",
+    "profile": "macos-idea",
+    "platform": "macos-arm64",
+    "components": [
+      "cli",
+      "idea-plugin"
+    ],
+    "backend": {
+      "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus",
+      "backendName": "idea",
+      "backendVersion": "0.16.1-13-g5ac947c0",
+      "transport": "uds",
+      "socketPath": "/Users/amichne/.local/share/kast/state/runtime/kast-513b99ed9c63.sock",
+      "pid": 39781,
+      "schemaVersion": 5
+    }
+  },
+  "inputs": {
+    "sourceRoots": [
+      "."
+    ],
+    "limit": 0,
+    "iterations": 1,
+    "timeoutSeconds": 60.0,
+    "readyTimeoutSeconds": 300.0,
+    "database": "/Users/amichne/.local/share/kast/state/data/workspaces/git/github.com/amichne/kast/worktrees/kast-repository-intelligence-corpus--8add60ac3132/cache/source-index.db",
+    "kotlinFiles": 599
+  },
+  "bootstrap": {
+    "launchDisposition": "REUSED_OPEN_PROJECT",
+    "initialState": "INDEXING",
+    "readyMs": 33660.661,
+    "transitions": [
+      {
+        "elapsedMs": 87.872,
+        "state": "INDEXING",
+        "referenceIndexReady": false
+      },
+      {
+        "elapsedMs": 33660.648,
+        "state": "READY",
+        "referenceIndexReady": true
+      }
+    ]
+  },
+  "graphBuild": {
+    "requestedFiles": 599,
+    "successfulFiles": 599,
+    "failedFiles": 0,
+    "failureCodes": {},
+    "reportedSymbolCount": 25311,
+    "reportedEdgeOccurrenceCount": 40644,
+    "finalGeneration": 1582,
+    "timings": {
+      "count": 599,
+      "totalMs": 21552.848,
+      "minMs": 11.713,
+      "p50Ms": 19.901,
+      "p95Ms": 84.523,
+      "maxMs": 684.997
+    }
+  },
+  "nativeGraph": {
+    "generation": 1582,
+    "seeds": {
+      "symbol": "callable:analysis-server/src/main/kotlin/io/github/amichne/kast/server/RpcAnalysisDispatcher.kt:9685:io.github.amichne.kast.server.RpcAnalysisDispatcher.dispatchMethod|-||kotlin.String,kotlinx.serialization.json.JsonElement?|0",
+      "file": "analysis-server/src/test/kotlin/io/github/amichne/kast/server/AnalysisDispatcherTest.kt",
+      "package": "io.github.amichne.kast.idea",
+      "module": "kast.analysis-api.main"
+    },
+    "traversals": [
+      {
+        "scope": "symbol",
+        "operation": "summary",
+        "status": "ok",
+        "seed": null,
+        "timings": {
+          "count": 1,
+          "totalMs": 448.996,
+          "minMs": 448.996,
+          "p50Ms": 448.996,
+          "p95Ms": 448.996,
+          "maxMs": 448.996
+        },
+        "measurements": {
+          "loadNanos": 100893916,
+          "computeNanos": 334239458,
+          "databaseBytes": 70627328,
+          "peakRssBytes": 57655296,
+          "queryP95Micros": 32
+        },
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/symbol-summary.json"
+      },
+      {
+        "scope": "symbol",
+        "operation": "neighbors",
+        "status": "ok",
+        "seed": "callable:analysis-server/src/main/kotlin/io/github/amichne/kast/server/RpcAnalysisDispatcher.kt:9685:io.github.amichne.kast.server.RpcAnalysisDispatcher.dispatchMethod|-||kotlin.String,kotlinx.serialization.json.JsonElement?|0",
+        "timings": {
+          "count": 1,
+          "totalMs": 112.539,
+          "minMs": 112.539,
+          "p50Ms": 112.539,
+          "p95Ms": 112.539,
+          "maxMs": 112.539
+        },
+        "measurements": null,
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/symbol-neighbors.json"
+      },
+      {
+        "scope": "symbol",
+        "operation": "topology",
+        "status": "ok",
+        "seed": null,
+        "timings": {
+          "count": 1,
+          "totalMs": 293.07,
+          "minMs": 293.07,
+          "p50Ms": 293.07,
+          "p95Ms": 293.07,
+          "maxMs": 293.07
+        },
+        "measurements": null,
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/symbol-topology.json"
+      },
+      {
+        "scope": "symbol",
+        "operation": "communities",
+        "status": "ok",
+        "seed": null,
+        "timings": {
+          "count": 1,
+          "totalMs": 657.884,
+          "minMs": 657.884,
+          "p50Ms": 657.884,
+          "p95Ms": 657.884,
+          "maxMs": 657.884
+        },
+        "measurements": null,
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/symbol-communities.json"
+      },
+      {
+        "scope": "file",
+        "operation": "summary",
+        "status": "ok",
+        "seed": null,
+        "timings": {
+          "count": 1,
+          "totalMs": 97.512,
+          "minMs": 97.512,
+          "p50Ms": 97.512,
+          "p95Ms": 97.512,
+          "maxMs": 97.512
+        },
+        "measurements": {
+          "loadNanos": 73951250,
+          "computeNanos": 13874166,
+          "databaseBytes": 70627328,
+          "peakRssBytes": 35094528,
+          "queryP95Micros": 36
+        },
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/file-summary.json"
+      },
+      {
+        "scope": "file",
+        "operation": "neighbors",
+        "status": "ok",
+        "seed": "analysis-server/src/test/kotlin/io/github/amichne/kast/server/AnalysisDispatcherTest.kt",
+        "timings": {
+          "count": 1,
+          "totalMs": 86.832,
+          "minMs": 86.832,
+          "p50Ms": 86.832,
+          "p95Ms": 86.832,
+          "maxMs": 86.832
+        },
+        "measurements": null,
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/file-neighbors.json"
+      },
+      {
+        "scope": "file",
+        "operation": "topology",
+        "status": "ok",
+        "seed": null,
+        "timings": {
+          "count": 1,
+          "totalMs": 89.496,
+          "minMs": 89.496,
+          "p50Ms": 89.496,
+          "p95Ms": 89.496,
+          "maxMs": 89.496
+        },
+        "measurements": null,
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/file-topology.json"
+      },
+      {
+        "scope": "file",
+        "operation": "communities",
+        "status": "ok",
+        "seed": null,
+        "timings": {
+          "count": 1,
+          "totalMs": 102.013,
+          "minMs": 102.013,
+          "p50Ms": 102.013,
+          "p95Ms": 102.013,
+          "maxMs": 102.013
+        },
+        "measurements": null,
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/file-communities.json"
+      },
+      {
+        "scope": "package",
+        "operation": "summary",
+        "status": "ok",
+        "seed": null,
+        "timings": {
+          "count": 1,
+          "totalMs": 101.128,
+          "minMs": 101.128,
+          "p50Ms": 101.128,
+          "p95Ms": 101.128,
+          "maxMs": 101.128
+        },
+        "measurements": {
+          "loadNanos": 91112250,
+          "computeNanos": 1356042,
+          "databaseBytes": 70627328,
+          "peakRssBytes": 39124992,
+          "queryP95Micros": 33
+        },
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/package-summary.json"
+      },
+      {
+        "scope": "package",
+        "operation": "neighbors",
+        "status": "ok",
+        "seed": "io.github.amichne.kast.idea",
+        "timings": {
+          "count": 1,
+          "totalMs": 101.108,
+          "minMs": 101.108,
+          "p50Ms": 101.108,
+          "p95Ms": 101.108,
+          "maxMs": 101.108
+        },
+        "measurements": null,
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/package-neighbors.json"
+      },
+      {
+        "scope": "package",
+        "operation": "topology",
+        "status": "ok",
+        "seed": null,
+        "timings": {
+          "count": 1,
+          "totalMs": 99.449,
+          "minMs": 99.449,
+          "p50Ms": 99.449,
+          "p95Ms": 99.449,
+          "maxMs": 99.449
+        },
+        "measurements": null,
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/package-topology.json"
+      },
+      {
+        "scope": "package",
+        "operation": "communities",
+        "status": "ok",
+        "seed": null,
+        "timings": {
+          "count": 1,
+          "totalMs": 100.729,
+          "minMs": 100.729,
+          "p50Ms": 100.729,
+          "p95Ms": 100.729,
+          "maxMs": 100.729
+        },
+        "measurements": null,
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/package-communities.json"
+      },
+      {
+        "scope": "module",
+        "operation": "summary",
+        "status": "ok",
+        "seed": null,
+        "timings": {
+          "count": 1,
+          "totalMs": 96.248,
+          "minMs": 96.248,
+          "p50Ms": 96.248,
+          "p95Ms": 96.248,
+          "maxMs": 96.248
+        },
+        "measurements": {
+          "loadNanos": 87036333,
+          "computeNanos": 227500,
+          "databaseBytes": 70627328,
+          "peakRssBytes": 34340864,
+          "queryP95Micros": 32
+        },
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/module-summary.json"
+      },
+      {
+        "scope": "module",
+        "operation": "neighbors",
+        "status": "ok",
+        "seed": "kast.analysis-api.main",
+        "timings": {
+          "count": 1,
+          "totalMs": 95.804,
+          "minMs": 95.804,
+          "p50Ms": 95.804,
+          "p95Ms": 95.804,
+          "maxMs": 95.804
+        },
+        "measurements": null,
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/module-neighbors.json"
+      },
+      {
+        "scope": "module",
+        "operation": "topology",
+        "status": "ok",
+        "seed": null,
+        "timings": {
+          "count": 1,
+          "totalMs": 95.942,
+          "minMs": 95.942,
+          "p50Ms": 95.942,
+          "p95Ms": 95.942,
+          "maxMs": 95.942
+        },
+        "measurements": null,
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/module-topology.json"
+      },
+      {
+        "scope": "module",
+        "operation": "communities",
+        "status": "ok",
+        "seed": null,
+        "timings": {
+          "count": 1,
+          "totalMs": 95.579,
+          "minMs": 95.579,
+          "p50Ms": 95.579,
+          "p95Ms": 95.579,
+          "maxMs": 95.579
+        },
+        "measurements": null,
+        "stderr": "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.",
+        "artifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal/module-communities.json"
+      }
+    ]
+  },
+  "ideaLog": {
+    "source": "/Users/amichne/Library/Logs/JetBrains/IntelliJIdea2026.2/idea.log",
+    "runArtifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/idea-run.log",
+    "indexingArtifact": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/idea-indexing.log",
+    "bytes": 1191,
+    "lines": 7,
+    "indexingEvidenceLines": 260,
+    "indexingLines": 1,
+    "kastLines": 1,
+    "graphLines": 0
+  },
+  "artifacts": {
+    "runDirectory": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z",
+    "preflight": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/preflight.json",
+    "build": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/semantic-graph-build.jsonl",
+    "traversalDirectory": "/Users/amichne/code/kast-repository-intelligence/benchmarks/repository-intelligence/results/native-graph-final/kast-repository-intelligence-corpus/20260726T075804.874860Z/traversal"
+  }
+}

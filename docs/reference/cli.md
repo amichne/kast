@@ -4,7 +4,7 @@ title: CLI Reference
 description: Public Kast command families, shared options, and intended audiences.
 tags: [cli, reference, commands, output]
 code_sources:
-  - path: cli-rs/src/cli/root.rs
+  - path: cli-rs/src/interface/cli/root.rs
   - path: cli-rs/src/main.rs
   - path: cli-rs/protocol/source/commands.yaml
 ---

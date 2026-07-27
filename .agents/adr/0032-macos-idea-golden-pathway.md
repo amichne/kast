@@ -46,11 +46,11 @@ does not interrupt the host. A real plugin change returns
 
 ## Source and proof
 
-- `cli-rs/src/runtime/idea_launch.rs`
-- `cli-rs/src/runtime/workspace_admission.rs`
+- `cli-rs/src/execution/runtime/control/idea_launch.rs`
+- `cli-rs/src/execution/runtime/backend/workspace_admission.rs`
 - `backend-idea/`
 - `packaging/jetbrains/runtime-compatibility.json`
-- `.github/scripts/test-runtime-compatibility-contract.sh`
+- `.github/scripts/runtime/test-runtime-compatibility-contract.sh`
 - `scripts/smoke-macos-idea-golden-path.sh`
 
 Changes to the host matrix, exact-root opening, focus/window policy, readiness

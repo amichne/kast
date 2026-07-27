@@ -1,0 +1,214 @@
+{
+  "ok": true,
+  "method": "agent/graph",
+  "result": {
+    "type": "KAST_NATIVE_GRAPH_COMMUNITIES",
+    "scope": "PACKAGE",
+    "generation": 647,
+    "resolution": 1.0,
+    "nodes": [
+      {
+        "key": "<root>",
+        "community": 0
+      },
+      {
+        "key": "io.github.amichne.kast.api",
+        "community": 1
+      },
+      {
+        "key": "io.github.amichne.kast.api.client",
+        "community": 2
+      },
+      {
+        "key": "io.github.amichne.kast.api.client.fields",
+        "community": 3
+      },
+      {
+        "key": "io.github.amichne.kast.api.continuation",
+        "community": 4
+      },
+      {
+        "key": "io.github.amichne.kast.api.contract",
+        "community": 5
+      },
+      {
+        "key": "io.github.amichne.kast.api.contract.compatibility",
+        "community": 6
+      },
+      {
+        "key": "io.github.amichne.kast.api.contract.mutation",
+        "community": 7
+      },
+      {
+        "key": "io.github.amichne.kast.api.contract.query",
+        "community": 8
+      },
+      {
+        "key": "io.github.amichne.kast.api.contract.result",
+        "community": 9
+      },
+      {
+        "key": "io.github.amichne.kast.api.contract.selector",
+        "community": 10
+      },
+      {
+        "key": "io.github.amichne.kast.api.contract.skill",
+        "community": 11
+      },
+      {
+        "key": "io.github.amichne.kast.api.docs",
+        "community": 12
+      },
+      {
+        "key": "io.github.amichne.kast.api.io",
+        "community": 13
+      },
+      {
+        "key": "io.github.amichne.kast.api.protocol",
+        "community": 14
+      },
+      {
+        "key": "io.github.amichne.kast.api.validation",
+        "community": 15
+      },
+      {
+        "key": "io.github.amichne.kast.headless",
+        "community": 16
+      },
+      {
+        "key": "io.github.amichne.kast.idea",
+        "community": 17
+      },
+      {
+        "key": "io.github.amichne.kast.idea.backend",
+        "community": 18
+      },
+      {
+        "key": "io.github.amichne.kast.idea.backend.diagnostics",
+        "community": 19
+      },
+      {
+        "key": "io.github.amichne.kast.idea.backend.mutation",
+        "community": 20
+      },
+      {
+        "key": "io.github.amichne.kast.idea.backend.references",
+        "community": 21
+      },
+      {
+        "key": "io.github.amichne.kast.idea.backend.relationships",
+        "community": 22
+      },
+      {
+        "key": "io.github.amichne.kast.idea.backend.semantic",
+        "community": 23
+      },
+      {
+        "key": "io.github.amichne.kast.idea.backend.workspace",
+        "community": 24
+      },
+      {
+        "key": "io.github.amichne.kast.idea.diagnostics",
+        "community": 25
+      },
+      {
+        "key": "io.github.amichne.kast.idea.edit",
+        "community": 26
+      },
+      {
+        "key": "io.github.amichne.kast.idea.mutation",
+        "community": 27
+      },
+      {
+        "key": "io.github.amichne.kast.idea.proofloss",
+        "community": 28
+      },
+      {
+        "key": "io.github.amichne.kast.idea.snapshot",
+        "community": 29
+      },
+      {
+        "key": "io.github.amichne.kast.indexstore",
+        "community": 30
+      },
+      {
+        "key": "io.github.amichne.kast.indexstore.api.graph",
+        "community": 31
+      },
+      {
+        "key": "io.github.amichne.kast.indexstore.api.index",
+        "community": 32
+      },
+      {
+        "key": "io.github.amichne.kast.indexstore.api.reference",
+        "community": 33
+      },
+      {
+        "key": "io.github.amichne.kast.indexstore.indexing",
+        "community": 34
+      },
+      {
+        "key": "io.github.amichne.kast.indexstore.snapshot",
+        "community": 35
+      },
+      {
+        "key": "io.github.amichne.kast.indexstore.store",
+        "community": 36
+      },
+      {
+        "key": "io.github.amichne.kast.indexstore.store.cache",
+        "community": 30
+      },
+      {
+        "key": "io.github.amichne.kast.indexstore.store.codec",
+        "community": 37
+      },
+      {
+        "key": "io.github.amichne.kast.indexstore.store.jdbc",
+        "community": 38
+      },
+      {
+        "key": "io.github.amichne.kast.server",
+        "community": 39
+      },
+      {
+        "key": "io.github.amichne.kast.server.mutation",
+        "community": 40
+      },
+      {
+        "key": "io.github.amichne.kast.shared",
+        "community": 41
+      },
+      {
+        "key": "io.github.amichne.kast.shared.analysis",
+        "community": 42
+      },
+      {
+        "key": "io.github.amichne.kast.shared.hierarchy",
+        "community": 43
+      },
+      {
+        "key": "io.github.amichne.kast.shared.proofloss.analysis",
+        "community": 44
+      },
+      {
+        "key": "io.github.amichne.kast.shared.proofloss.application",
+        "community": 45
+      },
+      {
+        "key": "io.github.amichne.kast.shared.proofloss.ir",
+        "community": 46
+      },
+      {
+        "key": "io.github.amichne.kast.shared.proofloss.model",
+        "community": 47
+      },
+      {
+        "key": "io.github.amichne.kast.testing",
+        "community": 48
+      }
+    ],
+    "schemaVersion": 5
+  },
+  "schemaVersion": 5
+}

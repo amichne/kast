@@ -1,28 +1,55 @@
 mod agent;
+#[path = "configuration/bundle.rs"]
 mod bundle;
+#[path = "configuration/catalog_schema.rs"]
 mod catalog_schema;
+#[path = "interface/cli.rs"]
 mod cli;
+#[path = "interface/codex.rs"]
 mod codex;
+#[path = "configuration/config.rs"]
 mod config;
+#[path = "operations/contract_gen.rs"]
 mod contract_gen;
+#[path = "operations/daemon.rs"]
 mod daemon;
+#[path = "interface/demo.rs"]
 mod demo;
+#[path = "configuration/error.rs"]
 mod error;
+#[path = "operations/install.rs"]
 mod install;
+#[path = "configuration/manifest.rs"]
 mod manifest;
+#[path = "operations/metrics.rs"]
 mod metrics;
+#[path = "storage/metrics_database.rs"]
 mod metrics_database;
+#[path = "interface/output.rs"]
 mod output;
+#[path = "operations/package.rs"]
 mod package;
+#[path = "configuration/protocol_schema_versions.rs"]
 mod protocol_schema_versions;
+#[path = "semantics/repository_intelligence.rs"]
+mod repository_intelligence;
+#[path = "semantics/rpc.rs"]
 mod rpc;
+#[path = "execution/runtime.rs"]
 mod runtime;
+#[path = "operations/self_mgmt.rs"]
 mod self_mgmt;
+#[path = "storage/source_index_db.rs"]
 mod source_index_db;
+#[path = "storage/source_index_schema.rs"]
 mod source_index_schema;
+#[path = "semantics/symbol_query.rs"]
 mod symbol_query;
+#[path = "semantics/symbol_query_filters.rs"]
 mod symbol_query_filters;
+#[path = "configuration/validate.rs"]
 mod validate;
+#[path = "semantics/workspace_inventory.rs"]
 mod workspace_inventory;
 
 use clap::{CommandFactory, Parser};
@@ -202,387 +229,5 @@ fn default_runtime_args() -> cli::RuntimeArgs {
     }
 }
 
-fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
-    let command = cli
-        .command
-        .unwrap_or_else(|| Command::Context(default_runtime_args()));
-    match command {
-        Command::Help { topic } => {
-            if topic.is_empty() {
-                Cli::command().print_long_help()?;
-                println!();
-            } else {
-                cli::print_topic_help(&topic)?;
-            }
-            Ok(0)
-        }
-        Command::Version => {
-            println!("Kast CLI {}", cli::version());
-            Ok(0)
-        }
-        Command::Context(args) => run_context(args, output_format),
-        Command::Setup(args) => run_setup(args, output_format),
-        Command::Ready(args) => run_ready(args, output_format),
-        Command::Start(args) => run_runtime(cli::RuntimeCommand::Up(args), output_format),
-        Command::Status(args) => run_runtime(cli::RuntimeCommand::Status(args), output_format),
-        Command::Stop(args) => run_runtime(cli::RuntimeCommand::Stop(args), output_format),
-        Command::Demo(args) => demo::run_public(args, output_format),
-        Command::Developer(args) => run_developer(args.command, output_format),
-        Command::Doctor(args) => run_ready(args.into(), output_format),
-        Command::Agent(args) => run_agent(args, output_format),
-    }
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ContextCommandHint {
-    command: String,
-    purpose: String,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct KastContext {
-    #[serde(rename = "type")]
-    context_type: &'static str,
-    bin: String,
-    description: &'static str,
-    workspace_root: String,
-    output_default: &'static str,
-    commands: Vec<ContextCommandHint>,
-    help: Vec<String>,
-    schema_version: u32,
-}
-
-fn run_context(args: cli::RuntimeArgs, output_format: OutputFormat) -> Result<i32> {
-    let workspace_root = config::resolve_workspace_root(args.workspace_root)?;
-    let context = KastContext {
-        context_type: "KAST_CONTEXT",
-        bin: display_current_executable(),
-        description: "Compiler-backed Kotlin semantic navigation, editing, diagnostics, and transactional release setup.",
-        workspace_root: workspace_root.display().to_string(),
-        output_default: "Kast agent commands always default to TOON; JSON remains deprecated compatibility output.",
-        commands: context_command_hints(),
-        help: vec![
-            "Run `kast --help` for command reference.".to_string(),
-            "Rerun `kast setup --source <bundle>` whenever installation readiness fails."
-                .to_string(),
-        ],
-        schema_version: SCHEMA_VERSION,
-    };
-    if output_format.is_structured() {
-        output::print_structured(&context, output_format)?;
-    } else {
-        print_context_human(&context)?;
-    }
-    Ok(0)
-}
-
-fn context_command_hints() -> Vec<ContextCommandHint> {
-    vec![
-        ContextCommandHint {
-            command: "kast start --workspace-root <repo>".to_string(),
-            purpose: "Start or resume the workspace backend and indexing.".to_string(),
-        },
-        ContextCommandHint {
-            command: "kast status --workspace-root <repo>".to_string(),
-            purpose: "Inspect backend and indexing state.".to_string(),
-        },
-        ContextCommandHint {
-            command: "kast stop --workspace-root <repo>".to_string(),
-            purpose: "Stop indexing and the workspace backend.".to_string(),
-        },
-        ContextCommandHint {
-            command: "kast agent verify --workspace-root <repo>".to_string(),
-            purpose: "Check backend health, runtime state, and capabilities.".to_string(),
-        },
-        ContextCommandHint {
-            command: "kast agent symbol --query <name> --workspace-root <repo>".to_string(),
-            purpose: "Resolve Kotlin symbol identity before reading or editing.".to_string(),
-        },
-    ]
-}
-
-fn print_context_human(context: &KastContext) -> Result<()> {
-    let mut markdown = String::new();
-    markdown.push_str("# Kast context\n\n");
-    markdown.push_str(&format!("- Bin: `{}`\n", context.bin));
-    markdown.push_str(&format!("- Description: {}\n", context.description));
-    markdown.push_str(&format!("- Workspace: `{}`\n", context.workspace_root));
-    markdown.push_str(&format!("- Output: {}\n\n", context.output_default));
-    markdown.push_str("## Commands\n");
-    for command in &context.commands {
-        markdown.push_str(&format!("- `{}`: {}\n", command.command, command.purpose));
-    }
-    markdown.push_str("\n## Help\n");
-    for help in &context.help {
-        markdown.push_str(&format!("- {help}\n"));
-    }
-    output::print_markdown(&markdown)
-}
-
-fn display_current_executable() -> String {
-    let raw = env::current_exe()
-        .ok()
-        .map(|path| path.display().to_string())
-        .unwrap_or_else(current_executable_argument);
-    let home = env::var_os("HOME")
-        .map(PathBuf::from)
-        .map(|path| path.display().to_string());
-    if let Some(home) = home
-        && let Some(stripped) = raw.strip_prefix(&home)
-    {
-        return format!("~{stripped}");
-    }
-    raw
-}
-
-fn run_setup(args: cli::SetupArgs, output_format: OutputFormat) -> Result<i32> {
-    let result = install::setup(args)?;
-    output::print_structured(
-        &result,
-        if output_format.is_structured() {
-            output_format
-        } else {
-            OutputFormat::Toon
-        },
-    )?;
-    Ok(0)
-}
-
-fn run_ready(args: cli::ReadyArgs, output_format: OutputFormat) -> Result<i32> {
-    let cli::ReadyArgs { runtime, target } = args;
-    let workspace_root = runtime
-        .workspace_root
-        .as_deref()
-        .map(|path| config::resolve_workspace_root(Some(path.to_path_buf())))
-        .transpose()?;
-    let result = self_mgmt::doctor(target, workspace_root.as_deref())?;
-    if output_format.is_structured() {
-        output::print_structured(&result, output_format)?;
-    } else {
-        output::print_ready(&result)?;
-    }
-    Ok(if result.ok { 0 } else { 1 })
-}
-
-fn run_agent(args: cli::AgentArgs, output_format: OutputFormat) -> Result<i32> {
-    match args.command {
-        None => Err(CliError::new(
-            "CLI_USAGE",
-            "An agent command is required; run `kast agent --help`.",
-        )),
-        Some(command) => agent::run(command, output_format),
-    }
-}
-
-fn current_executable_argument() -> String {
-    env::args_os()
-        .next()
-        .map(|arg| arg.to_string_lossy().into_owned())
-        .filter(|arg| !arg.is_empty())
-        .unwrap_or_else(|| "kast".to_string())
-}
-
-fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Result<i32> {
-    match command {
-        cli::RuntimeCommand::Up(args) => {
-            let result = runtime::workspace_ensure(args)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                output::print_workspace_ensure(&result)?;
-            }
-            Ok(0)
-        }
-        cli::RuntimeCommand::Status(args) => {
-            let result = runtime::workspace_status(args)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                output::print_workspace_status(&result)?;
-            }
-            Ok(0)
-        }
-        cli::RuntimeCommand::Stop(args) => {
-            let result = runtime::workspace_stop(args)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                output::print_stop_result(&result)?;
-            }
-            Ok(0)
-        }
-        cli::RuntimeCommand::Restart(args) => {
-            let result = runtime::workspace_restart(args)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                output::print_restart_result(&result)?;
-            }
-            Ok(0)
-        }
-        cli::RuntimeCommand::Capabilities(args) => {
-            let result = runtime::capabilities(args)?;
-            if output_format.is_structured() {
-                output::print_structured(&result, output_format)?;
-            } else {
-                output::print_capabilities(&result)?;
-            }
-            Ok(0)
-        }
-    }
-}
-
-fn run_developer(command: cli::DeveloperCommand, output_format: OutputFormat) -> Result<i32> {
-    match command {
-        cli::DeveloperCommand::Runtime(args) => run_runtime(args.command, output_format),
-        cli::DeveloperCommand::Inspect(args) => run_inspect(args.command, output_format),
-        cli::DeveloperCommand::Release(args) => run_release(args.command, output_format),
-        cli::DeveloperCommand::Codex(args) => codex::run(args.command, output_format),
-    }
-}
-
-fn run_inspect(command: cli::InspectCommand, output_format: OutputFormat) -> Result<i32> {
-    match command {
-        cli::InspectCommand::Paths(args) => run_paths(args, output_format),
-        cli::InspectCommand::Metrics { command } => metrics::run(command, output_format),
-        cli::InspectCommand::Catalog(args) => run_validate(args),
-    }
-}
-
-fn run_release(command: cli::ReleaseCommand, output_format: OutputFormat) -> Result<i32> {
-    match command {
-        cli::ReleaseCommand::Package(args) => run_package(args, output_format),
-        cli::ReleaseCommand::Generate(args) => run_generate(args),
-        cli::ReleaseCommand::Validate(args) => run_validate(args),
-    }
-}
-
-fn run_validate(args: cli::ValidateArgs) -> Result<i32> {
-    let result = validate::run(args)?;
-    output::print_json(&result)?;
-    Ok(if result.ok { 0 } else { 1 })
-}
-
-fn run_generate(args: cli::GenerateArgs) -> Result<i32> {
-    match args.command {
-        GenerateCommand::Contract(args) => {
-            let paths = contract_paths(&args);
-            let result = if args.check {
-                contract_gen::check(&paths)?
-            } else {
-                contract_gen::write(&paths)?
-            };
-            output::print_json(&result)?;
-            Ok(0)
-        }
-    }
-}
-
-fn run_package(args: cli::PackageArgs, output_format: OutputFormat) -> Result<i32> {
-    let result = package::run(args)?;
-    if output_format.is_structured() {
-        output::print_structured(&result, output_format)?;
-    } else {
-        output::print_package_result(&result)?;
-    }
-    Ok(0)
-}
-
-fn run_paths(args: cli::PathsArgs, output_format: OutputFormat) -> Result<i32> {
-    let workspace_root = args
-        .workspace_root
-        .as_deref()
-        .map(|path| config::resolve_workspace_root(Some(path.to_path_buf())))
-        .transpose()?;
-    let config = match &workspace_root {
-        Some(root) => config::KastConfig::load(root)?,
-        None => config::KastConfig::load_global()?,
-    };
-    let mode = if args.idea {
-        config::PathResolutionMode::Idea
-    } else {
-        config::PathResolutionMode::Cli
-    };
-    let result = config::path_resolution_report(&config, workspace_root.as_deref(), mode)?;
-    if output_format.is_structured() {
-        output::print_structured(&result, output_format)?;
-    } else {
-        output::print_paths(&result)?;
-    }
-    Ok(0)
-}
-
-fn contract_paths(args: &cli::GenerateContractArgs) -> contract_gen::ContractPaths {
-    let mut paths = contract_gen::ContractPaths::defaults(Path::new(env!("CARGO_MANIFEST_DIR")));
-    if let Some(catalog) = &args.catalog {
-        paths.catalog = catalog.clone();
-    }
-    if let Some(yaml) = &args.yaml {
-        paths.yaml = yaml.clone();
-    }
-    if let Some(samples_root) = &args.samples_root {
-        paths.samples_root = samples_root.clone();
-    }
-    paths
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn interactive_human_environment() -> OutputEnvironment {
-        OutputEnvironment {
-            stdin_terminal: true,
-            stdout_terminal: true,
-            ci: false,
-            dumb_terminal: false,
-            agent_process: false,
-        }
-    }
-
-    #[test]
-    fn output_environment_allows_human_only_for_interactive_non_agent_terminal() {
-        assert!(interactive_human_environment().allows_human_output());
-
-        for environment in [
-            OutputEnvironment {
-                stdin_terminal: false,
-                ..interactive_human_environment()
-            },
-            OutputEnvironment {
-                stdout_terminal: false,
-                ..interactive_human_environment()
-            },
-            OutputEnvironment {
-                ci: true,
-                ..interactive_human_environment()
-            },
-            OutputEnvironment {
-                dumb_terminal: true,
-                ..interactive_human_environment()
-            },
-            OutputEnvironment {
-                agent_process: true,
-                ..interactive_human_environment()
-            },
-        ] {
-            assert!(!environment.allows_human_output(), "{environment:?}");
-        }
-    }
-
-    #[test]
-    fn agent_commands_default_to_toon_even_in_an_interactive_terminal() {
-        let cli = Cli::try_parse_from(["kast", "agent"]).expect("parse agent home");
-
-        assert_eq!(
-            effective_output_format(None, cli.command.as_ref()),
-            OutputFormat::Toon
-        );
-        assert_eq!(
-            effective_output_format(Some(OutputFormat::Json), cli.command.as_ref()),
-            OutputFormat::Json
-        );
-    }
-}
+include!("interface/entrypoint/dispatch.rs");
+include!("interface/entrypoint/tests.rs");

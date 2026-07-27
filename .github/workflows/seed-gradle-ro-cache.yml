@@ -54,7 +54,7 @@ jobs:
             ./scripts/ci-gradle-retry.sh ./gradlew dependencies --no-daemon
             ./scripts/ci-gradle-retry.sh ./gradlew buildEnvironment --no-daemon
           fi
-          scripts/package-gradle-ro-cache.sh \
+          scripts/packaging/package-gradle-ro-cache.sh \
             --gradle-user-home "$GRADLE_USER_HOME" \
             --output dist/gradle-ro-dep-cache.tar.zst
 

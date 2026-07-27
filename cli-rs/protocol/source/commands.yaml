@@ -2,6 +2,8 @@ $schema: ./commands.schema.json
 categories:
   database:
   - database/metrics
+  graph:
+  - graph/coverage
   mutation:
   - mutation/submit
   raw:
@@ -24,6 +26,8 @@ categories:
   - raw/implementations
   - raw/code-actions
   - raw/completions
+  repository:
+  - repository/query
   symbol:
   - symbol/scaffold
   - symbol/discover
@@ -133,6 +137,43 @@ commands:
     tool:
       description: 'Query source-index metrics: fanIn, fanOut, deadCode, impact, coupling, search, graph. Use this database-backed view for architecture, blast-radius, and impact questions before wider semantic traversal.'
       name: kast_metrics
+  graph/coverage:
+    category: graph
+    dataSource: sqlite
+    method: graph/coverage
+    notes:
+    - Every compilation-owned Kotlin file is classified as indexed, excluded, failed, or stale.
+    - Complete negative answers require complete eligible coverage at the returned generation.
+    - A truncated result returns an authenticated continuation; a terminal result returns continuation=null.
+    request:
+      fields:
+        continuation:
+          description: Opaque continuation for the next path-ordered coverage page. Reuse only with the identical canonical workspace, request scope, limit, graph generation, resolved scope, and coverage composition.
+          nullable: true
+          optional: true
+          type: string
+        limit:
+          optional: true
+          type: integer
+        scope:
+          fields:
+            language:
+              optional: true
+              type: string
+            module:
+              optional: true
+              type: string
+            sourceSet:
+              optional: true
+              type: string
+          optional: true
+          type: object
+        workspaceRoot:
+          nullable: true
+          optional: true
+          type: string
+    responseType: KastGraphCoverageResult
+    summary: Report generation-pinned Kotlin graph coverage by file, module, and compilation
   health:
     category: system
     dataSource: backend
@@ -861,6 +902,140 @@ commands:
     tool:
       description: Search the workspace for Kotlin symbols by name pattern. Supports substring matching (default) and regex. Use to find declarations across the codebase because it understands Kotlin symbol names, kinds, and declaration scopes.
       name: kast_workspace_symbol
+  repository/query:
+    category: repository
+    dataSource: sqlite
+    method: repository/query
+    notes:
+    - Approximate discovery terminates in exact canonical identities or bounded ambiguity.
+    - Precomputed labels may retrieve candidates but cannot supply identity, location, relationships, evidence, completeness, cardinality, or certainty.
+    - Every response exposes generation, scope, coverage, filters, bounds, ordering, truncation, and continuation.
+    request:
+      fields:
+        canonicalKey:
+          optional: true
+          type: string
+        continuation:
+          description: Opaque continuation for a truncated relationship traversal. Reuse only with the identical workspace, graph and coverage snapshot, question, intent, resolved scope, direction, relations, and limits.
+          optional: true
+          type: string
+        evidenceContinuation:
+          description: Opaque continuation from one returned edge. Reuse only with the identical workspace, graph generation, question, intent, scope, and limits; otherwise start a new unpaged query.
+          optional: true
+          type: string
+        intent:
+          enum:
+          - resolve
+          - path
+          - incoming_impact
+          - outgoing_impact
+          - architecture
+          - context_relationship
+          type: string
+        labelIndex:
+          description: Workspace-relative version-1 precomputed label index used only to retrieve compiler-identified candidates for natural-language resolve queries.
+          optional: true
+          sample: repository-labels.json
+          type: string
+        limits:
+          fields:
+            depth:
+              type: integer
+            evidence:
+              type: integer
+            results:
+              type: integer
+          required:
+          - depth
+          - results
+          - evidence
+          type: object
+        querySyntax:
+          enum:
+          - natural_language
+          - regex
+          optional: true
+          type: string
+        question:
+          type: string
+        scope:
+          fields:
+            direction:
+              enum:
+              - INCOMING
+              - OUTGOING
+              optional: true
+              type: string
+            language:
+              optional: true
+              type: string
+            maxDepth:
+              optional: true
+              type: integer
+            metric:
+              enum:
+              - SCC
+              - COMMUNITIES
+              - BRIDGES
+              - PUBLIC_API_CONSUMERS
+              optional: true
+              type: string
+            module:
+              optional: true
+              type: string
+            projection:
+              enum:
+              - RUNTIME_CALLS
+              - SYMBOL_REFERENCES
+              - TYPE_DEPENDENCIES
+              - INTERFACE_IMPLEMENTATION
+              - MODULE_DEPENDENCIES
+              - CONTAINMENT_OWNERSHIP
+              optional: true
+              type: string
+            relations:
+              items:
+                enum:
+                - CALLS
+                - CASE_OF
+                - CONTAINS
+                - DELEGATES
+                - EXPECT_ACTUAL
+                - IMPLEMENTS
+                - INHERITS
+                - METHOD
+                - OVERRIDES
+                - REFERENCES
+                - SEALED_MEMBER
+                type: string
+              optional: true
+              type: array
+            sourceSet:
+              optional: true
+              type: string
+            sources:
+              items:
+                enum:
+                - markdown
+                - gradle
+                - schema
+                - workflow
+                - rust
+                type: string
+              optional: true
+              type: array
+          optional: true
+          type: object
+        workspaceRoot:
+          nullable: true
+          optional: true
+          type: string
+      required:
+      - question
+      - intent
+      - limits
+    responseType: KastRepositoryQueryResult
+    summary: Answer one bounded repository question with visible scope, coverage, and evidence
   runtime/open-project:
     category: system
     dataSource: backend

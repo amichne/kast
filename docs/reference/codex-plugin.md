@@ -4,7 +4,8 @@ title: Codex Plugin Reference
 description: Components and ownership boundaries of the separately published kast@kast plugin.
 tags: [codex, reference, hooks, marketplace]
 code_sources:
-  - path: cli-rs/src/codex/hook.rs
+  - path: cli-rs/src/interface/codex/hook.rs
+  - path: cli-rs/src/semantics/repository_intelligence/contract/label_index.rs
   - path: install.sh
 ---
 
@@ -18,13 +19,48 @@ repository and tracks its `main` branch independently from Kast releases.
 
 | Component | Contract |
 | --- | --- |
-| Routing skill | Tells Codex when to use the installed Kast CLI for Kotlin and Gradle semantic work. |
+| `kast-codex` skill | Routes Kotlin and Gradle repository work to the installed Kast CLI while preserving typed outcomes, coverage, and continuations. |
 | `SessionStart` hook | Delegates startup and daemon awareness to the CLI for the task's exact root. |
 | `PostToolUse` hook | Delegates post-write diagnostics to the CLI. |
 | Launcher | Resolves `kast` from `PATH`, then `$HOME/.local/bin/kast`, and forwards the hook event. |
 
 The plugin does not embed the Kast runtime. The matched CLI and compiler
 backend come from the active setup release.
+
+## Native command routing
+
+| Need | Kast command |
+| --- | --- |
+| Natural-language identity, path, impact, architecture, or repository-context evidence | `kast agent repository` |
+| Persisted compiler-backed topology | `kast agent graph` |
+| Exact symbol, relationship, diagnostic, or mutation contracts | The corresponding scoped command under `kast agent` |
+
+The repository command preserves exact canonical identities and typed
+`AMBIGUOUS`, `EMPTY`, and `QUALIFIED_EMPTY` outcomes. The graph command owns
+generation-pinned native topology; neither command creates a second semantic
+authority.
+
+## Repository intelligence beta boundaries
+
+Repository intelligence currently provides compiler semantics for Kotlin only.
+Natural-language discovery uses deterministic lexical and structural ranking;
+it does not use embeddings or an LLM at query time. It may consume a bounded
+version-1 label artifact for retrieval. Each label entry must bind an existing
+compiler canonical key to the active source content hash, and labels cannot
+create or alter semantic evidence. Regex discovery is resolve-only.
+
+Path and impact traversal and per-edge evidence expose signed continuations.
+Resolve ambiguity candidates, architecture findings, and repository-context
+results are bounded and are not pageable. `QUALIFIED_EMPTY`, incomplete
+coverage, or `truncated: true` means the result is not exhaustive.
+
+The default compact machine view is TOON v3-compatible through `toon-format`
+0.5.0; it does not claim TOON v4.1 encoder conformance. Compact output omits
+canonical scope, applied filters, and ordering. Count output is cardinality
+metadata and omits qualification text. Use `--explain` for the complete
+validated result. Explicit human output is an overview and does not include
+every candidate, edge, path, or continuation token; use the default TOON view
+with `--explain` for actionable evidence and resumption.
 
 ## Runtime boundary
 
@@ -34,8 +70,8 @@ exact-root routing, compatibility, command execution, and result projection.
 The Codex plugin supplies hooks and invocation guidance.
 
 Setup receipts hash the CLI and IDEA plugin only. Marketplace contents and
-plugin versions are not coupled to Kast release digests. Reconciliation
-re-registers `amichne/kast-marketplace --ref main` and installs `kast@kast`.
+plugin versions are not coupled to Kast release digests. Reconciliation uses
+`amichne/kast-marketplace` at `main` and installs `kast@kast`.
 
 The plugin's two hooks are advisory. A hook failure can add task context, but
 it does not silently turn an unprepared workspace into compiler-backed

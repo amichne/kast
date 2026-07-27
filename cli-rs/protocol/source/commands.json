@@ -52,6 +52,12 @@
       "raw/code-actions",
       "raw/completions"
     ],
+    "graph": [
+      "graph/coverage"
+    ],
+    "repository": [
+      "repository/query"
+    ],
     "database": [
       "database/metrics"
     ]
@@ -2647,6 +2653,228 @@
         ]
       },
       "responseType": "CompletionsResult"
+    },
+    "graph/coverage": {
+      "method": "graph/coverage",
+      "category": "graph",
+      "summary": "Report generation-pinned Kotlin graph coverage by file, module, and compilation",
+      "dataSource": "sqlite",
+      "request": {
+        "fields": {
+          "workspaceRoot": {
+            "type": "string",
+            "optional": true,
+            "nullable": true
+          },
+          "scope": {
+            "type": "object",
+            "optional": true,
+            "fields": {
+              "language": {
+                "type": "string",
+                "optional": true
+              },
+              "module": {
+                "type": "string",
+                "optional": true
+              },
+              "sourceSet": {
+                "type": "string",
+                "optional": true
+              }
+            }
+          },
+          "continuation": {
+            "type": "string",
+            "description": "Opaque continuation for the next path-ordered coverage page. Reuse only with the identical canonical workspace, request scope, limit, graph generation, resolved scope, and coverage composition.",
+            "optional": true,
+            "nullable": true
+          },
+          "limit": {
+            "type": "integer",
+            "optional": true
+          }
+        }
+      },
+      "responseType": "KastGraphCoverageResult",
+      "notes": [
+        "Every compilation-owned Kotlin file is classified as indexed, excluded, failed, or stale.",
+        "Complete negative answers require complete eligible coverage at the returned generation.",
+        "A truncated result returns an authenticated continuation; a terminal result returns continuation=null."
+      ]
+    },
+    "repository/query": {
+      "method": "repository/query",
+      "category": "repository",
+      "summary": "Answer one bounded repository question with visible scope, coverage, and evidence",
+      "dataSource": "sqlite",
+      "request": {
+        "fields": {
+      "workspaceRoot": {
+        "type": "string",
+        "optional": true,
+        "nullable": true
+      },
+      "canonicalKey": {
+        "type": "string",
+        "optional": true
+      },
+      "labelIndex": {
+        "type": "string",
+        "description": "Workspace-relative version-1 precomputed label index used only to retrieve compiler-identified candidates for natural-language resolve queries.",
+        "sample": "repository-labels.json",
+        "optional": true
+      },
+      "question": {
+        "type": "string"
+      },
+      "querySyntax": {
+        "type": "string",
+        "enum": [
+          "natural_language",
+          "regex"
+        ],
+        "optional": true
+      },
+          "intent": {
+            "enum": [
+          "resolve",
+          "path",
+          "incoming_impact",
+          "outgoing_impact",
+          "architecture",
+          "context_relationship"
+        ],
+            "type": "string"
+          },
+          "scope": {
+            "type": "object",
+            "optional": true,
+            "fields": {
+              "language": {
+                "type": "string",
+                "optional": true
+              },
+              "module": {
+                "type": "string",
+                "optional": true
+              },
+              "sourceSet": {
+                "type": "string",
+                "optional": true
+              },
+              "relations": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "CALLS",
+                    "CASE_OF",
+                    "CONTAINS",
+                    "DELEGATES",
+                    "EXPECT_ACTUAL",
+                    "IMPLEMENTS",
+                    "INHERITS",
+                    "METHOD",
+                    "OVERRIDES",
+                    "REFERENCES",
+                    "SEALED_MEMBER"
+                  ]
+                },
+                "optional": true
+              },
+              "direction": {
+                "type": "string",
+                "enum": [
+                  "INCOMING",
+                  "OUTGOING"
+                ],
+                "optional": true
+              },
+          "maxDepth": {
+            "type": "integer",
+            "optional": true
+          },
+          "projection": {
+            "type": "string",
+            "enum": [
+              "RUNTIME_CALLS",
+              "SYMBOL_REFERENCES",
+              "TYPE_DEPENDENCIES",
+              "INTERFACE_IMPLEMENTATION",
+              "MODULE_DEPENDENCIES",
+              "CONTAINMENT_OWNERSHIP"
+            ],
+            "optional": true
+          },
+          "metric": {
+            "type": "string",
+            "enum": [
+              "SCC",
+              "COMMUNITIES",
+              "BRIDGES",
+              "PUBLIC_API_CONSUMERS"
+            ],
+            "optional": true
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "markdown",
+                "gradle",
+                "schema",
+                "workflow",
+                "rust"
+              ]
+            },
+            "optional": true
+          }
+        }
+      },
+          "evidenceContinuation": {
+            "type": "string",
+            "description": "Opaque continuation from one returned edge. Reuse only with the identical workspace, graph generation, question, intent, scope, and limits; otherwise start a new unpaged query.",
+            "optional": true
+          },
+          "continuation": {
+            "type": "string",
+            "description": "Opaque continuation for a truncated relationship traversal. Reuse only with the identical workspace, graph and coverage snapshot, question, intent, resolved scope, direction, relations, and limits.",
+            "optional": true
+          },
+          "limits": {
+            "type": "object",
+            "fields": {
+              "depth": {
+                "type": "integer"
+              },
+              "results": {
+                "type": "integer"
+              },
+              "evidence": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "depth",
+              "results",
+              "evidence"
+            ]
+          }
+        },
+        "required": [
+          "question",
+          "intent",
+          "limits"
+        ]
+      },
+      "responseType": "KastRepositoryQueryResult",
+      "notes": [
+        "Approximate discovery terminates in exact canonical identities or bounded ambiguity.",
+        "Precomputed labels may retrieve candidates but cannot supply identity, location, relationships, evidence, completeness, cardinality, or certainty.",
+        "Every response exposes generation, scope, coverage, filters, bounds, ordering, truncation, and continuation."
+      ]
     },
     "database/metrics": {
       "method": "database/metrics",

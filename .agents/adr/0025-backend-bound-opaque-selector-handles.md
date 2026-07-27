@@ -40,10 +40,11 @@ with separate lifetimes.
 ## Source and proof
 
 - `analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/selector/`
-- `analysis-server/src/main/kotlin/io/github/amichne/kast/server/SkillRpcOrchestrator.kt`
+- `analysis-server/src/main/kotlin/io/github/amichne/kast/server/skill/SkillRpcOrchestrator.kt`
+- `analysis-server/src/main/kotlin/io/github/amichne/kast/server/skill/SelectorAuthority.kt`
 - `backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/KastPluginBackend.kt`
 - `cli-rs/src/agent/`
-- `cli-rs/tests/agent_relationship_navigation_smoke.rs`
+- `cli-rs/tests/agent_relationship_navigation_smoke/main.rs`
 - `cli-rs/tests/selector_handle_installed_workflow.rs`
 
 Any change to the handle prefix, authenticated claims, validation order,

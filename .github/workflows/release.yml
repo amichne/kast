@@ -58,7 +58,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Verify the sole setup contract
-        run: .github/scripts/test-setup-contract.sh
+        run: .github/scripts/install/test-setup-contract.sh
 
       - name: Validate JVM source before creating a tag
         if: github.event_name == 'workflow_dispatch'
@@ -312,7 +312,7 @@ jobs:
             --git-sha "$GITHUB_SHA" \
             --require-kind release-openapi \
             --artifact release-openapi=dist/openapi.yaml
-          .github/scripts/upload-immutable-release-asset.sh \
+          .github/scripts/release/upload-immutable-release-asset.sh \
             --tag "$tag" \
             --asset dist/openapi.yaml
 
@@ -364,7 +364,7 @@ jobs:
         run: |
           set -euo pipefail
           set +e
-          state="$(scripts/verify-maven-central.sh \
+          state="$(scripts/release/verify-maven-central.sh \
             --version "${{ needs.prepare-release.outputs.release_version }}" \
             --classify)"
           verifier_exit="$?"
@@ -372,7 +372,7 @@ jobs:
           if [[ "$verifier_exit" -ne 0 ]]; then
             if [[ "$state" == "partial" ]]; then
               echo "::warning::Maven Central has a partial publication for ${{ needs.prepare-release.outputs.release_version }}; waiting for all modules."
-              if scripts/verify-maven-central.sh \
+              if scripts/release/verify-maven-central.sh \
                 --version "${{ needs.prepare-release.outputs.release_version }}" \
                 --attempts 30 \
                 --delay-seconds 20; then
@@ -461,7 +461,7 @@ jobs:
             echo "::warning::Gradle Maven Central publication exited with ${publish_exit}; verifying published coordinates before final Maven verification."
           fi
           set +e
-          scripts/verify-maven-central.sh \
+          scripts/release/verify-maven-central.sh \
             --version "${{ needs.prepare-release.outputs.release_version }}" \
             --attempts 30 \
             --delay-seconds 20
@@ -476,7 +476,7 @@ jobs:
       - name: Verify Maven Central publication
         shell: bash
         run: |
-          scripts/verify-maven-central.sh \
+          scripts/release/verify-maven-central.sh \
             --version "${{ needs.prepare-release.outputs.release_version }}" \
             --attempts 30 \
             --delay-seconds 20
@@ -589,7 +589,7 @@ jobs:
             --git-sha "$GITHUB_SHA" \
             --require-kind "release-cli-${{ matrix.asset_id }}" \
             --artifact "release-cli-${{ matrix.asset_id }}=dist/kast-${tag}-${{ matrix.asset_id }}.zip"
-          .github/scripts/upload-immutable-release-asset.sh \
+          .github/scripts/release/upload-immutable-release-asset.sh \
             --tag "$tag" \
             --asset "dist/kast-${tag}-${{ matrix.asset_id }}.zip"
 
@@ -761,7 +761,7 @@ jobs:
           mkdir -p "$gradle_user_home"
           GRADLE_USER_HOME="$gradle_user_home" ./scripts/ci-gradle-retry.sh ./gradlew dependencies --no-daemon
           GRADLE_USER_HOME="$gradle_user_home" ./scripts/ci-gradle-retry.sh ./gradlew buildEnvironment --no-daemon
-          ./scripts/package-gradle-ro-cache.sh \
+          ./scripts/packaging/package-gradle-ro-cache.sh \
             --gradle-user-home "$gradle_user_home" \
             --output "${cache_dir}/gradle-ro-dep-cache.tar.zst"
           (cd "$cache_dir" && sha256sum -c gradle-ro-dep-cache.sha256)
@@ -915,7 +915,7 @@ jobs:
             --plugin-archive "$plugin_asset" \
             --version "$tag" \
             --bundle-output "$bundle_asset"
-          ./scripts/package-headless-runtime.sh \
+          ./scripts/packaging/package-headless-runtime.sh \
             --cli-archive "$cli_asset" \
             --backend-archive "$backend_asset" \
             --version "$version" \
@@ -1082,7 +1082,7 @@ jobs:
             dist/kast-headless-linux-x64.sha256 \
             dist/kast-runtime-manifest.json
           do
-            .github/scripts/upload-immutable-release-asset.sh \
+            .github/scripts/release/upload-immutable-release-asset.sh \
               --tag "$tag" \
               --asset "$asset"
           done
@@ -1181,7 +1181,7 @@ jobs:
           [[ -f "$cache_sidecar" ]] || { echo "Missing Gradle read-only cache checksum: ${cache_sidecar}" >&2; exit 1; }
           (cd provenance-linux-headless && sha256sum -c gradle-ro-dep-cache.sha256)
           for asset in "$cache_asset" "$cache_sidecar"; do
-            .github/scripts/upload-immutable-release-asset.sh \
+            .github/scripts/release/upload-immutable-release-asset.sh \
               --tag "$tag" \
               --asset "$asset"
           done
@@ -1234,15 +1234,15 @@ jobs:
           }
           Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
           PY
-            .github/scripts/upload-immutable-release-asset.sh --tag "$tag" --asset "$asset"
-            .github/scripts/upload-immutable-release-asset.sh --tag "$tag" --asset "${asset}.sha256"
+            .github/scripts/release/upload-immutable-release-asset.sh --tag "$tag" --asset "$asset"
+            .github/scripts/release/upload-immutable-release-asset.sh --tag "$tag" --asset "${asset}.sha256"
           done
 
       - name: Assemble combined provenance
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/assemble-release-provenance.py \
+          python3 scripts/release/assemble-release-provenance.py \
             --output dist/build-provenance.json \
             --tag "${{ needs.prepare-release.outputs.release_tag }}" \
             provenance-cli \
@@ -1257,7 +1257,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ needs.prepare-release.outputs.release_tag }}"
-          .github/scripts/upload-immutable-release-asset.sh \
+          .github/scripts/release/upload-immutable-release-asset.sh \
             --tag "$tag" \
             --asset dist/build-provenance.json
 
@@ -1304,8 +1304,8 @@ jobs:
           done
           (cd release-assets && sha256sum "${expected_assets[@]}") > SHA256SUMS
           cp SHA256SUMS release-assets/SHA256SUMS
-          ./scripts/verify-release-assets.sh --release-dir release-assets --tag "$tag"
-          .github/scripts/upload-immutable-release-asset.sh \
+          ./scripts/release/verify-release-assets.sh --release-dir release-assets --tag "$tag"
+          .github/scripts/release/upload-immutable-release-asset.sh \
             --tag "$tag" \
             --asset SHA256SUMS
 
@@ -1351,6 +1351,6 @@ jobs:
             echo "::error::Publish release finished with result ${{ needs.publish-release.result }}."
             exit 1
           fi
-          scripts/verify-release-state.sh \
+          scripts/release/verify-release-state.sh \
             --tag "${{ needs.prepare-release.outputs.release_tag }}" \
             --repository "${{ github.repository }}"

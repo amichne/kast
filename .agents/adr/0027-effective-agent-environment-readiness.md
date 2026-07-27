@@ -26,8 +26,8 @@ runtime-readiness evidence. The CLI and selected semantic backend are.
 
 ## Source and proof
 
-- `cli-rs/src/self_mgmt/agent_readiness.rs`
-- `cli-rs/src/runtime/compatibility.rs`
+- `cli-rs/src/operations/self_mgmt/agent_readiness.rs`
+- `cli-rs/src/execution/runtime/compatibility.rs`
 - `cli-rs/tests/agent_readiness_smoke.rs`
 - `cli-rs/tests/runtime_compatibility_metadata_smoke.rs`
 

@@ -4,9 +4,9 @@ on:
   pull_request:
     paths:
       - ".github/workflows/docs.yml"
-      - ".github/scripts/render-rpc-contract-summary.py"
-      - ".github/scripts/test-docs-navigation-contract.sh"
-      - ".github/scripts/test-docs-content-contract.sh"
+      - ".github/scripts/docs/render-rpc-contract-summary.py"
+      - ".github/scripts/docs/test-docs-navigation-contract.sh"
+      - ".github/scripts/docs/test-docs-content-contract.sh"
       - "docs/**"
       - "packaging/jetbrains/**"
       - "cli-rs/protocol/**"
@@ -18,9 +18,9 @@ on:
       - main
     paths:
       - ".github/workflows/docs.yml"
-      - ".github/scripts/render-rpc-contract-summary.py"
-      - ".github/scripts/test-docs-navigation-contract.sh"
-      - ".github/scripts/test-docs-content-contract.sh"
+      - ".github/scripts/docs/render-rpc-contract-summary.py"
+      - ".github/scripts/docs/test-docs-navigation-contract.sh"
+      - ".github/scripts/docs/test-docs-content-contract.sh"
       - "docs/**"
       - "packaging/jetbrains/**"
       - "cli-rs/protocol/**"
@@ -49,8 +49,8 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-docs.txt
       - run: pip install -r requirements-docs.txt
-      - run: ./.github/scripts/test-docs-navigation-contract.sh
-      - run: ./.github/scripts/test-docs-content-contract.sh
+      - run: ./.github/scripts/docs/test-docs-navigation-contract.sh
+      - run: ./.github/scripts/docs/test-docs-content-contract.sh
       - run: zensical build --clean
       - uses: actions/upload-artifact@v6
         with:

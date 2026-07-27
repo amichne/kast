@@ -15,7 +15,7 @@ maintenance fixtures. None of these files are skill payloads.
   downstream outputs of the catalog and backend contracts.
 
 The Codex-facing command contract does not consume this catalog. It is owned by
-the exhaustive Rust types in `cli-rs/src/codex/exposure.rs`.
+the exhaustive Rust types in `cli-rs/src/interface/cli/codex.rs`.
 
 ## Edit rules
 
@@ -31,6 +31,6 @@ the exhaustive Rust types in `cli-rs/src/codex/exposure.rs`.
 ```console
 cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- \
   developer release generate contract --check
-python3 .github/scripts/render-rpc-contract-summary.py --check
+python3 .github/scripts/docs/render-rpc-contract-summary.py --check
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke
 ```

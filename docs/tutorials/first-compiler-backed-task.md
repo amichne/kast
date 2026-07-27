@@ -6,7 +6,7 @@ tags: [tutorial, codex, kotlin, idea, compiler-evidence]
 code_sources:
   - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaIndexSemanticAdmission.kt
   - path: backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaIndexSemanticAdmissionTest.kt
-  - path: cli-rs/src/runtime/workspace_admission.rs
+  - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
 ---
 
 # Your First Compiler-Backed Task

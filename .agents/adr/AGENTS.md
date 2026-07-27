@@ -17,7 +17,7 @@ is not part of the Zensical site.
 ## Verify
 
 ```console
-.github/scripts/test-docs-content-contract.sh
-.github/scripts/test-docs-navigation-contract.sh
+.github/scripts/docs/test-docs-content-contract.sh
+.github/scripts/docs/test-docs-navigation-contract.sh
 git diff --check
 ```

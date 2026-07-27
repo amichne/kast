@@ -1,0 +1,35 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "repository/query",
+  "params": {
+    "canonicalKey": "example-canonicalKey",
+    "continuation": "example-continuation",
+    "evidenceContinuation": "example-evidenceContinuation",
+    "intent": "context_relationship",
+    "labelIndex": "repository-labels.json",
+    "limits": {
+      "depth": 2,
+      "evidence": 1,
+      "results": 1
+    },
+    "querySyntax": "regex",
+    "question": "example-question",
+    "scope": {
+      "direction": "OUTGOING",
+      "language": "example-language",
+      "maxDepth": 2,
+      "metric": "PUBLIC_API_CONSUMERS",
+      "module": "example-module",
+      "projection": "CONTAINMENT_OWNERSHIP",
+      "relations": [
+        "SEALED_MEMBER"
+      ],
+      "sourceSet": "main",
+      "sources": [
+        "rust"
+      ]
+    },
+    "workspaceRoot": "/absolute/path/to/workspace"
+  }
+}

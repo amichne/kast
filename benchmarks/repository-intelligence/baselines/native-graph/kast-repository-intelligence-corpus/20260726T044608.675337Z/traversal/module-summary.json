@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "method": "agent/graph",
+  "result": {
+    "type": "KAST_NATIVE_GRAPH_SUMMARY",
+    "scope": "MODULE",
+    "generation": 647,
+    "nodeCount": 15,
+    "edgeOccurrenceCount": 246,
+    "weightedEdgeCount": 40644.0,
+    "componentCount": 2,
+    "stronglyConnectedComponentCount": 15,
+    "communityCount": 15,
+    "measurements": {
+      "loadNanos": 84967708,
+      "computeNanos": 194750,
+      "databaseBytes": 69910528,
+      "peakRssBytes": 33275904,
+      "queryP95Micros": 30
+    },
+    "schemaVersion": 5
+  },
+  "schemaVersion": 5
+}

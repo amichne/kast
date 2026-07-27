@@ -19,18 +19,17 @@ class ConfigurationFieldLayoutTest {
             "ConfigurationField.kt should move out of api.client"
         )
 
-        val actualFiles = Files.list(fieldsDir).use { stream ->
+        val fieldFiles = Files.walk(fieldsDir).use { stream ->
             stream
                 .filter(Files::isRegularFile)
-                .map { it.fileName.toString() }
-                .filter { it.endsWith(".kt") }
+                .filter { it.fileName.toString().endsWith(".kt") }
                 .toList()
-                .toSet()
         }
+        val actualFiles = fieldFiles.map { it.fileName.toString() }.toSet()
 
         assertEquals(expectedFieldFiles, actualFiles)
         expectedFieldFiles.forEach { fileName ->
-            val text = Files.readString(fieldsDir.resolve(fileName))
+            val text = Files.readString(fieldFiles.single { it.fileName.toString() == fileName })
             assertTrue(
                 text.startsWith("package io.github.amichne.kast.api.client.fields\n"),
                 "$fileName should declare the api.client.fields package",

@@ -1,14 +1,12 @@
 package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
-import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.mutation.KastMutationExecutionResult
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
-import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.skill.KastAddFileRequest
 import io.github.amichne.kast.api.protocol.ApiErrorResponse
 import io.github.amichne.kast.api.protocol.JsonRpcErrorResponse
@@ -16,10 +14,8 @@ import io.github.amichne.kast.api.protocol.JsonRpcErrorObject
 import io.github.amichne.kast.api.protocol.JsonRpcRequest
 import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.api.protocol.JSON_RPC_SERVER_ERROR_BASE
-import io.github.amichne.kast.api.validation.ParsedApplyEditsQuery
 import io.github.amichne.kast.testing.FakeAnalysisBackend
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
@@ -42,7 +38,6 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CopyOnWriteArrayList
-import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.io.path.exists
 
 class AnalysisServerSocketTest {
@@ -383,89 +378,5 @@ class AnalysisServerSocketTest {
             Files.deleteIfExists(socketPath)
         }
         assertEquals(1, backend.closeCount)
-    }
-}
-
-private class ClosingApplyBackend(
-    private val delegate: CloseableAnalysisBackend,
-    private val applyStarted: CompletableDeferred<Unit>,
-    private val applyStopped: CompletableDeferred<Unit>,
-    private val descriptorFile: Path,
-    private val descriptorIdentity: String,
-    private val descriptorRetainedDuringStop: AtomicBoolean,
-) : CloseableAnalysisBackend by delegate {
-    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
-        applyStarted.complete(Unit)
-        return try {
-            delay(250)
-            delegate.applyEdits(query)
-        } finally {
-            descriptorRetainedDuringStop.set(
-                Files.exists(descriptorFile) && Files.readString(descriptorFile).contains(descriptorIdentity),
-            )
-            applyStopped.complete(Unit)
-        }
-    }
-}
-
-private class AdmittedApplyBackend(
-    private val delegate: CloseableAnalysisBackend,
-    private val applyStarted: CompletableDeferred<Unit>,
-) : CloseableAnalysisBackend by delegate {
-    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult {
-        applyStarted.complete(Unit)
-        delay(100)
-        return delegate.applyEdits(query)
-    }
-}
-
-private class CountingCloseBackend(
-    private val delegate: CloseableAnalysisBackend,
-) : CloseableAnalysisBackend by delegate {
-    var closeCount: Int = 0
-        private set
-
-    override fun close() {
-        closeCount += 1
-        delegate.close()
-    }
-}
-
-private class RecordingLocalRpcServer(
-    private val closeEvents: MutableList<String>,
-    private val closeFailure: Throwable? = null,
-) : LocalRpcServer {
-    override fun await() = Unit
-
-    override fun close() {
-        closeEvents += "transport"
-        closeFailure?.let { throw it }
-    }
-}
-
-private class RecordingCloseable(
-    private val closeEvents: MutableList<String>,
-    private val phase: String,
-    private val closeFailure: Throwable? = null,
-) : java.io.Closeable {
-    override fun close() {
-        closeEvents += phase
-        closeFailure?.let { throw it }
-    }
-}
-
-private class RecordingCloseBackend(
-    private val delegate: CloseableAnalysisBackend,
-    private val closeEvents: MutableList<String>,
-    private val beforeClose: () -> Unit = {},
-) : CloseableAnalysisBackend by delegate {
-    var closeCount: Int = 0
-        private set
-
-    override fun close() {
-        closeEvents += "backend"
-        beforeClose()
-        closeCount += 1
-        delegate.close()
     }
 }

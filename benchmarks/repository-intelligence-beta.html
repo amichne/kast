@@ -1,0 +1,1059 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#08111f">
+  <title>Kast repository intelligence — beta change brief</title>
+  <style>
+    :root {
+      --ink: #f4f7fb;
+      --muted: #aebbd0;
+      --dim: #74839a;
+      --night: #08111f;
+      --panel: #101c2d;
+      --panel-2: #13243a;
+      --line: #263a55;
+      --mint: #59e1bd;
+      --mint-soft: #173b3a;
+      --blue: #73a7ff;
+      --blue-soft: #172c4d;
+      --amber: #ffc66d;
+      --amber-soft: #3c3020;
+      --rose: #ff849e;
+      --rose-soft: #402333;
+      --radius: 1.15rem;
+      --shadow: 0 1.4rem 4rem rgba(0, 0, 0, .24);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--night);
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-width: 0;
+      margin: 0;
+      overflow-x: hidden;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 0%, rgba(89, 225, 189, .13), transparent 26rem),
+        radial-gradient(circle at 100% 14%, rgba(115, 167, 255, .13), transparent 30rem),
+        var(--night);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 16px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a {
+      color: var(--mint);
+      text-underline-offset: .2em;
+    }
+
+    code,
+    .mono {
+      font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+      font-size: 1em;
+      overflow-wrap: anywhere;
+    }
+
+    main,
+    footer {
+      width: min(100% - 1.5rem, 70rem);
+      margin-inline: auto;
+    }
+
+    main {
+      padding-block: 1rem 4rem;
+    }
+
+    section {
+      margin-top: 3.75rem;
+      scroll-margin-top: 1rem;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      max-width: 16ch;
+      margin-bottom: 1rem;
+      font-size: clamp(2.35rem, 11vw, 5.4rem);
+      font-weight: 760;
+      letter-spacing: -.058em;
+      line-height: .98;
+    }
+
+    h2 {
+      margin-bottom: .85rem;
+      font-size: clamp(1.65rem, 7vw, 2.7rem);
+      letter-spacing: -.035em;
+      line-height: 1.08;
+    }
+
+    h3 {
+      margin-bottom: .45rem;
+      font-size: 1rem;
+      letter-spacing: -.012em;
+    }
+
+    .eyebrow {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      margin-bottom: 1.2rem;
+      color: var(--mint);
+      font-size: .75rem;
+      font-weight: 760;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      width: 1.8rem;
+      height: 2px;
+      content: "";
+      background: currentColor;
+    }
+
+    .lede {
+      max-width: 42rem;
+      color: var(--muted);
+      font-size: clamp(1.03rem, 4.4vw, 1.3rem);
+      line-height: 1.5;
+    }
+
+    .section-copy {
+      max-width: 44rem;
+      color: var(--muted);
+    }
+
+    .hero {
+      position: relative;
+      min-height: 37rem;
+      padding: clamp(1.4rem, 6vw, 3.3rem);
+      overflow: hidden;
+      border: 1px solid rgba(115, 167, 255, .2);
+      border-radius: calc(var(--radius) * 1.4);
+      background:
+        linear-gradient(145deg, rgba(16, 28, 45, .96), rgba(8, 17, 31, .88)),
+        var(--panel);
+      box-shadow: var(--shadow);
+      isolation: isolate;
+    }
+
+    .hero::after {
+      position: absolute;
+      z-index: -1;
+      top: -5rem;
+      right: -6rem;
+      width: 20rem;
+      height: 20rem;
+      border: 1px solid rgba(89, 225, 189, .24);
+      border-radius: 50%;
+      content: "";
+      box-shadow:
+        0 0 0 3.8rem rgba(89, 225, 189, .035),
+        0 0 0 8rem rgba(115, 167, 255, .025);
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .55rem;
+      margin-top: 1.5rem;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      min-height: 2rem;
+      padding: .36rem .7rem;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(8, 17, 31, .64);
+      font-size: .76rem;
+      font-weight: 680;
+    }
+
+    .pill strong {
+      color: var(--ink);
+    }
+
+    .status-dot {
+      width: .55rem;
+      height: .55rem;
+      border-radius: 50%;
+      background: var(--mint);
+      box-shadow: 0 0 0 .24rem rgba(89, 225, 189, .12);
+    }
+
+    .hero-proof {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 1rem;
+      align-items: center;
+      max-width: 31rem;
+      margin-top: 2rem;
+      padding: 1rem;
+      border: 1px solid rgba(89, 225, 189, .25);
+      border-radius: var(--radius);
+      background: rgba(23, 59, 58, .42);
+    }
+
+    .ring {
+      display: grid;
+      width: 4.75rem;
+      aspect-ratio: 1;
+      place-items: center;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle, var(--panel) 55%, transparent 57%),
+        conic-gradient(var(--mint) 0 100%);
+      color: var(--ink);
+      font-size: 1.15rem;
+      font-weight: 800;
+    }
+
+    .hero-proof p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .86rem;
+    }
+
+    .hero-proof strong {
+      display: block;
+      margin-bottom: .12rem;
+      color: var(--ink);
+      font-size: 1rem;
+    }
+
+    .metric-grid,
+    .card-grid,
+    .proof-grid,
+    .limit-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .75rem;
+      margin-top: 1.25rem;
+    }
+
+    .metric,
+    .card,
+    .proof,
+    .limit {
+      min-width: 0;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(19, 36, 58, .86), rgba(16, 28, 45, .9));
+    }
+
+    .metric strong {
+      display: block;
+      margin-bottom: .12rem;
+      color: var(--mint);
+      font-size: clamp(1.4rem, 7vw, 2.15rem);
+      letter-spacing: -.045em;
+      line-height: 1;
+    }
+
+    .metric span,
+    .card p,
+    .proof p,
+    .limit p {
+      color: var(--muted);
+      font-size: .84rem;
+    }
+
+    .metric span {
+      display: block;
+      line-height: 1.32;
+    }
+
+    .flow {
+      position: relative;
+      display: grid;
+      gap: .75rem;
+      margin-top: 1.5rem;
+      padding-left: 1rem;
+    }
+
+    .flow::before {
+      position: absolute;
+      top: 1.5rem;
+      bottom: 1.5rem;
+      left: .22rem;
+      width: 2px;
+      content: "";
+      background: linear-gradient(var(--mint), var(--blue), var(--amber));
+    }
+
+    .flow-step {
+      position: relative;
+      min-width: 0;
+      padding: 1rem 1rem 1rem 1.15rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(16, 28, 45, .84);
+    }
+
+    .flow-step::before {
+      position: absolute;
+      top: 1.35rem;
+      left: -1.14rem;
+      width: .62rem;
+      height: .62rem;
+      border: 3px solid var(--night);
+      border-radius: 50%;
+      content: "";
+      background: var(--mint);
+      box-shadow: 0 0 0 1px var(--mint);
+    }
+
+    .flow-step:nth-child(3n + 2)::before {
+      background: var(--blue);
+      box-shadow: 0 0 0 1px var(--blue);
+    }
+
+    .flow-step:nth-child(3n)::before {
+      background: var(--amber);
+      box-shadow: 0 0 0 1px var(--amber);
+    }
+
+    .step-index {
+      display: block;
+      margin-bottom: .3rem;
+      color: var(--dim);
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+
+    .flow-step p {
+      margin: 0;
+      color: var(--muted);
+      font-size: .85rem;
+    }
+
+    .card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      position: absolute;
+      top: 0;
+      right: 0;
+      left: 0;
+      height: 3px;
+      content: "";
+      background: var(--blue);
+    }
+
+    .card:nth-child(3n + 1)::before {
+      background: var(--mint);
+    }
+
+    .card:nth-child(3n)::before {
+      background: var(--amber);
+    }
+
+    .card p,
+    .proof p,
+    .limit p {
+      margin-bottom: 0;
+      line-height: 1.5;
+    }
+
+    .tag {
+      display: inline-block;
+      margin-bottom: .75rem;
+      padding: .22rem .5rem;
+      border-radius: .45rem;
+      color: var(--blue);
+      background: var(--blue-soft);
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .card:nth-child(3n + 1) .tag {
+      color: var(--mint);
+      background: var(--mint-soft);
+    }
+
+    .card:nth-child(3n) .tag {
+      color: var(--amber);
+      background: var(--amber-soft);
+    }
+
+    .timeline {
+      display: grid;
+      gap: .8rem;
+      margin-top: 1.35rem;
+    }
+
+    details {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(16, 28, 45, .82);
+    }
+
+    summary {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: .8rem;
+      align-items: center;
+      padding: 1rem;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;
+    }
+
+    summary::after {
+      content: "+";
+      color: var(--mint);
+      font-size: 1.4rem;
+      font-weight: 400;
+      line-height: 1;
+    }
+
+    details[open] summary::after {
+      content: "−";
+    }
+
+    .phase-number {
+      display: grid;
+      width: 2.15rem;
+      aspect-ratio: 1;
+      place-items: center;
+      border-radius: .72rem;
+      color: var(--night);
+      background: var(--mint);
+      font-size: .82rem;
+      font-weight: 900;
+    }
+
+    .phase-title {
+      min-width: 0;
+    }
+
+    .phase-title strong,
+    .phase-title span {
+      display: block;
+    }
+
+    .phase-title span {
+      color: var(--muted);
+      font-size: .75rem;
+    }
+
+    .commit-list {
+      margin: 0;
+      padding: 0 1rem 1rem 3.95rem;
+      list-style: none;
+    }
+
+    .commit-list li {
+      position: relative;
+      margin-top: .72rem;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+
+    .commit-list li::before {
+      position: absolute;
+      top: .61em;
+      left: -1rem;
+      width: .38rem;
+      height: .38rem;
+      border-radius: 50%;
+      content: "";
+      background: var(--blue);
+    }
+
+    .commit-list code {
+      display: block;
+      margin-bottom: .08rem;
+      color: var(--mint);
+      font-size: .75rem;
+    }
+
+    .delta-list {
+      display: grid;
+      gap: .7rem;
+      margin-top: 1.25rem;
+    }
+
+    .delta {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+      gap: .65rem;
+      align-items: center;
+      padding: .9rem;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(16, 28, 45, .72);
+    }
+
+    .delta div {
+      min-width: 0;
+    }
+
+    .delta small {
+      display: block;
+      margin-bottom: .2rem;
+      color: var(--dim);
+      font-size: .75rem;
+      font-weight: 800;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+
+    .delta p {
+      margin: 0;
+      overflow-wrap: anywhere;
+      font-size: .78rem;
+      line-height: 1.4;
+    }
+
+    .delta .before {
+      color: #d3a7b2;
+    }
+
+    .delta .after {
+      color: #b9eadb;
+    }
+
+    .arrow {
+      color: var(--amber);
+      font-size: 1.15rem;
+    }
+
+    .proof {
+      min-height: 8rem;
+    }
+
+    .proof-value {
+      display: block;
+      margin-bottom: .4rem;
+      color: var(--mint);
+      font-size: 1.45rem;
+      font-weight: 800;
+      letter-spacing: -.04em;
+      line-height: 1;
+    }
+
+    .proof.pending .proof-value {
+      color: var(--amber);
+    }
+
+    .limit {
+      border-left: 3px solid var(--rose);
+      background: linear-gradient(145deg, rgba(64, 35, 51, .62), rgba(16, 28, 45, .82));
+    }
+
+    .limit strong {
+      color: #ffadc0;
+    }
+
+    .historical {
+      padding: 1rem;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      color: var(--muted);
+      background: rgba(8, 17, 31, .48);
+      font-size: .8rem;
+    }
+
+    .next {
+      padding: clamp(1.25rem, 6vw, 2.5rem);
+      border: 1px solid rgba(89, 225, 189, .28);
+      border-radius: calc(var(--radius) * 1.2);
+      background:
+        linear-gradient(135deg, rgba(23, 59, 58, .78), rgba(16, 28, 45, .94));
+      box-shadow: var(--shadow);
+    }
+
+    .gate-row {
+      display: grid;
+      gap: .5rem;
+      margin-top: 1.15rem;
+    }
+
+    .gate {
+      display: grid;
+      grid-template-columns: 1.7rem minmax(0, 1fr);
+      gap: .7rem;
+      align-items: start;
+      color: var(--muted);
+      font-size: .84rem;
+    }
+
+    .gate b {
+      display: grid;
+      width: 1.7rem;
+      aspect-ratio: 1;
+      place-items: center;
+      border-radius: 50%;
+      color: var(--night);
+      background: var(--mint);
+      font-size: .75rem;
+    }
+
+    .gate.pending b {
+      background: var(--amber);
+    }
+
+    .command {
+      margin-top: 1.2rem;
+      padding: .9rem;
+      overflow-wrap: anywhere;
+      border: 1px solid var(--line);
+      border-radius: .8rem;
+      color: #c9d8ec;
+      background: rgba(8, 17, 31, .76);
+      font-size: .75rem;
+      line-height: 1.5;
+    }
+
+    footer {
+      padding-block: 1.5rem 2.5rem;
+      border-top: 1px solid var(--line);
+      color: var(--dim);
+      font-size: .75rem;
+    }
+
+    @media (min-width: 46rem) {
+      main {
+        padding-top: 2rem;
+      }
+
+      .hero {
+        min-height: 40rem;
+      }
+
+      .metric-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+
+      .card-grid,
+      .proof-grid,
+      .limit-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .flow {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        padding-top: 1rem;
+        padding-left: 0;
+      }
+
+      .flow::before {
+        top: .22rem;
+        right: 3rem;
+        bottom: auto;
+        left: 3rem;
+        width: auto;
+        height: 2px;
+      }
+
+      .flow-step::before {
+        top: -1.24rem;
+        left: 1.2rem;
+      }
+
+      .delta {
+        grid-template-columns: minmax(0, 1fr) 2.3rem minmax(0, 1fr);
+        padding: 1rem 1.2rem;
+      }
+    }
+
+    @media (max-width: 40rem) {
+      .card-grid,
+      .proof-grid,
+      .limit-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 24rem) {
+      .metric-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-proof {
+        grid-template-columns: 1fr;
+      }
+
+      .ring {
+        width: 4.25rem;
+      }
+
+      .delta {
+        grid-template-columns: 1fr;
+      }
+
+      .arrow {
+        transform: rotate(90deg);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      *,
+      *::before,
+      *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header class="hero">
+      <div class="eyebrow">Kast beta change brief</div>
+      <h1>From useful query to trustworthy release candidate.</h1>
+      <p class="lede">
+        Seventeen focused commits turned repository intelligence into a bounded,
+        compiler-grounded agent surface whose certainty survives every projection.
+      </p>
+      <div class="hero-meta" aria-label="Candidate metadata">
+        <span class="pill"><strong>AUDITED CODE</strong> <span class="mono">d9efb632</span></span>
+        <span class="pill"><strong>PR</strong> #455</span>
+        <span class="pill"><span class="status-dot" aria-hidden="true"></span> snapshot CI green</span>
+      </div>
+      <div class="hero-proof" aria-label="Remote check progress">
+        <div class="ring" aria-label="22 of 22 non-skipped checks passed">22/22</div>
+        <p>
+          <strong>Zero remote failures</strong>
+          22 passed, 1 intentionally skipped, 0 pending at this snapshot.
+          Local release gates are complete.
+        </p>
+      </div>
+    </header>
+
+    <section aria-labelledby="shape-title">
+      <div class="eyebrow">Change shape</div>
+      <h2 id="shape-title">Small corrections, one coherent contract.</h2>
+      <p class="section-copy">
+        The final push is not a feature pile. It is a sequence of truth-preserving
+        fixes across routing, bounded execution, projection, and publication.
+      </p>
+      <div class="metric-grid">
+        <div class="metric"><strong>17</strong><span>atomic commits</span></div>
+        <div class="metric"><strong>27</strong><span>files changed</span></div>
+        <div class="metric"><strong>+1,122</strong><span>lines added</span></div>
+        <div class="metric"><strong>−210</strong><span>lines removed</span></div>
+        <div class="metric"><strong>0</strong><span>shape violations</span></div>
+      </div>
+      <p class="historical">
+        Closeout range: <code>c0251773..d9efb632</code>. These metrics describe
+        the final audited correction sequence, not the full lifetime of PR #455.
+      </p>
+    </section>
+
+    <section aria-labelledby="flow-title">
+      <div class="eyebrow">System flow</div>
+      <h2 id="flow-title">One authority chain, end to end.</h2>
+      <p class="section-copy">
+        Each step carries proof forward. If the proof is incomplete, bounded, or
+        stale, the result says so instead of being upgraded by presentation.
+      </p>
+      <div class="flow" role="list" aria-label="Repository intelligence evidence flow">
+        <article class="flow-step" role="listitem">
+          <span class="step-index">01 · inventory</span>
+          <h3>Git-owned workspace</h3>
+          <p>Tracked and visible files only; ignored dependency trees stay out.</p>
+        </article>
+        <article class="flow-step" role="listitem">
+          <span class="step-index">02 · semantics</span>
+          <h3>Compiler index</h3>
+          <p>Kotlin identities, types, relations, ownership, and exact generation.</p>
+        </article>
+        <article class="flow-step" role="listitem">
+          <span class="step-index">03 · execution</span>
+          <h3>Canonical outcome</h3>
+          <p>Scope, coverage, bounds, ordering, continuations, and qualification.</p>
+        </article>
+        <article class="flow-step" role="listitem">
+          <span class="step-index">04 · projection</span>
+          <h3>Agent contract</h3>
+          <p>Status and certainty survive compact, count, and selected-field views.</p>
+        </article>
+        <article class="flow-step" role="listitem">
+          <span class="step-index">05 · delivery</span>
+          <h3>Release gate</h3>
+          <p>Shape, docs, installer, JVM, Rust, assets, provenance, then exact-head CI.</p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="guarantees-title">
+      <div class="eyebrow">What materially changed</div>
+      <h2 id="guarantees-title">Three guarantee layers were closed.</h2>
+      <div class="card-grid">
+        <article class="card">
+          <span class="tag">Precision</span>
+          <h3>Identity and scope</h3>
+          <p>
+            Exact mention boundaries, routed-root authority, deterministic ordering,
+            selected identity, and scope-closed neighbor evidence now agree.
+          </p>
+        </article>
+        <article class="card">
+          <span class="tag">Boundedness</span>
+          <h3>Execution and paging</h3>
+          <p>
+            Context inference is explicitly capped; traversal and evidence
+            continuations compose without replay or unrelated node leakage.
+          </p>
+        </article>
+        <article class="card">
+          <span class="tag">Truth</span>
+          <h3>Projection and certainty</h3>
+          <p>
+            Partial coverage stays qualified, truncated empties cannot claim
+            certainty, and selected fields retain the closed outcome envelope.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="timeline-title">
+      <div class="eyebrow">Commit story</div>
+      <h2 id="timeline-title">The 17-commit route to the audited code snapshot.</h2>
+      <p class="section-copy">Tap a phase to open it. The sequence is chronological.</p>
+      <div class="timeline">
+        <details open>
+          <summary>
+            <span class="phase-number">1</span>
+            <span class="phase-title">
+              <strong>Scope and identity</strong>
+              <span>6 commits · make selection exact</span>
+            </span>
+          </summary>
+          <ol class="commit-list">
+            <li><code>6900e259</code>Preserve inferred context completeness.</li>
+            <li><code>a52019ea</code>Require exact context mentions.</li>
+            <li><code>682bdf25</code>Bind coverage to the routed root.</li>
+            <li><code>b4108cb5</code>Preserve selected identity in every useful view.</li>
+            <li><code>4d082b80</code>Report discovery ordering explicitly.</li>
+            <li><code>ff731263</code>Keep neighbor evidence inside admitted scope.</li>
+          </ol>
+        </details>
+
+        <details>
+          <summary>
+            <span class="phase-number">2</span>
+            <span class="phase-title">
+              <strong>Coverage and context</strong>
+              <span>5 commits · bound the evidence</span>
+            </span>
+          </summary>
+          <ol class="commit-list">
+            <li><code>9c723efb</code>Qualify partial positive results truthfully.</li>
+            <li><code>4afac31f</code>Constrain context inventory to Git-visible files.</li>
+            <li><code>8354f76b</code>Compose evidence and traversal continuations.</li>
+            <li><code>a3d65db1</code>Surface certainty in human output.</li>
+            <li><code>97fa8944</code>Bound inferred context target selection.</li>
+          </ol>
+        </details>
+
+        <details>
+          <summary>
+            <span class="phase-number">3</span>
+            <span class="phase-title">
+              <strong>Release-candidate truth</strong>
+              <span>5 commits · close projection leaks</span>
+            </span>
+          </summary>
+          <ol class="commit-list">
+            <li><code>c0e6b862</code>Bound resumed evidence nodes to the active page.</li>
+            <li><code>4de861a5</code>Admit complete-but-bounded qualified empties.</li>
+            <li><code>517042fe</code>Reject truncated definitive empties.</li>
+            <li><code>439ecb5f</code>Mark partial-coverage cardinality as a lower bound.</li>
+            <li><code>994afbd5</code>Preserve outcomes in selected-field projections.</li>
+          </ol>
+        </details>
+
+        <details>
+          <summary>
+            <span class="phase-number">4</span>
+            <span class="phase-title">
+              <strong>Honest publication</strong>
+              <span>1 commit · say what the beta is</span>
+            </span>
+          </summary>
+          <ol class="commit-list">
+            <li><code>d9efb632</code>Document Kotlin scope, retrieval, paging, output, and TOON boundaries.</li>
+          </ol>
+        </details>
+      </div>
+    </section>
+
+    <section aria-labelledby="delta-title">
+      <div class="eyebrow">Before → after</div>
+      <h2 id="delta-title">Where ambiguity was removed.</h2>
+      <div class="delta-list">
+        <article class="delta">
+          <div class="before"><small>Before</small><p><code>App</code> could match <code>Application</code>.</p></div>
+          <span class="arrow" aria-hidden="true">→</span>
+          <div class="after"><small>After</small><p>Identifier-boundary matching only.</p></div>
+        </article>
+        <article class="delta">
+          <div class="before"><small>Before</small><p>Context walked unrelated or ignored trees.</p></div>
+          <span class="arrow" aria-hidden="true">→</span>
+          <div class="after"><small>After</small><p>Git-visible inventory with containment checks.</p></div>
+        </article>
+        <article class="delta">
+          <div class="before"><small>Before</small><p>One evidence page could serialize unrelated nodes.</p></div>
+          <span class="arrow" aria-hidden="true">→</span>
+          <div class="after"><small>After</small><p>Only the active traversal and evidence identities survive.</p></div>
+        </article>
+        <article class="delta">
+          <div class="before"><small>Before</small><p>Incomplete coverage could report a <code>COMPLETE</code> count.</p></div>
+          <span class="arrow" aria-hidden="true">→</span>
+          <div class="after"><small>After</small><p>Cardinality is a typed <code>LOWER_BOUND</code>.</p></div>
+        </article>
+        <article class="delta">
+          <div class="before"><small>Before</small><p><code>--fields</code> could erase status and qualification.</p></div>
+          <span class="arrow" aria-hidden="true">→</span>
+          <div class="after"><small>After</small><p>Every selection carries status, intent, truncation, and qualification.</p></div>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="proof-title">
+      <div class="eyebrow">Proof board</div>
+      <h2 id="proof-title">What is green on the audited code snapshot.</h2>
+      <div class="proof-grid">
+        <article class="proof">
+          <span class="proof-value">56 tasks</span>
+          <h3>JVM release gate</h3>
+          <p>Full Gradle test graph completed successfully at <code>d9efb632</code>.</p>
+        </article>
+        <article class="proof">
+          <span class="proof-value">251</span>
+          <h3>Rust unit tests</h3>
+          <p>Plus all-target/all-feature clippy with warnings denied.</p>
+        </article>
+        <article class="proof">
+          <span class="proof-value">38 / 38</span>
+          <h3>Repository smoke</h3>
+          <p>Identity, context, coverage, traversal, architecture, and agent views.</p>
+        </article>
+        <article class="proof">
+          <span class="proof-value">1,193 · 509</span>
+          <h3>Shape contract</h3>
+          <p>Governed source files and directories; zero 400-line or 10-child violations.</p>
+        </article>
+        <article class="proof">
+          <span class="proof-value">24 assets</span>
+          <h3>Release path</h3>
+          <p>Setup, macOS installer, asset verifier, and provenance contracts pass.</p>
+        </article>
+        <article class="proof">
+          <span class="proof-value">22 pass · 0 pending</span>
+          <h3>Snapshot remote CI</h3>
+          <p>PR #455 at <code>d9efb632</code>; zero failures at this snapshot.</p>
+        </article>
+      </div>
+    </section>
+
+    <section aria-labelledby="limits-title">
+      <div class="eyebrow">Honest beta boundary</div>
+      <h2 id="limits-title">What this release does not pretend to be.</h2>
+      <div class="limit-grid">
+        <article class="limit">
+          <h3><strong>Kotlin semantics only</strong></h3>
+          <p>Compiler guarantees do not extend to arbitrary languages.</p>
+        </article>
+        <article class="limit">
+          <h3><strong>No labels or embeddings</strong></h3>
+          <p>Natural language is deterministic lexical and structural ranking, not an LLM layer.</p>
+        </article>
+        <article class="limit">
+          <h3><strong>Some bounds do not page</strong></h3>
+          <p>Resolve, architecture, and context bounds require a narrower rerun; traversal evidence continues.</p>
+        </article>
+        <article class="limit">
+          <h3><strong>TOON v3-compatible</strong></h3>
+          <p>The Rust codec is <code>toon-format 0.5.0</code>; no v4.1 encoder-conformance claim.</p>
+        </article>
+        <article class="limit">
+          <h3><strong>Human view is an overview</strong></h3>
+          <p>Use default TOON with <code>--explain</code> for full actionable evidence.</p>
+        </article>
+        <article class="limit">
+          <h3><strong>Prerelease compatibility</strong></h3>
+          <p>Public analysis API packages moved; the beta does not claim 0.16.1 binary compatibility.</p>
+        </article>
+      </div>
+      <p class="historical">
+        The frozen benchmark remains historical evidence from implementation
+        commit <code>f6151469</code>. It is not presented as a measurement of
+        audited code snapshot <code>d9efb632</code>, and competitor branding is not
+        part of the release surface.
+      </p>
+    </section>
+
+    <section class="next" aria-labelledby="next-title">
+      <div class="eyebrow">Publication route</div>
+      <h2 id="next-title">Green candidate, then a deliberate release.</h2>
+      <div class="gate-row">
+        <div class="gate">
+          <b>✓</b>
+          <span>Audited code snapshot committed, locally validated, and pushed to PR #455.</span>
+        </div>
+        <div class="gate">
+          <b>✓</b>
+          <span>Snapshot checks reached terminal green with zero failures.</span>
+        </div>
+        <div class="gate pending">
+          <b>3</b>
+          <span>Obtain explicit confirmation before creating the beta tag.</span>
+        </div>
+        <div class="gate pending">
+          <b>4</b>
+          <span>Dispatch the established beta workflow; the tag is derived from the actual release head.</span>
+        </div>
+      </div>
+      <div class="command" aria-label="Expected beta installation command">
+        curl -fsSL "https://raw.githubusercontent.com/amichne/kast/&lt;beta-tag&gt;/install.sh"
+        | /bin/bash -s -- --version "&lt;beta-tag&gt;"
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <strong>Kast repository intelligence beta brief</strong><br>
+    Audited code snapshot <span class="mono">d9efb63221ed492d7054b9f65496ca6cab1886c9</span> ·
+    prepared 27 July 2026 · facts sourced from Git, local release gates, and PR #455.
+  </footer>
+</body>
+</html>

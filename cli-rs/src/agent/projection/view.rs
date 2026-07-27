@@ -41,6 +41,7 @@ enum AgentProjectionRequest {
         view: AgentResultView<AgentDiagnosticsField>,
         result_limit: usize,
     },
+    Repository(AgentResultView<AgentRepositoryField>),
     Impact(AgentResultView<AgentImpactField>),
     Mutation(AgentResultView<AgentMutationField>),
     Verify(AgentResultView<AgentVerifyField>),
@@ -55,6 +56,9 @@ impl AgentProjectionRequest {
                 Self::WorkspaceFiles(workspace_files_result_view(&args.view))
             }
             AgentCommand::Graph(_) => Self::Passthrough,
+            AgentCommand::Repository(args) => {
+                Self::Repository(repository_result_view(&args.view))
+            }
             AgentCommand::Symbol(args) => Self::Symbol {
                 view: symbol_result_view(&args.view),
             },
@@ -99,6 +103,7 @@ impl AgentProjectionRequest {
             Self::Diagnostics { view, result_limit } => {
                 project_diagnostics_envelope(envelope, view, result_limit)
             }
+            Self::Repository(view) => project_repository_envelope(envelope, view),
             Self::Impact(view) => project_impact_envelope(envelope, view),
             Self::Mutation(view) => project_mutation_envelope(envelope, view),
             Self::Verify(view) => project_verify_envelope(envelope, view),
@@ -115,6 +120,12 @@ fn verify_result_view(view: &AgentVerifyViewArgs) -> AgentResultView<AgentVerify
 fn workspace_files_result_view(
     view: &AgentWorkspaceFilesViewArgs,
 ) -> AgentResultView<AgentWorkspaceFilesField> {
+    AgentResultView::from_parts(view.verbose, view.explain, &view.fields, view.count)
+}
+
+fn repository_result_view(
+    view: &AgentRepositoryViewArgs,
+) -> AgentResultView<AgentRepositoryField> {
     AgentResultView::from_parts(view.verbose, view.explain, &view.fields, view.count)
 }
 

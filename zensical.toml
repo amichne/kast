@@ -16,6 +16,7 @@ nav = [
     { "Install or update Kast" = "how-to/install-or-update.md" },
     { "Explore Kotlin code" = "how-to/explore-kotlin-code.md" },
     { "Plan a safe Kotlin edit" = "how-to/plan-safe-edits.md" },
+    { "Maintain repository intelligence" = "how-to/maintain-repository-intelligence.md" },
     { "Troubleshoot Kast" = "how-to/troubleshoot.md" },
   ] },
   { "Reference" = [
@@ -24,6 +25,7 @@ nav = [
   ] },
   { "Explanation" = [
     { "Architecture" = "explanation/architecture.md" },
+    { "Repository intelligence" = "explanation/repository-intelligence.md" },
     { "Compiler-backed evidence" = "explanation/compiler-evidence.md" },
   ] },
 ]

@@ -30,9 +30,9 @@ workspace or runtime.
 
 ## Source and proof
 
-- `cli-rs/src/runtime/lease.rs`
-- `cli-rs/src/runtime/workspace_admission.rs`
-- `cli-rs/src/agent/dispatch.rs`
+- `cli-rs/src/execution/runtime/control/lease.rs`
+- `cli-rs/src/execution/runtime/backend/workspace_admission.rs`
+- `cli-rs/src/agent/core/dispatch/mod.rs`
 - `cli-rs/tests/workspace_lease_smoke.rs`
 
 Changes to ownership, exact-root binding, liveness, recovery, or stop behavior
