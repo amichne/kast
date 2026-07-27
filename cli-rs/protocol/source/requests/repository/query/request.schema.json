@@ -50,6 +50,9 @@
           ],
           "type": "string"
         },
+        "labelIndex": {
+          "type": "string"
+        },
         "limits": {
           "additionalProperties": false,
           "properties": {

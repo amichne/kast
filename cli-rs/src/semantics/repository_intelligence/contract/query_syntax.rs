@@ -52,17 +52,21 @@ impl RepositoryDiscoveryQuery {
         }
     }
 
-    fn discovery_canonical(&self) -> &'static str {
-        match self {
-            Self::NaturalLanguage(_) => "LEXICAL",
-            Self::Regex { .. } => "REGEX",
+    fn discovery_canonical(&self, precomputed_labels: bool) -> &'static str {
+        match (self, precomputed_labels) {
+            (Self::NaturalLanguage(_), true) => "LEXICAL_WITH_PRECOMPUTED_LABELS",
+            (Self::NaturalLanguage(_), false) => "LEXICAL",
+            (Self::Regex { .. }, _) => "REGEX",
         }
     }
 
-    fn candidate_lookup(&self) -> &'static str {
-        match self {
-            Self::NaturalLanguage(_) => "deterministic compiler-symbol ranking",
-            Self::Regex { .. } => "retrieval-only regex over compiler-symbol documents",
+    fn candidate_lookup(&self, precomputed_labels: bool) -> &'static str {
+        match (self, precomputed_labels) {
+            (Self::NaturalLanguage(_), true) => {
+                "compiler-symbol ranking with retrieval-only precomputed labels"
+            }
+            (Self::NaturalLanguage(_), false) => "deterministic compiler-symbol ranking",
+            (Self::Regex { .. }, _) => "retrieval-only regex over compiler-symbol documents",
         }
     }
 }

@@ -55,7 +55,7 @@ fn context_target_nodes(
     }
     let mut inferred_targets_truncated = false;
     if !has_explicit_names {
-        let mut inferred = rank_repository_candidates(connection, question, execution_scope)?
+        let mut inferred = rank_repository_candidates(connection, question, execution_scope, None)?
             .into_iter()
             .filter(|candidate| {
                 matches!(

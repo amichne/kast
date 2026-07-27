@@ -4,6 +4,7 @@ fn resolve_repository_question(
     execution_scope: &RepositoryExecutionScope,
     limit: usize,
     canonical_key: Option<&str>,
+    labels: Option<&CompilerIdentityBoundLabels>,
 ) -> Result<Value> {
     let mut candidates = if let Some(canonical_key) = canonical_key {
         execution_scope
@@ -27,7 +28,7 @@ fn resolve_repository_question(
     } else {
         match question {
             RepositoryDiscoveryQuery::NaturalLanguage(question) => {
-                rank_repository_candidates(connection, question, execution_scope)?
+                rank_repository_candidates(connection, question, execution_scope, labels)?
             }
             RepositoryDiscoveryQuery::Regex { source, compiled } => {
                 rank_repository_regex_candidates(connection, source, compiled, execution_scope)?
@@ -96,14 +97,26 @@ fn rank_repository_candidates(
     connection: &Connection,
     question: &str,
     execution_scope: &RepositoryExecutionScope,
+    labels: Option<&CompilerIdentityBoundLabels>,
 ) -> Result<Vec<RepositoryCandidate>> {
-    let (nodes, documents) =
+    let (nodes, mut documents) =
         repository_discovery_documents(connection, execution_scope, Some(question))?;
+    if let Some(labels) = labels {
+        for document in &mut documents {
+            if let Some(label) = labels.for_identity(&document.identity) {
+                document.fields.push(SymbolDiscoveryField {
+                    name: "precomputedLabel",
+                    value: label.to_string(),
+                });
+            }
+        }
+    }
     let query_terms = discovery_query_terms(question);
     let discovery_intent = crate::symbol_query::SymbolDiscoveryIntent::parse(question);
     let preferred_names = explicit_repository_names(question);
+    let resolution_name = repository_resolution_name(question, discovery_intent);
     let ranked = rank_symbol_discovery(
-        repository_resolution_name(question, discovery_intent).as_deref(),
+        labels.is_none().then_some(resolution_name.as_deref()).flatten(),
         &preferred_names,
         discovery_intent,
         &query_terms.iter().cloned().collect::<Vec<_>>(),
@@ -116,22 +129,31 @@ fn rank_repository_candidates(
     Ok(ranked
         .into_iter()
         .filter_map(|ranked| {
-            nodes_by_identity
-                .remove(&ranked.identity)
-                .map(|node| RepositoryCandidate {
-                    rank: ranked.rank,
-                    match_score: ranked.score,
-                    match_reasons: ranked
-                        .reasons
-                        .into_iter()
-                        .map(|reason| RepositoryMatchReason {
-                            field: reason.field,
-                            terms: reason.terms,
-                            score: reason.score,
-                        })
-                        .collect(),
-                    node,
+            debug_assert!(ranked.rank > 0);
+            let node = nodes_by_identity.remove(&ranked.identity)?;
+            let baseline_match = resolution_name
+                .as_deref()
+                .is_none_or(|name| node.name.eq_ignore_ascii_case(name));
+            let label_match = ranked
+                .reasons
+                .iter()
+                .any(|reason| reason.field == "precomputedLabel");
+            (labels.is_none() || baseline_match || label_match).then_some((ranked, node))
+        })
+        .enumerate()
+        .map(|(index, (ranked, node))| RepositoryCandidate {
+            rank: index + 1,
+            match_score: ranked.score,
+            match_reasons: ranked
+                .reasons
+                .into_iter()
+                .map(|reason| RepositoryMatchReason {
+                    field: reason.field,
+                    terms: reason.terms,
+                    score: reason.score,
                 })
+                .collect(),
+            node,
         })
         .collect())
 }

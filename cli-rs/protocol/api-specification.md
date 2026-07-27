@@ -126,7 +126,7 @@ uses a discriminated response envelope.
 | `raw/code-actions` | `raw` | backend | Return available code actions at a file position | `position` | `diagnosticCode` | `CodeActionsResult` | single result |
 | `raw/completions` | `raw` | backend | Return completion candidates available at a file position | `position` | `maxResults`<br>`kindFilter` | `CompletionsResult` | single result |
 | `graph/coverage` | `graph` | sqlite | Report generation-pinned Kotlin graph coverage by file, module, and compilation | none | `workspaceRoot`<br>`scope`<br>`continuation`<br>`limit` | `KastGraphCoverageResult` | single result |
-| `repository/query` | `repository` | sqlite | Answer one bounded repository question with visible scope, coverage, and evidence | `question`<br>`intent`<br>`limits` | `workspaceRoot`<br>`canonicalKey`<br>`querySyntax`<br>`scope`<br>`evidenceContinuation`<br>`continuation` | `KastRepositoryQueryResult` | single result |
+| `repository/query` | `repository` | sqlite | Answer one bounded repository question with visible scope, coverage, and evidence | `question`<br>`intent`<br>`limits` | `workspaceRoot`<br>`canonicalKey`<br>`labelIndex`<br>`querySyntax`<br>`scope`<br>`evidenceContinuation`<br>`continuation` | `KastRepositoryQueryResult` | single result |
 | `database/metrics` | `database` | sqlite | Query source-index metrics | `metric` | `workspaceRoot`<br>`limit`<br>`symbol`<br>`depth`<br>`offset`<br>`subject`<br>`fileGlob`<br>`folderFilter` | `RustMetricsResponse` | `METRICS_SUCCESS`<br>`METRICS_FAILURE` |
 
 #### Command field details
@@ -844,6 +844,7 @@ Notes:
 | --- | --- | --- | --- | --- |
 | `workspaceRoot` | `string` | no | yes |  |
 | `canonicalKey` | `string` | no | no |  |
+| `labelIndex` | `string` | no | no |  |
 | `question` | `string` | yes | no |  |
 | `querySyntax` | `string` | no | no | `natural_language`<br>`regex` |
 | `intent` | `string` | yes | no | `resolve`<br>`path`<br>`incoming_impact`<br>`outgoing_impact`<br>`architecture`<br>`context_relationship` |
@@ -857,6 +858,7 @@ Response type: `KastRepositoryQueryResult`.
 Notes:
 
 - Approximate discovery terminates in exact canonical identities or bounded ambiguity.
+- Precomputed labels may retrieve candidates but cannot supply identity, location, relationships, evidence, completeness, cardinality, or certainty.
 - Every response exposes generation, scope, coverage, filters, bounds, ordering, truncation, and continuation.
 
 </details>

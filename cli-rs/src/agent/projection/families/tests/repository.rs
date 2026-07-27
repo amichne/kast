@@ -145,6 +145,11 @@
         for query_syntax in ["NATURAL_LANGUAGE", "REGEX"] {
             let mut result = repository_result("resolve", "EMPTY");
             result["queryPlan"]["querySyntax"] = json!(query_syntax);
+            result["queryPlan"]["discovery"] = json!(if query_syntax == "REGEX" {
+                "REGEX"
+            } else {
+                "LEXICAL"
+            });
             let projected = project_repository_envelope(
                 result_envelope("repository/query".to_string(), result),
                 AgentResultView::Compact,
@@ -168,6 +173,37 @@
         );
 
         assert!(!projected.ok, "missing query syntax evidence was accepted");
+
+        let mut label_result = repository_result("resolve", "EMPTY");
+        label_result["queryPlan"]["discovery"] =
+            json!("LEXICAL_WITH_PRECOMPUTED_LABELS");
+        let projected = project_repository_envelope(
+            result_envelope("repository/query".to_string(), label_result.clone()),
+            AgentResultView::Compact,
+        );
+        assert_eq!(
+            projected.result.expect("label projection")["discovery"],
+            "LEXICAL_WITH_PRECOMPUTED_LABELS"
+        );
+        let selected = project_repository_envelope(
+            result_envelope("repository/query".to_string(), label_result),
+            AgentResultView::Fields(vec![AgentRepositoryField::Identities]),
+        );
+        assert_eq!(
+            selected.result.expect("selected label projection")["discovery"],
+            "LEXICAL_WITH_PRECOMPUTED_LABELS"
+        );
+
+        let mut contradictory = repository_result("resolve", "EMPTY");
+        contradictory["queryPlan"]["discovery"] = json!("REGEX");
+        assert!(
+            !project_repository_envelope(
+                result_envelope("repository/query".to_string(), contradictory),
+                AgentResultView::Compact,
+            )
+            .ok,
+            "contradictory discovery evidence was accepted"
+        );
     }
 
     fn repository_result(intent: &str, status: &str) -> Value {
@@ -178,7 +214,10 @@
             "status": status,
             "question": "repository question",
             "intent": intent,
-            "queryPlan": {"querySyntax": "NATURAL_LANGUAGE"},
+            "queryPlan": {
+                "querySyntax": "NATURAL_LANGUAGE",
+                "discovery": "LEXICAL"
+            },
             "workspaceIdentity": {"canonicalRoot": "/workspace"},
             "generation": 1,
             "inventoryGeneration": 1,

@@ -209,6 +209,9 @@ pub struct AgentRepositoryArgs {
     /// Exact canonical identity returned by a preceding repository result.
     #[arg(long, value_parser = parse_non_blank_repository_value)]
     pub canonical_key: Option<String>,
+    /// Version-1 retrieval-only label index at a workspace-relative path.
+    #[arg(long)]
+    pub label_index: Option<AgentRepositoryLabelIndexPath>,
     /// Language scope. Repository intelligence currently supports Kotlin.
     #[arg(long, value_enum, default_value_t = AgentRepositoryLanguage::Kotlin)]
     pub language: AgentRepositoryLanguage,

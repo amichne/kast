@@ -32,6 +32,15 @@ fn repository_query_at_snapshot(
     snapshot: CoverageSnapshot,
 ) -> Result<Value> {
     let execution_scope = RepositoryExecutionScope::from_coverage(&snapshot);
+    let label_index = params
+        .label_index
+        .as_ref()
+        .map(|path| ParsedRepositoryLabelIndex::load(workspace_root, path))
+        .transpose()?;
+    let labels = label_index
+        .as_ref()
+        .map(|index| index.verify(connection))
+        .transpose()?;
     let continuation_context = repository_continuation_context(workspace_root, &snapshot, params)?;
     let traversal_resume = params
         .continuation
@@ -50,6 +59,7 @@ fn repository_query_at_snapshot(
             &execution_scope,
             params.limits.results,
             params.canonical_key.as_deref(),
+            labels.as_ref(),
         )?,
         RepositoryIntent::Path
         | RepositoryIntent::IncomingImpact
@@ -130,9 +140,9 @@ fn repository_query_at_snapshot(
             "discovery": if params.canonical_key.is_some() {
                 "EXACT_KEY"
             } else {
-                params.question.discovery_canonical()
+                params.question.discovery_canonical(params.label_index.is_some())
             },
-            "candidateLookup": params.question.candidate_lookup(),
+            "candidateLookup": params.question.candidate_lookup(params.label_index.is_some()),
             "execution": "generation-pinned source-index",
             "projection": params.scope.projection,
             "metric": params.scope.metric,

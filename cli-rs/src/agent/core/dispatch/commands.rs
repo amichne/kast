@@ -143,6 +143,7 @@ fn execute_agent_repository(args: AgentRepositoryArgs) -> AgentEnvelope {
         "querySyntax": args.query_syntax,
         "intent": args.intent,
         "canonicalKey": args.canonical_key,
+        "labelIndex": args.label_index.as_ref().map(|path| path.as_str()),
         "scope": scope,
         "limits": {
             "depth": args.depth,

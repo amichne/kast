@@ -282,6 +282,8 @@ struct RepositoryQueryParams {
     #[serde(default)]
     canonical_key: Option<String>,
     #[serde(default)]
+    label_index: Option<String>,
+    #[serde(default)]
     scope: RepositoryScope,
     limits: RepositoryLimits,
     #[serde(default)]
@@ -294,6 +296,7 @@ struct ValidatedRepositoryQueryParams {
     question: RepositoryDiscoveryQuery,
     intent: RepositoryIntent,
     canonical_key: Option<String>,
+    label_index: Option<RepositoryLabelIndexPath>,
     scope: RepositoryScope,
     limits: RepositoryLimits,
     continuation: Option<RepositoryTraversalContinuation>,
@@ -373,11 +376,18 @@ impl RepositoryQueryParams {
                 "Repository evidence continuation requires a graph relationship query.",
             ));
         }
+        let label_index = validate_repository_label_index_request(
+            self.label_index,
+            self.query_syntax,
+            self.intent,
+            self.canonical_key.as_deref(),
+        )?;
         let question = RepositoryDiscoveryQuery::parse(self.question, self.query_syntax)?;
         Ok(ValidatedRepositoryQueryParams {
             question,
             intent: self.intent,
             canonical_key: self.canonical_key,
+            label_index,
             scope: self.scope,
             limits: self.limits,
             continuation: self.continuation,

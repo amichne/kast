@@ -34,6 +34,7 @@ const REPOSITORY_TRAVERSAL_CONTINUATION_VERSION: &str = "krit2";
 const REPOSITORY_TRAVERSAL_CONTINUATION_SCHEMA_VERSION: u32 = 2;
 
 include!("repository_intelligence/contract/query_syntax.rs");
+include!("repository_intelligence/contract/label_index.rs");
 include!("repository_intelligence/contract/request.rs");
 include!("repository_intelligence/contract/result.rs");
 include!("repository_intelligence/coverage/model.rs");

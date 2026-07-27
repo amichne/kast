@@ -107,6 +107,26 @@ fn normalize_workspace_relative_path(value: &str, label: &str) -> Result<String,
     Ok(segments.join("/"))
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AgentRepositoryLabelIndexPath(String);
+
+impl AgentRepositoryLabelIndexPath {
+    pub(crate) fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl std::str::FromStr for AgentRepositoryLabelIndexPath {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if value.len() > 4_096 || value.chars().any(char::is_control) {
+            return Err("label index path must be bounded without control characters".to_string());
+        }
+        normalize_workspace_relative_path(value, "label index").map(Self)
+    }
+}
+
 fn is_platform_qualified_path(value: &str) -> bool {
     let bytes = value.as_bytes();
     value.starts_with(['/', '\\'])

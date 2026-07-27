@@ -13,11 +13,19 @@ enum AgentRepositoryQuerySyntaxEvidence {
     NaturalLanguage,
     Regex,
 }
-
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentRepositoryDiscoveryEvidence {
+    ExactKey,
+    Lexical,
+    LexicalWithPrecomputedLabels,
+    Regex,
+}
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AgentRepositoryQueryPlanInput {
     query_syntax: AgentRepositoryQuerySyntaxEvidence,
+    discovery: AgentRepositoryDiscoveryEvidence,
 }
 
 #[derive(Debug, Deserialize)]
@@ -91,6 +99,32 @@ impl AgentRepositoryProjectionInput {
         if self.generation != self.inventory_generation || self.generation != self.graph_generation
         {
             return Err("repository generations do not identify one snapshot".to_string());
+        }
+        let valid_discovery = matches!(
+            (
+            self.query_plan.query_syntax,
+            self.query_plan.discovery,
+            self.intent,
+            ),
+            (
+                AgentRepositoryQuerySyntaxEvidence::NaturalLanguage,
+                AgentRepositoryDiscoveryEvidence::Lexical,
+                _,
+            )
+            | (
+                AgentRepositoryQuerySyntaxEvidence::NaturalLanguage,
+                AgentRepositoryDiscoveryEvidence::LexicalWithPrecomputedLabels
+                    | AgentRepositoryDiscoveryEvidence::ExactKey,
+                AgentRepositoryIntent::Resolve,
+            )
+            | (
+                AgentRepositoryQuerySyntaxEvidence::Regex,
+                AgentRepositoryDiscoveryEvidence::Regex,
+                AgentRepositoryIntent::Resolve,
+            )
+        );
+        if !valid_discovery {
+            return Err("repository query syntax, discovery, and intent contradict".to_string());
         }
         let classified = self.coverage.indexed
             + self.coverage.excluded
@@ -321,6 +355,7 @@ impl AgentRepositoryProjectionInput {
             status: self.status,
             intent: self.intent,
             query_syntax: self.query_plan.query_syntax,
+            discovery: self.query_plan.discovery,
             workspace_root: self.workspace_identity.canonical_root,
             generation: self.generation,
             coverage: self.coverage,

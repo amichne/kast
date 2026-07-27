@@ -18,11 +18,8 @@ fn repository_discovery_documents(
         .unwrap_or_default();
     let documents = nodes
         .iter()
-        .map(|node| SymbolDiscoveryDocument {
-            identity: node.canonical_key.clone(),
-            simple_name: node.name.clone(),
-            sort_key: node.canonical_key.clone(),
-            fields: vec![
+        .map(|node| {
+            let fields = vec![
                 SymbolDiscoveryField {
                     name: "name",
                     value: node.name.clone(),
@@ -82,11 +79,17 @@ fn repository_discovery_documents(
                     name: "declarationKind",
                     value: node.kind.clone(),
                 },
-            ],
-            graph_terms: neighbors
-                .get(&node.database_id)
-                .cloned()
-                .unwrap_or_default(),
+            ];
+            SymbolDiscoveryDocument {
+                identity: node.canonical_key.clone(),
+                simple_name: node.name.clone(),
+                sort_key: node.canonical_key.clone(),
+                fields,
+                graph_terms: neighbors
+                    .get(&node.database_id)
+                    .cloned()
+                    .unwrap_or_default(),
+            }
         })
         .collect();
     Ok((nodes, documents))
@@ -98,8 +101,7 @@ fn rank_repository_regex_candidates(
     compiled: &regex::Regex,
     execution_scope: &RepositoryExecutionScope,
 ) -> Result<Vec<RepositoryCandidate>> {
-    let (nodes, documents) =
-        repository_discovery_documents(connection, execution_scope, None)?;
+    let (nodes, documents) = repository_discovery_documents(connection, execution_scope, None)?;
     let mut nodes_by_identity = nodes
         .into_iter()
         .map(|node| (node.canonical_key.clone(), node))

@@ -2719,6 +2719,12 @@
         "type": "string",
         "optional": true
       },
+      "labelIndex": {
+        "type": "string",
+        "description": "Workspace-relative version-1 precomputed label index used only to retrieve compiler-identified candidates for natural-language resolve queries.",
+        "sample": "repository-labels.json",
+        "optional": true
+      },
       "question": {
         "type": "string"
       },
@@ -2866,6 +2872,7 @@
       "responseType": "KastRepositoryQueryResult",
       "notes": [
         "Approximate discovery terminates in exact canonical identities or bounded ambiguity.",
+        "Precomputed labels may retrieve candidates but cannot supply identity, location, relationships, evidence, completeness, cardinality, or certainty.",
         "Every response exposes generation, scope, coverage, filters, bounds, ordering, truncation, and continuation."
       ]
     },

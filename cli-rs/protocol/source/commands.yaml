@@ -908,6 +908,7 @@ commands:
     method: repository/query
     notes:
     - Approximate discovery terminates in exact canonical identities or bounded ambiguity.
+    - Precomputed labels may retrieve candidates but cannot supply identity, location, relationships, evidence, completeness, cardinality, or certainty.
     - Every response exposes generation, scope, coverage, filters, bounds, ordering, truncation, and continuation.
     request:
       fields:
@@ -930,6 +931,11 @@ commands:
           - outgoing_impact
           - architecture
           - context_relationship
+          type: string
+        labelIndex:
+          description: Workspace-relative version-1 precomputed label index used only to retrieve compiler-identified candidates for natural-language resolve queries.
+          optional: true
+          sample: repository-labels.json
           type: string
         limits:
           fields:
