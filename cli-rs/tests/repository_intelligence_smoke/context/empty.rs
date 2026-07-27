@@ -159,6 +159,53 @@ fn repository_context_qualifies_empty_at_inferred_target_ceiling() {
         }),
         "{response:#}"
     );
+
+    let agent_output = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "repository",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--question",
+            "Which exact Kotlin model carries semantic graph hashing evidence?",
+            "--intent",
+            "context-relationship",
+            "--language",
+            "kotlin",
+            "--source",
+            "markdown",
+            "--results",
+            "10",
+            "--evidence",
+            "1",
+        ])
+        .output()
+        .expect("bounded qualified-empty agent projection");
+    let agent_response: serde_json::Value =
+        serde_json::from_slice(&agent_output.stdout).expect("agent projection JSON");
+    assert!(
+        agent_output.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&agent_output.stdout),
+        String::from_utf8_lossy(&agent_output.stderr)
+    );
+    assert_eq!(
+        serde_json::json!({
+            "status": agent_response["result"]["status"],
+            "truncated": agent_response["result"]["truncated"],
+            "qualified": agent_response["result"]["qualification"]
+                .as_str()
+                .is_some_and(|qualification| qualification.contains("bounded"))
+        }),
+        serde_json::json!({
+            "status": "QUALIFIED_EMPTY",
+            "truncated": true,
+            "qualified": true
+        }),
+        "{agent_response:#}"
+    );
 }
 
 #[test]

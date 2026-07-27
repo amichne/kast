@@ -112,15 +112,16 @@ impl AgentRepositoryProjectionInput {
                 );
             }
             AgentRepositoryStatus::QualifiedEmpty
-                if self.coverage.complete
-                    || self.coverage.eligible_for_complete_negative
+                if (!self.truncated
+                    && (self.coverage.complete
+                        || self.coverage.eligible_for_complete_negative))
                     || self
                         .qualification
                         .as_deref()
                         .is_none_or(|qualification| qualification.trim().is_empty()) =>
             {
                 return Err(
-                    "QUALIFIED_EMPTY repository status requires incomplete ineligible coverage and a non-empty qualification"
+                    "QUALIFIED_EMPTY repository status requires incomplete ineligible coverage or bounded execution and a non-empty qualification"
                         .to_string(),
                 );
             }
