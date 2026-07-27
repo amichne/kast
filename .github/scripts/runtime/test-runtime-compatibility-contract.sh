@@ -16,7 +16,7 @@ required_paths=(
   "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/compatibility/runtime/RuntimeCompatibilityMatrix.kt"
   "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/compatibility/runtime/RuntimeCompatibilityOutcome.kt"
   "analysis-api/src/test/kotlin/io/github/amichne/kast/api/contract/compatibility/RuntimeCompatibilityMatrixTest.kt"
-  "cli-rs/tests/runtime_compatibility_metadata_smoke.rs"
+  "cli-rs/tests/runtime/compatibility_metadata.rs"
 )
 
 for required_path in "${required_paths[@]}"; do
