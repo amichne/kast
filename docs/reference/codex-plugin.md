@@ -39,6 +39,26 @@ The repository command preserves exact canonical identities and typed
 generation-pinned native topology; neither command creates a second semantic
 authority.
 
+## Repository intelligence beta boundaries
+
+Repository intelligence currently provides compiler semantics for Kotlin only.
+Natural-language discovery uses deterministic lexical and structural ranking;
+it does not use embeddings, an LLM, or a label layer. Regex discovery is
+resolve-only.
+
+Path and impact traversal and per-edge evidence expose signed continuations.
+Resolve ambiguity candidates, architecture findings, and repository-context
+results are bounded and are not pageable. `QUALIFIED_EMPTY`, incomplete
+coverage, or `truncated: true` means the result is not exhaustive.
+
+The default compact machine view is TOON v3-compatible through `toon-format`
+0.5.0; it does not claim TOON v4.1 encoder conformance. Compact output omits
+canonical scope, applied filters, and ordering. Count output is cardinality
+metadata and omits qualification text. Use `--explain` for the complete
+validated result. Explicit human output is an overview and does not include
+every candidate, edge, path, or continuation token; use the default TOON view
+with `--explain` for actionable evidence and resumption.
+
 ## Runtime boundary
 
 IDEA owns compiler state and workspace indexing on macOS. The packaged
