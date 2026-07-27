@@ -12,6 +12,7 @@
       "evidence": 1,
       "results": 1
     },
+    "querySyntax": "regex",
     "question": "example-question",
     "scope": {
       "direction": "OUTGOING",

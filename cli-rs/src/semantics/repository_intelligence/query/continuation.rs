@@ -13,6 +13,7 @@ fn repository_continuation_context(
         "repository/query",
         workspace_root,
         params.question.as_str(),
+        params.question.syntax_canonical(),
         params.intent,
         params.canonical_key.as_deref(),
         &params.scope,
@@ -21,7 +22,8 @@ fn repository_continuation_context(
     let normalized_traversal_query = serde_json::to_vec(&(
         "repository/traversal",
         workspace_root,
-        normalize_repository_question(&params.question),
+        normalize_repository_question(params.question.as_str()),
+        params.question.syntax_canonical(),
         params.intent,
         params.canonical_key.as_deref(),
         &params.scope,

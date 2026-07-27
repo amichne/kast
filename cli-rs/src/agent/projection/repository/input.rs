@@ -7,6 +7,19 @@ enum AgentRepositoryStatus {
     QualifiedEmpty,
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentRepositoryQuerySyntaxEvidence {
+    NaturalLanguage,
+    Regex,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AgentRepositoryQueryPlanInput {
+    query_syntax: AgentRepositoryQuerySyntaxEvidence,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct AgentRepositoryProjectionInput {
@@ -16,8 +29,7 @@ struct AgentRepositoryProjectionInput {
     status: AgentRepositoryStatus,
     question: String,
     intent: AgentRepositoryIntent,
-    #[serde(rename = "queryPlan")]
-    _query_plan: Value,
+    query_plan: AgentRepositoryQueryPlanInput,
     workspace_identity: AgentRepositoryWorkspaceIdentity,
     generation: u64,
     inventory_generation: u64,
@@ -306,6 +318,7 @@ impl AgentRepositoryProjectionInput {
             question: self.question,
             status: self.status,
             intent: self.intent,
+            query_syntax: self.query_plan.query_syntax,
             workspace_root: self.workspace_identity.canonical_root,
             generation: self.generation,
             coverage: self.coverage,

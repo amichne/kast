@@ -2722,6 +2722,14 @@
       "question": {
         "type": "string"
       },
+      "querySyntax": {
+        "type": "string",
+        "enum": [
+          "natural_language",
+          "regex"
+        ],
+        "optional": true
+      },
           "intent": {
             "enum": [
           "resolve",

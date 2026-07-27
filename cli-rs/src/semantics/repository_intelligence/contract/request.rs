@@ -276,6 +276,8 @@ struct RepositoryQueryParams {
     #[serde(default, rename = "workspaceRoot")]
     _workspace_root: Option<String>,
     question: String,
+    #[serde(default)]
+    query_syntax: RepositoryQuerySyntax,
     intent: RepositoryIntent,
     #[serde(default)]
     canonical_key: Option<String>,
@@ -289,7 +291,7 @@ struct RepositoryQueryParams {
 }
 
 struct ValidatedRepositoryQueryParams {
-    question: String,
+    question: RepositoryDiscoveryQuery,
     intent: RepositoryIntent,
     canonical_key: Option<String>,
     scope: RepositoryScope,
@@ -302,11 +304,6 @@ impl RepositoryQueryParams {
     fn validated(self) -> Result<ValidatedRepositoryQueryParams> {
         validate_scope(&self.scope)?;
         validate_limits(&self.limits)?;
-        if self.question.trim().is_empty() {
-            return Err(invalid_repository_query(
-                "repository question must not be blank",
-            ));
-        }
         if self
             .scope
             .max_depth
@@ -320,6 +317,18 @@ impl RepositoryQueryParams {
         if self.canonical_key.is_some() && self.intent != RepositoryIntent::Resolve {
             return Err(invalid_repository_query(
                 "canonicalKey/--canonical-key is valid only with intent=resolve",
+            ));
+        }
+        if self.query_syntax == RepositoryQuerySyntax::Regex
+            && self.intent != RepositoryIntent::Resolve
+        {
+            return Err(invalid_repository_query(
+                "querySyntax=regex/--query-syntax regex is valid only with intent=resolve",
+            ));
+        }
+        if self.query_syntax == RepositoryQuerySyntax::Regex && self.canonical_key.is_some() {
+            return Err(invalid_repository_query(
+                "querySyntax=regex/--query-syntax regex cannot be combined with canonicalKey/--canonical-key",
             ));
         }
         if (!self.scope.relations.is_empty() || self.scope.max_depth.is_some()) && !graph_intent {
@@ -369,8 +378,9 @@ impl RepositoryQueryParams {
                 "Repository evidence continuation requires a graph relationship query.",
             ));
         }
+        let question = RepositoryDiscoveryQuery::parse(self.question, self.query_syntax)?;
         Ok(ValidatedRepositoryQueryParams {
-            question: self.question,
+            question,
             intent: self.intent,
             canonical_key: self.canonical_key,
             scope: self.scope,

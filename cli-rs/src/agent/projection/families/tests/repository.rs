@@ -107,6 +107,36 @@
         assert!(!invalid.ok, "untruncated result accepted continuations");
     }
 
+    #[test]
+    fn repository_projection_rejects_missing_query_syntax() {
+        for query_syntax in ["NATURAL_LANGUAGE", "REGEX"] {
+            let mut result = repository_result("resolve", "EMPTY");
+            result["queryPlan"]["querySyntax"] = json!(query_syntax);
+            let projected = project_repository_envelope(
+                result_envelope("repository/query".to_string(), result),
+                AgentResultView::Compact,
+            );
+
+            assert!(projected.ok, "{query_syntax} evidence was rejected");
+            assert_eq!(
+                projected.result.expect("projection")["querySyntax"],
+                query_syntax
+            );
+        }
+
+        let mut missing = repository_result("resolve", "EMPTY");
+        missing["queryPlan"]
+            .as_object_mut()
+            .expect("query plan")
+            .remove("querySyntax");
+        let projected = project_repository_envelope(
+            result_envelope("repository/query".to_string(), missing),
+            AgentResultView::Compact,
+        );
+
+        assert!(!projected.ok, "missing query syntax evidence was accepted");
+    }
+
     fn repository_result(intent: &str, status: &str) -> Value {
         let complete = status != "QUALIFIED_EMPTY";
         json!({
@@ -115,7 +145,7 @@
             "status": status,
             "question": "repository question",
             "intent": intent,
-            "queryPlan": {},
+            "queryPlan": {"querySyntax": "NATURAL_LANGUAGE"},
             "workspaceIdentity": {"canonicalRoot": "/workspace"},
             "generation": 1,
             "inventoryGeneration": 1,

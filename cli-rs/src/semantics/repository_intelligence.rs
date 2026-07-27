@@ -33,6 +33,7 @@ const REPOSITORY_CONTINUATION_SCHEMA_VERSION: u32 = 2;
 const REPOSITORY_TRAVERSAL_CONTINUATION_VERSION: &str = "krit2";
 const REPOSITORY_TRAVERSAL_CONTINUATION_SCHEMA_VERSION: u32 = 2;
 
+include!("repository_intelligence/contract/query_syntax.rs");
 include!("repository_intelligence/contract/request.rs");
 include!("repository_intelligence/contract/result.rs");
 include!("repository_intelligence/coverage/model.rs");
@@ -43,6 +44,7 @@ include!("repository_intelligence/query/execution.rs");
 include!("repository_intelligence/render/markdown.rs");
 include!("repository_intelligence/coverage/read.rs");
 include!("repository_intelligence/coverage/scope.rs");
+include!("repository_intelligence/discovery/regex.rs");
 include!("repository_intelligence/discovery/resolve.rs");
 include!("repository_intelligence/context/query.rs");
 include!("repository_intelligence/context/targets.rs");

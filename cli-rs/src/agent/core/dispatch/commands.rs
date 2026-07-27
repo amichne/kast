@@ -140,6 +140,7 @@ fn execute_agent_repository(args: AgentRepositoryArgs) -> AgentEnvelope {
     }));
     let params = drop_nulls(json!({
         "question": args.question,
+        "querySyntax": args.query_syntax,
         "intent": args.intent,
         "canonicalKey": args.canonical_key,
         "scope": scope,

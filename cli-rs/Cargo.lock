@@ -1112,6 +1112,7 @@ dependencies = [
  "jsonschema",
  "libc",
  "ratatui",
+ "regex",
  "rusqlite",
  "serde",
  "serde_json",

@@ -61,7 +61,7 @@ fn repository_query_at_snapshot(
             };
             graph_repository_question(
                 connection,
-                &params.question,
+                params.question.as_str(),
                 params.intent,
                 &execution,
                 &continuation_context,
@@ -79,7 +79,7 @@ fn repository_query_at_snapshot(
         RepositoryIntent::ContextRelationship => context_repository_question(
             workspace_root,
             connection,
-            &params.question,
+            params.question.as_str(),
             &params.scope,
             &execution_scope,
             &params.limits,
@@ -109,12 +109,17 @@ fn repository_query_at_snapshot(
         "type": "KAST_REPOSITORY_QUERY_RESULT",
         "canonicalResultModel": true,
         "status": status,
-        "question": params.question,
+        "question": params.question.as_str(),
         "intent": params.intent,
         "queryPlan": {
             "intent": params.intent.canonical(),
-            "discovery": if params.canonical_key.is_some() { "EXACT_KEY" } else { "LEXICAL" },
-            "candidateLookup": "deterministic compiler-symbol ranking",
+            "querySyntax": params.question.syntax_canonical(),
+            "discovery": if params.canonical_key.is_some() {
+                "EXACT_KEY"
+            } else {
+                params.question.discovery_canonical()
+            },
+            "candidateLookup": params.question.candidate_lookup(),
             "execution": "generation-pinned source-index",
             "projection": params.scope.projection,
             "metric": params.scope.metric,

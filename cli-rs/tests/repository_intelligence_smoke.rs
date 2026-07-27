@@ -9,6 +9,7 @@ include!("repository_intelligence_smoke/fixtures/core.rs");
 include!("repository_intelligence_smoke/fixtures/graph.rs");
 include!("repository_intelligence_smoke/discovery/paraphrases.rs");
 include!("repository_intelligence_smoke/discovery/ownership.rs");
+include!("repository_intelligence_smoke/discovery/regex.rs");
 include!("repository_intelligence_smoke/architecture/limits.rs");
 include!("repository_intelligence_smoke/traversal/scope.rs");
 include!("repository_intelligence_smoke/traversal/cardinality.rs");

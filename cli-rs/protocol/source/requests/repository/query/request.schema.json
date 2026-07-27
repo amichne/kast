@@ -70,6 +70,13 @@
           ],
           "type": "object"
         },
+        "querySyntax": {
+          "enum": [
+            "natural_language",
+            "regex"
+          ],
+          "type": "string"
+        },
         "question": {
           "type": "string"
         },

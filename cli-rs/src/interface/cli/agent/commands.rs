@@ -197,9 +197,12 @@ pub struct AgentRepositoryArgs {
     /// Absolute workspace root for the persisted repository index.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
-    /// Natural-language repository question.
+    /// Repository question or regex pattern selected by --query-syntax.
     #[arg(long, value_parser = parse_non_blank_repository_value)]
     pub question: String,
+    /// Interpret --question as natural language or a Rust regex.
+    #[arg(long, value_enum, default_value_t = AgentRepositoryQuerySyntax::NaturalLanguage)]
+    pub query_syntax: AgentRepositoryQuerySyntax,
     /// Bounded repository operation selected for this question.
     #[arg(long, value_enum)]
     pub intent: AgentRepositoryIntent,
@@ -293,6 +296,14 @@ pub enum AgentRepositoryIntent {
     OutgoingImpact,
     Architecture,
     ContextRelationship,
+}
+
+#[derive(Debug, Clone, Copy, Default, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentRepositoryQuerySyntax {
+    #[default]
+    NaturalLanguage,
+    Regex,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]

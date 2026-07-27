@@ -1,6 +1,6 @@
 fn resolve_repository_question(
     connection: &Connection,
-    question: &str,
+    question: &RepositoryDiscoveryQuery,
     execution_scope: &RepositoryExecutionScope,
     limit: usize,
     canonical_key: Option<&str>,
@@ -25,16 +25,28 @@ fn resolve_repository_question(
             })
             .collect()
     } else {
-        rank_repository_candidates(connection, question, execution_scope)?
+        match question {
+            RepositoryDiscoveryQuery::NaturalLanguage(question) => {
+                rank_repository_candidates(connection, question, execution_scope)?
+            }
+            RepositoryDiscoveryQuery::Regex { source, compiled } => {
+                rank_repository_regex_candidates(connection, source, compiled, execution_scope)?
+            }
+        }
     };
     let tied = candidates
         .first()
         .zip(candidates.get(1))
         .is_some_and(|(first, second)| first.match_score == second.match_score);
-    let explicit_nonselection = question
-        .to_ascii_lowercase()
-        .contains("without choosing between");
-    let bare_name_ambiguity = bare_resolution_name(question).is_some() && candidates.len() > 1;
+    let explicit_nonselection = question.natural_language().is_some_and(|question| {
+        question
+            .to_ascii_lowercase()
+            .contains("without choosing between")
+    });
+    let bare_name_ambiguity = question
+        .natural_language()
+        .is_some_and(|question| bare_resolution_name(question).is_some())
+        && candidates.len() > 1;
     let outcome = match candidates.first() {
         None => RepositoryResolutionOutcome::Empty,
         Some(_)
@@ -85,89 +97,10 @@ fn rank_repository_candidates(
     question: &str,
     execution_scope: &RepositoryExecutionScope,
 ) -> Result<Vec<RepositoryCandidate>> {
-    if !semantic_graph_tables_exist(connection)? {
-        return Ok(Vec::new());
-    }
-    let neighbors = load_discovery_neighbor_tokens(connection)?;
-    let nodes = execution_scope.admit_nodes(load_repository_node(connection, "1 = ?1", 1i64)?);
-    let returned_by = returning_callable_index(&nodes);
+    let (nodes, documents) =
+        repository_discovery_documents(connection, execution_scope, Some(question))?;
     let query_terms = discovery_query_terms(question);
     let discovery_intent = crate::symbol_query::SymbolDiscoveryIntent::parse(question);
-    let compact_question = compact_search_text(question);
-    let documents = nodes
-        .iter()
-        .map(|node| SymbolDiscoveryDocument {
-            identity: node.canonical_key.clone(),
-            simple_name: node.name.clone(),
-            sort_key: node.canonical_key.clone(),
-            fields: vec![
-                SymbolDiscoveryField {
-                    name: "name",
-                    value: node.name.clone(),
-                },
-                SymbolDiscoveryField {
-                    name: "exactMember",
-                    value: node
-                        .owner_name
-                        .as_ref()
-                        .map(|owner| format!("{owner}.{}", node.name))
-                        .filter(|member| {
-                            compact_question.contains(&compact_search_text(member))
-                        })
-                        .unwrap_or_default(),
-                },
-                SymbolDiscoveryField {
-                    name: "qualifiedName",
-                    value: [
-                        node.owner_name.as_deref().unwrap_or_default(),
-                        node.fq_name.as_deref().unwrap_or_default(),
-                    ]
-                    .join(" "),
-                },
-                SymbolDiscoveryField {
-                    name: "signature",
-                    value: node.signature.clone().unwrap_or_default(),
-                },
-                SymbolDiscoveryField {
-                    name: "parameterTypes",
-                    value: node.parameter_types.join(" "),
-                },
-                SymbolDiscoveryField {
-                    name: "receiverType",
-                    value: node.receiver_type.clone().unwrap_or_default(),
-                },
-                SymbolDiscoveryField {
-                    name: "returnType",
-                    value: node.return_type.clone().unwrap_or_default(),
-                },
-                SymbolDiscoveryField {
-                    name: "returningCallables",
-                    value: returning_callables(&returned_by, node),
-                },
-                SymbolDiscoveryField {
-                    name: "annotations",
-                    value: node.annotations.join(" "),
-                },
-                SymbolDiscoveryField {
-                    name: "scope",
-                    value: format!(
-                        "{} {} {}",
-                        node.path,
-                        node.gradle_projects.join(" "),
-                        node.source_sets.join(" ")
-                    ),
-                },
-                SymbolDiscoveryField {
-                    name: "declarationKind",
-                    value: node.kind.clone(),
-                },
-            ],
-            graph_terms: neighbors
-                .get(&node.database_id)
-                .cloned()
-                .unwrap_or_default(),
-        })
-        .collect();
     let preferred_names = explicit_repository_names(question);
     let ranked = rank_symbol_discovery(
         repository_resolution_name(question, discovery_intent).as_deref(),

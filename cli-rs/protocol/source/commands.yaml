@@ -944,6 +944,12 @@ commands:
           - results
           - evidence
           type: object
+        querySyntax:
+          enum:
+          - natural_language
+          - regex
+          optional: true
+          type: string
         question:
           type: string
         scope:
