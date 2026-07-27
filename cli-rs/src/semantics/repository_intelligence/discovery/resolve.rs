@@ -138,18 +138,21 @@ fn rank_repository_candidates(
 
 fn load_discovery_neighbor_tokens(
     connection: &Connection,
+    nodes: &[RepositoryNode],
 ) -> Result<BTreeMap<i64, BTreeSet<String>>> {
+    let admitted = nodes
+        .iter()
+        .map(|node| (node.database_id, node.name.as_str()))
+        .collect::<BTreeMap<_, _>>();
     let mut statement = connection
         .prepare(
-            "SELECT edge.source_id, target.name
+            "SELECT edge.source_id, edge.target_id
              FROM semantic_edge_occurrences edge
-             JOIN semantic_symbols target ON target.id = edge.target_id
              UNION ALL
-             SELECT edge.target_id, source.name
+             SELECT edge.target_id, edge.source_id
              FROM semantic_edge_occurrences edge
-             JOIN semantic_symbols source ON source.id = edge.source_id
              UNION ALL
-             SELECT child.owner_id, child.name
+             SELECT child.owner_id, child.id
              FROM semantic_symbols child
              WHERE child.owner_id IS NOT NULL
              ORDER BY 1, 2",
@@ -157,17 +160,20 @@ fn load_discovery_neighbor_tokens(
         .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
     let rows = statement
         .query_map([], |row| {
-            Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+            Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?))
         })
         .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
     let mut neighbors = BTreeMap::<i64, BTreeSet<String>>::new();
     for row in rows {
-        let (id, name) =
+        let (id, neighbor_id) =
             row.map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
+        let (Some(_), Some(name)) = (admitted.get(&id), admitted.get(&neighbor_id)) else {
+            continue;
+        };
         neighbors
             .entry(id)
             .or_default()
-            .extend(discovery_lexical_tokens(&name));
+            .extend(discovery_lexical_tokens(name));
     }
     Ok(neighbors)
 }

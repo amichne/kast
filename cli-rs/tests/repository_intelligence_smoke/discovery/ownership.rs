@@ -186,3 +186,70 @@ fn repository_nodes_preserve_build_qualified_ownership() {
         "{compact:#}"
     );
 }
+
+#[test]
+fn repository_discovery_ignores_unadmitted_neighbor_evidence() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    seed_repository_graph(&fixture);
+    seed_out_of_scope_repository_target(&fixture);
+    fixture
+        .connection()
+        .execute(
+            "UPDATE semantic_symbols
+             SET name = 'uniqueNeighborEvidence'
+             WHERE id = 10",
+            [],
+        )
+        .expect("unique out-of-scope neighbor name");
+
+    let resolve = |id: &str, scope: serde_json::Value| {
+        rpc(
+            &home,
+            &config_home,
+            &workspace,
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": id,
+                "method": "repository/query",
+                "params": {
+                    "question": "Find the declaration related to unique neighbor evidence.",
+                    "intent": "resolve",
+                    "scope": scope,
+                    "limits": {"depth": 1, "results": 10, "evidence": 2}
+                }
+            }),
+        )
+        .1
+    };
+
+    let out_of_scope = resolve(
+        "out-of-scope-neighbor",
+        serde_json::json!({
+            "language": "kotlin",
+            "module": "app",
+            "sourceSet": "main"
+        }),
+    );
+    assert_eq!(out_of_scope["result"]["status"], "EMPTY", "{out_of_scope:#}");
+    assert_eq!(
+        out_of_scope["result"]["candidates"],
+        serde_json::json!([]),
+        "{out_of_scope:#}"
+    );
+
+    std::fs::write(
+        workspace.join("other/src/test/kotlin/other/OutsideScope.kt"),
+        "package other\nfun changedAfterIndexing() = Unit\n",
+    )
+    .expect("stale neighbor source");
+    let stale = resolve(
+        "stale-neighbor",
+        serde_json::json!({"language": "kotlin"}),
+    );
+    assert_eq!(stale["result"]["status"], "QUALIFIED_EMPTY", "{stale:#}");
+    assert_eq!(
+        stale["result"]["candidates"],
+        serde_json::json!([]),
+        "{stale:#}"
+    );
+}

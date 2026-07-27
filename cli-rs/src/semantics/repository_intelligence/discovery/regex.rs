@@ -6,12 +6,12 @@ fn repository_discovery_documents(
     if !semantic_graph_tables_exist(connection)? {
         return Ok((Vec::new(), Vec::new()));
     }
+    let nodes = execution_scope.admit_nodes(load_repository_node(connection, "1 = ?1", 1i64)?);
     let neighbors = if natural_language_question.is_some() {
-        load_discovery_neighbor_tokens(connection)?
+        load_discovery_neighbor_tokens(connection, &nodes)?
     } else {
         BTreeMap::new()
     };
-    let nodes = execution_scope.admit_nodes(load_repository_node(connection, "1 = ?1", 1i64)?);
     let returned_by = returning_callable_index(&nodes);
     let compact_question = natural_language_question
         .map(compact_search_text)
