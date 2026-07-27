@@ -324,6 +324,7 @@ impl AgentRepositoryProjectionInput {
             coverage: self.coverage,
             bounds: self.bounds,
             cardinality,
+            selected_identity: self.selected_identity,
             identities,
             relationships: self
                 .edges

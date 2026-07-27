@@ -72,6 +72,7 @@ fn project_compact_repository(
             coverage: projection.coverage,
             bounds: projection.bounds,
             cardinality: projection.cardinality,
+            selected_identity: projection.selected_identity,
             identities: projection.identities,
             relationships: projection.relationships,
             paths: projection.paths,
@@ -102,6 +103,7 @@ fn project_selected_repository(
         generation: projection.generation,
         bounds: projection.bounds,
         cardinality: projection.cardinality,
+        selected_identity: projection.selected_identity.clone(),
         truncated: projection.truncated,
         qualification: projection.qualification,
     });
@@ -110,6 +112,7 @@ fn project_selected_repository(
         AgentRepositorySelectedResult {
             result_type: "KAST_AGENT_REPOSITORY_SELECTION",
             ok: true,
+            selected_identity: projection.selected_identity,
             summary,
             coverage: selected(AgentRepositoryField::Coverage).then_some(projection.coverage),
             identities: selected(AgentRepositoryField::Identities).then_some(projection.identities),
@@ -144,6 +147,7 @@ fn project_repository_count(
             coverage: projection.coverage,
             bounds: projection.bounds,
             cardinality: projection.cardinality,
+            selected_identity: projection.selected_identity,
             truncated: projection.truncated,
             schema_version: SCHEMA_VERSION,
         },

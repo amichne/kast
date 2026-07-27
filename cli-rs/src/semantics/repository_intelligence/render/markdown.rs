@@ -69,11 +69,20 @@ pub(crate) fn render_markdown_report(response: &Value) -> Option<String> {
             .and_then(Value::as_array)
             .is_none_or(Vec::is_empty)
     {
-        let status = result
-            .get("status")
-            .and_then(Value::as_str)
-            .unwrap_or("UNKNOWN");
-        writeln!(report, "- Canonical repository result: `{status}`").ok()?;
+        if let Some(selected) = result.get("selectedIdentity").and_then(Value::as_str) {
+            writeln!(
+                report,
+                "- Selected compiler identity: `{}`",
+                markdown_inline_code(selected)
+            )
+            .ok()?;
+        } else {
+            let status = result
+                .get("status")
+                .and_then(Value::as_str)
+                .unwrap_or("UNKNOWN");
+            writeln!(report, "- Canonical repository result: `{status}`").ok()?;
+        }
     }
 
     let mut references = BTreeSet::new();

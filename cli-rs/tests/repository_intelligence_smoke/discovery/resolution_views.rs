@@ -261,3 +261,85 @@ fn reverse_return_type_family_evidence_beats_lexical_type_name_overlap() {
         );
     }
 }
+
+#[test]
+fn repository_resolve_preserves_selected_identity_in_agent_and_human_views() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    seed_repository_graph(&fixture);
+    let question = "Find the function that builds a semantic graph snapshot.";
+    let request = serde_json::json!({
+        "jsonrpc": "2.0",
+        "id": "selected-identity",
+        "method": "repository/query",
+        "params": {
+            "question": question,
+            "intent": "resolve",
+            "scope": {"language": "kotlin"},
+            "limits": {"depth": 1, "results": 10, "evidence": 2}
+        }
+    });
+    let agent_json = |view: &[&str]| {
+        let output = kast(&home, &config_home)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "repository",
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+                "--question",
+                question,
+                "--intent",
+                "resolve",
+            ])
+            .args(view.iter().copied())
+            .output()
+            .expect("agent repository view");
+        assert!(
+            output.status.success(),
+            "stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        serde_json::from_slice::<serde_json::Value>(&output.stdout).expect("agent repository JSON")
+    };
+    let compact_output = kast(&home, &config_home)
+        .args([
+            "agent",
+            "repository",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--question",
+            question,
+            "--intent",
+            "resolve",
+        ])
+        .output()
+        .expect("compact agent repository");
+    let compact: serde_json::Value = toon_format::decode_default(
+        String::from_utf8_lossy(&compact_output.stdout).trim(),
+    )
+    .expect("compact repository TOON");
+    let selected = agent_json(&["--fields", "summary"]);
+    let count = agent_json(&["--count"]);
+    let human_output = rpc_output(&home, &config_home, &workspace, "human", &request);
+    let human = String::from_utf8_lossy(&human_output.stdout);
+
+    assert_eq!(
+        serde_json::json!({
+            "compact": compact["result"]["selectedIdentity"],
+            "selected": selected["result"]["selectedIdentity"],
+            "summary": selected["result"]["summary"]["selectedIdentity"],
+            "count": count["result"]["selectedIdentity"],
+            "human": human.contains("callable:buildSemanticGraphSnapshot")
+        }),
+        serde_json::json!({
+            "compact": "callable:buildSemanticGraphSnapshot",
+            "selected": "callable:buildSemanticGraphSnapshot",
+            "summary": "callable:buildSemanticGraphSnapshot",
+            "count": "callable:buildSemanticGraphSnapshot",
+            "human": true
+        }),
+        "compact={compact:#} selected={selected:#} count={count:#} human={human}"
+    );
+}

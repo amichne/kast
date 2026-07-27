@@ -8,6 +8,7 @@ struct AgentRepositoryProjection {
     coverage: AgentRepositoryCoverage,
     bounds: AgentRepositoryBounds,
     cardinality: AgentRepositoryCardinality,
+    selected_identity: Option<String>,
     identities: Vec<AgentRepositoryIdentity>,
     relationships: Vec<AgentRepositoryRelationship>,
     paths: Vec<AgentRepositoryPath>,
@@ -30,6 +31,8 @@ struct AgentRepositorySummary {
     generation: u64,
     bounds: AgentRepositoryBounds,
     cardinality: AgentRepositoryCardinality,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    selected_identity: Option<String>,
     truncated: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     qualification: Option<String>,
@@ -50,6 +53,8 @@ struct AgentRepositoryCompactResult {
     coverage: AgentRepositoryCoverage,
     bounds: AgentRepositoryBounds,
     cardinality: AgentRepositoryCardinality,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    selected_identity: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     identities: Vec<AgentRepositoryIdentity>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -89,6 +94,8 @@ struct AgentRepositorySelectedResult {
     result_type: &'static str,
     ok: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    selected_identity: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     summary: Option<AgentRepositorySummary>,
     #[serde(skip_serializing_if = "Option::is_none")]
     coverage: Option<AgentRepositoryCoverage>,
@@ -122,6 +129,8 @@ struct AgentRepositoryCountResult {
     coverage: AgentRepositoryCoverage,
     bounds: AgentRepositoryBounds,
     cardinality: AgentRepositoryCardinality,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    selected_identity: Option<String>,
     truncated: bool,
     schema_version: u32,
 }
