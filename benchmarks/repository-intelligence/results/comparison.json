@@ -13,7 +13,7 @@
       "questions": 6
     },
     "directional_path": {
-      "graphifyPoints": 14,
+      "graphifyPoints": 15,
       "kastPoints": 72,
       "maximumPoints": 84,
       "questions": 6
@@ -57,133 +57,91 @@
     "allQuestionsScored": true,
     "kastExactKotlinScoreStrictlyHigher": true,
     "kastHasZeroCriticalFailures": true,
-    "provenanceAdmitted": false,
+    "provenanceAdmitted": true,
     "scoreAdvantageObserved": true
   },
   "maximumPointsPerQuestion": 14,
   "performance": {
     "declaredQuestions": 42,
-    "eligible": false,
-    "reasons": [
-      "KAST_CAPTURE_SCHEMA_UNSUPPORTED",
-      "GRAPHIFY_CAPTURE_SCHEMA_UNSUPPORTED",
-      "KAST_PROVENANCE_RECEIPT_MISSING",
-      "GRAPHIFY_PROVENANCE_RECEIPT_MISSING",
-      "KAST_BUILD_RECEIPT_MISSING",
-      "GRAPHIFY_GRAPH_RECEIPT_MISSING"
-    ],
+    "eligible": true,
+    "reasons": [],
     "systems": {
       "graphify": {
         "capturedQuestions": 42,
         "completedQuestions": 42,
         "measuredQuestions": 42,
-        "medianLatencyMillis": 882.354,
-        "p95LatencyMillis": 938.844,
+        "medianLatencyMillis": 852.297,
+        "p95LatencyMillis": 899.887,
         "reportedQuestions": 42,
-        "totalLatencyMillis": 36555.997,
-        "totalResponseBytes": 159117
+        "totalLatencyMillis": 35293.734,
+        "totalResponseBytes": 158760
       },
       "kast": {
         "capturedQuestions": 42,
         "completedQuestions": 42,
         "measuredQuestions": 42,
-        "medianLatencyMillis": 640.018,
-        "p95LatencyMillis": 2753.086,
+        "medianLatencyMillis": 341.534,
+        "p95LatencyMillis": 973.18,
         "reportedQuestions": 42,
-        "totalLatencyMillis": 52429.955,
-        "totalResponseBytes": 2251102
+        "totalLatencyMillis": 15603.663,
+        "totalResponseBytes": 6367279
       }
     },
-    "winnerByTotalLatency": null
+    "winnerByTotalLatency": "kast"
   },
   "provenance": {
     "admission": {
-      "admitted": false,
+      "admitted": true,
       "benchmark": {
         "corpusCommit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
-        "manifestSha256": "58cdddc067b1ff7e10a52e2a23ef1c80a0d61b2d6d08a530f7adee9124392170",
-        "questionsSha256": "adf4777f6f710ee5c8d69502bfbfb334144fb3191ffdde35cd196ed2b784461e",
+        "manifestSha256": "eb510890e61dcb770f4a8a877671705521e71bb5cdcb03221355f40c8b9b9bfa",
+        "questionsSha256": "413e0253a6308ea3e1751636183f8d635eca3f837b6588b22873ad73813ca8b5",
         "rubricSha256": "655ec74077b12a9e8ea1b19f9f2eec06429dda5e7d8295f6aaf0ab805381cd36"
       },
       "captureDocuments": {
-        "graphifySha256": "d638dd3134bf616f2e1662b5820dc702a58ff21de3b7b09a8c6026a8aacbd09d",
-        "kastSha256": "112daa4137085079b39b5af9dbd4c28b2e982b91d0c9fc9083fd7c170369627e"
+        "graphifySha256": "8869ad0b7141b6248b95222d4af673c5c0d4166263102f36ce64292fde6a166d",
+        "kastSha256": "d82f9385394517a74a0681986eed6aedda3693b2fc6882c95371cd90002e5b95"
       },
-      "failures": [
-        {
-          "actual": 1,
-          "code": "KAST_CAPTURE_SCHEMA_UNSUPPORTED",
-          "expected": 3,
-          "field": "schemaVersion",
-          "system": "kast"
-        },
-        {
-          "actual": 1,
-          "code": "GRAPHIFY_CAPTURE_SCHEMA_UNSUPPORTED",
-          "expected": 3,
-          "field": "schemaVersion",
-          "system": "graphify"
-        },
-        {
-          "actual": null,
-          "code": "KAST_PROVENANCE_RECEIPT_MISSING",
-          "expected": 1,
-          "field": "provenance",
-          "system": "kast"
-        },
-        {
-          "actual": null,
-          "code": "GRAPHIFY_PROVENANCE_RECEIPT_MISSING",
-          "expected": 1,
-          "field": "provenance",
-          "system": "graphify"
-        },
-        {
-          "actual": null,
-          "code": "KAST_BUILD_RECEIPT_MISSING",
-          "expected": "KAST_BUILD",
-          "field": "provenance.artifact.kind",
-          "system": "kast"
-        },
-        {
-          "actual": null,
-          "code": "GRAPHIFY_GRAPH_RECEIPT_MISSING",
-          "expected": "GRAPHIFY_GRAPH",
-          "field": "provenance.artifact.kind",
-          "system": "graphify"
-        }
-      ]
+      "failures": [],
+      "graphify": {
+        "corpusCommit": "2c630d3d156574eb4548fd97df3bd61fe9deb1a6",
+        "environmentSha256": "08a73959eea87d81398dc9b763f39d1566cda327a6ccc12c030aa0c12740adf1",
+        "graphSha256": "9ba3af31f2b0419f34b12956f1d25cd77ca4a4946464208bd8287ad465b80efc"
+      },
+      "kast": {
+        "binarySha256": "1cf07ad4e7f82ad2a243e6c6a53fd9deea213b2325e6d0a1190632df81e3d581",
+        "corpusInputsSha256": "9a4c2b0f774928a63d42fd3747e52e07e8e87edbb588eccb5b5807db35d78c35",
+        "coverageSha256": "fbbacea3dfc2aca39e070d373019da11d03b0bc5e83b3a9c6073882db624dea7",
+        "graphGeneration": 1582,
+        "sourceCommit": "43da256313b19ba3d8f7d7a6f2d66bfa1bef7613",
+        "sourceIndexSha256": "f7dc2509581975b9bc69b2f66c3098861bea93308c4b3f80ad21c746e98d6590",
+        "sourceTreeSha256": "2d4d99948c6f542daad8e89ed52d0a9d28235a050968285ca2706c898e3298dc",
+        "workspaceRoot": "/Users/amichne/code/kast-repository-intelligence-corpus"
+      }
     },
     "graphify": {
       "directed": false,
       "edges": 26314,
-      "graphSha256": null,
+      "graphSha256": "9ba3af31f2b0419f34b12956f1d25cd77ca4a4946464208bd8287ad465b80efc",
       "nodes": 12936,
       "version": "graphify 0.9.22"
     },
     "hashes": {
-      "graphifyResultSha256": "d638dd3134bf616f2e1662b5820dc702a58ff21de3b7b09a8c6026a8aacbd09d",
-      "implementationIdentitySha256": "d9435fc2738a4104e1bc30ae0481f16632a73a96f2c24bb9f9dfe08626f43482",
-      "kastBinaryRecordedIdentitySha256": "ceb944edaf8b7b43904e37bff4ed5f77017e602f7589014640fe1c5979973028",
-      "kastResultSha256": "112daa4137085079b39b5af9dbd4c28b2e982b91d0c9fc9083fd7c170369627e",
-      "manifestSha256": "58cdddc067b1ff7e10a52e2a23ef1c80a0d61b2d6d08a530f7adee9124392170",
-      "questionsSha256": "adf4777f6f710ee5c8d69502bfbfb334144fb3191ffdde35cd196ed2b784461e",
+      "graphifyResultSha256": "8869ad0b7141b6248b95222d4af673c5c0d4166263102f36ce64292fde6a166d",
+      "implementationIdentitySha256": "35b9b19e19553e92259919d5bd8e8b27af1dcfec436fa97b864a805f73e925c5",
+      "kastBinaryRecordedIdentitySha256": "0cd0f8768553e3dae876e0ae84435af8600060efadc1b0095f8c7fc19fbae11a",
+      "kastResultSha256": "d82f9385394517a74a0681986eed6aedda3693b2fc6882c95371cd90002e5b95",
+      "manifestSha256": "eb510890e61dcb770f4a8a877671705521e71bb5cdcb03221355f40c8b9b9bfa",
+      "questionsSha256": "413e0253a6308ea3e1751636183f8d635eca3f837b6588b22873ad73813ca8b5",
       "rubricSha256": "655ec74077b12a9e8ea1b19f9f2eec06429dda5e7d8295f6aaf0ab805381cd36"
     },
     "kast": {
-      "binaryEvidence": "RECORDED_PATH_ONLY",
-      "binaryRecordedPath": "/Users/amichne/code/kast-repository-intelligence/cli-rs/target/debug/kast",
-      "binarySha256": null,
-      "implementationCommit": "5ac947c059f25465721a721e447c38246c6006ac"
+      "binaryEvidence": "HASHED_BYTES",
+      "binaryRecordedPath": "/private/var/folders/zj/xhhqh2nd6qxc_m2tgcl_scw00000gn/T/kast-benchmark-build-_fjdsvkm/target/release/kast",
+      "binarySha256": "1cf07ad4e7f82ad2a243e6c6a53fd9deea213b2325e6d0a1190632df81e3d581",
+      "implementationCommit": "43da256313b19ba3d8f7d7a6f2d66bfa1bef7613"
     },
-    "limitations": [
-      "KAST_CAPTURE_SCHEMA_UNSUPPORTED",
-      "GRAPHIFY_CAPTURE_SCHEMA_UNSUPPORTED",
-      "KAST_PROVENANCE_RECEIPT_MISSING",
-      "GRAPHIFY_PROVENANCE_RECEIPT_MISSING",
-      "KAST_BUILD_RECEIPT_MISSING",
-      "GRAPHIFY_GRAPH_RECEIPT_MISSING"
-    ]
+    "limitations": []
   },
   "questions": [
     {
@@ -1370,8 +1328,8 @@
               "evidence": [
                 "graphifyOutput"
               ],
-              "reason": "GRAPHIFY_EVIDENCE_MISSING",
-              "score": 0
+              "reason": "GRAPHIFY_LOCATED_MATERIAL",
+              "score": 1
             },
             "identityPrecision": {
               "evidence": [
@@ -1396,7 +1354,7 @@
               "score": 1
             }
           },
-          "points": 1
+          "points": 2
         },
         "kast": {
           "criticalFailure": false,
@@ -5270,13 +5228,13 @@
       "category": "negative_ambiguity",
       "critical": true,
       "evidenceSources": {
-        "assertions": "questions[id=negative-05-incomplete-qualified-empty].assertions",
+        "assertions": "questions[id=negative-05-test-fixtures-empty].assertions",
         "graphifyMetadata": "results/graphify-final.json#graphify",
-        "graphifyOutput": "results/graphify-final.json#results[id=negative-05-incomplete-qualified-empty].stdout",
-        "kastResult": "results/final.json#results[id=negative-05-incomplete-qualified-empty].response.result"
+        "graphifyOutput": "results/graphify-final.json#results[id=negative-05-test-fixtures-empty].stdout",
+        "kastResult": "results/final.json#results[id=negative-05-test-fixtures-empty].response.result"
       },
-      "expectedDisposition": "QUALIFIED_EMPTY",
-      "id": "negative-05-incomplete-qualified-empty",
+      "expectedDisposition": "EMPTY",
+      "id": "negative-05-test-fixtures-empty",
       "systems": {
         "graphify": {
           "criticalFailure": true,
@@ -5552,12 +5510,12 @@
     "TYPED_RELATION_PROVEN": "All requested relations are represented by typed direction, kind, or projection facts."
   },
   "schemaVersion": 3,
-  "status": "score advantage observed; capture provenance is not admitted",
+  "status": "surpasses Graphify on the frozen benchmark",
   "systems": {
     "graphify": {
-      "exactKotlinPoints": 43,
+      "exactKotlinPoints": 44,
       "overallMaximumPoints": 588,
-      "overallPoints": 85
+      "overallPoints": 86
     },
     "kast": {
       "criticalFailures": [],
@@ -5566,5 +5524,5 @@
       "overallPoints": 519
     }
   },
-  "verdict": "SUPERIORITY_NOT_ESTABLISHED"
+  "verdict": "SUPERIORITY_PROVEN"
 }

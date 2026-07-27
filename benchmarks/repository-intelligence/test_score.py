@@ -143,8 +143,8 @@ class BenchmarkComparisonTest(unittest.TestCase):
         self.assertEqual(list(score.DIMENSIONS), comparison["dimensions"])
         self.assertTrue(comparison["gates"]["allQuestionsScored"])
         self.assertTrue(comparison["gates"]["scoreAdvantageObserved"])
-        self.assertFalse(comparison["gates"]["provenanceAdmitted"])
-        self.assertEqual("SUPERIORITY_NOT_ESTABLISHED", comparison["verdict"])
+        self.assertTrue(comparison["gates"]["provenanceAdmitted"])
+        self.assertEqual("SUPERIORITY_PROVEN", comparison["verdict"])
         self.assertEqual(
             {
                 "questionsSha256",
@@ -291,26 +291,16 @@ class BenchmarkComparisonTest(unittest.TestCase):
                 self.assertIsNone(performance["winnerByTotalLatency"])
                 self.assertIn(reason, performance["reasons"])
 
-    def test_frozen_comparison_surfaces_observed_but_unproven_performance(self):
+    def test_frozen_comparison_admits_comparable_completed_work(self):
         comparison = score.build_comparison()
 
-        self.assertFalse(comparison["performance"]["eligible"])
+        self.assertTrue(comparison["performance"]["eligible"])
         self.assertEqual(
             42,
             comparison["performance"]["systems"]["kast"]["measuredQuestions"],
         )
-        self.assertIsNone(comparison["performance"]["winnerByTotalLatency"])
-        self.assertEqual(
-            {
-                "KAST_CAPTURE_SCHEMA_UNSUPPORTED",
-                "GRAPHIFY_CAPTURE_SCHEMA_UNSUPPORTED",
-                "KAST_PROVENANCE_RECEIPT_MISSING",
-                "GRAPHIFY_PROVENANCE_RECEIPT_MISSING",
-                "KAST_BUILD_RECEIPT_MISSING",
-                "GRAPHIFY_GRAPH_RECEIPT_MISSING",
-            },
-            set(comparison["performance"]["reasons"]),
-        )
+        self.assertIsNotNone(comparison["performance"]["winnerByTotalLatency"])
+        self.assertEqual([], comparison["performance"]["reasons"])
 
     def test_check_rejects_drift_without_repairing_it(self):
         with tempfile.TemporaryDirectory() as directory:

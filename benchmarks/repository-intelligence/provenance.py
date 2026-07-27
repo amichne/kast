@@ -579,6 +579,7 @@ def _valid_kast_build_command(command, binary_path) -> bool:
         not isinstance(command, list)
         or len(command) != 10
         or not isinstance(binary_path, str)
+        or not Path(binary_path).is_absolute()
     ):
         return False
     cargo, action, manifest_flag, manifest, *arguments = command
@@ -594,7 +595,9 @@ def _valid_kast_build_command(command, binary_path) -> bool:
     ):
         return False
     executable = "kast.exe" if os.name == "nt" else "kast"
-    return Path(binary_path) == Path(arguments[5]) / "release" / executable
+    return Path(binary_path).resolve() == (
+        Path(arguments[5]) / "release" / executable
+    ).resolve()
 
 
 def _kast_execution(document):

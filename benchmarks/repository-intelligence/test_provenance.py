@@ -361,6 +361,47 @@ class BenchmarkProvenanceTest(unittest.TestCase):
         self.assertIsInstance(admission, provenance.AdmittedProvenance)
         self.assertTrue(performance["eligible"])
 
+    @unittest.skipIf(os.name == "nt", "directory symlinks require extra privileges")
+    def test_kast_build_command_accepts_canonical_target_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            real = root / "real"
+            real.mkdir()
+            alias = root / "alias"
+            alias.symlink_to(real, target_is_directory=True)
+            target = alias / "target"
+            executable = "kast.exe" if os.name == "nt" else "kast"
+            binary = real / "target" / "release" / executable
+            command = [
+                "/usr/bin/cargo",
+                "build",
+                "--manifest-path",
+                "/checkout/cli-rs/Cargo.toml",
+                "--locked",
+                "--release",
+                "--bin",
+                "kast",
+                "--target-dir",
+                str(target),
+            ]
+
+            self.assertTrue(
+                provenance._valid_kast_build_command(command, str(binary))
+            )
+            self.assertFalse(
+                provenance._valid_kast_build_command(
+                    command,
+                    str(real / "other" / "release" / executable),
+                )
+            )
+            relative_command = [*command[:-1], str(Path.cwd() / "relative-target")]
+            self.assertFalse(
+                provenance._valid_kast_build_command(
+                    relative_command,
+                    str(Path("relative-target") / "release" / executable),
+                )
+            )
+
     def test_benchmark_and_graph_receipt_drift_are_rejected(self):
         cases = []
         identity, manifest, kast, graphify = admissible_documents()
