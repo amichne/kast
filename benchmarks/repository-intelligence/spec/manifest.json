@@ -86,8 +86,8 @@
       "configuration": "macOS IntelliJ IDEA backend; branch-built CLI; native source-index graph",
       "capture": {
         "schemaVersion": 1,
-        "sourceTreeSha256": "2d4d99948c6f542daad8e89ed52d0a9d28235a050968285ca2706c898e3298dc",
-        "binarySha256": "1cf07ad4e7f82ad2a243e6c6a53fd9deea213b2325e6d0a1190632df81e3d581",
+        "sourceTreeSha256": "ded7b0a573d39c27f0d40c5c9b019e7317545aa03937878644d582425be1761e",
+        "binarySha256": "2ef1cbb57212181182ca4edcd9fe3b18cad908f3e4367f53bce660356b85c1b9",
         "sourceIndexPath": "/Users/amichne/.local/share/kast/state/data/workspaces/git/github.com/amichne/kast/worktrees/kast-repository-intelligence-corpus--8add60ac3132/cache/source-index.db",
         "sourceIndexSha256": "f7dc2509581975b9bc69b2f66c3098861bea93308c4b3f80ad21c746e98d6590",
         "cargo": {
