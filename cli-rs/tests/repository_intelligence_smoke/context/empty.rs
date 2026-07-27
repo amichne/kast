@@ -88,6 +88,50 @@ fn repository_context_empty_preserves_unresolved_references() {
 }
 
 #[test]
+fn repository_context_result_limit_bounds_every_record_family() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    seed_repository_graph(&fixture);
+    std::fs::create_dir_all(workspace.join("docs")).expect("context fixture directory");
+    std::fs::write(
+        workspace.join("docs/context.md"),
+        "# Context\n\nsemanticGraphOperation and MissingContextSymbol.\n",
+    )
+    .expect("context fixture document");
+
+    let (status, response) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "aggregate-context-bound",
+            "method": "repository/query",
+            "params": {
+                "question": "Resolve semanticGraphOperation and MissingContextSymbol context.",
+                "intent": "context_relationship",
+                "scope": {"language": "kotlin", "sources": ["markdown"]},
+                "limits": {"depth": 1, "results": 1, "evidence": 1}
+            }
+        }),
+    );
+
+    assert!(status.success(), "{response:#}");
+    let result = &response["result"];
+    let aggregate_records = [
+        "contextRelations",
+        "contextFindings",
+        "unresolvedReferences",
+        "ambiguousReferences",
+    ]
+    .into_iter()
+    .map(|field| result[field].as_array().expect(field).len())
+    .sum::<usize>();
+    assert_eq!(aggregate_records, 1, "{response:#}");
+    assert_eq!(result["contextRelations"].as_array().map(Vec::len), Some(1));
+    assert_eq!(result["truncated"], true, "{response:#}");
+}
+
+#[test]
 fn repository_context_qualifies_empty_at_inferred_target_ceiling() {
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
     seed_repository_graph(&fixture);

@@ -25,8 +25,10 @@ require_not_contains() {
 expected_pages=(
   "explanation/architecture.md"
   "explanation/compiler-evidence.md"
+  "explanation/repository-intelligence.md"
   "how-to/explore-kotlin-code.md"
   "how-to/install-or-update.md"
+  "how-to/maintain-repository-intelligence.md"
   "how-to/plan-safe-edits.md"
   "how-to/troubleshoot.md"
   "index.md"
@@ -64,6 +66,10 @@ require_contains "${docs_root}/reference/cli.md" '`toon`'
 require_contains "${docs_root}/reference/codex-plugin.md" 'tracks its `main` branch independently'
 require_contains "${docs_root}/explanation/architecture.md" "exact workspace"
 require_contains "${docs_root}/explanation/compiler-evidence.md" "scope fingerprint"
+require_contains "${docs_root}/explanation/repository-intelligence.md" "Incomplete positive answers fail closed"
+require_contains "${docs_root}/explanation/repository-intelligence.md" "Precomputed labels are retrieval-only"
+require_contains "${docs_root}/how-to/maintain-repository-intelligence.md" "Recover compiler graph evidence"
+require_contains "${docs_root}/how-to/maintain-repository-intelligence.md" "exact source identity"
 require_contains "${docs_root}/how-to/troubleshoot.md" 'Do not edit `current`'
 
 require_not_contains "$docs_root" "codex plugin marketplace add"

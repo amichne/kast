@@ -1,6 +1,7 @@
 #[test]
 fn repository_negative_answers_follow_coverage_state() {
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    seed_repository_graph(&fixture);
     let request = |scope: serde_json::Value| {
         serde_json::json!({
             "jsonrpc": "2.0",
@@ -102,8 +103,43 @@ fn repository_negative_answers_follow_coverage_state() {
     );
 }
 
+mod coverage {
+    mod negative {
+        use super::super::*;
+
+        #[test]
+        fn repository_missing_semantic_tables_rejects_instead_of_empty() {
+            let (_temp, home, config_home, workspace, _fixture) = coverage_fixture();
+            let (status, response) = rpc(
+                &home,
+                &config_home,
+                &workspace,
+                serde_json::json!({
+                    "jsonrpc": "2.0",
+                    "id": "missing-semantic-tables",
+                    "method": "repository/query",
+                    "params": {
+                        "question": "Does DefinitelyMissing exist?",
+                        "intent": "resolve",
+                        "scope": {"language": "kotlin"},
+                        "limits": {"depth": 1, "results": 10, "evidence": 2}
+                    }
+                }),
+            );
+
+            assert!(!status.success(), "{response:#}");
+            assert_eq!(response["code"], "REPOSITORY_INDEX_INVALID", "{response:#}");
+            assert_eq!(
+                response["details"]["remedy"],
+                "Run `kast developer runtime up --workspace-root \"$PWD\" --backend idea --accept-indexing`, then rebuild compiler graph evidence with `kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path <path-to-kotlin-file>`.",
+                "{response:#}"
+            );
+        }
+    }
+}
+
 #[test]
-fn repository_partial_coverage_qualifies_positive_answers_truthfully() {
+fn repository_incomplete_coverage_rejects_positive_answer() {
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(2);
     seed_repository_graph(&fixture);
     std::fs::write(
@@ -130,23 +166,26 @@ fn repository_partial_coverage_qualifies_positive_answers_truthfully() {
         }),
     );
 
-    assert!(status.success(), "{response:#}");
-    assert_eq!(response["result"]["status"], "ANSWERED", "{response:#}");
-    assert_eq!(response["result"]["coverage"]["stale"], 1, "{response:#}");
-    let qualification = response["result"]["qualification"]
-        .as_str()
-        .expect("incomplete coverage qualification");
-    assert!(
-        !qualification.contains("No matching declaration"),
+    assert!(!status.success(), "{response:#}");
+    assert_eq!(
+        response["code"], "REPOSITORY_COVERAGE_INCOMPLETE",
         "{response:#}"
     );
-    assert!(
-        qualification.contains("coverage is incomplete"),
+    assert_eq!(
+        response["details"]["coverageLimitations"],
+        "SEMANTIC_GRAPH_FILES_STALE",
+        "{response:#}"
+    );
+    assert_eq!(
+        response["details"]["remedy"],
+        "Run `kast developer runtime up --workspace-root \"$PWD\" --backend idea --accept-indexing`; wait until `kast ready --for kotlin` succeeds; refresh each stale or missing Kotlin file with `kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path <path-to-kotlin-file>`; then retry the repository query.",
         "{response:#}"
     );
 
     let agent_output = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "agent",
             "repository",
             "--workspace-root",
@@ -157,79 +196,19 @@ fn repository_partial_coverage_qualifies_positive_answers_truthfully() {
             "resolve",
             "--canonical-key",
             "callable:semanticGraphOperation",
-            "--language",
-            "kotlin",
-            "--results",
-            "10",
-            "--evidence",
-            "2",
         ])
         .output()
-        .expect("partial-coverage agent projection");
+        .expect("incomplete-coverage agent result");
     assert!(
-        agent_output.status.success(),
+        !agent_output.status.success(),
         "stdout={} stderr={}",
         String::from_utf8_lossy(&agent_output.stdout),
         String::from_utf8_lossy(&agent_output.stderr)
     );
-    let agent_raw = String::from_utf8(agent_output.stdout).expect("partial-coverage agent UTF-8");
-    let agent: serde_json::Value =
-        toon_format::decode_default(agent_raw.trim()).expect("partial-coverage agent TOON");
+    let agent_error: serde_json::Value =
+        serde_json::from_slice(&agent_output.stdout).expect("agent error JSON");
     assert_eq!(
-        serde_json::json!({
-            "coverageComplete": agent["result"]["coverage"]["complete"],
-            "truncated": agent["result"]["truncated"],
-            "completeness": agent["result"]["cardinality"]["identities"]["completeness"]
-        }),
-        serde_json::json!({
-            "coverageComplete": false,
-            "truncated": false,
-            "completeness": "LOWER_BOUND"
-        }),
-        "{agent:#}"
+        agent_error["error"]["code"], "REPOSITORY_COVERAGE_INCOMPLETE",
+        "{agent_error:#}"
     );
-}
-
-#[test]
-fn repository_human_partial_result_preserves_certainty() {
-    let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(2);
-    seed_repository_graph(&fixture);
-    std::fs::write(
-        workspace.join("src/main/kotlin/sample/Source0001.kt"),
-        "package sample\nclass ChangedAfterIndexing\n",
-    )
-    .expect("stale unrelated source");
-    let request = serde_json::json!({
-        "jsonrpc": "2.0",
-        "id": "human-partial-positive",
-        "method": "repository/query",
-        "params": {
-            "question": "Resolve semanticGraphOperation.",
-            "intent": "resolve",
-            "canonicalKey": "callable:semanticGraphOperation",
-            "scope": {"language": "kotlin"},
-            "limits": {"depth": 1, "results": 10, "evidence": 2}
-        }
-    });
-
-    let output = rpc_output(&home, &config_home, &workspace, "human", &request);
-    assert!(
-        output.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    let human = String::from_utf8(output.stdout).expect("human repository output");
-    for expected in [
-        "- Coverage complete: false",
-        "- Coverage total: 2",
-        "- Coverage indexed: 1",
-        "- Coverage stale: 1",
-        "- Truncated: false",
-        "- Traversal continuation available: false",
-        "- Evidence continuation available: false",
-        "This result is limited to the indexed portion of this scope because coverage is incomplete.",
-    ] {
-        assert!(human.contains(expected), "missing {expected:?}\n{human}");
-    }
 }

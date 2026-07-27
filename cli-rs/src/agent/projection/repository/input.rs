@@ -133,6 +133,9 @@ impl AgentRepositoryProjectionInput {
         if self.coverage.accounted != self.coverage.total || classified != self.coverage.total {
             return Err("repository coverage counts do not account for one scope".to_string());
         }
+        if matches!(self.status, AgentRepositoryStatus::Answered) && !self.coverage.complete {
+            return Err("ANSWERED requires complete compiler coverage".into());
+        }
         match self.status {
             AgentRepositoryStatus::Empty
                 if self.truncated
@@ -141,10 +144,7 @@ impl AgentRepositoryProjectionInput {
                     || !self.coverage.eligibility_proven
                     || self.qualification.is_some() =>
             {
-                return Err(
-                    "EMPTY repository status requires complete coverage with proven complete-negative eligibility and no qualification"
-                        .to_string(),
-                );
+                return Err("EMPTY requires complete eligible coverage and no qualification".into());
             }
             AgentRepositoryStatus::QualifiedEmpty
                 if (!self.truncated
@@ -155,10 +155,7 @@ impl AgentRepositoryProjectionInput {
                         .as_deref()
                         .is_none_or(|qualification| qualification.trim().is_empty()) =>
             {
-                return Err(
-                    "QUALIFIED_EMPTY repository status requires incomplete ineligible coverage or bounded execution and a non-empty qualification"
-                        .to_string(),
-                );
+                return Err("QUALIFIED_EMPTY requires a qualified partial result".into());
             }
             AgentRepositoryStatus::Ambiguous if self.selected_identity.is_some() => {
                 return Err("AMBIGUOUS repository status cannot select one identity".to_string());
@@ -198,10 +195,7 @@ impl AgentRepositoryProjectionInput {
             AgentRepositoryStatus::Empty | AgentRepositoryStatus::QualifiedEmpty
         ) && has_answer_evidence
         {
-            return Err(
-                "definitive-empty repository status cannot contain affirmative answer evidence"
-                    .to_string(),
-            );
+            return Err("empty status cannot contain answer evidence".into());
         }
         if matches!(self.status, AgentRepositoryStatus::Answered) && !has_actionable_answer {
             return Err(
@@ -209,10 +203,7 @@ impl AgentRepositoryProjectionInput {
             );
         }
         if matches!(self.status, AgentRepositoryStatus::Ambiguous) && !has_ambiguity_evidence {
-            return Err(
-                "AMBIGUOUS repository status requires intent-specific disambiguation evidence"
-                    .to_string(),
-            );
+            return Err("AMBIGUOUS requires disambiguation evidence".into());
         }
         if self.continuation.as_ref().is_some_and(String::is_empty) {
             return Err("repository traversal continuation cannot be empty".to_string());
@@ -262,6 +253,15 @@ impl AgentRepositoryProjectionInput {
             return Err(
                 "context ambiguity status must agree with exact candidate identities".to_string(),
             );
+        }
+        let context_records = self.context_relations.len()
+            + self.context_findings.len()
+            + self.unresolved_references.len()
+            + self.ambiguous_references.len();
+        if self.intent == AgentRepositoryIntent::ContextRelationship
+            && context_records > self.bounds.results
+        {
+            return Err("context records exceed result bound".into());
         }
         if self
             .unresolved_references

@@ -95,3 +95,8 @@ identity survive that projection. So do limitations: indexing, unavailable
 source modules, missing reference indexes, bounded relationship results, and
 unsupported capabilities remain visible instead of being converted into an
 empty success.
+
+The repository-scale query path adds generation-pinned coverage, discovery,
+traversal, topology, and context projections over persisted compiler evidence.
+See [Repository intelligence architecture](repository-intelligence.md) for
+that subsystem's authority chain and current operating limits.

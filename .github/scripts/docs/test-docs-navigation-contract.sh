@@ -20,13 +20,18 @@ expected = [
             "how-to/install-or-update.md",
             "how-to/explore-kotlin-code.md",
             "how-to/plan-safe-edits.md",
+            "how-to/maintain-repository-intelligence.md",
             "how-to/troubleshoot.md",
         ],
     ),
     ("Reference", ["reference/cli.md", "reference/codex-plugin.md"]),
     (
         "Explanation",
-        ["explanation/architecture.md", "explanation/compiler-evidence.md"],
+        [
+            "explanation/architecture.md",
+            "explanation/repository-intelligence.md",
+            "explanation/compiler-evidence.md",
+        ],
     ),
 ]
 

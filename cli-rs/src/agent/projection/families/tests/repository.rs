@@ -36,6 +36,40 @@
     }
 
     #[test]
+    fn repository_projection_rejects_incomplete_answer() {
+        let mut result = repository_result("resolve", "ANSWERED");
+        result["coverage"]["complete"] = json!(false);
+        result["coverage"]["eligibleForCompleteNegative"] = json!(false);
+        result["coverage"]["indexed"] = json!(0);
+        result["coverage"]["excluded"] = json!(1);
+        result["qualification"] = json!("scope coverage is incomplete");
+        result["selectedIdentity"] = json!("callable:sample.answer");
+        result["nodes"] = json!([repository_node("callable:sample.answer", "answer")]);
+
+        let projected = project_repository_envelope(
+            result_envelope("repository/query".to_string(), result),
+            AgentResultView::Compact,
+        );
+
+        assert!(!projected.ok, "incomplete ANSWERED result was accepted");
+    }
+
+    #[test]
+    fn repository_projection_rejects_over_budget_context() {
+        let mut result = repository_result("context_relationship", "ANSWERED");
+        result["bounds"]["results"] = json!(1);
+        result["contextRelations"] = json!([repository_context_relation()]);
+        result["unresolvedReferences"] = json!(["MissingSymbol"]);
+
+        let projected = project_repository_envelope(
+            result_envelope("repository/query".to_string(), result),
+            AgentResultView::Compact,
+        );
+
+        assert!(!projected.ok, "over-budget context result was accepted");
+    }
+
+    #[test]
     fn repository_selected_views_preserve_closed_outcome() {
         for status in ["EMPTY", "QUALIFIED_EMPTY", "AMBIGUOUS"] {
             let mut result = repository_result("resolve", status);

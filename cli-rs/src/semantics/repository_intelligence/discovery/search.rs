@@ -4,9 +4,7 @@ fn best_question_nodes(
     execution_scope: &RepositoryExecutionScope,
     forced_name: Option<&str>,
 ) -> Result<Vec<RepositoryNode>> {
-    if !semantic_graph_tables_exist(connection)? {
-        return Ok(Vec::new());
-    }
+    require_semantic_graph_tables(connection)?;
     let name = match forced_name {
         Some(name) => Some(name.to_string()),
         None => mentioned_callable_names(connection, question)?
@@ -36,26 +34,37 @@ fn best_question_nodes(
     Ok(selected)
 }
 
-fn semantic_graph_tables_exist(connection: &Connection) -> Result<bool> {
-    connection
+fn require_semantic_graph_tables(connection: &Connection) -> Result<()> {
+    let table_count: i64 = connection
         .query_row(
-            "SELECT COUNT(*) = 2
+            "SELECT COUNT(*)
              FROM sqlite_master
              WHERE type = 'table'
                AND name IN ('semantic_symbols', 'semantic_edge_occurrences')",
             [],
             |row| row.get(0),
         )
-        .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))
+        .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
+    if table_count == 2 {
+        return Ok(());
+    }
+    let mut error = CliError::new(
+        "REPOSITORY_INDEX_INVALID",
+        "repository index is missing required compiler semantic tables",
+    );
+    error.details.insert(
+        "remedy".to_string(),
+        "Run `kast developer runtime up --workspace-root \"$PWD\" --backend idea --accept-indexing`, then rebuild compiler graph evidence with `kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path <path-to-kotlin-file>`."
+            .to_string(),
+    );
+    Err(error)
 }
 
 fn mentioned_callable_names(
     connection: &Connection,
     question: &str,
 ) -> Result<Vec<(usize, String)>> {
-    if !semantic_graph_tables_exist(connection)? {
-        return Ok(Vec::new());
-    }
+    require_semantic_graph_tables(connection)?;
     let mut statement = connection
         .prepare(
             "SELECT DISTINCT name

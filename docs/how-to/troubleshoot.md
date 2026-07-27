@@ -67,3 +67,7 @@ third-party notifications remain owned by their source.
 
 If the problem persists, include the workspace root, backend name, Kast
 version, readiness limitation, and the exact failed command when reporting it.
+
+For generation movement, repository coverage, continuation, label artifact,
+or semantic-table failures, follow
+[Maintain repository intelligence](maintain-repository-intelligence.md).

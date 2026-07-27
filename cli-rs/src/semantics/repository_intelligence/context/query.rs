@@ -8,8 +8,8 @@ fn context_repository_question(
 ) -> Result<Value> {
     let RepositoryContextTargetSelection {
         nodes: targets,
-        unresolved_references,
-        ambiguous_references,
+        mut unresolved_references,
+        mut ambiguous_references,
         truncated: target_selection_truncated,
     } = context_target_nodes(connection, question, execution_scope, limits.results)?;
     let sources = if scope.sources.is_empty() {
@@ -159,9 +159,11 @@ fn context_repository_question(
     );
     let context_node_count = context_nodes.values().map(BTreeSet::len).sum::<usize>();
     let linked_context_node_count = linked_paths.len();
+    let unresolved_reference_count = unresolved_references.len();
+    let ambiguous_reference_count = ambiguous_references.len();
     let exact_reference_count =
-        targets.len() + unresolved_references.len() + ambiguous_references.len();
-    let context_findings = context_gap_findings(
+        targets.len() + unresolved_reference_count + ambiguous_reference_count;
+    let mut context_findings = context_gap_findings(
         &all_linked_targets,
         &unresolved_references,
         &context_nodes,
@@ -172,16 +174,28 @@ fn context_repository_question(
         .iter()
         .map(|relation| relation.evidence_class)
         .collect::<BTreeSet<_>>();
+    let nested_ambiguity_truncated = ambiguous_references
+        .iter()
+        .any(|ambiguity| ambiguity.truncated);
+    let aggregate_record_count = candidates.len()
+        + context_findings.len()
+        + unresolved_reference_count
+        + ambiguous_reference_count;
     let truncated = target_selection_truncated
-        || candidates.len() > limits.results
-        || ambiguous_references
-            .iter()
-            .any(|ambiguity| ambiguity.truncated);
+        || nested_ambiguity_truncated
+        || aggregate_record_count > limits.results;
+    let mut remaining = limits.results;
+    ambiguous_references.truncate(remaining);
+    remaining -= ambiguous_references.len();
     let context_relations = candidates
         .into_iter()
-        .take(limits.results)
+        .take(remaining)
         .map(|candidate| candidate.relation)
         .collect::<Vec<_>>();
+    remaining -= context_relations.len();
+    unresolved_references.truncate(remaining);
+    remaining -= unresolved_references.len();
+    context_findings.truncate(remaining);
     let result_linked_keys = context_relations
         .iter()
         .map(|relation| relation.target_key.as_str())
@@ -202,10 +216,10 @@ fn context_repository_question(
             "linkedContextNodeCount": linked_context_node_count,
             "exactLinkRate": ratio(linked_context_node_count, context_node_count),
             "orphanRate": 1.0 - ratio(linked_context_node_count, context_node_count),
-            "unresolvedReferenceCount": unresolved_references.len(),
-            "unresolvedReferenceRate": ratio(unresolved_references.len(), exact_reference_count),
-            "ambiguousReferenceCount": ambiguous_references.len(),
-            "ambiguousReferenceRate": ratio(ambiguous_references.len(), exact_reference_count),
+            "unresolvedReferenceCount": unresolved_reference_count,
+            "unresolvedReferenceRate": ratio(unresolved_reference_count, exact_reference_count),
+            "ambiguousReferenceCount": ambiguous_reference_count,
+            "ambiguousReferenceRate": ratio(ambiguous_reference_count, exact_reference_count),
             "evidenceDistribution": evidence_distribution,
             "bySourceType": context_nodes
                 .iter()

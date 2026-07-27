@@ -5,6 +5,7 @@ description: Components and ownership boundaries of the separately published kas
 tags: [codex, reference, hooks, marketplace]
 code_sources:
   - path: cli-rs/src/interface/codex/hook.rs
+  - path: cli-rs/src/semantics/repository_intelligence/contract/label_index.rs
   - path: install.sh
 ---
 
@@ -43,8 +44,10 @@ authority.
 
 Repository intelligence currently provides compiler semantics for Kotlin only.
 Natural-language discovery uses deterministic lexical and structural ranking;
-it does not use embeddings, an LLM, or a label layer. Regex discovery is
-resolve-only.
+it does not use embeddings or an LLM at query time. It may consume a bounded
+version-1 label artifact for retrieval. Each label entry must bind an existing
+compiler canonical key to the active source content hash, and labels cannot
+create or alter semantic evidence. Regex discovery is resolve-only.
 
 Path and impact traversal and per-edge evidence expose signed continuations.
 Resolve ambiguity candidates, architecture findings, and repository-context

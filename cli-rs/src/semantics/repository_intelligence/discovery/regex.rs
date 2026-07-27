@@ -3,9 +3,7 @@ fn repository_discovery_documents(
     execution_scope: &RepositoryExecutionScope,
     natural_language_question: Option<&str>,
 ) -> Result<(Vec<RepositoryNode>, Vec<SymbolDiscoveryDocument>)> {
-    if !semantic_graph_tables_exist(connection)? {
-        return Ok((Vec::new(), Vec::new()));
-    }
+    require_semantic_graph_tables(connection)?;
     let nodes = execution_scope.admit_nodes(load_repository_node(connection, "1 = ?1", 1i64)?);
     let neighbors = if natural_language_question.is_some() {
         load_discovery_neighbor_tokens(connection, &nodes)?
