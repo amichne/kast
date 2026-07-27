@@ -103,15 +103,30 @@ fn graph_repository_question(
     } else {
         None
     };
-    let traversal = traverse_repository_graph(
-        connection,
-        &start,
-        target.as_ref(),
-        question,
-        direction,
-        execution,
-        traversal_resume.map(|resume| &resume.resume),
-    )?;
+    let traversal = if evidence_resume.is_some() && traversal_resume.is_some() {
+        RepositoryTraversal {
+            occurrences: load_relation_occurrences(
+                connection,
+                &relations,
+                execution.admitted,
+            )?,
+            predecessors: BTreeMap::new(),
+            path_targets: BTreeSet::new(),
+            visited: BTreeSet::from([start.database_id]),
+            target_id: None,
+            resume: traversal_resume.map(|state| state.resume),
+        }
+    } else {
+        traverse_repository_graph(
+            connection,
+            &start,
+            target.as_ref(),
+            question,
+            direction,
+            execution,
+            traversal_resume.map(|resume| &resume.resume),
+        )?
+    };
     let continuation = traversal
         .resume
         .map(|resume| {

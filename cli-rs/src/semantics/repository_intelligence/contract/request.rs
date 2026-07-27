@@ -363,11 +363,6 @@ impl RepositoryQueryParams {
                 "scope.sources requires intent=context_relationship",
             ));
         }
-        if self.continuation.is_some() && self.evidence_continuation.is_some() {
-            return Err(invalid_repository_continuation(
-                "Repository traversal and evidence continuations cannot be consumed together.",
-            ));
-        }
         if self.continuation.is_some() && !graph_intent {
             return Err(invalid_repository_continuation(
                 "Repository traversal continuation requires a graph relationship query.",

@@ -240,3 +240,103 @@ fn repository_traversal_continuation_resumes_without_replay_or_drift() {
         String::from_utf8_lossy(&help.stdout)
     );
 }
+
+#[test]
+fn repository_evidence_continuation_preserves_later_traversal_position() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    seed_repository_graph(&fixture);
+    let request = |id: &str,
+                   continuation: Option<&str>,
+                   evidence_continuation: Option<&str>| {
+        let mut params = serde_json::json!({
+            "question": "Show outgoing calls from semanticGraphOperation.",
+            "intent": "outgoing_impact",
+            "scope": {
+                "language": "kotlin",
+                "relations": ["CALLS"],
+                "maxDepth": 2
+            },
+            "limits": {"depth": 2, "results": 1, "evidence": 1}
+        });
+        if let Some(continuation) = continuation {
+            params["continuation"] = serde_json::json!(continuation);
+        }
+        if let Some(evidence_continuation) = evidence_continuation {
+            params["evidenceContinuation"] = serde_json::json!(evidence_continuation);
+        }
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": id,
+            "method": "repository/query",
+            "params": params
+        })
+    };
+
+    let (_, first) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        request("later-evidence-1", None, None),
+    );
+    let first_continuation = first["result"]["continuation"]
+        .as_str()
+        .expect("first traversal continuation");
+    let (_, second) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        request("later-evidence-2", Some(first_continuation), None),
+    );
+    let second_continuation = second["result"]["continuation"]
+        .as_str()
+        .expect("second traversal continuation");
+    let (_, third) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        request("later-evidence-3", Some(second_continuation), None),
+    );
+    let traversal_continuation = third["result"]["continuation"]
+        .as_str()
+        .expect("later traversal continuation");
+    let edge = &third["result"]["edges"][0];
+    assert_eq!(
+        (
+            &edge["sourceKey"],
+            &edge["targetKey"],
+            &edge["occurrences"][0]["id"]
+        ),
+        (
+            &serde_json::json!("callable:buildSemanticGraphSnapshot"),
+            &serde_json::json!("callable:SemanticGraphSha256.parse"),
+            &serde_json::json!(3)
+        ),
+        "{third:#}"
+    );
+    let evidence_continuation = edge["evidenceContinuation"]
+        .as_str()
+        .expect("later edge evidence continuation");
+
+    let (status, evidence_page) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        request(
+            "later-evidence-page",
+            Some(traversal_continuation),
+            Some(evidence_continuation),
+        ),
+    );
+
+    assert!(status.success(), "{evidence_page:#}");
+    assert_eq!(
+        evidence_page["result"]["edges"][0]["occurrences"][0]["id"],
+        4,
+        "{evidence_page:#}"
+    );
+    assert_eq!(
+        evidence_page["result"]["continuation"],
+        traversal_continuation,
+        "{evidence_page:#}"
+    );
+}
