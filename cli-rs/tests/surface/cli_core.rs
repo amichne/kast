@@ -137,3 +137,43 @@ fn agent_surface_keeps_semantic_commands() {
         );
     }
 }
+
+#[test]
+fn operational_help_exposes_canonical_runtime_and_graph_recipes() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    std::fs::create_dir_all(&home).expect("home");
+
+    let runtime = kast(&home, &config_home)
+        .args(["developer", "runtime", "up", "--help"])
+        .output()
+        .expect("runtime up help");
+    assert!(runtime.status.success());
+    let runtime_stdout = String::from_utf8_lossy(&runtime.stdout);
+    for expected in [
+        "--accept-indexing",
+        "kast developer runtime up --workspace-root \"$PWD\" --backend idea --accept-indexing",
+    ] {
+        assert!(
+            runtime_stdout.contains(expected),
+            "missing {expected}: {runtime_stdout}"
+        );
+    }
+
+    let graph = kast(&home, &config_home)
+        .args(["agent", "graph", "--help"])
+        .output()
+        .expect("agent graph help");
+    assert!(graph.status.success());
+    let graph_stdout = String::from_utf8_lossy(&graph.stdout);
+    for expected in [
+        "kast agent graph --workspace-root \"$PWD\" --operation summary",
+        "kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path src/main/kotlin/App.kt",
+    ] {
+        assert!(
+            graph_stdout.contains(expected),
+            "missing {expected}: {graph_stdout}"
+        );
+    }
+}

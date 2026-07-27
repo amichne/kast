@@ -15,7 +15,7 @@ pub struct RuntimeArgs {
     #[arg(long, default_value_t = DEFAULT_RUNTIME_WAIT_TIMEOUT_MS, hide = true)]
     pub wait_timeout_ms: u64,
     /// Allow up to return while the daemon is servable in INDEXING.
-    #[arg(long, num_args = 0..=1, default_missing_value = "true", hide = true)]
+    #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub accept_indexing: Option<bool>,
     /// Fail instead of auto-starting a headless daemon.
     #[arg(long, num_args = 0..=1, default_missing_value = "true", hide = true)]
@@ -117,6 +117,9 @@ pub struct RuntimeCommandArgs {
 #[derive(Debug, Subcommand, Clone)]
 pub enum RuntimeCommand {
     /// Start or warm the workspace daemon.
+    #[command(
+        after_help = "Examples:\n  kast developer runtime up --workspace-root \"$PWD\" --backend idea --accept-indexing\n  kast developer runtime up --workspace-root /workspace --backend idea --accept-indexing"
+    )]
     Up(RuntimeArgs),
     /// Check what backends are running.
     Status(RuntimeArgs),

@@ -133,7 +133,7 @@ pub struct AgentVerifyArgs {
     clap::ArgGroup::new("native_graph_query")
         .multiple(true)
         .args(["scope", "symbol", "generation", "after_id", "limit", "resolution"])
-))]
+), after_help = "Examples:\n  kast agent graph --workspace-root \"$PWD\" --operation summary\n  kast agent graph --workspace-root \"$PWD\" --operation nodes --limit 50\n  kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path src/main/kotlin/App.kt")]
 pub struct AgentNativeGraphArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
