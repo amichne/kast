@@ -213,11 +213,11 @@ fn context_target_text_match(
     content: &str,
     target: &RepositoryNode,
 ) -> Option<(usize, usize, usize)> {
-    if let Some(start) = content.find(&target.name) {
+    if let Some(start) = identifier_position(content, &target.name) {
         return Some((start, target.name.len(), 500));
     }
     if let Some(fq_name) = target.fq_name.as_deref()
-        && let Some(start) = content.find(fq_name)
+        && let Some(start) = identifier_position(content, fq_name)
     {
         return Some((start, fq_name.len(), 550));
     }

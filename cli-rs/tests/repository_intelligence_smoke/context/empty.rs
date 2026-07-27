@@ -150,3 +150,57 @@ fn repository_context_does_not_claim_empty_past_inferred_target_ceiling() {
         "{response:#}"
     );
 }
+
+#[test]
+fn repository_context_rejects_substring_only_symbol_match() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    seed_repository_graph(&fixture);
+    fixture
+        .connection()
+        .execute(
+            "INSERT INTO semantic_symbols
+             (id, stable_key, file_id, owner_id, kind, name, fq_name, signature,
+              start_offset, end_offset, line)
+             VALUES
+             (30, 'class:App', 1, NULL, 'CLASS', 'App', 'sample.App', NULL, 500, 510, 50)",
+            [],
+        )
+        .expect("short-name context target");
+    std::fs::create_dir_all(workspace.join("docs")).expect("context fixture directory");
+    std::fs::write(
+        workspace.join("docs/application.md"),
+        "# Application\n\nApplication lifecycle documentation.\n",
+    )
+    .expect("context fixture document");
+
+    let (status, response) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "substring-only-context",
+            "method": "repository/query",
+            "params": {
+                "question": "Resolve App context.",
+                "intent": "context_relationship",
+                "scope": {"language": "kotlin", "sources": ["markdown"]},
+                "limits": {"depth": 6, "results": 10, "evidence": 1}
+            }
+        }),
+    );
+
+    assert_eq!(
+        serde_json::json!({
+            "commandSucceeded": status.success(),
+            "status": response["result"]["status"],
+            "contextRelations": response["result"]["contextRelations"]
+        }),
+        serde_json::json!({
+            "commandSucceeded": true,
+            "status": "EMPTY",
+            "contextRelations": []
+        }),
+        "{response:#}"
+    );
+}
