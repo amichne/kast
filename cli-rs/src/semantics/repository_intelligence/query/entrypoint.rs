@@ -45,13 +45,9 @@ pub(crate) fn try_handle_raw_rpc(
         "graph/coverage" => {
             let params = serde_json::from_value::<GraphCoverageParams>(request.params)
                 .map_err(|error| CliError::new(invalid_code, error.to_string()))?;
-            let workspace_root = params
-                ._workspace_root
-                .as_deref()
-                .map(PathBuf::from)
-                .or(workspace_root_arg);
-            let workspace_root = config::resolve_workspace_root(workspace_root)?;
-            graph_coverage(&workspace_root, params)?
+            let workspace_root =
+                repository_workspace_root(workspace_root_arg, params._workspace_root.as_deref())?;
+            graph_coverage(workspace_root.as_path(), params)?
         }
         "repository/query" => {
             let params = serde_json::from_value::<RepositoryQueryParams>(request.params)

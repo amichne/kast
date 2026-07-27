@@ -139,3 +139,62 @@ fn repository_query_enforces_routed_root_authority() {
         })
     );
 }
+
+#[test]
+fn graph_coverage_rejects_conflicting_body_workspace_root() {
+    let (temp, home, config_home, indexed_workspace, _fixture) = coverage_fixture();
+    let routed_workspace = temp.path().join("routed-workspace");
+    std::fs::create_dir(&routed_workspace).expect("routed workspace");
+    std::fs::write(routed_workspace.join("settings.gradle.kts"), "")
+        .expect("routed Gradle settings");
+    let request = |workspace_root: &std::path::Path| {
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "coverage-root-authority",
+            "method": "graph/coverage",
+            "params": {
+                "workspaceRoot": workspace_root,
+                "scope": {"language": "kotlin", "module": "app", "sourceSet": "main"}
+            }
+        })
+    };
+
+    let (conflict_status, conflict) = rpc(
+        &home,
+        &config_home,
+        &routed_workspace,
+        request(&indexed_workspace),
+    );
+    let (exact_status, exact) = rpc(
+        &home,
+        &config_home,
+        &indexed_workspace,
+        request(&indexed_workspace),
+    );
+
+    assert_eq!(
+        serde_json::json!({
+            "conflict": {
+                "commandSucceeded": conflict_status.success(),
+                "ok": conflict["ok"],
+                "code": conflict["code"]
+            },
+            "exact": {
+                "commandSucceeded": exact_status.success(),
+                "generation": exact["result"]["generation"]
+            }
+        }),
+        serde_json::json!({
+            "conflict": {
+                "commandSucceeded": false,
+                "ok": false,
+                "code": "REPOSITORY_WORKSPACE_ROOT_MISMATCH"
+            },
+            "exact": {
+                "commandSucceeded": true,
+                "generation": 41
+            }
+        }),
+        "conflict={conflict:#} exact={exact:#}"
+    );
+}
