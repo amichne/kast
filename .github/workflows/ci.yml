@@ -122,6 +122,7 @@ jobs:
         run: ./.github/scripts/ci/test-ci-gradle-retry.sh
 
   local-authority-contracts:
+    if: vars.CI_AUX_LOCAL_AUTHORITY != 'false'
     name: Local development authority contracts
     runs-on: ubuntu-latest
     steps:
@@ -151,6 +152,7 @@ jobs:
         run: ./.github/scripts/install/test-local-development-refresh-contract.sh
 
   runtime-contracts:
+    if: vars.CI_AUX_RUNTIME_CONTRACTS != 'false'
     name: Runtime command and bundle contracts
     runs-on: ubuntu-latest
     needs: workflow-contracts
@@ -180,6 +182,7 @@ jobs:
         run: ./.github/scripts/runtime/test-runtime-compatibility-contract.sh
 
   maven-publication-contract:
+    if: vars.CI_AUX_MAVEN_PUBLICATION != 'false'
     name: Maven publication metadata
     runs-on: ubuntu-latest
     needs: workflow-contracts
@@ -265,6 +268,7 @@ jobs:
         run: cargo test --locked --all-targets --all-features
 
   source-bound-cli:
+    if: vars.CI_AUX_DISTRIBUTION != 'false'
     name: Source-bound release CLI
     runs-on: ubuntu-22.04
     needs: workflow-contracts
@@ -601,6 +605,7 @@ jobs:
           retention-days: 3
 
   source-bound-headless-backend:
+    if: vars.CI_AUX_DISTRIBUTION != 'false'
     name: Source-bound headless backend
     runs-on: ubuntu-24.04
     needs:
@@ -885,6 +890,7 @@ jobs:
             --gradle-root "$GITHUB_WORKSPACE"
 
   analysis-server-transport:
+    if: vars.CI_AUX_ANALYSIS_TRANSPORT != 'false'
     name: Analysis server transport
     runs-on: ubuntu-latest
     needs: workflow-contracts
@@ -908,6 +914,7 @@ jobs:
           --tests io.github.amichne.kast.server.AnalysisServerSocketTest
 
   build-idea-plugin:
+    if: vars.CI_AUX_DISTRIBUTION != 'false'
     name: Build IDEA plugin
     runs-on: ubuntu-latest
     needs: workflow-contracts
@@ -1036,4 +1043,5 @@ jobs:
           -PexcludeTags=performance
 
       - name: Run IDEA plugin performance baselines
+        if: vars.CI_AUX_IDEA_PERFORMANCE != 'false'
         run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-idea:test -PincludeTags=performance

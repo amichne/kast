@@ -1,0 +1,81 @@
+name: Configure CI auxiliary jobs
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Update one flag or apply a profile
+        type: choice
+        options:
+          - set-one
+          - apply-profile
+        default: set-one
+      flag:
+        description: Flag used by set-one
+        type: choice
+        options:
+          - CI_AUX_LOCAL_AUTHORITY
+          - CI_AUX_RUNTIME_CONTRACTS
+          - CI_AUX_MAVEN_PUBLICATION
+          - CI_AUX_DISTRIBUTION
+          - CI_AUX_ANALYSIS_TRANSPORT
+          - CI_AUX_IDEA_PERFORMANCE
+        default: CI_AUX_DISTRIBUTION
+      value:
+        description: Value used by set-one
+        type: choice
+        options:
+          - "true"
+          - "false"
+        default: "true"
+      profile:
+        description: Profile used by apply-profile
+        type: choice
+        options:
+          - lean
+          - standard
+          - full
+        default: full
+
+permissions:
+  contents: read
+
+jobs:
+  set-flag:
+    if: inputs.operation == 'set-one'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set repository variable
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          FLAG: ${{ inputs.flag }}
+          VALUE: ${{ inputs.value }}
+        run: gh variable set "$FLAG" --body "$VALUE" --repo "$GITHUB_REPOSITORY"
+
+  apply-profile:
+    if: inputs.operation == 'apply-profile'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Apply repository variable profile
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}
+          PROFILE: ${{ inputs.profile }}
+        run: |
+          set -euo pipefail
+          flags=(
+            CI_AUX_LOCAL_AUTHORITY
+            CI_AUX_RUNTIME_CONTRACTS
+            CI_AUX_MAVEN_PUBLICATION
+            CI_AUX_DISTRIBUTION
+            CI_AUX_ANALYSIS_TRANSPORT
+            CI_AUX_IDEA_PERFORMANCE
+          )
+          case "$PROFILE" in
+            lean) values=(false false false false false false) ;;
+            standard) values=(true true false false true false) ;;
+            full) values=(true true true true true true) ;;
+          esac
+          for index in "${!flags[@]}"; do
+            gh variable set "${flags[$index]}" --body "${values[$index]}" --repo "$GITHUB_REPOSITORY"
+          done
