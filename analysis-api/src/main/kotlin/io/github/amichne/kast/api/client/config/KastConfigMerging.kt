@@ -75,7 +75,6 @@ private fun IdeaLaunchConfig.merge(override: IdeaLaunchConfigOverride?): IdeaLau
 private fun IndexingConfig.merge(override: IndexingConfigOverride?): IndexingConfig = copy(
     relationships = relationships.merge(override?.relationships),
     identifierIndexWaitMillis = override?.identifierIndexWaitMillis ?: identifierIndexWaitMillis,
-    referenceBatchSize = override?.referenceBatchSize ?: referenceBatchSize,
     remote = remote.merge(override?.remote),
 )
 

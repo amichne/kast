@@ -57,7 +57,6 @@ class ConfigurationFieldLayoutTest {
             "ConfigurationField.kt",
             "GradleToolingApiTimeoutMillis.kt",
             "IndexingIdentifierIndexWaitMillis.kt",
-            "IndexingReferenceBatchSize.kt",
             "IndexingRemoteEnabled.kt",
             "IndexingRemoteSourceIndexUrl.kt",
             "IdeaBackendEnabled.kt",

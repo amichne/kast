@@ -21,7 +21,6 @@ impl KastConfig {
                     module_priority_depth: 2,
                 },
                 identifier_index_wait_millis: 10_000,
-                reference_batch_size: 50,
                 remote: RemoteIndexConfig {
                     enabled: false,
                     source_index_url: None,
@@ -193,9 +192,6 @@ impl KastConfig {
             }
             if let Some(value) = indexing.identifier_index_wait_millis {
                 self.indexing.identifier_index_wait_millis = value;
-            }
-            if let Some(value) = indexing.reference_batch_size {
-                self.indexing.reference_batch_size = value;
             }
             if let Some(remote) = indexing.remote {
                 if let Some(value) = remote.enabled {

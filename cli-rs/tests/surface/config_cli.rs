@@ -1,4 +1,4 @@
-#[path = "support/mod.rs"]
+#[path = "../support/mod.rs"]
 mod support;
 
 use support::*;
@@ -130,7 +130,7 @@ fn workspace_config_rejects_unsupported_and_invalid_values() {
         &home,
         &config_home,
         &workspace,
-        &["set", "indexing.phase2Parallelism", "2"],
+        &["set", "indexing.referenceBatchSize", "50"],
     );
     assert!(!unsupported.status.success());
     let unsupported: serde_json::Value =

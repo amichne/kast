@@ -64,7 +64,6 @@ const MUTABLE_CONFIG_FIELDS: &[ConfigFieldSpec] = &[
         "indexing.identifierIndexWaitMillis",
         ConfigValueType::Integer,
     ),
-    ConfigFieldSpec::positive("indexing.referenceBatchSize"),
     ConfigFieldSpec::new("indexing.remote.enabled", ConfigValueType::Boolean),
     ConfigFieldSpec::new("cache.enabled", ConfigValueType::Boolean),
     ConfigFieldSpec::new("cache.writeDelayMillis", ConfigValueType::Integer),

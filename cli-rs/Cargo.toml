@@ -93,6 +93,10 @@ name = "cli_core_smoke"
 path = "tests/surface/cli_core.rs"
 
 [[test]]
+name = "config_cli"
+path = "tests/surface/config_cli.rs"
+
+[[test]]
 name = "demo_smoke"
 path = "tests/surface/demo/main.rs"
 

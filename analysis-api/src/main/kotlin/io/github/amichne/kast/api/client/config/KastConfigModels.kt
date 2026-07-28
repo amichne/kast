@@ -30,7 +30,6 @@ data class IdeaLaunchConfig(
 data class IndexingConfig(
     val relationships: RelationshipIndexingConfig,
     val identifierIndexWaitMillis: IndexingIdentifierIndexWaitMillis,
-    val referenceBatchSize: IndexingReferenceBatchSize,
     val remote: RemoteIndexConfig,
 )
 
@@ -170,7 +169,6 @@ data class ServerConfigOverride(
 data class IndexingConfigOverride(
     val relationships: RelationshipIndexingConfigOverride? = null,
     val identifierIndexWaitMillis: IndexingIdentifierIndexWaitMillis? = null,
-    val referenceBatchSize: IndexingReferenceBatchSize? = null,
     val remote: RemoteIndexConfigOverride? = null,
 )
 

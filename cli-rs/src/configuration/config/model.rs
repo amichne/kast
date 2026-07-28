@@ -132,7 +132,6 @@ pub enum ProjectOpenProfile {
 pub struct IndexingConfig {
     pub relationships: RelationshipIndexingConfig,
     pub identifier_index_wait_millis: u64,
-    pub reference_batch_size: u32,
     pub remote: RemoteIndexConfig,
 }
 

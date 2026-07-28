@@ -3,9 +3,9 @@ set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 release="$repo_root/.github/workflows/release.yml"
-runner="$repo_root/scripts/benchmark-real-repositories.sh"
+runner="$repo_root/scripts/release/benchmark-real-repositories.sh"
 cli_root="$repo_root/cli-rs/src/interface/cli/root.rs"
-cli_config="$repo_root/cli-rs/src/interface/cli/config.rs"
+cli_config="$repo_root/cli-rs/src/interface/cli/workspace/config.rs"
 dispatch="$repo_root/cli-rs/src/interface/entrypoint/dispatch.rs"
 cli_model="$repo_root/cli-rs/src/configuration/config/model.rs"
 idea_indexer="$repo_root/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/workspace/indexing/IdeaProjectIndexer.kt"
@@ -15,6 +15,11 @@ schema="$repo_root/index-store/src/main/kotlin/io/github/amichne/kast/indexstore
 require() {
   local file="$1" text="$2" message="$3"
   grep -Fq -- "$text" "$file" || { printf 'error: %s\n' "$message" >&2; exit 1; }
+}
+
+reject() {
+  local file="$1" text="$2" message="$3"
+  ! grep -Fq -- "$text" "$file" || { printf 'error: %s\n' "$message" >&2; exit 1; }
 }
 
 [[ -x "$runner" ]] || {
@@ -32,6 +37,7 @@ require "$release" 'linux-headless-tarball-${{ github.run_id }}' 'release gate m
 require "$release" 'needs.real-repository-indexing.result == '\''success'\''' 'release publication must require the repository gate'
 require "$runner" 'kast config list' 'benchmark must capture effective workspace configuration'
 require "$runner" 'kast config set indexing.relationships.parallelism 2' 'benchmark must exercise relationship indexing configuration'
+reject "$runner" '--accept-indexing' 'benchmark must wait for the runtime to become ready'
 
 require "$cli_root" 'Config(ConfigArgs)' 'CLI must expose the config command family'
 require "$cli_config" 'List(ConfigWorkspaceArgs)' 'config must list effective workspace state'

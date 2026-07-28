@@ -80,7 +80,6 @@ data class KastConfig(
                         modulePriorityDepth = RelationshipIndexingModulePriorityDepth(2),
                     ),
                     identifierIndexWaitMillis = IndexingIdentifierIndexWaitMillis(10_000L),
-                    referenceBatchSize = IndexingReferenceBatchSize(50),
                     remote = RemoteIndexConfig(
                         enabled = IndexingRemoteEnabled(false),
                         sourceIndexUrl = IndexingRemoteSourceIndexUrl(OptionalConfigString.Unset),

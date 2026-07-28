@@ -217,7 +217,6 @@ internal fun assertResolvedRuntimeConfigLoading(tempDir: Path) {
                   "modulePriorityDepth": 1
                 },
                 "identifierIndexWaitMillis": 9876,
-                "referenceBatchSize": 13,
                 "remote": {
                   "enabled": true,
                   "sourceIndexUrl": "file:///tmp/source-index.db"
@@ -306,7 +305,6 @@ internal fun assertResolvedRuntimeConfigLoading(tempDir: Path) {
     assertEquals(2, config.indexing.relationships.parallelism.value)
     assertEquals(1, config.indexing.relationships.modulePriorityDepth.value)
     assertEquals(9876L, config.indexing.identifierIndexWaitMillis.value)
-    assertEquals(13, config.indexing.referenceBatchSize.value)
     assertEquals(true, config.indexing.remote.enabled.value)
     assertEquals("file:///tmp/source-index.db", config.indexing.remote.sourceIndexUrl.value.orNull)
     assertEquals(false, config.cache.enabled.value)

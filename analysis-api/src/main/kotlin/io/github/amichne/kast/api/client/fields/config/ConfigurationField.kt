@@ -16,7 +16,6 @@ sealed class ConfigurationField<T> {
             RelationshipIndexingParallelism(4),
             RelationshipIndexingModulePriorityDepth(2),
             IndexingIdentifierIndexWaitMillis(10_000L),
-            IndexingReferenceBatchSize(50),
             IndexingRemoteEnabled(false),
             IndexingRemoteSourceIndexUrl(OptionalConfigString.Unset),
             CacheEnabled(true),

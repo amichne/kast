@@ -1146,7 +1146,7 @@ jobs:
           set -euo pipefail
           bundle="$(find release-bundle -maxdepth 1 -name 'kast-ubuntu-debian-headless-x86_64-*.tar.gz' -print -quit)"
           [[ -n "$bundle" ]] || { echo "Linux setup bundle not found" >&2; exit 1; }
-          scripts/benchmark-real-repositories.sh \
+          scripts/release/benchmark-real-repositories.sh \
             --name "${{ matrix.name }}" \
             --repository "${{ matrix.repository }}" \
             --revision "${{ matrix.revision }}" \

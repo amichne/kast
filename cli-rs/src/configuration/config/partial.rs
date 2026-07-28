@@ -66,7 +66,6 @@ struct PartialCodexHooks {
 struct PartialIndexing {
     relationships: Option<PartialRelationshipIndexing>,
     identifier_index_wait_millis: Option<u64>,
-    reference_batch_size: Option<u32>,
     remote: Option<PartialRemoteIndex>,
 }
 

@@ -142,13 +142,11 @@ private fun Map<String, String>.indexingOverride(): IndexingConfigOverride? {
         }
     val relationshipIndexing = relationshipIndexingOverride()
     val identifierIndexWaitMillis = longValue("indexing.identifierindexwaitmillis")?.let(::IndexingIdentifierIndexWaitMillis)
-    val referenceBatchSize = intValue("indexing.referencebatchsize")?.let(::IndexingReferenceBatchSize)
     val remote = remoteIndexOverride()
-    return takeIfAny(relationshipIndexing, identifierIndexWaitMillis, referenceBatchSize, remote) {
+    return takeIfAny(relationshipIndexing, identifierIndexWaitMillis, remote) {
         IndexingConfigOverride(
             relationships = relationshipIndexing,
             identifierIndexWaitMillis = identifierIndexWaitMillis,
-            referenceBatchSize = referenceBatchSize,
             remote = remote,
         )
     }

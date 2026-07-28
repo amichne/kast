@@ -178,7 +178,6 @@ class KastConfigTest {
             "indexing.relationships" to "parallelism",
             "indexing.relationships" to "modulePriorityDepth",
             "indexing" to "identifierIndexWaitMillis",
-            "indexing" to "referenceBatchSize",
             "indexing.remote" to "enabled",
             "indexing.remote" to "sourceIndexUrl",
             "cache" to "enabled",

@@ -141,13 +141,11 @@ private data class RuntimeServerConfig(
 private data class RuntimeIndexingConfig(
     val relationships: RuntimeRelationshipIndexingConfig? = null,
     val identifierIndexWaitMillis: Long? = null,
-    val referenceBatchSize: Int? = null,
     val remote: RuntimeRemoteIndexConfig? = null,
 ) {
     fun toOverride(): IndexingConfigOverride = IndexingConfigOverride(
         relationships = relationships?.toOverride(),
         identifierIndexWaitMillis = identifierIndexWaitMillis?.let(::IndexingIdentifierIndexWaitMillis),
-        referenceBatchSize = referenceBatchSize?.let(::IndexingReferenceBatchSize),
         remote = remote?.toOverride(),
     )
 }

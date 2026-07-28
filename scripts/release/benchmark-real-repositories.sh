@@ -97,7 +97,6 @@ kast config list --workspace-root "$workspace" >"$scratch/effective-config.toon"
 kast --output json developer runtime up \
   --backend headless \
   --workspace-root "$workspace" \
-  --accept-indexing=true \
   --wait-timeout-ms "$wait_timeout_ms" >"$scratch/runtime.json"
 kast --output json agent workspace-files \
   --backend headless \
