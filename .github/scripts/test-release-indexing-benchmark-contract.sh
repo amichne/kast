@@ -29,11 +29,12 @@ reject() {
 
 require "$release" 'real-repository-indexing:' 'release workflow must own the real-repository indexing gate'
 require "$release" 'fail-fast: false' 'repository matrix failures must not cancel remaining repositories'
-require "$release" 'ktorio/ktor.git' 'release gate must include Ktor'
+require "$release" 'ktorio/ktor-samples.git' 'release gate must include a self-contained official Ktor sample'
+reject "$release" 'ktorio/ktor.git' 'release gate must not use the Ktor included-build probe'
 require "$release" 'AleksK1NG/Kotlin-Clean-Architecture-CQRS.git' 'release gate must include a Java 21 Kotlin Spring project'
 reject "$release" 'spring-projects/spring-boot.git' 'release gate must not import the full Spring Boot monorepo'
 require "$release" 'square/okhttp.git' 'release gate must include a Kotlin Multiplatform integration repository'
-require "$release" 'graph_file: ktor-test-server/src/main/kotlin/test/server/ServerUtils.kt' 'Ktor must use a pinned compiler graph probe'
+require "$release" 'graph_file: httpbin/src/main/kotlin/io/ktor/samples/httpbin/Server.kt' 'Ktor must use a pinned compiler graph probe'
 require "$release" 'graph_file: src/main/kotlin/com/alexander/bryksin/kotlinspringcleanarchitecture/KotlinSpringCleanArchitectureApplication.kt' 'Spring must use a pinned compiler graph probe'
 require "$release" 'graph_file: okcurl/src/main/kotlin/okhttp3/curl/Main.kt' 'OkHttp must use a pinned compiler graph probe'
 
@@ -54,6 +55,12 @@ relationship_setting() {
 [[ "$(relationship_setting okhttp)" == true ]] || { printf 'error: OkHttp must retain full relationship indexing\n' >&2; exit 1; }
 # shellcheck disable=SC2016 # GitHub expression is intentionally matched literally.
 require "$release" 'linux-headless-tarball-${{ github.run_id }}' 'release gate must test the built release runtime'
+require "$release" 'Set up Gradle Java 17 toolchain' 'release gate must install the Ktor sample toolchain'
+require "$release" 'set-default: false' 'Gradle toolchain setup must not replace the Java 21 Kast runtime'
+# shellcheck disable=SC2016 # GitHub expression is intentionally matched literally.
+require "$release" 'GRADLE_JAVA_HOME: ${{ steps.gradle-java.outputs.path }}' 'release gate must bind the installed Gradle toolchain'
+# shellcheck disable=SC2016 # Workflow shell variables are intentionally matched literally.
+require "$release" 'export GRADLE_OPTS="-Dorg.gradle.java.installations.paths=${GRADLE_JAVA_HOME},${JAVA_HOME}"' 'Gradle must see both its Java 17 toolchain and the Java 21 runtime'
 require "$release" "--graph-file \"\${{ matrix.graph_file }}\"" 'release gate must pass the pinned compiler graph probe'
 require "$release" "--relationships-enabled \"\${{ matrix.relationships_enabled }}\"" 'release gate must pass the relationship indexing plan'
 require "$release" 'needs.real-repository-indexing.result == '\''success'\''' 'release publication must require the repository gate'

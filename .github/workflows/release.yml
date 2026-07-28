@@ -1110,9 +1110,9 @@ jobs:
       matrix:
         include:
           - name: ktor
-            repository: https://github.com/ktorio/ktor.git
-            revision: 3ccad96fbb891469cdb5ff92b51a96bb6d6374c9
-            graph_file: ktor-test-server/src/main/kotlin/test/server/ServerUtils.kt
+            repository: https://github.com/ktorio/ktor-samples.git
+            revision: c89f051e1183455eda8b26146555a1b5ed23d18c
+            graph_file: httpbin/src/main/kotlin/io/ktor/samples/httpbin/Server.kt
             relationships_enabled: false
           - name: spring-boot
             repository: https://github.com/AleksK1NG/Kotlin-Clean-Architecture-CQRS.git
@@ -1128,6 +1128,14 @@ jobs:
       - uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - name: Set up Gradle Java 17 toolchain
+        id: gradle-java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          set-default: false
 
       - uses: actions/setup-java@v5
         with:
@@ -1148,8 +1156,11 @@ jobs:
 
       - name: Index pinned repository
         shell: bash
+        env:
+          GRADLE_JAVA_HOME: ${{ steps.gradle-java.outputs.path }}
         run: |
           set -euo pipefail
+          export GRADLE_OPTS="-Dorg.gradle.java.installations.paths=${GRADLE_JAVA_HOME},${JAVA_HOME}"
           bundle="$(find release-bundle -maxdepth 1 -name 'kast-ubuntu-debian-headless-x86_64-*.tar.gz' -print -quit)"
           [[ -n "$bundle" ]] || { echo "Linux setup bundle not found" >&2; exit 1; }
           scripts/release/benchmark-real-repositories.sh \
