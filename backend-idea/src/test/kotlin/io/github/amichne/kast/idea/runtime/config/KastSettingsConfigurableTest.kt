@@ -4,9 +4,16 @@ import io.github.amichne.kast.api.client.KastConfig
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
 
 class KastSettingsConfigurableTest {
+    @TempDir
+    lateinit var tempDir: Path
+
     @Test
     fun `default resolved settings produce empty workspace toml`() {
         val state = KastSettingsState().apply {
@@ -157,5 +164,44 @@ class KastSettingsConfigurableTest {
         assertTrue(toml.contains("enabled = false"))
         assertTrue(toml.contains("postToolUse = false"))
         assertFalse(toml.contains("sessionStart"))
+    }
+
+    @Test
+    fun `settings text replaces the file atomically without staging residue`() {
+        val config = tempDir.resolve("config.toml")
+        Files.writeString(config, "old")
+
+        writeTextAtomically(config, "new")
+
+        assertEquals("new", Files.readString(config))
+        Files.list(tempDir).use { paths ->
+            assertEquals(listOf(config), paths.toList())
+        }
+    }
+
+    @Test
+    fun `settings transaction restores the first file when the second write fails`() {
+        val workspaceConfig = tempDir.resolve("workspace.toml")
+        val globalConfig = tempDir.resolve("global.toml")
+        Files.writeString(workspaceConfig, "workspace-old")
+        Files.writeString(globalConfig, "global-old")
+
+        assertThrows(IllegalStateException::class.java) {
+            writeConfigFilesTransactionally(
+                listOf(
+                    workspaceConfig to "workspace-new",
+                    globalConfig to "global-new",
+                ),
+                writer = { path, contents ->
+                    if (path == globalConfig && contents == "global-new") {
+                        error("global write failed")
+                    }
+                    writeTextAtomically(path, contents)
+                },
+            )
+        }
+
+        assertEquals("workspace-old", Files.readString(workspaceConfig))
+        assertEquals("global-old", Files.readString(globalConfig))
     }
 }

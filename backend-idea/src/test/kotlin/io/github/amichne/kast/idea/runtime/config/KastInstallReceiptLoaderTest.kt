@@ -28,6 +28,18 @@ class KastInstallReceiptLoaderTest {
     }
 
     @Test
+    fun `CLI digest verification crosses streaming buffer boundaries`() {
+        val receipt = writeActiveInstallReceipt(ByteArray(128 * 1024) { index -> index.toByte() })
+
+        val loaded = assertInstanceOf(
+            KastInstallReceiptLoadResult.Loaded::class.java,
+            KastInstallReceiptLoader.load(receipt) { CliImplementationVersion("1.2.3") },
+        )
+
+        assertEquals(receipt.parent.resolve("bin/kast").toRealPath(), loaded.binary)
+    }
+
+    @Test
     fun `manifest drift rejects the complete active release`() {
         val receipt = writeActiveInstallReceipt()
         Files.writeString(receipt.parent.resolve("manifest.json"), "modified")
@@ -61,12 +73,12 @@ class KastInstallReceiptLoaderTest {
         )
     }
 
-    private fun writeActiveInstallReceipt(): Path {
+    private fun writeActiveInstallReceipt(binaryContents: ByteArray = "binary".toByteArray()): Path {
         val current = tempDir.resolve(".local/share/kast/current")
         val binary = current.resolve("bin/kast")
         val manifest = current.resolve("manifest.json")
         Files.createDirectories(binary.parent)
-        Files.writeString(binary, "binary")
+        Files.write(binary, binaryContents)
         check(binary.toFile().setExecutable(true))
         Files.writeString(
             manifest,

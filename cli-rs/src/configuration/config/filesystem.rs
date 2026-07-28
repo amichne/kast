@@ -1,8 +1,16 @@
 pub fn kast_config_home() -> PathBuf {
-    manifest::default_config_root()
+    if let Some(config_home) = env_path("KAST_CONFIG_HOME") {
+        return config_home;
+    }
+    manifest::resolve_paths()
+        .map(|paths| paths.config_root)
+        .unwrap_or_else(|_| manifest::default_config_root())
 }
 
 pub fn global_config_path() -> PathBuf {
+    if let Some(config_home) = env_path("KAST_CONFIG_HOME") {
+        return config_home.join("config.toml");
+    }
     manifest::resolve_paths()
         .map(|paths| paths.config_file)
         .unwrap_or_else(|_| manifest::default_resolved_paths().config_file)
@@ -53,7 +61,6 @@ const WORKSPACE_MARKERS: &[&str] = &[
     "settings.gradle",
     "build.gradle.kts",
     "build.gradle",
-    ".kast",
 ];
 const MAX_UNIX_SOCKET_PATH_BYTES: usize = 100;
 
@@ -63,19 +70,17 @@ pub fn workspace_data_directory(workspace_root: &Path) -> Result<PathBuf> {
         .map(|paths| paths.data_dir)
         .unwrap_or_else(|_| manifest::default_resolved_paths().data_dir)
         .join("workspaces");
-    if let Some(workspace) = git_workspace(&root) {
-        return Ok(workspace_data_directory_for_git(
-            &workspaces_root,
-            &workspace,
-        ));
+    workspace_data_directory_from(&workspaces_root, &root)
+}
+
+fn workspace_data_directory_from(workspaces_root: &Path, root: &Path) -> Result<PathBuf> {
+    if let Some(workspace) = git_workspace(root) {
+        return workspace_data_directory_for_git(workspaces_root, &workspace);
     }
-    if root.starts_with(env::temp_dir()) {
-        return Ok(root.join(".gradle/kast"));
-    }
-    let id = local_workspace_id(&root)?;
+    let id = local_workspace_id(workspaces_root, root)?;
     Ok(workspaces_root
         .join("local")
-        .join(format!("{}--{id}", sanitized_path(&root))))
+        .join(format!("{}--{id}", sanitized_path(root))))
 }
 
 pub fn workspace_database_path(workspace_root: &Path) -> Result<PathBuf> {
@@ -84,7 +89,10 @@ pub fn workspace_database_path(workspace_root: &Path) -> Result<PathBuf> {
 
 #[cfg(target_os = "macos")]
 pub fn default_socket_path(workspace_root: &Path) -> PathBuf {
-    default_socket_path_for_config(&KastConfig::defaults(), workspace_root)
+    let socket_dir = manifest::resolve_paths()
+        .map(|paths| paths.socket_dir)
+        .unwrap_or_else(|_| manifest::default_resolved_paths().socket_dir);
+    default_socket_path_for_directory(&socket_dir, workspace_root)
 }
 
 fn fallback_socket_path(workspace_root: &Path) -> PathBuf {
@@ -92,10 +100,11 @@ fn fallback_socket_path(workspace_root: &Path) -> PathBuf {
 }
 
 fn default_socket_path_for_config(config: &KastConfig, workspace_root: &Path) -> PathBuf {
-    let configured = config
-        .paths
-        .socket_dir
-        .join(format!("kast-{}.sock", workspace_hash(workspace_root)));
+    default_socket_path_for_directory(&config.paths.socket_dir, workspace_root)
+}
+
+fn default_socket_path_for_directory(socket_dir: &Path, workspace_root: &Path) -> PathBuf {
+    let configured = socket_dir.join(format!("kast-{}.sock", workspace_hash(workspace_root)));
     if socket_path_too_long(&configured) {
         fallback_socket_path(workspace_root)
     } else {

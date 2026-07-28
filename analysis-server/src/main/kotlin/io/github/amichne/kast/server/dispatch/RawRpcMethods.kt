@@ -147,12 +147,14 @@ internal suspend fun RpcMethodRouter.dispatchRawMethod(
     "raw/semantic-graph" -> encode(
         SemanticGraphResult.serializer(),
         backend.semanticGraph(
-            decodeParams(SemanticGraphQuery.serializer(), params).parsed().also { query ->
-                if (query.pageSize.value > config.maxResults) {
+            decodeParams(SemanticGraphQuery.serializer(), params).also { query ->
+                if (query.filePaths.size > config.maxResults) {
                     throw ValidationException(
-                        "Semantic graph pageSize must be less than or equal to server maxResults (${config.maxResults})",
+                        "Semantic graph selected file count must be less than or equal to " +
+                            "server maxResults (${config.maxResults})",
                     )
                 }
+            }.parsed().also {
                 requireReadCapability(ReadCapability.SEMANTIC_GRAPH)
             },
         ),

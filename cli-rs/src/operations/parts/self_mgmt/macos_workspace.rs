@@ -77,7 +77,15 @@ pub(crate) fn validate_macos_running_plugin_workspace(
 fn read_macos_plugin_workspace_metadata(
     workspace_root: &Path,
 ) -> Result<(PathBuf, MacosPluginWorkspaceMetadata)> {
-    let metadata_path = workspace_root.join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
+    let metadata_path = config::workspace_data_directory(workspace_root)
+        .map_err(|error| {
+            macos_plugin_workspace_error(format!(
+                "Could not resolve global Kast workspace data for {}: {}",
+                workspace_root.display(),
+                error.message,
+            ))
+        })?
+        .join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
     let raw = fs::read_to_string(&metadata_path).map_err(|error| {
         macos_plugin_workspace_error(format!(
             "macOS Kast invocation requires workspace metadata prepared by the Kast IntelliJ plugin at {}: {error}",
@@ -173,7 +181,7 @@ fn validate_macos_plugin_workspace_metadata(
         )));
     }
     validate_macos_plugin_cli_binary(&metadata.cli_binary)?;
-    validate_macos_plugin_required_artifacts(workspace_root, &metadata.required_artifacts)
+    validate_macos_plugin_required_artifacts(metadata_path, &metadata.required_artifacts)
 }
 
 #[cfg(target_os = "macos")]
@@ -286,7 +294,7 @@ fn validate_macos_plugin_cli_binary(cli_binary: &Path) -> Result<()> {
 
 #[cfg(target_os = "macos")]
 fn validate_macos_plugin_required_artifacts(
-    workspace_root: &Path,
+    metadata_path: &Path,
     required_artifacts: &[PathBuf],
 ) -> Result<()> {
     if required_artifacts != [PathBuf::from(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE)] {
@@ -302,7 +310,15 @@ fn validate_macos_plugin_required_artifacts(
                 artifact.display()
             )));
         }
-        let path = workspace_root.join(artifact);
+        let path = metadata_path
+            .parent()
+            .ok_or_else(|| {
+                macos_plugin_workspace_error(format!(
+                    "macOS Kast workspace metadata has no parent directory at {}",
+                    metadata_path.display(),
+                ))
+            })?
+            .join(artifact);
         if !path.exists() {
             return Err(macos_plugin_workspace_error(format!(
                 "macOS Kast workspace metadata requires missing artifact {}",

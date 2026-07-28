@@ -30,6 +30,9 @@
     "params": {
       "additionalProperties": false,
       "properties": {
+        "expectedGeneration": {
+          "type": "integer"
+        },
         "filePaths": {
           "items": {
             "type": "string"

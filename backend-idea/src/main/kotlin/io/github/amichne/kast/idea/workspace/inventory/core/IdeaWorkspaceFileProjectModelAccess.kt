@@ -4,4 +4,8 @@ internal interface IdeaWorkspaceFileProjectModelAccess {
     val isIndexing: Boolean
 
     fun read(): IdeaWorkspaceFileProjectModel
+
+    fun read(
+        gradleModel: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
+    ): IdeaWorkspaceFileProjectModel = read()
 }

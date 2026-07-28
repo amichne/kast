@@ -3,6 +3,9 @@
 package io.github.amichne.kast.idea
 
 import com.intellij.openapi.options.Configurable
+import com.intellij.openapi.options.ConfigurationException
+import com.intellij.openapi.command.WriteCommandAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.ComboBox
@@ -15,6 +18,7 @@ import io.github.amichne.kast.api.client.WorkspaceDirectoryResolver
 import io.github.amichne.kast.api.client.kastConfigHome
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 import javax.swing.JComponent
 
 internal class KastSettingsConfigurable(
@@ -62,20 +66,26 @@ internal class KastSettingsConfigurable(
         ensurePanel()
         val workspaceRoot = workspaceRoot() ?: return
         val state = KastSettingsState.getInstance(project)
-        updateStateFromFields(state)
+        val nextState = KastSettingsState()
+        updateStateFromFields(nextState)
 
         val configPath = workspaceConfigPath(workspaceRoot)
-        val existingToml = if (Files.isRegularFile(configPath)) Files.readString(configPath) else ""
-        val nextToml = mergePublicWorkspaceToml(existingToml, state)
-        Files.createDirectories(configPath.parent)
-        Files.writeString(configPath, nextToml)
-
         val globalConfigPath = kastConfigHome().resolve("config.toml")
-        val existingGlobalToml = if (Files.isRegularFile(globalConfigPath)) Files.readString(globalConfigPath) else ""
-        Files.createDirectories(globalConfigPath.parent)
-        Files.writeString(globalConfigPath, mergeGlobalCodexHooksToml(existingGlobalToml, state))
+        val configUpdates = listOf(
+            configPath to mergePublicWorkspaceToml(readConfigText(configPath), nextState),
+            globalConfigPath to mergeGlobalCodexHooksToml(readConfigText(globalConfigPath), nextState),
+        )
+        try {
+            writeConfigFilesTransactionally(configUpdates)
+            configUpdates.forEach { (path, contents) -> updateCachedDocument(path, contents) }
+        } catch (error: Exception) {
+            throw ConfigurationException(
+                "Could not save Kast settings: ${error.message ?: error::class.java.simpleName}",
+            ).also { failure -> failure.initCause(error) }
+        }
 
-        KastPluginService.getInstance(project).reloadConfig()
+        state.loadState(nextState)
+        KastPluginService.getInstance(project).reloadConfigAsync()
     }
 
     override fun disposeUIResources() {
@@ -164,7 +174,7 @@ internal class KastSettingsConfigurable(
         val configPath = workspaceConfigPath(workspaceRoot)
         Files.createDirectories(configPath.parent)
         if (Files.notExists(configPath)) {
-            Files.writeString(configPath, "")
+            writeTextAtomically(configPath, "")
         }
         val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(configPath) ?: return
         FileEditorManager.getInstance(project).openFile(virtualFile, true)
@@ -175,6 +185,69 @@ internal class KastSettingsConfigurable(
     private fun workspaceConfigPath(workspaceRoot: Path): Path = WorkspaceDirectoryResolver()
         .workspaceDataDirectory(workspaceRoot)
         .resolve("config.toml")
+
+    private fun readConfigText(path: Path): String {
+        val file = LocalFileSystem.getInstance().findFileByNioFile(path)
+        val document = file?.let(FileDocumentManager.getInstance()::getCachedDocument)
+        return document?.text ?: if (Files.isRegularFile(path)) Files.readString(path) else ""
+    }
+
+    private fun updateCachedDocument(path: Path, contents: String) {
+        val file = LocalFileSystem.getInstance().refreshAndFindFileByNioFile(path)
+        val documentManager = FileDocumentManager.getInstance()
+        val document = file?.let(documentManager::getCachedDocument)
+        if (document != null) {
+            WriteCommandAction.runWriteCommandAction(project) {
+                document.setText(contents)
+            }
+            documentManager.saveDocument(document)
+        }
+    }
+}
+
+internal fun writeConfigFilesTransactionally(
+    updates: List<Pair<Path, String>>,
+    writer: (Path, String) -> Unit = ::writeTextAtomically,
+) {
+    val originals = updates.associate { (path, _) ->
+        path to if (Files.isRegularFile(path)) Files.readString(path) else null
+    }
+    val committed = mutableListOf<Path>()
+    try {
+        updates.forEach { (path, contents) ->
+            writer(path, contents)
+            committed.add(path)
+        }
+    } catch (failure: Exception) {
+        committed.asReversed().forEach { path ->
+            runCatching {
+                originals.getValue(path)?.let { original -> writer(path, original) }
+                    ?: Files.deleteIfExists(path)
+            }.onFailure(failure::addSuppressed)
+        }
+        throw failure
+    }
+}
+
+internal fun writeTextAtomically(target: Path, contents: String) {
+    Files.createDirectories(target.parent)
+    val staging = Files.createTempFile(target.parent, ".${target.fileName}-", ".tmp")
+    try {
+        Files.writeString(staging, contents)
+        runCatching {
+            Files.move(
+                staging,
+                target,
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        }.recoverCatching { error ->
+            if (error !is java.nio.file.AtomicMoveNotSupportedException) throw error
+            Files.move(staging, target, StandardCopyOption.REPLACE_EXISTING)
+        }.getOrThrow()
+    } finally {
+        Files.deleteIfExists(staging)
+    }
 }
 
 private enum class KastRuntimeDefaultBackendOption(

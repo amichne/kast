@@ -97,7 +97,7 @@ mod macos {
         }
 
         fn metadata_path(&self) -> PathBuf {
-            self.workspace.join(".kast/setup/workspace.json")
+            macos_plugin_workspace_metadata_path(&self.workspace)
         }
 
         fn metadata(&self) -> serde_json::Value {

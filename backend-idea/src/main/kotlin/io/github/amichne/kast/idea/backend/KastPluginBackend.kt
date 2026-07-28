@@ -112,11 +112,15 @@ internal class KastPluginBackend(
     internal val indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
         IdeaIndexSemanticAdmission.Status.Ready
     },
+    internal val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
+        IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
+    },
     internal val relationshipCoverageAuthority: RelationshipCoverageAuthority =
         IdeaRelationshipCoverageAuthority(
             project = project,
             workspaceIdentity = workspaceIdentity,
             indexSemanticAdmissionStatus = indexSemanticAdmissionStatus,
+            workspaceModelReader = workspaceModelReader,
         ),
 ) : CloseableAnalysisBackend {
 
@@ -156,7 +160,11 @@ internal class KastPluginBackend(
     internal val relationshipContinuations = RelationshipContinuationStore(limits)
     internal val workspaceFilePaging = IdeaWorkspaceFilePaging(
         workspaceId = sharedWorkspaceIdentity.canonicalWorkspaceId,
-        inventory = IdeaProjectModelWorkspaceFileInventory(project, workspaceIdentity),
+        inventory = IdeaProjectModelWorkspaceFileInventory(
+            project = project,
+            workspaceIdentity = workspaceIdentity,
+            workspaceModelReader = workspaceModelReader,
+        ),
         limits = limits,
     )
     internal val ideaReadAccess = object : ReadAccessScope {

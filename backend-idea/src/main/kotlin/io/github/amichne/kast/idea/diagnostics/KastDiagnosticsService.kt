@@ -28,10 +28,24 @@ internal class KastDiagnosticsService(
     private val state = KastDiagnosticsState()
     private val listeners = mutableListOf<KastDiagnosticsListener>()
     private val terminalFailures = KastTerminalFailureDeduplicator()
+    private var pendingSnapshot: KastDiagnosticsSnapshot? = null
+    private var deliveryScheduled = false
+    private var scheduleUiDelivery: ((() -> Unit) -> Unit) = { task ->
+        ApplicationManager.getApplication().invokeLater(task)
+    }
+
+    internal constructor(
+        project: Project,
+        scheduleUiDelivery: ((() -> Unit) -> Unit),
+    ) : this(project) {
+        this.scheduleUiDelivery = scheduleUiDelivery
+    }
 
     override fun dispose() {
         synchronized(lock) {
             listeners.clear()
+            pendingSnapshot = null
+            deliveryScheduled = false
         }
     }
 
@@ -50,31 +64,31 @@ internal class KastDiagnosticsService(
     }
 
     fun recordBackendStarting(workspaceRoot: Path) {
-        publish(synchronized(lock) { state.recordBackendStarting(workspaceRoot) })
+        publish { state.recordBackendStarting(workspaceRoot) }
     }
 
     fun recordBackendStarted(transport: AnalysisTransport) {
-        publish(synchronized(lock) { state.recordBackendStarted(transport) })
+        publish { state.recordBackendStarted(transport) }
     }
 
     fun recordBackendStopped() {
-        publish(synchronized(lock) { state.recordBackendStopped() })
+        publish(state::recordBackendStopped)
     }
 
     fun recordBackendFailed(error: Throwable) {
-        publish(synchronized(lock) { state.recordBackendFailed(error) })
+        publish { state.recordBackendFailed(error) }
     }
 
     fun recordConfigFallback(path: Path, error: Throwable) {
-        publish(synchronized(lock) { state.recordConfigFallback(path, error) })
+        publish { state.recordConfigFallback(path, error) }
     }
 
     fun recordCapabilities(capabilities: BackendCapabilities) {
-        publish(synchronized(lock) { state.recordCapabilities(capabilities) })
+        publish { state.recordCapabilities(capabilities) }
     }
 
     fun recordRuntimeStatus(status: RuntimeStatusResponse) {
-        publish(synchronized(lock) { state.recordRuntimeStatus(status) })
+        publish { state.recordRuntimeStatus(status) }
     }
 
     fun enrichRuntimeStatus(status: RuntimeStatusResponse): RuntimeStatusResponse {
@@ -83,27 +97,27 @@ internal class KastDiagnosticsService(
     }
 
     fun recordIndexWaitingForIde() {
-        publish(synchronized(lock) { state.recordIndexWaitingForIde() })
+        publish(state::recordIndexWaitingForIde)
     }
 
     fun recordIndexHydrating() {
-        publish(synchronized(lock) { state.recordIndexHydrating() })
+        publish(state::recordIndexHydrating)
     }
 
     fun recordIndexingStarted() {
-        publish(synchronized(lock) { state.recordIndexingStarted() })
+        publish(state::recordIndexingStarted)
     }
 
     fun recordIndexCompleted(summary: KastSourceIndexSummary) {
-        publish(synchronized(lock) { state.recordIndexCompleted(summary) })
+        publish { state.recordIndexCompleted(summary) }
     }
 
     fun recordIndexCancelled() {
-        publish(synchronized(lock) { state.recordIndexCancelled() })
+        publish(state::recordIndexCancelled)
     }
 
     fun recordIndexFailed(error: Throwable) {
-        publish(synchronized(lock) { state.recordIndexFailed(error) })
+        publish { state.recordIndexFailed(error) }
     }
 
     fun recordOperationStarted(operation: KastBackendOperation): KastOperationToken {
@@ -111,13 +125,13 @@ internal class KastDiagnosticsService(
             operation = operation,
             startedNanos = System.nanoTime(),
         )
-        publish(synchronized(lock) { state.recordOperationStarted(operation) })
+        publish { state.recordOperationStarted(operation) }
         return token
     }
 
     fun recordOperationSucceeded(token: KastOperationToken) {
         publish(
-            synchronized(lock) {
+            {
                 state.recordOperationSucceeded(
                     operation = token.operation,
                     durationMillis = elapsedMillis(token.startedNanos),
@@ -128,7 +142,7 @@ internal class KastDiagnosticsService(
 
     fun recordOperationFailed(token: KastOperationToken, error: Throwable) {
         publish(
-            synchronized(lock) {
+            {
                 state.recordOperationFailed(
                     operation = token.operation,
                     durationMillis = elapsedMillis(token.startedNanos),
@@ -150,21 +164,36 @@ internal class KastDiagnosticsService(
 
     private fun elapsedMillis(startedNanos: Long): Long = (System.nanoTime() - startedNanos) / 1_000_000
 
-    private fun publish(event: KastActivityEvent?) {
-        val nextSnapshot: KastDiagnosticsSnapshot
-        val nextListeners: List<KastDiagnosticsListener>
-        synchronized(lock) {
-            nextSnapshot = state.snapshot()
-            nextListeners = listeners.toList()
-        }
-
-        event?.let(::notifyIfNeeded)
-        if (nextListeners.isEmpty() || project.isDisposed) return
-
-        ApplicationManager.getApplication().invokeLater {
-            if (!project.isDisposed) {
-                nextListeners.forEach { listener -> listener.snapshotChanged(nextSnapshot) }
+    private fun publish(update: () -> KastActivityEvent?) {
+        val (event, shouldSchedule) = synchronized(lock) {
+            val event = update()
+            val shouldSchedule = listeners.isNotEmpty() && !project.isDisposed && !deliveryScheduled
+            if (listeners.isNotEmpty() && !project.isDisposed) {
+                pendingSnapshot = state.snapshot()
+                deliveryScheduled = true
             }
+            event to shouldSchedule
+        }
+        event?.let(::notifyIfNeeded)
+        if (shouldSchedule) {
+            runCatching {
+                scheduleUiDelivery(::deliverPendingSnapshot)
+            }.onFailure {
+                synchronized(lock) {
+                    deliveryScheduled = false
+                }
+            }
+        }
+    }
+
+    private fun deliverPendingSnapshot() {
+        val delivery = synchronized(lock) {
+            deliveryScheduled = false
+            pendingSnapshot?.let { snapshot -> snapshot to listeners.toList() }
+                .also { pendingSnapshot = null }
+        } ?: return
+        if (!project.isDisposed) {
+            delivery.second.forEach { listener -> listener.snapshotChanged(delivery.first) }
         }
     }
 

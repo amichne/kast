@@ -100,7 +100,7 @@ fn captured_demo_returns_ranked_repo_native_story_snapshot() {
 
 fn seed_external_reference_target(workspace: &std::path::Path) {
     let connection =
-        rusqlite::Connection::open(workspace.join(".gradle/kast/cache/source-index.db"))
+        rusqlite::Connection::open(workspace_database_path_for_test(workspace))
             .expect("source index");
     connection
         .execute(

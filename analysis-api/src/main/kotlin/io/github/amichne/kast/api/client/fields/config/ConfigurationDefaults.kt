@@ -1,23 +1,39 @@
 package io.github.amichne.kast.api.client.fields
 
+import io.github.amichne.kast.api.client.resolveKastPathDefaults
 import java.nio.file.Path
 
-private val userHome: Path
-    get() = Path.of(System.getProperty("user.home"))
-
 internal fun defaultConfigInstallRoot(): Path =
-    System.getenv("KAST_INSTALL_ROOT")
-        ?.trim()
-        ?.takeIf(String::isNotEmpty)
-        ?.let(Path::of)
-        ?: userHome.resolve(".local/share/kast")
-internal fun defaultConfigBinDir(): Path = userHome.resolve(".local/bin")
-internal fun defaultConfigLibDir(installRoot: String = defaultConfigInstallRoot().toString()): Path = Path.of(installRoot).resolve("current/lib")
-internal fun defaultConfigCacheDir(): Path = userHome.resolve(".cache/kast")
-internal fun defaultConfigLogsDir(): Path = userHome.resolve(".local/state/kast/logs")
-internal fun defaultConfigRuntimeDir(installRoot: String = defaultConfigInstallRoot().toString()): Path = Path.of(installRoot).resolve("state/runtime")
-internal fun defaultConfigDescriptorDir(runtimeDir: String = defaultConfigRuntimeDir().toString()): Path = Path.of(runtimeDir).resolve("daemons")
-internal fun defaultConfigSocketDir(runtimeDir: String = defaultConfigRuntimeDir().toString()): String = runtimeDir
-internal fun defaultConfigCliBinaryPath(binDir: String = defaultConfigBinDir().toString()): Path = Path.of(binDir).resolve("kast")
-internal fun defaultConfigHeadlessRuntimeLibsDir(libDir: String = defaultConfigLibDir().toString()): Path =
-    Path.of(libDir).resolve("backends/headless/current/runtime-libs")
+    resolveKastPathDefaults().installRoot
+
+internal fun defaultConfigBinDir(): Path =
+    resolveKastPathDefaults().binDir
+
+internal fun defaultConfigLibDir(installRoot: String? = null): Path =
+    installRoot?.let(Path::of)?.resolve("current/lib")
+        ?: resolveKastPathDefaults().libDir
+
+internal fun defaultConfigCacheDir(): Path =
+    resolveKastPathDefaults().cacheDir
+
+internal fun defaultConfigLogsDir(): Path =
+    resolveKastPathDefaults().logsDir
+
+internal fun defaultConfigRuntimeDir(installRoot: String? = null): Path =
+    installRoot?.let(Path::of)?.resolve("state/runtime")
+        ?: resolveKastPathDefaults().runtimeDir
+
+internal fun defaultConfigDescriptorDir(runtimeDir: String? = null): Path =
+    runtimeDir?.let(Path::of)?.resolve("daemons")
+        ?: resolveKastPathDefaults().descriptorDir
+
+internal fun defaultConfigSocketDir(runtimeDir: String? = null): String =
+    runtimeDir ?: resolveKastPathDefaults().socketDir.toString()
+
+internal fun defaultConfigCliBinaryPath(binDir: String? = null): Path =
+    binDir?.let(Path::of)?.resolve("kast")
+        ?: resolveKastPathDefaults().cliBinary
+
+internal fun defaultConfigHeadlessRuntimeLibsDir(libDir: String? = null): Path =
+    libDir?.let(Path::of)?.resolve("backends/headless/current/runtime-libs")
+        ?: resolveKastPathDefaults().headlessRuntimeLibsDir

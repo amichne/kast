@@ -23,7 +23,7 @@
     fn seed_fixture() -> Fixture {
         let temp = tempfile::tempdir().expect("tempdir");
         let workspace = temp.path().join("workspace");
-        let database = workspace.join(".gradle/kast/cache/source-index.db");
+        let database = temp.path().join("workspace-data/cache/source-index.db");
         std::fs::create_dir_all(database.parent().expect("db parent")).expect("db parent");
         seed_source_files(&workspace);
         let conn = Connection::open(&database).expect("sqlite");

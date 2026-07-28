@@ -101,10 +101,14 @@ fn agent_graph_refresh_routes_selected_files_through_compiler_graph() {
             .expect("canonical workspace")
             .join("src/Removed.kt")])
     );
+    assert!(
+        refresh["params"].get("expectedGeneration").is_none(),
+        "{refresh}"
+    );
 }
 
 #[test]
-fn agent_graph_refresh_rejects_query_only_flags() {
+fn agent_graph_rejects_operation_irrelevant_flags_as_agent_usage() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -138,8 +142,117 @@ fn agent_graph_refresh_rejects_query_only_flags() {
         let stdout: Value =
             serde_json::from_slice(&output.stdout).expect("graph refresh error json");
 
-        assert_eq!(stdout["code"], "CLI_USAGE", "{query_args:?}: {stdout}");
+        assert_eq!(
+            stdout["error"]["code"], "AGENT_USAGE",
+            "{query_args:?}: {stdout}"
+        );
     }
+
+    for operation_args in [
+        ["summary", "--symbol", "sample.Sample"],
+        ["nodes", "--resolution", "1.0"],
+        ["neighbors", "--limit", "100"],
+        ["topology", "--after-id", "0"],
+        ["communities", "--symbol", "sample.Sample"],
+    ] {
+        let output = kast(&home, &config_home)
+            .args([
+                "--output",
+                "json",
+                "agent",
+                "graph",
+                "--operation",
+                operation_args[0],
+                "--workspace-root",
+                workspace.to_str().expect("workspace"),
+            ])
+            .args(&operation_args[1..])
+            .output()
+            .expect("graph operation with irrelevant flag");
+        let stdout: Value = serde_json::from_slice(&output.stdout).expect("graph usage error json");
+
+        assert_eq!(
+            stdout["error"]["code"], "AGENT_USAGE",
+            "{operation_args:?}: {stdout}"
+        );
+    }
+}
+
+#[test]
+fn agent_graph_refresh_requires_ready_before_semantic_graph_rpc() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let source = workspace.join("Sample.kt");
+    let socket_path = temp.path().join("idea.sock");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
+    std::fs::write(&source, "package sample\nclass Sample\n").expect("source");
+    let handle = spawn_sequenced_idea_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        vec![
+            (
+                "runtime/status",
+                json!({
+                    "state": "INDEXING",
+                    "healthy": true,
+                    "active": true,
+                    "indexing": true,
+                    "backendName": "idea",
+                    "backendVersion": "scripted-test",
+                    "workspaceRoot": workspace.display().to_string(),
+                    "schemaVersion": 5
+                }),
+            ),
+            (
+                "capabilities",
+                json!({
+                    "backendName": "idea",
+                    "backendVersion": "scripted-test",
+                    "workspaceRoot": workspace.display().to_string(),
+                    "readCapabilities": ["raw/semantic-graph"],
+                    "mutationCapabilities": [],
+                    "limits": {
+                        "requestTimeoutMillis": 60000,
+                        "maxResults": 1000,
+                        "maxConcurrentRequests": 4
+                    },
+                    "schemaVersion": 5
+                }),
+            ),
+        ],
+    );
+
+    let output = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "graph",
+            "--operation",
+            "refresh",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+            "--file-path",
+            source.to_str().expect("source"),
+        ])
+        .output()
+        .expect("graph refresh while indexing");
+
+    let stdout: Value = serde_json::from_slice(&output.stdout).expect("graph readiness error json");
+    assert_eq!(stdout["error"]["code"], "RUNTIME_INDEXING", "{stdout}");
+    let requests = handle.join().expect("indexing backend");
+    assert_eq!(
+        requests
+            .iter()
+            .map(|request| request["method"].as_str())
+            .collect::<Vec<_>>(),
+        vec![Some("runtime/status"), Some("capabilities")]
+    );
 }
 
 #[test]
@@ -250,6 +363,7 @@ fn agent_graph_source_scope_selects_exclusively_and_widens_incrementally() {
         refreshes[0]["params"]["filePaths"],
         json!([app_main.canonicalize().expect("canonical app main")])
     );
+    assert_eq!(refreshes[0]["params"]["expectedGeneration"], 41);
     assert_eq!(
         refreshes[0]["params"]["removedFilePaths"],
         json!([workspace
@@ -264,13 +378,14 @@ fn agent_graph_source_scope_selects_exclusively_and_widens_incrementally() {
             lib_main.canonicalize().expect("canonical lib main"),
         ])
     );
+    assert_eq!(refreshes[1]["params"]["expectedGeneration"], 41);
     assert_eq!(refreshes[1]["params"]["removedFilePaths"], json!([]));
 }
 
 fn seed_graph_source_scope_index(
     workspace: &std::path::Path,
 ) -> workspace_files::WorkspaceIndexFixture {
-    let database = workspace.join(".gradle/kast/cache/source-index.db");
+    let database = workspace_database_path_for_test(workspace);
     let index = workspace_files::WorkspaceIndexFixture::at_database_path(workspace, &database);
     for (prefix, directory, filename) in [
         (2, "app/src/main", "App.kt"),

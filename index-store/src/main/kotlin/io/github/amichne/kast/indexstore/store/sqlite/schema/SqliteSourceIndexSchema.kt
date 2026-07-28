@@ -336,6 +336,14 @@ internal class SqliteSourceIndexSchema(
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_declarations_file ON declarations(prefix_id, filename)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_decl_supertypes_supertype ON declaration_supertypes(supertype_fq_id)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_pending_updates_unapplied ON pending_updates(applied, seq)")
+        stmt.execute(
+            "CREATE INDEX IF NOT EXISTS idx_semantic_files_package_status_id " +
+                "ON semantic_files(package_name, refresh_status, id)",
+        )
+        stmt.execute(
+            "CREATE INDEX IF NOT EXISTS idx_semantic_files_module_id " +
+                "ON semantic_files(module_name, id)",
+        )
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_semantic_symbols_file_id_id ON semantic_symbols(file_id, id)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_semantic_symbols_owner_id_id ON semantic_symbols(owner_id, id)")
         stmt.execute(

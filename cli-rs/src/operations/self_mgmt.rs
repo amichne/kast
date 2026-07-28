@@ -23,8 +23,7 @@ pub use agent_readiness::{AgentResourceState, DoctorAgentEnvironmentDiagnostic};
 
 pub use crate::manifest::KastInstallManifest as InstallState;
 
-#[cfg(target_os = "macos")]
-const MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE: &str = ".kast/setup/workspace.json";
+const MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE: &str = "workspace.json";
 #[cfg(target_os = "macos")]
 const MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION: u32 = 3;
 #[cfg(target_os = "macos")]

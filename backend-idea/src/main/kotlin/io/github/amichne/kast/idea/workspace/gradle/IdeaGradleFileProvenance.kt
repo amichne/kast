@@ -1,6 +1,5 @@
 package io.github.amichne.kast.idea
 
-import com.intellij.openapi.project.Project
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleProjectIdentity
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleSourceSetIdentity
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
@@ -35,12 +34,11 @@ internal class IdeaGradleFileProvenance private constructor(
     }
 
     companion object {
-        fun fromProject(
-            project: Project,
+        fun fromWorkspaceModel(
+            model: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
             workspaceIdentity: IdeaWorkspaceIdentity,
         ): IdeaGradleFileProvenance {
             val workspace = workspaceIdentity.workspaceIdentity
-            val model = IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
             val modules = model.moduleAssociations().mapNotNull { association ->
                 val linkedRoot = association.linkedBuildRoot().toAbsolutePath().normalize()
                 val relativeRoot = workspace.relativizeIfContained(linkedRoot) ?: return@mapNotNull null

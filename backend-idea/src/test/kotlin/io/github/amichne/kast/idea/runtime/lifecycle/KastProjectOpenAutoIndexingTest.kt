@@ -75,33 +75,26 @@ class KastProjectOpenAutoIndexingTest {
     @Test
     fun `project open reports indexing then waits for Gradle before starting reference index`() {
         val project = projectFixture.get()
-        var loadedWorkspaceRoot: Path? = null
         var loadedGradleWorkspaceRoot: Path? = null
         var startedProject: Project? = null
         var gradleCompletion: ((Throwable?) -> Unit)? = null
         val events = mutableListOf<String>()
+        val config = KastConfig.defaults()
 
         val started = KastProjectOpenAutoIndexing.execute(
             project = project,
-            loadConfig = { workspaceRoot ->
-                loadedWorkspaceRoot = workspaceRoot
-                KastConfig.defaults()
-            },
-            installProjectOpenProfile = { workspaceRoot, _ ->
-                ProjectOpenProfileAutoInitResult.Installed(
-                    metadataPath = workspaceRoot.resolve(".kast/setup/workspace.json"),
-                    backups = emptyList(),
-                )
-            },
-            loadGradleProject = { workspaceRoot, _, onComplete ->
+            config = config,
+            loadGradleProject = { workspaceRoot, startupConfig, onComplete ->
+                assertSame(config, startupConfig)
                 events.add("gradle")
                 loadedGradleWorkspaceRoot = workspaceRoot
                 gradleCompletion = onComplete
                 ProjectOpenGradleLoadResult.Requested(GradleProjectLoadRequest.Link(workspaceRoot))
             },
-            startBackend = {
+            startBackend = { _, startupConfig ->
+                assertSame(config, startupConfig)
                 events.add("backend")
-                startedProject = it
+                startedProject = project
             },
             startReferenceIndex = { events.add("index") },
             failReadiness = { _, error -> events.add("failed:${error.message}") },
@@ -112,9 +105,8 @@ class KastProjectOpenAutoIndexingTest {
         assertEquals(listOf("backend", "gradle"), events)
         gradleCompletion?.invoke(null)
         assertEquals(listOf("backend", "gradle", "index"), events)
-        assertNotNull(loadedWorkspaceRoot)
-        assertEquals(loadedWorkspaceRoot, loadedGradleWorkspaceRoot)
-        assertEquals(loadedWorkspaceRoot, loadedWorkspaceRoot?.toAbsolutePath()?.normalize())
+        assertNotNull(loadedGradleWorkspaceRoot)
+        assertEquals(loadedGradleWorkspaceRoot, loadedGradleWorkspaceRoot?.toAbsolutePath()?.normalize())
     }
 
     @Test
@@ -142,7 +134,7 @@ class KastProjectOpenAutoIndexingTest {
     }
 
     @Test
-    fun `Gradle project load refreshes already linked Gradle project`() {
+    fun `Gradle project load refreshes a linked project whose imported model is incomplete`() {
         val project = projectFixture.get()
         val linkedWorkspaceRoot = tempDir.toAbsolutePath().normalize()
         Files.writeString(linkedWorkspaceRoot.resolve("settings.gradle.kts"), "pluginManagement {}\n")
@@ -181,6 +173,44 @@ class KastProjectOpenAutoIndexingTest {
     }
 
     @Test
+    fun `Gradle project load skips a linked project whose imported model is complete`() {
+        val project = projectFixture.get()
+        val linkedWorkspaceRoot = tempDir.toAbsolutePath().normalize()
+        Files.writeString(linkedWorkspaceRoot.resolve("settings.gradle.kts"), "pluginManagement {}\n")
+        val gradleSettings = GradleSettings.getInstance(project)
+        val previousSettings = gradleSettings.linkedProjectsSettings.toList()
+        var scheduled = false
+
+        try {
+            gradleSettings.setLinkedProjectsSettings(
+                listOf(
+                    GradleProjectSettings().apply {
+                        externalProjectPath = linkedWorkspaceRoot.toString()
+                    },
+                ),
+            )
+
+            val result = KastProjectOpenGradleLoad.execute(
+                project = project,
+                workspaceRoot = linkedWorkspaceRoot,
+                enabled = ProjectOpenGradleLoadEnabled(true),
+                isImportedGradleModelComplete = { _, _ -> true },
+                scheduleGradleLoad = {
+                    scheduled = true
+                },
+            )
+
+            assertEquals(
+                ProjectOpenGradleLoadResult.Skipped("already loaded"),
+                result,
+            )
+            assertFalse(scheduled)
+        } finally {
+            gradleSettings.setLinkedProjectsSettings(previousSettings)
+        }
+    }
+
+    @Test
     fun `project open skips Gradle load when project open Gradle load is disabled`() {
         val project = projectFixture.get()
         var requestedGradleLoad = false
@@ -196,13 +226,7 @@ class KastProjectOpenAutoIndexingTest {
 
         val started = KastProjectOpenAutoIndexing.execute(
             project = project,
-            loadConfig = { disabledConfig },
-            installProjectOpenProfile = { workspaceRoot, _ ->
-                ProjectOpenProfileAutoInitResult.Installed(
-                    metadataPath = workspaceRoot.resolve(".kast/setup/workspace.json"),
-                    backups = emptyList(),
-                )
-            },
+            config = disabledConfig,
             loadGradleProject = { workspaceRoot, config, onComplete ->
                 requestedGradleLoad = true
                 KastProjectOpenGradleLoad.execute(
@@ -212,7 +236,7 @@ class KastProjectOpenAutoIndexingTest {
                     onComplete,
                 )
             },
-            startBackend = { startedProject = it },
+            startBackend = { startupProject, _ -> startedProject = startupProject },
             startReferenceIndex = { startedProject = it },
             failReadiness = { _, _ -> },
         )
@@ -236,8 +260,8 @@ class KastProjectOpenAutoIndexingTest {
 
         val requestedStart = KastProjectOpenAutoIndexing.execute(
             project = project,
-            loadConfig = { disabledConfig },
-            startBackend = { started = true },
+            config = disabledConfig,
+            startBackend = { _, _ -> started = true },
             startReferenceIndex = { started = true },
             failReadiness = { _, _ -> },
         )
@@ -247,23 +271,55 @@ class KastProjectOpenAutoIndexingTest {
     }
 
     @Test
-    fun `project open does not start backend when plugin workspace setup fails`() {
+    fun `optional profile setting does not control IDEA backend orchestration`() {
         val project = projectFixture.get()
-        var started = false
+        val defaults = KastConfig.defaults()
+        val config = defaults.copy(
+            projectOpen = defaults.projectOpen.copy(
+                profileAutoInit = ProjectOpenProfileAutoInit(false),
+                gradleLoadEnabled = ProjectOpenGradleLoadEnabled(false),
+            ),
+        )
+        var backendStarted = false
+        var indexStarted = false
 
         val requestedStart = KastProjectOpenAutoIndexing.execute(
             project = project,
-            loadConfig = { KastConfig.defaults() },
-            installProjectOpenProfile = { _, _ ->
-                ProjectOpenProfileAutoInitResult.Failed("invalid setup")
+            config = config,
+            startBackend = { _, startupConfig ->
+                assertSame(config, startupConfig)
+                backendStarted = true
             },
-            startBackend = { started = true },
-            startReferenceIndex = { started = true },
+            startReferenceIndex = { indexStarted = true },
             failReadiness = { _, _ -> },
         )
 
+        assertTrue(requestedStart)
+        assertTrue(backendStarted)
+        assertTrue(indexStarted)
+    }
+
+    @Test
+    fun `backend startup failure is contained before Gradle load and indexing`() {
+        val project = projectFixture.get()
+        var requestedGradleLoad = false
+        var requestedIndex = false
+
+        val requestedStart = KastProjectOpenAutoIndexing.execute(
+            project = project,
+            config = KastConfig.defaults(),
+            loadGradleProject = { _, _, _ ->
+                requestedGradleLoad = true
+                error("Gradle load must not run after backend startup fails")
+            },
+            startBackend = { _, _ -> error("compatibility metadata failed") },
+            startReferenceIndex = { requestedIndex = true },
+            failReadiness = { _, _ -> requestedIndex = true },
+        )
+
         assertFalse(requestedStart)
-        assertFalse(started)
+        assertFalse(requestedGradleLoad)
+        assertFalse(requestedIndex)
     }
 
     @Test
@@ -275,6 +331,17 @@ class KastProjectOpenAutoIndexingTest {
         val workspaceRoot = Path.of(callerFile.virtualFile.path).parent.toAbsolutePath().normalize()
         val callerPath = Path.of(callerFile.virtualFile.path).toAbsolutePath().normalize().toString()
         val targetPath = Path.of(targetFile.virtualFile.path).toAbsolutePath().normalize().toString()
+        val diskOnlyPath = workspaceRoot.resolve("unmodeled/DiskOnly.kt")
+        Files.createDirectories(diskOnlyPath.parent)
+        Files.writeString(diskOnlyPath, "package unmodeled\nclass DiskOnly\n")
+        val completeGradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            emptyList(),
+            true,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+        )
 
         SqliteSourceIndexStore(workspaceRoot).use { store ->
             IdeaProjectIndexer(
@@ -282,6 +349,7 @@ class KastProjectOpenAutoIndexingTest {
                 workspaceRoot = workspaceRoot,
                 store = store,
                 cancelled = { false },
+                readGradleWorkspaceModel = { completeGradleModel },
             ).indexProject(KastConfig.defaults())
 
             val snapshot = store.loadSourceIndexSnapshot()
@@ -290,6 +358,7 @@ class KastProjectOpenAutoIndexingTest {
             assertEquals("demo", snapshot.packageByPath.getValue(callerPath))
             assertEquals(listOf("demo.target"), snapshot.importsByPath.getValue(callerPath))
             assertTrue(store.loadManifest().orEmpty().keys.containsAll(setOf(callerPath, targetPath)))
+            assertFalse(store.loadManifest().orEmpty().containsKey(diskOnlyPath.toString()))
             assertTrue(store.referencesToSymbol("demo.target").any { row -> row.sourcePath == callerPath })
             val exactReferences = store.generatedReferencePageToExactSymbol(
                 target = ExactReferenceTarget(

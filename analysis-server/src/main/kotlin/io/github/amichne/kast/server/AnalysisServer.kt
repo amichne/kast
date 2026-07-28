@@ -30,10 +30,12 @@ class AnalysisServer(
             when (val transport = config.transport) {
                 is AnalysisTransport.UnixDomainSocket -> {
                     val socketPath = transport.socketPath.toAbsolutePath().normalize()
-                    transportServer = UnixDomainSocketRpcServer(
+                    val provisionalServer = UnixDomainSocketRpcServer(
                         socketPath = socketPath,
                         dispatcher = dispatcher,
-                    ).start()
+                    )
+                    transportServer = provisionalServer
+                    provisionalServer.start()
                     val startedDescriptor = ServerInstanceDescriptor(
                         workspaceRoot = capabilities.workspaceRoot,
                         backendName = capabilities.backendName,
@@ -56,11 +58,13 @@ class AnalysisServer(
                 }
 
                 is AnalysisTransport.Tcp -> {
-                    transportServer = TcpRpcServer(
+                    val provisionalServer = TcpRpcServer(
                         host = transport.host,
                         port = transport.port,
                         dispatcher = dispatcher,
-                    ).start()
+                    )
+                    transportServer = provisionalServer
+                    provisionalServer.start()
                 }
             }
 

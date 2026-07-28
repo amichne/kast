@@ -11,6 +11,7 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbol
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
+import io.github.amichne.kast.indexstore.api.graph.SemanticGraphCommitResult
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
 import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
 import io.github.amichne.kast.indexstore.snapshot.ExtractionShardKey
@@ -36,6 +37,45 @@ import java.sql.DriverManager
 class NativeSemanticGraphMutationTest {
     @TempDir
     lateinit var workspaceRoot: Path
+
+    @Test
+    fun `conditional graph replacement rejects a stale generation without mutating rows`() {
+        val sourcePath = SemanticGraphSourcePath.parse("src/A.kt")
+        val update = semanticUpdate(
+            sourcePath,
+            "a",
+            listOf(semanticSymbol("a#source", "source", sourcePath)),
+        )
+
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            val emptyScope = store.semanticGraphScopeSnapshot()
+            val seeded = store.replaceSemanticGraphFilesIfGeneration(
+                expectedGeneration = emptyScope.generation,
+                updates = listOf(update),
+            )
+            assertTrue(seeded is SemanticGraphCommitResult.Committed)
+            val seededScope = store.semanticGraphScopeSnapshot()
+            assertEquals(setOf(sourcePath), seededScope.sourcePaths)
+
+            val staleRemoval = store.replaceSemanticGraphFilesIfGeneration(
+                expectedGeneration = emptyScope.generation,
+                updates = emptyList(),
+                removedPaths = listOf(sourcePath),
+            )
+
+            assertTrue(staleRemoval is SemanticGraphCommitResult.GenerationChanged)
+            assertEquals(seededScope, store.semanticGraphScopeSnapshot())
+
+            val removal = store.replaceSemanticGraphFilesIfGeneration(
+                expectedGeneration = seededScope.generation,
+                updates = emptyList(),
+                removedPaths = listOf(sourcePath),
+            )
+            assertTrue(removal is SemanticGraphCommitResult.Committed)
+            assertTrue(store.semanticGraphScopeSnapshot().sourcePaths.isEmpty())
+        }
+    }
 
     @Test
     fun `file package and module quotients conserve canonical edge occurrences`() {

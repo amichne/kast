@@ -3,6 +3,7 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.result.*
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphIndexSnapshot
+import io.github.amichne.kast.indexstore.api.graph.SemanticGraphScopeSnapshot
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import java.sql.Connection
@@ -175,7 +176,18 @@ internal class SemanticGraphReader(
         }
     }
 
-    fun semanticGraphSourcePaths(): Set<SemanticGraphSourcePath> = synchronized(state.writeLock) {
+    fun semanticGraphSourcePaths(): Set<SemanticGraphSourcePath> =
+        semanticGraphScopeSnapshot().sourcePaths
+
+    fun semanticGraphScopeSnapshot(): SemanticGraphScopeSnapshot = synchronized(state.writeLock) {
+        val connection = state.connection()
+        SemanticGraphScopeSnapshot(
+            generation = state.readGenerationInTransaction(connection),
+            sourcePaths = readSemanticGraphSourcePaths(connection),
+        )
+    }
+
+    private fun readSemanticGraphSourcePaths(connection: Connection): Set<SemanticGraphSourcePath> {
         val sql = if (state.repositoryBasePath == null) {
             "SELECT path FROM semantic_files WHERE refresh_status != 'CACHED' ORDER BY path"
         } else {
@@ -194,12 +206,11 @@ internal class SemanticGraphReader(
                  )
                ORDER BY path"""
         }
-        state.connection().prepareStatement(sql).use { statement ->
+        return connection.prepareStatement(sql).use { statement ->
             val rows = statement.executeQuery()
             buildSet {
                 while (rows.next()) add(SemanticGraphSourcePath.parse(rows.getString(1)))
             }
         }
     }
-
 }

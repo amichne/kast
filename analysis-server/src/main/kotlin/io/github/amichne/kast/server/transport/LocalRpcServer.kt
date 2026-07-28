@@ -32,7 +32,8 @@ internal class UnixDomainSocketRpcServer(
     private val dispatcher: RpcAnalysisDispatcher,
 ) : LocalRpcServer {
     private val closed = AtomicBoolean(false)
-    private val handlers = Collections.synchronizedList(mutableListOf<Thread>())
+    private val handlers = Collections.synchronizedSet(mutableSetOf<Thread>())
+    private val clients = mutableSetOf<SocketChannel>()
     private val serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
     private val acceptThread = thread(
         start = false,
@@ -43,11 +44,20 @@ internal class UnixDomainSocketRpcServer(
     }
 
     fun start(): UnixDomainSocketRpcServer {
-        Files.createDirectories(checkNotNull(socketPath.parent))
-        socketPath.deleteIfExists()
-        serverChannel.bind(UnixDomainSocketAddress.of(socketPath))
-        acceptThread.start()
-        return this
+        try {
+            Files.createDirectories(checkNotNull(socketPath.parent))
+            socketPath.deleteIfExists()
+            serverChannel.bind(UnixDomainSocketAddress.of(socketPath))
+            acceptThread.start()
+            return this
+        } catch (startupFailure: Throwable) {
+            try {
+                close()
+            } catch (cleanupFailure: Throwable) {
+                startupFailure.addSuppressed(cleanupFailure)
+            }
+            throw startupFailure
+        }
     }
 
     override fun await() {
@@ -58,13 +68,25 @@ internal class UnixDomainSocketRpcServer(
         if (!closed.compareAndSet(false, true)) {
             return
         }
+        val deadlineNanos = System.nanoTime() + RPC_CLOSE_TIMEOUT_NANOS
         runCatching { serverChannel.close() }
         val currentThread = Thread.currentThread()
-        handlers.toList().forEach { handler ->
-            if (handler != currentThread) {
-                handler.join(1_000)
+        val (acceptedClients, activeHandlers) = synchronized(handlers) {
+            clients.toList() to handlers.toList()
+        }
+        acceptedClients.forEach { client ->
+            runCatching { client.close() }
+        }
+        activeHandlers.forEach { handler ->
+            if (handler !== currentThread) {
+                handler.interrupt()
             }
         }
+        joinRpcThreadsUntil(
+            threads = listOf(acceptThread) + activeHandlers,
+            currentThread = currentThread,
+            deadlineNanos = deadlineNanos,
+        )
         socketPath.deleteIfExists()
     }
 
@@ -72,13 +94,34 @@ internal class UnixDomainSocketRpcServer(
         while (!closed.get()) {
             val client = runCatching { serverChannel.accept() }.getOrNull() ?: break
             val handler = thread(
-                start = true,
+                start = false,
                 isDaemon = true,
                 name = "kast-uds-rpc-client",
             ) {
-                client.use(::handleClient)
+                try {
+                    client.use(::handleClient)
+                } finally {
+                    synchronized(handlers) {
+                        clients.remove(client)
+                        handlers.remove(Thread.currentThread())
+                    }
+                }
             }
-            handlers += handler
+            val started = synchronized(handlers) {
+                if (closed.get()) {
+                    false
+                } else {
+                    clients += client
+                    handlers += handler
+                    handler.start()
+                    true
+                }
+            }
+            if (!started) {
+                runCatching { client.close() }
+                .onFailure { throw it }
+                break
+            }
         }
     }
 
@@ -148,12 +191,12 @@ internal fun processRpcStream(
                 continue
             }
             val response = runBlocking {
-                dispatcher.dispatchRaw(line)
+                dispatcher.dispatchRawForTransport(line)
             }
-            writer.write(response)
+            writer.write(response.response)
             writer.newLine()
             writer.flush()
-            if (dispatcher.runAfterResponseActions()) {
+            if (response.runAfterFlushAction()) {
                 return
             }
         }
@@ -184,4 +227,22 @@ internal fun isExpectedClientDisconnect(error: Throwable): Boolean {
     }
 
     return false
+}
+
+private const val RPC_CLOSE_TIMEOUT_NANOS = 1_000_000_000L
+
+internal fun joinRpcThreadsUntil(
+    threads: Collection<Thread>,
+    currentThread: Thread,
+    deadlineNanos: Long,
+) {
+    for (thread in threads) {
+        if (thread === currentThread) continue
+        val remainingNanos = deadlineNanos - System.nanoTime()
+        if (remainingNanos <= 0) return
+        thread.join(
+            remainingNanos / 1_000_000,
+            (remainingNanos % 1_000_000).toInt(),
+        )
+    }
 }

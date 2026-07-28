@@ -6,7 +6,7 @@ fn prepared_linked_worktree_supports_read_only_symbol_resolution() {
     let config_home = fixture.linked().join("test-config");
     let socket_path = fixture.socket_path("linked-symbol.sock");
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&workspace);
+    write_macos_plugin_workspace_metadata_at_home(&workspace, &home);
     write_runtime_descriptor(&home, &workspace, &socket_path, "idea");
     let backend = spawn_verify_backend(
         bind_semantic_listener(&socket_path),
@@ -55,7 +55,7 @@ fn prepared_linked_worktree_supports_read_only_diagnostics() {
     let config_home = fixture.linked().join("test-config");
     let socket_path = fixture.socket_path("linked-diagnostics.sock");
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&workspace);
+    write_macos_plugin_workspace_metadata_at_home(&workspace, &home);
     let file = workspace.join("lib/Foo.kt");
     std::fs::create_dir_all(file.parent().expect("file parent")).expect("source dir");
     std::fs::write(&file, "package lib\n\nclass Foo\n").expect("source file");

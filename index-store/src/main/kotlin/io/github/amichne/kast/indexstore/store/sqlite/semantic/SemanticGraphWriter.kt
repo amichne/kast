@@ -3,6 +3,7 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.result.*
 import io.github.amichne.kast.indexstore.api.graph.*
+import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.sql.Connection
@@ -14,7 +15,25 @@ internal class SemanticGraphWriter(
     fun replaceSemanticGraphFiles(
         updates: List<SemanticGraphFileIndexUpdate>,
         removedPaths: List<SemanticGraphSourcePath> = emptyList(),
-    ): SemanticGraphWriteResult {
+    ): SemanticGraphWriteResult =
+        when (val result = replaceSemanticGraphFiles(updates, removedPaths, expectedGeneration = null)) {
+            is SemanticGraphCommitResult.Committed -> result.writeResult
+            is SemanticGraphCommitResult.GenerationChanged ->
+                error("An unconditional semantic graph commit cannot reject its generation")
+        }
+
+    fun replaceSemanticGraphFilesIfGeneration(
+        expectedGeneration: SourceIndexGeneration,
+        updates: List<SemanticGraphFileIndexUpdate>,
+        removedPaths: List<SemanticGraphSourcePath> = emptyList(),
+    ): SemanticGraphCommitResult =
+        replaceSemanticGraphFiles(updates, removedPaths, expectedGeneration)
+
+    private fun replaceSemanticGraphFiles(
+        updates: List<SemanticGraphFileIndexUpdate>,
+        removedPaths: List<SemanticGraphSourcePath>,
+        expectedGeneration: SourceIndexGeneration?,
+    ): SemanticGraphCommitResult {
         require(updates.isNotEmpty() || removedPaths.isNotEmpty()) {
             "Semantic graph replacement requires an updated or removed file"
         }
@@ -22,6 +41,14 @@ internal class SemanticGraphWriter(
             val conn = state.connection()
             conn.autoCommit = false
             return try {
+                val actualGeneration = state.readGenerationInTransaction(conn)
+                if (expectedGeneration != null && expectedGeneration != actualGeneration) {
+                    conn.rollback()
+                    return SemanticGraphCommitResult.GenerationChanged(
+                        expectedGeneration = expectedGeneration,
+                        actualGeneration = actualGeneration,
+                    )
+                }
                 removedPaths
                     .distinct()
                     .sorted()
@@ -69,11 +96,13 @@ internal class SemanticGraphWriter(
                 state.incrementGenerationInTransaction(conn)
                 val generation = state.readGenerationInTransaction(conn)
                 conn.commit()
-                SemanticGraphWriteResult(
-                    generation = generation,
-                    fileCount = updates.size,
-                    symbolCount = updates.sumOf { update -> update.symbols.size },
-                    edgeOccurrenceCount = updates.sumOf { update -> update.relations.size },
+                SemanticGraphCommitResult.Committed(
+                    SemanticGraphWriteResult(
+                        generation = generation,
+                        fileCount = updates.size,
+                        symbolCount = updates.sumOf { update -> update.symbols.size },
+                        edgeOccurrenceCount = updates.sumOf { update -> update.relations.size },
+                    ),
                 )
             } catch (failure: Exception) {
                 conn.rollback()

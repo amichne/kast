@@ -10,6 +10,8 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiFile
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.WorkspaceIdentity
+import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
+import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
@@ -23,12 +25,20 @@ internal class IdeaProjectIndexer(
     private val store: SqliteSourceIndexStore,
     private val cancelled: () -> Boolean,
     private val workspaceIdentity: WorkspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot),
+    private val readGradleWorkspaceModel: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
+        IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
+    },
 ) {
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     private val environment = IdeaReferenceIndexEnvironment(
         project = project,
         workspaceIdentity = workspaceIdentity,
         cancelled = cancelled,
+    )
+    private val ideaWorkspaceIdentity = workspaceIdentityForIdea()
+    private val inventory = IdeaProjectModelWorkspaceFileInventory(
+        project = project,
+        workspaceIdentity = ideaWorkspaceIdentity,
     )
 
     fun indexProject(config: KastConfig) {
@@ -53,24 +63,28 @@ internal class IdeaProjectIndexer(
 
     fun indexSourceIdentifiers(): Collection<String> {
         store.ensureSchema()
-        val gradleProvenance = runIdeaReadAction {
-            IdeaGradleFileProvenance.fromProject(project, workspaceIdentityForIdea())
+        val (gradleProvenance, inventorySnapshot) = runIdeaReadAction {
+            val gradleModel = readGradleWorkspaceModel()
+            IdeaGradleFileProvenance.fromWorkspaceModel(gradleModel, ideaWorkspaceIdentity) to
+                inventory.snapshot(WorkspaceFileKindDomain.MIXED, gradleModel)
         }
         val scanner = PsiSourceIndexScanner(
             environment = environment,
             moduleNameForFile = ::moduleNameForFile,
         )
-        val updates = environment.allFilePaths()
+        val ownerModuleNamesByPath = referenceIndexOwnersByPath(inventorySnapshot)
+        val updates = ownerModuleNamesByPath.keys
             .mapNotNull(scanner::scanFile)
             .map { update ->
                 gradleProvenance.applyTo(
                     update = update,
-                    ownerModuleNames = ideaModuleOwnersForFile(update.path),
+                    ownerModuleNames = ownerModuleNamesByPath.getValue(update.path),
                 )
             }
         val manifest = updates.associate { update ->
             update.path to lastModifiedMillis(update.path)
         }
+        if (environment.isCancelled()) return emptyList()
         store.saveFullIndex(updates = updates, manifest = manifest)
         return manifest.keys
     }
@@ -213,15 +227,23 @@ internal class IdeaProjectIndexer(
             ?: module.name
     }
 
-    private fun ideaModuleOwnersForFile(filePath: String): Set<IdeaWorkspaceModuleIdentity> = runIdeaReadAction {
-        val virtualFile = LocalFileSystem.getInstance().findFileByNioFile(Path.of(filePath))
-            ?: return@runIdeaReadAction emptySet()
-        ModuleManager.getInstance(project).modules
-            .asSequence()
-            .filter { module -> ModuleRootManager.getInstance(module).fileIndex.isInContent(virtualFile) }
-            .map { module -> IdeaWorkspaceModuleIdentity.of(module.name) }
-            .sorted()
-            .toCollection(linkedSetOf())
+    private fun referenceIndexOwnersByPath(
+        snapshot: IdeaWorkspaceFileInventorySnapshot,
+    ): Map<String, Set<IdeaWorkspaceModuleIdentity>> {
+        val ownersByPath = sortedMapOf<String, MutableSet<IdeaWorkspaceModuleIdentity>>()
+        snapshot.modules.forEach { module ->
+            module.allFilePaths
+                .asSequence()
+                .map { filePath -> Path.of(filePath).toAbsolutePath().normalize() }
+                .filter(workspaceIdentity::contains)
+                .filter(SourceIndexFilePolicy::isEligible)
+                .forEach { path ->
+                    ownersByPath
+                        .getOrPut(path.toString(), ::linkedSetOf)
+                        .add(module.identity)
+                }
+        }
+        return ownersByPath.mapValues { (_, owners) -> owners.toSortedSet() }
     }
 
     private fun legacySourceSetLabelForFile(path: String): String? {
@@ -245,7 +267,7 @@ internal class IdeaProjectIndexer(
     private fun workspaceIdentityForIdea(): IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(
         project = project,
         workspaceRoot = workspaceRoot,
-    )
+    ).copy(workspaceIdentity = workspaceIdentity)
 }
 
 internal fun indexedModuleNameForFilePath(

@@ -4,6 +4,7 @@ import io.github.amichne.kast.idea.backend.KastPluginBackend
 
 import com.intellij.openapi.diagnostic.Logger
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.socketPathForWorkspaceRoot
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileKind
 import io.github.amichne.kast.api.contract.compatibility.CliImplementationVersion
 import java.nio.file.Files
@@ -20,14 +21,51 @@ object KastProjectOpenProfileAutoInit {
         executeWithConfiguredBinary(workspaceRoot, config)
     }
 
+    internal fun prepareRequired(
+        workspaceRoot: Path,
+        config: KastConfig,
+        prepareWorkspace: (PluginWorkspaceBootstrapRequest) -> PluginWorkspaceBootstrapResult =
+            PluginWorkspaceBootstrap::prepare,
+    ): ProjectOpenProfileAutoInitResult = if (isMacosHost()) {
+        prepareRequiredWithDependencies(
+            workspaceRoot = workspaceRoot,
+            config = config,
+            prepareWorkspace = prepareWorkspace,
+        )
+    } else {
+        prepareRequiredWithConfiguredBinary(
+            workspaceRoot = workspaceRoot,
+            config = config,
+            prepareWorkspace = prepareWorkspace,
+        )
+    }
+
     internal fun executeWithConfiguredBinary(
         workspaceRoot: Path,
         config: KastConfig,
         loadCliVersion: (Path) -> CliImplementationVersion? = ::loadConfiguredCliVersion,
         prepareWorkspace: (PluginWorkspaceBootstrapRequest) -> PluginWorkspaceBootstrapResult =
             PluginWorkspaceBootstrap::prepare,
+    ): ProjectOpenProfileAutoInitResult {
+        optionalSkipReason(workspaceRoot, config)?.let { reason ->
+            return ProjectOpenProfileAutoInitResult.Skipped(reason)
+        }
+        return prepareRequiredWithConfiguredBinary(
+            workspaceRoot = workspaceRoot,
+            config = config,
+            loadCliVersion = loadCliVersion,
+            prepareWorkspace = prepareWorkspace,
+        )
+    }
+
+    internal fun prepareRequiredWithConfiguredBinary(
+        workspaceRoot: Path,
+        config: KastConfig,
+        loadCliVersion: (Path) -> CliImplementationVersion? = ::loadConfiguredCliVersion,
+        prepareWorkspace: (PluginWorkspaceBootstrapRequest) -> PluginWorkspaceBootstrapResult =
+            PluginWorkspaceBootstrap::prepare,
     ): ProjectOpenProfileAutoInitResult =
-        executeWithCliAuthorityResolver(
+        prepareWithCliAuthorityResolver(
             workspaceRoot = workspaceRoot,
             config = config,
             resolveCliAuthority = {
@@ -54,8 +92,26 @@ object KastProjectOpenProfileAutoInit {
         loadInstallReceipt: () -> KastInstallReceiptLoadResult = KastInstallReceiptLoader::load,
         prepareWorkspace: (PluginWorkspaceBootstrapRequest) -> PluginWorkspaceBootstrapResult =
             PluginWorkspaceBootstrap::prepare,
+    ): ProjectOpenProfileAutoInitResult {
+        optionalSkipReason(workspaceRoot, config)?.let { reason ->
+            return ProjectOpenProfileAutoInitResult.Skipped(reason)
+        }
+        return prepareRequiredWithDependencies(
+            workspaceRoot = workspaceRoot,
+            config = config,
+            loadInstallReceipt = loadInstallReceipt,
+            prepareWorkspace = prepareWorkspace,
+        )
+    }
+
+    internal fun prepareRequiredWithDependencies(
+        workspaceRoot: Path,
+        config: KastConfig,
+        loadInstallReceipt: () -> KastInstallReceiptLoadResult = KastInstallReceiptLoader::load,
+        prepareWorkspace: (PluginWorkspaceBootstrapRequest) -> PluginWorkspaceBootstrapResult =
+            PluginWorkspaceBootstrap::prepare,
     ): ProjectOpenProfileAutoInitResult =
-        executeWithCliAuthorityResolver(
+        prepareWithCliAuthorityResolver(
             workspaceRoot = workspaceRoot,
             config = config,
             resolveCliAuthority = {
@@ -72,22 +128,22 @@ object KastProjectOpenProfileAutoInit {
             prepareWorkspace = prepareWorkspace,
         )
 
-    private fun executeWithCliAuthorityResolver(
+    private fun optionalSkipReason(
+        workspaceRoot: Path,
+        config: KastConfig,
+    ): String? {
+        if (!config.projectOpen.profileAutoInit.value) return "disabled"
+        if (config.projectOpen.profile.kind != ProjectOpenProfileKind.JETBRAINS_PLUGIN) return "unsupported profile"
+        if (!workspaceRoot.hasGradleMarker()) return "not a Gradle project"
+        return null
+    }
+
+    private fun prepareWithCliAuthorityResolver(
         workspaceRoot: Path,
         config: KastConfig,
         resolveCliAuthority: (PluginVersion) -> CliAuthorityLoadResult,
         prepareWorkspace: (PluginWorkspaceBootstrapRequest) -> PluginWorkspaceBootstrapResult,
     ): ProjectOpenProfileAutoInitResult {
-        if (!config.projectOpen.profileAutoInit.value) {
-            return ProjectOpenProfileAutoInitResult.Skipped("disabled")
-        }
-        if (config.projectOpen.profile.kind != ProjectOpenProfileKind.JETBRAINS_PLUGIN) {
-            return ProjectOpenProfileAutoInitResult.Skipped("unsupported profile")
-        }
-        if (!workspaceRoot.hasGradleMarker()) {
-            return ProjectOpenProfileAutoInitResult.Skipped("not a Gradle project")
-        }
-
         val pluginVersion = kastPluginVersion()
             ?: return ProjectOpenProfileAutoInitResult.Failed(
                 "Kast plugin version resource is missing or invalid; refusing workspace setup.",
@@ -102,6 +158,10 @@ object KastProjectOpenProfileAutoInit {
             cliBinary = cliAuthority.binary,
             cliVersion = cliAuthority.version,
             pluginVersion = pluginVersion,
+            socketPath = socketPathForWorkspaceRoot(
+                workspaceRoot = workspaceRoot,
+                socketDirectory = Path.of(config.paths.socketDir.value),
+            ),
         )
         return when (val result = prepareWorkspace(request)) {
             is PluginWorkspaceBootstrapResult.Prepared ->

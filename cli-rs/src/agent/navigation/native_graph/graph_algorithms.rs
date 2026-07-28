@@ -11,9 +11,8 @@ fn native_graph_text_edges(
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, f64>(4)?,
+                row.get::<_, i64>(2)? as usize,
+                row.get::<_, f64>(3)?,
             ))
         })
         .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_QUERY_FAILED", error))?
@@ -21,12 +20,11 @@ fn native_graph_text_edges(
         .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_QUERY_FAILED", error))?;
     Ok(rows
         .into_iter()
-        .filter_map(|(source, target, kind, context, weight)| {
+        .filter_map(|(source, target, occurrence_count, weight)| {
             Some(NativeGraphEdge {
                 source: *positions.get(&source)?,
                 target: *positions.get(&target)?,
-                kind,
-                context,
+                occurrence_count,
                 weight,
             })
         })

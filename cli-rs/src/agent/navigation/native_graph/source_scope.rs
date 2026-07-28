@@ -4,13 +4,57 @@ struct NativeGraphSourceCandidate {
     source_sets: BTreeSet<(String, String, String)>,
 }
 
-fn native_graph_source_scope_paths(
+struct NativeGraphRefreshScopeSnapshot {
+    generation: u64,
+    selected: Vec<String>,
+    persisted: Vec<String>,
+}
+
+fn native_graph_refresh_scope_snapshot(
     args: &AgentNativeGraphArgs,
-) -> std::result::Result<Vec<String>, AgentError> {
+) -> std::result::Result<NativeGraphRefreshScopeSnapshot, AgentError> {
     let workspace_root = native_graph_workspace_root(args)?;
     let database = native_graph_database_path(args)?;
     let connection = native_graph_scope_connection(&database)?;
-    native_graph_generation(&connection)?;
+    let has_repository_base = native_graph_attach_repository_base(&connection, &database)?;
+    crate::source_index_db::enable_query_only(&connection)
+        .map_err(|error| native_graph_sql_error("GRAPH_SOURCE_SCOPE_UNAVAILABLE", error))?;
+    connection
+        .execute_batch("BEGIN")
+        .map_err(|error| native_graph_sql_error("GRAPH_SOURCE_SCOPE_UNAVAILABLE", error))?;
+    let result = (|| {
+        let generation = native_graph_generation(&connection)?;
+        let selected = if args.modules.is_empty() && args.source_sets.is_empty() {
+            Vec::new()
+        } else {
+            native_graph_source_scope_paths(args, &workspace_root, &connection)?
+        };
+        let persisted = native_graph_persisted_source_paths(
+            &workspace_root,
+            &connection,
+            has_repository_base,
+        )?;
+        if native_graph_generation(&connection)? != generation {
+            return Err(agent_error(
+                "NATIVE_GRAPH_GENERATION_CHANGED",
+                "Source-index generation changed while the graph refresh scope was planned.",
+            ));
+        }
+        Ok(NativeGraphRefreshScopeSnapshot {
+            generation,
+            selected,
+            persisted,
+        })
+    })();
+    let _ = connection.execute_batch(if result.is_ok() { "COMMIT" } else { "ROLLBACK" });
+    result
+}
+
+fn native_graph_source_scope_paths(
+    args: &AgentNativeGraphArgs,
+    workspace_root: &Path,
+    connection: &rusqlite::Connection,
+) -> std::result::Result<Vec<String>, AgentError> {
     let pending: i64 = connection
         .query_row(
             "SELECT COUNT(*) FROM pending_updates WHERE applied = 0",
@@ -186,15 +230,10 @@ fn native_graph_relative_source_path(
 }
 
 fn native_graph_persisted_source_paths(
-    args: &AgentNativeGraphArgs,
+    workspace_root: &Path,
+    connection: &rusqlite::Connection,
+    has_repository_base: bool,
 ) -> std::result::Result<Vec<String>, AgentError> {
-    let workspace_root = native_graph_workspace_root(args)?;
-    let database = native_graph_database_path(args)?;
-    if !database.is_file() {
-        return Ok(Vec::new());
-    }
-    let connection = native_graph_scope_connection(&database)?;
-    let has_repository_base = native_graph_attach_repository_base(&connection, &database)?;
     let sql = if has_repository_base {
         format!(
             "{} SELECT path FROM effective_files WHERE refresh_status != 'CACHED' ORDER BY path",

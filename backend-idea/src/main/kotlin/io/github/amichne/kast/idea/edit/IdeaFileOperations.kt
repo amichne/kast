@@ -4,6 +4,7 @@ import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.VcsConfiguration
 import com.intellij.openapi.vcs.VcsShowConfirmationOption
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.protocol.PartialApplyException
@@ -11,9 +12,19 @@ import io.github.amichne.kast.api.protocol.UnsafeWorkspaceMutationException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.ValidatedFileEdits
 import io.github.amichne.kast.api.validation.ValidatedFileOperation
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.nio.file.Path
+import java.util.WeakHashMap
 import io.github.amichne.kast.idea.*
 import io.github.amichne.kast.idea.mutation.*
+
+private val vcsConfirmationLocks = WeakHashMap<Project, Mutex>()
+
+private fun Project.vcsConfirmationLock(): Mutex =
+    synchronized(vcsConfirmationLocks) {
+        vcsConfirmationLocks.getOrPut(this) { Mutex() }
+    }
 
 internal suspend fun IdeaEditApplier.applyFileOperations(
         operations: List<ValidatedFileOperation>,
@@ -260,30 +271,36 @@ internal suspend fun <T> IdeaEditApplier.withVcsFileOperationConfirmationsSuppre
         fileOperations: List<ValidatedFileOperation>,
         action: suspend () -> T,
     ): T {
-        val vcsManager = ProjectLevelVcsManager.getInstance(project)
-        val overrides = buildList {
-            if (fileOperations.any { operation -> operation is ValidatedFileOperation.CreateFile }) {
-                add(
-                    VcsConfirmationOverride(
-                        option = vcsManager.getStandardConfirmation(VcsConfiguration.StandardConfirmation.ADD, null),
-                        suppressedValue = VcsShowConfirmationOption.Value.DO_NOTHING_SILENTLY,
-                    ),
-                )
+        val suppressAdd = fileOperations.any { operation -> operation is ValidatedFileOperation.CreateFile }
+        val suppressRemove = fileOperations.any { operation -> operation is ValidatedFileOperation.DeleteFile }
+        if (!suppressAdd && !suppressRemove) return action()
+
+        return project.vcsConfirmationLock().withLock {
+            val vcsManager = ProjectLevelVcsManager.getInstance(project)
+            val overrides = buildList {
+                if (suppressAdd) {
+                    add(
+                        VcsConfirmationOverride(
+                            option = vcsManager.getStandardConfirmation(VcsConfiguration.StandardConfirmation.ADD, null),
+                            suppressedValue = VcsShowConfirmationOption.Value.DO_NOTHING_SILENTLY,
+                        ),
+                    )
+                }
+                if (suppressRemove) {
+                    add(
+                        VcsConfirmationOverride(
+                            option = vcsManager.getStandardConfirmation(VcsConfiguration.StandardConfirmation.REMOVE, null),
+                            suppressedValue = VcsShowConfirmationOption.Value.DO_NOTHING_SILENTLY,
+                        ),
+                    )
+                }
             }
-            if (fileOperations.any { operation -> operation is ValidatedFileOperation.DeleteFile }) {
-                add(
-                    VcsConfirmationOverride(
-                        option = vcsManager.getStandardConfirmation(VcsConfiguration.StandardConfirmation.REMOVE, null),
-                        suppressedValue = VcsShowConfirmationOption.Value.DO_NOTHING_SILENTLY,
-                    ),
-                )
+            overrides.forEach { override -> override.apply() }
+            try {
+                action()
+            } finally {
+                overrides.asReversed().forEach { override -> override.restore() }
             }
-        }
-        overrides.forEach { override -> override.apply() }
-        return try {
-            action()
-        } finally {
-            overrides.asReversed().forEach { override -> override.restore() }
         }
     }
 

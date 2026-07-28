@@ -19,7 +19,8 @@ internal class TcpRpcServer(
     private val dispatcher: RpcAnalysisDispatcher,
 ) : LocalRpcServer {
     private val closed = AtomicBoolean(false)
-    private val handlers = Collections.synchronizedList(mutableListOf<Thread>())
+    private val handlers = Collections.synchronizedSet(mutableSetOf<Thread>())
+    private val clients = mutableSetOf<SocketChannel>()
     private val serverChannel = ServerSocketChannel.open(StandardProtocolFamily.INET)
     private val acceptThread = thread(
         start = false,
@@ -30,9 +31,18 @@ internal class TcpRpcServer(
     }
 
     fun start(): TcpRpcServer {
-        serverChannel.bind(InetSocketAddress(host, port))
-        acceptThread.start()
-        return this
+        try {
+            serverChannel.bind(InetSocketAddress(host, port))
+            acceptThread.start()
+            return this
+        } catch (startupFailure: Throwable) {
+            try {
+                close()
+            } catch (cleanupFailure: Throwable) {
+                startupFailure.addSuppressed(cleanupFailure)
+            }
+            throw startupFailure
+        }
     }
 
     fun boundPort(): Int {
@@ -48,26 +58,59 @@ internal class TcpRpcServer(
         if (!closed.compareAndSet(false, true)) {
             return
         }
+        val deadlineNanos = System.nanoTime() + 1_000_000_000L
         runCatching { serverChannel.close() }
         val currentThread = Thread.currentThread()
-        handlers.toList().forEach { handler ->
-            if (handler != currentThread) {
-                handler.join(1_000)
+        val (acceptedClients, activeHandlers) = synchronized(handlers) {
+            clients.toList() to handlers.toList()
+        }
+        acceptedClients.forEach { client ->
+            runCatching { client.close() }
+        }
+        activeHandlers.forEach { handler ->
+            if (handler !== currentThread) {
+                handler.interrupt()
             }
         }
+        joinRpcThreadsUntil(
+            threads = listOf(acceptThread) + activeHandlers,
+            currentThread = currentThread,
+            deadlineNanos = deadlineNanos,
+        )
     }
 
     private fun acceptLoop() {
         while (!closed.get()) {
             val client = runCatching { serverChannel.accept() }.getOrNull() ?: break
             val handler = thread(
-                start = true,
+                start = false,
                 isDaemon = true,
                 name = "kast-tcp-rpc-client",
             ) {
-                client.use(::handleClient)
+                try {
+                    client.use(::handleClient)
+                } finally {
+                    synchronized(handlers) {
+                        clients.remove(client)
+                        handlers.remove(Thread.currentThread())
+                    }
+                }
             }
-            handlers += handler
+            val started = synchronized(handlers) {
+                if (closed.get()) {
+                    false
+                } else {
+                    clients += client
+                    handlers += handler
+                    handler.start()
+                    true
+                }
+            }
+            if (!started) {
+                runCatching { client.close() }
+                    .onFailure { throw it }
+                break
+            }
         }
     }
 

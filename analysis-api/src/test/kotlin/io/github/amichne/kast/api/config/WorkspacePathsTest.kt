@@ -19,7 +19,7 @@ class WorkspacePathsTest {
 
     @Test
     fun `kast install root uses local share kast`() {
-        assertEquals(defaultInstallRootPath(), kastInstallRoot())
+        assertEquals(resolveKastPathDefaults().installRoot, kastInstallRoot())
     }
 
     @Test
@@ -32,7 +32,25 @@ class WorkspacePathsTest {
         Files.createDirectories(receipt.parent)
         Files.writeString(
             receipt,
-            """{"tool":"kast","roots":{"data":"$cliDataRoot"}}""",
+            """
+            {
+              "tool": "kast",
+              "roots": {
+                "install": "$cliInstallRoot",
+                "bin": "${cliInstallRoot.resolve("current/bin")}",
+                "config": "${cliInstallRoot.resolve("current/config")}",
+                "data": "$cliDataRoot",
+                "cache": "${cliInstallRoot.resolve("state/cache")}",
+                "runtime": "${cliInstallRoot.resolve("state/runtime")}",
+                "logs": "${cliInstallRoot.resolve("state/logs")}",
+                "locks": "$cliInstallRoot"
+              },
+              "entrypoints": {
+                "shim": "${cliInstallRoot.resolve("current/bin/kast")}",
+                "activeBinary": "${cliInstallRoot.resolve("current/bin/kast")}"
+              }
+            }
+            """.trimIndent(),
         )
         val env = mapOf(
             kastHomeEnv to cliInstallRoot.toString(),
@@ -77,39 +95,109 @@ class WorkspacePathsTest {
     }
 
     @Test
-    fun allPathsResolveFromConfigOnly() {
-        val installRoot = Path.of(System.getProperty("user.home"))
-            .resolve(".local/share/kast")
-            .toAbsolutePath()
-            .normalize()
-        val binDir = Path.of(System.getProperty("user.home")).resolve(".local/bin").toAbsolutePath().normalize()
-        val cacheDir = Path.of(System.getProperty("user.home")).resolve(".cache/kast").toAbsolutePath().normalize()
-        val logsDir = Path.of(System.getProperty("user.home")).resolve(".local/state/kast/logs").toAbsolutePath().normalize()
-        val runtimeDir = installRoot.resolve("state/runtime")
-        val defaults = KastConfig.defaults()
+    fun `public KAST_HOME owns every fallback path`() {
+        val userHome = tempDir.resolve("user-home")
+        val kastHome = tempDir.resolve("kast-home")
+        val resolved = resolveKastPathDefaults(
+            envLookup = mapOf(kastHomeEnv to kastHome.toString())::get,
+            userHome = userHome,
+        )
 
-        assertEquals(runtimeDir.resolve("daemons"), defaultDescriptorDirectory())
-        assertEquals(installRoot.toString(), defaults.paths.installRoot.value)
-        assertEquals(binDir.toString(), defaults.paths.binDir.value)
-        assertEquals(installRoot.resolve("current/lib").toString(), defaults.paths.libDir.value)
-        assertEquals(cacheDir.toString(), defaults.paths.cacheDir.value)
-        assertEquals(logsDir.toString(), defaults.paths.logsDir.value)
-        assertEquals(runtimeDir.toString(), defaults.paths.runtimeDir.value)
-        assertEquals(runtimeDir.resolve("daemons").toString(), defaults.paths.descriptorDir.value)
-        assertEquals(runtimeDir.toString(), defaults.paths.socketDir.value)
+        assertEquals(kastHome.toAbsolutePath().normalize(), resolved.installRoot)
+        assertEquals(resolved.installRoot.resolve("current/bin"), resolved.binDir)
+        assertEquals(resolved.installRoot.resolve("current/lib"), resolved.libDir)
+        assertEquals(resolved.installRoot.resolve("current/config"), resolved.configRoot)
+        assertEquals(resolved.installRoot.resolve("state/data"), resolved.dataRoot)
+        assertEquals(resolved.installRoot.resolve("state/cache"), resolved.cacheDir)
+        assertEquals(resolved.installRoot.resolve("state/logs"), resolved.logsDir)
+        assertEquals(resolved.installRoot.resolve("state/runtime"), resolved.runtimeDir)
+        assertEquals(resolved.runtimeDir.resolve("daemons"), resolved.descriptorDir)
+        assertEquals(resolved.runtimeDir, resolved.socketDir)
+        assertEquals(resolved.binDir.resolve("kast"), resolved.cliBinary)
     }
 
     @Test
-    fun `workspace data directory uses install root git worktree path for git remotes`() {
+    fun `active receipt owns JVM default paths and config home`() {
+        val userHome = tempDir.resolve("user-home")
+        val kastHome = tempDir.resolve("kast-home")
+        val receiptInstall = tempDir.resolve("receipt/install")
+        val receiptBin = tempDir.resolve("receipt/bin")
+        val receiptConfig = tempDir.resolve("receipt/config")
+        val receiptData = tempDir.resolve("receipt/data")
+        val receiptCache = tempDir.resolve("receipt/cache")
+        val receiptLogs = tempDir.resolve("receipt/logs")
+        val receiptRuntime = tempDir.resolve("receipt/runtime")
+        val receiptCli = tempDir.resolve("receipt/bin/kast-cli")
+        val receipt = kastHome.resolve("current/receipt.json")
+        Files.createDirectories(receipt.parent)
+        Files.writeString(
+            receipt,
+            """
+            {
+              "tool": "kast",
+              "roots": {
+                "install": "$receiptInstall",
+                "bin": "$receiptBin",
+                "config": "$receiptConfig",
+                "data": "$receiptData",
+                "cache": "$receiptCache",
+                "runtime": "$receiptRuntime",
+                "logs": "$receiptLogs",
+                "locks": "$receiptInstall"
+              },
+              "entrypoints": {
+                "shim": "$receiptCli",
+                "activeBinary": "$receiptCli"
+              }
+            }
+            """.trimIndent(),
+        )
+        val env = mapOf(kastHomeEnv to kastHome.toString())
+
+        val resolved = resolveKastPathDefaults(env::get, userHome)
+
+        assertEquals(receiptInstall.toAbsolutePath().normalize(), resolved.installRoot)
+        assertEquals(receiptBin.toAbsolutePath().normalize(), resolved.binDir)
+        assertEquals(receiptInstall.resolve("current/lib").toAbsolutePath().normalize(), resolved.libDir)
+        assertEquals(receiptConfig.toAbsolutePath().normalize(), resolved.configRoot)
+        assertEquals(receiptData.toAbsolutePath().normalize(), resolved.dataRoot)
+        assertEquals(receiptCache.toAbsolutePath().normalize(), resolved.cacheDir)
+        assertEquals(receiptLogs.toAbsolutePath().normalize(), resolved.logsDir)
+        assertEquals(receiptRuntime.toAbsolutePath().normalize(), resolved.runtimeDir)
+        assertEquals(receiptRuntime.resolve("daemons").toAbsolutePath().normalize(), resolved.descriptorDir)
+        assertEquals(receiptRuntime.toAbsolutePath().normalize(), resolved.socketDir)
+        assertEquals(receiptCli.toAbsolutePath().normalize(), resolved.cliBinary)
+        assertEquals(receiptConfig.toAbsolutePath().normalize(), kastConfigHome(env::get, userHome))
+    }
+
+    @Test
+    fun allPathsResolveFromConfigOnly() {
+        val resolved = resolveKastPathDefaults()
+        val defaults = KastConfig.defaults()
+
+        assertEquals(resolved.descriptorDir, defaultDescriptorDirectory())
+        assertEquals(resolved.installRoot.toString(), defaults.paths.installRoot.value)
+        assertEquals(resolved.binDir.toString(), defaults.paths.binDir.value)
+        assertEquals(resolved.libDir.toString(), defaults.paths.libDir.value)
+        assertEquals(resolved.cacheDir.toString(), defaults.paths.cacheDir.value)
+        assertEquals(resolved.logsDir.toString(), defaults.paths.logsDir.value)
+        assertEquals(resolved.runtimeDir.toString(), defaults.paths.runtimeDir.value)
+        assertEquals(resolved.descriptorDir.toString(), defaults.paths.descriptorDir.value)
+        assertEquals(resolved.socketDir.toString(), defaults.paths.socketDir.value)
+    }
+
+    @Test
+    fun `workspace data directory uses stable common directory identity for git remotes`() {
         val installRoot = tempDir.resolve("install-root")
         val workspaceRoot = tempDir.resolve("workspace")
-        val gitDir = tempDir.resolve("main.git").resolve("worktrees").resolve("workspace")
+        val commonDir = tempDir.resolve("main.git")
+        val gitDir = commonDir.resolve("worktrees").resolve("workspace")
         val resolver = WorkspaceDirectoryResolver(
             installRoot = { installRoot },
             gitWorkspaceResolver = {
                 GitWorkspace(
                     toplevel = workspaceRoot,
-                    commonDir = tempDir.resolve("main.git"),
+                    commonDir = commonDir,
                     gitDir = gitDir,
                     remote = GitRemote(host = "github.com", owner = "amichne", repo = "kast"),
                 )
@@ -118,7 +206,9 @@ class WorkspacePathsTest {
         val worktreeHash = gitWorktreeHash(workspaceRoot, gitDir)
 
         assertEquals(
-            installRoot.resolve("state/data/workspaces/git/github.com/amichne/kast/worktrees/workspace--$worktreeHash"),
+            installRoot.resolve(
+                "state/data/workspaces/git/local/${gitCommonDirHash(commonDir)}/worktrees/workspace--$worktreeHash",
+            ),
             resolver.workspaceDataDirectory(workspaceRoot),
         )
     }
@@ -144,6 +234,147 @@ class WorkspacePathsTest {
 
         assertTrue(!resolver.workspaceDatabasePath(workspaceRoot).startsWith(installRoot))
         assertTrue(resolver.workspaceDatabasePath(workspaceRoot).startsWith(dataRoot.resolve("workspaces")))
+    }
+
+    @Test
+    fun `temporary local workspace data stays under the global data root`() {
+        val dataRoot = tempDir.resolve("global-data")
+        val workspaceRoot = tempDir.resolve("workspace")
+        val resolver = WorkspaceDirectoryResolver(
+            dataRoot = { dataRoot },
+            gitWorkspaceResolver = { null },
+        )
+        val expectedSegment = workspaceRoot
+            .toAbsolutePath()
+            .normalize()
+            .toString()
+            .replace(Regex("[^A-Za-z0-9._-]+"), "-")
+            .trim('-')
+            .take(80)
+
+        assertEquals(
+            dataRoot.resolve("workspaces/local/$expectedSegment--${resolver.workspaceHash(workspaceRoot)}"),
+            resolver.workspaceDataDirectory(workspaceRoot),
+        )
+        assertTrue(!Files.exists(dataRoot.resolve("workspaces/local-workspaces.json")))
+        assertTrue(!Files.exists(workspaceRoot.resolve(".gradle/kast")))
+    }
+
+    @Test
+    fun `local workspace data honors an existing registry mapping without rewriting it`() {
+        val dataRoot = tempDir.resolve("global-data")
+        val workspaceRoot = tempDir.resolve("workspace").toAbsolutePath().normalize()
+        val registry = dataRoot.resolve("workspaces/local-workspaces.json")
+        Files.createDirectories(registry.parent)
+        val original = """{"$workspaceRoot":"existing-workspace-id"}"""
+        Files.writeString(registry, original)
+        val resolver = WorkspaceDirectoryResolver(
+            dataRoot = { dataRoot },
+            gitWorkspaceResolver = { null },
+        )
+
+        assertTrue(
+            resolver.workspaceDataDirectory(workspaceRoot)
+                .endsWith("$expectedLocalSegment--existing-workspace-id"),
+        )
+        assertEquals(original, Files.readString(registry))
+    }
+
+    @Test
+    fun `local workspace registry ignores unrelated structured entries`() {
+        val dataRoot = tempDir.resolve("global-data")
+        val workspaceRoot = tempDir.resolve("workspace").toAbsolutePath().normalize()
+        val registry = dataRoot.resolve("workspaces/local-workspaces.json")
+        Files.createDirectories(registry.parent)
+        Files.writeString(
+            registry,
+            """{"unrelated":{"owner":"user"},"$workspaceRoot":"existing-workspace-id"}""",
+        )
+        val resolver = WorkspaceDirectoryResolver(
+            dataRoot = { dataRoot },
+            gitWorkspaceResolver = { null },
+        )
+
+        assertTrue(
+            resolver.workspaceDataDirectory(workspaceRoot)
+                .endsWith("$expectedLocalSegment--existing-workspace-id"),
+        )
+    }
+
+    @Test
+    fun `remote changes do not change the stable repository directory`() {
+        val dataRoot = tempDir.resolve("global-data")
+        val workspaceRoot = tempDir.resolve("workspace")
+        val commonDir = tempDir.resolve("common.git")
+        val gitDir = commonDir.resolve("worktrees/workspace")
+        var remote: GitRemote? = GitRemote(host = "github.com", owner = "amichne", repo = "kast")
+        val resolver = WorkspaceDirectoryResolver(
+            dataRoot = { dataRoot },
+            gitWorkspaceResolver = {
+                GitWorkspace(
+                    toplevel = workspaceRoot,
+                    commonDir = commonDir,
+                    gitDir = gitDir,
+                    remote = remote,
+                )
+            },
+        )
+        val expectedRepository = dataRoot
+            .resolve("workspaces/git/local/${gitCommonDirHash(commonDir)}")
+            .toAbsolutePath()
+            .normalize()
+
+        assertEquals(expectedRepository, resolver.repositoryDataDirectory(workspaceRoot))
+        val initialWorkspace = resolver.workspaceDataDirectory(workspaceRoot)
+
+        remote = GitRemote(host = "git.example.com", owner = "fork", repo = "renamed")
+        assertEquals(expectedRepository, resolver.repositoryDataDirectory(workspaceRoot))
+        assertEquals(initialWorkspace, resolver.workspaceDataDirectory(workspaceRoot))
+
+        remote = null
+        assertEquals(expectedRepository, resolver.repositoryDataDirectory(workspaceRoot))
+        assertEquals(initialWorkspace, resolver.workspaceDataDirectory(workspaceRoot))
+    }
+
+    @Test
+    fun `shared local fixtures map to exact deterministic global paths`() {
+        val dataRoot = tempDir.resolve("global-data")
+        val resolver = WorkspaceDirectoryResolver(
+            dataRoot = { dataRoot },
+            gitWorkspaceResolver = { null },
+        )
+
+        sharedLocalFixtures().forEach { (workspaceRoot, relativePath) ->
+            assertEquals(
+                dataRoot.resolve("workspaces").resolve(relativePath),
+                resolver.workspaceDataDirectory(Path.of(workspaceRoot)),
+            )
+        }
+        assertTrue(!Files.exists(dataRoot.resolve("workspaces/local-workspaces.json")))
+    }
+
+    @Test
+    fun `shared git fixtures map to exact deterministic global paths`() {
+        val dataRoot = tempDir.resolve("global-data")
+
+        sharedGitFixtures().forEach { fixture ->
+            val resolver = WorkspaceDirectoryResolver(
+                dataRoot = { dataRoot },
+                gitWorkspaceResolver = {
+                    GitWorkspace(
+                        toplevel = fixture.toplevel,
+                        commonDir = fixture.commonDir,
+                        gitDir = fixture.gitDir,
+                        remote = GitRemote("ignored.example.com", "ignored", "ignored"),
+                    )
+                },
+            )
+
+            assertEquals(
+                dataRoot.resolve("workspaces").resolve(fixture.relativePath),
+                resolver.workspaceDataDirectory(fixture.toplevel),
+            )
+        }
     }
 
     @Test
@@ -176,7 +407,9 @@ class WorkspacePathsTest {
 
         val first = resolver.workspaceDataDirectory(firstRoot)
         val second = resolver.workspaceDataDirectory(secondRoot)
-        val repository = installRoot.resolve("state/data/workspaces/git/github.com/amichne/kast")
+        val repository = installRoot.resolve(
+            "state/data/workspaces/git/local/${gitCommonDirHash(commonDir)}",
+        )
 
         assertEquals(repository, resolver.repositoryDataDirectory(firstRoot))
         assertEquals(repository, resolver.repositoryDataDirectory(secondRoot))
@@ -193,7 +426,6 @@ class WorkspacePathsTest {
         val resolver = WorkspaceDirectoryResolver(
             dataRoot = { tempDir.resolve("data") },
             gitWorkspaceResolver = { null },
-            gitRemoteResolver = { null },
         )
 
         assertNull(resolver.repositoryDataDirectory(workspaceRoot))
@@ -224,6 +456,106 @@ class WorkspacePathsTest {
         )
     }
 
+    @Test
+    fun `unique legacy remote worktree state migrates into stable repository before resolution`() {
+        val dataRoot = tempDir.resolve("global-data")
+        val workspaceRoot = tempDir.resolve("workspace")
+        val commonDir = tempDir.resolve("main.git")
+        val gitDir = commonDir.resolve("worktrees/workspace")
+        val leaf = "workspace--${gitWorktreeHash(workspaceRoot, gitDir)}"
+        val legacyRepository = dataRoot.resolve("workspaces/git/git.example.com/org/platform/kast")
+        val legacyWorkspace = legacyRepository.resolve("worktrees/$leaf")
+        val siblingLegacyWorkspace = legacyRepository.resolve("worktrees/sibling--unchanged")
+        Files.createDirectories(legacyWorkspace)
+        Files.createDirectories(siblingLegacyWorkspace)
+        Files.createDirectories(legacyRepository.resolve("snapshots/retained"))
+        Files.createDirectories(legacyRepository.resolve("snapshots/retained/worktrees/$leaf"))
+        Files.writeString(legacyWorkspace.resolve("config.toml"), "[indexing]\n")
+        val resolver = WorkspaceDirectoryResolver(
+            dataRoot = { dataRoot },
+            gitWorkspaceResolver = {
+                GitWorkspace(
+                    toplevel = workspaceRoot,
+                    commonDir = commonDir,
+                    gitDir = gitDir,
+                    remote = GitRemote(host = "git.example.com", owner = "changed", repo = "origin"),
+                )
+            },
+        )
+        val expected = dataRoot.resolve(
+            "workspaces/git/local/${gitCommonDirHash(commonDir)}/worktrees/$leaf",
+        ).toAbsolutePath().normalize()
+
+        assertEquals(expected, resolver.workspaceDataDirectory(workspaceRoot))
+        assertTrue(Files.isRegularFile(expected.resolve("config.toml")))
+        assertTrue(Files.notExists(legacyWorkspace))
+        assertTrue(Files.isDirectory(siblingLegacyWorkspace))
+        assertTrue(Files.isDirectory(legacyRepository.resolve("snapshots/retained")))
+        assertEquals(expected, resolver.workspaceDataDirectory(workspaceRoot))
+    }
+
+    @Test
+    fun `stable and legacy worktree state conflict fails closed`() {
+        val fixture = gitMigrationFixture()
+        Files.createDirectories(fixture.stableWorkspace)
+        Files.createDirectories(fixture.legacyWorkspaces.single())
+
+        val failure = assertThrows(AnalysisException::class.java) {
+            fixture.resolver.workspaceDataDirectory(fixture.workspaceRoot)
+        }
+
+        assertEquals("WORKSPACE_STATE_MIGRATION_CONFLICT", failure.errorCode)
+        assertTrue(Files.isDirectory(fixture.stableWorkspace))
+        assertTrue(Files.isDirectory(fixture.legacyWorkspaces.single()))
+    }
+
+    @Test
+    fun `stable worktree state is reused when no legacy state exists`() {
+        val fixture = gitMigrationFixture()
+        Files.createDirectories(fixture.stableWorkspace)
+        Files.writeString(fixture.stableWorkspace.resolve("config.toml"), "[cache]\n")
+
+        assertEquals(
+            fixture.stableWorkspace,
+            fixture.resolver.workspaceDataDirectory(fixture.workspaceRoot),
+        )
+        assertTrue(Files.isRegularFile(fixture.stableWorkspace.resolve("config.toml")))
+    }
+
+    @Test
+    fun `multiple legacy worktree states fail closed`() {
+        val fixture = gitMigrationFixture(legacyRepositoryCount = 2)
+        fixture.legacyWorkspaces.forEach(Files::createDirectories)
+
+        val failure = assertThrows(AnalysisException::class.java) {
+            fixture.resolver.workspaceDataDirectory(fixture.workspaceRoot)
+        }
+
+        assertEquals("WORKSPACE_STATE_MIGRATION_AMBIGUOUS", failure.errorCode)
+        fixture.legacyWorkspaces.forEach { assertTrue(Files.isDirectory(it)) }
+        assertTrue(Files.notExists(fixture.stableWorkspace))
+    }
+
+    @Test
+    fun `legacy repository traversal depth fails closed`() {
+        val fixture = gitMigrationFixture()
+        val legacyRoot = fixture.legacyWorkspaces.single()
+            .let { workspace -> workspace.parent.parent.parent.parent }
+        val deepRepository = (1..33).fold(legacyRoot) { path, depth ->
+            path.resolve("group-$depth")
+        }
+        Files.createDirectories(
+            deepRepository.resolve("worktrees/${fixture.stableWorkspace.fileName}"),
+        )
+
+        val failure = assertThrows(AnalysisException::class.java) {
+            fixture.resolver.workspaceDataDirectory(fixture.workspaceRoot)
+        }
+
+        assertEquals("WORKSPACE_STATE_MIGRATION_DEPTH_EXCEEDED", failure.errorCode)
+        assertTrue(Files.notExists(fixture.stableWorkspace))
+    }
+
     @Nested
     inner class KastConfigHomeTest {
         @Test
@@ -235,10 +567,14 @@ class WorkspacePathsTest {
         }
 
         @Test
-        fun `falls back to home dot config kast when env var is absent`() {
+        fun `falls back to config root under public KAST_HOME`() {
             val env = emptyMap<String, String>()
-            val result = kastConfigHome(env::get)
-            assertEquals(defaultConfigHome(), result)
+            val userHome = tempDir.resolve("user-home")
+            val result = kastConfigHome(env::get, userHome)
+            assertEquals(
+                userHome.resolve(".local/share/kast/current/config").toAbsolutePath().normalize(),
+                result,
+            )
         }
     }
 
@@ -247,10 +583,7 @@ class WorkspacePathsTest {
         @Test
         fun `resolves to descriptor directory from config defaults`() {
             val result = defaultDescriptorDirectory()
-            assertEquals(
-                defaultInstallRootPath().resolve("state/runtime/daemons"),
-                result,
-            )
+            assertEquals(resolveKastPathDefaults().descriptorDir, result)
         }
     }
 
@@ -269,20 +602,33 @@ class WorkspacePathsTest {
         }
 
         @Test
+        fun `workspace socket path is only the normalized root hash under its socket directory`() {
+            val workspaceRoot = tempDir.resolve("workspace/../workspace")
+            val socketDirectory = Path.of("/runtime")
+            val normalizedRoot = workspaceRoot.toAbsolutePath().normalize()
+            val expectedHash = io.github.amichne.kast.api.validation.FileHashing.sha256(
+                normalizedRoot.toString(),
+            ).take(12)
+
+            assertEquals(
+                socketDirectory.resolve("kast-$expectedHash.sock").toAbsolutePath().normalize(),
+                socketPathForWorkspaceRoot(workspaceRoot, socketDirectory),
+            )
+        }
+
+        @Test
         fun localWorkspaceDatabasePathUsesIsolatedJunitConfigHomeByDefault() {
             val workspaceRoot = tempDir.resolve("workspace")
-            val userConfigHome = defaultConfigHome()
-            val normalizedWorkspaceRoot = workspaceRoot.toAbsolutePath().normalize()
 
             val databasePath = workspaceDatabasePath(workspaceRoot)
 
             assertTrue(
-                databasePath.startsWith(normalizedWorkspaceRoot),
-                "databasePath=$databasePath workspaceRoot=$normalizedWorkspaceRoot",
+                databasePath.startsWith(kastDataRoot().resolve("workspaces")),
+                "databasePath=$databasePath dataRoot=${kastDataRoot()}",
             )
             assertTrue(
-                !databasePath.startsWith(userConfigHome),
-                "databasePath=$databasePath userConfigHome=$userConfigHome",
+                !databasePath.startsWith(workspaceRoot.toAbsolutePath().normalize()),
+                "databasePath=$databasePath workspaceRoot=$workspaceRoot",
             )
         }
     }
@@ -290,11 +636,33 @@ class WorkspacePathsTest {
     @Nested
     inner class WorkspaceIdentityTest {
         @Test
+        fun `workspace identity resolves Git layout once`() {
+            val workspaceRoot = Files.createDirectories(tempDir.resolve("workspace"))
+            val commonDir = tempDir.resolve("common.git")
+            var gitDiscoveryCount = 0
+            val resolver = WorkspaceDirectoryResolver(
+                dataRoot = { tempDir.resolve("data") },
+                gitWorkspaceResolver = {
+                    gitDiscoveryCount += 1
+                    GitWorkspace(
+                        toplevel = workspaceRoot,
+                        commonDir = commonDir,
+                        gitDir = commonDir.resolve("worktrees/workspace"),
+                        remote = GitRemote("github.com", "amichne", "kast"),
+                    )
+                },
+            )
+
+            resolver.workspaceIdentity(workspaceRoot)
+
+            assertEquals(1, gitDiscoveryCount)
+        }
+
+        @Test
         fun `workspace identity keeps index and socket paths isolated by workspace root`() {
             val resolver = WorkspaceDirectoryResolver(
                 installRoot = { tempDir.resolve("install-root") },
                 gitWorkspaceResolver = { null },
-                gitRemoteResolver = { null },
             )
             val first = resolver.workspaceIdentity(tempDir.resolve("first-workspace"))
             val second = resolver.workspaceIdentity(tempDir.resolve("second-workspace"))
@@ -329,16 +697,92 @@ class WorkspacePathsTest {
         }
     }
 
-    private fun defaultConfigHome(): Path = Path.of(System.getProperty("user.home"))
-        .resolve(".config")
-        .resolve("kast")
-        .toAbsolutePath()
-        .normalize()
+    private val expectedLocalSegment: String
+        get() = tempDir.resolve("workspace")
+            .toAbsolutePath()
+            .normalize()
+            .toString()
+            .replace(Regex("[^A-Za-z0-9._-]+"), "-")
+            .trim('-')
+            .take(80)
 
-    private fun defaultInstallRootPath(): Path = Path.of(System.getProperty("user.home"))
-        .resolve(".local/share/kast")
-        .toAbsolutePath()
-        .normalize()
+    private fun sharedLocalFixtures(): List<Pair<String, String>> =
+        requireNotNull(javaClass.getResourceAsStream("/workspace-local-layout-fixtures.tsv"))
+            .bufferedReader()
+            .useLines { lines ->
+                lines
+                    .filterNot { line -> line.startsWith("#") || line.isBlank() }
+                    .map { line ->
+                        val fields = line.split('\t')
+                        require(fields.size == 2) { "Invalid local workspace layout fixture: $line" }
+                        fields[0] to fields[1]
+                    }
+                    .toList()
+            }
+
+    private fun sharedGitFixtures(): List<GitLayoutFixture> =
+        requireNotNull(javaClass.getResourceAsStream("/workspace-git-layout-fixtures.tsv"))
+            .bufferedReader()
+            .useLines { lines ->
+                lines
+                    .filterNot { line -> line.startsWith("#") || line.isBlank() }
+                    .map { line ->
+                        val fields = line.split('\t')
+                        require(fields.size == 4) { "Invalid Git workspace layout fixture: $line" }
+                        GitLayoutFixture(
+                            toplevel = Path.of(fields[0]),
+                            commonDir = Path.of(fields[1]),
+                            gitDir = Path.of(fields[2]),
+                            relativePath = fields[3],
+                        )
+                    }
+                    .toList()
+            }
+
+    private data class GitLayoutFixture(
+        val toplevel: Path,
+        val commonDir: Path,
+        val gitDir: Path,
+        val relativePath: String,
+    )
+
+    private fun gitMigrationFixture(legacyRepositoryCount: Int = 1): GitMigrationFixture {
+        val dataRoot = tempDir.resolve("migration-${System.nanoTime()}")
+        val workspaceRoot = tempDir.resolve("workspace-${System.nanoTime()}")
+        val commonDir = tempDir.resolve("common-${System.nanoTime()}.git")
+        val gitDir = commonDir.resolve("worktrees/${workspaceRoot.fileName}")
+        val leaf = "${workspaceRoot.fileName}--${gitWorktreeHash(workspaceRoot, gitDir)}"
+        val resolver = WorkspaceDirectoryResolver(
+            dataRoot = { dataRoot },
+            gitWorkspaceResolver = {
+                GitWorkspace(
+                    toplevel = workspaceRoot,
+                    commonDir = commonDir,
+                    gitDir = gitDir,
+                    remote = null,
+                )
+            },
+        )
+        return GitMigrationFixture(
+            resolver = resolver,
+            workspaceRoot = workspaceRoot,
+            stableWorkspace = dataRoot.resolve(
+                "workspaces/git/local/${gitCommonDirHash(commonDir)}/worktrees/$leaf",
+            ).toAbsolutePath().normalize(),
+            legacyWorkspaces = (1..legacyRepositoryCount).map { index ->
+                dataRoot.resolve("workspaces/git/host-$index/owner/group/repo/worktrees/$leaf")
+                    .toAbsolutePath()
+                    .normalize()
+            },
+        )
+    }
+
+    private data class GitMigrationFixture(
+        val resolver: WorkspaceDirectoryResolver,
+        val workspaceRoot: Path,
+        val stableWorkspace: Path,
+        val legacyWorkspaces: List<Path>,
+    )
 
     private companion object {
         val kastConfigHomeEnv: String = env("KAST", "CONFIG", "HOME")

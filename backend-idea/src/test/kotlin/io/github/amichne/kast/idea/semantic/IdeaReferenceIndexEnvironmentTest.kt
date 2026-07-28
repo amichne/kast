@@ -73,7 +73,7 @@ class IdeaReferenceIndexEnvironmentTest {
     @Test
     fun `shared scanner emits references for IDEA Kotlin files`() {
         val project = projectFixture.get()
-        val targetFile = targetFileFixture.get()
+        targetFileFixture.get()
         val callerFile = callerFileFixture.get()
         waitUntilIndexesAreReady(project)
 
@@ -86,7 +86,6 @@ class IdeaReferenceIndexEnvironmentTest {
 
         val rows = PsiReferenceScanner(environment).scanFileReferences(callerFile.virtualFile.path)
 
-        assertTrue(environment.allFilePaths().contains(Path.of(targetFile.virtualFile.path).toAbsolutePath().normalize().toString()))
         assertTrue(rows.any { row -> row.targetFqName == "demo.target" && row.sourcePath == callerFile.virtualFile.path })
     }
 

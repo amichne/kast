@@ -8,26 +8,29 @@ import java.nio.file.Path
 
 internal class KastStartupActivity : ProjectActivity {
     override suspend fun execute(project: Project) {
-        project.basePath
+        val workspaceRoot = project.basePath
             ?.let(Path::of)
             ?.toAbsolutePath()
             ?.normalize()
-            ?.let { workspaceRoot ->
-                val config = loadIdeaKastConfig(workspaceRoot)
-                val canonicalRoot = runCatching {
-                    RuntimeOpenProjectRoot.of(workspaceRoot)
-                }.getOrNull()
-                if (
-                    canonicalRoot != null &&
-                    KastOpenProjectRequestStore(config).consumeUntargetedForProject(canonicalRoot)
-                ) {
-                    KastOpenedProjectProvenance.mark(project)
-                }
-            }
+            ?: return
+        val config = loadIdeaKastConfig(workspaceRoot)
+        val canonicalRoot = runCatching {
+            RuntimeOpenProjectRoot.of(workspaceRoot)
+        }.getOrNull()
+        if (
+            canonicalRoot != null &&
+            KastOpenProjectRequestStore(config).consumeUntargetedForProject(canonicalRoot)
+        ) {
+            KastOpenedProjectProvenance.mark(project)
+        }
         KastProjectOpenAutoIndexing.execute(
             project = project,
-            startBackend = { startupProject ->
-                startupProject.service<KastPluginService>().startServer(startIndexing = false)
+            config = config,
+            startBackend = { startupProject, startupConfig ->
+                startupProject.service<KastPluginService>().startServer(
+                    config = startupConfig,
+                    startIndexing = false,
+                )
             },
             startReferenceIndex = { startupProject ->
                 startupProject.service<KastPluginService>().startIndexing()

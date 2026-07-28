@@ -14,6 +14,12 @@ internal object KastProjectOpenGradleLoad {
         workspaceRoot: Path,
         enabled: ProjectOpenGradleLoadEnabled,
         onComplete: (Throwable?) -> Unit = {},
+        isImportedGradleModelComplete: (Project, Path) -> Boolean = { currentProject, externalProjectPath ->
+            IdeaGradleProjectLoadBridge.isExternalGradleProjectModelComplete(
+                currentProject,
+                externalProjectPath,
+            )
+        },
         scheduleGradleLoad: ((() -> Unit) -> Unit) = { task ->
             ApplicationManager.getApplication().executeOnPooledThread(task)
         },
@@ -28,6 +34,9 @@ internal object KastProjectOpenGradleLoad {
         }
 
         val request = if (isExternalGradleProjectLinked(project, externalProjectPath)) {
+            if (isImportedGradleModelComplete(project, externalProjectPath)) {
+                return ProjectOpenGradleLoadResult.Skipped("already loaded")
+            }
             GradleProjectLoadRequest.Refresh(externalProjectPath)
         } else {
             GradleProjectLoadRequest.Link(externalProjectPath)
@@ -81,11 +90,18 @@ internal object KastProjectOpenGradleLoad {
                         importFuture,
                     )
                 is GradleProjectLoadRequest.Refresh ->
-                    IdeaGradleProjectLoadBridge.refreshExternalGradleProject(
-                        project,
-                        request.externalProjectPath,
-                        importFuture,
-                    )
+                    if (!IdeaGradleProjectLoadBridge.awaitExternalGradleProjectImport(
+                            project,
+                            request.externalProjectPath,
+                            importFuture,
+                        )
+                    ) {
+                        IdeaGradleProjectLoadBridge.refreshExternalGradleProject(
+                            project,
+                            request.externalProjectPath,
+                            importFuture,
+                        )
+                    }
             }
         }.onFailure { error ->
             LOG.warn("Kast Gradle project ${request.verb} request failed for $externalProjectPathString", error)

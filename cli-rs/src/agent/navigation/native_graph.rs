@@ -2,6 +2,7 @@ include!("native_graph/entrypoint.rs");
 include!("native_graph/source_scope.rs");
 include!("native_graph/query.rs");
 include!("native_graph/database.rs");
+include!("native_graph/neighbors.rs");
 include!("native_graph/base_graph.rs");
 include!("native_graph/overlay_graph.rs");
 include!("native_graph/graph_algorithms.rs");

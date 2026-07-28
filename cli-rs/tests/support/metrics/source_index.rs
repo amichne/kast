@@ -2,7 +2,7 @@ pub(crate) fn seed_source_index(workspace: &std::path::Path) {
     write_macos_plugin_workspace_metadata(workspace);
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
-    let db_path = workspace.join(".gradle/kast/cache/source-index.db");
+    let db_path = workspace_database_path_for_test(workspace);
     std::fs::create_dir_all(db_path.parent().expect("db parent")).expect("db parent");
     seed_source_files(workspace);
     let conn = Connection::open(db_path).expect("sqlite");
