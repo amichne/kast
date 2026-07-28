@@ -3,16 +3,11 @@ package io.github.amichne.kast.idea
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.fields.ServerMaxResults
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.TimeUnit
-import kotlin.concurrent.thread
 
 class KastPluginBackendLifecycleTest {
     private val workspaceRoot = Path.of("/workspace").toAbsolutePath().normalize()
@@ -90,79 +85,6 @@ class KastPluginBackendLifecycleTest {
         val restartedAdmission = fixture.starts.last().admission
         assertTrue(restartedAdmission is KastGradleIndexAdmission.Failed)
         assertSame(failure, (restartedAdmission as KastGradleIndexAdmission.Failed).error)
-    }
-
-    @Test
-    fun `dynamic unload initiates one drain and remains vetoed until stop completes`() {
-        val fixture = LifecycleFixture()
-        fixture.lifecycle.start(workspaceRoot, KastConfig.defaults())
-        val handle = fixture.handles.single()
-
-        assertFalse(fixture.lifecycle.prepareForDynamicUnload())
-        assertEquals(KastPluginBackendLifecycleStatus.STOPPING, fixture.lifecycle.status())
-        assertFalse(fixture.lifecycle.prepareForDynamicUnload())
-        assertEquals(1, handle.closeCount)
-        assertEquals(emptyList<Path>(), fixture.stopped)
-
-        handle.closeCompletion.complete(Unit)
-
-        assertEquals(listOf(workspaceRoot), fixture.stopped)
-        assertEquals(KastPluginBackendLifecycleStatus.STOPPED, fixture.lifecycle.status())
-        assertTrue(fixture.lifecycle.prepareForDynamicUnload())
-    }
-
-    @Test
-    fun `dynamic unload veto prepares every open Kast project and ignores other plugins`() {
-        var firstReady = false
-        var secondReady = false
-        var calls = 0
-        val prepareServices = listOf<() -> Boolean>(
-            {
-                calls += 1
-                firstReady
-            },
-            {
-                calls += 1
-                secondReady
-            },
-        )
-
-        assertNull(dynamicPluginUnloadVetoReason("other.plugin", prepareServices))
-        assertEquals(0, calls)
-        assertEquals(KAST_PLUGIN_DRAINING_UNLOAD_MESSAGE, dynamicPluginUnloadVetoReason(KAST_PLUGIN_ID, prepareServices))
-        assertEquals(2, calls)
-
-        firstReady = true
-        secondReady = true
-        assertNull(dynamicPluginUnloadVetoReason(KAST_PLUGIN_ID, prepareServices))
-        assertEquals(4, calls)
-    }
-
-    @Test
-    fun `dynamic unload veto never waits for a concurrent lifecycle transition`() {
-        val startEntered = CountDownLatch(1)
-        val releaseStart = CountDownLatch(1)
-        val handle = FakeBackendHandle()
-        val lifecycle = KastPluginBackendLifecycle(
-            startBackend = {
-                startEntered.countDown()
-                assertTrue(releaseStart.await(5, TimeUnit.SECONDS))
-                handle
-            },
-        )
-        val starter = thread(isDaemon = true) {
-            lifecycle.start(workspaceRoot, KastConfig.defaults())
-        }
-        assertTrue(startEntered.await(5, TimeUnit.SECONDS))
-
-        assertFalse(lifecycle.prepareForDynamicUnload())
-
-        releaseStart.countDown()
-        starter.join(5_000)
-        assertFalse(starter.isAlive)
-        assertFalse(lifecycle.prepareForDynamicUnload())
-        handle.closeCompletion.complete(Unit)
-        assertTrue(lifecycle.prepareForDynamicUnload())
     }
 
     private class LifecycleFixture {

@@ -75,8 +75,6 @@ internal class KastPluginService(
         return backendLifecycle.reload(workspaceRoot, nextConfig)
     }
 
-    internal fun prepareForDynamicUnload(): Boolean = backendLifecycle.prepareForDynamicUnload()
-
     private fun createBackend(start: KastPluginBackendStart): KastIdeaBackendHandle {
         val workspaceRoot = start.workspaceRoot
         val config = start.config

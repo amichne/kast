@@ -111,29 +111,6 @@ internal class KastPluginBackendLifecycle(
         (state as? State.Running)?.backend?.failIndexing(error)
     }
 
-    /**
-     * Starts the drain when needed. `true` means the plugin owns no live backend resources and may unload.
-     */
-    fun prepareForDynamicUnload(): Boolean {
-        if (!lock.tryLock()) return false
-        return try {
-            when (state) {
-                State.Stopped -> true
-                is State.Running -> {
-                    stopLocked()
-                    false
-                }
-                is State.Stopping -> {
-                    stopLocked()
-                    false
-                }
-                is State.StopFailed -> false
-            }
-        } finally {
-            lock.unlock()
-        }
-    }
-
     internal fun status(): KastPluginBackendLifecycleStatus = lock.withLock {
         when (state) {
             State.Stopped -> KastPluginBackendLifecycleStatus.STOPPED

@@ -1,4 +1,4 @@
-<idea-plugin>
+<idea-plugin require-restart="true">
     <id>io.github.amichne.kast</id>
     <name>Kast Analysis Backend</name>
     <vendor url="https://github.com/amichne/kast">amichne</vendor>
@@ -19,7 +19,6 @@
         <projectService serviceImplementation="io.github.amichne.kast.idea.KastPluginService"/>
         <projectService serviceImplementation="io.github.amichne.kast.idea.KastSettingsState"/>
         <postStartupActivity implementation="io.github.amichne.kast.idea.KastStartupActivity"/>
-        <dynamicPluginVetoer implementation="io.github.amichne.kast.idea.KastDynamicPluginVetoer"/>
         <statusBarWidgetFactory implementation="io.github.amichne.kast.idea.KastStatusBarWidgetFactory"
                                 id="io.github.amichne.kast.status"/>
         <toolWindow id="Kast"
