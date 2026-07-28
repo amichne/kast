@@ -24,6 +24,20 @@ valid_graph_file() {
   done
 }
 
+gradle_workspace_for() {
+  local graph_path="$1" repository_root="$2" workspace
+  workspace="$(dirname "$graph_path")"
+  while [[ "$workspace" != "$repository_root" \
+      && ! -f "$workspace/settings.gradle" \
+      && ! -f "$workspace/settings.gradle.kts" ]]; do
+    workspace="$(dirname "$workspace")"
+  done
+  [[ -f "$workspace/settings.gradle" || -f "$workspace/settings.gradle.kts" ]] || return 1
+  printf '%s\n' "$workspace"
+}
+
+[[ "${BASH_SOURCE[0]}" == "$0" ]] || return 0
+
 name=
 repository=
 revision=
@@ -69,7 +83,8 @@ git -C "$repository_cache" fetch --force --depth=1 origin "$revision"
 git -C "$repository_cache" cat-file -e "${revision}^{commit}"
 
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/kast-real-repository.XXXXXX")"
-workspace="$scratch/workspace"
+repository_worktree="$scratch/repository"
+workspace=
 bundle_dir="$scratch/bundle"
 benchmark_user_dir="$scratch/user"
 kast_home_dir="$scratch/kast-home"
@@ -78,17 +93,21 @@ gradle_user_dir="$scratch/gradle"
 mkdir -p "$bundle_dir" "$benchmark_user_dir" "$kast_home_dir" "$kast_cache_dir" "$gradle_user_dir"
 
 cleanup() {
-  if [[ -n "${kast_bin:-}" && -x "${kast_bin:-}" && -d "$workspace" ]]; then
+  if [[ -n "${kast_bin:-}" && -x "${kast_bin:-}" && -n "$workspace" && -d "$workspace" ]]; then
     kast developer runtime stop --backend headless --workspace-root "$workspace" >/dev/null 2>&1 || true
   fi
-  git -C "$repository_cache" worktree remove --force "$workspace" >/dev/null 2>&1 || true
+  git -C "$repository_cache" worktree remove --force "$repository_worktree" >/dev/null 2>&1 || true
   rm -rf "$scratch"
 }
 trap cleanup EXIT
 
-git -C "$repository_cache" worktree add --detach "$workspace" "$revision"
-[[ -f "$workspace/$graph_file" ]] \
+git -C "$repository_cache" worktree add --detach "$repository_worktree" "$revision"
+graph_path="$repository_worktree/$graph_file"
+[[ -f "$graph_path" ]] \
   || { printf 'error: graph file not found: %s\n' "$graph_file" >&2; exit 1; }
+workspace="$(gradle_workspace_for "$graph_path" "$repository_worktree")" \
+  || { printf 'error: graph file is not inside a Gradle build: %s\n' "$graph_file" >&2; exit 1; }
+scoped_graph_file="${graph_path#"$workspace"/}"
 tar -xzf "$bundle" -C "$bundle_dir"
 bundle_bin="$(find "$bundle_dir" -maxdepth 3 -type f -path '*/bin/kast' -print -quit)"
 [[ -n "$bundle_bin" ]] || { printf 'error: bundle does not contain bin/kast\n' >&2; exit 1; }
@@ -134,7 +153,7 @@ kast --output json agent graph \
   --backend headless \
   --workspace-root "$workspace" \
   --operation refresh \
-  --file-path "$graph_file" \
+  --file-path "$scoped_graph_file" \
   --exclusive >"$scratch/graph-refresh.json"
 kast --output json agent graph \
   --backend headless \
