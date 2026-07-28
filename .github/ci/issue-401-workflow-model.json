@@ -2,15 +2,15 @@
   "$schema": "./workflow-graph-model.schema.json",
   "schemaVersion": 3,
   "provenance": {
-    "description": "Issue 401 workflow fanout model. The baseline records five historical runs from PR 413; the candidate models the current producer and consumer graph. Estimates remain provisional until five comparable candidate runs are recorded.",
-    "observedAt": "2026-07-17",
-    "source": "https://github.com/amichne/kast/pull/413",
+    "description": "The baseline records five comparable successful pull-request runs of the current CI graph. The candidate splits the consumed IDEA plugin artifact from independent tests, removes unused kast-action setup, and derives provisional task durations from the baseline job step timestamps.",
+    "observedAt": "2026-07-27",
+    "source": "https://github.com/amichne/kast/actions/workflows/ci.yml",
     "baselineRunIds": [
-      29511350239,
-      29519251086,
-      29519850747,
-      29530440846,
-      29540820473
+      30322579073,
+      30291739589,
+      30273172759,
+      30264372027,
+      30261005690
     ],
     "candidateRunIds": []
   },
@@ -20,370 +20,86 @@
         "id": "workflow-contracts",
         "needs": [],
         "outputs": [
+          "repository-shape-contract",
+          "ci-local-source-snapshot",
+          "ci-artifact-ledger-local-source-snapshot",
           "release-workflow-contract",
+          "ci-workflow-model-contract",
           "kast-build-contract",
           "docs-navigation-contract",
           "docs-content-contract",
           "macos-installer-contract",
-          "local-development-refresh-contract",
-          "installed-selector-handle-workflow",
-          "kast-routing-evals",
           "release-asset-verifier",
           "release-provenance-assembler",
           "ci-artifact-ledger",
           "headless-runtime-packagers",
-          "ci-gradle-retry",
-          "homebrew-package-renderer"
+          "ci-gradle-retry"
         ],
-        "durationSamplesSeconds": [
-          1059,
-          1144,
-          915,
-          1013,
-          936
-        ],
-        "executionClass": "toolchain"
-      },
-      {
-        "id": "runtime-contracts",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "terminal-command-contract",
-          "ubuntu-debian-bundle-smoke"
-        ],
-        "durationSamplesSeconds": [
-          130,
-          111,
-          121,
-          126,
-          125
-        ],
-        "executionClass": "toolchain"
-      },
-      {
-        "id": "runtime-compatibility-contract",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "runtime-compatibility-contract"
-        ],
-        "durationSamplesSeconds": [
-          479,
-          967,
-          692,
-          549,
-          555
-        ],
-        "executionClass": "toolchain"
-      },
-      {
-        "id": "maven-publication-contract",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "maven-publication-validation",
-          "ci-artifact-ledger-maven-publication"
-        ],
-        "durationSamplesSeconds": [
-          174,
-          89,
-          115,
-          120,
-          134
-        ],
-        "executionClass": "gradle-cache"
-      },
-      {
-        "id": "rust-cli",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "rust-format",
-          "rust-clippy",
-          "rust-tests",
-          "rust-release-build",
-          "rust-cli-linux-x64-artifact",
-          "ci-artifact-ledger-rust-cli-linux-x64"
-        ],
-        "durationSamplesSeconds": [
-          568,
-          358,
-          473,
-          509,
-          565
-        ],
-        "executionClass": "toolchain"
-      },
-      {
-        "id": "build-and-test-linux",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "jvm-backend-tests",
-          "headless-portable-no-fat-jar-linux",
-          "build-test-reports",
-          "headless-portable-artifact-linux",
-          "ci-artifact-ledger-headless-linux",
-          "agent-headless-portable-build-linux"
-        ],
-        "durationSamplesSeconds": [
-          581,
-          552,
-          428,
-          444,
-          455
-        ],
-        "executionClass": "gradle-cache"
-      },
-      {
-        "id": "build-and-test-macos",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "headless-portable-no-fat-jar-macos",
-          "headless-portable-artifact-macos",
-          "ci-artifact-ledger-headless-macos"
-        ],
-        "durationSamplesSeconds": [
-          743,
-          713,
-          933,
-          803,
-          452
-        ],
-        "executionClass": "gradle-cache"
-      },
-      {
-        "id": "analysis-server-transport",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "analysis-server-socket-transport"
-        ],
-        "durationSamplesSeconds": [
-          142,
-          81,
-          91,
-          119,
-          149
-        ],
-        "executionClass": "gradle-cache"
-      },
-      {
-        "id": "test-idea-plugin",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "idea-plugin-tests",
-          "idea-plugin-distribution-verification",
-          "idea-plugin-artifact",
-          "ci-artifact-ledger-idea-plugin",
-          "idea-plugin-performance-baselines"
-        ],
-        "durationSamplesSeconds": [
-          808,
-          486,
-          454,
-          475,
-          519
-        ],
-        "executionClass": "gradle-cache"
-      },
-      {
-        "id": "install-container-ubuntu-22.04",
-        "needs": [
-          "build-and-test-linux",
-          "rust-cli"
-        ],
-        "outputs": [
-          "ubuntu-22.04-java-21-install-contract"
-        ],
-        "durationSamplesSeconds": [
-          126,
-          133,
-          144,
-          126,
-          135
-        ],
-        "executionClass": "oci"
-      },
-      {
-        "id": "install-container-ubuntu-24.04",
-        "needs": [
-          "build-and-test-linux",
-          "rust-cli"
-        ],
-        "outputs": [
-          "ubuntu-24.04-java-21-install-contract"
-        ],
-        "durationSamplesSeconds": [
-          157,
-          136,
-          133,
-          116,
-          121
-        ],
-        "executionClass": "oci"
-      },
-      {
-        "id": "kast-action",
-        "needs": [
-          "build-and-test-linux",
-          "rust-cli"
-        ],
-        "outputs": [
-          "kast-action-v2-installed-runtime-contract"
-        ],
-        "durationSamplesSeconds": [
-          213,
-          272,
-          250,
-          337,
-          436
-        ],
-        "executionClass": "artifact-consumer"
-      }
-    ],
-    "canaryTaskIds": [],
-    "fanoutGateTaskIds": [
-      "workflow-contracts"
-    ],
-    "observedWorkflowDurationSamplesSeconds": [
-      1871,
-      2115,
-      4622,
-      1866,
-      1944
-    ]
-  },
-  "candidate": {
-    "tasks": [
-      {
-        "id": "workflow-contracts",
-        "needs": [],
-        "outputs": [
-          "release-workflow-contract",
-          "kast-build-contract",
-          "docs-navigation-contract",
-          "docs-content-contract",
-          "macos-installer-contract",
-          "kast-routing-evals",
-          "release-asset-verifier",
-          "release-provenance-assembler",
-          "ci-artifact-ledger",
-          "headless-runtime-packagers",
-          "ci-gradle-retry",
-          "homebrew-package-renderer"
-        ],
-        "durationSamplesSeconds": [
-          15
-        ],
+        "durationSamplesSeconds": [13, 12, 18, 13, 16],
         "executionClass": "static"
       },
       {
         "id": "local-authority-contracts",
         "needs": [],
-        "outputs": [
-          "local-development-refresh-contract"
-        ],
-        "durationSamplesSeconds": [
-          304
-        ],
+        "outputs": ["local-development-refresh-contract"],
+        "durationSamplesSeconds": [121, 154, 142, 150, 145],
         "executionClass": "toolchain"
       },
       {
         "id": "runtime-contracts",
-        "needs": [
-          "workflow-contracts"
-        ],
+        "needs": ["workflow-contracts"],
         "outputs": [
           "terminal-command-contract",
           "ubuntu-debian-bundle-smoke"
         ],
-        "durationSamplesSeconds": [
-          128
-        ],
+        "durationSamplesSeconds": [324, 333, 301, 306, 197],
         "executionClass": "toolchain"
       },
       {
         "id": "runtime-compatibility-contract",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "runtime-compatibility-contract"
-        ],
-        "durationSamplesSeconds": [
-          5
-        ],
+        "needs": ["workflow-contracts"],
+        "outputs": ["runtime-compatibility-contract"],
+        "durationSamplesSeconds": [5, 5, 6, 8, 6],
         "executionClass": "static"
       },
       {
         "id": "maven-publication-contract",
-        "needs": [
-          "workflow-contracts"
-        ],
+        "needs": ["workflow-contracts"],
         "outputs": [
           "maven-publication-validation",
           "ci-artifact-ledger-maven-publication"
         ],
-        "durationSamplesSeconds": [
-          55
-        ],
+        "durationSamplesSeconds": [102, 141, 128, 120, 117],
         "executionClass": "gradle-cache"
       },
       {
         "id": "rust-cli",
-        "needs": [
-          "workflow-contracts"
-        ],
+        "needs": ["workflow-contracts"],
         "outputs": [
           "rust-format",
           "rust-clippy",
           "rust-tests",
           "installed-selector-handle-workflow"
         ],
-        "durationSamplesSeconds": [
-          300
-        ],
+        "durationSamplesSeconds": [409, 392, 360, 369, 331],
         "executionClass": "toolchain"
       },
       {
         "id": "source-bound-cli",
-        "needs": [
-          "workflow-contracts"
-        ],
+        "needs": ["workflow-contracts"],
         "outputs": [
           "rust-release-build",
           "rust-cli-linux-x64-artifact",
           "ci-artifact-ledger-rust-cli-linux-x64"
         ],
-        "durationSamplesSeconds": [
-          300
-        ],
+        "durationSamplesSeconds": [192, 162, 93, 66, 74],
         "executionClass": "toolchain"
       },
       {
         "id": "build-and-test-linux",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "jvm-backend-tests",
-          "build-test-reports"
-        ],
-        "durationSamplesSeconds": [
-          360
-        ],
+        "needs": ["workflow-contracts"],
+        "outputs": ["jvm-backend-tests", "build-test-reports"],
+        "durationSamplesSeconds": [268, 441, 338, 335, 383],
         "executionClass": "gradle-cache"
       },
       {
@@ -394,57 +110,43 @@
           "source-bound-headless-backend"
         ],
         "outputs": [
-          "agent-headless-portable-build-linux"
+          "prepared-local-generation",
+          "ci-artifact-ledger-prepared-generation"
         ],
-        "durationSamplesSeconds": [
-          60
-        ],
+        "durationSamplesSeconds": [42, 40, 60, 34, 53],
         "executionClass": "artifact-consumer"
       },
       {
         "id": "prepared-ubuntu-debian-bundle",
-        "needs": [
-          "prepared-generation"
+        "needs": ["prepared-generation", "test-idea-plugin"],
+        "outputs": [
+          "ubuntu-debian-bundle",
+          "ci-artifact-ledger-prepared-ubuntu-debian-bundle"
         ],
-        "outputs": [],
-        "durationSamplesSeconds": [
-          240
-        ],
+        "durationSamplesSeconds": [50, 71, 49, 47, 49],
         "executionClass": "artifact-consumer"
       },
       {
         "id": "source-bound-headless-backend",
-        "needs": [
-          "workflow-contracts"
-        ],
+        "needs": ["workflow-contracts"],
         "outputs": [
           "headless-portable-no-fat-jar-linux",
           "headless-portable-artifact-linux",
           "ci-artifact-ledger-headless-linux"
         ],
-        "durationSamplesSeconds": [
-          300
-        ],
+        "durationSamplesSeconds": [266, 449, 379, 411, 383],
         "executionClass": "gradle-cache"
       },
       {
         "id": "analysis-server-transport",
-        "needs": [
-          "workflow-contracts"
-        ],
-        "outputs": [
-          "analysis-server-socket-transport"
-        ],
-        "durationSamplesSeconds": [
-          70
-        ],
+        "needs": ["workflow-contracts"],
+        "outputs": ["analysis-server-socket-transport"],
+        "durationSamplesSeconds": [128, 124, 124, 135, 122],
         "executionClass": "gradle-cache"
       },
       {
         "id": "test-idea-plugin",
-        "needs": [
-          "workflow-contracts"
-        ],
+        "needs": ["workflow-contracts"],
         "outputs": [
           "idea-plugin-tests",
           "idea-plugin-distribution-verification",
@@ -452,72 +154,221 @@
           "ci-artifact-ledger-idea-plugin",
           "idea-plugin-performance-baselines"
         ],
-        "durationSamplesSeconds": [
-          626
-        ],
+        "durationSamplesSeconds": [643, 746, 767, 653, 612],
         "executionClass": "gradle-cache"
       },
       {
         "id": "install-container-ubuntu-22.04",
-        "needs": [
-          "prepared-ubuntu-debian-bundle"
-        ],
-        "outputs": [
-          "ubuntu-22.04-java-21-install-contract"
-        ],
-        "durationSamplesSeconds": [
-          119
-        ],
+        "needs": ["prepared-ubuntu-debian-bundle"],
+        "outputs": ["ubuntu-22.04-java-21-install-contract"],
+        "durationSamplesSeconds": [56, 35, 40, 48, 61],
         "executionClass": "oci"
       },
       {
         "id": "install-container-ubuntu-24.04",
-        "needs": [
-          "prepared-ubuntu-debian-bundle"
-        ],
-        "outputs": [
-          "ubuntu-24.04-java-21-install-contract"
-        ],
-        "durationSamplesSeconds": [
-          120
-        ],
+        "needs": ["prepared-ubuntu-debian-bundle"],
+        "outputs": ["ubuntu-24.04-java-21-install-contract"],
+        "durationSamplesSeconds": [52, 34, 48, 38, 41],
         "executionClass": "oci"
       },
       {
         "id": "kast-action",
-        "needs": [
-          "prepared-generation"
-        ],
-        "outputs": [
-          "kast-action-v2-installed-runtime-contract"
-        ],
-        "durationSamplesSeconds": [
-          400
-        ],
+        "needs": ["prepared-generation", "prepared-ubuntu-debian-bundle"],
+        "outputs": ["kast-action-v2-installed-runtime-contract"],
+        "durationSamplesSeconds": [237, 226, 213, 225, 225],
         "executionClass": "artifact-consumer"
       }
     ],
     "canaryTaskIds": [],
-    "fanoutGateTaskIds": [
-      "workflow-contracts"
+    "fanoutGateTaskIds": ["workflow-contracts"],
+    "observedWorkflowDurationSamplesSeconds": [963, 1072, 1056, 946, 908]
+  },
+  "candidate": {
+    "tasks": [
+      {
+        "id": "workflow-contracts",
+        "needs": [],
+        "outputs": [
+          "repository-shape-contract",
+          "ci-local-source-snapshot",
+          "ci-artifact-ledger-local-source-snapshot",
+          "release-workflow-contract",
+          "ci-workflow-model-contract",
+          "kast-build-contract",
+          "docs-navigation-contract",
+          "docs-content-contract",
+          "macos-installer-contract",
+          "release-asset-verifier",
+          "release-provenance-assembler",
+          "ci-artifact-ledger",
+          "headless-runtime-packagers",
+          "ci-gradle-retry"
+        ],
+        "durationSamplesSeconds": [13, 12, 18, 13, 16],
+        "executionClass": "static"
+      },
+      {
+        "id": "local-authority-contracts",
+        "needs": [],
+        "outputs": ["local-development-refresh-contract"],
+        "durationSamplesSeconds": [121, 154, 142, 150, 145],
+        "executionClass": "toolchain"
+      },
+      {
+        "id": "runtime-contracts",
+        "needs": ["workflow-contracts"],
+        "outputs": [
+          "terminal-command-contract",
+          "ubuntu-debian-bundle-smoke"
+        ],
+        "durationSamplesSeconds": [324, 333, 301, 306, 197],
+        "executionClass": "toolchain"
+      },
+      {
+        "id": "runtime-compatibility-contract",
+        "needs": ["workflow-contracts"],
+        "outputs": ["runtime-compatibility-contract"],
+        "durationSamplesSeconds": [5, 5, 6, 8, 6],
+        "executionClass": "static"
+      },
+      {
+        "id": "maven-publication-contract",
+        "needs": ["workflow-contracts"],
+        "outputs": [
+          "maven-publication-validation",
+          "ci-artifact-ledger-maven-publication"
+        ],
+        "durationSamplesSeconds": [102, 141, 128, 120, 117],
+        "executionClass": "gradle-cache"
+      },
+      {
+        "id": "rust-cli",
+        "needs": ["workflow-contracts"],
+        "outputs": [
+          "rust-format",
+          "rust-clippy",
+          "rust-tests",
+          "installed-selector-handle-workflow"
+        ],
+        "durationSamplesSeconds": [409, 392, 360, 369, 331],
+        "executionClass": "toolchain"
+      },
+      {
+        "id": "source-bound-cli",
+        "needs": ["workflow-contracts"],
+        "outputs": [
+          "rust-release-build",
+          "rust-cli-linux-x64-artifact",
+          "ci-artifact-ledger-rust-cli-linux-x64"
+        ],
+        "durationSamplesSeconds": [192, 162, 93, 66, 74],
+        "executionClass": "toolchain"
+      },
+      {
+        "id": "build-and-test-linux",
+        "needs": ["workflow-contracts"],
+        "outputs": ["jvm-backend-tests", "build-test-reports"],
+        "durationSamplesSeconds": [268, 441, 338, 335, 383],
+        "executionClass": "gradle-cache"
+      },
+      {
+        "id": "prepared-generation",
+        "needs": [
+          "workflow-contracts",
+          "source-bound-cli",
+          "source-bound-headless-backend"
+        ],
+        "outputs": [
+          "prepared-local-generation",
+          "ci-artifact-ledger-prepared-generation"
+        ],
+        "durationSamplesSeconds": [42, 40, 60, 34, 53],
+        "executionClass": "artifact-consumer"
+      },
+      {
+        "id": "prepared-ubuntu-debian-bundle",
+        "needs": ["prepared-generation", "build-idea-plugin"],
+        "outputs": [
+          "ubuntu-debian-bundle",
+          "ci-artifact-ledger-prepared-ubuntu-debian-bundle"
+        ],
+        "durationSamplesSeconds": [50, 71, 49, 47, 49],
+        "executionClass": "artifact-consumer"
+      },
+      {
+        "id": "source-bound-headless-backend",
+        "needs": ["workflow-contracts"],
+        "outputs": [
+          "headless-portable-no-fat-jar-linux",
+          "headless-portable-artifact-linux",
+          "ci-artifact-ledger-headless-linux"
+        ],
+        "durationSamplesSeconds": [266, 449, 379, 411, 383],
+        "executionClass": "gradle-cache"
+      },
+      {
+        "id": "analysis-server-transport",
+        "needs": ["workflow-contracts"],
+        "outputs": ["analysis-server-socket-transport"],
+        "durationSamplesSeconds": [128, 124, 124, 135, 122],
+        "executionClass": "gradle-cache"
+      },
+      {
+        "id": "build-idea-plugin",
+        "needs": ["workflow-contracts"],
+        "outputs": [
+          "idea-plugin-distribution-verification",
+          "idea-plugin-artifact",
+          "ci-artifact-ledger-idea-plugin"
+        ],
+        "durationSamplesSeconds": [496, 485, 490, 428, 340],
+        "executionClass": "gradle-cache"
+      },
+      {
+        "id": "test-idea-plugin",
+        "needs": ["workflow-contracts"],
+        "outputs": [
+          "idea-plugin-tests",
+          "idea-plugin-performance-baselines"
+        ],
+        "durationSamplesSeconds": [267, 430, 378, 330, 333],
+        "executionClass": "gradle-cache"
+      },
+      {
+        "id": "install-container-ubuntu-22.04",
+        "needs": ["prepared-ubuntu-debian-bundle"],
+        "outputs": ["ubuntu-22.04-java-21-install-contract"],
+        "durationSamplesSeconds": [56, 35, 40, 48, 61],
+        "executionClass": "oci"
+      },
+      {
+        "id": "install-container-ubuntu-24.04",
+        "needs": ["prepared-ubuntu-debian-bundle"],
+        "outputs": ["ubuntu-24.04-java-21-install-contract"],
+        "durationSamplesSeconds": [52, 34, 48, 38, 41],
+        "executionClass": "oci"
+      },
+      {
+        "id": "kast-action",
+        "needs": ["prepared-generation", "prepared-ubuntu-debian-bundle"],
+        "outputs": ["kast-action-v2-installed-runtime-contract"],
+        "durationSamplesSeconds": [217, 143, 186, 158, 153],
+        "executionClass": "artifact-consumer"
+      }
     ],
-    "observedWorkflowDurationSamplesSeconds": [
-      812
-    ]
+    "canaryTaskIds": [],
+    "fanoutGateTaskIds": ["workflow-contracts"],
+    "observedWorkflowDurationSamplesSeconds": [776, 715, 743, 663, 654]
   },
-  "retiredProofOutputReplacements": {
-    "ci-artifact-ledger-headless-macos": "ci-artifact-ledger-headless-linux",
-    "headless-portable-artifact-macos": "headless-portable-artifact-linux",
-    "headless-portable-no-fat-jar-macos": "headless-portable-no-fat-jar-linux"
-  },
+  "retiredProofOutputReplacements": {},
   "expectations": {
     "outputEquivalence": "exact",
     "timingEvidenceMode": "provisional",
-    "minimumCriticalPathReductionSeconds": 1,
-    "maximumCandidateCriticalPathSeconds": 1800,
-    "minimumFanoutGateReductionSeconds": 800,
+    "minimumCriticalPathReductionSeconds": 180,
+    "maximumCandidateCriticalPathSeconds": 720,
+    "minimumFanoutGateReductionSeconds": 0,
     "maximumCandidateFanoutGateSeconds": 90,
-    "maximumCandidateTaskCountIncrease": 4,
+    "maximumCandidateTaskCountIncrease": 1,
     "maximumMedianModelDriftRatio": 0.25,
     "minimumTaskSamples": 5,
     "minimumWorkflowSamples": 5
