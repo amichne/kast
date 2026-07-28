@@ -4,6 +4,7 @@ import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -107,6 +108,40 @@ class ParallelReferenceIndexerTest {
         assertEquals(resultsSerial, resultsParallel)
     }
 
+    @Test
+    fun `indexes first batch before consuming remaining paths`() {
+        val fileCount = 20
+        val yieldedPaths = AtomicInteger(0)
+        val firstScanYieldCount = AtomicInteger(0)
+        val filePaths = object : AbstractCollection<String>() {
+            override val size: Int = fileCount
+
+            override fun iterator(): Iterator<String> = object : Iterator<String> {
+                private var index = 0
+
+                override fun hasNext(): Boolean = index < fileCount
+
+                override fun next(): String = "/src/File${index++}.kt".also {
+                    yieldedPaths.incrementAndGet()
+                }
+            }
+        }
+
+        storeWithManifest(*filePaths.toTypedArray()).use { store ->
+            yieldedPaths.set(0)
+
+            ReferenceIndexer(store, batchSize = 4).indexSymbolRelationships(
+                filePaths = filePaths,
+                referenceScanner = {
+                    firstScanYieldCount.compareAndSet(0, yieldedPaths.get())
+                    emptyList()
+                },
+            )
+        }
+
+        assertEquals(4, firstScanYieldCount.get(), "Only the active batch should be retained before scanning starts")
+    }
+
     /**
      * When cancellation is requested before writing a batch, the database must remain empty
      * even when parallel workers have already completed their scans. Verifies that the
@@ -184,6 +219,20 @@ class ParallelReferenceIndexerTest {
                 refs.none { it.sourcePath == failingPath },
                 "Failing file $failingPath should not appear in results",
             )
+        }
+    }
+
+    @Test
+    fun `parallel indexing propagates fatal scanner errors`() {
+        val filePath = "/src/Fatal.kt"
+
+        storeWithManifest(filePath).use { store ->
+            assertThrows(AssertionError::class.java) {
+                ReferenceIndexer(store, batchSize = 1, parallelism = 2).indexSymbolRelationships(
+                    filePaths = listOf(filePath),
+                    referenceScanner = { throw AssertionError("fatal") },
+                )
+            }
         }
     }
 

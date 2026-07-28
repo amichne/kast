@@ -39,9 +39,9 @@ class ReferenceIndexer(
         isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
         onFilesIndexed: (Collection<String>) -> Unit = {},
     ) {
-        val executor = if (parallelism > 1) newExecutor() else null
+        val executor = createExecutor()
         try {
-            for (batch in filePaths.toList().chunked(batchSize)) {
+            for (batch in filePaths.asSequence().chunked(batchSize)) {
                 if (isCancelled()) break
                 val referenceResults = scanBatch(batch, referenceScanner, isCancelled, executor)
                 if (isCancelled()) break
@@ -154,7 +154,8 @@ class ReferenceIndexer(
         }
     }
 
-    private fun newExecutor(): ExecutorService {
+    private fun createExecutor(): ExecutorService? {
+        if (parallelism == 1) return null
         val threadCounter = AtomicInteger(0)
         return Executors.newFixedThreadPool(parallelism) { runnable ->
             Thread(runnable, "kast-ref-indexer-${threadCounter.incrementAndGet()}").apply {

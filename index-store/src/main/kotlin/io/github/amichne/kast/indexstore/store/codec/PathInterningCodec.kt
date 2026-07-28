@@ -63,6 +63,8 @@ internal class PathInterningCodec(
 
     fun loadPrefixes(conn: Connection) = interning.loadAll(conn)
 
+    fun reloadPrefixes(conn: Connection) = interning.reloadAll(conn)
+
     fun resolvePrefix(prefixId: Int): String =
         interning.resolve(prefixId)
 

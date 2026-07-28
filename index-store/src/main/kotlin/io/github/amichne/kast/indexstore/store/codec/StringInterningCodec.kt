@@ -8,28 +8,52 @@ internal class StringInterningCodec(
     private val idColumn: String,
     private val valueColumn: String,
 ) {
-    private val valueToId = ConcurrentHashMap<String, Int>()
-    private val idToValue = ConcurrentHashMap<Int, String>()
+    @Volatile
+    private var valueToId = ConcurrentHashMap<String, Int>()
+
+    @Volatile
+    private var idToValue = ConcurrentHashMap<Int, String>()
 
     @Volatile
     private var loaded = false
 
+    /**
+     * Hydrates the cache once for the current connection lifecycle.
+     */
     fun loadAll(conn: Connection) {
-        val loadedValues = mutableMapOf<String, Int>()
-        val loadedIds = mutableMapOf<Int, String>()
-        conn.createStatement().use { stmt ->
-            val rs = stmt.executeQuery("SELECT $idColumn, $valueColumn FROM $tableName")
-            while (rs.next()) {
-                val id = rs.getInt(1)
-                val value = rs.getString(2)
-                loadedValues[value] = id
-                loadedIds[id] = value
+        if (loaded) return
+        synchronized(this) {
+            if (!loaded) reloadAllLocked(conn)
+        }
+    }
+
+    fun reloadAll(conn: Connection) {
+        synchronized(this) {
+            loaded = false
+            reloadAllLocked(conn)
+        }
+    }
+
+    private fun reloadAllLocked(conn: Connection) {
+        val rowCount = conn.createStatement().use { stmt ->
+            stmt.executeQuery("SELECT COUNT(*) FROM $tableName").use { rs ->
+                if (rs.next()) rs.getInt(1) else 0
             }
         }
-        valueToId.clear()
-        valueToId.putAll(loadedValues)
-        idToValue.clear()
-        idToValue.putAll(loadedIds)
+        val loadedValues = ConcurrentHashMap<String, Int>(rowCount)
+        val loadedIds = ConcurrentHashMap<Int, String>(rowCount)
+        conn.createStatement().use { stmt ->
+            stmt.executeQuery("SELECT $idColumn, $valueColumn FROM $tableName").use { rs ->
+                while (rs.next()) {
+                    val id = rs.getInt(1)
+                    val value = rs.getString(2)
+                    loadedValues[value] = id
+                    loadedIds[id] = value
+                }
+            }
+        }
+        valueToId = loadedValues
+        idToValue = loadedIds
         loaded = true
     }
 
@@ -54,7 +78,8 @@ internal class StringInterningCodec(
         values: Set<String>,
     ) {
         ensureLoaded(conn)
-        val missingValues = values.filterNot { valueToId.containsKey(it) }
+        val missingValues = ArrayList<String>(values.size)
+        values.filterTo(missingValues) { !valueToId.containsKey(it) }
         if (missingValues.isEmpty()) return
         conn.prepareStatement("INSERT OR IGNORE INTO $tableName ($valueColumn) VALUES (?)").use { stmt ->
             for (value in missingValues) {
@@ -63,7 +88,7 @@ internal class StringInterningCodec(
             }
             stmt.executeBatch()
         }
-        loadAll(conn)
+        loadValues(conn, missingValues)
     }
 
     fun resolve(id: Int): String =
@@ -75,6 +100,33 @@ internal class StringInterningCodec(
 
     private fun ensureLoaded(conn: Connection) {
         if (!loaded) loadAll(conn)
+    }
+
+    private fun loadValues(
+        conn: Connection,
+        values: List<String>,
+    ) {
+        var start = 0
+        while (start < values.size) {
+            val end = minOf(start + SQLITE_QUERY_BATCH_SIZE, values.size)
+            val batch = values.subList(start, end)
+            val placeholders = batch.joinToString(",") { "?" }
+            conn.prepareStatement(
+                "SELECT $idColumn, $valueColumn FROM $tableName WHERE $valueColumn IN ($placeholders)",
+            ).use { stmt ->
+                batch.forEachIndexed { index, value -> stmt.setString(index + 1, value) }
+                stmt.executeQuery().use { rs ->
+                    while (rs.next()) {
+                        val id = rs.getInt(1)
+                        val value = rs.getString(2)
+                        valueToId[value] = id
+                        idToValue[id] = value
+                    }
+                }
+            }
+            start = end
+        }
+        check(values.all(valueToId::containsKey)) { "Failed to load newly interned values from $tableName" }
     }
 
     private fun selectId(
@@ -90,4 +142,8 @@ internal class StringInterningCodec(
                 throw IllegalStateException("Failed to intern value in $tableName: $value")
             }
         }
+
+    private companion object {
+        const val SQLITE_QUERY_BATCH_SIZE = 900
+    }
 }
