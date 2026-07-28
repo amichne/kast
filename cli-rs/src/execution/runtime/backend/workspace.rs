@@ -14,14 +14,34 @@ pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
         preference,
         StaleDescriptorPolicy::Preserve,
     )?;
+    let semantic_graph = inspection
+        .selected
+        .as_ref()
+        .filter(|candidate| candidate.ready)
+        .filter(|candidate| candidate_advertises_semantic_graph(candidate))
+        .map(|_| crate::repository_intelligence::semantic_graph_readiness(&workspace_root));
     Ok(WorkspaceStatusResult {
         workspace_root: workspace_root.display().to_string(),
         descriptor_directory: inspection.descriptor_directory.display().to_string(),
         path_resolution,
         selected: inspection.selected,
+        semantic_graph,
         candidates: inspection.candidates,
         schema_version: SCHEMA_VERSION,
     })
+}
+
+fn candidate_advertises_semantic_graph(candidate: &RuntimeCandidateStatus) -> bool {
+    candidate
+        .capabilities
+        .as_ref()
+        .and_then(|capabilities| capabilities.get("readCapabilities"))
+        .and_then(Value::as_array)
+        .is_some_and(|capabilities| {
+            capabilities
+                .iter()
+                .any(|capability| capability.as_str() == Some("SEMANTIC_GRAPH"))
+        })
 }
 
 pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {

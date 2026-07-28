@@ -99,6 +99,21 @@ class NativeSemanticGraphBackendTest {
             typealias Resolver = (workspaceRoot: String) -> String
         """
 
+        private const val genericCallableReferenceSource = """
+            package demo
+
+            data class Entry<Query, State>(val state: State)
+            data class List<Element>(val size: Int) {
+                fun isNotEmpty(): Boolean = size > 0
+            }
+            data class Pair<First, Second>(val first: First)
+
+            fun <Query, State> stateReference(): (Entry<Query, State>) -> State = Entry<Query, State>::state
+            fun sizeReference(): (List<String>) -> Int = List<String>::size
+            fun nonEmptyReference(): (List<String>) -> Boolean = List<String>::isNotEmpty
+            fun firstReference(): (Pair<String, String?>) -> String = Pair<String, String?>::first
+        """
+
         private const val enumSource = """
             package demo
 
@@ -122,6 +137,8 @@ class NativeSemanticGraphBackendTest {
     private val localPropertyFixture = sourceRootFixture.psiFileFixture("LocalProperty.kt", localPropertySource)
     private val functionTypeParameterFixture =
         sourceRootFixture.psiFileFixture("FunctionTypeParameter.kt", functionTypeParameterSource)
+    private val genericCallableReferenceFixture =
+        sourceRootFixture.psiFileFixture("GenericCallableReference.kt", genericCallableReferenceSource)
     private val enumFixture = sourceRootFixture.psiFileFixture("Mode.kt", enumSource)
     private val unresolvedCallFixture = sourceRootFixture.psiFileFixture("UnresolvedCall.kt", unresolvedCallSource)
     private val unresolvedSupertypeFixture =
@@ -276,6 +293,36 @@ class NativeSemanticGraphBackendTest {
                     ).parsed(),
                 )
                 assertTrue(result.symbolCount.value > 0)
+            }
+        }
+    }
+
+    @Test
+    fun `generic callable references do not abort semantic graph extraction`() = runBlocking {
+        val project = projectFixture.get()
+        val sourceFile = genericCallableReferenceFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = limits(),
+                semanticGraphStore = store,
+                psiGeneration = { 1L },
+            ).use { backend ->
+                val result = backend.semanticGraph(
+                    SemanticGraphQuery(
+                        filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
+                    ).parsed(),
+                )
+                assertTrue(result.symbolCount.value > 0)
+                assertEquals(
+                    listOf(SemanticGraphSourcePath.parse(sourceFile.name)),
+                    result.coverage.files.map { coverage -> coverage.path },
+                )
             }
         }
     }

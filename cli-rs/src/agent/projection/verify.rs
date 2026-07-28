@@ -81,6 +81,8 @@ struct AgentVerifyCompactResult {
     capabilities: AgentCapabilitiesProjection,
     #[serde(skip_serializing_if = "Option::is_none")]
     semantic_workspace: Option<AgentSemanticWorkspaceProjection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    semantic_graph: Option<crate::repository_intelligence::SemanticGraphReadiness>,
     schema_version: u32,
 }
 
@@ -98,6 +100,8 @@ struct AgentVerifySelectedResult {
     capabilities: Option<AgentCapabilitiesProjection>,
     #[serde(skip_serializing_if = "Option::is_none")]
     semantic_workspace: Option<AgentSemanticWorkspaceProjection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    semantic_graph: Option<crate::repository_intelligence::SemanticGraphReadiness>,
     schema_version: u32,
 }
 
@@ -115,6 +119,8 @@ struct AgentVerifyCountResult {
     public_read_capability_count: usize,
     #[serde(skip_serializing_if = "Option::is_none")]
     semantic_workspace: Option<AgentSemanticWorkspaceProjection>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    semantic_graph: Option<crate::repository_intelligence::SemanticGraphReadiness>,
     schema_version: u32,
 }
 
@@ -137,7 +143,14 @@ fn project_verify_envelope(
             );
         }
     };
-    if !envelope.ok {
+    let retain_semantic_graph_evidence = command.semantic_graph.is_some()
+        && envelope.error.as_ref().is_some_and(|error| {
+            matches!(
+                error.code.as_str(),
+                "SEMANTIC_GRAPH_COVERAGE_INCOMPLETE" | "SEMANTIC_GRAPH_COVERAGE_UNAVAILABLE"
+            )
+        });
+    if !envelope.ok && !retain_semantic_graph_evidence {
         return compact_command_error_envelope(envelope, &command);
     }
     let Some(health_step) = command.step("health") else {
@@ -185,8 +198,13 @@ fn project_verify_envelope(
         ok: health_step.ok,
         status: health_input.and_then(|input| input.status),
     };
-    let check_count = command.steps.len();
-    let passed_count = command.steps.iter().filter(|step| step.ok).count();
+    let semantic_graph = command.semantic_graph;
+    let semantic_graph_check_count = usize::from(semantic_graph.is_some());
+    let semantic_graph_passed_count =
+        usize::from(semantic_graph.as_ref().is_some_and(|graph| graph.is_ready()));
+    let check_count = command.steps.len() + semantic_graph_check_count;
+    let passed_count =
+        command.steps.iter().filter(|step| step.ok).count() + semantic_graph_passed_count;
     let failed_count = check_count.saturating_sub(passed_count);
     let semantic_workspace = command.semantic_workspace;
     let ok = envelope.ok;
@@ -203,6 +221,7 @@ fn project_verify_envelope(
                 runtime,
                 capabilities,
                 semantic_workspace,
+                semantic_graph,
                 schema_version: SCHEMA_VERSION,
             },
             error,
@@ -220,6 +239,7 @@ fn project_verify_envelope(
                     capabilities: selected(AgentVerifyField::Capabilities)
                         .then_some(capabilities),
                     semantic_workspace,
+                    semantic_graph,
                     schema_version: SCHEMA_VERSION,
                 },
                 error,
@@ -238,6 +258,7 @@ fn project_verify_envelope(
                 mutation_capability_count: capabilities.mutation_count,
                 public_read_capability_count: capabilities.public_read_count,
                 semantic_workspace,
+                semantic_graph,
                 schema_version: SCHEMA_VERSION,
             },
             error,

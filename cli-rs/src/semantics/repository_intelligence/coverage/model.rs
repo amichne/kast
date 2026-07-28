@@ -1,3 +1,41 @@
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SemanticGraphReadinessState {
+    Ready,
+    Incomplete,
+    Unavailable,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SemanticGraphReadinessError {
+    pub code: String,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SemanticGraphReadiness {
+    pub state: SemanticGraphReadinessState,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub generation: Option<u64>,
+    pub total: usize,
+    pub indexed: usize,
+    pub excluded: usize,
+    pub failed: usize,
+    pub stale: usize,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub limitations: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub error: Option<SemanticGraphReadinessError>,
+}
+
+impl SemanticGraphReadiness {
+    pub fn is_ready(&self) -> bool {
+        self.state == SemanticGraphReadinessState::Ready
+    }
+}
+
 #[derive(Debug, Clone)]
 struct SemanticFileRow {
     content_hash: Option<String>,
