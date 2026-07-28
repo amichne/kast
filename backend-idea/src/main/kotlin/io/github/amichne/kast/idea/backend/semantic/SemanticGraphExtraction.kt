@@ -247,6 +247,10 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
                     exactConstructorSignature = (symbol as? KaConstructorSymbol)?.compilerStableSignature(),
                 )
             }
+            if (target.compilerTarget == SemanticGraphCompilerTarget.Unresolved) {
+                // ponytail: omit inexact call edges; add a partial-call model only when graph consumers need one.
+                return@forEach
+            }
             val source = nearestProjectedOwner(call, symbolByDeclaration) ?: fileSymbol
             when (val admitted = admitSemanticTarget(target.compilerTarget, path, call, semanticScope)) {
                 SemanticGraphTargetAdmission.External -> omittedExternalTargetCount++
