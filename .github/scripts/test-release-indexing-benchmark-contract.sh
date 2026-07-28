@@ -50,9 +50,12 @@ relationship_setting() {
   ' "$release"
 }
 
-[[ "$(relationship_setting ktor)" == false ]] || { printf 'error: Ktor relationship indexing must stay bounded\n' >&2; exit 1; }
-[[ "$(relationship_setting spring-boot)" == false ]] || { printf 'error: Spring Boot relationship indexing must stay bounded\n' >&2; exit 1; }
-[[ "$(relationship_setting okhttp)" == true ]] || { printf 'error: OkHttp must retain full relationship indexing\n' >&2; exit 1; }
+for repository in ktor spring-boot okhttp; do
+  [[ "$(relationship_setting "$repository")" == true ]] || {
+    printf 'error: %s must complete relationship indexing for exact workspace cardinality\n' "$repository" >&2
+    exit 1
+  }
+done
 # shellcheck disable=SC2016 # GitHub expression is intentionally matched literally.
 require "$release" 'linux-headless-tarball-${{ github.run_id }}' 'release gate must test the built release runtime'
 require "$release" 'Set up Gradle Java 17 toolchain' 'release gate must install the Ktor sample toolchain'
