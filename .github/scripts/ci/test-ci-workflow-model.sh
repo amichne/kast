@@ -51,6 +51,10 @@ if "test-idea-plugin" in report["candidate"]["criticalPathTaskIds"]:
     raise SystemExit("independent IDEA tests must not delay the artifact consumer path")
 
 candidate_tasks = {task["id"]: task for task in model["candidate"]["tasks"]}
+if report["candidate"]["provisionalTaskIds"] != sorted(candidate_tasks):
+    raise SystemExit(
+        "candidate projected timings must remain provisional without declared runs"
+    )
 if set(candidate_tasks["prepared-ubuntu-debian-bundle"]["needs"]) != {
     "prepared-generation",
     "build-idea-plugin",
@@ -121,21 +125,20 @@ set +e
 python3 "$checker" "$blocking_required_task_model" >"$blocking_required_task_report"
 blocking_required_task_status=$?
 set -e
-if [[ "$blocking_required_task_status" -ne 0 ]]; then
-  cat "$blocking_required_task_report" >&2
-  die "blocking required-task timing model failed with exit ${blocking_required_task_status}"
-fi
+[[ "$blocking_required_task_status" -eq 1 ]] \
+  || die "projected candidate timing must fail blocking evidence with exit 1"
 python3 - "$blocking_required_task_report" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-if report["status"] != "pass":
-    raise SystemExit(
-        "blocking PR timing must not require five samples from an off-PR canary: "
-        + "; ".join(report["failures"])
-    )
+if report["status"] != "fail":
+    raise SystemExit("projected candidate timing must not satisfy blocking evidence")
+if not any("candidate required tasks below minimumTaskSamples" in finding for finding in report["failures"]):
+    raise SystemExit("blocking evidence must reject candidate tasks without declared runs")
+if "candidate workflow is below minimumWorkflowSamples" not in report["failures"]:
+    raise SystemExit("blocking evidence must reject candidate workflow timing without declared runs")
 PY
 
 lost_output_model="${scratch_dir}/lost-output.json"
