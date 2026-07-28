@@ -32,12 +32,70 @@ require "$release" 'fail-fast: false' 'repository matrix failures must not cance
 require "$release" 'ktorio/ktor.git' 'release gate must include Ktor'
 require "$release" 'spring-projects/spring-boot.git' 'release gate must include Spring Boot'
 require "$release" 'square/okhttp.git' 'release gate must include a Kotlin Multiplatform integration repository'
+require "$release" 'graph_file: ktor-test-server/src/main/kotlin/test/server/ServerUtils.kt' 'Ktor must use a pinned compiler graph probe'
+require "$release" 'graph_file: core/spring-boot/src/main/kotlin/org/springframework/boot/SpringApplicationExtensions.kt' 'Spring Boot must use a pinned compiler graph probe'
+require "$release" 'graph_file: okcurl/src/main/kotlin/okhttp3/curl/Main.kt' 'OkHttp must use a pinned compiler graph probe'
+
+relationship_setting() {
+  local name="$1"
+  awk -v name="$name" '
+    $1 == "-" && $2 == "name:" {
+      if (selected) exit
+      selected = ($3 == name)
+      next
+    }
+    selected && $1 == "relationships_enabled:" { print $2; exit }
+  ' "$release"
+}
+
+[[ "$(relationship_setting ktor)" == false ]] || { printf 'error: Ktor relationship indexing must stay bounded\n' >&2; exit 1; }
+[[ "$(relationship_setting spring-boot)" == false ]] || { printf 'error: Spring Boot relationship indexing must stay bounded\n' >&2; exit 1; }
+[[ "$(relationship_setting okhttp)" == true ]] || { printf 'error: OkHttp must retain full relationship indexing\n' >&2; exit 1; }
 # shellcheck disable=SC2016 # GitHub expression is intentionally matched literally.
 require "$release" 'linux-headless-tarball-${{ github.run_id }}' 'release gate must test the built release runtime'
+require "$release" "--graph-file \"\${{ matrix.graph_file }}\"" 'release gate must pass the pinned compiler graph probe'
+require "$release" "--relationships-enabled \"\${{ matrix.relationships_enabled }}\"" 'release gate must pass the relationship indexing plan'
 require "$release" 'needs.real-repository-indexing.result == '\''success'\''' 'release publication must require the repository gate'
+require "$runner" 'wait_timeout_ms=2700000' 'real repositories must have bounded Gradle import headroom'
 require "$runner" 'kast config list' 'benchmark must capture effective workspace configuration'
+require "$runner" "kast config set indexing.relationships.enabled \"\$relationships_enabled\"" 'benchmark must apply the declared relationship indexing plan'
+require "$runner" "if [[ \"\$relationships_enabled\" == true ]]" 'relationship tuning must apply only when relationship indexing is enabled'
 require "$runner" 'kast config set indexing.relationships.parallelism 2' 'benchmark must exercise relationship indexing configuration'
+require "$runner" "cat \"\$scratch/runtime.json\" >&2" 'runtime readiness failures must preserve their typed evidence'
+require "$runner" '--operation refresh' 'benchmark must populate the native graph through the compiler backend'
+require "$runner" "--file-path \"\$graph_file\"" 'benchmark must refresh the pinned Kotlin source'
+require "$runner" '--exclusive' 'benchmark graph evidence must stay within the pinned probe scope'
+require "$runner" 'Semantic graph refresh was incomplete' 'benchmark must verify compiler graph coverage'
 reject "$runner" '--accept-indexing' 'benchmark must wait for the runtime to become ready'
+
+reject_graph_file() {
+  local candidate="$1" output
+  if output="$(
+    "$runner" \
+      --name validation \
+      --repository https://github.com/example/repository.git \
+      --revision 0000000000000000000000000000000000000000 \
+      --graph-file "$candidate" \
+      --relationships-enabled false \
+      --bundle /missing \
+      --cache-root /unused 2>&1
+  )"; then
+    printf 'error: graph file was accepted: %s\n' "$candidate" >&2
+    exit 1
+  fi
+  [[ "$output" == *'graph file must be a relative Kotlin path'* ]] || {
+    printf 'error: graph file failed at the wrong boundary: %s: %s\n' "$candidate" "$output" >&2
+    exit 1
+  }
+}
+
+reject_graph_file ''
+reject_graph_file /tmp/Probe.kt
+reject_graph_file ./Probe.kt
+reject_graph_file src//Probe.kt
+reject_graph_file src/./Probe.kt
+reject_graph_file src/../Probe.kt
+reject_graph_file src/Probe.kts
 
 require "$cli_root" 'Config(ConfigArgs)' 'CLI must expose the config command family'
 require "$cli_config" 'List(ConfigWorkspaceArgs)' 'config must list effective workspace state'
