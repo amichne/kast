@@ -30,10 +30,11 @@ reject() {
 require "$release" 'real-repository-indexing:' 'release workflow must own the real-repository indexing gate'
 require "$release" 'fail-fast: false' 'repository matrix failures must not cancel remaining repositories'
 require "$release" 'ktorio/ktor.git' 'release gate must include Ktor'
-require "$release" 'spring-projects/spring-boot.git' 'release gate must include Spring Boot'
+require "$release" 'AleksK1NG/Kotlin-Clean-Architecture-CQRS.git' 'release gate must include a Java 21 Kotlin Spring project'
+reject "$release" 'spring-projects/spring-boot.git' 'release gate must not import the full Spring Boot monorepo'
 require "$release" 'square/okhttp.git' 'release gate must include a Kotlin Multiplatform integration repository'
 require "$release" 'graph_file: ktor-test-server/src/main/kotlin/test/server/ServerUtils.kt' 'Ktor must use a pinned compiler graph probe'
-require "$release" 'graph_file: core/spring-boot/src/main/kotlin/org/springframework/boot/SpringApplicationExtensions.kt' 'Spring Boot must use a pinned compiler graph probe'
+require "$release" 'graph_file: src/main/kotlin/com/alexander/bryksin/kotlinspringcleanarchitecture/KotlinSpringCleanArchitectureApplication.kt' 'Spring must use a pinned compiler graph probe'
 require "$release" 'graph_file: okcurl/src/main/kotlin/okhttp3/curl/Main.kt' 'OkHttp must use a pinned compiler graph probe'
 
 relationship_setting() {
@@ -62,8 +63,12 @@ require "$runner" "kast config set indexing.relationships.enabled \"\$relationsh
 require "$runner" "if [[ \"\$relationships_enabled\" == true ]]" 'relationship tuning must apply only when relationship indexing is enabled'
 require "$runner" 'kast config set indexing.relationships.parallelism 2' 'benchmark must exercise relationship indexing configuration'
 require "$runner" "cat \"\$scratch/runtime.json\" >&2" 'runtime readiness failures must preserve their typed evidence'
+require "$runner" 'settings.gradle.kts' 'benchmark must recognize Kotlin Gradle build roots'
+require "$runner" 'settings.gradle' 'benchmark must recognize Groovy Gradle build roots'
+# shellcheck disable=SC2016 # Runner variables are intentionally matched literally.
+require "$runner" 'scoped_graph_file="${graph_path#"$workspace"/}"' 'benchmark must make the probe relative to the selected Gradle root'
 require "$runner" '--operation refresh' 'benchmark must populate the native graph through the compiler backend'
-require "$runner" "--file-path \"\$graph_file\"" 'benchmark must refresh the pinned Kotlin source'
+require "$runner" "--file-path \"\$scoped_graph_file\"" 'benchmark must refresh the pinned Kotlin source within the selected Gradle root'
 require "$runner" '--exclusive' 'benchmark graph evidence must stay within the pinned probe scope'
 require "$runner" 'Semantic graph refresh was incomplete' 'benchmark must verify compiler graph coverage'
 reject "$runner" '--accept-indexing' 'benchmark must wait for the runtime to become ready'
@@ -96,6 +101,29 @@ reject_graph_file src//Probe.kt
 reject_graph_file src/./Probe.kt
 reject_graph_file src/../Probe.kt
 reject_graph_file src/Probe.kts
+
+# shellcheck disable=SC1090,SC1091 # The checked runner path is resolved above.
+source "$runner"
+scope_fixture="$(mktemp -d "${TMPDIR:-/tmp}/kast-release-scope.XXXXXX")"
+trap 'rm -rf -- "$scope_fixture"' EXIT
+repository_fixture="$scope_fixture/repository"
+ktor_fixture="$repository_fixture/ktor-test-server"
+mkdir -p "$ktor_fixture/src/main/kotlin/test/server" "$repository_fixture/okcurl/src/main/kotlin"
+touch \
+  "$repository_fixture/settings.gradle.kts" \
+  "$ktor_fixture/settings.gradle.kts" \
+  "$ktor_fixture/src/main/kotlin/test/server/ServerUtils.kt" \
+  "$repository_fixture/okcurl/src/main/kotlin/Main.kt"
+[[ "$(gradle_workspace_for "$ktor_fixture/src/main/kotlin/test/server/ServerUtils.kt" "$repository_fixture")" == "$ktor_fixture" ]] \
+  || { printf 'error: nested Ktor build was not selected\n' >&2; exit 1; }
+[[ "$(gradle_workspace_for "$repository_fixture/okcurl/src/main/kotlin/Main.kt" "$repository_fixture")" == "$repository_fixture" ]] \
+  || { printf 'error: repository Gradle root was not selected\n' >&2; exit 1; }
+mkdir -p "$scope_fixture/no-settings/src"
+touch "$scope_fixture/no-settings/src/Probe.kt"
+if gradle_workspace_for "$scope_fixture/no-settings/src/Probe.kt" "$scope_fixture/no-settings" >/dev/null; then
+  printf 'error: probe outside a Gradle build was accepted\n' >&2
+  exit 1
+fi
 
 require "$cli_root" 'Config(ConfigArgs)' 'CLI must expose the config command family'
 require "$cli_config" 'List(ConfigWorkspaceArgs)' 'config must list effective workspace state'
