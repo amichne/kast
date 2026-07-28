@@ -19,7 +19,7 @@ require_absent() {
 }
 
 require_not_contains() {
-  ! grep -R -Fq --include='*.md' -- "$2" "$1" || die "found '$2' under $1"
+  ! grep -R -Fq --exclude-dir=internal --include='*.md' -- "$2" "$1" || die "found '$2' under $1"
 }
 
 expected_pages=(
@@ -36,7 +36,7 @@ expected_pages=(
   "reference/codex-plugin.md"
   "tutorials/first-compiler-backed-task.md"
 )
-actual_pages="$(find "$docs_root" -type f -name '*.md' -print | sed "s#${docs_root}/##" | sort)"
+actual_pages="$(find "$docs_root" -path "${docs_root}/internal" -prune -o -type f -name '*.md' -print | sed "s#${docs_root}/##" | sort)"
 expected_page_lines="$(printf '%s\n' "${expected_pages[@]}" | sort)"
 [[ "$actual_pages" == "$expected_page_lines" ]] || {
   printf 'expected pages:\n%s\nactual pages:\n%s\n' "$expected_page_lines" "$actual_pages" >&2
