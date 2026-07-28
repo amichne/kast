@@ -13,37 +13,87 @@ scratch_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-ci-workflow-model.XXXXXX")"
 trap 'rm -rf "$scratch_dir"' EXIT
 
 [[ -f "$model" ]] || die "missing authoritative graph model: ${model}"
+[[ "$(awk '/^[[:space:]]*cache-read-only: false$/ { count++ } END { print count + 0 }' \
+  "${repo_root}/.github/workflows/ci-build-and-test.yml")" -eq 1 ]] \
+  || die "reusable build-and-test must explicitly own the sole PR Gradle cache write"
+[[ "$(awk '/^[[:space:]]*cache-read-only: false$/ { count++ } END { print count + 0 }' \
+  "${repo_root}/.github/workflows/ci.yml")" -eq 0 ]] \
+  || die "fanout jobs must not write Gradle cache state"
 
 report="${scratch_dir}/report.json"
 python3 "$checker" "$model" >"$report"
-python3 - "$report" <<'PY'
+python3 - "$report" "$model" <<'PY'
 import json
 import sys
 from pathlib import Path
 
 report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+model = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
 if report["status"] != "provisional":
     raise SystemExit(f"expected provisional timing evidence, received {report['status']}")
 if not report["comparison"]["outputEquivalent"]:
     raise SystemExit("candidate proof outputs must match or have an explicit replacement")
-expected_replacements = {
-    "headless-portable-no-fat-jar-macos": "headless-portable-no-fat-jar-linux",
-    "headless-portable-artifact-macos": "headless-portable-artifact-linux",
-    "ci-artifact-ledger-headless-macos": "ci-artifact-ledger-headless-linux",
-}
+expected_replacements = {}
 actual_replacements = report["comparison"]["retiredProofOutputReplacements"]
 if actual_replacements != expected_replacements:
-    raise SystemExit(f"retired macOS proofs must name their Linux replacements: {actual_replacements}")
-if report["comparison"]["taskCountIncrease"] != 4:
-    raise SystemExit("the final graph must add exactly four execution nodes after removing the duplicate macOS producer")
-if report["candidate"]["pullRequestTaskCount"] != report["baseline"]["pullRequestTaskCount"] + 4:
-    raise SystemExit("the final graph must add exactly four pull-request execution nodes after deleting the macOS duplicate and local headless proofs")
+    raise SystemExit(f"this graph change must not retire proof outputs: {actual_replacements}")
+if report["comparison"]["taskCountIncrease"] != 1:
+    raise SystemExit("the IDEA artifact producer split must add exactly one execution node")
+if report["candidate"]["pullRequestTaskCount"] != report["baseline"]["pullRequestTaskCount"] + 1:
+    raise SystemExit("the candidate must add only the independent IDEA artifact producer")
 if report["candidate"]["fanoutGateSeconds"] > 90:
     raise SystemExit("the modeled static fanout gate must not exceed 90 seconds")
 if report["candidate"]["canaryTaskIds"]:
-    raise SystemExit("the retired local headless semantic E2E must not remain modeled as a canary")
-if not any("provisional" in warning for warning in report["warnings"]):
-    raise SystemExit("timing evidence must remain explicitly provisional below five samples")
+    raise SystemExit("pull-request CI must not model an off-path canary")
+if "test-idea-plugin" not in report["baseline"]["criticalPathTaskIds"]:
+    raise SystemExit("the baseline must expose the serialized IDEA test and artifact bottleneck")
+if "test-idea-plugin" in report["candidate"]["criticalPathTaskIds"]:
+    raise SystemExit("independent IDEA tests must not delay the artifact consumer path")
+
+candidate_tasks = {task["id"]: task for task in model["candidate"]["tasks"]}
+if set(candidate_tasks["prepared-ubuntu-debian-bundle"]["needs"]) != {
+    "prepared-generation",
+    "build-idea-plugin",
+}:
+    raise SystemExit("the prepared bundle must depend on the narrow IDEA artifact producer")
+if candidate_tasks["workflow-contracts"]["outputs"] != [
+    "repository-shape-contract",
+    "ci-local-source-snapshot",
+    "ci-artifact-ledger-local-source-snapshot",
+    "release-workflow-contract",
+    "ci-workflow-model-contract",
+    "kast-build-contract",
+    "docs-navigation-contract",
+    "docs-content-contract",
+    "macos-installer-contract",
+    "release-asset-verifier",
+    "release-provenance-assembler",
+    "ci-artifact-ledger",
+    "headless-runtime-packagers",
+    "ci-gradle-retry",
+]:
+    raise SystemExit("the static gate must inventory every current contract and source snapshot proof")
+if candidate_tasks["prepared-generation"]["outputs"] != [
+    "prepared-local-generation",
+    "ci-artifact-ledger-prepared-generation",
+]:
+    raise SystemExit("prepared generation must own its artifact and ledger proofs")
+if candidate_tasks["prepared-ubuntu-debian-bundle"]["outputs"] != [
+    "ubuntu-debian-bundle",
+    "ci-artifact-ledger-prepared-ubuntu-debian-bundle",
+]:
+    raise SystemExit("the prepared bundle must own its artifact and ledger proofs")
+if candidate_tasks["build-idea-plugin"]["outputs"] != [
+    "idea-plugin-distribution-verification",
+    "idea-plugin-artifact",
+    "ci-artifact-ledger-idea-plugin",
+]:
+    raise SystemExit("the IDEA artifact producer must own only its artifact proofs")
+if candidate_tasks["test-idea-plugin"]["outputs"] != [
+    "idea-plugin-tests",
+    "idea-plugin-performance-baselines",
+]:
+    raise SystemExit("the IDEA test job must retain both test proof sets")
 PY
 
 blocking_required_task_model="${scratch_dir}/blocking-required-task-timing.json"
@@ -120,38 +170,6 @@ if not report["comparison"]["missingOutputIds"]:
     raise SystemExit("output loss must name the missing proof identifier")
 PY
 
-unexplained_retirement_model="${scratch_dir}/unexplained-retirement.json"
-python3 - "$model" "$unexplained_retirement_model" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-source = Path(sys.argv[1])
-target = Path(sys.argv[2])
-document = json.loads(source.read_text(encoding="utf-8"))
-document["retiredProofOutputReplacements"].pop("headless-portable-no-fat-jar-macos")
-target.write_text(json.dumps(document), encoding="utf-8")
-PY
-
-unexplained_retirement_report="${scratch_dir}/unexplained-retirement-report.json"
-set +e
-python3 "$checker" "$unexplained_retirement_model" >"$unexplained_retirement_report"
-unexplained_retirement_status=$?
-set -e
-[[ "$unexplained_retirement_status" -eq 1 ]] \
-  || die "an unexplained retired proof must fail with exit 1, received ${unexplained_retirement_status}"
-python3 - "$unexplained_retirement_report" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-if report["status"] != "fail":
-    raise SystemExit("an unexplained retired proof must fail comparison")
-if "headless-portable-no-fat-jar-macos" not in report["comparison"]["missingOutputIds"]:
-    raise SystemExit("the failed comparison must name the unexplained retired proof")
-PY
-
 invalid_replacement_model="${scratch_dir}/invalid-replacement.json"
 python3 - "$model" "$invalid_replacement_model" <<'PY'
 import json
@@ -161,7 +179,8 @@ from pathlib import Path
 source = Path(sys.argv[1])
 target = Path(sys.argv[2])
 document = json.loads(source.read_text(encoding="utf-8"))
-document["retiredProofOutputReplacements"]["ci-artifact-ledger-headless-macos"] = "missing-proof"
+retired_output = document["candidate"]["tasks"][0]["outputs"].pop()
+document["retiredProofOutputReplacements"][retired_output] = "missing-proof"
 target.write_text(json.dumps(document), encoding="utf-8")
 PY
 
