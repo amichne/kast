@@ -4,10 +4,8 @@ import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.idea.diagnostics.*
 import io.github.amichne.kast.idea.snapshot.BuildClasspathFingerprintResolver
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
-
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.Logger
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.defaultSocketPath
@@ -22,8 +20,6 @@ import io.github.amichne.kast.server.RunningAnalysisServer
 import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 
@@ -34,7 +30,6 @@ class RunningKastIdeaBackend internal constructor(
     private val sourceIndexStore: SqliteSourceIndexStore,
 ) : AutoCloseable, KastIdeaBackendHandle {
     private val closeCompletion = AtomicReference<CompletableFuture<Unit>?>(null)
-
     override fun close() {
         val completion = closeAsync()
         if (!ApplicationManager.getApplication().isDispatchThread) {
@@ -45,7 +40,6 @@ class RunningKastIdeaBackend internal constructor(
             }
         }
     }
-
     override fun closeAsync(): CompletableFuture<Unit> {
         closeCompletion.get()?.let { return it }
         val completion = CompletableFuture<Unit>()
@@ -84,15 +78,12 @@ class RunningKastIdeaBackend internal constructor(
         }
         return completion
     }
-
     fun await() {
         server.await()
     }
-
     override fun startIndexing() {
         projectIndexing.start()
     }
-
     override fun failIndexing(error: Throwable) {
         projectIndexing.fail(error)
     }
@@ -325,211 +316,6 @@ object KastIdeaBackendRuntime {
             )?.let(failure::addSuppressed)
             throw failure
         }
-    }
-}
-
-internal class KastIdeaProjectIndexing(
-    private val project: Project,
-    private val workspaceIdentity: IdeaWorkspaceIdentity,
-    private val config: KastConfig,
-    private val diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
-    private val indexStore: SqliteSourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity),
-    private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
-    private val snapshotCoordinator: RepositorySnapshotCoordinator? = null,
-) {
-    constructor(
-        project: Project,
-        workspaceRoot: Path,
-        config: KastConfig,
-        diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
-    ) : this(
-        project,
-        IdeaWorkspaceIdentity.fromProject(project, workspaceRoot, config.paths.descriptorDir.toPath()),
-        config,
-        diagnostics,
-    )
-
-    private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
-
-    private val cancelled = AtomicBoolean(false)
-    private val startRequested = AtomicBoolean(false)
-    private val indexingTerminated = CountDownLatch(1)
-    private val lifecycleLock = Any()
-
-    @Volatile
-    private var indexingThread: Thread? = null
-
-    fun start() {
-        if (!startRequested.compareAndSet(false, true)) return
-        if (cancelled.get()) {
-            indexingTerminated.countDown()
-            return
-        }
-        KastStructuredTrace.event(
-            eventName = "idea.index.waiting_for_smart_mode",
-            project = project,
-            workspaceRoot = workspaceRoot,
-            fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
-            detail = workspaceIdentity.traceDetails(),
-        )
-        diagnostics.recordIndexWaitingForIde()
-        DumbService.getInstance(project).runWhenSmart {
-            val worker = synchronized(lifecycleLock) {
-                if (cancelled.get() || project.isDisposed) {
-                    indexingTerminated.countDown()
-                    null
-                } else {
-                    thread(
-                        start = false,
-                        isDaemon = true,
-                        name = "kast-idea-project-indexer",
-                    ) {
-                        try {
-                            runIndexing()
-                        } finally {
-                            indexingTerminated.countDown()
-                        }
-                    }.also { indexingThread = it }
-                }
-            } ?: return@runWhenSmart
-            KastStructuredTrace.event(
-                eventName = "idea.index.smart_mode_ready",
-                project = project,
-                workspaceRoot = workspaceRoot,
-                fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
-                detail = workspaceIdentity.traceDetails(),
-            )
-            runCatching(worker::start).onFailure { error ->
-                indexingTerminated.countDown()
-                diagnostics.recordIndexFailed(error)
-                LOG.warn("Kast IDEA project index worker failed to start", error)
-            }
-        }
-    }
-
-    fun cancel() {
-        val wasRunning = startRequested.get() && indexingTerminated.count > 0
-        cancelled.set(true)
-        val worker = synchronized(lifecycleLock) {
-            indexingThread.also {
-                if (it == null && startRequested.get()) {
-                    indexingTerminated.countDown()
-                }
-            }
-        }
-        worker?.interrupt()
-        if (wasRunning) {
-            KastStructuredTrace.event(
-                eventName = "idea.index.cancelled",
-                project = project,
-                workspaceRoot = workspaceRoot,
-                fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
-                outcome = "cancelled",
-                detail = workspaceIdentity.traceDetails(),
-            )
-            diagnostics.recordIndexCancelled()
-        }
-    }
-
-    fun awaitTermination() {
-        if (!startRequested.get()) return
-        var interrupted = false
-        while (true) {
-            try {
-                indexingTerminated.await()
-                break
-            } catch (_: InterruptedException) {
-                interrupted = true
-            }
-        }
-        if (interrupted) Thread.currentThread().interrupt()
-    }
-
-    private fun runIndexing() {
-        runCatching {
-            KastStructuredTrace.event(
-                eventName = "idea.index.hydrating",
-                project = project,
-                workspaceRoot = workspaceRoot,
-                fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
-                detail = workspaceIdentity.traceDetails(),
-            )
-            diagnostics.recordIndexHydrating()
-            semanticAdmission.await {
-                cancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed
-            }
-            runCatching {
-                SourceIndexHydrator().hydrate(workspaceRoot, config.indexing.remote)
-            }.onFailure { error ->
-                LOG.warn("Kast IDEA remote source index hydration failed", error)
-            }
-            KastStructuredTrace.event(
-                eventName = "idea.index.started",
-                project = project,
-                workspaceRoot = workspaceRoot,
-                fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
-                detail = workspaceIdentity.traceDetails(),
-            )
-            diagnostics.recordIndexingStarted()
-            IdeaProjectIndexer(
-                project = project,
-                workspaceRoot = workspaceRoot,
-                store = indexStore,
-                cancelled = { cancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed },
-                workspaceIdentity = workspaceIdentity.workspaceIdentity,
-            ).indexProject(config)
-            indexStore.loadKastSourceIndexSummary()
-        }.onSuccess { summary ->
-            if (!cancelled.get()) {
-                snapshotCoordinator?.let { coordinator ->
-                    runCatching {
-                        coordinator.publishCompletedIndex(indexStore)
-                    }.onFailure { error ->
-                        LOG.warn("Kast repository snapshot publication failed", error)
-                    }
-                }
-                KastStructuredTrace.event(
-                    eventName = "idea.index.completed",
-                    project = project,
-                    workspaceRoot = workspaceRoot,
-                    fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
-                    outcome = "completed",
-                    detail = mapOf(
-                        "fileCount" to summary.fileCount,
-                        "identifierCount" to summary.identifierCount,
-                        "moduleCount" to summary.moduleCount,
-                        "importCount" to summary.importCount,
-                    ) + workspaceIdentity.traceDetails(),
-                )
-                diagnostics.recordIndexCompleted(summary)
-                LOG.info("Kast IDEA project index completed")
-            }
-        }.onFailure { error ->
-            if (!cancelled.get()) {
-                KastStructuredTrace.event(
-                    eventName = "idea.index.failed",
-                    project = project,
-                    workspaceRoot = workspaceRoot,
-                    fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
-                    outcome = "failed",
-                    detail = mapOf(
-                        "errorClass" to error::class.qualifiedName,
-                        "message" to error.message,
-                    ) + workspaceIdentity.traceDetails(),
-                )
-                diagnostics.recordIndexFailed(error)
-                LOG.warn("Kast IDEA project index failed", error)
-            }
-        }
-    }
-
-    fun fail(error: Throwable) {
-        semanticAdmission.fail(error.message?.takeIf(String::isNotBlank) ?: error::class.java.name)
-        diagnostics.recordIndexFailed(error)
-    }
-
-    companion object {
-        private val LOG = Logger.getInstance(KastIdeaProjectIndexing::class.java)
     }
 }
 

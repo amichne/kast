@@ -386,18 +386,7 @@ internal class KastPluginBackend(
         return GlobalSearchScope.moduleWithDependentsScope(module)
     }
 
-    override fun close() {
-        val failures = listOf(
-            runCatching(referenceContinuations::close).exceptionOrNull(),
-            runCatching(diagnosticContinuations::close).exceptionOrNull(),
-            runCatching(relationshipContinuations::close).exceptionOrNull(),
-            runCatching(workspaceFilePaging::close).exceptionOrNull(),
-        ).filterNotNull()
-        failures.firstOrNull()?.let { first ->
-            failures.drop(1).forEach(first::addSuppressed)
-            throw first
-        }
-    }
+    override fun close() = closeResources()
 
     companion object {
         internal const val RELATIONSHIP_STATE_CAPACITY: Int = 16_384

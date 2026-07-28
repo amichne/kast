@@ -12,6 +12,7 @@ internal class SemanticGraphWriter(
     private val state: SqliteSourceIndexStoreState,
 ) {
     private val repositoryBasePath get() = state.repositoryBasePath
+
     fun replaceSemanticGraphFiles(
         updates: List<SemanticGraphFileIndexUpdate>,
         removedPaths: List<SemanticGraphSourcePath> = emptyList(),
@@ -112,7 +113,6 @@ internal class SemanticGraphWriter(
             }
         }
     }
-
     private fun insertBoundarySemanticFile(conn: Connection, path: SemanticGraphSourcePath) {
         conn.prepareStatement(
             """INSERT INTO semantic_files(path, package_name, module_name, content_hash, refresh_status, diagnostics_json)
@@ -123,7 +123,6 @@ internal class SemanticGraphWriter(
             statement.executeUpdate()
         }
     }
-
     private fun prepareSemanticGraphFileUpdate(conn: Connection, update: SemanticGraphFileIndexUpdate) {
         val fileId = optionalSemanticId(
             conn,
@@ -162,7 +161,6 @@ internal class SemanticGraphWriter(
             statement.executeBatch()
         }
     }
-
     private fun insertSemanticFile(conn: Connection, update: SemanticGraphFileIndexUpdate) {
         clearRepositoryOverlayTombstone(conn, update.path.value)
         conn.prepareStatement(
@@ -185,7 +183,6 @@ internal class SemanticGraphWriter(
             statement.executeUpdate()
         }
     }
-
     private fun insertSemanticType(
         conn: Connection,
         type: io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact,
@@ -207,7 +204,6 @@ internal class SemanticGraphWriter(
             statement.executeUpdate()
         }
     }
-
     private fun replaceSemanticTypeEdges(
         conn: Connection,
         type: io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact,
@@ -233,7 +229,6 @@ internal class SemanticGraphWriter(
             statement.executeBatch()
         }
     }
-
     private fun insertSemanticSymbol(conn: Connection, symbol: SemanticGraphSymbol, authoritative: Boolean) {
         val sql = buildString {
             append(
@@ -315,7 +310,6 @@ internal class SemanticGraphWriter(
             }
         }
     }
-
     private fun updateSemanticSymbolOwner(conn: Connection, symbol: SemanticGraphSymbol) {
         val ownerKey = symbol.ownerKey ?: return
         conn.prepareStatement(
@@ -328,7 +322,6 @@ internal class SemanticGraphWriter(
             statement.executeUpdate()
         }
     }
-
     private fun insertSemanticEdges(conn: Connection, update: SemanticGraphFileIndexUpdate) {
         val sourceFileId = semanticFileId(conn, update.path.value)
         conn.prepareStatement(
@@ -363,32 +356,24 @@ internal class SemanticGraphWriter(
             statement.executeBatch()
         }
     }
-
     private fun semanticFileId(conn: Connection, path: String): Long =
         requiredSemanticId(conn, "SELECT id FROM semantic_files WHERE path = ?", path)
-
     private fun semanticSymbolId(conn: Connection, key: String): Long =
         requiredSemanticId(conn, "SELECT id FROM semantic_symbols WHERE stable_key = ?", key)
-
     private fun semanticSymbolIdOrNull(conn: Connection, key: String): Long? =
         optionalSemanticId(conn, "SELECT id FROM semantic_symbols WHERE stable_key = ?", key)
-
     private fun semanticTypeId(conn: Connection, key: String): Long =
         requiredSemanticId(conn, "SELECT id FROM semantic_types WHERE stable_key = ?", key)
-
     private fun semanticTypeIdOrNull(conn: Connection, key: String): Long? =
         optionalSemanticId(conn, "SELECT id FROM semantic_types WHERE stable_key = ?", key)
-
     private fun requiredSemanticId(conn: Connection, sql: String, value: String): Long =
         requireNotNull(optionalSemanticId(conn, sql, value)) { "Missing canonical semantic identity: $value" }
-
     private fun optionalSemanticId(conn: Connection, sql: String, value: String): Long? =
         conn.prepareStatement(sql).use { statement ->
             statement.setString(1, value)
             val rows = statement.executeQuery()
             if (rows.next()) rows.getLong(1) else null
         }
-
     private fun deleteSemanticGraphFile(conn: Connection, path: String) {
         conn.prepareStatement("DELETE FROM semantic_files WHERE path = ?").use { statement ->
             statement.setString(1, path)
