@@ -10,11 +10,11 @@ import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
+import io.github.amichne.kast.api.contract.result.SemanticGraphFileLimitation
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
 import io.github.amichne.kast.api.contract.result.SemanticGraphVisibility
-import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -352,9 +352,8 @@ class NativeSemanticGraphBackendTest {
             }
         }
     }
-
     @Test
-    fun `semantic graph rejects unresolved compiler targets`() = runBlocking {
+    fun `semantic graph preserves valid facts and limits unresolved compiler targets`() = runBlocking {
         val project = projectFixture.get()
         val validFile = canonicalFileFixture.get()
         val files = listOf(
@@ -375,23 +374,24 @@ class NativeSemanticGraphBackendTest {
                 psiGeneration = { 1L },
             ).use { backend ->
                 files.forEach { file ->
-                    val failure = runCatching {
-                        backend.semanticGraph(
-                            SemanticGraphQuery(
-                                filePaths = listOf(validFile, file)
-                                    .map { SemanticGraphPath.parse(it.virtualFile.path) },
-                            ).parsed(),
-                        )
-                    }.exceptionOrNull()
-                    assertTrue(failure is ValidationException, "${file.name}: $failure")
-                    val message = failure?.message.orEmpty()
-                    assertTrue(message.contains("${file.name}:"), message)
-                    assertTrue(message.contains("Fix Kotlin diagnostics"), message)
+                    val result = backend.semanticGraph(
+                        SemanticGraphQuery(
+                            filePaths = listOf(validFile, file)
+                                .map { SemanticGraphPath.parse(it.virtualFile.path) },
+                        ).parsed(),
+                    )
+                    assertTrue(result.symbolCount.value > 0)
+                    assertTrue(result.edgeOccurrenceCount.value > 0)
+                    assertEquals(
+                        listOf(SemanticGraphFileLimitation.UNRESOLVED_COMPILER_TARGET),
+                        result.coverage.files.single { coverage -> coverage.path.value == file.name }.limitations,
+                    )
+                    assertTrue(
+                        store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse(validFile.name)))
+                            .relations.isNotEmpty(),
+                    )
                 }
             }
-            assertTrue(
-                store.readSemanticGraph((files + validFile).map { SemanticGraphSourcePath.parse(it.name) }).files.isEmpty(),
-            )
         }
     }
 
