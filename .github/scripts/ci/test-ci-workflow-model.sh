@@ -13,6 +13,12 @@ scratch_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-ci-workflow-model.XXXXXX")"
 trap 'rm -rf "$scratch_dir"' EXIT
 
 [[ -f "$model" ]] || die "missing authoritative graph model: ${model}"
+[[ "$(awk '/^[[:space:]]*cache-read-only: false$/ { count++ } END { print count + 0 }' \
+  "${repo_root}/.github/workflows/ci-build-and-test.yml")" -eq 1 ]] \
+  || die "reusable build-and-test must explicitly own the sole PR Gradle cache write"
+[[ "$(awk '/^[[:space:]]*cache-read-only: false$/ { count++ } END { print count + 0 }' \
+  "${repo_root}/.github/workflows/ci.yml")" -eq 0 ]] \
+  || die "fanout jobs must not write Gradle cache state"
 
 report="${scratch_dir}/report.json"
 python3 "$checker" "$model" >"$report"
