@@ -102,16 +102,18 @@ class NativeSemanticGraphBackendTest {
         private const val genericCallableReferenceSource = """
             package demo
 
-            data class Entry<Query, State>(val state: State)
-            data class List<Element>(val size: Int) {
-                fun isNotEmpty(): Boolean = size > 0
-            }
-            data class Pair<First, Second>(val first: First)
+            import java.util.concurrent.CompletableFuture
 
+            data class Entry<Query, State>(val state: State)
+            data class List<Element>(val size: Int) { fun isNotEmpty(): Boolean = size > 0 }
+            data class Pair<First, Second>(val first: First)
             fun <Query, State> stateReference(): (Entry<Query, State>) -> State = Entry<Query, State>::state
             fun sizeReference(): (List<String>) -> Int = List<String>::size
             fun nonEmptyReference(): (List<String>) -> Boolean = List<String>::isNotEmpty
             fun firstReference(): (Pair<String, String?>) -> String = Pair<String, String?>::first
+            fun <T> generatedFluentCall(value: T): T = CompletableFuture.completedFuture(value).thenApply { it }.join()
+            fun laterTarget(): String = "ok"
+            fun resilientCall(): String { missingCall(); return laterTarget() }
         """
 
         private const val enumSource = """
@@ -122,21 +124,6 @@ class NativeSemanticGraphBackendTest {
             }
         """
 
-        private const val unresolvedCallSource = """
-            package demo
-
-            import java.util.concurrent.CompletableFuture
-
-            fun <T> generatedFluentCall(value: T): T =
-                CompletableFuture.completedFuture(value).thenApply { it }.join()
-
-            fun laterTarget(): String = "ok"
-
-            fun resilientCall(): String {
-                missingCall()
-                return laterTarget()
-            }
-        """
         private const val unresolvedSupertypeSource = "package demo\ninterface Broken : MissingBase"
         private const val unresolvedTypeSource = "package demo\nval broken: MissingType? = null"
     }
@@ -154,7 +141,6 @@ class NativeSemanticGraphBackendTest {
     private val genericCallableReferenceFixture =
         sourceRootFixture.psiFileFixture("GenericCallableReference.kt", genericCallableReferenceSource)
     private val enumFixture = sourceRootFixture.psiFileFixture("Mode.kt", enumSource)
-    private val unresolvedCallFixture = sourceRootFixture.psiFileFixture("UnresolvedCall.kt", unresolvedCallSource)
     private val unresolvedSupertypeFixture =
         sourceRootFixture.psiFileFixture("UnresolvedSupertype.kt", unresolvedSupertypeSource)
     private val unresolvedTypeFixture = sourceRootFixture.psiFileFixture("UnresolvedType.kt", unresolvedTypeSource)
@@ -312,7 +298,7 @@ class NativeSemanticGraphBackendTest {
     }
 
     @Test
-    fun `generic callable references do not abort semantic graph extraction`() = runBlocking {
+    fun `generic callable and external fluent references do not abort semantic graph extraction`() = runBlocking {
         val project = projectFixture.get()
         val sourceFile = genericCallableReferenceFixture.get()
         waitUntilIndexesAreReady(project)
@@ -332,12 +318,11 @@ class NativeSemanticGraphBackendTest {
                         filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
                     ).parsed(),
                 )
-                assertTrue(result.symbolCount.value > 0)
-                assertEquals(
-                    listOf(SemanticGraphSourcePath.parse(sourceFile.name)),
-                    result.coverage.files.map { coverage -> coverage.path },
-                )
+                assertEquals(listOf(SemanticGraphSourcePath.parse(sourceFile.name)), result.coverage.files.map { it.path })
             }
+            val snapshot = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse(sourceFile.name)))
+            val target = snapshot.symbols.single { it.name.value == "laterTarget" }
+            assertTrue(snapshot.relations.any { it.kind == SemanticGraphRelationKind.CALLS && it.targetKey == target.canonicalKey })
         }
     }
 
@@ -364,41 +349,6 @@ class NativeSemanticGraphBackendTest {
                 )
                 assertTrue(result.symbolCount.value > 0)
             }
-        }
-    }
-
-    @Test
-    fun `one unresolved generated external call does not discard later call relations`() = runBlocking {
-        val project = projectFixture.get()
-        val sourceFile = unresolvedCallFixture.get()
-        waitUntilIndexesAreReady(project)
-        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
-        val sourcePath = SemanticGraphSourcePath.parse(sourceFile.name)
-
-        SqliteSourceIndexStore(storeRoot).use { store ->
-            store.ensureSchema()
-            KastPluginBackend(
-                project = project,
-                workspaceRoot = workspaceRoot,
-                limits = limits(),
-                semanticGraphStore = store,
-                psiGeneration = { 1L },
-            ).use { backend ->
-                backend.semanticGraph(
-                    SemanticGraphQuery(
-                        filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
-                    ).parsed(),
-                )
-            }
-
-            val snapshot = store.readSemanticGraph(listOf(sourcePath))
-            val laterTarget = snapshot.symbols.single { symbol -> symbol.name.value == "laterTarget" }
-            assertTrue(
-                snapshot.relations.any { relation ->
-                    relation.kind == SemanticGraphRelationKind.CALLS &&
-                        relation.targetKey == laterTarget.canonicalKey
-                },
-            )
         }
     }
 
