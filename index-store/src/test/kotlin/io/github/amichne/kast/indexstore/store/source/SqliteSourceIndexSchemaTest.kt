@@ -108,6 +108,92 @@ class SqliteSourceIndexSchemaTest {
     }
 
     @Test
+    fun `ensureSchema reloads interning tables after database replacement`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val dbPath = sourceIndexDatabasePath(normalized)
+        val oldPackage = IndexedPackageEvidence.CanonicalName.parse("old.pkg")
+        val freshPackage = IndexedPackageEvidence.CanonicalName.parse("fresh.pkg")
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFileIndex(
+                fileUpdate(normalized.resolve("old/Before.kt").toString(), "Before").copy(
+                    packageName = oldPackage.value,
+                    packageEvidence = IndexedPackageEvidence.ProvenNamed(oldPackage),
+                ),
+            )
+
+            assertTrue(Files.deleteIfExists(dbPath))
+            assertTrue(store.ensureSchema())
+            store.saveFileIndex(
+                fileUpdate(normalized.resolve("fresh/Fresh.kt").toString(), "Fresh").copy(
+                    packageName = freshPackage.value,
+                    packageEvidence = IndexedPackageEvidence.ProvenNamed(freshPackage),
+                ),
+            )
+
+            val afterPath = normalized.resolve("old/After.kt").toString()
+            store.saveFileIndex(
+                fileUpdate(afterPath, "After").copy(
+                    packageName = oldPackage.value,
+                    packageEvidence = IndexedPackageEvidence.ProvenNamed(oldPackage),
+                ),
+            )
+
+            assertEquals(
+                IndexedPackageEvidence.ProvenNamed(oldPackage),
+                store.packageEvidenceForFile(afterPath),
+            )
+        }
+    }
+
+    @Test
+    fun `interning caches refresh after another store commits`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val beforePath = normalized.resolve("before/Before.kt").toString()
+        val afterPath = normalized.resolve("after/After.kt").toString()
+        val targetPath = normalized.resolve("target/Target.kt").toString()
+        val afterTargetPath = normalized.resolve("after-target/Target.kt").toString()
+        val pendingPath = normalized.resolve("pending/Removed.kt").toString()
+
+        SqliteSourceIndexStore(normalized).use { reader ->
+            reader.ensureSchema()
+            reader.upsertSymbolReference(
+                sourcePath = beforePath,
+                sourceOffset = 1,
+                targetFqName = "demo.Target",
+                targetPath = targetPath,
+                targetOffset = 1,
+                sourceFqName = "demo.Before",
+            )
+            assertEquals(listOf(beforePath), reader.referencesToSymbol("demo.Target").map { it.sourcePath })
+
+            SqliteSourceIndexStore(normalized).use { writer ->
+                writer.ensureSchema()
+                writer.upsertSymbolReference(
+                    sourcePath = afterPath,
+                    sourceOffset = 2,
+                    targetFqName = "demo.AfterTarget",
+                    targetPath = afterTargetPath,
+                    targetOffset = 1,
+                    sourceFqName = "demo.After",
+                )
+
+                val reference = reader.referencesToSymbol("demo.AfterTarget").single()
+                assertEquals(afterPath, reference.sourcePath)
+                assertEquals("demo.After", reference.sourceFqName)
+                assertEquals("demo.AfterTarget", reference.targetFqName)
+                assertEquals(afterTargetPath, reference.targetPath)
+
+                val generationBeforePendingUpdate = writer.readGeneration()
+                writer.appendPendingUpdate("remove_file", pendingPath, payload = null)
+                assertEquals(generationBeforePendingUpdate, writer.readGeneration())
+                assertEquals(1, reader.reconcilePendingUpdates())
+            }
+        }
+    }
+
+    @Test
     fun `head commit round-trips through schema version table`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         SqliteSourceIndexStore(normalized).use { store ->

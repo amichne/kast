@@ -43,6 +43,9 @@ internal class SqliteSourceIndexStoreState(
     @Volatile
     private var validatedSchemaConnection: Connection? = null
 
+    @Volatile
+    private var loadedInterningDataVersion: Long? = null
+
     internal fun dbExists(): Boolean = Files.isRegularFile(dbPath)
 
     internal fun connection(requireCurrentSchema: Boolean = true): Connection {
@@ -66,6 +69,7 @@ internal class SqliteSourceIndexStoreState(
                 runCatching { conn.close() }
                 cachedConnection = null
                 validatedSchemaConnection = null
+                loadedInterningDataVersion = null
             }
             Files.createDirectories(dbPath.parent)
             SqliteJdbcDriverBootstrap.ensureRegistered()
@@ -91,7 +95,7 @@ internal class SqliteSourceIndexStoreState(
                 if (requireCurrentSchema) {
                     schema.validateCurrentSchema(conn)
                     initializeRepositoryOverlay(conn)
-                    loadInterningTables(conn)
+                    reloadInterningTables(conn)
                 }
                 cachedConnection = conn
                 validatedSchemaConnection = conn.takeIf { requireCurrentSchema }
@@ -166,12 +170,15 @@ internal class SqliteSourceIndexStoreState(
         validatedSchemaConnection = conn
     }
 
+    internal fun isSchemaValidated(conn: Connection): Boolean = validatedSchemaConnection === conn
+
     override fun close() {
         synchronized(connectionLock) {
             cachedConnection?.let { conn ->
                 runCatching { conn.close() }
                 cachedConnection = null
                 validatedSchemaConnection = null
+                loadedInterningDataVersion = null
             }
         }
     }
@@ -205,13 +212,30 @@ internal class SqliteSourceIndexStoreState(
     }
 
     internal fun loadInterningTables(conn: Connection) {
-        pathCodec.loadPrefixes(conn)
-        fqCodec.loadAll(conn)
+        val dataVersion = readDataVersion(conn)
+        if (loadedInterningDataVersion != dataVersion) {
+            reloadInterningTables(conn, dataVersion)
+        }
+    }
+
+    internal fun reloadInterningTables(conn: Connection) {
+        loadedInterningDataVersion = null
+        reloadInterningTables(conn, readDataVersion(conn))
+    }
+
+    private fun reloadInterningTables(conn: Connection, dataVersion: Long) {
+        loadedInterningDataVersion = null
+        try {
+            pathCodec.reloadPrefixes(conn)
+        } finally {
+            fqCodec.reloadAll(conn)
+        }
+        loadedInterningDataVersion = dataVersion
     }
 
     internal fun rollbackAndReloadPrefixes(conn: Connection) {
         conn.rollback()
-        runCatching { loadInterningTables(conn) }
+        runCatching { reloadInterningTables(conn) }
     }
 
     internal fun decodeNullablePath(
@@ -225,6 +249,14 @@ internal class SqliteSourceIndexStoreState(
         }
         return pathCodec.decode(prefixId, filename)
     }
+
+    private fun readDataVersion(conn: Connection): Long =
+        conn.createStatement().use { stmt ->
+            stmt.executeQuery("PRAGMA main.data_version").use { rs ->
+                check(rs.next()) { "SQLite did not return main.data_version" }
+                rs.getLong(1)
+            }
+        }
 
     internal fun removeIneligibleSourceIndexRows(conn: Connection) {
         conn.createStatement().use { stmt ->
