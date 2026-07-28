@@ -53,10 +53,13 @@ const MUTABLE_CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec::new("codex.hooks.enabled", ConfigValueType::Boolean),
     ConfigFieldSpec::new("codex.hooks.sessionStart", ConfigValueType::Boolean),
     ConfigFieldSpec::new("codex.hooks.postToolUse", ConfigValueType::Boolean),
-    ConfigFieldSpec::new("indexing.phase2Enabled", ConfigValueType::Boolean),
-    ConfigFieldSpec::positive("indexing.phase2BatchSize"),
-    ConfigFieldSpec::positive("indexing.phase2Parallelism"),
-    ConfigFieldSpec::new("indexing.phase2PriorityDepth", ConfigValueType::Integer),
+    ConfigFieldSpec::new("indexing.relationships.enabled", ConfigValueType::Boolean),
+    ConfigFieldSpec::positive("indexing.relationships.batchSize"),
+    ConfigFieldSpec::positive("indexing.relationships.parallelism"),
+    ConfigFieldSpec::new(
+        "indexing.relationships.modulePriorityDepth",
+        ConfigValueType::Integer,
+    ),
     ConfigFieldSpec::new(
         "indexing.identifierIndexWaitMillis",
         ConfigValueType::Integer,

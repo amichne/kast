@@ -32,7 +32,7 @@ class ReferenceIndexer(
         require(parallelism > 0) { "Parallelism must be positive" }
     }
 
-    fun indexReferences(
+    fun indexSymbolRelationships(
         filePaths: Collection<String>,
         referenceScanner: (String) -> List<SymbolReferenceRow>,
         declarationScanner: ((String) -> List<DeclarationRow>)? = null,
@@ -76,7 +76,7 @@ class ReferenceIndexer(
         isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
         onFilesIndexed: (Collection<String>) -> Unit = {},
     ) {
-        indexReferences(
+        indexSymbolRelationships(
             filePaths = changedPaths,
             referenceScanner = referenceScanner,
             declarationScanner = declarationScanner,

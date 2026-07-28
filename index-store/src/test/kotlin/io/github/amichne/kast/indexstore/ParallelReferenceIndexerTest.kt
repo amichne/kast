@@ -31,7 +31,7 @@ class ParallelReferenceIndexerTest {
             // Gate that keeps every task alive until we have measured concurrent depth
             val releaseLatch = CountDownLatch(1)
 
-            ReferenceIndexer(store, batchSize = fileCount, parallelism = 4).indexReferences(
+            ReferenceIndexer(store, batchSize = fileCount, parallelism = 4).indexSymbolRelationships(
                 filePaths = filePaths,
                 referenceScanner = { path ->
                     val current = concurrentScans.incrementAndGet()
@@ -69,7 +69,7 @@ class ParallelReferenceIndexerTest {
         val filePaths = (0 until 10).map { i -> "/src/File$i.kt" }
 
         val resultsSerial = storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store, batchSize = 10, parallelism = 1).indexReferences(
+            ReferenceIndexer(store, batchSize = 10, parallelism = 1).indexSymbolRelationships(
                 filePaths = filePaths,
                 referenceScanner = { path ->
                     listOf(
@@ -87,7 +87,7 @@ class ParallelReferenceIndexerTest {
         }
 
         val resultsParallel = storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store, batchSize = 10, parallelism = 4).indexReferences(
+            ReferenceIndexer(store, batchSize = 10, parallelism = 4).indexSymbolRelationships(
                 filePaths = filePaths,
                 referenceScanner = { path ->
                     listOf(
@@ -120,7 +120,7 @@ class ParallelReferenceIndexerTest {
         val cancelAfter = 4
 
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store, batchSize = fileCount, parallelism = 4).indexReferences(
+            ReferenceIndexer(store, batchSize = fileCount, parallelism = 4).indexSymbolRelationships(
                 filePaths = filePaths,
                 referenceScanner = { path ->
                     scannedCount.incrementAndGet()
@@ -156,7 +156,7 @@ class ParallelReferenceIndexerTest {
         val failingPath = filePaths[3]
 
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store, batchSize = filePaths.size, parallelism = 4).indexReferences(
+            ReferenceIndexer(store, batchSize = filePaths.size, parallelism = 4).indexSymbolRelationships(
                 filePaths = filePaths,
                 referenceScanner = { path ->
                     if (path == failingPath) {

@@ -115,7 +115,7 @@ class IdeaReferenceIndexEnvironmentTest {
         )
         assertFalse(
             rows.any { row -> row.targetFqName.startsWith("demo.JavaTarget") },
-            "phase 2 should not persist non-Kotlin targets",
+            "symbol relationship indexing should not persist non-Kotlin targets",
         )
     }
 

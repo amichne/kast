@@ -57,7 +57,11 @@ fn verify_required_structure(transaction: &Transaction<'_>) -> Result<(), ReadDa
     verify_not_null(
         transaction,
         "module_index_progress",
-        &["phase2_status", "indexed_file_count", "total_file_count"],
+        &[
+            "relationship_index_status",
+            "indexed_file_count",
+            "total_file_count",
+        ],
     )?;
     verify_not_null(transaction, "pending_updates", &["applied"])?;
     verify_not_null(

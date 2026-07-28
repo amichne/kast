@@ -139,22 +139,31 @@ private data class RuntimeServerConfig(
 
 @Serializable
 private data class RuntimeIndexingConfig(
-    val phase2Enabled: Boolean? = null,
-    val phase2BatchSize: Int? = null,
-    val phase2Parallelism: Int? = null,
-    val phase2PriorityDepth: Int? = null,
+    val relationships: RuntimeRelationshipIndexingConfig? = null,
     val identifierIndexWaitMillis: Long? = null,
     val referenceBatchSize: Int? = null,
     val remote: RuntimeRemoteIndexConfig? = null,
 ) {
     fun toOverride(): IndexingConfigOverride = IndexingConfigOverride(
-        phase2Enabled = phase2Enabled?.let(::IndexingPhase2Enabled),
-        phase2BatchSize = phase2BatchSize?.let(::IndexingPhase2BatchSize),
-        phase2Parallelism = phase2Parallelism?.let(::IndexingPhase2Parallelism),
-        phase2PriorityDepth = phase2PriorityDepth?.let(::IndexingPhase2PriorityDepth),
+        relationships = relationships?.toOverride(),
         identifierIndexWaitMillis = identifierIndexWaitMillis?.let(::IndexingIdentifierIndexWaitMillis),
         referenceBatchSize = referenceBatchSize?.let(::IndexingReferenceBatchSize),
         remote = remote?.toOverride(),
+    )
+}
+
+@Serializable
+private data class RuntimeRelationshipIndexingConfig(
+    val enabled: Boolean? = null,
+    val batchSize: Int? = null,
+    val parallelism: Int? = null,
+    val modulePriorityDepth: Int? = null,
+) {
+    fun toOverride(): RelationshipIndexingConfigOverride = RelationshipIndexingConfigOverride(
+        enabled = enabled?.let(::RelationshipIndexingEnabled),
+        batchSize = batchSize?.let(::RelationshipIndexingBatchSize),
+        parallelism = parallelism?.let(::RelationshipIndexingParallelism),
+        modulePriorityDepth = modulePriorityDepth?.let(::RelationshipIndexingModulePriorityDepth),
     )
 }
 

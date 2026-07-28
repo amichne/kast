@@ -3,6 +3,7 @@ package io.github.amichne.kast.api.client
 import io.github.amichne.kast.api.client.fields.*
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -26,23 +27,23 @@ class KastConfigTest {
     }
 
     @Test
-    fun phase2ParallelismExposesRaisedTypedDefault() {
-        val phase2Parallelism = KastConfig.defaults().indexing.phase2Parallelism
+    fun relationshipParallelismExposesRaisedTypedDefault() {
+        val parallelism = KastConfig.defaults().indexing.relationships.parallelism
 
-        assertEquals("indexing", phase2Parallelism.section)
-        assertEquals("phase2Parallelism", phase2Parallelism.key)
-        assertEquals(ConfigurationDefault(4), phase2Parallelism.default)
-        assertEquals(4, phase2Parallelism.value)
+        assertEquals("indexing.relationships", parallelism.section)
+        assertEquals("parallelism", parallelism.key)
+        assertEquals(ConfigurationDefault(4), parallelism.default)
+        assertEquals(4, parallelism.value)
     }
 
     @Test
-    fun phase2PriorityDepthExposesTypedDefault() {
-        val phase2PriorityDepth = KastConfig.defaults().indexing.phase2PriorityDepth
+    fun relationshipModulePriorityDepthExposesTypedDefault() {
+        val modulePriorityDepth = KastConfig.defaults().indexing.relationships.modulePriorityDepth
 
-        assertEquals("indexing", phase2PriorityDepth.section)
-        assertEquals("phase2PriorityDepth", phase2PriorityDepth.key)
-        assertEquals(ConfigurationDefault(2), phase2PriorityDepth.default)
-        assertEquals(2, phase2PriorityDepth.value)
+        assertEquals("indexing.relationships", modulePriorityDepth.section)
+        assertEquals("modulePriorityDepth", modulePriorityDepth.key)
+        assertEquals(ConfigurationDefault(2), modulePriorityDepth.default)
+        assertEquals(2, modulePriorityDepth.value)
     }
 
     @Test
@@ -80,6 +81,22 @@ class KastConfigTest {
 
         assertTrue(KastConfig.defaults().runtime.strictPluginMatching.value)
         assertEquals(false, KastConfig.loadGlobal(configHome = { tempDir }).runtime.strictPluginMatching.value)
+    }
+
+    @Test
+    fun `removed phase two indexing keys fail config loading`() {
+        tempDir.resolve("config.toml").writeText(
+            """
+                [indexing]
+                phase2Parallelism = 2
+            """.trimIndent(),
+        )
+
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            KastConfig.loadGlobal(configHome = { tempDir })
+        }
+
+        assertTrue(error.message.orEmpty().contains("indexing.relationships.parallelism"))
     }
 
     @Test
@@ -156,10 +173,10 @@ class KastConfigTest {
             "server" to "maxResults",
             "server" to "requestTimeoutMillis",
             "server" to "maxConcurrentRequests",
-            "indexing" to "phase2Enabled",
-            "indexing" to "phase2BatchSize",
-            "indexing" to "phase2Parallelism",
-            "indexing" to "phase2PriorityDepth",
+            "indexing.relationships" to "enabled",
+            "indexing.relationships" to "batchSize",
+            "indexing.relationships" to "parallelism",
+            "indexing.relationships" to "modulePriorityDepth",
             "indexing" to "identifierIndexWaitMillis",
             "indexing" to "referenceBatchSize",
             "indexing.remote" to "enabled",

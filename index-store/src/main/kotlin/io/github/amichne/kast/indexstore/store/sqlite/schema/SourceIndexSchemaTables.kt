@@ -187,7 +187,8 @@ internal class SourceIndexSchemaTables {
         stmt.execute(
             """CREATE TABLE IF NOT EXISTS module_index_progress (
                 module_name TEXT PRIMARY KEY,
-                phase2_status TEXT NOT NULL DEFAULT 'PENDING' CHECK(phase2_status IN ('PENDING','INDEXING','COMPLETE','FAILED')),
+                relationship_index_status TEXT NOT NULL DEFAULT 'PENDING'
+                    CHECK(relationship_index_status IN ('PENDING','INDEXING','COMPLETE','FAILED')),
                 indexed_file_count INTEGER NOT NULL DEFAULT 0,
                 total_file_count INTEGER NOT NULL DEFAULT 0,
                 last_indexed_epoch_ms INTEGER

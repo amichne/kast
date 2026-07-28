@@ -157,7 +157,7 @@ fn claimed_current_schema_with_nondeterministic_consumed_shapes_fails_closed() {
             DROP TABLE module_index_progress;
             CREATE TABLE module_index_progress (
                 module_name TEXT PRIMARY KEY,
-                phase2_status TEXT NOT NULL,
+                relationship_index_status TEXT NOT NULL,
                 indexed_file_count INTEGER NOT NULL,
                 total_file_count INTEGER NOT NULL
             );

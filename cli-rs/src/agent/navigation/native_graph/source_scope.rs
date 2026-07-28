@@ -21,7 +21,7 @@ fn native_graph_source_scope_paths(
     let (modules, incomplete): (i64, i64) = connection
         .query_row(
             "SELECT COUNT(*), COALESCE(SUM(CASE
-                 WHEN phase2_status = 'COMPLETE' AND indexed_file_count = total_file_count THEN 0
+                 WHEN relationship_index_status = 'COMPLETE' AND indexed_file_count = total_file_count THEN 0
                  ELSE 1 END), 0)
              FROM module_index_progress",
             [],

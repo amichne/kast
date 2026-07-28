@@ -1,7 +1,7 @@
 #[derive(Debug, Args, Clone)]
 #[command(
     disable_help_subcommand = true,
-    after_help = "Examples:\n  kast config list --workspace-root \"$PWD\"\n  kast config set indexing.phase2Parallelism 2 --workspace-root \"$PWD\"\n  kast config unset indexing.phase2Parallelism --workspace-root \"$PWD\""
+    after_help = "Examples:\n  kast config list --workspace-root \"$PWD\"\n  kast config set indexing.relationships.parallelism 2 --workspace-root \"$PWD\"\n  kast config unset indexing.relationships.parallelism --workspace-root \"$PWD\""
 )]
 pub struct ConfigArgs {
     #[command(subcommand)]

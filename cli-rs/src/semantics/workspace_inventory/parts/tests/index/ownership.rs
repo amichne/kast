@@ -164,7 +164,7 @@ fn malformed_module_progress_is_global_partial_evidence() {
         .expect("malformed progress mode");
     connection
         .execute(
-            "INSERT INTO module_index_progress(module_name, phase2_status, indexed_file_count, total_file_count) VALUES ('app', 'UNKNOWN', 1, 1)",
+            "INSERT INTO module_index_progress(module_name, relationship_index_status, indexed_file_count, total_file_count) VALUES ('app', 'UNKNOWN', 1, 1)",
             [],
         )
         .expect("malformed module progress");

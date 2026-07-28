@@ -130,13 +130,19 @@ pub enum ProjectOpenProfile {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexingConfig {
-    pub phase2_enabled: bool,
-    pub phase2_batch_size: u32,
-    pub phase2_parallelism: u32,
-    pub phase2_priority_depth: u32,
+    pub relationships: RelationshipIndexingConfig,
     pub identifier_index_wait_millis: u64,
     pub reference_batch_size: u32,
     pub remote: RemoteIndexConfig,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelationshipIndexingConfig {
+    pub enabled: bool,
+    pub batch_size: u32,
+    pub parallelism: u32,
+    pub module_priority_depth: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]

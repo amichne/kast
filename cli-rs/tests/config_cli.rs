@@ -37,13 +37,16 @@ fn workspace_config_lists_sets_and_unsets_effective_values() {
         String::from_utf8_lossy(&listed.stderr),
     );
     let listed: serde_json::Value = serde_json::from_slice(&listed.stdout).expect("list JSON");
-    assert_eq!(listed["effective"]["indexing"]["phase2Parallelism"], 4);
+    assert_eq!(
+        listed["effective"]["indexing"]["relationships"]["parallelism"],
+        4,
+    );
     assert!(
         listed["mutableFields"]
             .as_array()
             .expect("mutable fields")
             .iter()
-            .any(|field| field["key"] == "indexing.phase2Parallelism"),
+            .any(|field| field["key"] == "indexing.relationships.parallelism"),
         "{listed:#}",
     );
 
@@ -51,7 +54,7 @@ fn workspace_config_lists_sets_and_unsets_effective_values() {
         &home,
         &config_home,
         &workspace,
-        &["set", "indexing.phase2Parallelism", "2"],
+        &["set", "indexing.relationships.parallelism", "2"],
     );
     assert!(
         set.status.success(),
@@ -75,7 +78,7 @@ fn workspace_config_lists_sets_and_unsets_effective_values() {
         &home,
         &config_home,
         &workspace,
-        &["set", "indexing.phase2Parallelism", "3"],
+        &["set", "indexing.relationships.parallelism", "3"],
     );
     assert!(reset.status.success());
     assert!(
@@ -89,7 +92,7 @@ fn workspace_config_lists_sets_and_unsets_effective_values() {
         &home,
         &config_home,
         &workspace,
-        &["unset", "indexing.phase2Parallelism"],
+        &["unset", "indexing.relationships.parallelism"],
     );
     assert!(
         unset.status.success(),
@@ -105,7 +108,7 @@ fn workspace_config_lists_sets_and_unsets_effective_values() {
         &home,
         &config_home,
         &workspace,
-        &["unset", "indexing.phase2Parallelism"],
+        &["unset", "indexing.relationships.parallelism"],
     );
     assert!(repeated.status.success());
     let repeated: serde_json::Value =
@@ -127,7 +130,7 @@ fn workspace_config_rejects_unsupported_and_invalid_values() {
         &home,
         &config_home,
         &workspace,
-        &["set", "paths.installRoot", "/tmp/other"],
+        &["set", "indexing.phase2Parallelism", "2"],
     );
     assert!(!unsupported.status.success());
     let unsupported: serde_json::Value =
@@ -138,9 +141,45 @@ fn workspace_config_rejects_unsupported_and_invalid_values() {
         &home,
         &config_home,
         &workspace,
-        &["set", "indexing.phase2Parallelism", "zero"],
+        &["set", "indexing.relationships.parallelism", "zero"],
     );
     assert!(!invalid.status.success());
     let invalid: serde_json::Value = serde_json::from_slice(&invalid.stdout).expect("invalid JSON");
     assert_eq!(invalid["code"], "CONFIG_VALUE_INVALID");
+}
+
+#[test]
+fn workspace_config_list_rejects_removed_phase_two_fields() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+
+    let set = run(
+        &home,
+        &config_home,
+        &workspace,
+        &["set", "indexing.relationships.parallelism", "2"],
+    );
+    assert!(set.status.success());
+    let set: serde_json::Value = serde_json::from_slice(&set.stdout).expect("set JSON");
+    let config_path = PathBuf::from(set["configPath"].as_str().expect("config path"));
+    std::fs::write(config_path, "[indexing]\nphase2Parallelism = 2\n")
+        .expect("stale workspace config");
+
+    let listed = run(&home, &config_home, &workspace, &["list"]);
+    assert!(!listed.status.success());
+    let listed: serde_json::Value =
+        serde_json::from_slice(&listed.stdout).expect("config error JSON");
+    assert_eq!(listed["code"], "CONFIG_ERROR");
+    assert!(
+        listed["message"]
+            .as_str()
+            .expect("error message")
+            .contains("phase2Parallelism"),
+        "{listed:#}",
+    );
 }

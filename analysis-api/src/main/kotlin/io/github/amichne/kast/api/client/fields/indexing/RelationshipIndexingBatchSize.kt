@@ -1,9 +1,9 @@
 package io.github.amichne.kast.api.client.fields
 
-data class IndexingPhase2BatchSize(
+data class RelationshipIndexingBatchSize(
     override val value: Int,
 ) : ConfigurationField<Int>() {
-    override val section: String get() = "indexing"
-    override val key: String get() = "phase2BatchSize"
+    override val section: String get() = "indexing.relationships"
+    override val key: String get() = "batchSize"
     override val default: ConfigurationDefault<Int> get() = ConfigurationDefault(50)
 }

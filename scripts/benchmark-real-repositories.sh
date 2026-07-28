@@ -91,7 +91,7 @@ kast() {
     "$kast_bin" "$@"
 }
 
-kast config set indexing.phase2Parallelism 2 --workspace-root "$workspace" >/dev/null
+kast config set indexing.relationships.parallelism 2 --workspace-root "$workspace" >/dev/null
 kast config set gradle.toolingApiTimeoutMillis "$wait_timeout_ms" --workspace-root "$workspace" >/dev/null
 kast config list --workspace-root "$workspace" >"$scratch/effective-config.toon"
 kast --output json developer runtime up \

@@ -1,9 +1,9 @@
 package io.github.amichne.kast.api.client.fields
 
-data class IndexingPhase2Enabled(
+data class RelationshipIndexingEnabled(
     override val value: Boolean,
 ) : ConfigurationField<Boolean>() {
-    override val section: String get() = "indexing"
-    override val key: String get() = "phase2Enabled"
+    override val section: String get() = "indexing.relationships"
+    override val key: String get() = "enabled"
     override val default: ConfigurationDefault<Boolean> get() = ConfigurationDefault(true)
 }

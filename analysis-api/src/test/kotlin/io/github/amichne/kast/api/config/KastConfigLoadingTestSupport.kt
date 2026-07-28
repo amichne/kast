@@ -151,8 +151,8 @@ internal fun assertIdeaConfigIsolation(tempDir: Path) {
             [server]
             maxResults = 75
 
-            [indexing]
-            phase2Parallelism = 2
+            [indexing.relationships]
+            parallelism = 2
 
             [cache]
             enabled = false
@@ -189,7 +189,7 @@ internal fun assertIdeaConfigIsolation(tempDir: Path) {
     assertEquals(OptionalConfigString.Unset, config.backends.headless.ideaHome.value)
     assertEquals("idea", config.runtime.defaultBackend.value)
     assertEquals(75, config.server.maxResults.value)
-    assertEquals(2, config.indexing.phase2Parallelism.value)
+    assertEquals(2, config.indexing.relationships.parallelism.value)
     assertEquals(false, config.cache.enabled.value)
     assertEquals(true, config.projectOpen.profileAutoInit.value)
     assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
@@ -210,10 +210,12 @@ internal fun assertResolvedRuntimeConfigLoading(tempDir: Path) {
                 "maxConcurrentRequests": 7
               },
               "indexing": {
-                "phase2Enabled": false,
-                "phase2BatchSize": 11,
-                "phase2Parallelism": 2,
-                "phase2PriorityDepth": 1,
+                "relationships": {
+                  "enabled": false,
+                  "batchSize": 11,
+                  "parallelism": 2,
+                  "modulePriorityDepth": 1
+                },
                 "identifierIndexWaitMillis": 9876,
                 "referenceBatchSize": 13,
                 "remote": {
@@ -299,10 +301,10 @@ internal fun assertResolvedRuntimeConfigLoading(tempDir: Path) {
     assertEquals(42, config.server.maxResults.value)
     assertEquals(1234L, config.server.requestTimeoutMillis.value)
     assertEquals(7, config.server.maxConcurrentRequests.value)
-    assertEquals(false, config.indexing.phase2Enabled.value)
-    assertEquals(11, config.indexing.phase2BatchSize.value)
-    assertEquals(2, config.indexing.phase2Parallelism.value)
-    assertEquals(1, config.indexing.phase2PriorityDepth.value)
+    assertEquals(false, config.indexing.relationships.enabled.value)
+    assertEquals(11, config.indexing.relationships.batchSize.value)
+    assertEquals(2, config.indexing.relationships.parallelism.value)
+    assertEquals(1, config.indexing.relationships.modulePriorityDepth.value)
     assertEquals(9876L, config.indexing.identifierIndexWaitMillis.value)
     assertEquals(13, config.indexing.referenceBatchSize.value)
     assertEquals(true, config.indexing.remote.enabled.value)
