@@ -78,6 +78,8 @@ class Expectations:
 class Model:
     baseline: Plan
     candidate: Plan
+    baseline_run_count: int
+    candidate_run_count: int
     retired_proof_output_replacements: Mapping[str, str]
     expectations: Expectations
 
@@ -388,7 +390,7 @@ def parse_expectations(value: Any) -> Expectations:
     )
 
 
-def validate_provenance(value: Any) -> None:
+def validate_provenance(value: Any) -> tuple[int, int]:
     path = "provenance"
     item = require_mapping(value, path)
     required = {"description", "observedAt", "source", "baselineRunIds", "candidateRunIds"}
@@ -398,6 +400,7 @@ def validate_provenance(value: Any) -> None:
     if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", observed_at):
         raise ModelError(f"{path}.observedAt must use YYYY-MM-DD")
     require_string(item["source"], f"{path}.source")
+    run_counts: dict[str, int] = {}
     for key in ("baselineRunIds", "candidateRunIds"):
         raw_ids = require_list(item[key], f"{path}.{key}")
         parsed_ids = [
@@ -406,6 +409,8 @@ def validate_provenance(value: Any) -> None:
         ]
         if len(set(parsed_ids)) != len(parsed_ids):
             raise ModelError(f"{path}.{key} must not contain duplicates")
+        run_counts[key] = len(parsed_ids)
+    return run_counts["baselineRunIds"], run_counts["candidateRunIds"]
 
 
 def parse_proof_output_replacements(
@@ -470,13 +475,14 @@ def parse_model(value: Any) -> Model:
         )
     if "$schema" in item:
         require_string(item["$schema"], "model.$schema")
-    if "provenance" in item:
-        validate_provenance(item["provenance"])
+    run_counts = validate_provenance(item["provenance"]) if "provenance" in item else (0, 0)
     baseline = parse_plan(item["baseline"], "baseline")
     candidate = parse_plan(item["candidate"], "candidate")
     return Model(
         baseline=baseline,
         candidate=candidate,
+        baseline_run_count=run_counts[0],
+        candidate_run_count=run_counts[1],
         retired_proof_output_replacements=parse_proof_output_replacements(
             item["retiredProofOutputReplacements"], baseline, candidate
         ),
@@ -519,7 +525,7 @@ def maximum_parallel_tasks(starts: Mapping[str, float], finishes: Mapping[str, f
     return maximum
 
 
-def analyze_plan(plan: Plan) -> PlanAnalysis:
+def analyze_plan(plan: Plan, successful_run_count: int) -> PlanAnalysis:
     canary_task_ids = set(plan.canary_task_ids)
     order = tuple(
         task_id
@@ -575,7 +581,7 @@ def analyze_plan(plan: Plan) -> PlanAnalysis:
             sorted(
                 task_id
                 for task_id, stats in task_durations.items()
-                if stats.count < RECOMMENDED_SAMPLE_FLOOR
+                if min(stats.count, successful_run_count) < RECOMMENDED_SAMPLE_FLOOR
             )
         ),
     )
@@ -618,8 +624,8 @@ def analysis_document(analysis: PlanAnalysis) -> dict[str, Any]:
 
 
 def compare(model: Model) -> dict[str, Any]:
-    baseline = analyze_plan(model.baseline)
-    candidate = analyze_plan(model.candidate)
+    baseline = analyze_plan(model.baseline, model.baseline_run_count)
+    candidate = analyze_plan(model.candidate, model.candidate_run_count)
     expectations = model.expectations
     baseline_outputs = set(baseline.output_ids)
     candidate_outputs = set(candidate.output_ids)
@@ -673,15 +679,16 @@ def compare(model: Model) -> dict[str, Any]:
             f"{expectations.maximum_candidate_task_count_increase}"
         )
 
-    for name, plan, analysis in (
-        ("baseline", model.baseline, baseline),
-        ("candidate", model.candidate, candidate),
+    for name, plan, analysis, successful_run_count in (
+        ("baseline", model.baseline, baseline, model.baseline_run_count),
+        ("candidate", model.candidate, candidate, model.candidate_run_count),
     ):
         undersampled = sorted(
             task_id
             for task_id, task in plan.tasks.items()
             if task_id not in plan.canary_task_ids
-            and len(task.duration_samples_seconds) < expectations.minimum_task_samples
+            and min(len(task.duration_samples_seconds), successful_run_count)
+            < expectations.minimum_task_samples
         )
         if undersampled:
             undersampled_finding = (
@@ -693,7 +700,10 @@ def compare(model: Model) -> dict[str, Any]:
             else:
                 timing_findings.append(undersampled_finding)
         if (
-            len(plan.observed_workflow_duration_samples_seconds)
+            min(
+                len(plan.observed_workflow_duration_samples_seconds),
+                successful_run_count,
+            )
             < expectations.minimum_workflow_samples
         ):
             timing_findings.append(f"{name} workflow is below minimumWorkflowSamples")
@@ -708,7 +718,10 @@ def compare(model: Model) -> dict[str, Any]:
                 f"{name} task timing is provisional below {RECOMMENDED_SAMPLE_FLOOR} samples: "
                 + ", ".join(analysis.provisional_task_ids)
             )
-        if analysis.observed_workflow_duration.count < RECOMMENDED_SAMPLE_FLOOR:
+        if (
+            min(analysis.observed_workflow_duration.count, successful_run_count)
+            < RECOMMENDED_SAMPLE_FLOOR
+        ):
             warnings.append(
                 f"{name} workflow timing is provisional below "
                 f"{RECOMMENDED_SAMPLE_FLOOR} samples"
