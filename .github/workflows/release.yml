@@ -1113,12 +1113,12 @@ jobs:
             repository: https://github.com/ktorio/ktor-samples.git
             revision: c89f051e1183455eda8b26146555a1b5ed23d18c
             graph_file: httpbin/src/main/kotlin/io/ktor/samples/httpbin/Server.kt
-            relationships_enabled: false
+            relationships_enabled: true
           - name: spring-boot
             repository: https://github.com/AleksK1NG/Kotlin-Clean-Architecture-CQRS.git
             revision: d523770246f2ddb586868e4a9e55cafce7e0d6f8
             graph_file: src/main/kotlin/com/alexander/bryksin/kotlinspringcleanarchitecture/KotlinSpringCleanArchitectureApplication.kt
-            relationships_enabled: false
+            relationships_enabled: true
           - name: okhttp
             repository: https://github.com/square/okhttp.git
             revision: 0960b47ec28a02e893499d2a7e53bf462a62875e
