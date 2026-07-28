@@ -37,31 +37,33 @@ pub fn resolve_workspace_root(value: Option<PathBuf>) -> Result<PathBuf> {
 }
 
 pub(crate) fn resolve_workspace_root_from(start: &Path) -> PathBuf {
-    find_workspace_marker_root(start)
+    find_workspace_root_from(start)
         .map(normalize)
         .unwrap_or_else(|| normalize(start.to_path_buf()))
 }
 
-fn find_workspace_marker_root(start: &Path) -> Option<PathBuf> {
-    let mut current = Some(start);
-    while let Some(path) = current {
-        if WORKSPACE_MARKERS
+pub(crate) fn find_workspace_root_from(start: &Path) -> Option<PathBuf> {
+    let mut build_root = None;
+    for path in start.ancestors() {
+        if SETTINGS_MARKERS
             .iter()
-            .any(|marker| path.join(marker).exists())
+            .any(|marker| path.join(marker).is_file())
         {
             return Some(path.to_path_buf());
         }
-        current = path.parent();
+        if build_root.is_none()
+            && BUILD_MARKERS
+                .iter()
+                .any(|marker| path.join(marker).is_file())
+        {
+            build_root = Some(path.to_path_buf());
+        }
     }
-    None
+    build_root
 }
 
-const WORKSPACE_MARKERS: &[&str] = &[
-    "settings.gradle.kts",
-    "settings.gradle",
-    "build.gradle.kts",
-    "build.gradle",
-];
+const SETTINGS_MARKERS: &[&str] = &["settings.gradle.kts", "settings.gradle"];
+const BUILD_MARKERS: &[&str] = &["build.gradle.kts", "build.gradle"];
 const MAX_UNIX_SOCKET_PATH_BYTES: usize = 100;
 
 pub fn workspace_data_directory(workspace_root: &Path) -> Result<PathBuf> {
