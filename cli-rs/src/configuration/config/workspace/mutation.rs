@@ -1,4 +1,4 @@
-use toml_edit::{DocumentMut, Item, Table};
+use toml_edit::{DocumentMut, Item, Table, TableLike};
 
 #[derive(Debug, Clone, Copy, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -316,7 +316,7 @@ fn write_workspace_config(path: &Path, contents: &str) -> Result<()> {
     Ok(())
 }
 
-fn set_document_value(table: &mut Table, path: &[&str], value: Item) -> Result<()> {
+fn set_document_value(table: &mut dyn TableLike, path: &[&str], value: Item) -> Result<()> {
     let Some((head, tail)) = path.split_first() else {
         return Err(CliError::new("CONFIG_FIELD_UNSUPPORTED", "Empty config key"));
     };
@@ -329,7 +329,7 @@ fn set_document_value(table: &mut Table, path: &[&str], value: Item) -> Result<(
     }
     let child = table
         .get_mut(head)
-        .and_then(Item::as_table_mut)
+        .and_then(Item::as_table_like_mut)
         .ok_or_else(|| {
             CliError::new(
                 "CONFIG_ERROR",
@@ -339,14 +339,14 @@ fn set_document_value(table: &mut Table, path: &[&str], value: Item) -> Result<(
     set_document_value(child, tail, value)
 }
 
-fn remove_document_value(table: &mut Table, path: &[&str]) -> bool {
+fn remove_document_value(table: &mut dyn TableLike, path: &[&str]) -> bool {
     let Some((head, tail)) = path.split_first() else {
         return false;
     };
     if tail.is_empty() {
         return table.remove(head).is_some();
     }
-    let (removed, empty) = match table.get_mut(head).and_then(Item::as_table_mut) {
+    let (removed, empty) = match table.get_mut(head).and_then(Item::as_table_like_mut) {
         Some(child) => {
             let removed = remove_document_value(child, tail);
             (removed, child.is_empty())

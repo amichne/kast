@@ -117,6 +117,72 @@ fn workspace_config_lists_sets_and_unsets_effective_values() {
 }
 
 #[test]
+fn workspace_config_mutates_inline_tables() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+
+    let initialized = run(
+        &home,
+        &config_home,
+        &workspace,
+        &["set", "indexing.relationships.parallelism", "2"],
+    );
+    assert!(initialized.status.success());
+    let initialized: serde_json::Value =
+        serde_json::from_slice(&initialized.stdout).expect("set JSON");
+    let config_path = PathBuf::from(initialized["configPath"].as_str().expect("config path"));
+    std::fs::write(
+        &config_path,
+        "indexing = { remote = { enabled = false } }\n",
+    )
+    .expect("inline workspace config");
+
+    let set = run(
+        &home,
+        &config_home,
+        &workspace,
+        &["set", "indexing.relationships.parallelism", "3"],
+    );
+    assert!(
+        set.status.success(),
+        "set failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&set.stdout),
+        String::from_utf8_lossy(&set.stderr),
+    );
+    let set: serde_json::Value = serde_json::from_slice(&set.stdout).expect("set JSON");
+    assert_eq!(set["status"], "updated");
+    assert_eq!(set["effectiveValue"], 3);
+
+    let unset = run(
+        &home,
+        &config_home,
+        &workspace,
+        &["unset", "indexing.relationships.parallelism"],
+    );
+    assert!(
+        unset.status.success(),
+        "unset failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&unset.stdout),
+        String::from_utf8_lossy(&unset.stderr),
+    );
+    let unset: serde_json::Value = serde_json::from_slice(&unset.stdout).expect("unset JSON");
+    assert_eq!(unset["status"], "updated");
+    assert_eq!(unset["effectiveValue"], 4);
+    let contents = std::fs::read_to_string(config_path).expect("workspace config");
+    let stored: toml::Value = toml::from_str(&contents).expect("valid TOML");
+    assert!(stored["indexing"].get("relationships").is_none());
+    assert_eq!(
+        stored["indexing"]["remote"]["enabled"].as_bool(),
+        Some(false),
+    );
+}
+
+#[test]
 fn workspace_config_rejects_unsupported_and_invalid_values() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
