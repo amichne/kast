@@ -36,6 +36,15 @@ gradle_workspace_for() {
   printf '%s\n' "$workspace"
 }
 
+configure_gradle_java_paths() {
+  local gradle_user_dir="$1" gradle_java_home="${2:-}" java_home="${3:-}"
+  [[ -n "$gradle_java_home" ]] || return 0
+  [[ -d "$gradle_java_home" ]] || { printf 'error: Gradle Java home not found: %s\n' "$gradle_java_home" >&2; return 1; }
+  [[ -d "$java_home" ]] || { printf 'error: Java home not found: %s\n' "$java_home" >&2; return 1; }
+  printf 'org.gradle.java.installations.paths=%s,%s\n' "$gradle_java_home" "$java_home" \
+    >"$gradle_user_dir/gradle.properties"
+}
+
 [[ "${BASH_SOURCE[0]}" == "$0" ]] || return 0
 
 name=
@@ -91,6 +100,7 @@ kast_home_dir="$scratch/kast-home"
 kast_cache_dir="$scratch/kast-cache"
 gradle_user_dir="$scratch/gradle"
 mkdir -p "$bundle_dir" "$benchmark_user_dir" "$kast_home_dir" "$kast_cache_dir" "$gradle_user_dir"
+configure_gradle_java_paths "$gradle_user_dir" "${GRADLE_JAVA_HOME:-}" "${JAVA_HOME:-}"
 
 cleanup() {
   if [[ -n "${kast_bin:-}" && -x "${kast_bin:-}" && -n "$workspace" && -d "$workspace" ]]; then

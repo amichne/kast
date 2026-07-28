@@ -59,8 +59,7 @@ require "$release" 'Set up Gradle Java 17 toolchain' 'release gate must install 
 require "$release" 'set-default: false' 'Gradle toolchain setup must not replace the Java 21 Kast runtime'
 # shellcheck disable=SC2016 # GitHub expression is intentionally matched literally.
 require "$release" 'GRADLE_JAVA_HOME: ${{ steps.gradle-java.outputs.path }}' 'release gate must bind the installed Gradle toolchain'
-# shellcheck disable=SC2016 # Workflow shell variables are intentionally matched literally.
-require "$release" 'export GRADLE_OPTS="-Dorg.gradle.java.installations.paths=${GRADLE_JAVA_HOME},${JAVA_HOME}"' 'Gradle must see both its Java 17 toolchain and the Java 21 runtime'
+reject "$release" 'GRADLE_OPTS=' 'Gradle toolchain paths must not depend on a gradlew-only launcher variable'
 require "$release" "--graph-file \"\${{ matrix.graph_file }}\"" 'release gate must pass the pinned compiler graph probe'
 require "$release" "--relationships-enabled \"\${{ matrix.relationships_enabled }}\"" 'release gate must pass the relationship indexing plan'
 require "$release" 'needs.real-repository-indexing.result == '\''success'\''' 'release publication must require the repository gate'
@@ -129,6 +128,18 @@ mkdir -p "$scope_fixture/no-settings/src"
 touch "$scope_fixture/no-settings/src/Probe.kt"
 if gradle_workspace_for "$scope_fixture/no-settings/src/Probe.kt" "$scope_fixture/no-settings" >/dev/null; then
   printf 'error: probe outside a Gradle build was accepted\n' >&2
+  exit 1
+fi
+gradle_user_fixture="$scope_fixture/gradle-user"
+gradle_java_fixture="$scope_fixture/java-17"
+runtime_java_fixture="$scope_fixture/java-21"
+mkdir -p "$gradle_user_fixture" "$gradle_java_fixture" "$runtime_java_fixture"
+configure_gradle_java_paths "$gradle_user_fixture" "$gradle_java_fixture" "$runtime_java_fixture"
+[[ "$(cat "$gradle_user_fixture/gradle.properties")" == \
+    "org.gradle.java.installations.paths=$gradle_java_fixture,$runtime_java_fixture" ]] \
+  || { printf 'error: Gradle Tooling API paths were not configured\n' >&2; exit 1; }
+if configure_gradle_java_paths "$gradle_user_fixture" "$scope_fixture/missing-java" "$runtime_java_fixture" 2>/dev/null; then
+  printf 'error: missing Gradle Java home was accepted\n' >&2
   exit 1
 fi
 

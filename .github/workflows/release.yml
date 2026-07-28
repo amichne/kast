@@ -1160,7 +1160,6 @@ jobs:
           GRADLE_JAVA_HOME: ${{ steps.gradle-java.outputs.path }}
         run: |
           set -euo pipefail
-          export GRADLE_OPTS="-Dorg.gradle.java.installations.paths=${GRADLE_JAVA_HOME},${JAVA_HOME}"
           bundle="$(find release-bundle -maxdepth 1 -name 'kast-ubuntu-debian-headless-x86_64-*.tar.gz' -print -quit)"
           [[ -n "$bundle" ]] || { echo "Linux setup bundle not found" >&2; exit 1; }
           scripts/release/benchmark-real-repositories.sh \
