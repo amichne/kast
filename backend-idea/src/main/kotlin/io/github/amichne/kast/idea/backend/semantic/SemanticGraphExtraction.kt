@@ -30,6 +30,7 @@ import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.resolution.singleFunctionCallOrNull
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtCallableReferenceExpression
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
@@ -230,6 +231,7 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
     }
 
     PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
+        .filterNot { call -> call.parent is KtCallableReferenceExpression && call.valueArgumentList == null }
         .sortedBy { it.textRange.startOffset }
         .forEach { call ->
             val target = analyze(call) {

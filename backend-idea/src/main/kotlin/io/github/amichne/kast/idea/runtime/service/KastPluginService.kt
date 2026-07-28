@@ -16,13 +16,15 @@ import io.github.amichne.kast.server.RuntimeLifecycleController
 import java.nio.file.Path
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 
 @Service(Service.Level.PROJECT)
 internal class KastPluginService(
     private val project: Project,
-    private val coroutineScope: CoroutineScope,
 ) : Disposable {
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val backendLifecycle = KastPluginBackendLifecycle(
         startBackend = ::createBackend,
         onStopping = ::recordBackendStopping,
@@ -51,6 +53,7 @@ internal class KastPluginService(
     }
 
     override fun dispose() {
+        coroutineScope.cancel()
         backendLifecycle.dispose()
     }
 
@@ -64,7 +67,7 @@ internal class KastPluginService(
     fun failIndexing(error: Throwable) = backendLifecycle.markIndexFailed(error)
 
     fun reloadConfigAsync() {
-        coroutineScope.launch(Dispatchers.IO) {
+        coroutineScope.launch {
             reloadConfig()
         }
     }

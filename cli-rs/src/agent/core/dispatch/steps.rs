@@ -122,6 +122,24 @@ fn execute_agent_steps(
             "method": "runtime/status",
         }));
     }
+    let semantic_graph = if issues.is_empty() {
+        workspace_admission.as_ref().and_then(|admission| {
+            verification_semantic_graph_readiness(method, admission, &step_results)
+        })
+    } else {
+        None
+    };
+    let semantic_graph_failure = semantic_graph
+        .as_ref()
+        .and_then(semantic_graph_verification_failure);
+    if let (Some((code, _)), Some(readiness)) =
+        (semantic_graph_failure, semantic_graph.as_ref())
+    {
+        issues.push(json!({
+            "code": code,
+            "state": readiness.state,
+        }));
+    }
     let ok = issues.is_empty();
     let mut result = json!({
         "type": "KAST_AGENT_COMMAND",
@@ -136,13 +154,30 @@ fn execute_agent_steps(
     if let (Some(semantic_workspace), Some(result)) = (semantic_workspace, result.as_object_mut()) {
         result.insert("semanticWorkspace".to_string(), json!(semantic_workspace));
     }
-    let error = (!ok).then(|| {
-        let mut error = agent_error("AGENT_COMMAND_FAILED", "Agent command failed.");
-        error
-            .details
-            .insert("issues".to_string(), result["issues"].clone());
-        error
-    });
+    if let (Some(semantic_graph), Some(result)) = (semantic_graph, result.as_object_mut()) {
+        result.insert("semanticGraph".to_string(), json!(semantic_graph));
+    }
+    let error = semantic_graph_failure.map_or_else(
+        || {
+            (!ok).then(|| {
+                let mut error = agent_error("AGENT_COMMAND_FAILED", "Agent command failed.");
+                error
+                    .details
+                    .insert("issues".to_string(), result["issues"].clone());
+                error
+            })
+        },
+        |(code, message)| {
+            let mut error = agent_error(code, message);
+            error
+                .details
+                .insert("issues".to_string(), result["issues"].clone());
+            error
+                .details
+                .insert("semanticGraph".to_string(), result["semanticGraph"].clone());
+            Some(error)
+        },
+    );
     AgentEnvelope {
         ok,
         method: method.to_string(),
@@ -153,6 +188,49 @@ fn execute_agent_steps(
         error,
         schema_version: SCHEMA_VERSION,
     }
+}
+
+fn semantic_graph_verification_failure(
+    readiness: &crate::repository_intelligence::SemanticGraphReadiness,
+) -> Option<(&'static str, &'static str)> {
+    use crate::repository_intelligence::SemanticGraphReadinessState;
+
+    match readiness.state {
+        SemanticGraphReadinessState::Ready => None,
+        SemanticGraphReadinessState::Incomplete => Some((
+            "SEMANTIC_GRAPH_COVERAGE_INCOMPLETE",
+            "Persisted semantic graph coverage is incomplete; refresh each affected file with `kast agent graph --operation refresh --file-path <path-to-kotlin-file>`, then retry verification.",
+        )),
+        SemanticGraphReadinessState::Unavailable => Some((
+            "SEMANTIC_GRAPH_COVERAGE_UNAVAILABLE",
+            "Persisted semantic graph coverage is unavailable; refresh a selected file with `kast agent graph --operation refresh --file-path <path-to-kotlin-file>`, then retry verification.",
+        )),
+    }
+}
+
+fn verification_semantic_graph_readiness(
+    method: &str,
+    admission: &runtime::SemanticWorkspaceAdmission,
+    step_results: &[Value],
+) -> Option<crate::repository_intelligence::SemanticGraphReadiness> {
+    if method != "agent/verify" {
+        return None;
+    }
+    let capabilities = step_results
+        .iter()
+        .find(|step| step.get("name").and_then(Value::as_str) == Some("capabilities"))?
+        .get("result")?;
+    let advertised = capabilities
+        .get("readCapabilities")
+        .and_then(Value::as_array)
+        .is_some_and(|capabilities| {
+            capabilities
+                .iter()
+                .any(|capability| capability.as_str() == Some("SEMANTIC_GRAPH"))
+        });
+    advertised.then(|| {
+        crate::repository_intelligence::semantic_graph_readiness(&admission.workspace_root)
+    })
 }
 
 fn verification_workspace_evidence(
