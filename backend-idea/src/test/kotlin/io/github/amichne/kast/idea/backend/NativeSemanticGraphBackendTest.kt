@@ -122,7 +122,21 @@ class NativeSemanticGraphBackendTest {
             }
         """
 
-        private const val unresolvedCallSource = "package demo\nfun brokenCall() = missingCall()"
+        private const val unresolvedCallSource = """
+            package demo
+
+            import java.util.concurrent.CompletableFuture
+
+            fun <T> generatedFluentCall(value: T): T =
+                CompletableFuture.completedFuture(value).thenApply { it }.join()
+
+            fun laterTarget(): String = "ok"
+
+            fun resilientCall(): String {
+                missingCall()
+                return laterTarget()
+            }
+        """
         private const val unresolvedSupertypeSource = "package demo\ninterface Broken : MissingBase"
         private const val unresolvedTypeSource = "package demo\nval broken: MissingType? = null"
     }
@@ -354,11 +368,45 @@ class NativeSemanticGraphBackendTest {
     }
 
     @Test
+    fun `one unresolved generated external call does not discard later call relations`() = runBlocking {
+        val project = projectFixture.get()
+        val sourceFile = unresolvedCallFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
+        val sourcePath = SemanticGraphSourcePath.parse(sourceFile.name)
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = limits(),
+                semanticGraphStore = store,
+                psiGeneration = { 1L },
+            ).use { backend ->
+                backend.semanticGraph(
+                    SemanticGraphQuery(
+                        filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
+                    ).parsed(),
+                )
+            }
+
+            val snapshot = store.readSemanticGraph(listOf(sourcePath))
+            val laterTarget = snapshot.symbols.single { symbol -> symbol.name.value == "laterTarget" }
+            assertTrue(
+                snapshot.relations.any { relation ->
+                    relation.kind == SemanticGraphRelationKind.CALLS &&
+                        relation.targetKey == laterTarget.canonicalKey
+                },
+            )
+        }
+    }
+
+    @Test
     fun `semantic graph rejects unresolved compiler targets`() = runBlocking {
         val project = projectFixture.get()
         val validFile = canonicalFileFixture.get()
         val files = listOf(
-            unresolvedCallFixture.get(),
             unresolvedSupertypeFixture.get(),
             unresolvedTypeFixture.get(),
         )
