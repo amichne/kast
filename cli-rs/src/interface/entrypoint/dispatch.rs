@@ -17,6 +17,7 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
             Ok(0)
         }
         Command::Context(args) => run_context(args, output_format),
+        Command::Config(args) => run_config(args.command, output_format),
         Command::Setup(args) => run_setup(args, output_format),
         Command::Ready(args) => run_ready(args, output_format),
         Command::Start(args) => run_runtime(cli::RuntimeCommand::Up(args), output_format),
@@ -28,6 +29,29 @@ fn run(cli: Cli, output_format: OutputFormat) -> Result<i32> {
         Command::Doctor(args) => run_ready(args.into(), output_format),
         Command::Agent(args) => run_agent(args, output_format),
     }
+}
+
+fn run_config(command: cli::ConfigCommand, output_format: OutputFormat) -> Result<i32> {
+    let output_format = if output_format.is_structured() {
+        output_format
+    } else {
+        OutputFormat::Toon
+    };
+    match command {
+        cli::ConfigCommand::List(args) => output::print_structured(
+            &config::list_workspace_config(args.workspace_root)?,
+            output_format,
+        )?,
+        cli::ConfigCommand::Set(args) => output::print_structured(
+            &config::set_workspace_config(args.workspace_root, args.key, args.value)?,
+            output_format,
+        )?,
+        cli::ConfigCommand::Unset(args) => output::print_structured(
+            &config::unset_workspace_config(args.workspace_root, args.key)?,
+            output_format,
+        )?,
+    }
+    Ok(0)
 }
 
 fn run_rpc(args: cli::RpcArgs, output_format: OutputFormat) -> Result<i32> {
@@ -106,6 +130,10 @@ fn context_command_hints() -> Vec<ContextCommandHint> {
         ContextCommandHint {
             command: "kast stop --workspace-root <repo>".to_string(),
             purpose: "Stop indexing and the workspace backend.".to_string(),
+        },
+        ContextCommandHint {
+            command: "kast config list --workspace-root <repo>".to_string(),
+            purpose: "Inspect effective workspace configuration and mutable fields.".to_string(),
         },
         ContextCommandHint {
             command: "kast agent verify --workspace-root <repo>".to_string(),

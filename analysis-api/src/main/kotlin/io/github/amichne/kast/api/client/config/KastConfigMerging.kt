@@ -30,6 +30,7 @@ private fun CodexHooksConfig.merge(override: CodexHooksConfigOverride?): CodexHo
 )
 
 internal fun KastConfigOverride.ideaWorkspaceOverride(): KastConfigOverride = KastConfigOverride(
+    server = server,
     runtime = runtime?.let {
         RuntimeConfigOverride(
             defaultBackend = it.defaultBackend,
@@ -37,6 +38,12 @@ internal fun KastConfigOverride.ideaWorkspaceOverride(): KastConfigOverride = Ka
         )
     },
     projectOpen = projectOpen,
+    indexing = indexing,
+    cache = cache,
+    watcher = watcher,
+    gradle = gradle,
+    telemetry = telemetry,
+    profiling = profiling,
     backends = BackendsConfigOverride(idea = backends?.idea).takeIf { it.idea != null },
 )
 

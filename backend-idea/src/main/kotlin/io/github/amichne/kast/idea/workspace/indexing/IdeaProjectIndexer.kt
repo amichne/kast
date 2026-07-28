@@ -42,7 +42,12 @@ internal class IdeaProjectIndexer(
                 dependentModuleGraph = buildIdeaDependencyGraph(moduleSpecs),
                 depth = config.indexing.phase2PriorityDepth.value,
             )
-            indexReferences(currentFilePaths, modulePriorityOrder, config.indexing.referenceBatchSize.value)
+            indexReferences(
+                currentFilePaths = currentFilePaths,
+                moduleOrder = modulePriorityOrder,
+                batchSize = config.indexing.phase2BatchSize.value,
+                parallelism = config.indexing.phase2Parallelism.value,
+            )
         }
     }
 
@@ -73,7 +78,8 @@ internal class IdeaProjectIndexer(
     private fun indexReferences(
         currentFilePaths: Collection<String>,
         moduleOrder: List<String>,
-        referenceBatchSize: Int,
+        batchSize: Int,
+        parallelism: Int,
     ) {
         if (currentFilePaths.isEmpty()) return
         val fileModuleByPath = currentFilePaths
@@ -112,7 +118,11 @@ internal class IdeaProjectIndexer(
                 environment.findPsiFile(path)?.let(::moduleNameForFile)
             },
         )
-        ReferenceIndexer(store, batchSize = referenceBatchSize).indexReferences(
+        ReferenceIndexer(
+            store = store,
+            batchSize = batchSize,
+            parallelism = parallelism,
+        ).indexReferences(
             filePaths = orderedFilePaths,
             referenceScanner = scanner::scanFileReferences,
             declarationScanner = scanner::scanFileDeclarations,

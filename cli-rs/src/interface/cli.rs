@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 include!("cli/root.rs");
+include!("cli/config.rs");
 include!("cli/inspect_metrics_demo_rpc.rs");
 include!("cli/agent.rs");
 include!("cli/release_package_generate.rs");

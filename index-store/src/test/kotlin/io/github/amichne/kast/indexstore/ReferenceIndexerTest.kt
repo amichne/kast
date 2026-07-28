@@ -118,28 +118,37 @@ class ReferenceIndexerTest {
     }
 
     @Test
-    fun `survives scanner exception for one file without aborting batch`() {
+    fun `excludes one declaration scan dropout without aborting batch`() {
         val filePaths = (0 until 5).map { i -> "/src/File$i.kt" }
         val failingPath = filePaths[2]
+        val indexedPaths = mutableListOf<String>()
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store).indexReferences(filePaths, referenceScanner = { path ->
-                if (path == failingPath) {
-                    throw RuntimeException("Simulated scanner failure")
-                }
-                listOf(
-                    SymbolReferenceRow(
-                        sourcePath = path,
-                        sourceOffset = 0,
-                        targetFqName = "sample.target",
-                        targetPath = null,
-                        targetOffset = null,
-                    ),
-                )
-            })
+            ReferenceIndexer(store).indexReferences(
+                filePaths,
+                referenceScanner = { path ->
+                    listOf(
+                        SymbolReferenceRow(
+                            sourcePath = path,
+                            sourceOffset = 0,
+                            targetFqName = "sample.target",
+                            targetPath = null,
+                            targetOffset = null,
+                        ),
+                    )
+                },
+                declarationScanner = { path ->
+                    if (path == failingPath) {
+                        throw RuntimeException("Simulated scanner failure")
+                    }
+                    emptyList()
+                },
+                onFilesIndexed = indexedPaths::addAll,
+            )
 
             val refs = store.referencesToSymbol("sample.target")
             assertEquals(4, refs.size)
             assertTrue(refs.none { it.sourcePath == failingPath })
+            assertEquals(filePaths - failingPath, indexedPaths)
         }
     }
 

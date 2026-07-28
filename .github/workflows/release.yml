@@ -1095,6 +1095,64 @@ jobs:
           path: dist/
           if-no-files-found: warn
 
+  real-repository-indexing:
+    name: Index ${{ matrix.name }}
+    needs:
+      - prepare-release
+      - build-linux-headless-tarball
+    if: always() && needs.prepare-release.result == 'success' && needs.build-linux-headless-tarball.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ktor
+            repository: https://github.com/ktorio/ktor.git
+            revision: 3ccad96fbb891469cdb5ff92b51a96bb6d6374c9
+          - name: spring-boot
+            repository: https://github.com/spring-projects/spring-boot.git
+            revision: 8821ad2cd381bb4b9615a61479e1de7305a8ba39
+          - name: okhttp
+            repository: https://github.com/square/okhttp.git
+            revision: 0960b47ec28a02e893499d2a7e53bf462a62875e
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Restore repository object cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/kast-real-repository-cache
+          key: kast-real-repository-${{ matrix.name }}-${{ matrix.revision }}
+
+      - name: Download Linux headless tarball
+        uses: actions/download-artifact@v7
+        with:
+          name: linux-headless-tarball-${{ github.run_id }}
+          path: release-bundle
+
+      - name: Index pinned repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          bundle="$(find release-bundle -maxdepth 1 -name 'kast-ubuntu-debian-headless-x86_64-*.tar.gz' -print -quit)"
+          [[ -n "$bundle" ]] || { echo "Linux setup bundle not found" >&2; exit 1; }
+          scripts/benchmark-real-repositories.sh \
+            --name "${{ matrix.name }}" \
+            --repository "${{ matrix.repository }}" \
+            --revision "${{ matrix.revision }}" \
+            --bundle "$bundle" \
+            --cache-root "${{ runner.temp }}/kast-real-repository-cache"
+
   publish-release:
     name: Publish release
     needs:
@@ -1105,7 +1163,8 @@ jobs:
       - build-idea-plugin
       - build-headless-backend
       - build-linux-headless-tarball
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success'
+      - real-repository-indexing
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success' && needs.real-repository-indexing.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write

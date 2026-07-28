@@ -18,6 +18,7 @@ include!("config/path_resolution.rs");
 include!("config/launch.rs");
 include!("config/filesystem.rs");
 include!("config/git_workspace.rs");
+include!("config/workspace_mutation.rs");
 
 pub(crate) fn validate_toml(contents: &str) -> Result<()> {
     toml::from_str::<PartialConfig>(contents)?;

@@ -148,6 +148,15 @@ internal fun assertIdeaConfigIsolation(tempDir: Path) {
             [runtime]
             defaultBackend = "idea"
 
+            [server]
+            maxResults = 75
+
+            [indexing]
+            phase2Parallelism = 2
+
+            [cache]
+            enabled = false
+
             [projectOpen]
             profileAutoInit = true
             profile = "jetbrains-plugin"
@@ -179,6 +188,9 @@ internal fun assertIdeaConfigIsolation(tempDir: Path) {
     )
     assertEquals(OptionalConfigString.Unset, config.backends.headless.ideaHome.value)
     assertEquals("idea", config.runtime.defaultBackend.value)
+    assertEquals(75, config.server.maxResults.value)
+    assertEquals(2, config.indexing.phase2Parallelism.value)
+    assertEquals(false, config.cache.enabled.value)
     assertEquals(true, config.projectOpen.profileAutoInit.value)
     assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
     assertEquals(false, config.projectOpen.autoExcludeGit.value)

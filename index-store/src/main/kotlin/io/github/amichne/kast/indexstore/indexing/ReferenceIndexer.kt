@@ -5,6 +5,7 @@ import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.util.concurrent.Callable
 import java.util.concurrent.CancellationException
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
@@ -38,22 +39,33 @@ class ReferenceIndexer(
         isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
         onFilesIndexed: (Collection<String>) -> Unit = {},
     ) {
-        for (batch in filePaths.toList().chunked(batchSize)) {
-            if (isCancelled()) break
-            val referenceResults = scanBatch(batch, referenceScanner, isCancelled)
-            if (isCancelled()) break
+        val executor = if (parallelism > 1) newExecutor() else null
+        try {
+            for (batch in filePaths.toList().chunked(batchSize)) {
+                if (isCancelled()) break
+                val referenceResults = scanBatch(batch, referenceScanner, isCancelled, executor)
+                if (isCancelled()) break
 
-            val declarationResults = declarationScanner?.let { scanner ->
-                scanBatch(batch, scanner, isCancelled)
-            }
-            if (isCancelled()) break
+                val declarationResults = declarationScanner?.let { scanner ->
+                    scanBatch(batch, scanner, isCancelled, executor)
+                }
+                if (isCancelled()) break
 
-            store.replaceReferencesFromFiles(referenceResults)
-            if (declarationResults != null) {
-                store.replaceDeclarationsFromFiles(declarationResults)
+                val referencePaths = referenceResults.mapTo(mutableSetOf()) { it.first }
+                val declarationPaths = declarationResults?.mapTo(mutableSetOf()) { it.first }
+                val successfulPaths = batch.filter { path ->
+                    path in referencePaths &&
+                        (declarationPaths == null || path in declarationPaths)
+                }
+                store.replaceReferencesFromFiles(referenceResults.filter { it.first in successfulPaths })
+                if (declarationResults != null) {
+                    store.replaceDeclarationsFromFiles(declarationResults.filter { it.first in successfulPaths })
+                }
+                if (isCancelled()) break
+                onFilesIndexed(successfulPaths)
             }
-            if (isCancelled()) break
-            onFilesIndexed(batch)
+        } finally {
+            executor?.shutdownNow()
         }
     }
 
@@ -85,9 +97,10 @@ class ReferenceIndexer(
         batch: List<String>,
         scanner: (String) -> T,
         isCancelled: () -> Boolean,
+        executor: ExecutorService?,
     ): List<Pair<String, T>> =
-        if (parallelism > 1) {
-            scanBatchParallel(batch, scanner, isCancelled)
+        if (executor != null) {
+            scanBatchParallel(batch, scanner, isCancelled, executor)
         } else {
             batch.mapNotNull { filePath ->
                 if (isCancelled()) return@mapNotNull null
@@ -111,41 +124,42 @@ class ReferenceIndexer(
         batch: List<String>,
         scanner: (String) -> T,
         isCancelled: () -> Boolean,
+        executor: ExecutorService,
     ): List<Pair<String, T>> {
+        val futures = batch.map { filePath ->
+            executor.submit(
+                Callable<Pair<String, T>?> {
+                    if (isCancelled()) return@Callable null
+                    try {
+                        filePath to scanner(filePath)
+                    } catch (error: Exception) {
+                        if (error.isCancellation()) throw error
+                        null
+                    }
+                },
+            )
+        }
+        return futures.mapNotNull { future ->
+            try {
+                future.get()
+            } catch (e: ExecutionException) {
+                val cause = e.cause ?: return@mapNotNull null
+                if (cause.isCancellation()) throw cause
+                if (cause !is Exception) throw cause
+                null
+            } catch (e: InterruptedException) {
+                Thread.currentThread().interrupt()
+                throw InterruptedException("Interrupted while awaiting parallel scan result")
+            }
+        }
+    }
+
+    private fun newExecutor(): ExecutorService {
         val threadCounter = AtomicInteger(0)
-        val executor = Executors.newFixedThreadPool(parallelism) { runnable ->
+        return Executors.newFixedThreadPool(parallelism) { runnable ->
             Thread(runnable, "kast-ref-indexer-${threadCounter.incrementAndGet()}").apply {
                 isDaemon = true
             }
-        }
-        return try {
-            val futures = batch.map { filePath ->
-                executor.submit(
-                    Callable<Pair<String, T>?> {
-                        if (isCancelled()) return@Callable null
-                        try {
-                            filePath to scanner(filePath)
-                        } catch (error: Exception) {
-                            if (error.isCancellation()) throw error
-                            null
-                        }
-                    },
-                )
-            }
-            futures.mapNotNull { future ->
-                try {
-                    future.get()
-                } catch (e: ExecutionException) {
-                    val cause = e.cause ?: return@mapNotNull null
-                    if (cause.isCancellation()) throw cause
-                    null
-                } catch (e: InterruptedException) {
-                    Thread.currentThread().interrupt()
-                    throw InterruptedException("Interrupted while awaiting parallel scan result")
-                }
-            }
-        } finally {
-            executor.shutdownNow()
         }
     }
 

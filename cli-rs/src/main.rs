@@ -125,7 +125,7 @@ fn effective_output_format(
     if let Some(requested) = requested {
         return requested;
     }
-    if matches!(command, Some(Command::Agent(_))) {
+    if matches!(command, Some(Command::Agent(_) | Command::Config(_))) {
         return OutputFormat::Toon;
     }
     implicit_output_format()

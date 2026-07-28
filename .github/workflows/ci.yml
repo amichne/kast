@@ -68,6 +68,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/release/test-release-workflow-contract.sh
 
+      - name: Test release indexing benchmark contract
+        shell: bash
+        run: ./.github/scripts/test-release-indexing-benchmark-contract.sh
+
       - name: Test CI workflow graph model
         shell: bash
         run: ./.github/scripts/ci/test-ci-workflow-model.sh
