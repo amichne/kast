@@ -19,6 +19,8 @@ import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.idea.timedReadAction
 import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.analysis.typeHierarchyDeclaration
+import io.github.amichne.kast.shared.hierarchy.EdgeDiscoveryBudget
+import io.github.amichne.kast.shared.hierarchy.EdgeDiscoveryCompletion
 import kotlinx.coroutines.withContext
 
 internal suspend fun KastPluginBackend.implementationsOperation(
@@ -38,10 +40,16 @@ internal suspend fun KastPluginBackend.implementationsOperation(
         queue += rootTarget
         var exhaustive = true
         val limit = query.maxResults.value
+        val providerBudget = EdgeDiscoveryBudget(
+            maxCandidates = KastPluginBackend.RELATIONSHIP_STATE_CAPACITY,
+        )
 
         while (queue.isNotEmpty() && implementations.size < limit) {
             val current = queue.removeFirst()
-            val edges = resolver.subtypeEdges(current)
+            val edges = resolver.subtypeEdges(current, providerBudget)
+            if (providerBudget.completion == EdgeDiscoveryCompletion.CANDIDATE_LIMIT_REACHED) {
+                exhaustive = false
+            }
             for (edge in edges) {
                 val key = "${edge.symbol.fqName}|${edge.symbol.location.filePath}:${edge.symbol.location.startOffset}"
                 if (!visited.add(key)) continue

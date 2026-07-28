@@ -1,6 +1,5 @@
 package io.github.amichne.kast.api.client
 
-import io.github.amichne.kast.api.client.fields.defaultConfigSocketDir
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.validation.FileHashing
 import java.nio.file.Files
@@ -103,28 +102,22 @@ data class WorkspaceIdentity(
             val canonicalWorkspaceRoot = NormalizedPath.of(normalizedWorkspaceRoot.toJavaPath())
             val workspaceId = WorkspaceId(resolver.workspaceHash(normalizedWorkspaceRoot.toJavaPath()))
             val canonicalWorkspaceId = WorkspaceId(resolver.workspaceHash(canonicalWorkspaceRoot.toJavaPath()))
-            val workspaceDataDirectory = resolver.workspaceDataDirectory(normalizedWorkspaceRoot.toJavaPath())
-            val workspaceCacheDirectory = resolver.workspaceCacheDirectory(normalizedWorkspaceRoot.toJavaPath())
+            val layout = resolver.resolveLayout(normalizedWorkspaceRoot.toJavaPath())
             return WorkspaceIdentity(
                 workspaceRoot = normalizedWorkspaceRoot,
                 canonicalWorkspaceRoot = canonicalWorkspaceRoot,
                 workspaceId = workspaceId,
                 canonicalWorkspaceId = canonicalWorkspaceId,
-                repositoryDataDirectory = resolver.repositoryDataDirectory(normalizedWorkspaceRoot.toJavaPath())
+                repositoryDataDirectory = layout.repositoryDataDirectory
                     ?.let(NormalizedPath::ofAbsolute),
-                workspaceDataDirectory = NormalizedPath.ofAbsolute(workspaceDataDirectory),
-                workspaceCacheDirectory = NormalizedPath.ofAbsolute(workspaceCacheDirectory),
-                sourceIndexDatabasePath = NormalizedPath.ofAbsolute(resolver.workspaceDatabasePath(normalizedWorkspaceRoot.toJavaPath())),
-                defaultSocketPath = NormalizedPath.ofAbsolute(socketPathForWorkspaceId(workspaceId)),
+                workspaceDataDirectory = NormalizedPath.ofAbsolute(layout.workspaceDataDirectory),
+                workspaceCacheDirectory = NormalizedPath.ofAbsolute(layout.workspaceCacheDirectory),
+                sourceIndexDatabasePath = NormalizedPath.ofAbsolute(layout.workspaceDatabasePath),
+                defaultSocketPath = NormalizedPath.ofAbsolute(defaultSocketPath(normalizedWorkspaceRoot.toJavaPath())),
                 descriptorDirectory = NormalizedPath.ofAbsolute(descriptorDirectory),
                 gradleRoot = gradleRootIdentity(canonicalWorkspaceRoot.toJavaPath()),
             )
         }
-
-        private fun socketPathForWorkspaceId(workspaceId: WorkspaceId): Path = Path.of(
-            defaultConfigSocketDir(),
-            "kast-${workspaceId.value}.sock",
-        ).toAbsolutePath().normalize()
 
         private fun gradleRootIdentity(canonicalWorkspaceRoot: Path): GradleRootIdentity? {
             val settingsFile = generateSequence(canonicalWorkspaceRoot) { path -> path.parent }

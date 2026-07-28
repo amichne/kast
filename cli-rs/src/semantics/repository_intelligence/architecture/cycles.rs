@@ -54,8 +54,7 @@ fn architecture_boundary_cycle_findings(
             .map(|((source, target), weight)| NativeGraphEdge {
                 source,
                 target,
-                kind: RepositoryRelationKind::Calls.canonical().to_string(),
-                context: "BOUNDARY".to_string(),
+                occurrence_count: weight,
                 weight: weight as f64,
             })
             .collect(),

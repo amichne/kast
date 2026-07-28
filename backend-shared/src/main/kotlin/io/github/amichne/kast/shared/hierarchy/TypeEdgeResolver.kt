@@ -12,6 +12,6 @@ import io.github.amichne.kast.api.contract.Symbol
 interface TypeEdgeResolver {
     /** Build the [Symbol] for this PSI element, including its supertype names when available. */
     fun symbolFor(target: PsiElement): Symbol
-    fun supertypeEdges(target: PsiElement): List<TypeHierarchyEdge>
-    fun subtypeEdges(target: PsiElement): List<TypeHierarchyEdge>
+    fun supertypeEdges(target: PsiElement, budget: EdgeDiscoveryBudget): List<TypeHierarchyEdge>
+    fun subtypeEdges(target: PsiElement, budget: EdgeDiscoveryBudget): List<TypeHierarchyEdge>
 }

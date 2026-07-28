@@ -1,6 +1,7 @@
 package io.github.amichne.kast.idea
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiClass
@@ -12,6 +13,7 @@ import io.github.amichne.kast.shared.analysis.supertypeNames
 import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.shared.hierarchy.TypeEdgeResolver
 import io.github.amichne.kast.shared.hierarchy.TypeHierarchyEdge
+import io.github.amichne.kast.shared.hierarchy.EdgeDiscoveryBudget
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.asJava.toLightClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
@@ -40,19 +42,29 @@ internal class IdeaTypeEdgeResolver(
             }
         }
 
-    override fun supertypeEdges(target: PsiElement): List<TypeHierarchyEdge> {
+    override fun supertypeEdges(
+        target: PsiElement,
+        budget: EdgeDiscoveryBudget,
+    ): List<TypeHierarchyEdge> {
         return ApplicationManager.getApplication().runReadAction<List<TypeHierarchyEdge>> {
             val fqNames = directSupertypeNames(target)
             val scope = GlobalSearchScope.projectScope(project)
             val facade = JavaPsiFacade.getInstance(project)
-            fqNames.mapNotNull { fqName ->
-                val psiClass = facade.findClass(fqName, scope) ?: return@mapNotNull null
-                TypeHierarchyEdge(target = psiClass, symbol = symbolFor(psiClass))
+            buildList {
+                for (fqName in fqNames) {
+                    ProgressManager.checkCanceled()
+                    if (!budget.tryAdmitCandidate()) break
+                    val psiClass = facade.findClass(fqName, scope) ?: continue
+                    add(TypeHierarchyEdge(target = psiClass, symbol = symbolFor(psiClass)))
+                }
             }
         }
     }
 
-    override fun subtypeEdges(target: PsiElement): List<TypeHierarchyEdge> {
+    override fun subtypeEdges(
+        target: PsiElement,
+        budget: EdgeDiscoveryBudget,
+    ): List<TypeHierarchyEdge> {
         val psiClass = ApplicationManager.getApplication().runReadAction<PsiClass?> {
             when (target) {
                 is PsiClass -> target
@@ -62,15 +74,28 @@ internal class IdeaTypeEdgeResolver(
         } ?: return emptyList()
 
         // projectScope already limits to project content — no further path filter needed.
-        val subtypes = ApplicationManager.getApplication().runReadAction<Collection<PsiClass>> {
+        val subtypes = ApplicationManager.getApplication().runReadAction<List<PsiClass>> {
             val scope = GlobalSearchScope.projectScope(project)
-            DirectClassInheritorsSearch.search(psiClass, scope).findAll()
+            buildList {
+                DirectClassInheritorsSearch.search(psiClass, scope).forEach { subtype ->
+                    ProgressManager.checkCanceled()
+                    if (!budget.tryAdmitCandidate()) {
+                        false
+                    } else {
+                        add(subtype)
+                        true
+                    }
+                }
+            }
         }
 
-        return subtypes.mapNotNull { subtype ->
-            ApplicationManager.getApplication().runReadAction<TypeHierarchyEdge?> {
-                if (!subtype.isValid) return@runReadAction null
-                TypeHierarchyEdge(target = subtype, symbol = symbolFor(subtype))
+        return buildList {
+            for (subtype in subtypes) {
+                if (budget.timeoutReached()) break
+                ApplicationManager.getApplication().runReadAction<TypeHierarchyEdge?> {
+                    if (!subtype.isValid) return@runReadAction null
+                    TypeHierarchyEdge(target = subtype, symbol = symbolFor(subtype))
+                }?.let(::add)
             }
         }
     }

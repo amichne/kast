@@ -8,12 +8,14 @@ import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import com.intellij.psi.PsiReference
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.ReferencesSearch
+import com.intellij.util.Processor
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.shared.analysis.callHierarchyDeclaration
 import io.github.amichne.kast.shared.analysis.resolvedFilePath
 import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.shared.hierarchy.CallEdge
 import io.github.amichne.kast.shared.hierarchy.CallEdgeResolver
+import io.github.amichne.kast.shared.hierarchy.EdgeDiscoveryBudget
 import io.github.amichne.kast.shared.hierarchy.callSiteLocation
 
 /**
@@ -33,58 +35,53 @@ internal class IdeaCallEdgeResolver(
 
     override fun incomingEdges(
         target: PsiElement,
-        timeoutCheck: () -> Boolean,
+        budget: EdgeDiscoveryBudget,
         onFileVisited: (filePath: String) -> Unit,
     ): List<CallEdge> {
-        // Collect references incrementally so the read lock can be interrupted by
-        // checkCanceled() if a write action is pending, preventing EDT freezes.
-        val refs = ApplicationManager.getApplication().runReadAction<List<PsiReference>> {
-            val searchScope = GlobalSearchScope.projectScope(project)
-            val collected = mutableListOf<PsiReference>()
-            ReferencesSearch.search(target, searchScope).forEach { ref ->
-                ProgressManager.checkCanceled()
-                collected.add(ref)
-                true
-            }
-            collected
-        }
-
         val edges = mutableListOf<CallEdge>()
         val visitedFiles = mutableSetOf<String>()
-
-        for (ref in refs) {
-            if (timeoutCheck()) break
-            // Process each reference in its own short read action so the IDE write
-            // lock can be acquired between references.
-            val edge = ApplicationManager.getApplication().runReadAction<CallEdge?> {
-                val element = ref.element
-                if (!element.isValid) return@runReadAction null
-                val filePath = element.resolvedFilePath().value
-                if (visitedFiles.add(filePath)) {
-                    onFileVisited(filePath)
-                }
-                if (!workspaceIdentity.contains(filePath)) return@runReadAction null
-                val caller = element.callHierarchyDeclaration() ?: return@runReadAction null
-                CallEdge(
-                    target = caller,
-                    symbol = caller.toSymbolModel(containingDeclaration = null),
-                    callSite = ref.callSiteLocation(),
-                )
+        fun edgeFor(ref: PsiReference): CallEdge? {
+            val element = ref.element
+            if (!element.isValid) return null
+            val filePath = element.resolvedFilePath().value
+            if (visitedFiles.add(filePath)) {
+                onFileVisited(filePath)
             }
-            edge?.let { edges += it }
+            if (!workspaceIdentity.contains(filePath)) return null
+            val caller = element.callHierarchyDeclaration() ?: return null
+            return CallEdge(
+                target = caller,
+                symbol = caller.toSymbolModel(containingDeclaration = null),
+                callSite = ref.callSiteLocation(),
+            )
         }
-
+        ApplicationManager.getApplication().runReadAction {
+            val searchScope = GlobalSearchScope.projectScope(project)
+            ReferencesSearch.search(target, searchScope).forEach(Processor { ref ->
+                ProgressManager.checkCanceled()
+                if (budget.timeoutReached()) {
+                    false
+                } else {
+                    val edge = edgeFor(ref)
+                    when {
+                        edge == null -> true
+                        !budget.tryAdmitCandidate() -> false
+                        else -> {
+                            edges += edge
+                            true
+                        }
+                    }
+                }
+            })
+        }
         return edges
     }
 
     override fun outgoingEdges(
         target: PsiElement,
-        timeoutCheck: () -> Boolean,
+        budget: EdgeDiscoveryBudget,
         onFileVisited: (filePath: String) -> Unit,
     ): List<CallEdge> {
-        // Phase 1: Collect call-expression elements and their references in one read action.
-        data class ElementRef(val element: PsiElement, val reference: PsiReference)
-
         val declaration = ApplicationManager.getApplication().runReadAction<PsiElement?> {
             target.callHierarchyDeclaration()
         } ?: return emptyList()
@@ -94,13 +91,13 @@ internal class IdeaCallEdgeResolver(
         }
         onFileVisited(filePath)
 
-        val elementRefs = ApplicationManager.getApplication().runReadAction<List<ElementRef>> {
-            val collected = mutableListOf<ElementRef>()
+        val edges = mutableListOf<CallEdge>()
+        ApplicationManager.getApplication().runReadAction {
             declaration.accept(
                 object : PsiRecursiveElementWalkingVisitor() {
                     override fun visitElement(element: PsiElement) {
                         ProgressManager.checkCanceled()
-                        if (timeoutCheck()) {
+                        if (budget.timeoutReached()) {
                             stopWalking()
                             return
                         }
@@ -108,35 +105,27 @@ internal class IdeaCallEdgeResolver(
                         if (element !== declaration && element.callHierarchyDeclaration() === element) {
                             return
                         }
-                        element.references.forEach { reference ->
-                            collected += ElementRef(element, reference)
+                        for (reference in element.references) {
+                            val resolved = reference.resolve() ?: continue
+                            if (resolved.containingFile == null) continue
+                            val resolvedPath = resolved.resolvedFilePath().value
+                            if (!workspaceIdentity.contains(resolvedPath)) continue
+                            val edge = CallEdge(
+                                target = resolved,
+                                symbol = resolved.toSymbolModel(containingDeclaration = null),
+                                callSite = reference.callSiteLocation(),
+                            )
+                            if (!budget.tryAdmitCandidate()) {
+                                stopWalking()
+                                return
+                            }
+                            edges += edge
                         }
                         super.visitElement(element)
                     }
                 },
             )
-            collected
         }
-
-        // Phase 2: Process each collected reference in its own short read action.
-        val edges = mutableListOf<CallEdge>()
-        for (ref in elementRefs) {
-            if (timeoutCheck()) break
-            val edge = ApplicationManager.getApplication().runReadAction<CallEdge?> {
-                if (!ref.element.isValid) return@runReadAction null
-                val resolved = ref.reference.resolve() ?: return@runReadAction null
-                if (resolved.containingFile == null) return@runReadAction null
-                val resolvedPath = resolved.resolvedFilePath().value
-                if (!workspaceIdentity.contains(resolvedPath)) return@runReadAction null
-                CallEdge(
-                    target = resolved,
-                    symbol = resolved.toSymbolModel(containingDeclaration = null),
-                    callSite = ref.reference.callSiteLocation(),
-                )
-            }
-            edge?.let { edges += it }
-        }
-
         return edges
     }
 }

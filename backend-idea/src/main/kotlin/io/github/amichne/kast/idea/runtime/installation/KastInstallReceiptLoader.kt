@@ -10,6 +10,8 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.nio.file.Files
 import java.nio.file.Path
+import java.io.OutputStream
+import java.security.DigestInputStream
 import java.security.MessageDigest
 
 internal object KastInstallReceiptLoader {
@@ -107,10 +109,13 @@ internal object KastInstallReceiptLoader {
         return KastInstallReceiptLoadResult.Loaded(binary = canonicalBinary, version = version)
     }
 
-    private fun sha256(path: Path): String =
-        MessageDigest.getInstance("SHA-256")
-            .digest(Files.readAllBytes(path))
-            .joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+    private fun sha256(path: Path): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        DigestInputStream(Files.newInputStream(path), digest).use { input ->
+            input.transferTo(OutputStream.nullOutputStream())
+        }
+        return digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+    }
 
     private fun invalid(path: Path, detail: String?): KastInstallReceiptLoadResult.Rejected =
         rejected("Kast install receipt is invalid at $path: $detail")

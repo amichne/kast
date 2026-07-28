@@ -40,9 +40,20 @@ class TypeHierarchyEngine(
             return TypeHierarchyNode(symbol = symbol, children = emptyList())
         }
 
-        val edges = findEdges(target, direction)
+        val providerBudget = EdgeDiscoveryBudget(
+            maxCandidates = (budget.maxResults - budget.totalNodes).coerceAtLeast(0),
+        )
+        val edges = findEdges(target, direction, providerBudget)
         val children = mutableListOf<TypeHierarchyNode>()
-        var truncation: TypeHierarchyTruncation? = null
+        var truncation: TypeHierarchyTruncation? =
+            if (providerBudget.completion == EdgeDiscoveryCompletion.CANDIDATE_LIMIT_REACHED) {
+                TypeHierarchyTruncation(
+                    reason = TypeHierarchyTruncationReason.MAX_RESULTS,
+                    details = "Reached maxResults=${budget.maxResults}",
+                )
+            } else {
+                null
+            }
 
         for (edge in edges) {
             if (budget.totalNodes >= budget.maxResults) {
@@ -88,11 +99,20 @@ class TypeHierarchyEngine(
     private fun findEdges(
         target: PsiElement,
         direction: TypeHierarchyDirection,
+        budget: EdgeDiscoveryBudget,
     ): List<TypeHierarchyEdge> {
         val edges = when (direction) {
-            TypeHierarchyDirection.SUPERTYPES -> edgeResolver.supertypeEdges(target)
-            TypeHierarchyDirection.SUBTYPES -> edgeResolver.subtypeEdges(target)
-            TypeHierarchyDirection.BOTH -> edgeResolver.supertypeEdges(target) + edgeResolver.subtypeEdges(target)
+            TypeHierarchyDirection.SUPERTYPES -> edgeResolver.supertypeEdges(target, budget)
+            TypeHierarchyDirection.SUBTYPES -> edgeResolver.subtypeEdges(target, budget)
+            TypeHierarchyDirection.BOTH -> {
+                val supertypes = edgeResolver.supertypeEdges(target, budget)
+                val subtypes = if (budget.completion == EdgeDiscoveryCompletion.EXHAUSTIVE) {
+                    edgeResolver.subtypeEdges(target, budget)
+                } else {
+                    emptyList()
+                }
+                supertypes + subtypes
+            }
         }
         return edges
             .distinctBy { edge -> readAccess.run { edge.target.typeHierarchySymbolIdentityKey(edge.symbol) } }

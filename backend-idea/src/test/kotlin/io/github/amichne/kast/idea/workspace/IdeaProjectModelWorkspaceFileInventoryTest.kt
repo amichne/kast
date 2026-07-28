@@ -91,6 +91,45 @@ class IdeaProjectModelWorkspaceFileInventoryTest {
     }
 
     @Test
+    fun `supplied Gradle model is reused by the project model snapshot`() {
+        val access = FakeProjectModelAccess(model = emptyModel())
+        val gradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            emptyList(),
+            true,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+        )
+
+        inventory(access).snapshot(WorkspaceFileKindDomain.MIXED, gradleModel)
+
+        assertEquals(0, access.readCount)
+        assertEquals(1, access.suppliedGradleModelReadCount)
+    }
+
+    @Test
+    fun `incomplete supplied Gradle model is typed before project model read`() {
+        val access = FakeProjectModelAccess(model = emptyModel())
+        val gradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            emptyList(),
+            false,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+        )
+
+        val failure = assertThrows(WorkspaceProjectModelIncompleteException::class.java) {
+            inventory(access).snapshot(WorkspaceFileKindDomain.MIXED, gradleModel)
+        }
+
+        assertEquals(WorkspaceProjectModelIncompleteReason.PROJECT_MODEL_UNAVAILABLE, failure.reason)
+        assertEquals(0, access.readCount)
+        assertEquals(0, access.suppliedGradleModelReadCount)
+    }
+
+    @Test
     fun `indexing project model failure is typed before provider read`() {
         val access = FakeProjectModelAccess(
             model = emptyModel(),
@@ -210,9 +249,19 @@ class IdeaProjectModelWorkspaceFileInventoryTest {
     ) : IdeaWorkspaceFileProjectModelAccess {
         var readCount: Int = 0
             private set
+        var suppliedGradleModelReadCount: Int = 0
+            private set
 
         override fun read(): IdeaWorkspaceFileProjectModel {
             readCount += 1
+            failure?.let { throw it }
+            return checkNotNull(model)
+        }
+
+        override fun read(
+            gradleModel: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
+        ): IdeaWorkspaceFileProjectModel {
+            suppliedGradleModelReadCount += 1
             failure?.let { throw it }
             return checkNotNull(model)
         }

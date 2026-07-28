@@ -16,6 +16,7 @@ import io.github.amichne.kast.api.protocol.JsonRpcSuccessResponse
 import io.github.amichne.kast.server.dispatch.RpcMethodRouter
 import io.github.amichne.kast.server.dispatch.UnknownRpcMethodException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
@@ -25,6 +26,9 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import java.io.Closeable
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 class RpcAnalysisDispatcher(
     private val backend: AnalysisBackend,
@@ -44,74 +48,101 @@ class RpcAnalysisDispatcher(
         projectOpenController = projectOpenController,
         json = json,
     )
+    private val lifecycleLock = ReentrantLock()
+    private val quiescent = lifecycleLock.newCondition()
+    private val activeDispatches = mutableSetOf<Job>()
+    private var accepting = true
+    private var closeStarted = false
 
-    suspend fun dispatch(request: JsonRpcRequest): String {
+    suspend fun dispatch(request: JsonRpcRequest): String = dispatchForTransport(request).response
+
+    internal suspend fun dispatchForTransport(request: JsonRpcRequest): RpcDispatchResult =
+        withDispatchAdmission {
+            dispatchAdmitted(request)
+        }
+
+    private suspend fun dispatchAdmitted(request: JsonRpcRequest): RpcDispatchResult {
         if (request.jsonrpc != JSON_RPC_VERSION || request.method.isBlank()) {
-            return json.encodeToString(
-                JsonRpcErrorResponse(
-                    error = JsonRpcErrorObject(
-                        code = JSON_RPC_INVALID_REQUEST,
-                        message = "Invalid JSON-RPC request",
+            return RpcDispatchResult(
+                response = json.encodeToString(
+                    JsonRpcErrorResponse(
+                        error = JsonRpcErrorObject(
+                            code = JSON_RPC_INVALID_REQUEST,
+                            message = "Invalid JSON-RPC request",
+                        ),
+                        id = request.id,
                     ),
-                    id = request.id,
                 ),
             )
         }
 
         return try {
-            val result = withTimeout(config.effectiveRequestTimeoutMillis) {
+            val routed = withTimeout(config.effectiveRequestTimeoutMillis) {
                 methodRouter.dispatch(request.method, request.params)
             }
-            json.encodeToString(
-                JsonRpcSuccessResponse(
-                    id = request.id,
-                    result = result,
+            RpcDispatchResult(
+                response = json.encodeToString(
+                    JsonRpcSuccessResponse(
+                        id = request.id,
+                        result = routed.result,
+                    ),
                 ),
+                afterResponseAction = routed.afterResponseAction,
             )
         } catch (exception: AnalysisException) {
-            json.encodeToString(
-                JsonRpcErrorResponse(
-                    id = request.id,
-                    error = exception.toJsonRpcError(request.id),
+            RpcDispatchResult(
+                response = json.encodeToString(
+                    JsonRpcErrorResponse(
+                        id = request.id,
+                        error = exception.toJsonRpcError(request.id),
+                    ),
                 ),
             )
         } catch (exception: UnknownRpcMethodException) {
-            json.encodeToString(
-                JsonRpcErrorResponse(
-                    id = request.id,
-                    error = JsonRpcErrorObject(
-                        code = JSON_RPC_METHOD_NOT_FOUND,
-                        message = exception.message ?: "Unknown JSON-RPC method",
+            RpcDispatchResult(
+                response = json.encodeToString(
+                    JsonRpcErrorResponse(
+                        id = request.id,
+                        error = JsonRpcErrorObject(
+                            code = JSON_RPC_METHOD_NOT_FOUND,
+                            message = exception.message ?: "Unknown JSON-RPC method",
+                        ),
                     ),
                 ),
             )
         } catch (_: TimeoutCancellationException) {
-            json.encodeToString(
-                JsonRpcErrorResponse(
-                    id = request.id,
-                    error = timeoutJsonRpcError(request, config.effectiveRequestTimeoutMillis),
+            RpcDispatchResult(
+                response = json.encodeToString(
+                    JsonRpcErrorResponse(
+                        id = request.id,
+                        error = timeoutJsonRpcError(request, config.effectiveRequestTimeoutMillis),
+                    ),
                 ),
             )
         } catch (exception: CancellationException) {
             if (!currentCoroutineContext().isActive) throw exception
-            json.encodeToString(
-                JsonRpcErrorResponse(
-                    id = request.id,
-                    error = timeoutJsonRpcError(request, config.effectiveRequestTimeoutMillis),
+            RpcDispatchResult(
+                response = json.encodeToString(
+                    JsonRpcErrorResponse(
+                        id = request.id,
+                        error = timeoutJsonRpcError(request, config.effectiveRequestTimeoutMillis),
+                    ),
                 ),
             )
         } catch (exception: Throwable) {
-            json.encodeToString(
-                JsonRpcErrorResponse(
-                    id = request.id,
-                    error = JsonRpcErrorObject(
-                        code = JSON_RPC_INTERNAL_ERROR,
-                        message = exception.message ?: exception::class.java.simpleName,
-                        data = ApiErrorResponse(
-                            requestId = requestId(request.id),
-                            code = "INTERNAL_ERROR",
+            RpcDispatchResult(
+                response = json.encodeToString(
+                    JsonRpcErrorResponse(
+                        id = request.id,
+                        error = JsonRpcErrorObject(
+                            code = JSON_RPC_INTERNAL_ERROR,
                             message = exception.message ?: exception::class.java.simpleName,
-                            retryable = false,
+                            data = ApiErrorResponse(
+                                requestId = requestId(request.id),
+                                code = "INTERNAL_ERROR",
+                                message = exception.message ?: exception::class.java.simpleName,
+                                retryable = false,
+                            ),
                         ),
                     ),
                 ),
@@ -119,26 +150,76 @@ class RpcAnalysisDispatcher(
         }
     }
 
-    suspend fun dispatchRaw(requestText: String): String {
+    suspend fun dispatchRaw(requestText: String): String = dispatchRawForTransport(requestText).response
+
+    internal suspend fun dispatchRawForTransport(requestText: String): RpcDispatchResult {
         val request = runCatching {
             json.decodeFromString(JsonRpcRequest.serializer(), requestText)
         }.getOrElse { exception ->
-            return json.encodeToString(
-                JsonRpcErrorResponse(
-                    error = JsonRpcErrorObject(
-                        code = JSON_RPC_PARSE_ERROR,
-                        message = exception.message ?: "Failed to parse JSON-RPC request",
+            return RpcDispatchResult(
+                response = json.encodeToString(
+                    JsonRpcErrorResponse(
+                        error = JsonRpcErrorObject(
+                            code = JSON_RPC_PARSE_ERROR,
+                            message = exception.message ?: "Failed to parse JSON-RPC request",
+                        ),
                     ),
                 ),
             )
         }
-        return dispatch(request)
+        return dispatchForTransport(request)
     }
 
-    internal fun runAfterResponseActions(): Boolean = methodRouter.runAfterResponseActions()
-
     override fun close() {
+        val admitted = lifecycleLock.withLock {
+            if (closeStarted) return
+            closeStarted = true
+            accepting = false
+            activeDispatches.toList()
+        }
+        admitted.forEach { job ->
+            job.cancel(CancellationException("Analysis server is shutting down"))
+        }
+        lifecycleLock.withLock {
+            while (activeDispatches.isNotEmpty()) {
+                quiescent.awaitUninterruptibly()
+            }
+        }
         methodRouter.close()
+    }
+
+    private suspend fun <T> withDispatchAdmission(block: suspend () -> T): T {
+        val job = currentCoroutineContext()[Job]
+            ?: error("RPC dispatch requires a coroutine job")
+        lifecycleLock.withLock {
+            if (!accepting) {
+                throw CancellationException("Analysis server is shutting down")
+            }
+            activeDispatches += job
+        }
+        return try {
+            block()
+        } finally {
+            lifecycleLock.withLock {
+                activeDispatches -= job
+                if (activeDispatches.isEmpty()) {
+                    quiescent.signalAll()
+                }
+            }
+        }
+    }
+}
+
+internal class RpcDispatchResult(
+    val response: String,
+    afterResponseAction: (() -> Unit)? = null,
+) {
+    private val afterResponseAction = AtomicReference(afterResponseAction)
+
+    fun runAfterFlushAction(): Boolean {
+        val action = afterResponseAction.getAndSet(null) ?: return false
+        runCatching(action)
+        return true
     }
 }
 

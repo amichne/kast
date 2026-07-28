@@ -165,6 +165,16 @@ internal abstract class KastPluginBackendContractTestFixture {
         indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
             IdeaIndexSemanticAdmission.Status.Ready
         },
+        workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
+            IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+                emptyList(),
+                true,
+                emptyList(),
+                emptyList(),
+                emptyList(),
+                emptyList(),
+            )
+        },
         relationshipCoverageAuthority: RelationshipCoverageAuthority =
             RelationshipCoverageAuthority.proven(),
     ): KastPluginBackend = KastPluginBackend(
@@ -178,6 +188,7 @@ internal abstract class KastPluginBackendContractTestFixture {
         readEpochObserver = readEpochObserver,
         referenceTraversalObserver = referenceTraversalObserver,
         indexSemanticAdmissionStatus = indexSemanticAdmissionStatus,
+        workspaceModelReader = workspaceModelReader,
         relationshipCoverageAuthority = relationshipCoverageAuthority,
     )
 

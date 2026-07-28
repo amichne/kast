@@ -26,19 +26,37 @@ internal class IdeaProjectModelWorkspaceFileInventory(
     constructor(
         project: Project,
         workspaceIdentity: IdeaWorkspaceIdentity,
+        workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
+            IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
+        },
     ) : this(
         workspaceIdentity = workspaceIdentity.workspaceIdentity,
-        projectModelAccess = IdeaProjectModelAccess(project),
+        projectModelAccess = IdeaProjectModelAccess(project, workspaceModelReader),
     )
 
     override fun snapshot(kindDomain: WorkspaceFileKindDomain): IdeaWorkspaceFileInventorySnapshot {
+        return snapshot(kindDomain, projectModelAccess::read)
+    }
+
+    internal fun snapshot(
+        kindDomain: WorkspaceFileKindDomain,
+        gradleModel: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
+    ): IdeaWorkspaceFileInventorySnapshot {
+        requireImportedGradleModelComplete(gradleModel)
+        return snapshot(kindDomain) { projectModelAccess.read(gradleModel) }
+    }
+
+    private fun snapshot(
+        kindDomain: WorkspaceFileKindDomain,
+        readProjectModel: () -> IdeaWorkspaceFileProjectModel,
+    ): IdeaWorkspaceFileInventorySnapshot {
         if (projectModelAccess.isIndexing) {
             throw WorkspaceProjectModelIncompleteException(
                 WorkspaceProjectModelIncompleteReason.RUNTIME_INDEXING,
             )
         }
         val projectModel = try {
-            projectModelAccess.read()
+            readProjectModel()
         } catch (failure: ProcessCanceledException) {
             throw failure
         } catch (failure: CancellationException) {
@@ -169,12 +187,20 @@ internal class IdeaProjectModelWorkspaceFileInventory(
 
     private class IdeaProjectModelAccess(
         private val project: Project,
+        private val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
     ) : IdeaWorkspaceFileProjectModelAccess {
         override val isIndexing: Boolean
             get() = DumbService.isDumb(project)
 
         override fun read(): IdeaWorkspaceFileProjectModel = runIdeaReadAction {
-            val gradleModel = IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
+            val gradleModel = workspaceModelReader()
+            requireImportedGradleModelComplete(gradleModel)
+            read(gradleModel)
+        }
+
+        override fun read(
+            gradleModel: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
+        ): IdeaWorkspaceFileProjectModel = runIdeaReadAction {
             val kotlinFileType = FileTypeManager.getInstance().findFileTypeByName("Kotlin")
                 ?: throw IllegalStateException("Kotlin file type is unavailable from the IDEA project model")
             val modules = ModuleManager.getInstance(project).modules
@@ -234,5 +260,16 @@ internal class IdeaProjectModelWorkspaceFileInventory(
 
     private companion object {
         val ROOT_GRADLE_SCRIPTS = listOf("settings.gradle.kts", "build.gradle.kts")
+
+        fun requireImportedGradleModelComplete(
+            gradleModel: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
+        ) {
+            if (!gradleModel.importedModelComplete()) {
+                throw WorkspaceProjectModelIncompleteException(
+                    reason = WorkspaceProjectModelIncompleteReason.PROJECT_MODEL_UNAVAILABLE,
+                    message = "Gradle project model import is incomplete",
+                )
+            }
+        }
     }
 }

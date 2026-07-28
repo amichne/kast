@@ -115,7 +115,10 @@ internal class KastDiagnosticsState(
         title = "Kast index waiting for IDEA",
         detail = "IDE indexes must settle before the source index runs",
     ) {
-        it.copy(indexSummary = KastSourceIndexSummary(state = KastIndexState.WAITING_FOR_IDE))
+        it.copy(
+            backendState = it.backendState.indexingIfReady(),
+            indexSummary = KastSourceIndexSummary(state = KastIndexState.WAITING_FOR_IDE),
+        )
     }
 
     fun recordIndexHydrating(): KastActivityEvent = append(
@@ -123,7 +126,10 @@ internal class KastDiagnosticsState(
         kind = KastActivityKind.INDEX,
         title = "Kast source index hydrating",
     ) {
-        it.copy(indexSummary = KastSourceIndexSummary(state = KastIndexState.HYDRATING))
+        it.copy(
+            backendState = it.backendState.indexingIfReady(),
+            indexSummary = KastSourceIndexSummary(state = KastIndexState.HYDRATING),
+        )
     }
 
     fun recordIndexingStarted(): KastActivityEvent = append(
@@ -131,7 +137,10 @@ internal class KastDiagnosticsState(
         kind = KastActivityKind.INDEX,
         title = "Kast source index started",
     ) {
-        it.copy(indexSummary = KastSourceIndexSummary(state = KastIndexState.INDEXING))
+        it.copy(
+            backendState = it.backendState.indexingIfReady(),
+            indexSummary = KastSourceIndexSummary(state = KastIndexState.INDEXING),
+        )
     }
 
     fun recordIndexCompleted(summary: KastSourceIndexSummary): KastActivityEvent = append(
@@ -140,7 +149,14 @@ internal class KastDiagnosticsState(
         title = "Kast source index complete",
         detail = summary.displayText(),
     ) {
-        it.copy(indexSummary = summary.copy(state = KastIndexState.READY))
+        it.copy(
+            backendState = if (it.backendState == KastBackendUiState.INDEXING) {
+                KastBackendUiState.READY
+            } else {
+                it.backendState
+            },
+            indexSummary = summary.copy(state = KastIndexState.READY),
+        )
     }
 
     fun recordIndexCancelled(): KastActivityEvent = append(
@@ -157,7 +173,11 @@ internal class KastDiagnosticsState(
         title = "Kast source index failed",
         detail = error.compactMessage(),
     ) {
-        it.copy(indexSummary = KastSourceIndexSummary(state = KastIndexState.FAILED, message = error.compactMessage()))
+        it.copy(
+            backendState = KastBackendUiState.DEGRADED,
+            message = "Kast reference index failed: ${error.compactMessage()}",
+            indexSummary = KastSourceIndexSummary(state = KastIndexState.FAILED, message = error.compactMessage()),
+        )
     }
 
     fun recordOperationStarted(operation: KastBackendOperation): KastActivityEvent = append(
@@ -295,6 +315,9 @@ internal enum class KastBackendUiState(val displayName: String) {
     READY("Ready"),
     DEGRADED("Degraded"),
 }
+
+private fun KastBackendUiState.indexingIfReady(): KastBackendUiState =
+    if (this == KastBackendUiState.READY) KastBackendUiState.INDEXING else this
 
 internal enum class KastIndexState {
     IDLE,

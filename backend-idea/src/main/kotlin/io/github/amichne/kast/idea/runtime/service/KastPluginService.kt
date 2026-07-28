@@ -8,65 +8,76 @@ import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
-import io.github.amichne.kast.api.client.defaultSocketPath
+import io.github.amichne.kast.api.client.socketPathForWorkspaceRoot
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RuntimeLifecycleController
 import java.nio.file.Path
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Service(Service.Level.PROJECT)
 internal class KastPluginService(
     private val project: Project,
+    private val coroutineScope: CoroutineScope,
 ) : Disposable {
-
-    @Volatile
-    private var runningBackend: RunningKastIdeaBackend? = null
-
-    @Volatile
-    private var runningConfig: KastConfig? = null
+    private val backendLifecycle = KastPluginBackendLifecycle(
+        startBackend = ::createBackend,
+        onStopping = ::recordBackendStopping,
+        onStopCompleted = ::recordBackendStopCompleted,
+        onAsyncStartFailed = { workspaceRoot, error ->
+            LOG.warn("Kast IDEA backend restart failed for $workspaceRoot", error)
+        },
+    )
 
     fun startServer(startIndexing: Boolean = true) {
-        if (runningBackend != null) return
         val workspaceRoot = workspaceRoot() ?: return
-        startServer(workspaceRoot, loadConfig(workspaceRoot), startIndexing)
+        backendLifecycle.start(
+            workspaceRoot = workspaceRoot,
+            config = loadConfig(workspaceRoot),
+            initialAdmission = KastGradleIndexAdmission.fromStartIndexing(startIndexing),
+        )
+    }
+
+    fun startServer(config: KastConfig, startIndexing: Boolean = true) {
+        val workspaceRoot = workspaceRoot() ?: return
+        backendLifecycle.start(
+            workspaceRoot = workspaceRoot,
+            config = config,
+            initialAdmission = KastGradleIndexAdmission.fromStartIndexing(startIndexing),
+        )
     }
 
     override fun dispose() {
-        stopServer()
+        backendLifecycle.dispose()
     }
 
     fun restartServer() {
         val workspaceRoot = workspaceRoot() ?: return
-        restartServer(workspaceRoot, loadConfig(workspaceRoot))
+        backendLifecycle.restart(workspaceRoot, loadConfig(workspaceRoot))
     }
 
-    fun startIndexing() {
-        runningBackend?.startIndexing()
-    }
+    fun startIndexing() = backendLifecycle.markIndexReady()
 
-    fun failIndexing(error: Throwable) {
-        runningBackend?.failIndexing(error)
+    fun failIndexing(error: Throwable) = backendLifecycle.markIndexFailed(error)
+
+    fun reloadConfigAsync() {
+        coroutineScope.launch(Dispatchers.IO) {
+            reloadConfig()
+        }
     }
 
     fun reloadConfig(): KastConfigReloadDecision {
         val workspaceRoot = workspaceRoot() ?: return KastConfigReloadDecision.UNCHANGED
         val nextConfig = loadConfig(workspaceRoot)
-        return when (configReloadDecision(runningConfig, nextConfig)) {
-            KastConfigReloadDecision.UNCHANGED -> KastConfigReloadDecision.UNCHANGED
-            KastConfigReloadDecision.RESTART_BACKEND -> {
-                restartServer(workspaceRoot, nextConfig)
-                KastConfigReloadDecision.RESTART_BACKEND
-            }
-        }
+        return backendLifecycle.reload(workspaceRoot, nextConfig)
     }
 
-    private fun restartServer(workspaceRoot: Path, config: KastConfig) {
-        stopServer()
-        startServer(workspaceRoot, config, startIndexing = true)
-    }
-
-    private fun startServer(workspaceRoot: Path, config: KastConfig, startIndexing: Boolean) {
+    private fun createBackend(start: KastPluginBackendStart): KastIdeaBackendHandle {
+        val workspaceRoot = start.workspaceRoot
+        val config = start.config
         LOG.info("Starting kast idea backend for workspace: $workspaceRoot")
         KastStructuredTrace.event(
             eventName = "idea.backend.starting",
@@ -76,23 +87,48 @@ internal class KastPluginService(
         )
         val diagnostics = KastDiagnosticsService.getInstance(project)
         diagnostics.recordBackendStarting(workspaceRoot)
-
-        val socketPath = defaultSocketPath(workspaceRoot)
-        runCatching {
+        val socketPath = socketPathForWorkspaceRoot(
+            workspaceRoot = workspaceRoot,
+            socketDirectory = Path.of(config.paths.socketDir.value),
+        )
+        return runCatching {
             requireSupportedIdeaHost()
-            KastIdeaBackendRuntime.start(
+            val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
                 project = project,
                 workspaceRoot = workspaceRoot,
+                descriptorDirectory = config.paths.descriptorDir.toPath(),
+            )
+            val bootstrap = KastProjectOpenProfileAutoInit.prepareRequired(
+                workspaceRoot = workspaceRoot,
+                config = config,
+                prepareWorkspace = { request ->
+                    check(request.socketPath.toAbsolutePath().normalize() == socketPath.toAbsolutePath().normalize()) {
+                        "Kast compatibility metadata socket does not match the selected IDEA backend socket"
+                    }
+                    PluginWorkspaceBootstrap.prepare(request) { requestedRoot ->
+                        check(requestedRoot.toAbsolutePath().normalize() == workspaceRoot) {
+                            "Kast compatibility metadata must target the admitted exact workspace root"
+                        }
+                        workspaceIdentity.workspaceIdentity.workspaceDataDirectoryPath
+                    }
+                },
+            )
+            if (bootstrap is ProjectOpenProfileAutoInitResult.Failed) {
+                throw IllegalStateException(bootstrap.message)
+            }
+            check(bootstrap is ProjectOpenProfileAutoInitResult.Installed) {
+                "Required Kast compatibility metadata preparation was skipped"
+            }
+            KastIdeaBackendRuntime.startPrepared(
+                project = project,
+                workspaceIdentity = workspaceIdentity,
                 socketPath = socketPath,
                 config = config,
                 lifecycleController = lifecycleController(),
                 projectOpenController = KastRuntimeProjectOpenController(project, config),
-                startProjectIndexing = startIndexing,
+                indexAdmission = start.admission,
             )
         }.onSuccess { backend ->
-            runningBackend = backend
-            runningConfig = config
-
             KastStructuredTrace.event(
                 eventName = "idea.backend.started",
                 project = project,
@@ -115,48 +151,47 @@ internal class KastPluginService(
                 ),
             )
             diagnostics.recordBackendFailed(error)
-            throw error
-        }
+        }.getOrThrow()
     }
 
     private fun stopServer() {
-        runningBackend?.let { backend ->
-            LOG.info("Shutting down kast idea backend")
-            val workspaceRoot = workspaceRoot()
+        backendLifecycle.stop()
+    }
+
+    private fun recordBackendStopping(workspaceRoot: Path) {
+        LOG.info("Shutting down kast idea backend")
+        KastStructuredTrace.event(
+            eventName = "idea.backend.stopping",
+            project = project,
+            workspaceRoot = workspaceRoot,
+            fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
+        )
+    }
+
+    private fun recordBackendStopCompleted(workspaceRoot: Path, failure: Throwable?) {
+        if (failure == null) {
             KastStructuredTrace.event(
-                eventName = "idea.backend.stopping",
+                eventName = "idea.backend.stopped",
                 project = project,
                 workspaceRoot = workspaceRoot,
                 fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
+                outcome = "completed",
             )
-            runCatching { backend.close() }
-                .onSuccess {
-                    KastStructuredTrace.event(
-                        eventName = "idea.backend.stopped",
-                        project = project,
-                        workspaceRoot = workspaceRoot,
-                        fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
-                        outcome = "completed",
-                    )
-                }
-                .onFailure {
-                    KastStructuredTrace.event(
-                        eventName = "idea.backend.stop_failed",
-                        project = project,
-                        workspaceRoot = workspaceRoot,
-                        fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
-                        outcome = "failed",
-                        detail = mapOf(
-                            "errorClass" to it::class.qualifiedName,
-                            "message" to it.message,
-                        ),
-                    )
-                    LOG.warn("Error closing kast server", it)
-                }
-            runningBackend = null
             KastDiagnosticsService.getInstance(project).recordBackendStopped()
+            return
         }
-        runningConfig = null
+        KastStructuredTrace.event(
+            eventName = "idea.backend.stop_failed",
+            project = project,
+            workspaceRoot = workspaceRoot,
+            fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
+            outcome = "failed",
+            detail = mapOf(
+                "errorClass" to failure::class.qualifiedName,
+                "message" to failure.message,
+            ),
+        )
+        LOG.warn("Error closing kast server", failure)
     }
 
     private fun lifecycleController(): RuntimeLifecycleController = RuntimeLifecycleController { action ->
@@ -212,14 +247,36 @@ internal fun loadIdeaKastConfig(
 
 internal enum class KastConfigReloadDecision {
     UNCHANGED,
+    START_BACKEND,
+    STOP_BACKEND,
     RESTART_BACKEND,
 }
 
 internal fun configReloadDecision(
     current: KastConfig?,
     next: KastConfig,
-): KastConfigReloadDecision =
-    if (current == next) KastConfigReloadDecision.UNCHANGED else KastConfigReloadDecision.RESTART_BACKEND
+): KastConfigReloadDecision {
+    if (!next.backends.idea.enabled.value) {
+        return if (current?.backends?.idea?.enabled?.value == true) {
+            KastConfigReloadDecision.STOP_BACKEND
+        } else {
+            KastConfigReloadDecision.UNCHANGED
+        }
+    }
+    if (current == null || !current.backends.idea.enabled.value) {
+        return KastConfigReloadDecision.START_BACKEND
+    }
+    return if (
+        current.server != next.server ||
+        current.indexing != next.indexing ||
+        current.telemetry != next.telemetry ||
+        current.paths != next.paths
+    ) {
+        KastConfigReloadDecision.RESTART_BACKEND
+    } else {
+        KastConfigReloadDecision.UNCHANGED
+    }
+}
 
 internal fun ideaServerLimits(config: KastConfig): ServerLimits = ServerLimits(
     maxConcurrentRequests = config.server.maxConcurrentRequests.value.coerceAtLeast(1),

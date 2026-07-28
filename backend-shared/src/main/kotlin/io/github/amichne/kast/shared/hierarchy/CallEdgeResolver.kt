@@ -18,7 +18,7 @@ interface CallEdgeResolver {
      */
     fun incomingEdges(
         target: PsiElement,
-        timeoutCheck: () -> Boolean,
+        budget: EdgeDiscoveryBudget,
         onFileVisited: (filePath: String) -> Unit,
     ): List<CallEdge>
 
@@ -30,7 +30,7 @@ interface CallEdgeResolver {
      */
     fun outgoingEdges(
         target: PsiElement,
-        timeoutCheck: () -> Boolean,
+        budget: EdgeDiscoveryBudget,
         onFileVisited: (filePath: String) -> Unit,
     ): List<CallEdge>
 }

@@ -126,8 +126,6 @@
             RuntimeBackendPreference::Fixed(BackendName::Idea),
             &config,
         ));
-        std::fs::create_dir_all(temp.path().join(".kast/setup")).unwrap();
-        std::fs::write(temp.path().join(".kast/setup/workspace.json"), "{}").unwrap();
         assert!(should_defer_macos_workspace_validation(
             temp.path(),
             RuntimeBackendPreference::Fixed(BackendName::Idea),

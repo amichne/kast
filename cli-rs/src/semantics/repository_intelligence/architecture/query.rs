@@ -81,13 +81,13 @@ fn load_repository_architecture_graph(
                 projection_accepts_occurrence(projection, occurrence, source, target)
             })
             .collect::<Vec<_>>();
-    let mut grouped = BTreeMap::<(usize, usize, RepositoryRelationKind, String), usize>::new();
+    let mut grouped = BTreeMap::<(usize, usize), usize>::new();
     for occurrence in &occurrences {
         let source_id = occurrence.lifted_source.unwrap_or(occurrence.source_id);
         let source = positions[&source_id];
         let target = positions[&occurrence.target_id];
         *grouped
-            .entry((source, target, occurrence.kind, occurrence.context.clone()))
+            .entry((source, target))
             .or_default() += 1;
     }
     let native_nodes = nodes
@@ -99,15 +99,12 @@ fn load_repository_architecture_graph(
         .collect();
     let native_edges = grouped
         .into_iter()
-        .map(
-            |((source, target, kind, context), occurrence_count)| NativeGraphEdge {
-                source,
-                target,
-                kind: kind.canonical().to_string(),
-                context,
-                weight: occurrence_count as f64,
-            },
-        )
+        .map(|((source, target), occurrence_count)| NativeGraphEdge {
+            source,
+            target,
+            occurrence_count,
+            weight: occurrence_count as f64,
+        })
         .collect();
     Ok(RepositoryArchitectureGraph {
         nodes,

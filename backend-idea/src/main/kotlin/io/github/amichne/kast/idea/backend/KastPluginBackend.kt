@@ -112,11 +112,15 @@ internal class KastPluginBackend(
     internal val indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
         IdeaIndexSemanticAdmission.Status.Ready
     },
+    internal val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
+        IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
+    },
     internal val relationshipCoverageAuthority: RelationshipCoverageAuthority =
         IdeaRelationshipCoverageAuthority(
             project = project,
             workspaceIdentity = workspaceIdentity,
             indexSemanticAdmissionStatus = indexSemanticAdmissionStatus,
+            workspaceModelReader = workspaceModelReader,
         ),
 ) : CloseableAnalysisBackend {
 
@@ -156,7 +160,11 @@ internal class KastPluginBackend(
     internal val relationshipContinuations = RelationshipContinuationStore(limits)
     internal val workspaceFilePaging = IdeaWorkspaceFilePaging(
         workspaceId = sharedWorkspaceIdentity.canonicalWorkspaceId,
-        inventory = IdeaProjectModelWorkspaceFileInventory(project, workspaceIdentity),
+        inventory = IdeaProjectModelWorkspaceFileInventory(
+            project = project,
+            workspaceIdentity = workspaceIdentity,
+            workspaceModelReader = workspaceModelReader,
+        ),
         limits = limits,
     )
     internal val ideaReadAccess = object : ReadAccessScope {
@@ -378,18 +386,7 @@ internal class KastPluginBackend(
         return GlobalSearchScope.moduleWithDependentsScope(module)
     }
 
-    override fun close() {
-        val failures = listOf(
-            runCatching(referenceContinuations::close).exceptionOrNull(),
-            runCatching(diagnosticContinuations::close).exceptionOrNull(),
-            runCatching(relationshipContinuations::close).exceptionOrNull(),
-            runCatching(workspaceFilePaging::close).exceptionOrNull(),
-        ).filterNotNull()
-        failures.firstOrNull()?.let { first ->
-            failures.drop(1).forEach(first::addSuppressed)
-            throw first
-        }
-    }
+    override fun close() = closeResources()
 
     companion object {
         internal const val RELATIONSHIP_STATE_CAPACITY: Int = 16_384

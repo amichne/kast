@@ -8,6 +8,10 @@ import kotlinx.coroutines.delay
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.resume
+import kotlin.coroutines.suspendCoroutine
 
 internal class ClosingApplyBackend(
     private val delegate: CloseableAnalysisBackend,
@@ -49,6 +53,39 @@ internal class CountingCloseBackend(
         private set
 
     override fun close() {
+        closeCount += 1
+        delegate.close()
+    }
+}
+
+internal class SuspendedStatusBackend(
+    private val delegate: CloseableAnalysisBackend,
+) : CloseableAnalysisBackend by delegate {
+    val started = java.util.concurrent.CountDownLatch(1)
+    private val continuation = AtomicReference<Continuation<Unit>?>(null)
+    private val active = AtomicBoolean(false)
+    var closeCount: Int = 0
+        private set
+    var closedWhileActive: Boolean = false
+        private set
+
+    override suspend fun runtimeStatus() = try {
+        active.set(true)
+        suspendCoroutine<Unit> { suspended ->
+            continuation.set(suspended)
+            started.countDown()
+        }
+        delegate.runtimeStatus()
+    } finally {
+        active.set(false)
+    }
+
+    fun release() {
+        continuation.getAndSet(null)?.resume(Unit)
+    }
+
+    override fun close() {
+        closedWhileActive = active.get()
         closeCount += 1
         delegate.close()
     }

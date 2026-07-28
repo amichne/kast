@@ -333,6 +333,7 @@ fun SemanticGraphQuery.parsed(): ParsedSemanticGraphQuery = validationBoundary {
     ParsedSemanticGraphQuery(
         filePaths = filePaths.distinct().sorted(),
         removedFilePaths = removedFilePaths.distinct().sorted(),
+        expectedGeneration = expectedGeneration,
     )
 }
 

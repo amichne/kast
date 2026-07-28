@@ -8,8 +8,7 @@ pub(crate) struct NativeGraphNode {
 pub(crate) struct NativeGraphEdge {
     pub(crate) source: usize,
     pub(crate) target: usize,
-    pub(crate) kind: String,
-    pub(crate) context: String,
+    pub(crate) occurrence_count: usize,
     pub(crate) weight: f64,
 }
 
@@ -30,23 +29,71 @@ struct NativeGraphOverlayDescriptor {
 }
 
 fn execute_agent_native_graph(args: AgentNativeGraphArgs) -> AgentEnvelope {
+    if let Err(error) = validate_native_graph_operation_args(&args) {
+        return error_envelope("agent/graph".to_string(), None, error);
+    }
     if args.operation == NativeGraphOperation::Refresh {
         return execute_agent_native_graph_refresh(args);
-    }
-    if !args.modules.is_empty() || !args.source_sets.is_empty() || args.exclusive {
-        return error_envelope(
-            "agent/graph".to_string(),
-            None,
-            agent_error(
-                "AGENT_USAGE",
-                "Graph refresh selectors require --operation refresh.",
-            ),
-        );
     }
     match native_graph_result(&args) {
         Ok(result) => result_envelope("agent/graph".to_string(), result),
         Err(error) => error_envelope("agent/graph".to_string(), None, error),
     }
+}
+
+fn validate_native_graph_operation_args(
+    args: &AgentNativeGraphArgs,
+) -> std::result::Result<(), AgentError> {
+    let irrelevant = match args.operation {
+        NativeGraphOperation::Refresh => [
+            args.database.as_ref().map(|_| "--database"),
+            args.scope.map(|_| "--scope"),
+            args.symbol.as_ref().map(|_| "--symbol"),
+            args.generation.map(|_| "--generation"),
+            args.after_id.map(|_| "--after-id"),
+            args.limit.map(|_| "--limit"),
+            args.resolution.map(|_| "--resolution"),
+        ]
+        .into_iter()
+        .flatten()
+        .next(),
+        NativeGraphOperation::Summary => native_graph_refresh_flag(args)
+            .or_else(|| args.symbol.as_ref().map(|_| "--symbol"))
+            .or_else(|| args.after_id.map(|_| "--after-id"))
+            .or_else(|| args.limit.map(|_| "--limit")),
+        NativeGraphOperation::Nodes => native_graph_refresh_flag(args)
+            .or_else(|| args.symbol.as_ref().map(|_| "--symbol"))
+            .or_else(|| args.resolution.map(|_| "--resolution")),
+        NativeGraphOperation::Neighbors => native_graph_refresh_flag(args)
+            .or_else(|| args.after_id.map(|_| "--after-id"))
+            .or_else(|| args.limit.map(|_| "--limit"))
+            .or_else(|| args.resolution.map(|_| "--resolution")),
+        NativeGraphOperation::Topology => native_graph_refresh_flag(args)
+            .or_else(|| args.symbol.as_ref().map(|_| "--symbol"))
+            .or_else(|| args.after_id.map(|_| "--after-id"))
+            .or_else(|| args.limit.map(|_| "--limit"))
+            .or_else(|| args.resolution.map(|_| "--resolution")),
+        NativeGraphOperation::Communities => native_graph_refresh_flag(args)
+            .or_else(|| args.symbol.as_ref().map(|_| "--symbol"))
+            .or_else(|| args.after_id.map(|_| "--after-id"))
+            .or_else(|| args.limit.map(|_| "--limit")),
+    };
+    match irrelevant {
+        Some(flag) => Err(agent_error(
+            "AGENT_USAGE",
+            format!("{flag} cannot be used with the selected graph operation."),
+        )),
+        None => Ok(()),
+    }
+}
+
+fn native_graph_refresh_flag(args: &AgentNativeGraphArgs) -> Option<&'static str> {
+    (!args.file_paths.is_empty())
+        .then_some("--file-path")
+        .or_else(|| (!args.removed_file_paths.is_empty()).then_some("--removed-file-path"))
+        .or_else(|| (!args.modules.is_empty()).then_some("--module"))
+        .or_else(|| (!args.source_sets.is_empty()).then_some("--source-set"))
+        .or_else(|| args.exclusive.then_some("--exclusive"))
 }
 
 fn execute_agent_native_graph_refresh(args: AgentNativeGraphArgs) -> AgentEnvelope {
@@ -64,16 +111,6 @@ fn execute_agent_native_graph_refresh(args: AgentNativeGraphArgs) -> AgentEnvelo
             ),
         );
     }
-    if args.database.is_some() {
-        return error_envelope(
-            "agent/graph".to_string(),
-            None,
-            agent_error(
-                "AGENT_USAGE",
-                "--database cannot be used with --operation refresh.",
-            ),
-        );
-    }
     let normalizer = match AgentFilePathNormalizer::from_runtime(&args.runtime) {
         Ok(normalizer) => normalizer,
         Err(error) => return error_envelope("agent/graph".to_string(), None, error),
@@ -82,22 +119,33 @@ fn execute_agent_native_graph_refresh(args: AgentNativeGraphArgs) -> AgentEnvelo
         Ok(file_paths) => file_paths,
         Err(error) => return error_envelope("agent/graph".to_string(), None, error),
     };
+    let scope_snapshot =
+        if !args.modules.is_empty() || !args.source_sets.is_empty() || args.exclusive {
+            match native_graph_refresh_scope_snapshot(&args) {
+                Ok(snapshot) => Some(snapshot),
+                Err(error) => return error_envelope("agent/graph".to_string(), None, error),
+            }
+        } else {
+            None
+    };
     if !args.modules.is_empty() || !args.source_sets.is_empty() {
-        let selected = match native_graph_source_scope_paths(&args) {
-            Ok(selected) => selected,
-            Err(error) => return error_envelope("agent/graph".to_string(), None, error),
+        let Some(snapshot) = scope_snapshot.as_ref() else {
+            return error_envelope(
+                "agent/graph".to_string(),
+                None,
+                agent_error(
+                    "NATIVE_GRAPH_REFRESH_FAILED",
+                    "Scoped graph refresh planning returned no source-index snapshot.",
+                ),
+            );
         };
-        let selected = match normalizer.normalize_all(&selected) {
+        let selected = match normalizer.normalize_all(&snapshot.selected) {
             Ok(selected) => selected,
             Err(error) => return error_envelope("agent/graph".to_string(), None, error),
         };
         file_paths.extend(selected);
         if !args.exclusive {
-            let persisted = match native_graph_persisted_source_paths(&args) {
-                Ok(persisted) => persisted,
-                Err(error) => return error_envelope("agent/graph".to_string(), None, error),
-            };
-            let persisted = match normalizer.normalize_all(&persisted) {
+            let persisted = match normalizer.normalize_all(&snapshot.persisted) {
                 Ok(persisted) => persisted,
                 Err(error) => return error_envelope("agent/graph".to_string(), None, error),
             };
@@ -111,11 +159,17 @@ fn execute_agent_native_graph_refresh(args: AgentNativeGraphArgs) -> AgentEnvelo
     file_paths.sort();
     file_paths.dedup();
     if args.exclusive {
-        let persisted = match native_graph_persisted_source_paths(&args) {
-            Ok(persisted) => persisted,
-            Err(error) => return error_envelope("agent/graph".to_string(), None, error),
+        let Some(snapshot) = scope_snapshot.as_ref() else {
+            return error_envelope(
+                "agent/graph".to_string(),
+                None,
+                agent_error(
+                    "NATIVE_GRAPH_REFRESH_FAILED",
+                    "Exclusive graph refresh planning returned no source-index snapshot.",
+                ),
+            );
         };
-        let persisted = match normalizer.normalize_all(&persisted) {
+        let persisted = match normalizer.normalize_all(&snapshot.persisted) {
             Ok(persisted) => persisted,
             Err(error) => return error_envelope("agent/graph".to_string(), None, error),
         };
@@ -140,20 +194,37 @@ fn execute_agent_native_graph_refresh(args: AgentNativeGraphArgs) -> AgentEnvelo
             ),
         );
     }
-    let request = json_rpc_request(
-        "raw/semantic-graph",
-        json!({
-            "filePaths": file_paths,
-            "removedFilePaths": removed_file_paths,
-        }),
-    );
-    let response = execute_request(AgentRequest {
-        method: "raw/semantic-graph".to_string(),
-        request: request.clone(),
-        runtime: args.runtime,
-        full_response: true,
-        operation: AgentOperation::ReadOnly,
+    let mut params = json!({
+        "filePaths": file_paths,
+        "removedFilePaths": removed_file_paths,
     });
+    if let Some(snapshot) = &scope_snapshot {
+        params["expectedGeneration"] = json!(snapshot.generation);
+    }
+    let request = json_rpc_request("raw/semantic-graph", params);
+    let session = match runtime::raw_rpc_session_ready(
+        args.runtime.workspace_root.clone(),
+        args.runtime.backend_name,
+    ) {
+        Ok(session) => session,
+        Err(error) => {
+            return error_envelope(
+                "agent/graph".to_string(),
+                Some(request),
+                AgentError::from_cli_error(error),
+            );
+        }
+    };
+    let response = execute_request_with_session(
+        AgentRequest {
+            method: "raw/semantic-graph".to_string(),
+            request: request.clone(),
+            runtime: args.runtime,
+            full_response: true,
+            operation: AgentOperation::ReadOnly,
+        },
+        Some(&session),
+    );
     if !response.ok {
         return error_envelope(
             "agent/graph".to_string(),

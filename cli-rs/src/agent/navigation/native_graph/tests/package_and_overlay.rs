@@ -1,147 +1,3 @@
-#[cfg(test)]
-mod native_graph_tests {
-    use super::*;
-
-    fn fixture(node_count: usize, edges: &[(usize, usize, f64)]) -> NativeGraph {
-        native_graph_to_csr(
-            (0..node_count)
-                .map(|node| NativeGraphNode {
-                    database_id: Some(node as u64 + 1),
-                    key: format!("n{node}"),
-                })
-                .collect(),
-            edges
-                .iter()
-                .enumerate()
-                .map(|(index, &(source, target, weight))| NativeGraphEdge {
-                    source,
-                    target,
-                    kind: format!("K{index}"),
-                    context: "NONE".to_string(),
-                    weight,
-                })
-                .collect(),
-        )
-    }
-
-    #[test]
-    fn native_graph_resumed_nodes_require_generation_before_database_access() {
-        let temp = tempfile::tempdir().unwrap();
-        let args = AgentNativeGraphArgs {
-            runtime: AgentRuntimeArgs::default(),
-            database: Some(temp.path().join("missing.db")),
-            scope: NativeGraphScope::Symbol,
-            operation: NativeGraphOperation::Nodes,
-            file_paths: Vec::new(),
-            removed_file_paths: Vec::new(),
-            modules: Vec::new(),
-            source_sets: Vec::new(),
-            exclusive: false,
-            symbol: None,
-            generation: None,
-            after_id: 1,
-            limit: 100,
-            resolution: 1.0,
-        };
-
-        let error = native_graph_result(&args).unwrap_err();
-
-        assert_eq!(error.code, "AGENT_USAGE");
-        assert!(error.message.contains("--generation"));
-    }
-
-    #[test]
-    fn native_graph_ignores_legacy_overlay_descriptor_without_repository_base() {
-        let temp = tempfile::tempdir().unwrap();
-        let database = temp.path().join("source-index.db");
-        let connection = rusqlite::Connection::open(&database).unwrap();
-        std::fs::write(temp.path().join("repository-overlay.json"), "{}").unwrap();
-
-        assert!(!native_graph_attach_repository_base(&connection, &database).unwrap());
-    }
-
-    #[test]
-    fn native_graph_tarjan_condensation_and_components_are_deterministic() {
-        let graph = fixture(
-            6,
-            &[
-                (0, 1, 1.0),
-                (1, 0, 1.0),
-                (1, 2, 1.0),
-                (2, 3, 1.0),
-                (3, 2, 1.0),
-                (4, 5, 1.0),
-            ],
-        );
-        assert_eq!(native_connected_components(&graph), vec![0, 0, 0, 0, 1, 1]);
-        let first = native_tarjan_scc(&graph);
-        assert_eq!(first, native_tarjan_scc(&graph));
-        assert_eq!(
-            native_condensation_topological_order(&graph, &first),
-            native_condensation_topological_order(&graph, &first)
-        );
-    }
-
-    #[test]
-    fn native_graph_tarjan_handles_deep_acyclic_chain_without_process_stack_growth() {
-        const CHILD_ENV: &str = "KAST_NATIVE_GRAPH_DEEP_TARJAN_CHILD";
-        if std::env::var_os(CHILD_ENV).is_some() {
-            let node_count = 50_000;
-            let edges = (0..node_count - 1)
-                .map(|node| (node, node + 1, 1.0))
-                .collect::<Vec<_>>();
-            let membership = native_tarjan_scc(&fixture(node_count, &edges));
-            assert_eq!(membership.len(), node_count);
-            return;
-        }
-
-        let output = std::process::Command::new(std::env::current_exe().unwrap())
-            .args([
-                "--exact",
-                "agent::native_graph_tests::native_graph_tarjan_handles_deep_acyclic_chain_without_process_stack_growth",
-            ])
-            .env(CHILD_ENV, "1")
-            .output()
-            .unwrap();
-        assert!(
-            output.status.success(),
-            "deep Tarjan child failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
-
-    #[test]
-    fn native_graph_weighted_leiden_is_deterministic_and_keeps_refined_communities_connected() {
-        let graph = fixture(
-            6,
-            &[
-                (0, 1, 10.0),
-                (1, 2, 10.0),
-                (2, 0, 10.0),
-                (3, 4, 10.0),
-                (4, 5, 10.0),
-                (5, 3, 10.0),
-                (2, 3, 0.1),
-            ],
-        );
-        let first = native_weighted_leiden(&graph, 1.0);
-        assert_eq!(first, native_weighted_leiden(&graph, 1.0));
-        assert_eq!(first[0], first[1]);
-        assert_eq!(first[1], first[2]);
-        assert_eq!(first[3], first[4]);
-        assert_eq!(first[4], first[5]);
-        assert_ne!(first[2], first[3]);
-    }
-
-    #[test]
-    fn native_graph_preserves_parallel_typed_edge_occurrence_weight() {
-        let graph = fixture(2, &[(0, 1, 2.0), (0, 1, 3.0)]);
-        assert_eq!(graph.edges.len(), 2);
-        assert_eq!(graph.offsets, vec![0, 1, 1]);
-        assert_eq!(graph.targets, vec![1]);
-        assert_eq!(graph.edges.iter().map(|edge| edge.weight).sum::<f64>(), 5.0);
-    }
-
     #[test]
     fn native_graph_package_scope_includes_root_package_files() {
         let connection = rusqlite::Connection::open_in_memory().unwrap();
@@ -191,7 +47,9 @@ mod native_graph_tests {
                      (2, 'named', 'CLASS', 'Named', 2);
                  INSERT INTO semantic_edge_occurrences VALUES
                      (1, 1, 2, 1, 'REFERENCES', 'NONE'),
-                     (2, 2, 1, 2, 'REFERENCES', 'NONE');",
+                     (2, 2, 1, 2, 'REFERENCES', 'NONE'),
+                     (3, 1, 2, 1, 'CALLS', 'DIRECT'),
+                     (4, 1, 2, 1, 'REFERENCES', 'NONE');",
             )
             .unwrap();
 
@@ -214,10 +72,14 @@ mod native_graph_tests {
                     .map(|edge| (
                         graph.nodes[edge.source].key.as_str(),
                         graph.nodes[edge.target].key.as_str(),
+                        edge.occurrence_count,
                         edge.weight,
                     ))
                     .collect::<Vec<_>>(),
-                vec![("<root>", "demo", 1.0), ("demo", "<root>", 1.0)]
+                vec![
+                    ("<root>", "demo", 2, 3.0),
+                    ("demo", "<root>", 1, 1.0),
+                ]
             );
         }
     }
@@ -359,8 +221,7 @@ mod native_graph_tests {
             vec![NativeGraphEdge {
                 source: 1,
                 target: 0,
-                kind: "REFERENCES".to_string(),
-                context: "NONE".to_string(),
+                occurrence_count: 1,
                 weight: 1.0,
             }],
         );
@@ -379,6 +240,18 @@ mod native_graph_tests {
         );
         assert_eq!(overlay.offsets, clean.offsets);
         assert_eq!(overlay.targets, clean.targets);
+        assert_eq!(
+            overlay
+                .edges
+                .iter()
+                .map(|edge| (edge.source, edge.target, edge.occurrence_count, edge.weight))
+                .collect::<Vec<_>>(),
+            clean
+                .edges
+                .iter()
+                .map(|edge| (edge.source, edge.target, edge.occurrence_count, edge.weight))
+                .collect::<Vec<_>>(),
+        );
     }
 
     #[cfg(unix)]
@@ -386,4 +259,3 @@ mod native_graph_tests {
     fn native_graph_reports_process_peak_rss() {
         assert!(native_graph_peak_rss_bytes() > 0);
     }
-}

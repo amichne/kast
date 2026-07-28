@@ -299,7 +299,7 @@ fn assert_semantic_counts(
 fn workspace_socket_path(workspace: &Path, _temp_root: &Path) -> PathBuf {
     #[cfg(target_os = "macos")]
     {
-        let metadata = std::fs::read_to_string(workspace.join(".kast/setup/workspace.json"))
+        let metadata = std::fs::read_to_string(macos_plugin_workspace_metadata_path(workspace))
             .expect("plugin workspace metadata");
         let metadata: Value = serde_json::from_str(&metadata).expect("workspace metadata JSON");
         PathBuf::from(

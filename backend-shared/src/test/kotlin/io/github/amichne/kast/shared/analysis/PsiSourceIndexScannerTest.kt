@@ -138,8 +138,6 @@ class PsiSourceIndexScannerTest {
     private class TestReferenceIndexEnvironment(
         private val psiFile: PsiFile,
     ) : ReferenceIndexEnvironment {
-        override fun allFilePaths(): Collection<String> = listOf(psiFile.name)
-
         override fun findPsiFile(filePath: String): PsiFile = psiFile
 
         override fun <T> withReadAccess(action: () -> T): T = action()

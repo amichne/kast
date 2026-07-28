@@ -4,10 +4,13 @@ import io.github.amichne.kast.idea.diagnostics.*
 
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.AnalysisTransport
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertDoesNotThrow
+import java.nio.file.Path
 import java.time.Instant
 
 class KastDiagnosticsStateTest {
@@ -99,5 +102,75 @@ class KastDiagnosticsStateTest {
         assertTrue(ready.referenceIndexReady)
         assertEquals(RuntimeState.DEGRADED, degraded.state)
         assertFalse(degraded.healthy)
+    }
+
+    @Test
+    fun `index state is reflected in the shared backend UI state`() {
+        val state = KastDiagnosticsState(
+            now = { Instant.parse("2026-06-17T12:00:00Z") },
+        )
+        state.recordBackendStarted(AnalysisTransport.Tcp("127.0.0.1", 4123))
+
+        state.recordIndexWaitingForIde()
+        assertEquals(KastBackendUiState.INDEXING, state.snapshot().backendState)
+
+        state.recordIndexFailed(IllegalStateException("Gradle import failed"))
+        assertEquals(KastBackendUiState.DEGRADED, state.snapshot().backendState)
+    }
+
+    @Test
+    fun `diagnostic delivery coalesces concurrent UI work to the latest snapshot`() {
+        val parentDisposable = com.intellij.openapi.util.Disposer.newDisposable()
+        val project = com.intellij.mock.MockProject(null, parentDisposable)
+        val scheduled = mutableListOf<() -> Unit>()
+        val delivered = mutableListOf<KastDiagnosticsSnapshot>()
+
+        try {
+            val diagnostics = KastDiagnosticsService(project) { task -> scheduled += task }
+            diagnostics.addListener(parentDisposable) { snapshot -> delivered += snapshot }
+            delivered.clear()
+
+            diagnostics.recordBackendStarting(Path.of("/workspace"))
+            diagnostics.recordBackendStarted(AnalysisTransport.Tcp("127.0.0.1", 4123))
+            diagnostics.recordIndexWaitingForIde()
+
+            assertEquals(1, scheduled.size)
+            scheduled.single().invoke()
+            assertEquals(listOf(KastBackendUiState.INDEXING), delivered.map(KastDiagnosticsSnapshot::backendState))
+        } finally {
+            com.intellij.openapi.util.Disposer.dispose(parentDisposable)
+        }
+    }
+
+    @Test
+    fun `diagnostic delivery retries after the UI scheduler rejects once`() {
+        val parentDisposable = com.intellij.openapi.util.Disposer.newDisposable()
+        val project = com.intellij.mock.MockProject(null, parentDisposable)
+        val scheduled = mutableListOf<() -> Unit>()
+        val delivered = mutableListOf<KastDiagnosticsSnapshot>()
+        var rejectNext = true
+
+        try {
+            val diagnostics = KastDiagnosticsService(project) { task ->
+                if (rejectNext) {
+                    rejectNext = false
+                    error("UI scheduler is disposing")
+                }
+                scheduled += task
+            }
+            diagnostics.addListener(parentDisposable) { snapshot -> delivered += snapshot }
+            delivered.clear()
+
+            assertDoesNotThrow {
+                diagnostics.recordBackendStarting(Path.of("/workspace"))
+            }
+            diagnostics.recordBackendStarted(AnalysisTransport.Tcp("127.0.0.1", 4123))
+
+            assertEquals(1, scheduled.size)
+            scheduled.single().invoke()
+            assertEquals("tcp:127.0.0.1:4123", delivered.single().transport)
+        } finally {
+            com.intellij.openapi.util.Disposer.dispose(parentDisposable)
+        }
     }
 }

@@ -3,7 +3,7 @@ pub(crate) fn seed_high_cardinality_impact(
     target_fq_name: &str,
     source_count: usize,
 ) {
-    let db_path = workspace.join(".gradle/kast/cache/source-index.db");
+    let db_path = workspace_database_path_for_test(workspace);
     let mut conn = Connection::open(db_path).expect("sqlite");
     let target_fq_id: i64 = conn
         .query_row(
@@ -47,7 +47,7 @@ pub(crate) fn seed_high_cardinality_impact(
 }
 
 pub(crate) fn seed_exact_lookup_symbols(workspace: &std::path::Path) {
-    let db_path = workspace.join(".gradle/kast/cache/source-index.db");
+    let db_path = workspace_database_path_for_test(workspace);
     let conn = Connection::open(db_path).expect("sqlite");
     for (id, fq_name, filename, kind) in [
         (20, "sample.when", "Keywords.kt", "FUNCTION"),

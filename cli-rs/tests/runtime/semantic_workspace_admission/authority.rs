@@ -12,7 +12,7 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
     let config_home = fixture.primary().join("test-config");
     let socket_path = fixture.socket_path("primary.sock");
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&workspace);
+    write_macos_plugin_workspace_metadata_at_home(&workspace, &home);
     write_runtime_descriptor(&home, &workspace, &socket_path, "idea");
     let listener = bind_semantic_listener(&socket_path);
     let backend = spawn_verify_backend(listener, workspace.clone(), "idea", 10);
@@ -97,7 +97,7 @@ fn prepared_linked_worktree_verify_views_retain_admission_evidence() {
     let config_home = fixture.linked().join("test-config");
     let socket_path = fixture.socket_path("linked-verify-views.sock");
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&workspace);
+    write_macos_plugin_workspace_metadata_at_home(&workspace, &home);
     write_runtime_descriptor(&home, &workspace, &socket_path, "idea");
     let backend = spawn_verify_backend(
         bind_semantic_listener(&socket_path),
@@ -262,7 +262,7 @@ fn prepared_linked_worktree_never_attaches_primary_checkout_descriptor() {
     let config_home = fixture.linked().join("test-config");
     let socket_path = fixture.socket_path("primary.sock");
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&linked);
+    write_macos_plugin_workspace_metadata_at_home(&linked, &home);
     write_runtime_descriptor(&home, &primary, &socket_path, "idea");
     let backend = spawn_verify_backend(bind_semantic_listener(&socket_path), primary, "idea", 0);
 

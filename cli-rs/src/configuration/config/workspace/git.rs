@@ -3,47 +3,212 @@ struct GitWorkspace {
     toplevel: PathBuf,
     common_dir: PathBuf,
     git_dir: PathBuf,
-    remote: Option<GitRemote>,
 }
 
-#[derive(Debug, Clone)]
-struct GitRemote {
-    host: String,
-    owner: String,
-    repo: String,
-}
+const MAX_LEGACY_REPOSITORY_DEPTH: usize = 32;
 
 fn git_workspace(workspace_root: &Path) -> Option<GitWorkspace> {
     let toplevel = git_path(workspace_root, &["rev-parse", "--show-toplevel"])?;
     let common_dir = git_path(workspace_root, &["rev-parse", "--git-common-dir"])?;
     let git_dir = git_path(workspace_root, &["rev-parse", "--git-dir"])?;
-    let remote = git_output(workspace_root, &["config", "--get", "remote.origin.url"])
-        .and_then(|remote| parse_git_remote(remote.trim()));
     Some(GitWorkspace {
         toplevel,
         common_dir,
         git_dir,
-        remote,
     })
 }
 
-fn workspace_data_directory_for_git(workspaces_root: &Path, workspace: &GitWorkspace) -> PathBuf {
-    let repo_root = if let Some(remote) = &workspace.remote {
-        workspaces_root
-            .join("git")
-            .join(&remote.host)
-            .join(&remote.owner)
-            .join(&remote.repo)
-    } else {
-        workspaces_root
-            .join("git/local")
-            .join(git_common_dir_hash(&workspace.common_dir))
-    };
-    repo_root.join("worktrees").join(format!(
+fn workspace_data_directory_for_git(
+    workspaces_root: &Path,
+    workspace: &GitWorkspace,
+) -> Result<PathBuf> {
+    let repo_root = workspaces_root
+        .join("git/local")
+        .join(git_common_dir_hash(&workspace.common_dir));
+    let leaf = format!(
         "{}--{}",
         workspace_slug(&workspace.toplevel),
         git_worktree_hash(&workspace.toplevel, &workspace.git_dir)
-    ))
+    );
+    let target = repo_root.join("worktrees").join(&leaf);
+    migrate_legacy_git_workspace_state(workspaces_root, &target, &leaf)?;
+    Ok(target)
+}
+
+fn migrate_legacy_git_workspace_state(
+    workspaces_root: &Path,
+    target: &Path,
+    leaf: &str,
+) -> Result<()> {
+    let target_exists = path_entry_type(target)?.is_some();
+    if target_exists && !is_real_directory(target)? {
+        return Err(migration_error(
+            "WORKSPACE_STATE_MIGRATION_CONFLICT",
+            format!(
+                "Stable Kast workspace state is not a directory: {}",
+                target.display()
+            ),
+            target,
+            &[],
+        ));
+    }
+    let legacy = legacy_git_workspace_directories(workspaces_root, leaf)?;
+    match (target_exists, legacy.len()) {
+        (true, 0) | (false, 0) => return Ok(()),
+        (true, _) => {
+            return Err(migration_error(
+                "WORKSPACE_STATE_MIGRATION_CONFLICT",
+                format!("Stable and legacy Kast workspace state both exist for {leaf}"),
+                target,
+                &legacy,
+            ));
+        }
+        (false, count) if count > 1 => {
+            return Err(migration_error(
+                "WORKSPACE_STATE_MIGRATION_AMBIGUOUS",
+                format!("Multiple legacy Kast workspace directories match {leaf}"),
+                target,
+                &legacy,
+            ));
+        }
+        (false, 1) => {}
+        _ => unreachable!("migration state was exhaustively matched"),
+    }
+    let source = &legacy[0];
+    if let Some(parent) = target.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    if let Err(failure) = fs::rename(source, target) {
+        let remaining = legacy_git_workspace_directories(workspaces_root, leaf)?;
+        if is_real_directory(target)? && remaining.is_empty() {
+            return Ok(());
+        }
+        let mut error = migration_error(
+            "WORKSPACE_STATE_MIGRATION_FAILED",
+            format!(
+                "Could not atomically migrate Kast workspace state from {} to {}: {failure}",
+                source.display(),
+                target.display(),
+            ),
+            target,
+            if remaining.is_empty() {
+                std::slice::from_ref(source)
+            } else {
+                &remaining
+            },
+        );
+        error
+            .details
+            .insert("cause".to_string(), failure.to_string());
+        return Err(error);
+    }
+    Ok(())
+}
+
+fn legacy_git_workspace_directories(
+    workspaces_root: &Path,
+    leaf: &str,
+) -> Result<Vec<PathBuf>> {
+    let git_root = workspaces_root.join("git");
+    if !is_real_directory(&git_root)? {
+        return Ok(vec![]);
+    }
+    let mut candidates = vec![];
+    let mut pending = vec![];
+    for host in child_directories(&git_root)? {
+        if host.file_name().is_some_and(|name| name == "local") {
+            continue;
+        }
+        for owner in child_directories(&host)? {
+            for repository_segment in child_directories(&owner)? {
+                pending.push((repository_segment, 1_usize));
+            }
+        }
+    }
+    while let Some((repository_path, depth)) = pending.pop() {
+        let worktrees = repository_path.join("worktrees");
+        if is_real_directory(&worktrees)? {
+            let candidate = worktrees.join(leaf);
+            if let Some(file_type) = path_entry_type(&candidate)? {
+                if !file_type.is_dir() {
+                    return Err(migration_error(
+                        "WORKSPACE_STATE_MIGRATION_CONFLICT",
+                        format!(
+                            "Legacy Kast workspace state is not a directory: {}",
+                            candidate.display()
+                        ),
+                        &candidate,
+                        &[],
+                    ));
+                }
+                candidates.push(normalize(candidate));
+            }
+            continue;
+        }
+        let children = child_directories(&repository_path)?;
+        if !children.is_empty() && depth >= MAX_LEGACY_REPOSITORY_DEPTH {
+            return Err(migration_error(
+                "WORKSPACE_STATE_MIGRATION_DEPTH_EXCEEDED",
+                format!(
+                    "Legacy Kast repository state exceeds {MAX_LEGACY_REPOSITORY_DEPTH} nested path segments"
+                ),
+                &repository_path,
+                &[],
+            ));
+        }
+        for child in children.into_iter().rev() {
+            pending.push((child, depth + 1));
+        }
+    }
+    candidates.sort();
+    Ok(candidates)
+}
+
+fn child_directories(parent: &Path) -> Result<Vec<PathBuf>> {
+    let mut directories = vec![];
+    for entry in fs::read_dir(parent)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            directories.push(entry.path());
+        }
+    }
+    directories.sort();
+    Ok(directories)
+}
+
+fn path_entry_type(path: &Path) -> Result<Option<fs::FileType>> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) => Ok(Some(metadata.file_type())),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+fn is_real_directory(path: &Path) -> Result<bool> {
+    Ok(path_entry_type(path)?.is_some_and(|file_type| file_type.is_dir()))
+}
+
+fn migration_error(
+    code: &'static str,
+    message: String,
+    target: &Path,
+    legacy: &[PathBuf],
+) -> CliError {
+    let mut error = CliError::new(code, message);
+    error
+        .details
+        .insert("target".to_string(), target.display().to_string());
+    if !legacy.is_empty() {
+        error.details.insert(
+            "legacy".to_string(),
+            legacy
+                .iter()
+                .map(|path| path.display().to_string())
+                .collect::<Vec<_>>()
+                .join("\n"),
+        );
+    }
+    error
 }
 
 fn git_worktree_hash(toplevel: &Path, git_dir: &Path) -> String {
@@ -86,51 +251,15 @@ fn git_output(workspace_root: &Path, args: &[&str]) -> Option<String> {
     (!value.is_empty()).then_some(value)
 }
 
-fn parse_git_remote(remote_url: &str) -> Option<GitRemote> {
-    if let Some(rest) = remote_url.strip_prefix("git@") {
-        let (host, path) = rest.split_once(':')?;
-        let (owner, repo) = path.split_once('/')?;
-        return Some(GitRemote {
-            host: host.to_string(),
-            owner: owner.to_string(),
-            repo: repo.trim_end_matches(".git").to_string(),
-        });
-    }
-    if let Some(rest) = remote_url.strip_prefix("https://") {
-        let mut parts = rest.splitn(4, '/');
-        let host = parts.next()?;
-        let owner = parts.next()?;
-        let repo = parts.next()?;
-        return Some(GitRemote {
-            host: host.to_string(),
-            owner: owner.to_string(),
-            repo: repo.trim_end_matches(".git").to_string(),
-        });
-    }
-    None
-}
-
-fn local_workspace_id(workspace_root: &Path) -> Result<String> {
-    let registry_path = manifest::resolve_paths()
-        .map(|paths| paths.data_dir)
-        .unwrap_or_else(|_| manifest::default_resolved_paths().data_dir)
-        .join("workspaces/local-workspaces.json");
-    if let Some(parent) = registry_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let mut registry: BTreeMap<String, String> = if registry_path.is_file() {
-        serde_json::from_str(&fs::read_to_string(&registry_path)?).unwrap_or_default()
-    } else {
-        BTreeMap::new()
-    };
+fn local_workspace_id(workspaces_root: &Path, workspace_root: &Path) -> Result<String> {
+    let registry_path = workspaces_root.join("local-workspaces.json");
     let key = workspace_root.to_string_lossy().to_string();
-    if let Some(id) = registry.get(&key) {
-        return Ok(id.clone());
-    }
-    let id = uuid::Uuid::new_v4().to_string();
-    registry.insert(key, id.clone());
-    fs::write(registry_path, serde_json::to_string_pretty(&registry)?)?;
-    Ok(id)
+    let id = fs::read_to_string(registry_path)
+        .ok()
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(&raw).ok())
+        .and_then(|registry| registry.get(&key)?.as_str().map(str::to_string))
+        .unwrap_or_else(|| workspace_hash(workspace_root));
+    Ok(sanitized_segment(&id))
 }
 
 fn sanitized_path(workspace_root: &Path) -> String {
@@ -173,7 +302,7 @@ fn sanitized_segment(value: &str) -> String {
         }
     }
     let trimmed = result.trim_matches('-');
-    if trimmed.is_empty() {
+    if trimmed.is_empty() || matches!(trimmed, "." | "..") {
         "workspace".to_string()
     } else {
         trimmed.chars().take(80).collect()

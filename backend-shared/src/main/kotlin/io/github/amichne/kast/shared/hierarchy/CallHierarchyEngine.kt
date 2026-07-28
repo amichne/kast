@@ -69,8 +69,36 @@ class CallHierarchyEngine(
             )
         }
 
-        val edges = findCallEdges(target, direction, budget)
-        var truncation: CallNodeTruncation? = null
+        val remainingTotalCalls = (budget.maxTotalCalls - budget.totalEdges).coerceAtLeast(0)
+        val providerLimitedByTotalCalls = remainingTotalCalls <= budget.maxChildrenPerNode
+        val providerBudget = EdgeDiscoveryBudget(
+            maxCandidates = minOf(remainingTotalCalls, budget.maxChildrenPerNode),
+            timeoutCheck = budget::timeoutReached,
+        )
+        val edges = findCallEdges(target, direction, budget, providerBudget)
+        var truncation: CallNodeTruncation? = when (providerBudget.completion) {
+            EdgeDiscoveryCompletion.EXHAUSTIVE -> null
+            EdgeDiscoveryCompletion.TIMED_OUT -> {
+                budget.timeoutHit.set(true)
+                CallNodeTruncation(
+                    reason = CallNodeTruncationReason.TIMEOUT,
+                    details = "Traversal timeout reached while discovering children",
+                )
+            }
+            EdgeDiscoveryCompletion.CANDIDATE_LIMIT_REACHED -> if (providerLimitedByTotalCalls) {
+                budget.maxTotalCallsHit.set(true)
+                CallNodeTruncation(
+                    reason = CallNodeTruncationReason.MAX_TOTAL_CALLS,
+                    details = "Reached maxTotalCalls=${budget.maxTotalCalls}",
+                )
+            } else {
+                budget.maxChildrenHit.set(true)
+                CallNodeTruncation(
+                    reason = CallNodeTruncationReason.MAX_CHILDREN_PER_NODE,
+                    details = "Reached maxChildrenPerNode=${budget.maxChildrenPerNode}",
+                )
+            }
+        }
 
         // Phase 1: Sequentially determine which edges to expand, respecting budget limits.
         data class PendingChild(val edge: CallEdge, val childKey: String, val isCycle: Boolean)
@@ -112,10 +140,9 @@ class CallHierarchyEngine(
             pending += PendingChild(edge, childKey, isCycle)
         }
 
-        // Phase 2: Expand children in parallel — each buildNode() call is independent.
+        // Expand in canonical order so one request never escapes onto the common pool.
         val childPathKeys = pathKeys + nodeKey
         val children = pending
-            .parallelStream()
             .map { (edge, childKey, isCycle) ->
                 if (isCycle) {
                     CallNode(
@@ -139,7 +166,6 @@ class CallHierarchyEngine(
                     )
                 }
             }
-            .toList()
 
         if (truncation != null) {
             budget.recordTruncation()
@@ -157,16 +183,17 @@ class CallHierarchyEngine(
         target: PsiElement,
         direction: CallDirection,
         budget: TraversalBudget,
+        providerBudget: EdgeDiscoveryBudget,
     ): List<CallEdge> {
         val edges = when (direction) {
             CallDirection.INCOMING -> edgeResolver.incomingEdges(
                 target = target,
-                timeoutCheck = budget::timeoutReached,
+                budget = providerBudget,
                 onFileVisited = budget::visitFile,
             )
             CallDirection.OUTGOING -> edgeResolver.outgoingEdges(
                 target = target,
-                timeoutCheck = budget::timeoutReached,
+                budget = providerBudget,
                 onFileVisited = budget::visitFile,
             )
         }
