@@ -12,10 +12,15 @@ internal class SqliteSourceIndexSchema(
             val conn = state.connection(requireCurrentSchema = false)
             val version = readSchemaVersion(conn)
             if (version == SOURCE_INDEX_SCHEMA_VERSION) {
+                val interningTablesNeedReload = !state.isSchemaValidated(conn)
                 validateCurrentSchema(conn)
                 state.initializeRepositoryOverlay(conn)
+                if (interningTablesNeedReload) {
+                    state.reloadInterningTables(conn)
+                } else {
+                    state.loadInterningTables(conn)
+                }
                 state.markSchemaValidated(conn)
-                state.loadInterningTables(conn)
                 return true
             }
             val previousGeneration = state.readGenerationOrNullInTransaction(conn) ?: SourceIndexGeneration(0)
@@ -33,8 +38,8 @@ internal class SqliteSourceIndexSchema(
             }
             validateCurrentSchema(conn)
             state.initializeRepositoryOverlay(conn)
+            state.reloadInterningTables(conn)
             state.markSchemaValidated(conn)
-            state.loadInterningTables(conn)
             return false
         }
     }
