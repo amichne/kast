@@ -80,6 +80,26 @@ internal class SqliteSourceIndexSchema(
                 "project_path" to true,
                 "source_set_name" to true,
             ),
+            "file_manifest" to mapOf(
+                "prefix_id" to true,
+                "filename" to true,
+                "last_modified_millis" to true,
+                "content_hash" to false,
+                "desired_source_version" to false,
+                "desired_relationships_version" to false,
+                "desired_semantic_graph_version" to false,
+                "module_name" to false,
+                "source_set" to false,
+            ),
+            "file_stage_outcomes" to mapOf(
+                "prefix_id" to true,
+                "filename" to true,
+                "stage" to true,
+                "content_hash" to true,
+                "stage_version" to true,
+                "outcome_status" to true,
+                "limitations_json" to true,
+            ),
             "module_index_progress" to mapOf(
                 "relationship_index_status" to true,
             ),
@@ -158,6 +178,8 @@ internal class SqliteSourceIndexSchema(
                 "project_path",
                 "source_set_name",
             ),
+            "file_manifest" to listOf("prefix_id", "filename"),
+            "file_stage_outcomes" to listOf("prefix_id", "filename", "stage"),
             "semantic_files" to listOf("id"),
             "semantic_types" to listOf("id"),
             "semantic_type_edges" to listOf("id"),
@@ -273,6 +295,7 @@ internal class SqliteSourceIndexSchema(
         stmt.execute("DROP TABLE IF EXISTS file_wildcard_imports")
         stmt.execute("DROP TABLE IF EXISTS file_imports")
         stmt.execute("DROP TABLE IF EXISTS identifier_paths")
+        stmt.execute("DROP TABLE IF EXISTS file_stage_outcomes")
         stmt.execute("DROP TABLE IF EXISTS file_gradle_source_sets")
         stmt.execute("DROP TABLE IF EXISTS file_gradle_projects")
         stmt.execute("DROP TABLE IF EXISTS file_metadata")
@@ -336,6 +359,10 @@ internal class SqliteSourceIndexSchema(
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_declarations_file ON declarations(prefix_id, filename)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_decl_supertypes_supertype ON declaration_supertypes(supertype_fq_id)")
         stmt.execute("CREATE INDEX IF NOT EXISTS idx_pending_updates_unapplied ON pending_updates(applied, seq)")
+        stmt.execute(
+            "CREATE INDEX IF NOT EXISTS idx_file_stage_outcomes_stage " +
+                "ON file_stage_outcomes(stage, prefix_id, filename)",
+        )
         stmt.execute(
             "CREATE INDEX IF NOT EXISTS idx_semantic_files_package_status_id " +
                 "ON semantic_files(package_name, refresh_status, id)",

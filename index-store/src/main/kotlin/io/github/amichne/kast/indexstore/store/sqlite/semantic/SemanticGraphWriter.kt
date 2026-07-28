@@ -17,7 +17,7 @@ internal class SemanticGraphWriter(
         updates: List<SemanticGraphFileIndexUpdate>,
         removedPaths: List<SemanticGraphSourcePath> = emptyList(),
     ): SemanticGraphWriteResult =
-        when (val result = replaceSemanticGraphFiles(updates, removedPaths, expectedGeneration = null)) {
+        when (val result = replaceSemanticGraphFiles(updates, removedPaths, expectedGeneration = null) {}) {
             is SemanticGraphCommitResult.Committed -> result.writeResult
             is SemanticGraphCommitResult.GenerationChanged ->
                 error("An unconditional semantic graph commit cannot reject its generation")
@@ -27,13 +27,15 @@ internal class SemanticGraphWriter(
         expectedGeneration: SourceIndexGeneration,
         updates: List<SemanticGraphFileIndexUpdate>,
         removedPaths: List<SemanticGraphSourcePath> = emptyList(),
+        commitStageState: (Connection) -> Unit = {},
     ): SemanticGraphCommitResult =
-        replaceSemanticGraphFiles(updates, removedPaths, expectedGeneration)
+        replaceSemanticGraphFiles(updates, removedPaths, expectedGeneration, commitStageState)
 
     private fun replaceSemanticGraphFiles(
         updates: List<SemanticGraphFileIndexUpdate>,
         removedPaths: List<SemanticGraphSourcePath>,
         expectedGeneration: SourceIndexGeneration?,
+        commitStageState: (Connection) -> Unit,
     ): SemanticGraphCommitResult {
         require(updates.isNotEmpty() || removedPaths.isNotEmpty()) {
             "Semantic graph replacement requires an updated or removed file"
@@ -94,6 +96,7 @@ internal class SemanticGraphWriter(
                 updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
                     insertSemanticEdges(conn, update)
                 }
+                commitStageState(conn)
                 state.incrementGenerationInTransaction(conn)
                 val generation = state.readGenerationInTransaction(conn)
                 conn.commit()
@@ -106,7 +109,7 @@ internal class SemanticGraphWriter(
                     ),
                 )
             } catch (failure: Exception) {
-                conn.rollback()
+                state.rollbackAndReloadPrefixes(conn)
                 throw failure
             } finally {
                 conn.autoCommit = true
@@ -388,12 +391,10 @@ internal class SemanticGraphWriter(
             }
         }
     }
-
     private fun clearRepositoryOverlayTombstone(conn: Connection, path: String) {
         conn.prepareStatement("DELETE FROM repository_overlay_tombstones WHERE path = ?").use { statement ->
             statement.setString(1, path)
             statement.executeUpdate()
         }
     }
-
 }

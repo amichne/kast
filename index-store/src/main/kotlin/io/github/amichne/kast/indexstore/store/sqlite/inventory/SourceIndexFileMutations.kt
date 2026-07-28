@@ -310,6 +310,7 @@ internal class SourceIndexFileMutations(
         prefixId: Int,
         filename: String,
     ) {
+        deleteDeclarationSupertypesInTransaction(conn, prefixId, filename)
         for (table in listOf(
             "declarations",
             "identifier_paths",
@@ -335,6 +336,53 @@ internal class SourceIndexFileMutations(
             stmt.setString(2, filename)
             stmt.setInt(3, prefixId)
             stmt.setString(4, filename)
+            stmt.executeUpdate()
+        }
+    }
+
+    internal fun deleteFileContentInTransaction(
+        conn: Connection,
+        prefixId: Int,
+        filename: String,
+    ) {
+        deleteDeclarationSupertypesInTransaction(conn, prefixId, filename)
+        for (table in listOf(
+            "declarations",
+            "identifier_paths",
+            "file_gradle_source_sets",
+            "file_gradle_projects",
+            "file_metadata",
+            "file_imports",
+            "file_wildcard_imports",
+        )) {
+            conn.prepareStatement("DELETE FROM $table WHERE prefix_id = ? AND filename = ?").use { stmt ->
+                stmt.setInt(1, prefixId)
+                stmt.setString(2, filename)
+                stmt.executeUpdate()
+            }
+        }
+        conn.prepareStatement(
+            "DELETE FROM symbol_references WHERE src_prefix_id = ? AND src_filename = ?",
+        ).use { stmt ->
+            stmt.setInt(1, prefixId)
+            stmt.setString(2, filename)
+            stmt.executeUpdate()
+        }
+    }
+
+    private fun deleteDeclarationSupertypesInTransaction(
+        conn: Connection,
+        prefixId: Int,
+        filename: String,
+    ) {
+        conn.prepareStatement(
+            """DELETE FROM declaration_supertypes
+               WHERE declaration_fq_id IN (
+                   SELECT fq_id FROM declarations WHERE prefix_id = ? AND filename = ?
+               )""",
+        ).use { stmt ->
+            stmt.setInt(1, prefixId)
+            stmt.setString(2, filename)
             stmt.executeUpdate()
         }
     }

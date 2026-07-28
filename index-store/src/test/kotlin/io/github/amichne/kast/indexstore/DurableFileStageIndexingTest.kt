@@ -216,6 +216,50 @@ class DurableFileStageIndexingTest {
         assertEquals(uninterruptedFacts, resumedFacts)
     }
 
+    @Test
+    fun `changed and removed targets preserve fq edges while invalidating inbound relationship outcomes`() {
+        listOf(false, true).forEach { removeTarget ->
+            val scenario = if (removeTarget) "removed" else "changed"
+            val scenarioRoot = Files.createDirectories(workspaceRoot.resolve(scenario))
+            val caller = file("$scenario/src/Caller.kt")
+            val target = file("$scenario/src/Target.kt")
+            val entries = listOf(
+                inventory(caller, hash('a'), ":app[main]"),
+                inventory(target, hash('b'), ":app[main]"),
+            )
+            SqliteSourceIndexStore(scenarioRoot).use { store ->
+                store.ensureSchema()
+                store.reconcileFileInventory(entries, versions("1"))
+                val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).associateBy { it.path }
+                store.commitRelationshipBatch(
+                    listOf(
+                        RelationshipFileStageUpdate(
+                            work = work.getValue(caller),
+                            references = listOf(reference(caller, "demo.Target", target)),
+                            declarations = emptyList(),
+                        ),
+                        RelationshipFileStageUpdate(work.getValue(target), emptyList(), emptyList()),
+                    ),
+                )
+
+                val nextEntries = if (removeTarget) {
+                    listOf(entries.first())
+                } else {
+                    listOf(entries.first(), entries.last().copy(contentHash = hash('c')))
+                }
+                store.reconcileFileInventory(nextEntries, versions("1"))
+
+                val preserved = store.referencesToSymbol("demo.Target").single()
+                assertEquals(caller, preserved.sourcePath)
+                assertNull(preserved.targetPath)
+                assertNull(preserved.targetOffset)
+                val expectedPending = if (removeTarget) listOf(caller) else listOf(caller, target)
+                assertEquals(expectedPending, store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { it.path })
+                assertNull(store.fileStageOutcome(caller, FileIndexStage.RELATIONSHIPS))
+            }
+        }
+    }
+
     private fun indexInBatches(
         root: Path,
         relativePaths: List<String>,
@@ -233,7 +277,11 @@ class DurableFileStageIndexingTest {
         SqliteSourceIndexStore(root).use { store ->
             if (reopenAfterFirstBatch) commitRelationships(store, paths.drop(1))
             return PersistedFacts(
-                references = paths.associateWith { path -> store.referencesFromFile(path) },
+                references = relativePaths.zip(paths).associate { (relativePath, path) ->
+                    relativePath to store.referencesFromFile(path).map { reference ->
+                        reference.copy(sourcePath = relativePath)
+                    }
+                },
                 completedModules = store.completedModules(),
                 generation = store.readGeneration().value,
             )
@@ -293,13 +341,13 @@ class DurableFileStageIndexingTest {
             ),
         )
 
-    private fun reference(path: String, target: String): SymbolReferenceRow =
+    private fun reference(path: String, target: String, targetPath: String? = null): SymbolReferenceRow =
         SymbolReferenceRow(
             sourcePath = path,
             sourceOffset = 1,
             targetFqName = target,
-            targetPath = null,
-            targetOffset = null,
+            targetPath = targetPath,
+            targetOffset = targetPath?.let { 1 },
         )
 
     private fun file(relative: String): String {

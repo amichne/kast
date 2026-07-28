@@ -1,7 +1,10 @@
 package io.github.amichne.kast.indexstore.indexing
 
+import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
+import io.github.amichne.kast.indexstore.api.index.PendingFileStage
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
+import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.util.concurrent.Callable
 import java.util.concurrent.CancellationException
@@ -11,6 +14,12 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
 private const val DEFAULT_REFERENCE_BATCH_SIZE = 50
+
+data class RelationshipScanResult(
+    val references: List<SymbolReferenceRow>,
+    val declarations: List<DeclarationRow>,
+    val limitations: List<FileStageLimitation> = emptyList(),
+)
 
 /**
  * Batch engine for rebuilding `symbol_references`.
@@ -69,6 +78,37 @@ class ReferenceIndexer(
         }
     }
 
+    fun indexPendingSymbolRelationships(
+        work: Collection<PendingFileStage>,
+        scanner: (String) -> RelationshipScanResult,
+        isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
+        onFilesIndexed: (List<String>) -> Unit = {},
+    ) {
+        val executor = createExecutor()
+        try {
+            for (batch in work.asSequence().chunked(batchSize)) {
+                if (isCancelled()) break
+                val scanned = scanBatch(batch, { pending -> scanner(pending.path) }, isCancelled, executor)
+                if (isCancelled()) break
+                if (scanned.isEmpty()) continue
+                store.commitRelationshipBatch(
+                    scanned.map { (pending, result) ->
+                        RelationshipFileStageUpdate(
+                            work = pending,
+                            references = result.references,
+                            declarations = result.declarations,
+                            limitations = result.limitations,
+                        )
+                    },
+                )
+                if (isCancelled()) break
+                onFilesIndexed(scanned.map { result -> result.first.path })
+            }
+        } finally {
+            executor?.shutdownNow()
+        }
+    }
+
     fun reindexFiles(
         changedPaths: Set<String>,
         referenceScanner: (String) -> List<SymbolReferenceRow>,
@@ -93,19 +133,19 @@ class ReferenceIndexer(
      * Scans [batch] with [scanner], using either a sequential or parallel strategy
      * depending on [parallelism].
      */
-    private fun <T> scanBatch(
-        batch: List<String>,
-        scanner: (String) -> T,
+    private fun <K, T> scanBatch(
+        batch: List<K>,
+        scanner: (K) -> T,
         isCancelled: () -> Boolean,
         executor: ExecutorService?,
-    ): List<Pair<String, T>> =
+    ): List<Pair<K, T>> =
         if (executor != null) {
             scanBatchParallel(batch, scanner, isCancelled, executor)
         } else {
-            batch.mapNotNull { filePath ->
+            batch.mapNotNull { input ->
                 if (isCancelled()) return@mapNotNull null
                 try {
-                    filePath to scanner(filePath)
+                    input to scanner(input)
                 } catch (error: Exception) {
                     if (error.isCancellation()) throw error
                     null
@@ -120,18 +160,18 @@ class ReferenceIndexer(
      * Non-cancellation exceptions from [scanner] are swallowed (file is skipped).
      * Cancellation exceptions are rethrown to the caller.
      */
-    private fun <T> scanBatchParallel(
-        batch: List<String>,
-        scanner: (String) -> T,
+    private fun <K, T> scanBatchParallel(
+        batch: List<K>,
+        scanner: (K) -> T,
         isCancelled: () -> Boolean,
         executor: ExecutorService,
-    ): List<Pair<String, T>> {
-        val futures = batch.map { filePath ->
+    ): List<Pair<K, T>> {
+        val futures = batch.map { input ->
             executor.submit(
-                Callable<Pair<String, T>?> {
+                Callable<Pair<K, T>?> {
                     if (isCancelled()) return@Callable null
                     try {
-                        filePath to scanner(filePath)
+                        input to scanner(input)
                     } catch (error: Exception) {
                         if (error.isCancellation()) throw error
                         null

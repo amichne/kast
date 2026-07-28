@@ -12,6 +12,10 @@ import io.github.amichne.kast.indexstore.api.graph.SemanticGraphScopeSnapshot
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphWriteResult
 import io.github.amichne.kast.indexstore.api.index.*
 import io.github.amichne.kast.indexstore.api.reference.*
+import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
+import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageRemoval
+import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageUpdate
+import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
 import io.github.amichne.kast.indexstore.snapshot.*
 import java.nio.file.Path
 
@@ -44,6 +48,14 @@ class SqliteSourceIndexStore private constructor(
     private val referenceQuery = SourceIndexReferenceQuery(state)
     private val references = SourceIndexReferenceStore(state, fileMutations, files)
     private val declarationStore = SourceIndexDeclarationStore(state, fileMutations)
+    private val fileStages = FileStageInventoryStore(state, fileMutations)
+    private val fileStageBatches = FileStageBatchStore(
+        state = state,
+        mutations = fileMutations,
+        references = references,
+        declarations = declarationStore,
+        stages = fileStages,
+    )
     private val pendingUpdates = SourceIndexPendingUpdateStore(state, fileMutations, references)
     private val semanticGraphWriter = SemanticGraphWriter(state)
     private val semanticGraphReader = SemanticGraphReader(state)
@@ -105,6 +117,31 @@ class SqliteSourceIndexStore private constructor(
     fun moduleIndexStatus(moduleName: String): String? = inventory.moduleIndexStatus(moduleName)
 
     fun completedModules(): Set<String> = inventory.completedModules()
+
+    fun reconcileFileInventory(entries: Collection<FileInventoryEntry>, versions: FileStageVersions) =
+        fileStages.reconcileFileInventory(entries, versions)
+
+    fun pendingFileStages(stage: FileIndexStage): List<PendingFileStage> =
+        fileStages.pendingFileStages(stage)
+
+    fun pendingFileStage(
+        path: String,
+        contentHash: FileContentHash,
+        stage: FileIndexStage,
+        version: FileStageVersion,
+    ): PendingFileStage? = fileStages.pendingFileStage(path, contentHash, stage, version)
+
+    fun fileStageOutcome(path: String, stage: FileIndexStage): FileStageOutcome? =
+        fileStages.fileStageOutcome(path, stage)
+
+    fun fileStageScopeCoverage(stage: FileIndexStage, path: String): FileStageScopeCoverage =
+        fileStages.fileStageScopeCoverage(stage, path)
+
+    fun commitSourceBatch(updates: List<SourceFileStageUpdate>) =
+        fileStageBatches.commitSourceBatch(updates)
+
+    fun commitRelationshipBatch(updates: List<RelationshipFileStageUpdate>) =
+        fileStageBatches.commitRelationshipBatch(updates)
 
     fun upsertSymbolReference(
         sourcePath: String,
@@ -190,6 +227,19 @@ class SqliteSourceIndexStore private constructor(
         expectedGeneration = expectedGeneration,
         updates = updates,
         removedPaths = removedPaths,
+    )
+
+    fun commitSemanticGraphBatchIfGeneration(
+        expectedGeneration: SourceIndexGeneration,
+        updates: List<SemanticGraphFileStageUpdate>,
+        removals: List<SemanticGraphFileStageRemoval> = emptyList(),
+    ): SemanticGraphCommitResult = semanticGraphWriter.replaceSemanticGraphFilesIfGeneration(
+        expectedGeneration = expectedGeneration,
+        updates = updates.map(SemanticGraphFileStageUpdate::update),
+        removedPaths = removals.map(SemanticGraphFileStageRemoval::sourcePath),
+        commitStageState = { conn ->
+            fileStageBatches.commitSemanticStageStateInTransaction(conn, updates, removals)
+        },
     )
 
     fun readSemanticGraph(filePaths: Collection<SemanticGraphSourcePath>): SemanticGraphIndexSnapshot =
