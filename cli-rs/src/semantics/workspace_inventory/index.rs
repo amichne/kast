@@ -61,7 +61,7 @@ const REQUIRED_TABLE_COLUMNS: &[(&str, &[&str])] = &[
         "module_index_progress",
         &[
             "module_name",
-            "phase2_status",
+            "relationship_index_status",
             "indexed_file_count",
             "total_file_count",
         ],

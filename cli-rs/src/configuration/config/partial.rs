@@ -62,15 +62,20 @@ struct PartialCodexHooks {
 }
 
 #[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct PartialIndexing {
-    phase2_enabled: Option<bool>,
-    phase2_batch_size: Option<u32>,
-    phase2_parallelism: Option<u32>,
-    phase2_priority_depth: Option<u32>,
+    relationships: Option<PartialRelationshipIndexing>,
     identifier_index_wait_millis: Option<u64>,
-    reference_batch_size: Option<u32>,
     remote: Option<PartialRemoteIndex>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PartialRelationshipIndexing {
+    enabled: Option<bool>,
+    batch_size: Option<u32>,
+    parallelism: Option<u32>,
+    module_priority_depth: Option<u32>,
 }
 
 #[derive(Debug, Default, Deserialize)]

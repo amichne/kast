@@ -28,13 +28,16 @@ data class IdeaLaunchConfig(
 )
 
 data class IndexingConfig(
-    val phase2Enabled: IndexingPhase2Enabled,
-    val phase2BatchSize: IndexingPhase2BatchSize,
-    val phase2Parallelism: IndexingPhase2Parallelism,
-    val phase2PriorityDepth: IndexingPhase2PriorityDepth,
+    val relationships: RelationshipIndexingConfig,
     val identifierIndexWaitMillis: IndexingIdentifierIndexWaitMillis,
-    val referenceBatchSize: IndexingReferenceBatchSize,
     val remote: RemoteIndexConfig,
+)
+
+data class RelationshipIndexingConfig(
+    val enabled: RelationshipIndexingEnabled,
+    val batchSize: RelationshipIndexingBatchSize,
+    val parallelism: RelationshipIndexingParallelism,
+    val modulePriorityDepth: RelationshipIndexingModulePriorityDepth,
 )
 
 data class RemoteIndexConfig(
@@ -164,13 +167,16 @@ data class ServerConfigOverride(
 )
 
 data class IndexingConfigOverride(
-    val phase2Enabled: IndexingPhase2Enabled? = null,
-    val phase2BatchSize: IndexingPhase2BatchSize? = null,
-    val phase2Parallelism: IndexingPhase2Parallelism? = null,
-    val phase2PriorityDepth: IndexingPhase2PriorityDepth? = null,
+    val relationships: RelationshipIndexingConfigOverride? = null,
     val identifierIndexWaitMillis: IndexingIdentifierIndexWaitMillis? = null,
-    val referenceBatchSize: IndexingReferenceBatchSize? = null,
     val remote: RemoteIndexConfigOverride? = null,
+)
+
+data class RelationshipIndexingConfigOverride(
+    val enabled: RelationshipIndexingEnabled? = null,
+    val batchSize: RelationshipIndexingBatchSize? = null,
+    val parallelism: RelationshipIndexingParallelism? = null,
+    val modulePriorityDepth: RelationshipIndexingModulePriorityDepth? = null,
 )
 
 data class RemoteIndexConfigOverride(

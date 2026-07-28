@@ -30,6 +30,7 @@ private fun CodexHooksConfig.merge(override: CodexHooksConfigOverride?): CodexHo
 )
 
 internal fun KastConfigOverride.ideaWorkspaceOverride(): KastConfigOverride = KastConfigOverride(
+    server = server,
     runtime = runtime?.let {
         RuntimeConfigOverride(
             defaultBackend = it.defaultBackend,
@@ -37,6 +38,12 @@ internal fun KastConfigOverride.ideaWorkspaceOverride(): KastConfigOverride = Ka
         )
     },
     projectOpen = projectOpen,
+    indexing = indexing,
+    cache = cache,
+    watcher = watcher,
+    gradle = gradle,
+    telemetry = telemetry,
+    profiling = profiling,
     backends = BackendsConfigOverride(idea = backends?.idea).takeIf { it.idea != null },
 )
 
@@ -66,13 +73,18 @@ private fun IdeaLaunchConfig.merge(override: IdeaLaunchConfigOverride?): IdeaLau
 )
 
 private fun IndexingConfig.merge(override: IndexingConfigOverride?): IndexingConfig = copy(
-    phase2Enabled = override?.phase2Enabled ?: phase2Enabled,
-    phase2BatchSize = override?.phase2BatchSize ?: phase2BatchSize,
-    phase2Parallelism = override?.phase2Parallelism ?: phase2Parallelism,
-    phase2PriorityDepth = override?.phase2PriorityDepth ?: phase2PriorityDepth,
+    relationships = relationships.merge(override?.relationships),
     identifierIndexWaitMillis = override?.identifierIndexWaitMillis ?: identifierIndexWaitMillis,
-    referenceBatchSize = override?.referenceBatchSize ?: referenceBatchSize,
     remote = remote.merge(override?.remote),
+)
+
+private fun RelationshipIndexingConfig.merge(
+    override: RelationshipIndexingConfigOverride?,
+): RelationshipIndexingConfig = copy(
+    enabled = override?.enabled ?: enabled,
+    batchSize = override?.batchSize ?: batchSize,
+    parallelism = override?.parallelism ?: parallelism,
+    modulePriorityDepth = override?.modulePriorityDepth ?: modulePriorityDepth,
 )
 
 private fun RemoteIndexConfig.merge(override: RemoteIndexConfigOverride?): RemoteIndexConfig = copy(

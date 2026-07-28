@@ -43,16 +43,20 @@ mod tests {
     }
 
     #[test]
-    fn agent_commands_default_to_toon_even_in_an_interactive_terminal() {
-        let cli = Cli::try_parse_from(["kast", "agent"]).expect("parse agent home");
-
-        assert_eq!(
-            effective_output_format(None, cli.command.as_ref()),
-            OutputFormat::Toon
-        );
-        assert_eq!(
-            effective_output_format(Some(OutputFormat::Json), cli.command.as_ref()),
-            OutputFormat::Json
-        );
+    fn agent_facing_commands_default_to_toon_even_in_an_interactive_terminal() {
+        for args in [
+            vec!["kast", "agent"],
+            vec!["kast", "config", "list", "--workspace-root", "."],
+        ] {
+            let cli = Cli::try_parse_from(args).expect("parse agent-facing command");
+            assert_eq!(
+                effective_output_format(None, cli.command.as_ref()),
+                OutputFormat::Toon
+            );
+            assert_eq!(
+                effective_output_format(Some(OutputFormat::Json), cli.command.as_ref()),
+                OutputFormat::Json
+            );
+        }
     }
 }

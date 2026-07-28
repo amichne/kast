@@ -14,12 +14,13 @@ impl KastConfig {
             project_open: ProjectOpenConfig::default(),
             codex: CodexConfig::default(),
             indexing: IndexingConfig {
-                phase2_enabled: true,
-                phase2_batch_size: 50,
-                phase2_parallelism: 4,
-                phase2_priority_depth: 2,
+                relationships: RelationshipIndexingConfig {
+                    enabled: true,
+                    batch_size: 50,
+                    parallelism: 4,
+                    module_priority_depth: 2,
+                },
                 identifier_index_wait_millis: 10_000,
-                reference_batch_size: 50,
                 remote: RemoteIndexConfig {
                     enabled: false,
                     source_index_url: None,
@@ -175,23 +176,22 @@ impl KastConfig {
             }
         }
         if let Some(indexing) = partial.indexing {
-            if let Some(value) = indexing.phase2_enabled {
-                self.indexing.phase2_enabled = value;
-            }
-            if let Some(value) = indexing.phase2_batch_size {
-                self.indexing.phase2_batch_size = value;
-            }
-            if let Some(value) = indexing.phase2_parallelism {
-                self.indexing.phase2_parallelism = value;
-            }
-            if let Some(value) = indexing.phase2_priority_depth {
-                self.indexing.phase2_priority_depth = value;
+            if let Some(relationships) = indexing.relationships {
+                if let Some(value) = relationships.enabled {
+                    self.indexing.relationships.enabled = value;
+                }
+                if let Some(value) = relationships.batch_size {
+                    self.indexing.relationships.batch_size = value;
+                }
+                if let Some(value) = relationships.parallelism {
+                    self.indexing.relationships.parallelism = value;
+                }
+                if let Some(value) = relationships.module_priority_depth {
+                    self.indexing.relationships.module_priority_depth = value;
+                }
             }
             if let Some(value) = indexing.identifier_index_wait_millis {
                 self.indexing.identifier_index_wait_millis = value;
-            }
-            if let Some(value) = indexing.reference_batch_size {
-                self.indexing.reference_batch_size = value;
             }
             if let Some(remote) = indexing.remote {
                 if let Some(value) = remote.enabled {

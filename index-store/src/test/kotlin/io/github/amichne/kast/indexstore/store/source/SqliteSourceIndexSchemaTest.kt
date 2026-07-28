@@ -81,7 +81,7 @@ class SqliteSourceIndexSchemaTest {
     }
 
     @Test
-    fun `schema version mismatch triggers full rebuild`() {
+    fun `prior relationship schema name triggers full rebuild`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val cacheDir = kastCacheDirectory(normalized)
         Files.createDirectories(cacheDir)
@@ -90,7 +90,16 @@ class SqliteSourceIndexSchemaTest {
         DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
             conn.createStatement().use { stmt ->
                 stmt.execute("CREATE TABLE schema_version (version INTEGER NOT NULL, generation INTEGER NOT NULL DEFAULT 0)")
-                stmt.execute("INSERT INTO schema_version (version, generation) VALUES (999, 0)")
+                stmt.execute(
+                    "INSERT INTO schema_version (version, generation) " +
+                        "VALUES (${SOURCE_INDEX_SCHEMA_VERSION - 1}, 0)",
+                )
+                stmt.execute(
+                    """CREATE TABLE module_index_progress (
+                        module_name TEXT PRIMARY KEY,
+                        phase2_status TEXT NOT NULL
+                    )""",
+                )
             }
         }
 
@@ -104,6 +113,14 @@ class SqliteSourceIndexSchemaTest {
                 assertTrue(rs.next())
                 assertEquals(SOURCE_INDEX_SCHEMA_VERSION, rs.getInt(1))
             }
+            val columns = conn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery("PRAGMA table_info('module_index_progress')")
+                buildSet {
+                    while (rs.next()) add(rs.getString("name"))
+                }
+            }
+            assertTrue("relationship_index_status" in columns)
+            assertFalse("phase2_status" in columns)
         }
     }
 

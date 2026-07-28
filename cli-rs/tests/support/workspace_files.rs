@@ -98,7 +98,7 @@ impl WorkspaceIndexFixture {
         let connection = self.connection();
         connection
             .execute(
-                "INSERT OR REPLACE INTO module_index_progress(module_name, phase2_status, indexed_file_count, total_file_count, last_indexed_epoch_ms) VALUES (?, ?, ?, ?, 1)",
+                "INSERT OR REPLACE INTO module_index_progress(module_name, relationship_index_status, indexed_file_count, total_file_count, last_indexed_epoch_ms) VALUES (?, ?, ?, ?, 1)",
                 params![module_name, status, indexed_file_count, total_file_count],
             )
             .expect("module progress");
@@ -303,7 +303,8 @@ impl WorkspaceIndexFixture {
                 );
                 CREATE TABLE module_index_progress (
                     module_name TEXT PRIMARY KEY,
-                    phase2_status TEXT NOT NULL CHECK(phase2_status IN ('PENDING','INDEXING','COMPLETE','FAILED')),
+                    relationship_index_status TEXT NOT NULL
+                        CHECK(relationship_index_status IN ('PENDING','INDEXING','COMPLETE','FAILED')),
                     indexed_file_count INTEGER NOT NULL,
                     total_file_count INTEGER NOT NULL,
                     last_indexed_epoch_ms INTEGER

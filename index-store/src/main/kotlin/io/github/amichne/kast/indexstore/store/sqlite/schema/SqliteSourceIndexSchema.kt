@@ -80,6 +80,9 @@ internal class SqliteSourceIndexSchema(
                 "project_path" to true,
                 "source_set_name" to true,
             ),
+            "module_index_progress" to mapOf(
+                "relationship_index_status" to true,
+            ),
             "semantic_files" to mapOf(
                 "id" to false,
                 "path" to true,

@@ -32,7 +32,7 @@ class ReferenceIndexer(
         require(parallelism > 0) { "Parallelism must be positive" }
     }
 
-    fun indexReferences(
+    fun indexSymbolRelationships(
         filePaths: Collection<String>,
         referenceScanner: (String) -> List<SymbolReferenceRow>,
         declarationScanner: ((String) -> List<DeclarationRow>)? = null,
@@ -51,12 +51,18 @@ class ReferenceIndexer(
                 }
                 if (isCancelled()) break
 
-                store.replaceReferencesFromFiles(referenceResults)
+                val referencePaths = referenceResults.mapTo(mutableSetOf()) { it.first }
+                val declarationPaths = declarationResults?.mapTo(mutableSetOf()) { it.first }
+                val successfulPaths = batch.filter { path ->
+                    path in referencePaths &&
+                        (declarationPaths == null || path in declarationPaths)
+                }
+                store.replaceReferencesFromFiles(referenceResults.filter { it.first in successfulPaths })
                 if (declarationResults != null) {
-                    store.replaceDeclarationsFromFiles(declarationResults)
+                    store.replaceDeclarationsFromFiles(declarationResults.filter { it.first in successfulPaths })
                 }
                 if (isCancelled()) break
-                onFilesIndexed(batch)
+                onFilesIndexed(successfulPaths)
             }
         } finally {
             executor?.shutdownNow()
@@ -70,7 +76,7 @@ class ReferenceIndexer(
         isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
         onFilesIndexed: (Collection<String>) -> Unit = {},
     ) {
-        indexReferences(
+        indexSymbolRelationships(
             filePaths = changedPaths,
             referenceScanner = referenceScanner,
             declarationScanner = declarationScanner,

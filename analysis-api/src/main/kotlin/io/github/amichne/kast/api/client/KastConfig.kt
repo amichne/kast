@@ -73,12 +73,13 @@ data class KastConfig(
                     ),
                 ),
                 indexing = IndexingConfig(
-                    phase2Enabled = IndexingPhase2Enabled(true),
-                    phase2BatchSize = IndexingPhase2BatchSize(50),
-                    phase2Parallelism = IndexingPhase2Parallelism(4),
-                    phase2PriorityDepth = IndexingPhase2PriorityDepth(2),
+                    relationships = RelationshipIndexingConfig(
+                        enabled = RelationshipIndexingEnabled(true),
+                        batchSize = RelationshipIndexingBatchSize(50),
+                        parallelism = RelationshipIndexingParallelism(4),
+                        modulePriorityDepth = RelationshipIndexingModulePriorityDepth(2),
+                    ),
                     identifierIndexWaitMillis = IndexingIdentifierIndexWaitMillis(10_000L),
-                    referenceBatchSize = IndexingReferenceBatchSize(50),
                     remote = RemoteIndexConfig(
                         enabled = IndexingRemoteEnabled(false),
                         sourceIndexUrl = IndexingRemoteSourceIndexUrl(OptionalConfigString.Unset),

@@ -135,23 +135,38 @@ private fun Map<String, String>.serverOverride(): ServerConfigOverride? {
 }
 
 private fun Map<String, String>.indexingOverride(): IndexingConfigOverride? {
-    val phase2Enabled = booleanValue("indexing.phase2enabled")?.let(::IndexingPhase2Enabled)
-    val phase2BatchSize = intValue("indexing.phase2batchsize")?.let(::IndexingPhase2BatchSize)
-    val phase2Parallelism = intValue("indexing.phase2parallelism")?.let(::IndexingPhase2Parallelism)
-    val phase2PriorityDepth = intValue("indexing.phase2prioritydepth")?.let(::IndexingPhase2PriorityDepth)
+    removedIndexingKeys.entries
+        .firstOrNull { (removed, _) -> containsKey(removed) }
+        ?.let { (removed, replacement) ->
+            throw IllegalArgumentException("Configuration field $removed was removed; use $replacement")
+        }
+    val relationshipIndexing = relationshipIndexingOverride()
     val identifierIndexWaitMillis = longValue("indexing.identifierindexwaitmillis")?.let(::IndexingIdentifierIndexWaitMillis)
-    val referenceBatchSize = intValue("indexing.referencebatchsize")?.let(::IndexingReferenceBatchSize)
     val remote = remoteIndexOverride()
-    return takeIfAny(phase2Enabled, phase2BatchSize, phase2Parallelism, phase2PriorityDepth, identifierIndexWaitMillis, referenceBatchSize, remote) {
+    return takeIfAny(relationshipIndexing, identifierIndexWaitMillis, remote) {
         IndexingConfigOverride(
-            phase2Enabled = phase2Enabled,
-            phase2BatchSize = phase2BatchSize,
-            phase2Parallelism = phase2Parallelism,
-            phase2PriorityDepth = phase2PriorityDepth,
+            relationships = relationshipIndexing,
             identifierIndexWaitMillis = identifierIndexWaitMillis,
-            referenceBatchSize = referenceBatchSize,
             remote = remote,
         )
+    }
+}
+
+private val removedIndexingKeys = mapOf(
+    "indexing.phase2enabled" to "indexing.relationships.enabled",
+    "indexing.phase2batchsize" to "indexing.relationships.batchSize",
+    "indexing.phase2parallelism" to "indexing.relationships.parallelism",
+    "indexing.phase2prioritydepth" to "indexing.relationships.modulePriorityDepth",
+)
+
+private fun Map<String, String>.relationshipIndexingOverride(): RelationshipIndexingConfigOverride? {
+    val enabled = booleanValue("indexing.relationships.enabled")?.let(::RelationshipIndexingEnabled)
+    val batchSize = intValue("indexing.relationships.batchsize")?.let(::RelationshipIndexingBatchSize)
+    val parallelism = intValue("indexing.relationships.parallelism")?.let(::RelationshipIndexingParallelism)
+    val modulePriorityDepth =
+        intValue("indexing.relationships.moduleprioritydepth")?.let(::RelationshipIndexingModulePriorityDepth)
+    return takeIfAny(enabled, batchSize, parallelism, modulePriorityDepth) {
+        RelationshipIndexingConfigOverride(enabled, batchSize, parallelism, modulePriorityDepth)
     }
 }
 

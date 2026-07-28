@@ -23,6 +23,7 @@ tar = "0.4"
 thiserror = "2.0"
 toon-format = { version = "0.5.0", default-features = false }
 toml = "1.1"
+toml_edit = "0.22"
 uuid = { version = "1.18", features = ["serde", "v4"] }
 zip = { version = "6.0", default-features = false, features = ["deflate"] }
 jsonschema = { version = "0.46.5", default-features = false }
@@ -90,6 +91,10 @@ path = "tests/runtime/workspace_lease/main.rs"
 [[test]]
 name = "cli_core_smoke"
 path = "tests/surface/cli_core.rs"
+
+[[test]]
+name = "config_cli"
+path = "tests/surface/config_cli.rs"
 
 [[test]]
 name = "demo_smoke"

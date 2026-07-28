@@ -2,11 +2,8 @@
 #[serde(rename_all = "camelCase")]
 pub struct KastConfig {
     pub server: ServerConfig,
-    #[serde(skip_serializing_if = "RuntimeConfig::is_default")]
     pub runtime: RuntimeConfig,
-    #[serde(skip_serializing_if = "ProjectOpenConfig::is_default")]
     pub project_open: ProjectOpenConfig,
-    #[serde(skip_serializing_if = "CodexConfig::is_default")]
     pub codex: CodexConfig,
     pub indexing: IndexingConfig,
     pub cache: CacheConfig,
@@ -30,18 +27,9 @@ pub struct ServerConfig {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RuntimeConfig {
-    #[serde(skip_serializing_if = "RuntimeDefaultBackend::is_auto")]
     pub default_backend: RuntimeDefaultBackend,
-    #[serde(skip_serializing_if = "is_true")]
     pub strict_plugin_matching: bool,
-    #[serde(skip_serializing_if = "IdeaLaunchConfig::is_default")]
     pub idea_launch: IdeaLaunchConfig,
-}
-
-impl RuntimeConfig {
-    fn is_default(&self) -> bool {
-        self.default_backend.is_auto() && self.strict_plugin_matching && self.idea_launch.is_default()
-    }
 }
 
 impl Default for RuntimeConfig {
@@ -52,10 +40,6 @@ impl Default for RuntimeConfig {
             idea_launch: IdeaLaunchConfig::default(),
         }
     }
-}
-
-fn is_true(value: &bool) -> bool {
-    *value
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -74,10 +58,6 @@ impl RuntimeDefaultBackend {
             Self::Headless => Some(BackendName::Headless),
         }
     }
-
-    fn is_auto(&self) -> bool {
-        matches!(self, Self::Auto)
-    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -86,14 +66,6 @@ pub struct IdeaLaunchConfig {
     pub enabled: bool,
     pub command: PathBuf,
     pub wait_timeout_millis: NonZeroU64,
-}
-
-impl IdeaLaunchConfig {
-    fn is_default(&self) -> bool {
-        !self.enabled
-            && self.command.as_path() == Path::new("idea")
-            && self.wait_timeout_millis.get() == 90_000
-    }
 }
 
 impl Default for IdeaLaunchConfig {
@@ -115,15 +87,6 @@ pub struct ProjectOpenConfig {
     pub gradle_load_enabled: bool,
 }
 
-impl ProjectOpenConfig {
-    fn is_default(&self) -> bool {
-        self.profile_auto_init
-            && self.profile == ProjectOpenProfile::JetbrainsPlugin
-            && self.auto_exclude_git
-            && self.gradle_load_enabled
-    }
-}
-
 impl Default for ProjectOpenConfig {
     fn default() -> Self {
         Self {
@@ -137,14 +100,7 @@ impl Default for ProjectOpenConfig {
 
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct CodexConfig {
-    #[serde(skip_serializing_if = "CodexHooksConfig::is_default")]
     pub hooks: CodexHooksConfig,
-}
-
-impl CodexConfig {
-    fn is_default(&self) -> bool {
-        self.hooks.is_default()
-    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -153,12 +109,6 @@ pub struct CodexHooksConfig {
     pub enabled: bool,
     pub session_start: bool,
     pub post_tool_use: bool,
-}
-
-impl CodexHooksConfig {
-    fn is_default(&self) -> bool {
-        self.enabled && self.session_start && self.post_tool_use
-    }
 }
 
 impl Default for CodexHooksConfig {
@@ -180,13 +130,18 @@ pub enum ProjectOpenProfile {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexingConfig {
-    pub phase2_enabled: bool,
-    pub phase2_batch_size: u32,
-    pub phase2_parallelism: u32,
-    pub phase2_priority_depth: u32,
+    pub relationships: RelationshipIndexingConfig,
     pub identifier_index_wait_millis: u64,
-    pub reference_batch_size: u32,
     pub remote: RemoteIndexConfig,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RelationshipIndexingConfig {
+    pub enabled: bool,
+    pub batch_size: u32,
+    pub parallelism: u32,
+    pub module_priority_depth: u32,
 }
 
 #[derive(Debug, Clone, Serialize)]

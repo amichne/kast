@@ -177,7 +177,7 @@ internal class SourceIndexInventoryStore(
                 conn.createStatement().use { stmt -> stmt.execute("DELETE FROM module_index_progress") }
                 conn.prepareStatement(
                     """INSERT INTO module_index_progress
-                       (module_name, phase2_status, indexed_file_count, total_file_count, last_indexed_epoch_ms)
+                       (module_name, relationship_index_status, indexed_file_count, total_file_count, last_indexed_epoch_ms)
                        VALUES (?, 'PENDING', 0, ?, NULL)""",
                 ).use { stmt ->
                     modules.toSortedMap().forEach { (moduleName, totalFileCount) ->
@@ -201,8 +201,8 @@ internal class SourceIndexInventoryStore(
         synchronized(state.writeLock) {
             state.connection().prepareStatement(
                 """UPDATE module_index_progress
-                   SET phase2_status = 'INDEXING'
-                   WHERE module_name = ? AND phase2_status != 'COMPLETE'""",
+                   SET relationship_index_status = 'INDEXING'
+                   WHERE module_name = ? AND relationship_index_status != 'COMPLETE'""",
             ).use { stmt ->
                 stmt.setString(1, moduleName)
                 stmt.executeUpdate()
@@ -214,7 +214,7 @@ internal class SourceIndexInventoryStore(
         synchronized(state.writeLock) {
             state.connection().prepareStatement(
                 """UPDATE module_index_progress
-                   SET phase2_status = 'COMPLETE',
+                   SET relationship_index_status = 'COMPLETE',
                        indexed_file_count = ?,
                        last_indexed_epoch_ms = ?
                    WHERE module_name = ?""",
@@ -230,7 +230,7 @@ internal class SourceIndexInventoryStore(
     fun moduleIndexStatus(moduleName: String): String? =
         synchronized(state.writeLock) {
             state.connection().prepareStatement(
-                "SELECT phase2_status FROM module_index_progress WHERE module_name = ?",
+                "SELECT relationship_index_status FROM module_index_progress WHERE module_name = ?",
             ).use { stmt ->
                 stmt.setString(1, moduleName)
                 val rs = stmt.executeQuery()
@@ -242,7 +242,7 @@ internal class SourceIndexInventoryStore(
         synchronized(state.writeLock) {
             state.connection().createStatement().use { stmt ->
                 val rs = stmt.executeQuery(
-                    "SELECT module_name FROM module_index_progress WHERE phase2_status = 'COMPLETE'",
+                    "SELECT module_name FROM module_index_progress WHERE relationship_index_status = 'COMPLETE'",
                 )
                 buildSet {
                     while (rs.next()) {

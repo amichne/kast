@@ -37,6 +37,8 @@ pub enum Command {
     Version,
     /// Print compact workspace context for agents.
     Context(RuntimeArgs),
+    /// Inspect or update workspace-scoped Kast configuration.
+    Config(ConfigArgs),
     /// Install or refresh one verified Kast release.
     Setup(SetupArgs),
     /// Verify that Kast is ready for a task.

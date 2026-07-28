@@ -34,19 +34,19 @@ internal class IdeaProjectIndexer(
     fun indexProject(config: KastConfig) {
         store.ensureSchema()
         val currentFilePaths = indexSourceIdentifiers()
-        if (config.indexing.phase2Enabled.value && !environment.isCancelled()) {
+        if (config.indexing.relationships.enabled.value && !environment.isCancelled()) {
             val moduleSpecs = runIdeaReadAction { discoverModuleSpecs() }
             val modulePriorityOrder = computeModulePriorityOrder(
                 activeModule = null,
                 moduleSpecs = moduleSpecs,
                 dependentModuleGraph = buildIdeaDependencyGraph(moduleSpecs),
-                depth = config.indexing.phase2PriorityDepth.value,
+                depth = config.indexing.relationships.modulePriorityDepth.value,
             )
-            indexReferences(
+            indexSymbolRelationships(
                 currentFilePaths = currentFilePaths,
                 moduleOrder = modulePriorityOrder,
-                batchSize = config.indexing.phase2BatchSize.value,
-                parallelism = config.indexing.phase2Parallelism.value,
+                batchSize = config.indexing.relationships.batchSize.value,
+                parallelism = config.indexing.relationships.parallelism.value,
             )
         }
     }
@@ -75,7 +75,7 @@ internal class IdeaProjectIndexer(
         return manifest.keys
     }
 
-    private fun indexReferences(
+    private fun indexSymbolRelationships(
         currentFilePaths: Collection<String>,
         moduleOrder: List<String>,
         batchSize: Int,
@@ -118,7 +118,11 @@ internal class IdeaProjectIndexer(
                 environment.findPsiFile(path)?.let(::moduleNameForFile)
             },
         )
-        ReferenceIndexer(store, batchSize = batchSize, parallelism = parallelism).indexReferences(
+        ReferenceIndexer(
+            store = store,
+            batchSize = batchSize,
+            parallelism = parallelism,
+        ).indexSymbolRelationships(
             filePaths = orderedFilePaths,
             referenceScanner = scanner::scanFileReferences,
             declarationScanner = scanner::scanFileDeclarations,

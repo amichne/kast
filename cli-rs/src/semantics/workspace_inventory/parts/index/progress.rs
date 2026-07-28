@@ -41,7 +41,7 @@ fn read_module_progress(
 ) -> Result<(BTreeSet<SourceIndexModuleProgress>, usize), ReadDatabaseError> {
     let mut statement = transaction
         .prepare(
-            "SELECT module_name, phase2_status, indexed_file_count, total_file_count FROM module_index_progress ORDER BY module_name",
+            "SELECT module_name, relationship_index_status, indexed_file_count, total_file_count FROM module_index_progress ORDER BY module_name",
         )
         .map_err(incompatible_sql)?;
     let mut rows = statement.query([]).map_err(incompatible_sql)?;

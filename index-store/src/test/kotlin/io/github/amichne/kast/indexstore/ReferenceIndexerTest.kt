@@ -24,7 +24,7 @@ class ReferenceIndexerTest {
     fun `populates symbol references from scanner output`() {
         val filePath = "/src/Greeter.kt"
         storeWithManifest(filePath).use { store ->
-            ReferenceIndexer(store).indexReferences(listOf(filePath), referenceScanner = { path ->
+            ReferenceIndexer(store).indexSymbolRelationships(listOf(filePath), referenceScanner = { path ->
                 listOf(
                     SymbolReferenceRow(
                         sourcePath = path,
@@ -48,7 +48,7 @@ class ReferenceIndexerTest {
         val filePath = "/src/Greeter.kt"
         val root = workspaceRoot.toAbsolutePath().normalize()
         storeWithManifest(filePath).use { store ->
-            ReferenceIndexer(store).indexReferences(
+            ReferenceIndexer(store).indexSymbolRelationships(
                 filePaths = listOf(filePath),
                 referenceScanner = { emptyList() },
                 declarationScanner = { path ->
@@ -100,7 +100,7 @@ class ReferenceIndexerTest {
                 targetOffset = 0,
             )
 
-            ReferenceIndexer(store).indexReferences(listOf(filePath), referenceScanner = { path ->
+            ReferenceIndexer(store).indexSymbolRelationships(listOf(filePath), referenceScanner = { path ->
                 listOf(
                     SymbolReferenceRow(
                         sourcePath = path,
@@ -118,28 +118,37 @@ class ReferenceIndexerTest {
     }
 
     @Test
-    fun `survives scanner exception for one file without aborting batch`() {
+    fun `excludes one declaration scan dropout without aborting batch`() {
         val filePaths = (0 until 5).map { i -> "/src/File$i.kt" }
         val failingPath = filePaths[2]
+        val indexedPaths = mutableListOf<String>()
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store).indexReferences(filePaths, referenceScanner = { path ->
-                if (path == failingPath) {
-                    throw RuntimeException("Simulated scanner failure")
-                }
-                listOf(
-                    SymbolReferenceRow(
-                        sourcePath = path,
-                        sourceOffset = 0,
-                        targetFqName = "sample.target",
-                        targetPath = null,
-                        targetOffset = null,
-                    ),
-                )
-            })
+            ReferenceIndexer(store).indexSymbolRelationships(
+                filePaths,
+                referenceScanner = { path ->
+                    listOf(
+                        SymbolReferenceRow(
+                            sourcePath = path,
+                            sourceOffset = 0,
+                            targetFqName = "sample.target",
+                            targetPath = null,
+                            targetOffset = null,
+                        ),
+                    )
+                },
+                declarationScanner = { path ->
+                    if (path == failingPath) {
+                        throw RuntimeException("Simulated scanner failure")
+                    }
+                    emptyList()
+                },
+                onFilesIndexed = indexedPaths::addAll,
+            )
 
             val refs = store.referencesToSymbol("sample.target")
             assertEquals(4, refs.size)
             assertTrue(refs.none { it.sourcePath == failingPath })
+            assertEquals(filePaths - failingPath, indexedPaths)
         }
     }
 
@@ -148,7 +157,7 @@ class ReferenceIndexerTest {
         val filePaths = listOf("/src/File0.kt", "/src/File1.kt")
         var scans = 0
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store, batchSize = 2).indexReferences(
+            ReferenceIndexer(store, batchSize = 2).indexSymbolRelationships(
                 filePaths = filePaths,
                 referenceScanner = { path ->
                     scans += 1
@@ -174,7 +183,7 @@ class ReferenceIndexerTest {
         val filePath = "/src/File.kt"
         storeWithManifest(filePath).use { store ->
             assertThrows(CancellationException::class.java) {
-                ReferenceIndexer(store).indexReferences(listOf(filePath), referenceScanner = {
+                ReferenceIndexer(store).indexSymbolRelationships(listOf(filePath), referenceScanner = {
                     throw CancellationException("cancelled")
                 })
             }
@@ -185,7 +194,7 @@ class ReferenceIndexerTest {
     fun `reindexFiles replaces references for changed paths only`() {
         val filePaths = listOf("/src/A.kt", "/src/B.kt")
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store).indexReferences(filePaths, referenceScanner = { path ->
+            ReferenceIndexer(store).indexSymbolRelationships(filePaths, referenceScanner = { path ->
                 listOf(
                     SymbolReferenceRow(
                         sourcePath = path,
