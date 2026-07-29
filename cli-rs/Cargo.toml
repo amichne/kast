@@ -65,6 +65,10 @@ name = "kagent_surface"
 path = "tests/kagent_surface.rs"
 
 [[test]]
+name = "kagent_resources"
+path = "tests/kagent_resources.rs"
+
+[[test]]
 name = "agent_result_projection_smoke"
 path = "tests/agent/result_projection/main.rs"
 
