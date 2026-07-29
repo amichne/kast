@@ -1,0 +1,217 @@
+views {
+  dynamic view runtime-admission {
+    title "Exact-root runtime admission"
+    description "Reachability may return INDEXING; semantic commands still wait for READY."
+
+    developer -> kast.cli "requests runtime status"
+    kast.cli -> kast.control "resolves the canonical workspace"
+
+    alt {
+      when "compatible exact-root IDEA host exists" {
+        kast.control -> ideaPlatform "reuses or opens the project"
+      }
+      else "supported headless host" {
+        kast.control -> kast.backend.headless "starts packaged runtime"
+        kast.backend.headless -> kast.backend.idea "boots shared backend"
+      }
+    }
+
+    kast.control -> workspaceState "persists an owned descriptor"
+    developer <- kast.cli "returns typed INDEXING or READY evidence"
+
+    style kast.control {
+      color amber
+    }
+  }
+
+  dynamic view compiler-read {
+    variant sequence
+    title "Compiler-backed read"
+    description "A bounded agent request crosses the local RPC boundary and returns data with explicit coverage."
+
+    developer -> kast.cli "kast agent symbol"
+    kast.cli -> kast.agent "normalizes the command"
+    kast.agent -> kast.rpcClient "opens exact-root request" {
+      navigateTo runtime-admission
+      notes """
+        The CLI validates the command catalog and preserves the selected
+        workspace, backend, limits, and output contract.
+      """
+    }
+    kast.rpcClient -> kast.server.dispatcher "sends JSON-RPC"
+    kast.server.dispatcher -> kast.server.router "validates and dispatches"
+    kast.server.router -> kast.server.orchestrator "routes semantic read"
+    kast.server.orchestrator -> kast.backend.api "calls typed backend"
+    kast.backend.api -> kast.backend.idea "selects compiler implementation"
+
+    parallel {
+      kast.backend.idea -> kotlinCompiler "resolves PSI and K2 semantics"
+      kast.backend.idea -> kast.evidence.index "reads indexed graph facts"
+    }
+
+    kast.backend.idea <- kotlinCompiler "compiler identity and diagnostics"
+    kast.backend.idea <- kast.evidence.index "rows plus generation and coverage"
+    kast.backend.api <- kast.backend.idea "typed backend result"
+    kast.server.orchestrator <- kast.backend.api "semantic response"
+    kast.server.orchestrator -> kast.evidence.projection "adds limitations and next actions"
+    kast.cli <- kast.evidence.projection "projects human, TOON, or JSON"
+    developer <- kast.cli "receives proof-carrying evidence"
+  }
+
+  dynamic view semantic-mutation {
+    variant sequence
+    title "Semantic mutation"
+    description "A mutation resolves exact identity, applies through the compiler host, and returns terminal validation evidence."
+
+    developer -> kast.cli "requests a typed mutation"
+    kast.cli -> kast.agent "checks exact-root admission"
+    kast.agent -> kast.rpcClient "opens reusable RPC session"
+    kast.rpcClient -> kast.server.dispatcher "sends validated request"
+    kast.server.dispatcher -> kast.server.router "dispatches"
+    kast.server.router -> kast.server.mutation "routes mutation"
+
+    try "plan and apply" {
+      kast.server.mutation -> kast.server.orchestrator "resolves selector identity"
+      kast.server.orchestrator -> kast.backend.api "requests semantic operation"
+      kast.backend.api -> kast.backend.idea "applies in write action"
+      kast.backend.idea -> kotlinCompiler "updates PSI and optimizes imports"
+      kast.backend.idea <- kotlinCompiler "returns compiler diagnostics"
+      kast.server.orchestrator <- kast.backend.api "returns apply evidence"
+    } catch "typed failure" {
+      kast.server.mutation -> kast.evidence.projection "preserves stale identity, capability, or validation failure"
+    } finally "refresh live IDEA evidence" {
+      kast.backend.idea -> kast.backend.ideaRefresh "awaits VFS, Kotlin index, PSI, and compiler admission"
+      kast.backend.ideaRefresh -> kast.backend.ideaDiagnostics "validates focused compiler diagnostics"
+    }
+
+    kast.server.mutation -> kast.evidence.projection "returns terminal result"
+    kast.cli <- kast.evidence.projection "projects apply and diagnostics evidence"
+    developer <- kast.cli "receives success or typed failure"
+  }
+
+  dynamic view reference-indexing {
+    variant sequence
+    title "Indexing / Project-open reference build"
+    description "The production full-index trigger builds inventory first, then scans dependency-prioritized reference batches before publishing READY."
+
+    kast.control -> ideaPlatform.gradleModel "opens or reuses the exact-root Gradle project"
+    ideaPlatform.gradleModel -> kast.indexing.projectOpen "completes Gradle link or refresh"
+    kast.indexing.projectOpen -> ideaPlatform.smartMode "waits for IntelliJ indexes"
+    ideaPlatform.smartMode -> kast.backend.ideaAdmission "admits modules, classpaths, PSI, and compiler diagnostics"
+
+    opt "compatible repository snapshot exists" {
+      kast.indexing.snapshotCoordinator -> kast.evidence.index.snapshots "selects immutable base plus worktree overlay"
+      kast.evidence.index.snapshots -> kast.evidence.index.writer "hydrates compatible retained state"
+    }
+
+    kast.backend.ideaAdmission -> kast.indexing.projectIndexer "starts full indexing"
+    kast.indexing.projectIndexer -> kast.indexing.sourceScanner "phase 1: discover Kotlin files and identifiers"
+    kast.indexing.sourceScanner -> ideaPlatform.vfs "reads eligible paths"
+    kast.indexing.sourceScanner -> kotlinCompiler.psi "extracts text, imports, packages, and Gradle ownership"
+    kast.indexing.sourceScanner -> kast.evidence.index.writer "saveFullIndex replaces inventory and manifest"
+    kast.evidence.index.writer -> kast.evidence.index.inventory "commits complete inventory"
+
+    kast.indexing.projectIndexer -> kast.indexing.referenceIndexer "phase 2: order modules by dependencies"
+    loop "each module in lazy, bounded batches" {
+      parallel {
+        kast.indexing.referenceIndexer -> kast.indexing.referenceScanner "scan typed reference occurrences"
+        kast.indexing.referenceIndexer -> kast.indexing.declarationScanner "scan declarations and supertypes"
+      }
+      kast.indexing.referenceScanner -> kotlinCompiler.psi "resolve KtNamedDeclaration targets"
+      kast.indexing.declarationScanner -> kotlinCompiler.psi "extract canonical declarations"
+      kast.indexing.referenceIndexer -> kast.evidence.index.writer "serialize the successful batch"
+      kast.evidence.index.writer -> kast.evidence.index.relationships "replace references and declarations"
+      kast.evidence.index.writer -> kast.evidence.index.moduleProgress "advance PENDING → INDEXING → COMPLETE"
+    }
+
+    kast.indexing.projectIndexer -> kast.indexing.refreshStatus "publishes referenceIndexReady and retained generation"
+    kast.indexing.snapshotCoordinator <- kast.indexing.projectIndexer "publishes only a stable, complete main index"
+  }
+
+  dynamic view sqlite-pipeline {
+    variant sequence
+    title "SQLite / Write, retain, and invalidate"
+    description "Compiler scans stay outside transactions; one write lock serializes retained products and generation-bound reads."
+
+    parallel {
+      kast.indexing.sourceScanner -> kast.evidence.index.writer "submit full inventory replacement"
+      kast.indexing.referenceIndexer -> kast.evidence.index.writer "submit successful reference batch"
+      kast.indexing.graphWriter -> kast.evidence.index.writer "submit atomic semantic-file replacement"
+    }
+
+    kast.evidence.index.writer -> kast.evidence.index.interning "encode path prefixes and FQNs"
+    kast.evidence.index.interning -> kast.evidence.index.generation "check PRAGMA main.data_version"
+    alt {
+      when "another connection committed" {
+        kast.evidence.index.generation -> kast.evidence.index.interning "invalidate and reload codec caches"
+      }
+      else "cache version is current" {
+        kast.evidence.index.interning -> kast.evidence.index.writer "reuse hydrated codecs"
+      }
+    }
+
+    parallel {
+      kast.evidence.index.writer -> kast.evidence.index.inventory "retain identifiers, imports, hashes, and ownership"
+      kast.evidence.index.writer -> kast.evidence.index.relationships "retain declarations and reference occurrences"
+      kast.evidence.index.writer -> kast.evidence.index.moduleProgress "retain per-module completion"
+      kast.evidence.index.writer -> kast.evidence.index.semanticGraph "retain semantic_files, symbols, types, and edges"
+    }
+    kast.evidence.index.writer -> kast.evidence.index.generation "commit and advance generation"
+
+    kast.indexing.snapshotCoordinator -> kast.evidence.index.snapshots "publish stable complete main indexes"
+    kast.indexing.referenceLookup -> kast.evidence.index.relationships "query exact FQN, target path, and declaration offset"
+    kast.indexing.referenceLookup -> kast.evidence.index.generation "bind continuation to the retained generation"
+    kast.indexing.referenceLookup -> kotlinCompiler.psi "rehydrate rows or use bounded live fallback"
+    kast.indexing.referenceLookup -> kast.evidence.projection "return data and explicit coverage"
+  }
+
+  dynamic view refresh-lifecycle {
+    variant sequence
+    title "Refresh / Trigger routing and retention"
+    description "Focused IDEA admission, no-path VFS refresh, full reference indexing, and explicit semantic graph refresh are different operations."
+
+    developer -> kast.cli "changes Kotlin source or requests semantic evidence"
+    alt {
+      when "successful Kotlin write through Codex PostToolUse" {
+        codexHooks -> kast.cli "runs kast agent diagnostics"
+        kast.cli -> kast.agent "requires exact-root READY"
+        kast.agent -> kast.rpcClient "sends raw/workspace-refresh for touched paths"
+        kast.rpcClient -> kast.server.dispatcher "opens the focused request"
+        kast.server.dispatcher -> kast.server.router "routes refresh"
+        kast.server.router -> kast.server.orchestrator "calls the backend"
+        kast.server.orchestrator -> kast.backend.api "requests focused admission"
+        kast.backend.api -> kast.backend.ideaRefresh "refreshes each selected path"
+        kast.backend.ideaRefresh -> ideaPlatform.vfs "refreshes the file or removed-file parent"
+        kast.backend.ideaRefresh -> ideaPlatform.kotlinIndex "proves Kotlin indexing"
+        kast.backend.ideaRefresh -> kotlinCompiler.psi "proves KtFile availability"
+        kast.backend.ideaRefresh -> kotlinCompiler.analysisApi "proves K2 diagnostics"
+        kast.backend.api -> kast.backend.ideaDiagnostics "runs raw/diagnostics"
+        kast.backend.ideaDiagnostics -> kast.indexing.refreshStatus "returns PSI generation, content hash, and diagnostics"
+      }
+      when "workspace refresh has no paths" {
+        kast.cli -> kast.rpcClient "sends raw/workspace-refresh"
+        kast.rpcClient -> kast.backend.ideaRefresh "requests full VFS refresh"
+        kast.backend.ideaRefresh -> ideaPlatform.vfs "schedules asyncRefresh only"
+        kast.backend.ideaRefresh -> kast.indexing.refreshStatus "acknowledges without per-file completeness"
+      }
+      else "explicit kast agent graph --operation refresh" {
+        kast.cli -> kast.agent "expands file, module, or source-set scope"
+        kast.agent -> kast.rpcClient "sends raw/semantic-graph"
+        kast.rpcClient -> kast.server.dispatcher "opens the scoped request"
+        kast.server.dispatcher -> kast.server.router "routes semantic graph extraction"
+        kast.server.router -> kast.server.orchestrator "calls the backend"
+        kast.server.orchestrator -> kast.backend.api "requires analyzed diagnostics"
+        kast.backend.api -> kast.indexing.graphExtractor "extracts selected compiler facts"
+        kast.indexing.graphExtractor -> kotlinCompiler.analysisApi "resolves symbols, types, calls, and ownership"
+        kast.indexing.graphExtractor -> kast.indexing.graphWriter "passes provider-neutral facts"
+        kast.indexing.graphWriter -> kast.evidence.index.writer "atomically replace selected files and removals"
+        kast.evidence.index.writer -> kast.evidence.index.semanticGraph "retain semantic graph facts"
+        kast.evidence.index.writer -> kast.evidence.index.generation "advance the shared generation"
+        kast.indexing.graphExtractor -> kast.indexing.refreshStatus "returns per-file coverage, omissions, symbols, and edges"
+      }
+    }
+
+    kast.cli <- kast.indexing.refreshStatus "projects typed refresh evidence"
+    developer <- kast.cli "sees readiness, coverage, or a typed limitation"
+  }
+}

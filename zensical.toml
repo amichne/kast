@@ -28,8 +28,12 @@ nav = [
     { "Repository intelligence" = "explanation/repository-intelligence.md" },
     { "Compiler-backed evidence" = "explanation/compiler-evidence.md" },
   ] },
+  { "More documentation" = "internal/system-flow.md" },
 ]
 
+[[project.extra_javascript]]
+path = "architecture/likec4-views.mjs"
+type = "module"
 [project.markdown_extensions.admonition]
 [project.markdown_extensions.pymdownx.details]
 [project.markdown_extensions.pymdownx.superfences]
@@ -83,3 +87,13 @@ toggle.name = "Switch to dark mode"
 scheme = "slate"
 toggle.icon = "lucide/moon"
 toggle.name = "Switch to light mode"
+
+[project.validation]
+invalid_links = true
+invalid_link_anchors = true
+unresolved_references = false
+unresolved_footnotes = false
+unused_definitions = false
+unused_footnotes = false
+shadowed_definitions = false
+shadowed_footnotes = false

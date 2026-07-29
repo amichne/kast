@@ -33,6 +33,7 @@ expected = [
             "explanation/compiler-evidence.md",
         ],
     ),
+    ("More documentation", ["internal/system-flow.md"]),
 ]
 
 actual = []

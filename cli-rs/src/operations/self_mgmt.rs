@@ -264,7 +264,13 @@ fn apply_ready_target_checks(
             }
         }
         ReadyTarget::Kotlin => {
-            if install.is_none_or(|install| install.backends.is_empty()) {
+            if install.is_none_or(|install| {
+                install.backends.is_empty()
+                    && !install
+                        .components
+                        .iter()
+                        .any(|component| component == "idea-plugin")
+            }) {
                 issues.push(
                     "Kotlin readiness requires an installed semantic backend in the manifest"
                         .to_string(),

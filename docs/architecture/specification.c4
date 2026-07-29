@@ -1,0 +1,131 @@
+specification {
+  tag public
+  tag adapter
+  tag compiler
+  tag persisted
+  tag proof
+  tag live
+  tag trigger
+  tag indexing
+
+  element person {
+    notation "Person or agent"
+    style {
+      shape person
+      color primary
+    }
+  }
+  element adapter {
+    notation "External adapter"
+    style {
+      shape rectangle
+      color muted
+    }
+  }
+  element platform {
+    notation "System boundary"
+    style {
+      shape rectangle
+      color primary
+    }
+  }
+  element executable {
+    notation "Executable boundary"
+    style {
+      shape browser
+      color secondary
+    }
+  }
+  element service {
+    notation "Runtime component"
+    style {
+      shape component
+      color blue
+    }
+  }
+  element contract {
+    notation "Typed contract"
+    style {
+      shape rectangle
+      color indigo
+    }
+  }
+  element datastore {
+    notation "Persistent evidence"
+    style {
+      shape storage
+      color green
+    }
+  }
+
+  relationship call {
+    technology "typed call"
+    color primary
+    head normal
+  }
+  relationship transport {
+    technology "JSON-RPC over local transport"
+    color secondary
+    line dashed
+    head vee
+  }
+  relationship evidence {
+    technology "proof-carrying result"
+    color green
+    head normal
+  }
+  relationship control {
+    technology "exact-root lifecycle"
+    color amber
+    line dotted
+    head vee
+  }
+  relationship implement {
+    technology "compiler-backed implementation"
+    color indigo
+    line dashed
+    head normal
+  }
+  relationship retain {
+    technology "generation-bound persistence"
+    color green
+    head normal
+  }
+  relationship refresh {
+    technology "explicit refresh"
+    color amber
+    line dotted
+    head vee
+  }
+
+  deploymentNode environment {
+    notation "Runtime pathway"
+    style {
+      color gray
+    }
+  }
+  deploymentNode developerMachine {
+    notation "Developer workstation"
+    style {
+      color primary
+    }
+  }
+  deploymentNode ideHost {
+    notation "IDE host"
+    style {
+      color secondary
+    }
+  }
+  deploymentNode process {
+    notation "Process"
+    style {
+      color blue
+    }
+  }
+  deploymentNode dataVolume {
+    notation "Local data"
+    style {
+      color green
+    }
+  }
+}
