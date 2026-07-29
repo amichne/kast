@@ -163,6 +163,11 @@ class SqliteSourceIndexStore private constructor(
     fun declarationsWithSupertype(supertypeFqName: String): List<DeclarationRow> =
         declarationStore.declarationsWithSupertype(supertypeFqName)
 
+    fun searchDeclarations(
+        pattern: io.github.amichne.kast.api.contract.NonBlankString,
+        maxResults: PositiveInt,
+    ): List<DeclarationRow> = declarationStore.searchDeclarations(pattern, maxResults)
+
     fun appendPendingUpdate(
         op: String,
         path: String,

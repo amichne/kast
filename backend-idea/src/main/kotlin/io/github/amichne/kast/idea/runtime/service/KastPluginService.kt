@@ -3,6 +3,7 @@ package io.github.amichne.kast.idea
 import io.github.amichne.kast.idea.diagnostics.*
 
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.diagnostic.Logger
@@ -65,6 +66,29 @@ internal class KastPluginService(
     fun startIndexing() = backendLifecycle.markIndexReady()
 
     fun failIndexing(error: Throwable) = backendLifecycle.markIndexFailed(error)
+
+    fun exploreAsync(
+        request: KastExplorerRequest,
+        deliver: (KastExplorerResult) -> Unit,
+    ) {
+        coroutineScope.launch {
+            val result = runCatching { backendLifecycle.explore(request) }
+                .getOrElse { error ->
+                    KastExplorerResult.Problem(
+                        io.github.amichne.kast.api.contract.NonBlankString(
+                            error.message?.takeIf(String::isNotBlank)
+                                ?: error::class.simpleName
+                                ?: "Kast explorer query failed",
+                        ),
+                    )
+                }
+            if (!project.isDisposed) {
+                ApplicationManager.getApplication().invokeLater {
+                    if (!project.isDisposed) deliver(result)
+                }
+            }
+        }
+    }
 
     fun reloadConfigAsync() {
         coroutineScope.launch {

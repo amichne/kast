@@ -26,6 +26,7 @@ import kotlin.concurrent.thread
 class RunningKastIdeaBackend internal constructor(
     val backend: CloseableAnalysisBackend,
     val server: RunningAnalysisServer,
+    private val workspaceRoot: Path,
     private val projectIndexing: KastIdeaProjectIndexing,
     private val sourceIndexStore: SqliteSourceIndexStore,
 ) : AutoCloseable, KastIdeaBackendHandle {
@@ -87,6 +88,8 @@ class RunningKastIdeaBackend internal constructor(
     override fun failIndexing(error: Throwable) {
         projectIndexing.fail(error)
     }
+    override fun explore(request: KastExplorerRequest): KastExplorerResult =
+        sourceIndexStore.explore(workspaceRoot, request)
 
     private companion object {
         val LOG: Logger = Logger.getInstance(RunningKastIdeaBackend::class.java)
@@ -291,6 +294,7 @@ object KastIdeaBackendRuntime {
             return RunningKastIdeaBackend(
                 backend = backend,
                 server = server,
+                workspaceRoot = workspaceIdentity.workspaceRootPath,
                 projectIndexing = startedProjectIndexing,
                 sourceIndexStore = sourceIndexStore,
             )
