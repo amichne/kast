@@ -22,12 +22,12 @@ on:
           - CI_AUX_IDEA_PERFORMANCE
         default: CI_AUX_DISTRIBUTION
       value:
-        description: Value used by set-one
+        description: Criticality used by set-one
         type: choice
         options:
-          - "true"
-          - "false"
-        default: "true"
+          - required
+          - optional
+        default: required
       profile:
         description: Profile used by apply-profile
         type: choice
@@ -72,9 +72,9 @@ jobs:
             CI_AUX_IDEA_PERFORMANCE
           )
           case "$PROFILE" in
-            lean) values=(false false false false false false) ;;
-            standard) values=(true true false false true false) ;;
-            full) values=(true true true true true true) ;;
+            lean) values=(optional optional optional optional optional optional) ;;
+            standard) values=(required required optional optional required optional) ;;
+            full) values=(required required required required required required) ;;
           esac
           for index in "${!flags[@]}"; do
             gh variable set "${flags[$index]}" --body "${values[$index]}" --repo "$GITHUB_REPOSITORY"

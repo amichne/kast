@@ -122,7 +122,7 @@ jobs:
         run: ./.github/scripts/ci/test-ci-gradle-retry.sh
 
   local-authority-contracts:
-    if: vars.CI_AUX_LOCAL_AUTHORITY != 'false'
+    continue-on-error: ${{ vars.CI_AUX_LOCAL_AUTHORITY == 'optional' }}
     name: Local development authority contracts
     runs-on: ubuntu-latest
     steps:
@@ -152,7 +152,7 @@ jobs:
         run: ./.github/scripts/install/test-local-development-refresh-contract.sh
 
   runtime-contracts:
-    if: vars.CI_AUX_RUNTIME_CONTRACTS != 'false'
+    continue-on-error: ${{ vars.CI_AUX_RUNTIME_CONTRACTS == 'optional' }}
     name: Runtime command and bundle contracts
     runs-on: ubuntu-latest
     needs: workflow-contracts
@@ -182,7 +182,7 @@ jobs:
         run: ./.github/scripts/runtime/test-runtime-compatibility-contract.sh
 
   maven-publication-contract:
-    if: vars.CI_AUX_MAVEN_PUBLICATION != 'false'
+    continue-on-error: ${{ vars.CI_AUX_MAVEN_PUBLICATION == 'optional' }}
     name: Maven publication metadata
     runs-on: ubuntu-latest
     needs: workflow-contracts
@@ -268,7 +268,7 @@ jobs:
         run: cargo test --locked --all-targets --all-features
 
   source-bound-cli:
-    if: vars.CI_AUX_DISTRIBUTION != 'false'
+    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
     name: Source-bound release CLI
     runs-on: ubuntu-22.04
     needs: workflow-contracts
@@ -361,6 +361,7 @@ jobs:
     uses: ./.github/workflows/ci-build-and-test.yml
 
   prepared-generation:
+    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
     name: Prepared source-attested generation
     runs-on: ubuntu-24.04
     needs:
@@ -487,6 +488,7 @@ jobs:
           retention-days: 3
 
   prepared-ubuntu-debian-bundle:
+    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
     name: Prepared Ubuntu and Debian bundle
     runs-on: ubuntu-24.04
     needs:
@@ -605,7 +607,7 @@ jobs:
           retention-days: 3
 
   source-bound-headless-backend:
-    if: vars.CI_AUX_DISTRIBUTION != 'false'
+    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
     name: Source-bound headless backend
     runs-on: ubuntu-24.04
     needs:
@@ -699,6 +701,7 @@ jobs:
           retention-days: 3
 
   install-ubuntu-debian-container:
+    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
     name: Ubuntu/Debian install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
     runs-on: ubuntu-24.04
     needs:
@@ -743,6 +746,7 @@ jobs:
         run: ./scripts/verify-setup-bundle.sh "$KAST_UBUNTU_DEBIAN_BUNDLE"
 
   kast-action-runtime-contract:
+    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
     name: kast-action runtime contract
     runs-on: ubuntu-latest
     needs:
@@ -890,7 +894,7 @@ jobs:
             --gradle-root "$GITHUB_WORKSPACE"
 
   analysis-server-transport:
-    if: vars.CI_AUX_ANALYSIS_TRANSPORT != 'false'
+    continue-on-error: ${{ vars.CI_AUX_ANALYSIS_TRANSPORT == 'optional' }}
     name: Analysis server transport
     runs-on: ubuntu-latest
     needs: workflow-contracts
@@ -914,7 +918,7 @@ jobs:
           --tests io.github.amichne.kast.server.AnalysisServerSocketTest
 
   build-idea-plugin:
-    if: vars.CI_AUX_DISTRIBUTION != 'false'
+    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
     name: Build IDEA plugin
     runs-on: ubuntu-latest
     needs: workflow-contracts
@@ -1043,5 +1047,5 @@ jobs:
           -PexcludeTags=performance
 
       - name: Run IDEA plugin performance baselines
-        if: vars.CI_AUX_IDEA_PERFORMANCE != 'false'
+        continue-on-error: ${{ vars.CI_AUX_IDEA_PERFORMANCE == 'optional' }}
         run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-idea:test -PincludeTags=performance
