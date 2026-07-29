@@ -1,9 +1,13 @@
 pub fn run(command: AgentCommand, output_format: OutputFormat) -> Result<i32> {
-    let projection = AgentProjectionRequest::for_command(&command);
-    let envelope = projection.project(execute(command));
+    let envelope = execute_projected(command);
     let exit_code = if envelope.ok { 0 } else { 1 };
     output::print_structured(&envelope, output_format)?;
     Ok(exit_code)
+}
+
+pub(crate) fn execute_projected(command: AgentCommand) -> AgentEnvelope {
+    let projection = AgentProjectionRequest::for_command(&command);
+    projection.project(execute(command))
 }
 
 fn execute(command: AgentCommand) -> AgentEnvelope {

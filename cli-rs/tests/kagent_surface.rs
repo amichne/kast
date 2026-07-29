@@ -80,6 +80,7 @@ fn graph_summary_is_a_direct_deterministic_toon_result_without_protocol_cruft() 
         "rootProject.name = \"kagent-graph-summary\"\n",
     )
     .expect("Gradle marker");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
 
     let database = workspace_database_path_for_test(&workspace);
     std::fs::create_dir_all(database.parent().expect("database parent"))
