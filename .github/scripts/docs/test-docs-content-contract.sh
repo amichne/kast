@@ -71,6 +71,28 @@ require_contains "${docs_root}/explanation/repository-intelligence.md" "Precompu
 require_contains "${docs_root}/how-to/maintain-repository-intelligence.md" "Recover compiler graph evidence"
 require_contains "${docs_root}/how-to/maintain-repository-intelligence.md" "exact source identity"
 require_contains "${docs_root}/how-to/troubleshoot.md" 'Do not edit `current`'
+require_contains "${repo_root}/requirements-docs.txt" "zensical==0.0.51"
+require_contains "${repo_root}/zensical.toml" 'extra_css = ["stylesheets/extra.css"]'
+require_contains "${repo_root}/zensical.toml" "[project.validation]"
+require_contains "${repo_root}/zensical.toml" "invalid_links = true"
+require_contains "${repo_root}/zensical.toml" "invalid_link_anchors = true"
+require_contains "${docs_root}/stylesheets/extra.css" ".md-typeset__table"
+require_contains "${docs_root}/stylesheets/extra.css" "overflow-x: auto"
+require_contains "${docs_root}/stylesheets/extra.css" "min-width: 40rem"
+for reader_job in \
+  "Learn by doing" "Complete a task" "Look up facts" "Understand why"; do
+  require_contains "${docs_root}/index.md" "$reader_job"
+done
+for page in "${docs_root}"/how-to/*.md; do
+  require_contains "$page" "# How to "
+done
+require_contains "${docs_root}/reference/cli.md" "cli-rs/protocol/source/commands.json"
+require_contains "${docs_root}/explanation/architecture.md" \
+  '<kast-view view-id="system-landscape"'
+require_contains "${docs_root}/explanation/compiler-evidence.md" \
+  '<kast-view view-id="compiler-evidence"'
+require_contains "${docs_root}/explanation/repository-intelligence.md" \
+  '<kast-view view-id="runtime-components"'
 hidden_system_map="${docs_root}/internal/system-flow.md"
 require_contains "$hidden_system_map" "type: Runtime Flow"
 require_contains "$hidden_system_map" "# How Kast works"
