@@ -61,8 +61,8 @@ name = "agent_readiness_smoke"
 path = "tests/agent/readiness.rs"
 
 [[test]]
-name = "kagent_surface"
-path = "tests/kagent_surface.rs"
+name = "kast_agent_surface"
+path = "tests/kast_agent_surface.rs"
 
 [[test]]
 name = "kagent_resources"

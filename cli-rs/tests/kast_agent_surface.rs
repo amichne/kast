@@ -7,19 +7,19 @@ use std::process::Command;
 
 use support::workspace_database_path_for_test;
 
-fn kagent() -> Command {
+fn named(name: &str) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_kast"));
-    command.arg0("kagent");
+    command.arg0(name);
     command
 }
 
 #[test]
 fn help_exposes_only_the_agent_contract() {
-    let output = kagent().arg("--help").output().expect("run kagent help");
+    let output = named("kast").arg("--help").output().expect("run kast help");
     assert!(output.status.success(), "{output:?}");
     let stdout = String::from_utf8(output.stdout).expect("utf-8 help");
 
-    assert!(stdout.contains("Usage: kagent [COMMAND]"), "{stdout}");
+    assert!(stdout.contains("Usage: kast [COMMAND]"), "{stdout}");
     for command in [
         "up", "refresh", "files", "symbol", "graph", "check", "change", "apply",
     ] {
@@ -32,10 +32,10 @@ fn help_exposes_only_the_agent_contract() {
 
 #[test]
 fn removed_output_flag_is_a_usage_error() {
-    let output = kagent()
+    let output = named("kast")
         .args(["--output", "json"])
         .output()
-        .expect("run invalid kagent flag");
+        .expect("run invalid kast flag");
 
     assert_eq!(output.status.code(), Some(2), "{output:?}");
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -51,12 +51,12 @@ fn home_reports_live_workspace_state_without_protocol_cruft() {
     let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
         .expect("repository root");
-    let output = kagent()
+    let output = named("kast")
         .current_dir(workspace)
         .env("KAST_HOME", state.path().join("kast"))
         .env("XDG_CONFIG_HOME", state.path().join("config"))
         .output()
-        .expect("run kagent home");
+        .expect("run kast home");
 
     assert!(output.status.success(), "{output:?}");
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -77,7 +77,7 @@ fn graph_summary_is_a_direct_deterministic_toon_result_without_protocol_cruft() 
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::write(
         workspace.join("settings.gradle.kts"),
-        "rootProject.name = \"kagent-graph-summary\"\n",
+        "rootProject.name = \"kast-graph-summary\"\n",
     )
     .expect("Gradle marker");
     let workspace = workspace.canonicalize().expect("canonical workspace");
@@ -103,13 +103,13 @@ fn graph_summary_is_a_direct_deterministic_toon_result_without_protocol_cruft() 
         .expect("graph fixture");
     drop(connection);
 
-    let output = kagent()
+    let output = named("kast")
         .current_dir(&workspace)
         .env("HOME", &home)
         .env("KAST_CONFIG_HOME", fixture.path().join("config"))
         .args(["graph", "summary"])
         .output()
-        .expect("run kagent graph summary");
+        .expect("run kast graph summary");
 
     assert!(
         output.status.success(),
@@ -141,19 +141,35 @@ fn graph_summary_is_a_direct_deterministic_toon_result_without_protocol_cruft() 
 }
 
 #[test]
-fn regular_kast_surface_is_unchanged() {
-    let output = Command::new(env!("CARGO_BIN_EXE_kast"))
+fn internal_control_surface_preserves_the_existing_cli() {
+    let output = named("_kastctl")
         .arg("--help")
         .output()
-        .expect("run kast help");
+        .expect("run _kastctl help");
     assert!(output.status.success(), "{output:?}");
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     assert!(
-        stdout.contains("Usage: kast [OPTIONS] [COMMAND]"),
+        stdout.contains("Usage: _kastctl [OPTIONS] [COMMAND]"),
         "{stdout}"
     );
     for command in ["setup", "developer", "rpc", "agent"] {
         assert!(stdout.contains(command), "missing {command}: {stdout}");
     }
+}
+
+#[test]
+fn retired_kagent_entrypoint_is_rejected() {
+    let output = named("kagent")
+        .arg("--help")
+        .output()
+        .expect("run retired kagent entrypoint");
+
+    assert_eq!(output.status.code(), Some(2), "{output:?}");
+    assert!(output.stderr.is_empty(), "{output:?}");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("error:"), "{stdout}");
+    assert!(stdout.contains("kagent"), "{stdout}");
+    assert!(stdout.contains("kast --help"), "{stdout}");
+    assert!(!stdout.contains("Usage:"), "{stdout}");
 }
