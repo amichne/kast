@@ -398,6 +398,53 @@ fn refresh_external_projects_only_actionable_outcomes() {
 }
 
 #[test]
+fn refresh_external_not_found_is_an_actionable_failure() {
+    let fixture = tempfile::tempdir().expect("fixture");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let socket = fixture.path().join("external-not-found.sock");
+    let backend = spawn_scripted_idea_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket,
+        vec![(
+            "raw/workspace-refresh",
+            json!({
+                "refreshedFiles": [],
+                "removedFiles": [],
+                "externalFailureOutcomes": [
+                    {"failureId": "failure-a", "status": "EXTERNALIZED"},
+                    {"failureId": "stale-failure", "status": "NOT_FOUND"}
+                ]
+            }),
+        )],
+    );
+
+    let external = kast(&home, &config_home, &workspace)
+        .args(["refresh", "external", "failure-a", "stale-failure"])
+        .output()
+        .expect("external refresh");
+    assert_eq!(external.status.code(), Some(1), "{external:?}");
+    let external = decode(&external);
+    assert_eq!(
+        external,
+        json!({
+            "external": [
+                {"failureId": "failure-a", "status": "EXTERNALIZED"},
+                {"failureId": "stale-failure", "status": "NOT_FOUND"}
+            ],
+            "next": "Run `kast refresh <path>` for the affected file, then externalize the new failure ID."
+        })
+    );
+    backend.join().expect("external backend");
+}
+
+#[test]
 fn refresh_removes_graph_facts_without_diagnosing_a_deleted_file() {
     let fixture = tempfile::tempdir().expect("fixture");
     let home = fixture.path().join("home");
