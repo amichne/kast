@@ -20,6 +20,12 @@ use super::model::{
 
 type FileKey = (i64, String);
 
+#[derive(Debug, Clone, Copy)]
+enum WorkspaceIndexPathValidation {
+    LiveFilesystem,
+    PersistedLexical,
+}
+
 const ABSOLUTE_PATH_PREFIX: &str = "__kast_abs__/";
 const RELATIVE_ESCAPE_PREFIX: &str = "__kast_rel__/";
 
@@ -28,7 +34,30 @@ const REQUIRED_TABLE_COLUMNS: &[(&str, &[&str])] = &[
     ("path_prefixes", &["prefix_id", "dir_path"]),
     (
         "file_manifest",
-        &["prefix_id", "filename", "last_modified_millis"],
+        &[
+            "prefix_id",
+            "filename",
+            "last_modified_millis",
+            "content_hash",
+            "desired_source_version",
+            "desired_relationships_version",
+            "desired_semantic_graph_version",
+            "module_name",
+            "source_set",
+        ],
+    ),
+    (
+        "file_stage_outcomes",
+        &[
+            "prefix_id",
+            "filename",
+            "stage",
+            "content_hash",
+            "stage_version",
+            "stage_input_fingerprint",
+            "outcome_status",
+            "limitations_json",
+        ],
     ),
     (
         "file_metadata",

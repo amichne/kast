@@ -50,7 +50,14 @@ data class KastHierarchyDegradedResponse(
     val reason: KastHierarchyDegradedReason,
     @Serializable(with = RelationshipResultEvidence.LimitedSerializer::class)
     val evidence: RelationshipResultEvidence.Limited,
-) : KastHierarchyResponse
+    val records: List<TypeHierarchyRelation> = emptyList(),
+) : KastHierarchyResponse {
+    init {
+        require(evidence.cardinality.knownMinimum() >= records.size) {
+            "Degraded hierarchy relationship evidence must cover every returned record"
+        }
+    }
+}
 
 @Serializable
 @SerialName("CURSOR_STALE")

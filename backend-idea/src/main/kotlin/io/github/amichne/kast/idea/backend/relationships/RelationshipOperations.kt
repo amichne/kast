@@ -6,6 +6,7 @@ import io.github.amichne.kast.idea.backend.KastPluginBackend
 
 import com.intellij.openapi.application.readAction
 import com.intellij.psi.PsiElement
+import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.api.contract.result.CallHierarchyResult
 import io.github.amichne.kast.api.contract.result.CallRelationsResult
@@ -75,6 +76,7 @@ internal suspend fun KastPluginBackend.callHierarchyOperation(query: ParsedCallH
 
 internal suspend fun KastPluginBackend.callRelationsOperation(query: KastCallersQuery): CallRelationsResult =
         withContext(readDispatcher) {
+            val searchScope = GlobalSearchScope.projectScope(project)
             val continuationQuery = RelationshipContinuationStore.CallQuery(
                 selector = query.selector,
                 direction = query.direction,
@@ -86,7 +88,11 @@ internal suspend fun KastPluginBackend.callRelationsOperation(query: KastCallers
                 IdeaTelemetryScope.CALL_HIERARCHY,
                 "kast.idea.callRelations.admit",
             ) {
-                completeRelationshipCoverageAdmission(query.selector, RelationshipRootKind.CALLABLE)
+                completeRelationshipCoverageAdmission(
+                    query.selector,
+                    RelationshipRootKind.CALLABLE,
+                    searchScope,
+                )
             }
             val generation = when (initialAdmission) {
                 is CompleteRelationshipCoverageAdmission.Proven -> initialAdmission.generation
@@ -104,6 +110,7 @@ internal suspend fun KastPluginBackend.callRelationsOperation(query: KastCallers
                         val commit = completeRelationshipCoverageAdmission(
                             query.selector,
                             RelationshipRootKind.CALLABLE,
+                            searchScope,
                         )
                     ) {
                         is CompleteRelationshipCoverageAdmission.Limited ->
@@ -158,11 +165,13 @@ internal suspend fun KastPluginBackend.callRelationsOperation(query: KastCallers
                     val commit = completeRelationshipCoverageAdmission(
                         query.selector,
                         RelationshipRootKind.CALLABLE,
+                        searchScope,
                         requiredGeneration = generation,
+                        knownMinimumCount = records.size,
                     )
                 ) {
                     is CompleteRelationshipCoverageAdmission.Limited ->
-                        CallRelationsResult.Limited(commit.evidence)
+                        CallRelationsResult.Limited(commit.evidence, records)
                     is CompleteRelationshipCoverageAdmission.Proven ->
                         relationshipContinuations.calls(
                             continuationQuery,
@@ -199,6 +208,7 @@ internal suspend fun KastPluginBackend.typeHierarchyOperation(query: ParsedTypeH
 
 internal suspend fun KastPluginBackend.hierarchyRelationsOperation(query: KastHierarchyQuery): HierarchyRelationsResult =
         withContext(readDispatcher) {
+            val searchScope = GlobalSearchScope.projectScope(project)
             val continuationQuery = RelationshipContinuationStore.HierarchyQuery(
                 selector = query.selector,
                 direction = query.direction,
@@ -210,7 +220,11 @@ internal suspend fun KastPluginBackend.hierarchyRelationsOperation(query: KastHi
                 IdeaTelemetryScope.TYPE_HIERARCHY,
                 "kast.idea.hierarchyRelations.admit",
             ) {
-                completeRelationshipCoverageAdmission(query.selector, RelationshipRootKind.TYPE)
+                completeRelationshipCoverageAdmission(
+                    query.selector,
+                    RelationshipRootKind.TYPE,
+                    searchScope,
+                )
             }
             val generation = when (initialAdmission) {
                 is CompleteRelationshipCoverageAdmission.Proven -> initialAdmission.generation
@@ -228,6 +242,7 @@ internal suspend fun KastPluginBackend.hierarchyRelationsOperation(query: KastHi
                         val commit = completeRelationshipCoverageAdmission(
                             query.selector,
                             RelationshipRootKind.TYPE,
+                            searchScope,
                         )
                     ) {
                         is CompleteRelationshipCoverageAdmission.Limited ->
@@ -289,11 +304,13 @@ internal suspend fun KastPluginBackend.hierarchyRelationsOperation(query: KastHi
                     val commit = completeRelationshipCoverageAdmission(
                         query.selector,
                         RelationshipRootKind.TYPE,
+                        searchScope,
                         requiredGeneration = generation,
+                        knownMinimumCount = records.size,
                     )
                 ) {
                     is CompleteRelationshipCoverageAdmission.Limited ->
-                        HierarchyRelationsResult.Limited(commit.evidence)
+                        HierarchyRelationsResult.Limited(commit.evidence, records)
                     is CompleteRelationshipCoverageAdmission.Proven ->
                         relationshipContinuations.hierarchy(
                             continuationQuery,

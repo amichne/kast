@@ -40,7 +40,7 @@
         connection
             .execute_batch(
                 "CREATE TABLE schema_version(version INTEGER NOT NULL, generation INTEGER NOT NULL);
-                 INSERT INTO schema_version VALUES (11, 7);
+                 INSERT INTO schema_version VALUES (12, 7);
                  CREATE TABLE semantic_files(
                      id INTEGER PRIMARY KEY, path TEXT NOT NULL UNIQUE, package_name TEXT,
                      module_name TEXT, refresh_status TEXT NOT NULL
@@ -131,7 +131,7 @@
         connection
             .execute_batch(
                 "CREATE TABLE schema_version(version INTEGER NOT NULL, generation INTEGER NOT NULL);
-                 INSERT INTO schema_version VALUES (11, 9);
+                 INSERT INTO schema_version VALUES (12, 9);
                  CREATE TABLE semantic_files(
                      id INTEGER PRIMARY KEY, path TEXT NOT NULL UNIQUE, package_name TEXT,
                      module_name TEXT, refresh_status TEXT NOT NULL

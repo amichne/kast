@@ -18,6 +18,7 @@ import io.github.amichne.kast.api.contract.PageInfo
 import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.contract.result.ReferencesResult
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.shared.analysis.compilerContainingDeclarationName
@@ -132,13 +133,17 @@ internal suspend fun KastPluginBackend.findReferencesOperation(query: ParsedRefe
                         RelationshipCoverageAuthority.FamilyCompletion.COMPLETE
                     },
                     knownMinimumCount = projection.knownCount,
+                    searchScope = plan.searchScope,
                 )
                 is ReferenceSearchCompletion.Partial -> limitedReferenceEvidence(
                     knownMinimumCount = projection.knownCount,
                     reason = completion.reason,
+                    searchScope = plan.searchScope,
                 )
             }
-            val page = nextPageToken?.let { token ->
+            val page = nextPageToken
+                ?.takeUnless { evidence is RelationshipResultEvidence.Limited }
+                ?.let { token ->
                 PageInfo(
                     truncated = true,
                     nextPageToken = token.value,
@@ -165,8 +170,13 @@ internal suspend fun KastPluginBackend.findReferencesOperation(query: ParsedRefe
                 searchScope = SearchScope(
                     visibility = plan.visibility,
                     scope = plan.scopeKind,
-                    exhaustive = outcome.completion.exhaustive && !outcome.hasMoreEvidence,
-                    candidateCoverage = if (outcome.completion.exhaustive) {
+                    exhaustive = evidence is RelationshipResultEvidence.Complete &&
+                        outcome.completion.exhaustive &&
+                        !outcome.hasMoreEvidence,
+                    candidateCoverage = if (
+                        evidence is RelationshipResultEvidence.Available &&
+                        outcome.completion.exhaustive
+                    ) {
                         SearchScope.CandidateCoverage.COMPLETE
                     } else {
                         SearchScope.CandidateCoverage.PARTIAL

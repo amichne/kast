@@ -27,11 +27,12 @@ use crate::workspace_inventory::collect::{
     SystemWorkspaceLaneReader, WorkspaceInventoryInputs, collect_workspace_inventory,
 };
 use crate::workspace_inventory::model::{
-    BackendModuleCoverage, BackendWorkspaceCoverage, WorkspaceCoverageDimension,
-    WorkspaceEvidenceSource, WorkspaceFileDirtyState, WorkspaceFileDrift, WorkspaceFileIndexState,
-    WorkspaceFileKind, WorkspaceInventoryFile, WorkspaceInventoryLimitationCode,
-    WorkspaceKindMatchCoverage, WorkspacePackageEvidence, WorkspaceRequestedKindDomain,
-    WorkspaceRoot, WorkspaceSourceSetEvidence,
+    BackendModuleCoverage, BackendWorkspaceCoverage, BuildQualifiedGradleProjectIdentity,
+    BuildQualifiedGradleSourceSetIdentity, WorkspaceCoverageDimension, WorkspaceEvidenceSource,
+    WorkspaceFileDirtyState, WorkspaceFileDrift, WorkspaceFileIndexState, WorkspaceFileKind,
+    WorkspaceInventoryFile, WorkspaceInventoryLimitationCode, WorkspaceKindMatchCoverage,
+    WorkspacePackageEvidence, WorkspaceRequestedKindDomain, WorkspaceRoot,
+    WorkspaceSourceSetEvidence,
 };
 use crate::{output, runtime, validate};
 use clap::CommandFactory;

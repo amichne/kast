@@ -130,7 +130,27 @@ internal class SourceIndexSchemaTables {
                 prefix_id INTEGER NOT NULL,
                 filename TEXT NOT NULL,
                 last_modified_millis INTEGER NOT NULL,
+                content_hash TEXT,
+                desired_source_version TEXT,
+                desired_relationships_version TEXT,
+                desired_semantic_graph_version TEXT,
+                module_name TEXT,
+                source_set TEXT,
                 PRIMARY KEY (prefix_id, filename)
+            )""",
+        )
+
+        stmt.execute(
+            """CREATE TABLE IF NOT EXISTS file_stage_outcomes (
+                prefix_id INTEGER NOT NULL,
+                filename TEXT NOT NULL,
+                stage TEXT NOT NULL CHECK(stage IN ('SOURCE','RELATIONSHIPS','SEMANTIC_GRAPH')),
+                content_hash TEXT NOT NULL,
+                stage_version TEXT NOT NULL,
+                stage_input_fingerprint TEXT,
+                outcome_status TEXT NOT NULL CHECK(outcome_status IN ('COMPLETE','LIMITED','FAILED')),
+                limitations_json TEXT NOT NULL,
+                PRIMARY KEY (prefix_id, filename, stage)
             )""",
         )
 

@@ -346,7 +346,6 @@ fn handle_backed_degraded_relationship_preserves_known_minimum_and_limitations()
             "callers",
             "--selector-handle",
             selector_handle,
-            "--count",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
         ],
@@ -357,6 +356,7 @@ fn handle_backed_degraded_relationship_preserves_known_minimum_and_limitations()
         serde_json::json!({"type": "KNOWN_MINIMUM", "knownMinimumCount": 3})
     );
     assert_eq!(stdout["result"]["coverage"]["type"], "LIMITED");
+    assert_eq!(stdout["result"]["records"], serde_json::json!([]));
     assert_eq!(
         stdout["result"]["limitations"],
         serde_json::json!(["SOURCE_SET_EXCLUDED", "FAMILY_SEARCH_INCOMPLETE"])

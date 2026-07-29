@@ -1,11 +1,16 @@
+#[allow(clippy::too_many_arguments)]
 fn project_typed_expected_relationship_outcome<Record, Reason>(
     method: String,
     result_type: &'static str,
     expected: Option<AgentExpectedRelationshipSelector>,
     outcome: AgentTypedTraversalResponseInput<Record, Reason>,
+    result_limit: usize,
+    include_records: bool,
     admitted_kind: impl Fn(&str) -> bool,
+    record_is_valid: impl Fn(&Record) -> bool,
 ) -> AgentEnvelope
 where
+    Record: Serialize,
     Reason: Serialize,
 {
     let outcome = match outcome {
@@ -37,35 +42,40 @@ where
             mut subject,
             reason,
             evidence,
+            records,
+            page,
         } if expected.is_none() => {
             if !selector.is_valid()
                 || !subject.is_valid()
                 || !selector.matches_identity(&mut subject)
                 || !admitted_kind(&subject.kind)
                 || !evidence.is_valid_limited()
+                || evidence.cardinality().known_minimum() < records.len()
+                || records.len() > result_limit
+                || records.iter().any(|record| !record_is_valid(record))
+                || page.is_some()
             {
                 return invalid_projection_envelope(
                     method,
                     "Handle-backed degraded relationship contained inconsistent subject or limitation evidence.",
                 );
             }
-            return projected_agent_envelope(
-                method,
-                true,
-                json!({
-                    "type": result_type,
-                    "ok": true,
-                    "outcome": "DEGRADED",
-                    "selector": selector,
-                    "subject": subject,
-                    "reason": reason,
-                    "cardinality": evidence.cardinality(),
-                    "coverage": evidence.coverage(),
-                    "limitations": evidence.coverage().limitations(),
-                    "schemaVersion": SCHEMA_VERSION,
-                }),
-                None,
-            );
+            let mut value = json!({
+                "type": result_type,
+                "ok": true,
+                "outcome": "DEGRADED",
+                "selector": selector,
+                "subject": subject,
+                "reason": reason,
+                "cardinality": evidence.cardinality(),
+                "coverage": evidence.coverage(),
+                "limitations": evidence.coverage().limitations(),
+                "schemaVersion": SCHEMA_VERSION,
+            });
+            if include_records {
+                value["records"] = json!(records);
+            }
+            return projected_agent_envelope(method, true, value, None);
         }
         AgentTypedTraversalResponseInput::CursorStale {
             selector,
@@ -195,6 +205,8 @@ where
             mut subject,
             reason,
             evidence,
+            records,
+            page,
         } => {
             if !selector.is_valid()
                 || !expected.matches_selector(&selector)
@@ -202,13 +214,17 @@ where
                 || !expected.matches(&mut subject)
                 || !admitted_kind(&subject.kind)
                 || !evidence.is_valid_limited()
+                || evidence.cardinality().known_minimum() < records.len()
+                || records.len() > result_limit
+                || records.iter().any(|record| !record_is_valid(record))
+                || page.is_some()
             {
                 return invalid_projection_envelope(
                     method,
                     "Degraded relationship subject did not match the selector and admitted kind matrix.",
                 );
             }
-            json!({
+            let mut value = json!({
                 "type": result_type,
                 "ok": true,
                 "outcome": "DEGRADED",
@@ -219,16 +235,19 @@ where
                 "coverage": evidence.coverage(),
                 "limitations": evidence.coverage().limitations(),
                 "schemaVersion": SCHEMA_VERSION,
-            })
+            });
+            if include_records {
+                value["records"] = json!(records);
+            }
+            value
         }
         AgentTypedTraversalResponseInput::CursorStale {
             selector,
             reason,
             evidence,
-        }
-            if selector.is_valid()
-                && expected.matches_selector(&selector)
-                && evidence.is_valid_limited() =>
+        } if selector.is_valid()
+            && expected.matches_selector(&selector)
+            && evidence.is_valid_limited() =>
         {
             json!({
                 "type": result_type,
@@ -246,10 +265,9 @@ where
             selector,
             reason,
             evidence,
-        }
-            if selector.is_valid()
-                && expected.matches_selector(&selector)
-                && evidence.is_valid_limited() =>
+        } if selector.is_valid()
+            && expected.matches_selector(&selector)
+            && evidence.is_valid_limited() =>
         {
             json!({
                 "type": result_type,

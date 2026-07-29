@@ -1,12 +1,20 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.psi.search.FileTypeIndex
+import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileStageScopeCoverage
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import org.jetbrains.jps.model.java.JavaModuleSourceRootTypes
 import java.nio.file.Files
 import java.nio.file.Path
@@ -18,7 +26,91 @@ internal class IdeaRelationshipCoverageAuthority(
     private val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
         IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
     },
+    private val sourceIndexStore: SqliteSourceIndexStore? = null,
 ) : RelationshipCoverageAuthority {
+    override fun assess(
+        completion: RelationshipCoverageAuthority.FamilyCompletion,
+        declarationFile: String,
+    ): RelationshipSearchCoverage {
+        val liveCoverage = assess(completion)
+        if (liveCoverage is RelationshipSearchCoverage.Limited) return liveCoverage
+        val persisted = sourceIndexStore?.fileStageScopeCoverage(
+            FileIndexStage.RELATIONSHIPS,
+            declarationFile,
+        ) ?: return liveCoverage
+        return combine(liveCoverage, persisted)
+    }
+
+    override fun assess(
+        completion: RelationshipCoverageAuthority.FamilyCompletion,
+        searchScope: GlobalSearchScope,
+    ): RelationshipSearchCoverage {
+        val liveCoverage = assess(completion)
+        if (liveCoverage is RelationshipSearchCoverage.Limited) return liveCoverage
+        val store = sourceIndexStore ?: return liveCoverage
+        val kotlinFileType = FileTypeManager.getInstance().findFileTypeByName("Kotlin")
+            ?: return RelationshipSearchCoverage.limited(
+                RelationshipSearchLimitation.PROJECT_SCOPE_INCOMPLETE,
+                RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE,
+            )
+        val workspace = workspaceIdentity.workspaceIdentity
+        val candidates = ApplicationManager.getApplication().runReadAction<PersistedScopeCandidates> {
+            val filesInWorkspace = { fileType: FileType ->
+                FileTypeIndex.getFiles(fileType, searchScope)
+                    .asSequence()
+                    .filter { file -> file.isValid && !file.isDirectory }
+                    .map { file -> Path.of(file.path).toAbsolutePath().normalize() }
+                    .filter(workspace::contains)
+            }
+            PersistedScopeCandidates(
+                kotlinPaths = filesInWorkspace(kotlinFileType)
+                    .map(Path::toString)
+                    .distinct()
+                    .sorted()
+                    .toList(),
+                hasJava = filesInWorkspace(JavaFileType.INSTANCE).any(),
+            )
+        }
+        if (candidates.hasJava) {
+            return RelationshipSearchCoverage.limited(
+                RelationshipSearchLimitation.SOURCE_SET_EXCLUDED,
+                RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE,
+            )
+        }
+        return combine(
+            liveCoverage,
+            store.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, candidates.kotlinPaths),
+        )
+    }
+
+    private data class PersistedScopeCandidates(
+        val kotlinPaths: List<String>,
+        val hasJava: Boolean,
+    )
+
+    private fun combine(
+        liveCoverage: RelationshipSearchCoverage,
+        persisted: FileStageScopeCoverage,
+    ): RelationshipSearchCoverage {
+        if (persisted is FileStageScopeCoverage.Complete) return liveCoverage
+        persisted as FileStageScopeCoverage.Limited
+        val limitations = linkedSetOf<RelationshipSearchLimitation>()
+        if (persisted.totalFiles == 0) {
+            limitations += RelationshipSearchLimitation.PROJECT_SCOPE_INCOMPLETE
+        }
+        if (persisted.pendingFiles > 0) {
+            limitations += RelationshipSearchLimitation.INDEX_NOT_READY
+        }
+        if (persisted.staleFiles > 0) {
+            limitations += RelationshipSearchLimitation.INDEX_STALE
+        }
+        if (persisted.limitedFiles > 0 || persisted.failedFiles > 0) {
+            limitations += RelationshipSearchLimitation.BACKEND_INCOMPLETE
+        }
+        limitations += RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE
+        return RelationshipSearchCoverage.Limited.from(limitations)
+    }
+
     override fun assess(
         completion: RelationshipCoverageAuthority.FamilyCompletion,
     ): RelationshipSearchCoverage = ApplicationManager.getApplication().runReadAction<RelationshipSearchCoverage> {

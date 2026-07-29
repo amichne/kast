@@ -92,6 +92,17 @@ class NativeSemanticGraphScaleTest {
             connection.commit()
             val ingestNanos = System.nanoTime() - ingestStarted
 
+            SqliteSourceIndexStore(workspaceRoot).use { store ->
+                val summary = store.readSemanticGraphSummary(
+                    (0 until SCALE_FILE_COUNT).map { index ->
+                        SemanticGraphSourcePath.parse("src/File$index.kt")
+                    },
+                )
+                assertEquals(SCALE_FILE_COUNT, summary.files.size)
+                assertEquals(SCALE_SYMBOL_COUNT, summary.symbolCount)
+                assertEquals(SCALE_EDGE_COUNT, summary.edgeOccurrenceCount)
+            }
+
             val incrementalStarted = System.nanoTime()
             connection.createStatement().use { statement ->
                 statement.executeUpdate("DELETE FROM semantic_edge_occurrences WHERE source_file_id = 1")

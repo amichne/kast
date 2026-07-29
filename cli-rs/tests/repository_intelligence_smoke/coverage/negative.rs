@@ -26,11 +26,13 @@ fn repository_negative_answers_follow_coverage_state() {
     assert_eq!(complete["result"]["status"], "EMPTY");
     assert_eq!(complete["result"]["coverage"]["complete"], true);
 
-    std::fs::write(
-        workspace.join("src/main/kotlin/sample/Source0000.kt"),
-        "package sample\nclass Changed\n",
-    )
-    .expect("stale source");
+    fixture
+        .connection()
+        .execute(
+            "UPDATE file_manifest SET content_hash = ? WHERE filename = 'Source0000.kt'",
+            params!["f".repeat(64)],
+        )
+        .expect("advance persisted source hash");
     let (status, stale) = rpc(
         &home,
         &config_home,
@@ -44,18 +46,21 @@ fn repository_negative_answers_follow_coverage_state() {
 
     fixture
         .connection()
-        .execute("DELETE FROM semantic_files", [])
-        .expect("remove semantic graph file");
-    let (status, failed) = rpc(
+        .execute(
+            "DELETE FROM file_stage_outcomes WHERE stage = 'SEMANTIC_GRAPH'",
+            [],
+        )
+        .expect("remove semantic graph outcome");
+    let (status, pending) = rpc(
         &home,
         &config_home,
         &workspace,
         request(serde_json::json!({"language": "kotlin"})),
     );
-    assert!(status.success(), "{failed:#}");
-    assert_eq!(failed["result"]["coverage"]["failed"], 1);
-    assert_eq!(failed["result"]["coverage"]["complete"], false);
-    let (_, failed_coverage) = rpc(
+    assert!(status.success(), "{pending:#}");
+    assert_eq!(pending["result"]["coverage"]["pending"], 1);
+    assert_eq!(pending["result"]["coverage"]["complete"], false);
+    let (_, pending_coverage) = rpc(
         &home,
         &config_home,
         &workspace,
@@ -67,7 +72,7 @@ fn repository_negative_answers_follow_coverage_state() {
         }),
     );
     assert_eq!(
-        failed_coverage["result"]["files"][0]["diagnostics"][0]["code"],
+        pending_coverage["result"]["files"][0]["diagnostics"][0]["code"],
         "SEMANTIC_GRAPH_MISSING"
     );
 
@@ -103,50 +108,68 @@ fn repository_negative_answers_follow_coverage_state() {
     );
 }
 
-mod coverage {
-    mod negative {
-        use super::super::*;
+#[cfg(unix)]
+#[test]
+fn repository_coverage_ignores_live_source_content_and_resolution_drift() {
+    use std::os::unix::fs::symlink;
 
-        #[test]
-        fn repository_missing_semantic_tables_rejects_instead_of_empty() {
-            let (_temp, home, config_home, workspace, _fixture) = coverage_fixture();
-            let (status, response) = rpc(
-                &home,
-                &config_home,
-                &workspace,
-                serde_json::json!({
-                    "jsonrpc": "2.0",
-                    "id": "missing-semantic-tables",
-                    "method": "repository/query",
-                    "params": {
-                        "question": "Does DefinitelyMissing exist?",
-                        "intent": "resolve",
-                        "scope": {"language": "kotlin"},
-                        "limits": {"depth": 1, "results": 10, "evidence": 2}
-                    }
-                }),
-            );
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    seed_repository_graph(&fixture);
+    let source = workspace.join("src/main/kotlin/sample/Source0000.kt");
+    std::fs::write(
+        &source,
+        "package sample\nclass ChangedOutsideTheIndex\n",
+    )
+    .expect("change live source only");
 
-            assert!(!status.success(), "{response:#}");
-            assert_eq!(response["code"], "REPOSITORY_INDEX_INVALID", "{response:#}");
-            assert_eq!(
-                response["details"]["remedy"],
-                "Run `kast developer runtime up --workspace-root \"$PWD\" --backend idea --accept-indexing`, then rebuild compiler graph evidence with `kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path <path-to-kotlin-file>`.",
-                "{response:#}"
-            );
-        }
-    }
+    let request = || {
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "persisted-authority",
+            "method": "repository/query",
+            "params": {
+                "question": "Does DefinitelyMissing exist?",
+                "intent": "resolve",
+                "scope": {"language": "kotlin"},
+                "limits": {"depth": 1, "results": 10, "evidence": 2}
+            }
+        })
+    };
+    let assert_exact = || {
+        let (status, response) = rpc(&home, &config_home, &workspace, request());
+        assert!(status.success(), "{response:#}");
+        assert_eq!(response["result"]["status"], "EMPTY", "{response:#}");
+        assert_eq!(response["result"]["coverage"]["complete"], true, "{response:#}");
+    };
+
+    assert_exact();
+    std::fs::remove_file(&source).expect("remove live source");
+    assert_exact();
+
+    let outside = tempfile::tempdir().expect("outside source directory");
+    std::fs::write(outside.path().join("Outside.kt"), "package outside\n")
+        .expect("outside source");
+    symlink(outside.path().join("Outside.kt"), &source).expect("escaping source symlink");
+    assert_exact();
+
+    std::fs::remove_file(&source).expect("remove escaping symlink");
+    symlink(workspace.join("missing-target.kt"), &source).expect("dangling source symlink");
+    assert_exact();
 }
 
 #[test]
-fn repository_incomplete_coverage_rejects_positive_answer() {
-    let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(2);
+fn repository_missing_semantic_scope_fingerprint_cannot_produce_exact_empty() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
     seed_repository_graph(&fixture);
-    std::fs::write(
-        workspace.join("src/main/kotlin/sample/Source0001.kt"),
-        "package sample\nclass ChangedAfterIndexing\n",
-    )
-    .expect("stale unrelated source");
+    fixture
+        .connection()
+        .execute(
+            "UPDATE file_stage_outcomes
+             SET stage_input_fingerprint = NULL
+             WHERE stage = 'SEMANTIC_GRAPH'",
+            [],
+        )
+        .expect("remove semantic scope fingerprint");
 
     let (status, response) = rpc(
         &home,
@@ -154,61 +177,208 @@ fn repository_incomplete_coverage_rejects_positive_answer() {
         &workspace,
         serde_json::json!({
             "jsonrpc": "2.0",
-            "id": "partial-positive",
+            "id": "missing-fingerprint",
             "method": "repository/query",
             "params": {
-                "question": "Resolve semanticGraphOperation.",
+                "question": "Does DefinitelyMissing exist?",
                 "intent": "resolve",
-                "canonicalKey": "callable:semanticGraphOperation",
                 "scope": {"language": "kotlin"},
                 "limits": {"depth": 1, "results": 10, "evidence": 2}
             }
         }),
     );
 
-    assert!(!status.success(), "{response:#}");
-    assert_eq!(
-        response["code"], "REPOSITORY_COVERAGE_INCOMPLETE",
-        "{response:#}"
-    );
-    assert_eq!(
-        response["details"]["coverageLimitations"],
-        "SEMANTIC_GRAPH_FILES_STALE",
-        "{response:#}"
-    );
-    assert_eq!(
-        response["details"]["remedy"],
-        "Run `kast developer runtime up --workspace-root \"$PWD\" --backend idea --accept-indexing`; wait until `kast ready --for kotlin` succeeds; refresh each stale or missing Kotlin file with `kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path <path-to-kotlin-file>`; then retry the repository query.",
-        "{response:#}"
+    assert!(status.success(), "{response:#}");
+    assert_eq!(response["result"]["status"], "QUALIFIED_EMPTY", "{response:#}");
+    assert_eq!(response["result"]["coverage"]["complete"], false, "{response:#}");
+    assert_eq!(response["result"]["coverage"]["stale"], 1, "{response:#}");
+}
+
+#[test]
+fn repository_mixed_semantic_scope_fingerprints_cannot_produce_exact_empty() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(2);
+    seed_repository_graph(&fixture);
+    fixture
+        .connection()
+        .execute(
+            "UPDATE file_stage_outcomes
+             SET stage_input_fingerprint = ?
+             WHERE stage = 'SEMANTIC_GRAPH' AND filename = 'Source0001.kt'",
+            params!["b".repeat(64)],
+        )
+        .expect("split semantic scope fingerprint");
+
+    let (status, response) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "mixed-fingerprint",
+            "method": "repository/query",
+            "params": {
+                "question": "Does DefinitelyMissing exist?",
+                "intent": "resolve",
+                "scope": {"language": "kotlin"},
+                "limits": {"depth": 1, "results": 10, "evidence": 2}
+            }
+        }),
     );
 
-    let agent_output = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "repository",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-            "--question",
-            "Resolve semanticGraphOperation.",
-            "--intent",
-            "resolve",
-            "--canonical-key",
-            "callable:semanticGraphOperation",
-        ])
-        .output()
-        .expect("incomplete-coverage agent result");
-    assert!(
-        !agent_output.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&agent_output.stdout),
-        String::from_utf8_lossy(&agent_output.stderr)
+    assert!(status.success(), "{response:#}");
+    assert_eq!(response["result"]["status"], "QUALIFIED_EMPTY", "{response:#}");
+    assert_eq!(response["result"]["coverage"]["complete"], false, "{response:#}");
+    assert_eq!(response["result"]["coverage"]["stale"], 1, "{response:#}");
+}
+
+#[test]
+fn repository_removed_semantic_path_invalidates_surviving_scope_fingerprint() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(2);
+    seed_repository_graph(&fixture);
+    fixture
+        .connection()
+        .execute(
+            "DELETE FROM semantic_files
+             WHERE path = 'src/main/kotlin/sample/Source0001.kt'",
+            [],
+        )
+        .expect("remove one persisted semantic path");
+
+    let (status, response) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "narrowed-fingerprint",
+            "method": "repository/query",
+            "params": {
+                "question": "Does DefinitelyMissing exist?",
+                "intent": "resolve",
+                "scope": {"language": "kotlin"},
+                "limits": {"depth": 1, "results": 10, "evidence": 2}
+            }
+        }),
     );
-    let agent_error: serde_json::Value =
-        serde_json::from_slice(&agent_output.stdout).expect("agent error JSON");
-    assert_eq!(
-        agent_error["error"]["code"], "REPOSITORY_COVERAGE_INCOMPLETE",
-        "{agent_error:#}"
+
+    assert!(status.success(), "{response:#}");
+    assert_eq!(response["result"]["status"], "QUALIFIED_EMPTY", "{response:#}");
+    assert_eq!(response["result"]["coverage"]["complete"], false, "{response:#}");
+    assert_eq!(response["result"]["coverage"]["stale"], 2, "{response:#}");
+}
+
+#[test]
+fn repository_malformed_matching_hashes_and_versions_fail_closed() {
+    let corruptions = [
+        (
+            "matching malformed hashes",
+            "UPDATE file_manifest SET content_hash = 'x' WHERE filename = 'Source0000.kt';
+             UPDATE file_stage_outcomes
+             SET content_hash = 'x'
+             WHERE filename = 'Source0000.kt' AND stage = 'SEMANTIC_GRAPH';",
+        ),
+        (
+            "matching blank stage versions",
+            "UPDATE file_manifest
+             SET desired_semantic_graph_version = ' '
+             WHERE filename = 'Source0000.kt';
+             UPDATE file_stage_outcomes
+             SET stage_version = ' '
+             WHERE filename = 'Source0000.kt' AND stage = 'SEMANTIC_GRAPH';",
+        ),
+        (
+            "matching control stage versions",
+            "UPDATE file_manifest
+             SET desired_semantic_graph_version = char(10)
+             WHERE filename = 'Source0000.kt';
+             UPDATE file_stage_outcomes
+             SET stage_version = char(10)
+             WHERE filename = 'Source0000.kt' AND stage = 'SEMANTIC_GRAPH';",
+        ),
+    ];
+
+    for (label, corruption) in corruptions {
+        let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+        fixture
+            .connection()
+            .execute_batch(corruption)
+            .unwrap_or_else(|error| panic!("{label}: {error}"));
+        let (status, response) = rpc(
+            &home,
+            &config_home,
+            &workspace,
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": "malformed-stage-authority",
+                "method": "graph/coverage",
+                "params": {"scope": {"language": "kotlin"}}
+            }),
+        );
+        assert!(!status.success(), "{label}: {response:#}");
+        assert_eq!(
+            response["code"],
+            "GRAPH_COVERAGE_UNAVAILABLE",
+            "{label}: {response:#}"
+        );
+    }
+}
+
+#[test]
+fn repository_malformed_semantic_source_path_fails_closed() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    fixture
+        .connection()
+        .execute(
+            "INSERT INTO semantic_files
+             (path, package_name, module_name, content_hash, refresh_status, diagnostics_json)
+             VALUES ('../Escaped.kt', 'escaped', 'escaped.main', ?, 'REFRESHED', '[]')",
+            params!["a".repeat(64)],
+        )
+        .expect("malformed semantic source path");
+
+    let (status, response) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "malformed-semantic-path",
+            "method": "graph/coverage",
+            "params": {"scope": {"language": "kotlin"}}
+        }),
     );
+    assert!(!status.success(), "{response:#}");
+    assert_eq!(response["code"], "GRAPH_COVERAGE_UNAVAILABLE", "{response:#}");
+}
+
+#[test]
+fn repository_fresh_empty_inventory_cannot_produce_exact_empty() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(0);
+    seed_repository_graph(&fixture);
+    fixture
+        .connection()
+        .execute("DELETE FROM module_index_progress", [])
+        .expect("remove inventory completion evidence");
+
+    let (status, response) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "empty-inventory",
+            "method": "repository/query",
+            "params": {
+                "question": "Does DefinitelyMissing exist?",
+                "intent": "resolve",
+                "scope": {"language": "kotlin"},
+                "limits": {"depth": 1, "results": 10, "evidence": 2}
+            }
+        }),
+    );
+
+    assert!(status.success(), "{response:#}");
+    assert_eq!(response["result"]["status"], "QUALIFIED_EMPTY", "{response:#}");
+    assert_eq!(response["result"]["coverage"]["total"], 0, "{response:#}");
+    assert_eq!(response["result"]["coverage"]["complete"], false, "{response:#}");
 }

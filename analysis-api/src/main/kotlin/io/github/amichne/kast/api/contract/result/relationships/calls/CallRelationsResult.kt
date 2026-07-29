@@ -8,5 +8,12 @@ sealed interface CallRelationsResult {
 
     data class Limited(
         val evidence: RelationshipResultEvidence.Limited,
-    ) : CallRelationsResult
+        val records: List<CallRelation> = emptyList(),
+    ) : CallRelationsResult {
+        init {
+            require(evidence.cardinality.knownMinimum() >= records.size) {
+                "Limited call relationship evidence must cover every returned record"
+            }
+        }
+    }
 }

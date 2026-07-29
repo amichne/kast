@@ -144,26 +144,46 @@ fn file_matches_scope(
         WorkspaceSourceSetEvidence::Proven(source_sets) => Some(source_sets),
         WorkspaceSourceSetEvidence::Unproven(_) | WorkspaceSourceSetEvidence::Unavailable => None,
     };
-    let module_matches = scope
-        .project
-        .as_ref()
-        .is_none_or(|project| projects.contains(project));
-    let source_set_matches = scope
-        .source_set
-        .as_ref()
-        .is_none_or(|source_set| source_sets.is_some_and(|values| values.contains(source_set)));
-    let ownership_proven = scope.project.as_ref().is_none_or(|_| !projects.is_empty())
-        && scope
-            .source_set
-            .as_ref()
-            .is_none_or(|_| source_sets.is_some());
-    (module_matches && source_set_matches, ownership_proven)
+    if let Some(project) = scope.project.as_ref() {
+        if projects.is_empty() {
+            return (false, false);
+        }
+        if !projects.contains(project) {
+            return (false, true);
+        }
+    }
+    if let Some(source_set) = scope.source_set.as_ref() {
+        return source_sets
+            .map(|values| (values.contains(source_set), true))
+            .unwrap_or((false, false));
+    }
+    (true, true)
+}
+
+fn scoped_pending_update_count(
+    index: &workspace_inventory::model::WorkspaceIndexSnapshot,
+    scope: &ResolvedRepositoryScope,
+    pending_updates: &[PersistedPendingUpdateTarget],
+) -> u64 {
+    let relevant = pending_updates.iter().filter(|target| match target {
+        PersistedPendingUpdateTarget::CanonicalPath(path) => index
+            .files()
+            .iter()
+            .find(|file| file.path().to_string() == *path)
+            .map(|file| {
+                let (matches, proven) = file_matches_scope(file, scope);
+                matches || !proven
+            })
+            .unwrap_or(true),
+        PersistedPendingUpdateTarget::Unproven => true,
+    });
+    u64::try_from(relevant.count()).unwrap_or(u64::MAX)
 }
 
 fn classify_file(
-    workspace_root: &Path,
     file: &WorkspaceInventoryFile,
     semantic: Option<&SemanticFileRow>,
+    scope_fingerprint: &SemanticGraphStageInputFingerprint,
 ) -> GraphFileCoverage {
     let ownership = RepositoryFileOwnership {
         gradle_projects: file.indexed_gradle_projects().clone(),
@@ -184,9 +204,9 @@ fn classify_file(
         .iter()
         .map(canonical_gradle_source_set)
         .collect::<Vec<_>>();
-    let current_content_hash = std::fs::read(workspace_root.join(file.path().as_path()))
-        .ok()
-        .map(|content| hex::encode(Sha256::digest(content)));
+    let current_content_hash = semantic
+        .and_then(|row| row.manifest_content_hash.as_ref())
+        .map(|hash| hash.as_str().to_string());
     let (state, reason_code) = if is_generated_source(file.path().as_path()) {
         (GraphFileState::Excluded, Some("GENERATED_SOURCE"))
     } else {
@@ -202,32 +222,84 @@ fn classify_file(
             WorkspaceFileIndexState::NotApplicable => {
                 (GraphFileState::Excluded, Some("NOT_COMPILATION_SOURCE"))
             }
-            WorkspaceFileIndexState::Indexed if current_content_hash.is_none() => {
-                (GraphFileState::Failed, Some("SOURCE_FILE_MISSING"))
-            }
             WorkspaceFileIndexState::Indexed => match semantic {
-                None => (GraphFileState::Failed, Some("SEMANTIC_GRAPH_MISSING")),
+                None => (
+                    GraphFileState::Pending,
+                    Some("SEMANTIC_GRAPH_MANIFEST_MISSING"),
+                ),
                 Some(row)
-                    if !matches!(row.refresh_status.as_str(), "REFRESHED" | "CACHED")
-                        || row.content_hash.is_none() =>
+                    if row.manifest_content_hash.is_none()
+                        || row.desired_stage_version.is_none() =>
                 {
                     (
-                        GraphFileState::Failed,
-                        Some("SEMANTIC_GRAPH_NOT_AUTHORITATIVE"),
+                        GraphFileState::Pending,
+                        Some("SEMANTIC_GRAPH_NOT_PLANNED"),
                     )
                 }
-                Some(row) if row.content_hash != current_content_hash => {
-                    (GraphFileState::Stale, Some("CONTENT_HASH_MISMATCH"))
+                Some(row) if row.outcome.is_none() => {
+                    (GraphFileState::Pending, Some("SEMANTIC_GRAPH_MISSING"))
                 }
-                Some(_) => (GraphFileState::Indexed, None),
+                Some(row)
+                    if row.outcome.as_ref().is_some_and(|outcome| {
+                        Some(&outcome.content_hash) != row.manifest_content_hash.as_ref()
+                            || Some(&outcome.stage_version) != row.desired_stage_version.as_ref()
+                    }) =>
+                {
+                    (GraphFileState::Stale, Some("SEMANTIC_GRAPH_OUTCOME_STALE"))
+                }
+                Some(row)
+                    if row.outcome.as_ref().is_some_and(|outcome| {
+                        outcome.input_fingerprint.as_ref() != Some(scope_fingerprint)
+                    }) =>
+                {
+                    (
+                        GraphFileState::Stale,
+                        Some("SEMANTIC_GRAPH_SCOPE_FINGERPRINT_STALE"),
+                    )
+                }
+                Some(row) => match row.outcome.as_ref().map(|outcome| outcome.status) {
+                    Some(SemanticFileOutcomeStatus::Complete)
+                        if row
+                            .outcome
+                            .as_ref()
+                            .is_some_and(|outcome| outcome.limitations.is_empty()) =>
+                    {
+                        (GraphFileState::Indexed, None)
+                    }
+                    Some(SemanticFileOutcomeStatus::Limited)
+                        if row
+                            .outcome
+                            .as_ref()
+                            .is_some_and(|outcome| !outcome.limitations.is_empty()) =>
+                    {
+                        (GraphFileState::Limited, Some("SEMANTIC_GRAPH_LIMITED"))
+                    }
+                    Some(SemanticFileOutcomeStatus::Failed)
+                        if row
+                            .outcome
+                            .as_ref()
+                            .is_some_and(|outcome| outcome.limitations.is_empty()) =>
+                    {
+                        (GraphFileState::Failed, Some("SEMANTIC_GRAPH_FAILED"))
+                    }
+                    _ => (
+                        GraphFileState::Failed,
+                        Some("SEMANTIC_GRAPH_OUTCOME_INVALID"),
+                    ),
+                },
             },
         }
     };
-    let diagnostics = if state == GraphFileState::Failed {
+    let diagnostics = if matches!(state, GraphFileState::Pending | GraphFileState::Failed) {
+        vec![json!({"code": reason_code})]
+    } else {
+        Vec::new()
+    };
+    let limitations = if state == GraphFileState::Limited {
         semantic
-            .map(|row| row.diagnostics.clone())
-            .filter(|diagnostics| !diagnostics.is_empty())
-            .unwrap_or_else(|| vec![json!({"code": reason_code})])
+            .and_then(|row| row.outcome.as_ref())
+            .map(|outcome| outcome.limitations.clone())
+            .unwrap_or_default()
     } else {
         Vec::new()
     };
@@ -235,9 +307,12 @@ fn classify_file(
         path: file.path().to_string(),
         state,
         reason_code,
-        indexed_content_hash: semantic.and_then(|row| row.content_hash.clone()),
+        indexed_content_hash: semantic
+            .and_then(|row| row.outcome.as_ref())
+            .map(|outcome| outcome.content_hash.as_str().to_string()),
         current_content_hash,
         diagnostics,
+        limitations,
         gradle_projects,
         source_sets,
         ownership,

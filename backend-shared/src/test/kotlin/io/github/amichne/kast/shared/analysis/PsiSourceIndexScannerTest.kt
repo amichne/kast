@@ -63,7 +63,7 @@ class PsiSourceIndexScannerTest {
         ).forEachIndexed { index, fixture ->
             val update = scannerFor(kotlinFile("Fixture$index.kt", fixture.source)).scanFile("Fixture$index.kt")
 
-            assertEquals(fixture.expected, update?.packageEvidence)
+            assertEquals(fixture.expected, update?.update?.packageEvidence)
         }
     }
 
@@ -79,7 +79,7 @@ class PsiSourceIndexScannerTest {
 
         assertEquals(
             IndexedPackageEvidence.Unproven(IndexedPackageUnprovenReason.SEMANTIC_ANALYSIS_UNAVAILABLE),
-            update?.packageEvidence,
+            update?.update?.packageEvidence,
         )
     }
 
@@ -96,7 +96,7 @@ class PsiSourceIndexScannerTest {
 
         assertEquals(
             IndexedPackageEvidence.Unproven(IndexedPackageUnprovenReason.SEMANTIC_ANALYSIS_FAILED),
-            update?.packageEvidence,
+            update?.update?.packageEvidence,
         )
     }
 

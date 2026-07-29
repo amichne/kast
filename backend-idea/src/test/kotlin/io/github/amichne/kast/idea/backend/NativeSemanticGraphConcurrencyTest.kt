@@ -150,18 +150,18 @@ class NativeSemanticGraphConcurrencyTest {
     }
 
     @Test
-    fun `cancelling multi file refresh leaves the committed graph unchanged`() = runBlocking {
+    fun `cancelling batch two preserves the committed first batch`() = runBlocking {
         val project = projectFixture.get()
         val files = listOf(canonicalFileFixture.get(), boundaryTargetFixture.get())
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(files.first().virtualFile.path).toRealPath().parent
-        val firstReadEntered = CountDownLatch(1)
-        val releaseFirstRead = CountDownLatch(1)
+        val secondReadEntered = CountDownLatch(1)
+        val releaseSecondRead = CountDownLatch(1)
         val readCount = AtomicInteger()
         val observer = IdeaReadEpochObserver { kind ->
-            if (kind == IdeaReadEpochKind.SEMANTIC_GRAPH && readCount.incrementAndGet() == 1) {
-                firstReadEntered.countDown()
-                assertTrue(releaseFirstRead.await(10, TimeUnit.SECONDS))
+            if (kind == IdeaReadEpochKind.SEMANTIC_GRAPH && readCount.incrementAndGet() == 2) {
+                secondReadEntered.countDown()
+                assertTrue(releaseSecondRead.await(10, TimeUnit.SECONDS))
             }
         }
 
@@ -174,6 +174,7 @@ class NativeSemanticGraphConcurrencyTest {
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
                 readEpochObserver = observer,
+                semanticGraphBatchSize = 1,
             ).use { backend ->
                 val refresh = async(Dispatchers.Default) {
                     backend.semanticGraph(
@@ -182,15 +183,22 @@ class NativeSemanticGraphConcurrencyTest {
                         ).parsed(),
                     )
                 }
-                assertTrue(firstReadEntered.await(10, TimeUnit.SECONDS))
+                assertTrue(secondReadEntered.await(10, TimeUnit.SECONDS))
 
                 refresh.cancel()
-                releaseFirstRead.countDown()
+                releaseSecondRead.countDown()
                 val failure = runCatching { refresh.await() }.exceptionOrNull()
 
                 assertTrue(failure is CancellationException, "expected cancellation, got $failure")
-                assertEquals(1, readCount.get())
-                assertTrue(store.semanticGraphSourcePaths().isEmpty())
+                assertEquals(2, readCount.get())
+                assertEquals(
+                    setOf(
+                        io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath.parse(
+                            files.minBy { file -> file.virtualFile.path }.name,
+                        ),
+                    ),
+                    store.semanticGraphSourcePaths(),
+                )
             }
         }
     }

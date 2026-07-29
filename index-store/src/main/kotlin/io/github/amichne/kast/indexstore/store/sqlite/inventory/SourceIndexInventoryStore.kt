@@ -169,64 +169,6 @@ internal class SourceIndexInventoryStore(
         }
     }
 
-    fun initializeModuleProgress(modules: Map<String, Int>) {
-        synchronized(state.writeLock) {
-            val conn = state.connection()
-            conn.autoCommit = false
-            try {
-                conn.createStatement().use { stmt -> stmt.execute("DELETE FROM module_index_progress") }
-                conn.prepareStatement(
-                    """INSERT INTO module_index_progress
-                       (module_name, relationship_index_status, indexed_file_count, total_file_count, last_indexed_epoch_ms)
-                       VALUES (?, 'PENDING', 0, ?, NULL)""",
-                ).use { stmt ->
-                    modules.toSortedMap().forEach { (moduleName, totalFileCount) ->
-                        stmt.setString(1, moduleName)
-                        stmt.setInt(2, totalFileCount)
-                        stmt.addBatch()
-                    }
-                    stmt.executeBatch()
-                }
-                conn.commit()
-            } catch (e: Exception) {
-                conn.rollback()
-                throw e
-            } finally {
-                conn.autoCommit = true
-            }
-        }
-    }
-
-    fun markModuleIndexing(moduleName: String) {
-        synchronized(state.writeLock) {
-            state.connection().prepareStatement(
-                """UPDATE module_index_progress
-                   SET relationship_index_status = 'INDEXING'
-                   WHERE module_name = ? AND relationship_index_status != 'COMPLETE'""",
-            ).use { stmt ->
-                stmt.setString(1, moduleName)
-                stmt.executeUpdate()
-            }
-        }
-    }
-
-    fun markModuleComplete(moduleName: String, fileCount: Int) {
-        synchronized(state.writeLock) {
-            state.connection().prepareStatement(
-                """UPDATE module_index_progress
-                   SET relationship_index_status = 'COMPLETE',
-                       indexed_file_count = ?,
-                       last_indexed_epoch_ms = ?
-                   WHERE module_name = ?""",
-            ).use { stmt ->
-                stmt.setInt(1, fileCount)
-                stmt.setLong(2, System.currentTimeMillis())
-                stmt.setString(3, moduleName)
-                stmt.executeUpdate()
-            }
-        }
-    }
-
     fun moduleIndexStatus(moduleName: String): String? =
         synchronized(state.writeLock) {
             state.connection().prepareStatement(

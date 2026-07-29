@@ -127,10 +127,21 @@ fn repository_traversal_continuation_resumes_without_replay_or_drift() {
         "{forged_response:#}"
     );
 
-    let source_path = workspace.join("src/main/kotlin/sample/Source0000.kt");
-    let source = std::fs::read(&source_path).expect("indexed Kotlin source");
-    std::fs::write(&source_path, b"changed after traversal page")
-        .expect("change coverage composition");
+    let original_hash: String = fixture
+        .connection()
+        .query_row(
+            "SELECT content_hash FROM file_manifest WHERE filename = 'Source0000.kt'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("original persisted source hash");
+    fixture
+        .connection()
+        .execute(
+            "UPDATE file_manifest SET content_hash = ? WHERE filename = 'Source0000.kt'",
+            params!["c".repeat(64)],
+        )
+        .expect("change persisted coverage composition");
     let (changed_status, changed_response) = agent_repository_traversal_page(
         &home,
         &config_home,
@@ -145,7 +156,13 @@ fn repository_traversal_continuation_resumes_without_replay_or_drift() {
         changed_response["error"]["code"], "STALE_REPOSITORY_CONTINUATION",
         "{changed_response:#}"
     );
-    std::fs::write(&source_path, source).expect("restore indexed Kotlin source");
+    fixture
+        .connection()
+        .execute(
+            "UPDATE file_manifest SET content_hash = ? WHERE filename = 'Source0000.kt'",
+            params![original_hash],
+        )
+        .expect("restore persisted coverage composition");
 
     let mut expected = std::collections::BTreeSet::from([
         (

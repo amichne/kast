@@ -47,9 +47,15 @@ import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
 import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
 import io.github.amichne.kast.api.contract.skill.WrapperCallDirection
 import io.github.amichne.kast.api.protocol.ConflictException
+import io.github.amichne.kast.indexstore.api.index.FileContentHash
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
+import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
+import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
+import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.Dispatchers
@@ -143,6 +149,57 @@ internal class KastPluginBackendContractTestCoverage : KastPluginBackendContract
         assertTrue(callers is CallRelationsResult.Limited)
         assertTrue(implementations is ImplementationRelationsResult.Limited)
         assertTrue(hierarchy is HierarchyRelationsResult.Limited)
+    }
+
+    @Test
+    fun `persisted limited relationship outcome degrades reference adapter evidence`() = runBlocking {
+        ensureProjectReady()
+        val (workspaceRoot, filePath, offset) = readAction {
+            Triple(
+                commonWorkspaceRoot(sampleFile.virtualFile.path, hierarchyFile.virtualFile.path),
+                sampleFile.virtualFile.path,
+                sampleFile.text.indexOf("greet"),
+            )
+        }
+
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            store.reconcileFileInventory(
+                entries = listOf(
+                    FileInventoryEntry(
+                        path = filePath,
+                        lastModifiedMillis = 1,
+                        contentHash = FileContentHash.parse("a".repeat(64)),
+                        moduleName = ":main[main]",
+                        sourceSet = "main",
+                    ),
+                ),
+                versions = FileStageVersions.CURRENT,
+            )
+            store.commitRelationshipBatch(
+                listOf(
+                    RelationshipFileStageUpdate(
+                        work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).single(),
+                        scannedContentHash = store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
+                            .single()
+                            .contentHash,
+                        references = emptyList(),
+                        declarations = emptyList(),
+                        limitations = listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP),
+                    ),
+                ),
+            )
+
+            val result = backend(
+                workspaceRoot = workspaceRoot,
+                relationshipCoverageAuthority = relationshipCoverageAuthority(sourceIndexStore = store),
+            ).findReferences(ReferencesQuery(position = FilePosition(filePath, offset)))
+
+            val evidence = result.evidence as RelationshipResultEvidence.Limited
+            assertTrue(RelationshipSearchLimitation.BACKEND_INCOMPLETE in evidence.coverage.limitations)
+            assertFalse(result.searchScope?.exhaustive ?: true)
+            assertEquals(SearchScope.CandidateCoverage.PARTIAL, result.searchScope?.candidateCoverage)
+        }
     }
 
     @Test

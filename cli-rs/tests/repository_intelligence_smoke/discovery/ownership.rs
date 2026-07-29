@@ -237,11 +237,13 @@ fn repository_discovery_ignores_unadmitted_neighbor_evidence() {
         "{out_of_scope:#}"
     );
 
-    std::fs::write(
-        workspace.join("other/src/test/kotlin/other/OutsideScope.kt"),
-        "package other\nfun changedAfterIndexing() = Unit\n",
-    )
-    .expect("stale neighbor source");
+    fixture
+        .connection()
+        .execute(
+            "UPDATE file_manifest SET content_hash = ? WHERE filename = 'OutsideScope.kt'",
+            params!["a".repeat(64)],
+        )
+        .expect("advance persisted neighbor hash");
     let stale = resolve(
         "stale-neighbor",
         serde_json::json!({"language": "kotlin"}),

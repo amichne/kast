@@ -1,6 +1,9 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.moduleFixture
@@ -9,6 +12,7 @@ import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.RemoteIndexConfig
+import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.client.fields.IndexingRemoteEnabled
 import io.github.amichne.kast.api.client.fields.IndexingRemoteSourceIndexUrl
 import io.github.amichne.kast.api.client.fields.OptionalConfigString
@@ -21,12 +25,15 @@ import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -36,7 +43,7 @@ import java.nio.file.Path
 @TestApplication
 class KastProjectOpenSourceIndexingTest {
     companion object {
-        private val projectFixture: TestFixture<Project> = projectFixture()
+        private val projectFixture: TestFixture<Project> = projectFixture(openAfterCreation = true)
 
         private const val targetSource = """
             package demo
@@ -81,15 +88,22 @@ class KastProjectOpenSourceIndexingTest {
             emptyList(),
             emptyList(),
         )
+        val sourceScans = mutableListOf<String>()
+        val relationshipScans = mutableListOf<String>()
 
         SqliteSourceIndexStore(workspaceRoot).use { store ->
-            IdeaProjectIndexer(
+            val indexer = IdeaProjectIndexer(
                 project = project,
                 workspaceRoot = workspaceRoot,
                 store = store,
                 cancelled = { false },
                 readGradleWorkspaceModel = { completeGradleModel },
-            ).indexProject(KastConfig.defaults())
+                onSourceFileScan = sourceScans::add,
+                onRelationshipFileScan = relationshipScans::add,
+            )
+            indexer.indexProject(KastConfig.defaults())
+            assertTrue(sourceScans.isNotEmpty())
+            assertTrue(relationshipScans.isNotEmpty())
 
             val snapshot = store.loadSourceIndexSnapshot()
             assertEquals(listOf(callerPath), snapshot.candidatePathsByIdentifier.getValue("caller"))
@@ -145,6 +159,35 @@ class KastProjectOpenSourceIndexingTest {
                 assertEquals(true, result.searchScope?.exhaustive)
             }
         }
+
+        val restartedSourceScans = mutableListOf<String>()
+        val restartedRelationshipScans = mutableListOf<String>()
+        SqliteSourceIndexStore(workspaceRoot).use { reopened ->
+            IdeaProjectIndexer(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                store = reopened,
+                cancelled = { false },
+                readGradleWorkspaceModel = { completeGradleModel },
+                onSourceFileScan = restartedSourceScans::add,
+                onRelationshipFileScan = restartedRelationshipScans::add,
+            ).indexProject(KastConfig.defaults())
+            assertTrue(restartedSourceScans.isEmpty(), "unchanged source files must not be rescanned after restart")
+            assertTrue(
+                restartedRelationshipScans.isEmpty(),
+                "unchanged relationship files must not be rescanned after restart",
+            )
+        }
+    }
+
+    @Test
+    fun `source scan rejects facts from a newer PSI revision`() {
+        assertChangedPsiDoesNotCommit(FileIndexStage.SOURCE)
+    }
+
+    @Test
+    fun `relationship scan rejects facts from a newer PSI revision`() {
+        assertChangedPsiDoesNotCommit(FileIndexStage.RELATIONSHIPS)
     }
 
     @Test
@@ -194,5 +237,75 @@ class KastProjectOpenSourceIndexingTest {
         }
         Files.deleteIfExists(Path.of("$dbPath-wal"))
         Files.deleteIfExists(Path.of("$dbPath-shm"))
+    }
+
+    private fun assertChangedPsiDoesNotCommit(stage: FileIndexStage) {
+        val project = projectFixture.get()
+        val callerFile = callerFileFixture.get()
+        targetFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(callerFile.virtualFile.path).parent.toAbsolutePath().normalize()
+        val callerPath = Path.of(callerFile.virtualFile.path).toAbsolutePath().normalize().toString()
+        val targetPath = Path.of(targetFileFixture.get().virtualFile.path).toAbsolutePath().normalize().toString()
+        val document = runIdeaReadAction {
+            FileDocumentManager.getInstance().getDocument(callerFile.virtualFile)!!
+        }
+        val workspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).copy(
+            sourceIndexDatabasePath = NormalizedPath.ofAbsolute(
+                tempDir.resolve("changed-${stage.name.lowercase()}.db"),
+            ),
+        )
+        val completeGradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            emptyList(),
+            true,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+        )
+        var changed = false
+        val changeCaller: (String) -> Unit = { path ->
+            if (!changed && path == callerPath) {
+                changed = true
+                replaceDocument(project, document, callerSource.replace("caller", "changedCaller"))
+            }
+        }
+
+        replaceDocument(project, document, callerSource)
+        try {
+            SqliteSourceIndexStore(workspaceIdentity).use { store ->
+                IdeaProjectIndexer(
+                    project = project,
+                    workspaceRoot = workspaceRoot,
+                    store = store,
+                    cancelled = { false },
+                    workspaceIdentity = workspaceIdentity,
+                    readGradleWorkspaceModel = { completeGradleModel },
+                    onSourceFileScan = if (stage == FileIndexStage.SOURCE) changeCaller else { _ -> },
+                    onRelationshipFileScan = if (stage == FileIndexStage.RELATIONSHIPS) changeCaller else { _ -> },
+                ).indexProject(KastConfig.defaults())
+
+                assertNull(store.fileStageOutcome(callerPath, stage))
+                assertNotNull(store.fileStageOutcome(targetPath, stage))
+                assertTrue(
+                    store.pendingFileStages(stage).any { work -> work.path == callerPath },
+                    "A scan from a newer PSI revision must remain pending",
+                )
+            }
+        } finally {
+            replaceDocument(project, document, callerSource)
+        }
+    }
+
+    private fun replaceDocument(
+        project: Project,
+        document: com.intellij.openapi.editor.Document,
+        content: String,
+    ) {
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction { document.setText(content) }
+            PsiDocumentManager.getInstance(project).commitDocument(document)
+        }
     }
 }

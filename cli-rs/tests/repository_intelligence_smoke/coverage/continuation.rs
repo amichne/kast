@@ -93,9 +93,21 @@ fn graph_coverage_continuation_rejects_tampering_and_drift() {
         .execute("UPDATE schema_version SET generation = 41", [])
         .expect("restore graph generation");
 
-    let source_path = workspace.join("src/main/kotlin/sample/Source0002.kt");
-    let source_content = std::fs::read(&source_path).expect("original source");
-    std::fs::write(&source_path, "package sample\nclass Changed\n").expect("changed source");
+    let original_hash: String = fixture
+        .connection()
+        .query_row(
+            "SELECT content_hash FROM file_manifest WHERE filename = 'Source0002.kt'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("original persisted source hash");
+    fixture
+        .connection()
+        .execute(
+            "UPDATE file_manifest SET content_hash = ? WHERE filename = 'Source0002.kt'",
+            params!["d".repeat(64)],
+        )
+        .expect("advance persisted source hash");
     let (composition_status, composition_response) = rpc(
         &home,
         &config_home,
@@ -107,7 +119,13 @@ fn graph_coverage_continuation_rejects_tampering_and_drift() {
         composition_response["code"], "STALE_GRAPH_COVERAGE_CONTINUATION",
         "{composition_response:#}"
     );
-    std::fs::write(&source_path, source_content).expect("restore source");
+    fixture
+        .connection()
+        .execute(
+            "UPDATE file_manifest SET content_hash = ? WHERE filename = 'Source0002.kt'",
+            params![original_hash],
+        )
+        .expect("restore persisted source hash");
 
     std::fs::create_dir_all(workspace.join("included")).expect("included build");
     fixture

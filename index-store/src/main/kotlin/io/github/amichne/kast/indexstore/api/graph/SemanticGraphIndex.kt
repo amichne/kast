@@ -62,3 +62,10 @@ data class SemanticGraphIndexSnapshot(
     val boundarySymbols: List<SemanticGraphSymbol>,
     val relations: List<SemanticGraphRelation>,
 )
+
+data class SemanticGraphIndexSummary(
+    val generation: SourceIndexGeneration,
+    val files: List<SemanticGraphFileCoverage>,
+    val symbolCount: Int,
+    val edgeOccurrenceCount: Int,
+)

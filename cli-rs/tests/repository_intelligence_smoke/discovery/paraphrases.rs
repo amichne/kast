@@ -138,6 +138,7 @@ fn seed_included_build_app(fixture: &WorkspaceIndexFixture) {
             params![path, hex::encode(Sha256::digest(content))],
         )
         .expect("included semantic file");
+    fixture.synchronize_semantic_graph_scope_fingerprints();
 }
 
 fn seed_architecture_boundary_targets(fixture: &WorkspaceIndexFixture, count: usize) {
@@ -227,4 +228,5 @@ fn seed_architecture_boundary_targets(fixture: &WorkspaceIndexFixture, count: us
             )
             .expect("architecture boundary edge");
     }
+    fixture.synchronize_semantic_graph_scope_fingerprints();
 }

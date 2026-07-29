@@ -11,13 +11,19 @@ import com.intellij.psi.PsiFile
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
+import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
+import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
 import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
+import io.github.amichne.kast.indexstore.indexing.RelationshipScanResult
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
 import io.github.amichne.kast.shared.analysis.PsiSourceIndexScanner
-import java.nio.file.Files
 import java.nio.file.Path
+
+private const val SOURCE_INDEX_BATCH_SIZE = 50
 
 internal class IdeaProjectIndexer(
     private val project: Project,
@@ -28,6 +34,8 @@ internal class IdeaProjectIndexer(
     private val readGradleWorkspaceModel: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
         IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
     },
+    private val onSourceFileScan: (String) -> Unit = {},
+    private val onRelationshipFileScan: (String) -> Unit = {},
 ) {
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     private val environment = IdeaReferenceIndexEnvironment(
@@ -68,25 +76,43 @@ internal class IdeaProjectIndexer(
             IdeaGradleFileProvenance.fromWorkspaceModel(gradleModel, ideaWorkspaceIdentity) to
                 inventory.snapshot(WorkspaceFileKindDomain.MIXED, gradleModel)
         }
+        val ownerModuleNamesByPath = referenceIndexOwnersByPath(inventorySnapshot)
+        val inventoryEntries = buildFileInventoryEntries(
+            ownerModuleNamesByPath = ownerModuleNamesByPath,
+            workspaceRoot = workspaceRoot,
+            isCancelled = environment::isCancelled,
+            sourceSetForPath = ::legacySourceSetLabelForFile,
+        )
+        if (environment.isCancelled()) return emptyList()
+        store.reconcileFileInventory(inventoryEntries, FileStageVersions.CURRENT)
+
         val scanner = PsiSourceIndexScanner(
             environment = environment,
             moduleNameForFile = ::moduleNameForFile,
         )
-        val ownerModuleNamesByPath = referenceIndexOwnersByPath(inventorySnapshot)
-        val updates = ownerModuleNamesByPath.keys
-            .mapNotNull(scanner::scanFile)
-            .map { update ->
-                gradleProvenance.applyTo(
-                    update = update,
-                    ownerModuleNames = ownerModuleNamesByPath.getValue(update.path),
-                )
+        for (batch in store.pendingFileStages(FileIndexStage.SOURCE).chunked(SOURCE_INDEX_BATCH_SIZE)) {
+            if (environment.isCancelled()) break
+            val updates = batch.mapNotNull { work ->
+                onSourceFileScan(work.path)
+                scanner.scanFile(work.path)?.let { result ->
+                    if (result.contentHash != work.contentHash) return@mapNotNull null
+                    val update = result.update
+                    SourceFileStageUpdate(
+                        work = work,
+                        scannedContentHash = result.contentHash,
+                        update = gradleProvenance.applyTo(
+                            update = update,
+                            ownerModuleNames = ownerModuleNamesByPath.getValue(update.path),
+                        ),
+                    )
+                }
             }
-        val manifest = updates.associate { update ->
-            update.path to lastModifiedMillis(update.path)
+            if (environment.isCancelled()) break
+            if (updates.isNotEmpty()) {
+                store.commitSourceBatch(updates)
+            }
         }
-        if (environment.isCancelled()) return emptyList()
-        store.saveFullIndex(updates = updates, manifest = manifest)
-        return manifest.keys
+        return inventoryEntries.map(FileInventoryEntry::path)
     }
 
     private fun indexSymbolRelationships(
@@ -95,37 +121,22 @@ internal class IdeaProjectIndexer(
         batchSize: Int,
         parallelism: Int,
     ) {
-        if (currentFilePaths.isEmpty()) return
-        val fileModuleByPath = currentFilePaths
+        val workByPath = store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
+            .associateBy { work -> work.path }
+        val pendingFilePaths = currentFilePaths.filter(workByPath::containsKey)
+        if (pendingFilePaths.isEmpty()) return
+        val fileModuleByPath = pendingFilePaths
             .associateWith { filePath ->
                 environment.findPsiFile(filePath)
                     ?.let(::moduleNameForFile)
                     ?.let(::canonicalModuleName)
             }
-        store.removeReferencesOutsideSources(currentFilePaths)
-        val moduleFileCountByName = moduleOrder
-            .associateWith { 0 }
-            .toMutableMap<String, Int>()
-        for ((_, moduleName) in fileModuleByPath) {
-            if (moduleName != null) {
-                moduleFileCountByName[moduleName] = moduleFileCountByName.getOrDefault(moduleName, 0) + 1
-            }
-        }
-        store.initializeModuleProgress(moduleFileCountByName)
-
-        for ((moduleName, fileCount) in moduleFileCountByName) {
-            if (fileCount == 0) {
-                store.markModuleComplete(moduleName, fileCount)
-            }
-        }
-
-        val filesByModule = currentFilePaths
+        val filesByModule = pendingFilePaths
             .associateWith { filePath -> fileModuleByPath[filePath] }
             .toList()
 
         val orderedFilePaths = prioritizeFilesByModule(pathsByModule = filesByModule, moduleOrder = moduleOrder)
 
-        val completedByModule = mutableMapOf<String, Int>()
         val scanner = PsiReferenceScanner(
             environment = environment,
             moduleNameForFile = { path ->
@@ -136,25 +147,19 @@ internal class IdeaProjectIndexer(
             store = store,
             batchSize = batchSize,
             parallelism = parallelism,
-        ).indexSymbolRelationships(
-            filePaths = orderedFilePaths,
-            referenceScanner = scanner::scanFileReferences,
-            declarationScanner = scanner::scanFileDeclarations,
-            isCancelled = environment::isCancelled,
-            onFilesIndexed = { indexedPaths ->
-                for (path in indexedPaths) {
-                    val moduleName = fileModuleByPath[path] ?: ""
-                    if (moduleName.isEmpty()) continue
-                    val count = completedByModule.getOrDefault(moduleName, 0) + 1
-                    completedByModule[moduleName] = count
-                    if (count == 1) {
-                        store.markModuleIndexing(moduleName)
-                    }
-                    if (count == moduleFileCountByName.getValue(moduleName)) {
-                        store.markModuleComplete(moduleName, count)
-                    }
-                }
+        ).indexPendingSymbolRelationships(
+            work = orderedFilePaths.map(workByPath::getValue),
+            scanner = { path ->
+                onRelationshipFileScan(path)
+                val result = scanner.scanFileRelationships(path)
+                RelationshipScanResult(
+                    contentHash = result.contentHash,
+                    references = result.references,
+                    declarations = result.declarations,
+                    limitations = result.limitations,
+                )
             },
+            isCancelled = environment::isCancelled,
         )
     }
 
@@ -257,11 +262,6 @@ internal class IdeaProjectIndexer(
                 ProjectFileIndex.getInstance(project).getSourceRootForFile(virtualFile)?.name
             }
         }
-    }
-
-    private fun lastModifiedMillis(filePath: String): Long {
-        val path = Path.of(filePath)
-        return if (Files.isRegularFile(path)) Files.getLastModifiedTime(path).toMillis() else 0L
     }
 
     private fun workspaceIdentityForIdea(): IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(

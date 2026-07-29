@@ -1,6 +1,9 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.moduleFixture
@@ -10,6 +13,7 @@ import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
+import io.github.amichne.kast.api.contract.result.SemanticGraphFileStatus
 import io.github.amichne.kast.api.contract.result.SemanticGraphGeneration
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.protocol.ConflictException
@@ -34,7 +38,7 @@ import java.util.concurrent.atomic.AtomicLong
 @TestApplication
 class NativeSemanticGraphGenerationTest {
     companion object {
-        private val projectFixture: TestFixture<Project> = projectFixture()
+        private val projectFixture: TestFixture<Project> = projectFixture(openAfterCreation = true)
 
         private const val canonicalSource = """
             package demo
@@ -118,12 +122,61 @@ class NativeSemanticGraphGenerationTest {
     }
 
     @Test
+    fun `target content changes invalidate cached semantic callers`() = runBlocking {
+        val project = projectFixture.get()
+        val sourceFile = boundarySourceFixture.get()
+        val targetFile = boundaryTargetFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
+        val query = SemanticGraphQuery(
+            filePaths = listOf(sourceFile, targetFile)
+                .map { file -> SemanticGraphPath.parse(file.virtualFile.path) },
+        ).parsed()
+        val document = runIdeaReadAction {
+            FileDocumentManager.getInstance().getDocument(targetFile.virtualFile)!!
+        }
+        val originalText = runIdeaReadAction { document.text }
+
+        try {
+            SqliteSourceIndexStore(storeRoot).use { store ->
+                store.ensureSchema()
+                KastPluginBackend(
+                    project = project,
+                    workspaceRoot = workspaceRoot,
+                    limits = limits(),
+                    semanticGraphStore = store,
+                    psiGeneration = { 1L },
+                ).use { backend ->
+                    backend.semanticGraph(query)
+                    replaceDocument(project, document, "$originalText\nval targetRevision = 2\n")
+
+                    val refreshed = backend.semanticGraph(query)
+
+                    assertEquals(
+                        setOf(
+                            SemanticGraphSourcePath.parse(sourceFile.name),
+                            SemanticGraphSourcePath.parse(targetFile.name),
+                        ),
+                        refreshed.coverage.files
+                            .filter { file -> file.status == SemanticGraphFileStatus.REFRESHED }
+                            .mapTo(mutableSetOf()) { file -> file.path },
+                    )
+                }
+            }
+        } finally {
+            replaceDocument(project, document, originalText)
+        }
+    }
+
+    @Test
     fun `concurrent removal prevents an older refresh from resurrecting cached nodes`() = runBlocking {
         val project = projectFixture.get()
         val sourceFile = canonicalFileFixture.get()
+        val targetFile = boundaryTargetFixture.get()
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
         val sourcePath = SemanticGraphPath.parse(sourceFile.virtualFile.path)
+        val targetPath = SemanticGraphPath.parse(targetFile.virtualFile.path)
 
         SqliteSourceIndexStore(storeRoot).use { store ->
             store.ensureSchema()
@@ -159,7 +212,7 @@ class NativeSemanticGraphGenerationTest {
                     val refresh = async(Dispatchers.Default) {
                         backend.semanticGraph(
                             SemanticGraphQuery(
-                                filePaths = listOf(sourcePath),
+                                filePaths = listOf(sourcePath, targetPath),
                                 expectedGeneration = SemanticGraphGeneration(seededGeneration.value),
                             ).parsed(),
                         )
@@ -287,4 +340,16 @@ class NativeSemanticGraphGenerationTest {
 
     private fun limits(): ServerLimits =
         ServerLimits(maxResults = 500, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4)
+
+    private fun replaceDocument(
+        project: Project,
+        document: com.intellij.openapi.editor.Document,
+        content: String,
+    ) {
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction { document.setText(content) }
+            PsiDocumentManager.getInstance(project).commitDocument(document)
+        }
+    }
 }

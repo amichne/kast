@@ -3,6 +3,7 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.result.*
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphIndexSnapshot
+import io.github.amichne.kast.indexstore.api.graph.SemanticGraphIndexSummary
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphScopeSnapshot
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -16,26 +17,7 @@ internal class SemanticGraphReader(
             val conn = state.connection()
             val generation = state.readGenerationInTransaction(conn)
             prepareSemanticGraphScope(conn, filePaths)
-            val files = conn.prepareStatement(
-                """SELECT files.path, files.content_hash, files.refresh_status, files.diagnostics_json
-                   FROM requested_semantic_file_ids requested
-                   JOIN semantic_files files ON files.id = requested.id
-                   ORDER BY files.path""",
-            ).use { statement ->
-                val rows = statement.executeQuery()
-                buildList {
-                    while (rows.next()) {
-                        add(
-                            SemanticGraphFileCoverage(
-                                path = SemanticGraphSourcePath.parse(rows.getString(1)),
-                                contentHash = rows.getString(2)?.let(SemanticGraphSha256::parse),
-                                status = SemanticGraphFileStatus.valueOf(rows.getString(3)),
-                                diagnostics = Json.decodeFromString(rows.getString(4)),
-                            ),
-                        )
-                    }
-                }
-            }
+            val files = readSemanticGraphFiles(conn)
             val symbols = conn.prepareStatement(
                 semanticSymbolSelect(
                     """FROM requested_semantic_file_ids requested
@@ -100,6 +82,49 @@ internal class SemanticGraphReader(
             return SemanticGraphIndexSnapshot(generation, files, symbols, boundarySymbols, relations)
         }
     }
+
+    fun readSemanticGraphSummary(filePaths: Collection<SemanticGraphSourcePath>): SemanticGraphIndexSummary =
+        synchronized(state.writeLock) {
+            val conn = state.connection()
+            prepareSemanticGraphScope(conn, filePaths)
+            SemanticGraphIndexSummary(
+                generation = state.readGenerationInTransaction(conn),
+                files = readSemanticGraphFiles(conn),
+                symbolCount = countRequestedRows(conn, "semantic_symbols", "file_id"),
+                edgeOccurrenceCount = countRequestedRows(conn, "semantic_edge_occurrences", "source_file_id"),
+            )
+        }
+
+    private fun readSemanticGraphFiles(conn: Connection): List<SemanticGraphFileCoverage> =
+        conn.prepareStatement(
+            """SELECT files.path, files.content_hash, files.refresh_status, files.diagnostics_json
+               FROM requested_semantic_file_ids requested
+               JOIN semantic_files files ON files.id = requested.id
+               ORDER BY files.path""",
+        ).use { statement ->
+            val rows = statement.executeQuery()
+            buildList {
+                while (rows.next()) {
+                    add(
+                        SemanticGraphFileCoverage(
+                            path = SemanticGraphSourcePath.parse(rows.getString(1)),
+                            contentHash = rows.getString(2)?.let(SemanticGraphSha256::parse),
+                            status = SemanticGraphFileStatus.valueOf(rows.getString(3)),
+                            diagnostics = Json.decodeFromString(rows.getString(4)),
+                        ),
+                    )
+                }
+            }
+        }
+
+    private fun countRequestedRows(conn: Connection, table: String, fileColumn: String): Int =
+        conn.prepareStatement(
+            "SELECT COUNT(*) FROM $table WHERE $fileColumn IN (SELECT id FROM requested_semantic_file_ids)",
+        ).use { statement ->
+            val rows = statement.executeQuery()
+            check(rows.next())
+            rows.getInt(1)
+        }
 
     private fun prepareSemanticGraphScope(conn: Connection, filePaths: Collection<SemanticGraphSourcePath>) {
         conn.createStatement().use { statement ->

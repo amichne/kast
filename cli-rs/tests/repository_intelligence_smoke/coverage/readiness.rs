@@ -32,7 +32,10 @@ fn semantic_graph_capabilities(workspace: &std::path::Path) -> serde_json::Value
 fn remove_semantic_graph_coverage(fixture: &WorkspaceIndexFixture) {
     fixture
         .connection()
-        .execute("DELETE FROM semantic_files", [])
+        .execute(
+            "DELETE FROM file_stage_outcomes WHERE stage = 'SEMANTIC_GRAPH'",
+            [],
+        )
         .expect("remove semantic graph coverage");
 }
 
@@ -84,7 +87,7 @@ fn status_separates_runtime_readiness_from_incomplete_semantic_graph_coverage() 
     );
     assert_eq!(result["semanticGraph"]["state"], "INCOMPLETE", "{result}");
     assert_eq!(result["semanticGraph"]["total"], 1, "{result}");
-    assert_eq!(result["semanticGraph"]["failed"], 1, "{result}");
+    assert_eq!(result["semanticGraph"]["pending"], 1, "{result}");
     assert_eq!(result["semanticGraph"]["stale"], 0, "{result}");
 }
 
@@ -202,7 +205,7 @@ fn verify_fails_incomplete_semantic_graph_coverage_without_discarding_runtime_ev
         "INCOMPLETE",
         "{result}"
     );
-    assert_eq!(result["result"]["semanticGraph"]["failed"], 1, "{result}");
+    assert_eq!(result["result"]["semanticGraph"]["pending"], 1, "{result}");
     assert_eq!(
         result["error"]["code"],
         "SEMANTIC_GRAPH_COVERAGE_INCOMPLETE",
