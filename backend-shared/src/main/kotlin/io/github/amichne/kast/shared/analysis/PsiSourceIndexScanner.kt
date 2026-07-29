@@ -26,10 +26,9 @@ class PsiSourceIndexScanner internal constructor(
         moduleNameForFile: (PsiFile) -> String? = { null },
     ) : this(environment, moduleNameForFile, ::structuredPackageEvidence)
 
-    fun scanFile(filePath: String): PsiSourceIndexScanResult? = environment.withReadAccess {
-        if (environment.isCancelled()) return@withReadAccess null
+    fun scanFile(filePath: String): PsiSourceIndexScanResult? = environment.withPsiFileReadAccess(filePath) { psiFile ->
+        if (environment.isCancelled()) return@withPsiFileReadAccess null
         ProgressManager.checkCanceled()
-        val psiFile = environment.findPsiFile(filePath) ?: return@withReadAccess null
         val sourcePath = runCatching { psiFile.resolvedFilePath().value }.getOrElse { filePath }
         val content = psiFile.text
         val parsed = parseSourceFileIndex(

@@ -7,6 +7,24 @@ interface ReferenceIndexEnvironment {
 
     fun <T> withReadAccess(action: () -> T): T
 
+    fun <T> withPsiFileReadAccess(
+        filePath: String,
+        action: (PsiFile) -> T,
+    ): T? = withReadAccess {
+        findPsiFile(filePath)
+            ?.takeIf { psiFile -> psiFile.isValid }
+            ?.let(action)
+    }
+
+    fun <T> withPsiFileExclusiveAccess(
+        filePath: String,
+        action: (PsiFile) -> T,
+    ): T? = withExclusiveAccess {
+        findPsiFile(filePath)
+            ?.takeIf { psiFile -> psiFile.isValid }
+            ?.let(action)
+    }
+
     /**
      * Runs [action] with exclusive access to the underlying analysis state.
      *
