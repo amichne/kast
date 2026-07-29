@@ -15,7 +15,6 @@ use crate::runtime::{RuntimeState, RuntimeStatusResponse};
 use crate::{config, output, runtime};
 use serde::Serialize;
 use serde_json::{Value, json};
-use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -51,15 +50,6 @@ struct EmptyCheckResult {
 struct EmptyRefreshResult {
     file_count: usize,
     message: &'static str,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ExternalizableFailure {
-    path: String,
-    failure_id: String,
-    code: String,
-    message: String,
 }
 
 pub(crate) fn run_up() -> Result<i32> {
@@ -278,7 +268,7 @@ pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
         return run_external_refresh(workspace_root, failure_ids);
     }
 
-    let file_paths = if args.paths.is_empty() {
+    let requested_paths = if args.paths.is_empty() {
         match changed_kotlin_files(&workspace_root)? {
             Ok(file_paths) => file_paths,
             Err(envelope) => return print_projected_value(envelope),
@@ -289,69 +279,80 @@ pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
             .map(|path| path.display().to_string())
             .collect()
     };
-    if file_paths.is_empty() {
+    if requested_paths.is_empty() {
         return print_direct(&EmptyRefreshResult {
             file_count: 0,
             message: "No changed Kotlin files were found.",
         });
     }
-
-    let diagnostics = projected_value(AgentCommand::Diagnostics(AgentDiagnosticsArgs {
-        runtime: agent_runtime(workspace_root.clone()),
-        file_paths,
-        skip_refresh: false,
-        limit: 500,
-        page_token: None,
-        view: AgentDiagnosticsViewArgs::default(),
-    }))?;
-    if diagnostics.get("ok") != Some(&Value::Bool(true)) {
-        return print_projected_value(diagnostics);
+    let runtime_args = agent_runtime(workspace_root.clone());
+    let file_paths = match agent::normalize_public_file_paths(&runtime_args, &requested_paths) {
+        Ok(file_paths) => file_paths,
+        Err(error) => return print_failure(&error.code, &error.message),
+    };
+    let refresh_response = raw_workspace_refresh(&workspace_root, &file_paths, &[])?;
+    if let Some((code, message)) = rpc_failure(&refresh_response) {
+        return print_failure(code, message);
     }
-    let diagnostics_result = projected_result(&diagnostics)?;
-    let canonical_paths = diagnostics_result
-        .get("filePaths")
-        .and_then(Value::as_array)
-        .ok_or_else(|| {
-            CliError::new(
-                "KAST_INVALID_AGENT_RESULT",
-                "Diagnostics completed without canonical file paths.",
-            )
-        })?
-        .iter()
-        .map(|path| {
-            path.as_str().map(str::to_string).ok_or_else(|| {
-                CliError::new(
-                    "KAST_INVALID_AGENT_RESULT",
-                    "Diagnostics returned a non-string file path.",
-                )
-            })
+    let refresh_result = projected_result(&refresh_response)?;
+    let refreshed_paths = string_array_field(refresh_result, "refreshedFiles")?;
+    let removed_paths = string_array_field(refresh_result, "removedFiles")?;
+    let externalizable_failures = refresh_relationship_failures(refresh_result, &refreshed_paths)?;
+
+    let diagnostics = if refreshed_paths.is_empty() {
+        json!({
+            "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+            "cardinality": {"totalCount": 0, "returnedCount": 0, "truncated": false},
+            "diagnostics": [],
         })
-        .collect::<Result<Vec<_>>>()?;
+    } else {
+        let envelope = projected_value(AgentCommand::Diagnostics(AgentDiagnosticsArgs {
+            runtime: runtime_args,
+            file_paths: refreshed_paths.clone(),
+            skip_refresh: true,
+            limit: 500,
+            page_token: None,
+            view: AgentDiagnosticsViewArgs::default(),
+        }))?;
+        if envelope.get("ok") != Some(&Value::Bool(true)) {
+            return print_projected_value(envelope);
+        }
+        let result = projected_result(&envelope)?;
+        json!({
+            "severityCounts": required_field(result, "severityCounts")?,
+            "cardinality": diagnostic_cardinality(result)?,
+            "diagnostics": required_field(result, "diagnostics")?,
+        })
+    };
 
     let graph = projected_value(native_graph_command(
         workspace_root.clone(),
         NativeGraphOperation::Refresh,
         None,
-        canonical_paths.clone(),
+        refreshed_paths.clone(),
+        removed_paths.clone(),
     ))?;
     if graph.get("ok") != Some(&Value::Bool(true)) {
         return print_projected_value(graph);
     }
     let graph_result = projected_result(&graph)?;
-    let externalizable_failures = externalizable_failures(&workspace_root, &canonical_paths)?;
     let next = externalizable_failures
         .iter()
-        .map(|failure| format!("kast refresh external {}", failure.failure_id))
+        .map(|failure| {
+            format!(
+                "kast refresh external {}",
+                failure["failureId"]
+                    .as_str()
+                    .expect("validated relationship failure id")
+            )
+        })
         .collect::<Vec<_>>();
 
     print_direct(&json!({
-        "fileCount": canonical_paths.len(),
-        "files": canonical_paths,
-        "diagnostics": {
-            "severityCounts": required_field(diagnostics_result, "severityCounts")?,
-            "cardinality": diagnostic_cardinality(diagnostics_result)?,
-            "diagnostics": required_field(diagnostics_result, "diagnostics")?,
-        },
+        "fileCount": file_paths.len(),
+        "files": refreshed_paths,
+        "removedFiles": removed_paths,
+        "diagnostics": diagnostics,
         "graph": {
             "generation": required_field(graph_result, "generation")?,
             "symbolCount": required_field(graph_result, "symbolCount")?,
@@ -377,6 +378,7 @@ fn print_native_graph(
         operation,
         symbol,
         Vec::new(),
+        Vec::new(),
     ))
 }
 
@@ -385,6 +387,7 @@ fn native_graph_command(
     operation: NativeGraphOperation,
     symbol: Option<String>,
     file_paths: Vec<String>,
+    removed_file_paths: Vec<String>,
 ) -> AgentCommand {
     AgentCommand::Graph(AgentNativeGraphArgs {
         runtime: agent_runtime(workspace_root),
@@ -392,7 +395,7 @@ fn native_graph_command(
         scope: None,
         operation,
         file_paths,
-        removed_file_paths: Vec::new(),
+        removed_file_paths,
         modules: Vec::new(),
         source_sets: Vec::new(),
         exclusive: false,
@@ -669,34 +672,8 @@ fn diagnostic_cardinality(result: &Value) -> Result<Value> {
 }
 
 fn run_external_refresh(workspace_root: PathBuf, failure_ids: Vec<String>) -> Result<i32> {
-    let request = json!({
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "raw/workspace-refresh",
-        "params": {
-            "filePaths": [],
-            "externalFailureIds": &failure_ids,
-        }
-    });
-    let raw = runtime::raw_request_passthrough(
-        serde_json::to_string(&request)?,
-        Some(workspace_root),
-        None,
-    )?;
-    let response: Value = serde_json::from_str(&raw)?;
-    if let Some(error) = response.get("error") {
-        let code = error
-            .get("data")
-            .and_then(|data| data.get("code"))
-            .or_else(|| error.get("code"))
-            .and_then(Value::as_str)
-            .unwrap_or("RPC_ERROR");
-        let message = error
-            .get("data")
-            .and_then(|data| data.get("message"))
-            .or_else(|| error.get("message"))
-            .and_then(Value::as_str)
-            .unwrap_or("External graph-boundary refresh failed.");
+    let response = raw_workspace_refresh(&workspace_root, &[], &failure_ids)?;
+    if let Some((code, message)) = rpc_failure(&response) {
         return print_failure(code, message);
     }
     let outcomes = response
@@ -752,6 +729,45 @@ fn run_external_refresh(workspace_root: PathBuf, failure_ids: Vec<String>) -> Re
     print_direct(&json!({"external": external}))
 }
 
+fn raw_workspace_refresh(
+    workspace_root: &Path,
+    file_paths: &[String],
+    external_failure_ids: &[String],
+) -> Result<Value> {
+    let request = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "raw/workspace-refresh",
+        "params": {
+            "filePaths": file_paths,
+            "externalFailureIds": external_failure_ids,
+        }
+    });
+    let raw = runtime::raw_request_passthrough(
+        serde_json::to_string(&request)?,
+        Some(workspace_root.to_path_buf()),
+        None,
+    )?;
+    serde_json::from_str(&raw).map_err(CliError::from)
+}
+
+fn rpc_failure(response: &Value) -> Option<(&str, &str)> {
+    let error = response.get("error")?;
+    let code = error
+        .get("data")
+        .and_then(|data| data.get("code"))
+        .or_else(|| error.get("code"))
+        .and_then(Value::as_str)
+        .unwrap_or("RPC_ERROR");
+    let message = error
+        .get("data")
+        .and_then(|data| data.get("message"))
+        .or_else(|| error.get("message"))
+        .and_then(Value::as_str)
+        .unwrap_or("Workspace refresh failed.");
+    Some((code, message))
+}
+
 fn print_failure(code: &str, message: &str) -> Result<i32> {
     output::print_structured(
         &ProjectedError {
@@ -764,97 +780,65 @@ fn print_failure(code: &str, message: &str) -> Result<i32> {
     Ok(1)
 }
 
-fn externalizable_failures(
-    workspace_root: &Path,
-    selected_paths: &[String],
-) -> Result<Vec<ExternalizableFailure>> {
-    let database = config::workspace_database_path(workspace_root)?;
-    let connection = rusqlite::Connection::open_with_flags(
-        &database,
-        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY
-            | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX
-            | rusqlite::OpenFlags::SQLITE_OPEN_URI,
-    )
-    .map_err(external_failure_sql_error)?;
-    crate::source_index_db::configure_read_connection(&connection)
-        .map_err(external_failure_sql_error)?;
-    crate::source_index_db::enable_query_only(&connection).map_err(external_failure_sql_error)?;
-    let selected = selected_paths.iter().cloned().collect::<BTreeSet<_>>();
-    let mut statement = connection
-        .prepare(
-            "SELECT prefixes.dir_path, outcomes.filename,
-                    outcomes.failure_id, outcomes.failure_code, outcomes.failure_message
-             FROM file_stage_outcomes outcomes
-             JOIN path_prefixes prefixes ON prefixes.prefix_id = outcomes.prefix_id
-             JOIN file_manifest manifest
-               ON manifest.prefix_id = outcomes.prefix_id
-              AND manifest.filename = outcomes.filename
-             WHERE outcomes.stage = 'RELATIONSHIPS'
-               AND outcomes.outcome_status = 'FAILED'
-               AND outcomes.content_hash = manifest.content_hash
-               AND outcomes.stage_version = manifest.desired_relationships_version
-             ORDER BY prefixes.dir_path, outcomes.filename",
-        )
-        .map_err(external_failure_sql_error)?;
-    let rows = statement
-        .query_map([], |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, String>(4)?,
-            ))
-        })
-        .map_err(external_failure_sql_error)?;
-    let mut failures = Vec::new();
-    for row in rows {
-        let (directory, filename, failure_id, code, message) =
-            row.map_err(external_failure_sql_error)?;
-        let path = compose_index_path(workspace_root, &directory, &filename);
-        if !selected.contains(&path) {
-            continue;
-        }
-        let valid_id = uuid::Uuid::parse_str(&failure_id)
-            .ok()
-            .is_some_and(|id| id.hyphenated().to_string() == failure_id);
-        if !valid_id || code != "PSI_UNAVAILABLE" || message.trim().is_empty() {
-            return Err(CliError::new(
-                "KAST_EXTERNAL_FAILURE_EVIDENCE_INVALID",
-                "The source index contains malformed externalizable failure evidence.",
-            ));
-        }
-        failures.push(ExternalizableFailure {
-            path,
-            failure_id,
-            code,
-            message,
-        });
-    }
-    Ok(failures)
-}
-
-fn compose_index_path(workspace_root: &Path, directory: &str, filename: &str) -> String {
-    let path = if let Some(absolute) = directory.strip_prefix("__kast_abs__/") {
-        PathBuf::from(absolute).join(filename)
-    } else {
-        let relative = directory.strip_prefix("__kast_rel__/").unwrap_or(directory);
-        relative
-            .split('/')
-            .filter(|segment| !segment.is_empty())
-            .fold(workspace_root.to_path_buf(), |path, segment| {
-                path.join(segment)
+fn string_array_field(result: &Value, field: &str) -> Result<Vec<String>> {
+    required_field(result, field)?
+        .as_array()
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                format!("The typed operation returned a non-array `{field}` field."),
+            )
+        })?
+        .iter()
+        .map(|value| {
+            value.as_str().map(str::to_string).ok_or_else(|| {
+                CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    format!("The typed operation returned a non-string `{field}` entry."),
+                )
             })
-            .join(filename)
-    };
-    config::normalize(path).display().to_string()
+        })
+        .collect()
 }
 
-fn external_failure_sql_error(error: rusqlite::Error) -> CliError {
-    CliError::new(
-        "KAST_EXTERNAL_FAILURE_EVIDENCE_UNAVAILABLE",
-        format!("Externalizable failure evidence is unavailable: {error}"),
-    )
+fn refresh_relationship_failures(
+    refresh_result: &Value,
+    refreshed_paths: &[String],
+) -> Result<Vec<Value>> {
+    required_field(refresh_result, "relationshipFailures")?
+        .as_array()
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "Workspace refresh returned non-array relationship failure evidence.",
+            )
+        })?
+        .iter()
+        .map(|failure| {
+            let failure_id = required_string(failure, "failureId")?;
+            let file_path = required_string(failure, "filePath")?;
+            let code = required_string(failure, "code")?;
+            let valid_id = uuid::Uuid::parse_str(failure_id)
+                .ok()
+                .is_some_and(|id| id.hyphenated().to_string() == failure_id);
+            if !valid_id || code != "PSI_UNAVAILABLE" || !refreshed_paths.iter().any(|path| path == file_path) {
+                return Err(CliError::new(
+                    "KAST_EXTERNAL_FAILURE_EVIDENCE_INVALID",
+                    "Workspace refresh returned invalid externalizable relationship failure evidence.",
+                ));
+            }
+            Ok(json!({"path": file_path, "failureId": failure_id, "code": code}))
+        })
+        .collect()
+}
+
+fn required_string<'a>(value: &'a Value, field: &str) -> Result<&'a str> {
+    value.get(field).and_then(Value::as_str).ok_or_else(|| {
+        CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            format!("The typed operation returned no string `{field}` field."),
+        )
+    })
 }
 
 fn workspace_files_args(workspace_root: PathBuf) -> AgentWorkspaceFilesArgs {

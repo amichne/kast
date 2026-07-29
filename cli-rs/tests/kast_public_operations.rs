@@ -397,6 +397,86 @@ fn refresh_external_projects_only_actionable_outcomes() {
     assert_eq!(request["params"]["filePaths"], json!([]));
 }
 
+#[test]
+fn refresh_removes_graph_facts_without_diagnosing_a_deleted_file() {
+    let fixture = tempfile::tempdir().expect("fixture");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(workspace.join("src")).expect("source directory");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let removed = workspace.join("src/Removed.kt");
+    let socket = fixture.path().join("removed-refresh.sock");
+    let backend = spawn_scripted_idea_backend_for_invocations(
+        &home,
+        &config_home,
+        &workspace,
+        &socket,
+        ScriptedCliAuthority::new(
+            Path::new(env!("CARGO_BIN_EXE_kast")),
+            env!("CARGO_PKG_VERSION"),
+        ),
+        2,
+        vec![
+            (
+                "raw/workspace-refresh",
+                json!({
+                    "refreshedFiles": [],
+                    "removedFiles": [removed],
+                    "relationshipFailures": []
+                }),
+            ),
+            (
+                "raw/semantic-graph",
+                json!({
+                    "generation": 10,
+                    "scopeFingerprint": "a".repeat(64),
+                    "coverage": {
+                        "files": [{
+                            "path": removed,
+                            "status": "REMOVED",
+                            "diagnostics": []
+                        }],
+                        "omittedExternalTargetCount": 0
+                    },
+                    "symbolCount": 0,
+                    "edgeOccurrenceCount": 0
+                }),
+            ),
+        ],
+    );
+
+    let refresh = kast(&home, &config_home, &workspace)
+        .args(["refresh", removed.to_str().expect("removed path")])
+        .output()
+        .expect("refresh");
+    assert!(
+        refresh.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&refresh.stdout),
+        String::from_utf8_lossy(&refresh.stderr)
+    );
+    let refresh = decode(&refresh);
+    assert_eq!(refresh["fileCount"], 1);
+    assert_eq!(refresh["files"], json!([]));
+    assert_eq!(refresh["removedFiles"], json!([removed]));
+    assert_eq!(refresh["diagnostics"]["cardinality"]["totalCount"], 0);
+
+    let requests = backend.join().expect("removed refresh backend");
+    assert!(
+        requests
+            .iter()
+            .all(|request| request["method"] != "raw/diagnostics")
+    );
+    let graph = requests
+        .iter()
+        .find(|request| request["method"] == "raw/semantic-graph")
+        .expect("graph refresh");
+    assert_eq!(graph["params"]["filePaths"], json!([]));
+    assert_eq!(graph["params"]["removedFilePaths"], json!([removed]));
+}
+
 fn complete_refresh(file: &Path, failure_id: &str) -> Value {
     let file = file.display().to_string();
     json!({

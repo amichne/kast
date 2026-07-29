@@ -82,7 +82,7 @@ enum Entrypoint {
 }
 
 fn control_main() -> i32 {
-    let exit_code = match parse_cli() {
+    match parse_cli() {
         Ok(Some(cli)) => {
             warn_for_deprecated_agent_json(&cli);
             let output_format = effective_output_format(cli.output, cli.command.as_ref());
@@ -99,8 +99,7 @@ fn control_main() -> i32 {
             let _ = output::print_error(&error, requested_output_format());
             error_exit_code(&error)
         }
-    };
-    exit_code
+    }
 }
 
 fn agent_main() -> i32 {
