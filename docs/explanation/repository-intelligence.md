@@ -164,9 +164,9 @@ evidence snapshot.
 `RepositoryQueryParams` rejects unknown fields and unsupported cross-field
 combinations before execution. Closed intents, relations, directions,
 projections, metrics, context sources, and central bounds make unsupported
-questions fail before they can acquire plausible output. The
-[Codex plugin reference](../reference/codex-plugin.md#repository-intelligence-beta-boundaries)
-lists the exact intents and limits.
+internal questions fail before they can acquire plausible output. The public
+`kast` surface exposes the smaller operations listed in the
+[CLI reference](../reference/cli.md).
 
 ## Query execution retains one snapshot
 
@@ -208,12 +208,11 @@ semantic answer from the conditions under which it was obtained.
 
 ## Certainty is a result property
 
-The query executor derives one public status from ambiguity, answer presence,
+The query executor derives one internal status from ambiguity, answer presence,
 coverage, and truncation. `ANSWERED` requires usable evidence and complete
 coverage. `AMBIGUOUS` refuses to choose among identities. `EMPTY` proves
 absence only across complete, untruncated coverage; otherwise the result is
-`QUALIFIED_EMPTY`. The reference page provides the compact
-[status contract](../reference/codex-plugin.md#result-status).
+`QUALIFIED_EMPTY`.
 
 Truncation and non-positive results under incomplete coverage also produce a
 qualification string. Signed continuations allow bounded graph and per-edge
@@ -251,8 +250,7 @@ A version-1 label artifact can participate in natural-language retrieval
 without an exact canonical key. It must remain inside the workspace and bind
 each entry to a current compiler identity and source content hash. Verified
 labels can extend retrieval text; they cannot introduce symbols, edges,
-locations, owners, types, coverage, or answer evidence. The reference page
-lists the exact [label limits](../reference/codex-plugin.md#label-artifact).
+locations, owners, types, coverage, or answer evidence.
 
 ## Traversal preserves occurrence evidence
 
@@ -290,11 +288,10 @@ Gradle, schemas, workflows, and Rust sources. Full-file reads, one shared
 result budget, and no paging trade broader context for I/O and visible
 truncation.
 
-## Bounds are part of the public contract
+## Bounds are part of the internal query contract
 
 Limits protect consumers from hidden unbounded output. They do not imply that
-every implementation has sublinear memory use. The exact values belong in the
-[reference](../reference/codex-plugin.md#bounds-and-resumption).
+every implementation has sublinear memory use.
 
 Some operations still load all admitted nodes or occurrences before truncating
 the response. Discovery, neighbor-term enrichment, architecture projections,
@@ -307,8 +304,7 @@ ambiguity detection, topology algorithms, and continuation semantics.
 A typed failure identifies whether root containment, Gradle scope, graph
 coverage, SQLite admission, snapshot stability, a continuation, a label
 artifact, or a context read failed. It must not collapse that failure into an
-empty result. Use the [failure-family reference](../reference/codex-plugin.md#failure-families)
-to classify it, then follow [Troubleshoot Kast](../how-to/troubleshoot.md) for
+empty result. Follow [Troubleshoot Kast](../how-to/troubleshoot.md) for
 recovery.
 
 ## Tradeoffs and current ceilings

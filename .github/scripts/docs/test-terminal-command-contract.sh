@@ -3,9 +3,12 @@ set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
 manifest="$repo_root/cli-rs/Cargo.toml"
+binary="$repo_root/cli-rs/target/debug/kast"
+
+cargo build --quiet --manifest-path "$manifest" --bin kast
 
 run_kast() {
-  cargo run --quiet --manifest-path "$manifest" --bin kast -- "$@"
+  (exec -a _kastctl "$binary" "$@")
 }
 
 setup_help="$(run_kast setup --help)"

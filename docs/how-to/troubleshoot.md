@@ -17,14 +17,14 @@ action does not have to guess at all four.
 
 | Symptom | Check | Action |
 | --- | --- | --- |
-| `kast` is missing or the active release is invalid | `~/.local/share/kast/current/bin/kast version` | Rerun the installer. |
-| The wrong project is reported | `kast status` from the intended root | Open or select the exact root; do not reuse another checkout's runtime. |
+| `kast` is missing or the active release is invalid | Run `command -v kast`, then `kast` | Rerun the installer. |
+| The wrong project is reported | Run `kast` from the intended root | Open or select the exact root; do not reuse another checkout's runtime. |
 | `IDEA_PLUGIN_UPDATE_REQUIRED` | Rerun setup and read its typed result | Close only the selected IDE if setup returns `IDE_RESTART_REQUIRED`, then retry. |
 | `IDEA_VERSION_UNSUPPORTED` | Check the product build | Use IntelliJ IDEA 2026.2/build 262 or Android Studio 2026.1.2/build 261. |
 | `IDEA_HOST_AMBIGUOUS` | Check running processes and installed bundles | Set `runtime.ideaLaunch.command` to the exact supported app. |
-| `IDE_PROFILE_AMBIGUOUS` | Check supported JetBrains profiles | Rerun setup with `--idea-plugins-dir` for the selected host profile. |
-| IDEA runtime is unavailable | Run `kast status --backend idea` from the exact root | Run `kast start --backend idea --accept-indexing`; do not start a duplicate IDE process. |
-| Runtime reports indexing | Wait for Gradle, IDEA/Kotlin, and Kast indexing | Retry `kast status --backend idea`. |
+| `IDE_PROFILE_AMBIGUOUS` | Check supported JetBrains profiles | Rerun the installer after selecting one supported host profile. |
+| IDEA runtime is unavailable | Run `kast` from the exact root | Run `kast up`; do not start a duplicate IDE process. |
+| Runtime reports indexing | Wait for Gradle, IDEA/Kotlin, and Kast indexing | Retry `kast up`. |
 | Runtime reports degraded | Read its single actionable cause | Repair the named Gradle, Kotlin admission, or reference-index failure. |
 | Kotlin source modules are unavailable | Check the IDE project model and SDK | Repair the IDE/Gradle model, then reopen the project. |
 | Relationships are limited | Read the result's coverage and next action | Resume or narrow the query; do not treat a partial result as exhaustive. |
@@ -53,24 +53,21 @@ or installed artifacts by hand.
 Run these read-only checks from the intended workspace:
 
 ```console
-kast --output json status \
-  --workspace-root "$PWD" \
-  --backend idea
+kast
+kast graph summary
 ```
 
-Use `--backend headless` on Linux. `selected.ready` reports runtime readiness.
-Runtime status does not report graph coverage. Rerun the blocked repository or
-relationship operation with `--explain` and inspect its coverage and
-limitations. A runtime can be `READY` while that result remains incomplete; in
-that case, refresh only the affected files and retain the limitation until
-coverage is complete.
+The home result reports runtime readiness. The graph summary reports retained
+coverage separately. A runtime can be ready while a graph result remains
+incomplete. In that case, run `kast refresh` for the affected files and retain
+the limitation until coverage is complete.
 
 Kast progress and success are silent. It emits one deduplicated notification
 for an actionable terminal Kast failure. Git, shallow-clone, IDE, and
 third-party notifications remain owned by their source.
 
-If the problem persists, include the workspace root, backend name, Kast
-version, readiness limitation, and the exact failed command when reporting it.
+If the problem persists, include the workspace root, reported backend,
+readiness limitation, and exact failed command.
 
 For generation movement, repository coverage, continuation, label artifact,
 or semantic-table failures, follow

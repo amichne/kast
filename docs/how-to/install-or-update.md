@@ -1,124 +1,93 @@
 ---
 type: How-to Guide
 title: How to Install or Update Kast
-description: Activate one verified Kast release on macOS or Linux and prepare a workspace for compiler-backed tasks.
-tags: [install, update, macos, linux, idea, headless]
+description: Install one verified Kast release and connect the agent harnesses you use.
+tags: [install, update, macos, linux, idea, headless, agents]
 code_sources:
   - path: install.sh
   - path: cli-rs/src/operations/install/bundle_install.rs
-  - path: cli-rs/src/operations/install/bundle_validation.rs
-  - path: cli-rs/src/configuration/manifest.rs
+  - path: cli-rs/src/operations/install/agent_resources.rs
 ---
 
 # How to Install or Update Kast
 
-Use the same setup transaction for a first install, an update, a downgrade, or
-recovery.
-
-## Install the current release
-
-On macOS or Linux, run:
+Use the same transaction for a first install, update, downgrade, or repair:
 
 ```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The bootstrap selects the platform bundle and delegates activation to
-`kast setup`. Kast stages and verifies the complete release before switching
-`current`. If final verification fails, the prior active release remains
-usable.
+The installer verifies the complete release before switching `current`. A
+failed install leaves the prior release usable.
 
-The default installation root is `~/.local/share/kast`. The active executable
-is:
+It also detects installed Codex, Claude, and Copilot executables and installs
+Kast's release-matched local resources for each one. Select harnesses
+explicitly when needed:
 
 ```console
-~/.local/share/kast/current/bin/kast version
+./install.sh --harness codex --harness copilot
+./install.sh --harness none
 ```
 
-When Codex is installed, setup also fast-forwards
-`amichne/kast-marketplace` and installs `kast@kast` from that independent
-marketplace.
+No remote marketplace checkout is required. Each tagged release also publishes
+provider-specific resource archives, checksums, and provenance.
+
+## Installed entrypoints
+
+The default installation root is `~/.local/share/kast`.
+
+| Path | Purpose |
+| --- | --- |
+| `~/.local/bin/kast` | Public agent interface. |
+| `~/.local/bin/_kastctl` | Internal setup and maintenance control plane. |
+| `~/.local/share/kast/current/bin/kast` | Release-bound public entrypoint. |
+| `~/.local/share/kast/current/bin/_kastctl` | Release-bound internal entrypoint. |
+
+Both entrypoints contain identical bytes; the invoked name selects the command
+surface.
 
 ## Install a local or pinned bundle
-
-Pass the archive or extracted bundle to the bootstrap:
 
 ```console
 ./install.sh --source /path/to/kast-platform-vX.Y.Z.tar.gz
 ```
 
-For development from this checkout, build and activate one matched bundle:
+For development from this checkout:
 
 ```console
 ./gradlew refreshDevelopmentMachine
 ```
 
-## Prepare the compiler runtime
+## Prepare a workspace
 
 On macOS, install one supported host:
 
 - IntelliJ IDEA 2026.2, build 262; or
 - Android Studio 2026.1.2, build 261.
 
-Recommended setup enables background project opening. Start Codex from the
-exact project or worktree root. Kast then follows the matching path:
-
-| Project state | Result |
-| --- | --- |
-| Exact root already open | Reuse that project without focusing or moving it. |
-| Existing root closed | Open a new project frame in the sole running supported IDE. |
-| New worktree | Background-open the root and let the plugin create its metadata. |
-| No IDE running | Background-launch the sole supported installed app. |
-
-Kast requests background launch without a new application process. The
-developer's native macOS tab preference remains in force, and frame placement
-follows the active IDEA project where public APIs permit it.
-
-If installed plugin bytes already match, rerunning setup does not close a
-running IDE. If they differ, noninteractive setup returns
-`IDE_RESTART_REQUIRED`. The interactive installer asks before closing the sole
-selected IDE and relaunches that app in the background after setup.
-
-On Linux or a hosted agent, the bundle contains the headless backend. Keep the
-task rooted at the Gradle workspace you intend to analyze.
-
-Start or resume the exact-root backend. On macOS, run:
+Start an agent from the exact project or worktree root and run:
 
 ```console
-kast start \
-  --workspace-root "$PWD" \
-  --backend idea \
-  --accept-indexing
+kast
+kast up
 ```
 
-On Linux, use `--backend headless` instead.
+`kast up` reuses the exact open root or uses the supported background-open
+path. It returns only after usable semantic evidence is available, or reports
+the typed blocker to act on.
 
-Inspect the selected runtime and persisted graph separately:
+Refresh after source changes:
 
 ```console
-kast --output json status \
-  --workspace-root "$PWD" \
-  --backend idea
+kast refresh
+kast refresh src/main/kotlin/App.kt
 ```
 
-Replace `idea` with `headless` on Linux. Continue when `selected.ready` is
-`true`. Runtime status does not report persisted graph completeness. For
-graph-backed work, inspect the coverage and limitations returned by the
-relevant repository or relationship operation. A ready runtime can still have
-incomplete persisted coverage.
-
-To confirm that a persisted graph exists without claiming completeness, run:
+Inspect persisted evidence separately from runtime readiness:
 
 ```console
-kast agent graph \
-  --workspace-root "$PWD" \
-  --operation summary
+kast graph summary
 ```
 
-The summary reports generation and cardinality only. A task-specific result
-must carry complete coverage before it supports an exhaustive claim.
-
-An `INDEXING` result is an expected early success: the exact runtime is
-reachable while Gradle import, IDEA smart mode, Kotlin admission, or Kast's
-reference index is still running. If the selected runtime is not ready, follow
-its reported next action or use [Troubleshoot Kast](troubleshoot.md).
+A ready runtime and a non-empty graph do not prove exhaustive coverage. Use
+the limitations returned by the operation you intend to act on.

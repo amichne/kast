@@ -16,8 +16,7 @@ the Kast repository. You will see the difference between a text search and
 compiler-backed evidence: the answer will connect declarations, typed states,
 and tests to exact source locations.
 
-You do not need to run Kast's agent commands yourself. The Codex plugin routes
-the task to the installed CLI.
+The Codex plugin routes the task to the same small `kast` surface shown here.
 
 ## Before you begin
 
@@ -34,7 +33,7 @@ If you still need Kast, follow [Install or update Kast](../how-to/install-or-upd
 From the repository root, run:
 
 ```console
-kast developer runtime up --backend idea --accept-indexing
+kast up
 ```
 
 A `READY` result means Kast found a compatible compiler-backed runtime for this
@@ -42,10 +41,10 @@ exact root. If the project was closed, Kast background-opens it in the sole
 supported host. A new worktree is opened the same way and receives
 plugin-created metadata.
 
-If the result is `INDEXING`, the exact runtime is already reachable. Wait for
-Gradle import, IDEA/Kotlin indexing, and the Kast reference index, then rerun
-the command. If it reports a typed blocker, use the action it reports before
-continuing.
+If the blocker says the exact runtime reached `INDEXING`, the server is
+reachable but its evidence is not ready. Wait for Gradle import, IDEA/Kotlin
+indexing, and the Kast reference index, then rerun the command. Follow any
+other typed action before continuing.
 
 `READY` proves runtime admission, not persisted graph completeness. If the
 answer uses the native graph, it should also report whether coverage is

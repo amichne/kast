@@ -5,19 +5,25 @@ description: End-to-end map from Kast's public CLI through runtime admission, co
 resource: file://docs/internal/system-flow.md
 tags: [architecture, cli, runtime, okf]
 code_sources:
+  - path: cli-rs/src/main.rs
+  - path: cli-rs/src/interface/cli/agent_surface.rs
+    symbols: [KastCli, KastCommand]
+  - path: cli-rs/src/agent_adapter.rs
   - path: cli-rs/src/interface/cli/root.rs
     symbols: [Cli, Command]
   - path: cli-rs/src/interface/entrypoint/dispatch.rs
     symbols: [run, run_agent, run_runtime]
   - path: cli-rs/src/operations/install/bundle_entrypoint.rs
+  - path: cli-rs/src/operations/install/agent_resources.rs
+  - path: cli-rs/resources/kast/codex/hooks.json
+  - path: cli-rs/resources/kast/claude/hooks.json
+  - path: cli-rs/resources/kast/copilot/hooks.json
   - path: cli-rs/src/execution/runtime/backend/workspace.rs
     symbols: [workspace_ensure, workspace_status, workspace_stop]
   - path: cli-rs/src/agent/core/dispatch/commands.rs
     symbols: [run, execute]
   - path: cli-rs/src/agent/core/request.rs
     symbols: [execute_request]
-  - path: cli-rs/src/interface/codex/hook/runtime.rs
-    symbols: [session_start, post_tool_use]
   - path: cli-rs/protocol/source/commands.json
   - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt
     symbols: [AnalysisBackend]
@@ -52,10 +58,11 @@ code_sources:
 
 # How Kast works
 
-Kast has one public API: the `kast` command-line interface (CLI). The shell
-installer and Codex hooks adapt external events into CLI commands. IntelliJ
-IDEA and the headless host implement the compiler boundary. None of these
-adapters defines a second public contract.
+Kast has one public API: the agent-focused `kast` command-line interface (CLI).
+The same executable bytes run the internal `_kastctl` control plane when
+invoked under that name. The shell installer and harness hooks adapt external
+events into these named entrypoints. IntelliJ IDEA and the headless host
+implement the compiler boundary.
 
 This page is an Open Knowledge Format (OKF) `Runtime Flow` concept. Its
 `code_sources` point to the current owners of each claim. Use the map to start
@@ -63,41 +70,29 @@ an answer, then use Kast to prove Kotlin identities and relationships.
 
 ## Public API coverage
 
-The visible `kast --help` surface contains these command families.
+The visible `kast --help` surface contains only agent-actionable operations.
 
 | Public family | Commands | Boundary |
 | --- | --- | --- |
-| Orientation | `kast help`, `kast version`, `kast context` | Read command or release identity and return in-process output. |
-| Workspace configuration | `kast config` | List, set, or unset fields in the effective workspace configuration. |
-| Installation | `kast setup` | Validate one complete bundle and switch the active release transactionally. |
-| Readiness and lifecycle | `kast ready`, `kast start`, `kast status`, `kast stop` | Resolve one exact workspace and inspect, reuse, start, or stop its selected backend. |
-| Semantic entry points | `kast demo`, `kast rpc` | Run the guided story or send one typed machine request through the canonical route. |
-| Developer operations | `kast developer` | Inspect, validate, package, generate, or control development runtimes. |
-| Agent operations | `kast agent` | Run pipe-friendly discovery, navigation, diagnostics, graph, and mutation commands. |
+| Orientation | `kast` | Discover the nearest Gradle root and report readiness, limits, and next actions. |
+| Runtime | `kast up` | Start or reuse the exact-root runtime and wait for semantic evidence. |
+| Evidence refresh | `kast refresh`, `kast refresh external` | Refresh changed or selected files, or accept eligible failures as external boundaries. |
+| Discovery | `kast files`, `kast symbol` | Enumerate Kotlin files, resolve symbols, and traverse compiler relationships. |
+| Graph | `kast graph` | Read generation-pinned nodes, neighborhoods, topology, communities, and impact. |
+| Diagnostics | `kast check` | Report compiler diagnostics for changed or selected files. |
+| Mutations | `kast change`, `kast apply` | Validate a semantic plan, then apply its opaque identifier. |
 
-The hidden `kast doctor` command is a compatibility alias for `kast ready`.
-It supports `kast-action` and is not a second public family. `install.sh` is
-also a bootstrap adapter: it downloads or opens a bundle, then delegates the
-persistent change to `kast setup`.
-
-The `kast agent` family contains every agent-facing operation:
-
-- Workspace control: `kast agent lease`, `kast agent verify`, and
-  `kast agent workspace-files`.
-- Repository evidence: `kast agent graph`, `kast agent repository`, and
-  `kast agent impact`.
-- Compiler navigation: `kast agent symbol`, `kast agent references`,
-  `kast agent callers`, `kast agent callees`, `kast agent implementations`,
-  `kast agent hierarchy`, and `kast agent diagnostics`.
-- Compiler mutations: `kast agent rename`, `kast agent add-file`,
-  `kast agent add-declaration`, `kast agent add-implementation`,
-  `kast agent add-statement`, and `kast agent replace-declaration`.
+`_kastctl` preserves the full administrative CLI for setup, runtime control,
+raw RPC, release, and developer automation. It is not exposed to agents.
+`install.sh` downloads or opens a bundle, delegates activation to
+`_kastctl setup`, then invokes the hidden public-resource installer for each
+selected harness.
 
 ## End-to-end system flow
 
-Every public command starts in the same parser and typed dispatcher. The
-dispatcher chooses a local control path, a local source-index path, or an
-exact-root compiler path.
+Process startup selects the grammar from the invoked basename. `kast` enters
+the compact public parser. `_kastctl` enters the preserved administrative
+parser. An unsupported basename fails before command dispatch.
 
 <kast-view view-id="system-landscape" browser="true"></kast-view>
 
@@ -106,26 +101,22 @@ the explicit runtime map:
 
 <kast-view view-id="runtime-components" browser="true"></kast-view>
 
-### Local control flow
+### Installation and control flow
 
-`kast help`, `kast version`, and `kast context` return directly after command
-dispatch. `kast config` resolves the canonical workspace, merges configuration
-sources, and returns typed effective state.
-
-`kast setup` is the only persistent installation operation. It validates an
+`_kastctl setup` is the persistent installation operation. It validates an
 untrusted bundle, stages a complete release, atomically switches `current`,
-verifies the new CLI, and restores the prior verified release on failure.
+verifies both entrypoints, and restores the prior release on failure.
 
-`kast developer` dispatches to existing runtime, inspection, release, and
-Codex subcommands. It does not create another runtime or protocol boundary.
+The activated bundle contains byte-identical `kast` and `_kastctl`
+entrypoints. The installer materializes release-matched Codex, Claude, and
+Copilot resources locally. No remote marketplace becomes runtime authority.
 
 ### Runtime and readiness flow
 
-`kast ready`, `kast start`, `kast status`, and `kast stop` resolve the exact
-workspace before selecting a backend. Runtime inspection reads descriptors,
-checks process reachability, validates compatibility, and rejects ambiguous
-hosts. Start reuses a servable exact-root runtime before it starts another
-one.
+`kast` and `kast up` discover the nearest Gradle workspace before selecting a
+backend. Runtime inspection reads descriptors, checks process reachability,
+validates compatibility, and rejects ambiguous hosts. `kast up` reuses a
+servable exact-root runtime before it starts another one.
 
 On macOS, the supported path reuses an open exact-root IDEA project or asks the
 sole compatible host to open it. On supported non-macOS hosts, Kast may start
@@ -142,7 +133,8 @@ the internal request against the checked command catalog before sending it.
 
 `RpcAnalysisDispatcher` validates the JSON-RPC envelope and applies the request
 timeout. `RpcMethodRouter` checks the advertised capability and routes typed
-parameters. `SkillRpcOrchestrator` handles public agent workflows.
+parameters. `SkillRpcOrchestrator` handles the existing typed semantic
+workflows.
 `AnalysisBackend` defines the shared Kotlin boundary.
 
 `KastPluginBackend` implements that boundary with IntelliJ PSI and the Kotlin
@@ -159,10 +151,10 @@ and semantic graph facts instead of retaining those objects.
 
 ### Repository and graph flow
 
-`kast agent workspace-files`, `kast agent impact`, `kast agent graph`, and
-`kast agent repository` combine typed filesystem, Gradle model, compiler, and
-SQLite evidence. Some requests can finish in the Rust CLI from persisted
-state. Compiler refresh and relationship requests route through the backend.
+`kast files`, `kast symbol`, and `kast graph` combine typed filesystem, Gradle
+model, compiler, and SQLite evidence. Some requests finish in the Rust CLI
+from persisted state. Refresh and live relationship requests route through
+the backend.
 
 `SqliteSourceIndexStore` owns indexed files, declarations, references,
 generations, snapshots, and semantic graph facts. A graph answer is usable
@@ -181,9 +173,16 @@ serialized SQLite transactions.
 
 <kast-view view-id="reference-indexing" browser="true" dynamic-variant="sequence"></kast-view>
 
-The reference index and the explicit semantic graph are separate retained
-products. Both share the workspace database and generation guard, but only
-`kast agent graph --operation refresh` replaces selected `semantic_files`.
+The reference index and explicit semantic graph are separate retained
+products. `kast refresh` coordinates their supported producer paths for
+changed or selected files.
+
+Eligible file-local reference failures remain visible without aborting other
+files. `kast refresh external <FAILURE_ID>...` verifies each content-bound
+failure, clears unsupported outgoing facts, and records an `UNKNOWN` graph
+boundary. Inbound references to retained boundary symbols remain evidence.
+Cancellation, corruption, protocol, and infrastructure failures stay
+terminal.
 
 <kast-view view-id="retained-evidence" browser="true"></kast-view>
 
@@ -193,10 +192,10 @@ products. Both share the workspace database and generation guard, but only
 
 ### Mutation flow
 
-Mutations require an exact declaration identity or opaque selector handle.
-The CLI validates exact-root mutation admission before it opens a reusable RPC
-session. The server checks capabilities, plans the semantic operation, applies
-it in the backend, and returns terminal validation evidence.
+`kast change` resolves the target and validates a semantic edit without
+applying it. The CLI returns an opaque plan identifier. `kast apply` reloads
+that plan, rechecks its root and authority, and applies it with retry-safe
+idempotency.
 
 The public result preserves typed failure. A failed apply, stale identity,
 incomplete analysis, or missing capability does not become success through
@@ -208,17 +207,16 @@ rows or semantic graph facts.
 
 <kast-view view-id="semantic-mutation" browser="true" dynamic-variant="sequence"></kast-view>
 
-### Codex hook flow
+### Harness hook flow
 
-The Codex `SessionStart` hook invokes `kast developer runtime up` for the exact
-workspace and accepts `INDEXING` as bootstrap reachability. The `PostToolUse`
-hook checks runtime health and invokes `kast agent diagnostics` only for
-successful Kotlin writes. Hook failures add advisory context; they do not run
+Codex, Claude, and Copilot session hooks invoke `~/.local/bin/kast` from the
+active workspace. They receive the same compact readiness result an agent gets
+from direct invocation. Hook failures add advisory context; they do not run
 setup or claim compiler proof.
 
-No-path workspace refresh schedules IntelliJ VFS refresh without per-file
-completeness. Explicit graph refresh extracts selected K2 Analysis API facts
-and atomically replaces the matching semantic graph rows.
+`kast refresh` with no path selects changed Kotlin files. An explicit path set
+refreshes only those files through the supported compiler and persistence
+routes.
 
 <kast-view view-id="refresh-lifecycle" browser="true" dynamic-variant="sequence"></kast-view>
 
@@ -266,36 +264,29 @@ For every supported public CLI family, a useful answer contains:
 4. The concrete source paths and symbols that own the behavior.
 5. Kast coverage, limitations, or a typed blocker.
 
-Start by verifying the exact workspace:
+Start by inspecting and preparing the exact workspace:
 
 ```shell
-kast agent verify --workspace-root "$PWD"
+kast
+kast up
 ```
 
-For a broad Kotlin architecture question, use persisted compiler evidence:
+For a broad Kotlin architecture question, inspect graph shape:
 
 ```shell
-kast agent repository \
-  --workspace-root "$PWD" \
-  --question "How does this compiler-backed path work?" \
-  --intent architecture \
-  --projection runtime-calls \
-  --metric bridges \
-  --explain
+kast graph topology
+kast graph communities
 ```
 
 For an exact Kotlin boundary, resolve identity first:
 
 ```shell
-kast agent symbol \
-  --workspace-root "$PWD" \
-  --query io.github.amichne.kast.api.contract.backend.AnalysisBackend \
-  --kind interface \
-  --explain
+kast symbol find io.github.amichne.kast.api.contract.backend.AnalysisBackend
+kast symbol show <symbol>
 ```
 
-Then follow the returned exact selector with `kast agent callers`,
-`kast agent callees`, or `kast agent implementations`. Preserve the returned
+Then follow the returned exact selector with `kast symbol callers`,
+`kast symbol callees`, or `kast symbol implementations`. Preserve the returned
 coverage and continuation evidence.
 
 Kast repository intelligence currently proves Kotlin semantics. The Rust CLI,

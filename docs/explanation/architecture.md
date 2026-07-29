@@ -1,20 +1,22 @@
 ---
 type: Explanation
 title: Kast Architecture
-description: How setup, Codex routing, exact-root runtime admission, compiler backends, and typed results fit together.
-tags: [architecture, codex, idea, headless, runtime]
+description: How setup, agent routing, exact-root runtime admission, compiler backends, and typed results fit together.
+tags: [architecture, agents, idea, headless, runtime]
 code_sources:
+  - path: cli-rs/src/main.rs
+  - path: cli-rs/src/operations/install/agent_resources.rs
   - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
   - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt
   - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/KastPluginBackend.kt
-  - path: cli-rs/src/interface/codex/hook.rs
 ---
 
 # Kast Architecture
 
-Kast separates installation authority from semantic runtime authority. That
-separation lets one verified release serve multiple exact workspaces without
-pretending that installing a binary also proves a compiler is ready.
+Kast separates its public agent interface, internal installation authority,
+and semantic runtime authority. That lets one verified release serve multiple
+exact workspaces without pretending that installing a binary also proves a
+compiler is ready.
 
 The interactive landscape starts at Kast's public boundary. Select Kast to
 drill into the runtime components, or open the diagram browser to move between
@@ -24,22 +26,24 @@ related views.
 
 ## Setup chooses one release
 
-`kast setup` stages a manifest-bound release containing the CLI and its matched
-backend artifacts. It verifies the complete release before switching the
-active `current` link. This is persistent machine state.
+`install.sh` invokes `_kastctl setup` to stage a manifest-bound release
+containing the multicall executable and matched backend artifacts. The same
+bytes are installed as `_kastctl` for administrative automation and `kast` for
+agents; the invoked name selects the grammar. Setup verifies the complete
+release before switching the active `current` link.
 
-The Codex marketplace is distributed independently. Its routing skills and
-hooks locate the active CLI; they do not become another semantic backend.
+Release-matched Codex, Claude, and Copilot resources are embedded in that
+executable and registered from a digest-owned local directory. Their skill and
+hooks expose only `kast`; they do not become another semantic backend.
 
 ## Admission chooses one exact workspace
 
-For each semantic task, the CLI normalizes the requested workspace and
-classifies it as a primary checkout, linked worktree, disposable checkout, or
-standalone Gradle workspace. It then selects a compatible backend for that
-exact root.
+For each semantic task, `kast` discovers and normalizes the nearest Gradle
+workspace, then selects a compatible backend for that exact root. Agents do
+not supply backend names, output modes, schema versions, or transport details.
 
 Automatic routing accepts a single ready candidate. Multiple ready candidates
-remain ambiguous until the caller selects one. A mutation additionally
+produce an actionable ambiguity instead of a guess. A mutation additionally
 requires prepared workspace authority, so Kast does not apply compiler-based
 edits through a runtime attached to a different checkout.
 
@@ -83,10 +87,17 @@ source modules, missing reference indexes, bounded relationship results, and
 unsupported capabilities remain visible instead of being converted into an
 empty success.
 
-The repository-scale query path adds generation-pinned coverage, discovery,
-traversal, topology, and context projections over persisted compiler evidence.
-See [Repository intelligence architecture](repository-intelligence.md) for
-that subsystem's authority chain and current operating limits.
+Reference indexing retains eligible file-local failures instead of aborting
+the entire pass. When an agent explicitly externalizes a content-bound failure
+identifier, Kast atomically clears unsupported outgoing facts and records the
+file as an `UNKNOWN` graph boundary. Inbound references may still point to
+retained boundary symbols. Cancellation, corruption, and infrastructure
+failures remain terminal.
+
+The graph path adds generation-pinned traversal, topology, communities, and
+impact over persisted compiler evidence. See
+[Repository intelligence architecture](repository-intelligence.md) for the
+underlying authority chain and current operating limits.
 
 For the complete public-command map and its source anchors, continue to
 [How Kast works](../internal/system-flow.md).
