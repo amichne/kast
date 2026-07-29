@@ -122,16 +122,19 @@ class KastExplorerModelTest {
 
     @Test
     fun `overview results are independent from interactive request ordering`() {
-        val overview = KastExplorerResult.Overview(
-            KastExplorerOverview(
-                graphGeneration = io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration(1),
-                graphFileCount = io.github.amichne.kast.api.contract.NonNegativeInt(2),
+        val overviewFailure = KastExplorerResult.Problem(NonBlankString("Graph evidence unavailable"))
+
+        assertTrue(
+            shouldAcceptExplorerResult(
+                KastExplorerRequest.Overview,
+                overviewFailure,
+                resultSequence = 1,
+                currentSequence = 2,
             ),
         )
-
-        assertTrue(shouldAcceptExplorerResult(overview, resultSequence = 1, currentSequence = 2))
         assertFalse(
             shouldAcceptExplorerResult(
+                KastExplorerRequest.Search(NonBlankString("GraphExplorer")),
                 KastExplorerResult.SearchResults(emptyList()),
                 resultSequence = 1,
                 currentSequence = 2,
