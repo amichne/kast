@@ -102,25 +102,30 @@ done < <(find "$prepared_parent" -mindepth 1 -maxdepth 1 -type d -print)
 [[ "$prepared_candidate_count" -eq 1 ]] \
   || die 'Prepared archive must contain exactly one generation directory'
 
-prepared_cli="${prepared_generation}/bin/kast"
+prepared_control="${prepared_generation}/bin/_kastctl"
+prepared_agent="${prepared_generation}/bin/kast"
 prepared_backend="${prepared_generation}/backend-headless"
-[[ -x "$prepared_cli" ]] || die 'Prepared generation does not contain executable bin/kast'
+[[ -x "$prepared_control" ]] || die 'Prepared generation does not contain executable bin/_kastctl'
+[[ -x "$prepared_agent" ]] || die 'Prepared generation does not contain executable bin/kast'
+cmp -s "$prepared_control" "$prepared_agent" \
+  || die 'Prepared generation entrypoints must be byte-identical'
 [[ -d "$prepared_backend" ]] || die 'Prepared generation does not contain backend-headless/'
 cli_staging="${scratch_dir}/cli"
 backend_staging="${scratch_dir}/backend"
 mkdir -p "$cli_staging" "${backend_staging}/backend-headless"
-cp "$prepared_cli" "${cli_staging}/kast"
-chmod 755 "${cli_staging}/kast"
+cp "$prepared_control" "${cli_staging}/_kastctl"
+cp "$prepared_agent" "${cli_staging}/kast"
+chmod 755 "${cli_staging}/_kastctl" "${cli_staging}/kast"
 cp -R "${prepared_backend}/." "${backend_staging}/backend-headless/"
 cli_archive="${scratch_dir}/kast-v0.0.0-ci-linux-x64.zip"
 backend_archive="${scratch_dir}/kast-local-source-bound-backend.zip"
-(cd "$cli_staging" && zip -X -0 -q "$cli_archive" kast)
+(cd "$cli_staging" && zip -X -0 -q "$cli_archive" _kastctl kast)
 (cd "$backend_staging" && zip -X -0 -q -r "$backend_archive" backend-headless)
 
 case "$package_kind" in
   ubuntu-debian-bundle)
     bundle_asset="${dist_directory}/kast-ubuntu-debian-headless-x86_64-${bundle_version}.tar.gz"
-    "$prepared_cli" developer release package ubuntu-debian-bundle \
+    "$prepared_control" developer release package ubuntu-debian-bundle \
       --repo-root "$source_root" \
       --cli-archive "$cli_archive" \
       --backend-archive "$backend_archive" \

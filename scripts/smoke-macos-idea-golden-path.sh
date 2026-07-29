@@ -7,14 +7,14 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
 fi
 
 workspace="${1:-$PWD}"
-kast_binary="${KAST_SMOKE_KAST:-${KAST_HOME:-$HOME/.local/share/kast}/current/bin/kast}"
+kastctl_binary="${KAST_SMOKE_KASTCTL:-${KAST_HOME:-$HOME/.local/share/kast}/current/bin/_kastctl}"
 scenario="${KAST_SMOKE_SCENARIO:-unspecified}"
 expected_disposition="${KAST_SMOKE_EXPECT_DISPOSITION:-}"
 timeout_seconds="${KAST_SMOKE_READY_TIMEOUT_SECONDS:-300}"
 
 workspace="$(cd -- "$workspace" && pwd -P)"
-[[ -x "$kast_binary" ]] || {
-  printf 'error: Kast CLI is not executable: %s\n' "$kast_binary" >&2
+[[ -x "$kastctl_binary" ]] || {
+  printf 'error: Kast control CLI is not executable: %s\n' "$kastctl_binary" >&2
   exit 1
 }
 
@@ -25,7 +25,7 @@ cleanup() {
 trap cleanup EXIT
 
 front_before="$(lsappinfo front 2>/dev/null || true)"
-"$kast_binary" --output json developer runtime up \
+"$kastctl_binary" --output json developer runtime up \
   --workspace-root "$workspace" \
   --backend idea \
   --accept-indexing >"$scratch/up.json"
@@ -66,7 +66,7 @@ PY
 
 deadline=$((SECONDS + timeout_seconds))
 while ((SECONDS < deadline)); do
-  if "$kast_binary" --output json status \
+  if "$kastctl_binary" --output json status \
     --workspace-root "$workspace" \
     --backend idea >"$scratch/status.json" &&
     python3 - "$scratch/status.json" "$workspace" <<'PY'

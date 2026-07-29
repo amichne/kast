@@ -50,7 +50,10 @@ done
 [[ -n "$prepared_generation" ]] || { usage; die "--prepared-generation is required"; }
 [[ -n "$output_path" ]] || { usage; die "--output is required"; }
 [[ -d "$prepared_generation" ]] || die "Prepared generation not found: $prepared_generation"
+[[ -x "${prepared_generation}/bin/_kastctl" ]] || die "Prepared generation has no executable bin/_kastctl"
 [[ -x "${prepared_generation}/bin/kast" ]] || die "Prepared generation has no executable bin/kast"
+cmp -s "${prepared_generation}/bin/_kastctl" "${prepared_generation}/bin/kast" \
+  || die "Prepared generation entrypoints must be byte-identical"
 command -v tar >/dev/null 2>&1 || die "Missing required tool: tar"
 command -v zstd >/dev/null 2>&1 || die "Missing required tool: zstd"
 

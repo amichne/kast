@@ -86,7 +86,8 @@ fun resolveCargoExecutable(): String {
     return "cargo"
 }
 
-val cliDevelopmentBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/kast")
+val cliCompiledBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/kast")
+val cliDevelopmentBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/_kastctl")
 val resolvedCargoExecutable = resolveCargoExecutable()
 val developmentIdeaPluginArchive: RegularFile = layout.projectDirectory.file(
     "backend-idea/build/distributions/backend-idea-${version}.zip",
@@ -94,7 +95,7 @@ val developmentIdeaPluginArchive: RegularFile = layout.projectDirectory.file(
 
 val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
     group = "build"
-    description = "Builds the repo-local Rust kast CLI in debug mode."
+    description = "Builds the repo-local Rust Kast multicall CLI in debug mode."
     environment("KAST_VERSION", project.version.toString())
     commandLine(
         resolvedCargoExecutable,
@@ -103,6 +104,12 @@ val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
         layout.projectDirectory.file("cli-rs/Cargo.toml").asFile.absolutePath,
         "--locked",
     )
+    doLast {
+        cliCompiledBinary.asFile.copyTo(cliDevelopmentBinary.asFile, overwrite = true)
+        check(cliDevelopmentBinary.asFile.setExecutable(true)) {
+            "Could not make ${cliDevelopmentBinary.asFile} executable"
+        }
+    }
 }
 
 tasks.register<Exec>("refreshDevelopmentMachine") {

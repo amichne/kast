@@ -102,9 +102,10 @@ def parse_args(argv):
         help="Golden-path INDEXING to READY timeout in seconds (default: 300)",
     )
     parser.add_argument(
-        "--kast",
-        default="~/.local/share/kast/current/bin/kast",
-        help="Current Kast CLI path",
+        "--kastctl",
+        dest="kast",
+        default="~/.local/share/kast/current/bin/_kastctl",
+        help="Current Kast control CLI path",
     )
     parser.add_argument(
         "--database",
@@ -778,7 +779,7 @@ def run_benchmark(args):
         raise BenchmarkError("WORKSPACE_MISSING", f"Workspace does not exist: {workspace}")
     kast = Path(args.kast).expanduser().absolute()
     if not kast.is_file():
-        raise BenchmarkError("KAST_MISSING", f"Kast CLI does not exist: {kast}")
+        raise BenchmarkError("KAST_MISSING", f"Kast control CLI does not exist: {kast}")
     receipt_path = kast.parent.parent / "receipt.json"
     receipt = load_json(receipt_path, "INSTALL_RECEIPT_INVALID")
     validate_plugin_only(receipt)

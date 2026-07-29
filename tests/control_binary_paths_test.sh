@@ -37,6 +37,7 @@ do
 done
 
 if rg -n '\bkagent\b' \
+  --glob '!control_binary_paths_test.sh' \
   "$repo_root/build.gradle.kts" \
   "$repo_root/scripts" \
   "$repo_root/tests" \

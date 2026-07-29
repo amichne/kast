@@ -103,8 +103,8 @@ mkdir -p "$bundle_dir" "$benchmark_user_dir" "$kast_home_dir" "$kast_cache_dir" 
 configure_gradle_java_paths "$gradle_user_dir" "${GRADLE_JAVA_HOME:-}" "${JAVA_HOME:-}"
 
 cleanup() {
-  if [[ -n "${kast_bin:-}" && -x "${kast_bin:-}" && -n "$workspace" && -d "$workspace" ]]; then
-    kast developer runtime stop --backend headless --workspace-root "$workspace" >/dev/null 2>&1 || true
+  if [[ -n "${kastctl_bin:-}" && -x "${kastctl_bin:-}" && -n "$workspace" && -d "$workspace" ]]; then
+    kastctl developer runtime stop --backend headless --workspace-root "$workspace" >/dev/null 2>&1 || true
   fi
   git -C "$repository_cache" worktree remove --force "$repository_worktree" >/dev/null 2>&1 || true
   rm -rf "$scratch"
@@ -119,8 +119,8 @@ workspace="$(gradle_workspace_for "$graph_path" "$repository_worktree")" \
   || { printf 'error: graph file is not inside a Gradle build: %s\n' "$graph_file" >&2; exit 1; }
 scoped_graph_file="${graph_path#"$workspace"/}"
 tar -xzf "$bundle" -C "$bundle_dir"
-bundle_bin="$(find "$bundle_dir" -maxdepth 3 -type f -path '*/bin/kast' -print -quit)"
-[[ -n "$bundle_bin" ]] || { printf 'error: bundle does not contain bin/kast\n' >&2; exit 1; }
+bundle_bin="$(find "$bundle_dir" -maxdepth 3 -type f -path '*/bin/_kastctl' -print -quit)"
+[[ -n "$bundle_bin" ]] || { printf 'error: bundle does not contain bin/_kastctl\n' >&2; exit 1; }
 bundle_root="$(cd "$(dirname "$bundle_bin")/.." && pwd)"
 chmod 755 "$bundle_bin"
 
@@ -130,42 +130,42 @@ env \
   KAST_CACHE_HOME="$kast_cache_dir" \
   GRADLE_USER_HOME="$gradle_user_dir" \
   "$bundle_bin" --output json setup --source "$bundle_root" >/dev/null
-kast_bin="$kast_home_dir/current/bin/kast"
+kastctl_bin="$kast_home_dir/current/bin/_kastctl"
 
-kast() {
+kastctl() {
   env \
     HOME="$benchmark_user_dir" \
     KAST_HOME="$kast_home_dir" \
     KAST_CACHE_HOME="$kast_cache_dir" \
     GRADLE_USER_HOME="$gradle_user_dir" \
     KAST_WORKSPACE_ID="release-benchmark-$name" \
-    "$kast_bin" "$@"
+    "$kastctl_bin" "$@"
 }
 
-kast config set indexing.relationships.enabled "$relationships_enabled" --workspace-root "$workspace" >/dev/null
+kastctl config set indexing.relationships.enabled "$relationships_enabled" --workspace-root "$workspace" >/dev/null
 if [[ "$relationships_enabled" == true ]]; then
-  kast config set indexing.relationships.parallelism 2 --workspace-root "$workspace" >/dev/null
+  kastctl config set indexing.relationships.parallelism 2 --workspace-root "$workspace" >/dev/null
 fi
-kast config set gradle.toolingApiTimeoutMillis "$wait_timeout_ms" --workspace-root "$workspace" >/dev/null
-kast config list --workspace-root "$workspace" >"$scratch/effective-config.toon"
-if ! kast --output json developer runtime up \
+kastctl config set gradle.toolingApiTimeoutMillis "$wait_timeout_ms" --workspace-root "$workspace" >/dev/null
+kastctl config list --workspace-root "$workspace" >"$scratch/effective-config.toon"
+if ! kastctl --output json developer runtime up \
     --backend headless \
     --workspace-root "$workspace" \
     --wait-timeout-ms "$wait_timeout_ms" >"$scratch/runtime.json"; then
   cat "$scratch/runtime.json" >&2
   exit 1
 fi
-kast --output json agent workspace-files \
+kastctl --output json agent workspace-files \
   --backend headless \
   --workspace-root "$workspace" \
   --count >"$scratch/workspace-files.json"
-kast --output json agent graph \
+kastctl --output json agent graph \
   --backend headless \
   --workspace-root "$workspace" \
   --operation refresh \
   --file-path "$scoped_graph_file" \
   --exclusive >"$scratch/graph-refresh.json"
-kast --output json agent graph \
+kastctl --output json agent graph \
   --backend headless \
   --workspace-root "$workspace" \
   --operation summary >"$scratch/graph.json"
