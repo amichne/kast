@@ -43,9 +43,9 @@ reference-index readiness, limitations, and suggested next commands.
 | `kast check [PATH...]` | Refresh and report compiler diagnostics for changed or selected files. |
 | `kast change rename <SYMBOL> <NEW_NAME>` | Validate a compiler-resolved rename. |
 | `kast change add-file <PATH>` | Validate a Kotlin file whose content comes from standard input. |
-| `kast change add-declaration <PATH> [SCOPE]` | Validate a declaration whose content comes from standard input. |
-| `kast change add-implementation <PATH> [SCOPE]` | Validate implementation content from standard input. |
-| `kast change add-statement <PATH> <SCOPE>` | Validate a statement inside one named executable scope. |
+| `kast change add-declaration <PATH>` | Validate a declaration appended to one file; content comes from standard input. |
+| `kast change add-implementation <SCOPE>` | Validate implementation content appended to one named scope from standard input. |
+| `kast change add-statement <SCOPE>` | Validate a statement appended to one named executable scope from standard input. |
 | `kast change replace <SYMBOL>` | Validate replacement content from standard input. |
 | `kast apply <PLAN_ID>` | Apply the validated plan with retry-safe authority. |
 

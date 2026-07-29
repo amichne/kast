@@ -1,5 +1,6 @@
 use serde_json::Value;
 use std::collections::BTreeSet;
+use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
 
@@ -23,6 +24,7 @@ fn semantic_graph_request_is_catalog_valid() {
     .to_string();
 
     let validator = Command::new(env!("CARGO_BIN_EXE_kast"))
+        .arg0("_kastctl")
         .current_dir(root)
         .args(["developer", "release", "validate", &request])
         .output()
@@ -183,6 +185,7 @@ fn command_contract_yaml_and_request_samples_are_current() {
     );
 
     let generator = Command::new(env!("CARGO_BIN_EXE_kast"))
+        .arg0("_kastctl")
         .current_dir(root)
         .args(["developer", "release", "generate", "contract", "--check"])
         .output()
@@ -195,6 +198,7 @@ fn command_contract_yaml_and_request_samples_are_current() {
     );
 
     let validator = Command::new(env!("CARGO_BIN_EXE_kast"))
+        .arg0("_kastctl")
         .current_dir(root)
         .args(["developer", "release", "validate", "--all-samples"])
         .output()

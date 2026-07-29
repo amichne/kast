@@ -7,8 +7,9 @@ orchestration, source-index CLI reads, and release packaging.
 
 ## Local purpose
 
-- `src/interface/cli/root.rs` and `src/main.rs` define the root AXI CLI: compact context,
-  transactional setup, readiness, status, and developer operations.
+- `src/interface/cli/agent_surface.rs` and `src/main.rs` define the public
+  agent-facing `kast` CLI. `src/interface/cli/root.rs` retains administrative
+  operations behind the `_kastctl` multicall name.
 - `src/interface/cli/agent.rs` and `src/agent/` own typed compiler-backed agent commands:
   the cross-provider `task begin|status|finish|abort` proof lifecycle plus
   `lease`, `verify`, `workspace-files`, `symbol`, `diagnostics`, `impact`,
@@ -38,9 +39,8 @@ orchestration, source-index CLI reads, and release packaging.
   Unknown fields, capabilities, revisions, unsupported rows, and missing
   required capabilities fail closed; missing optional capabilities remain
   local to the operation that needs them.
-- `https://github.com/amichne/kast-marketplace` owns the Codex marketplace,
-  routing skill, hook wiring, launcher, and presentation assets. This crate
-  retains only the CLI hook implementation.
+- `resources/kast/` owns the embedded Codex, Claude, and Copilot resources
+  installed by `install.sh`; installation must not fetch a remote marketplace.
 - `protocol/source/` contains the authored internal catalog plus generated
   schemas and request samples. Other `protocol/` outputs serve release and
   integration consumers.
@@ -65,9 +65,8 @@ The retained cross-module boundaries are:
   supply a session identity and render provider-native allow/block decisions,
   but must not duplicate changed-file, diagnostics-hash, Gradle-outcome, or
   test-report policy.
-- Agent-facing semantic workflows acquire and release one typed exact-root
-  lease, then use `kast agent verify`,
-  `workspace-files`, `symbol`, `diagnostics`, `impact`, and `rename` commands.
+- Agent-facing semantic workflows use the public `kast` surface. Administrative
+  lifecycle and compatibility operations use `_kastctl`.
 - Keep raw workspace paging handles and public workspace-file continuation
   handles distinct and opaque. Public continuations bind every result-affecting
   query field and the coherent multi-source composition stamp, including each
@@ -110,8 +109,7 @@ The retained cross-module boundaries are:
 
 - Command catalog truth lives in
   `protocol/source/commands.json`.
-- Codex skill and launcher truth lives in `amichne/kast-marketplace`; no
-  marketplace payload or generator belongs in this repository.
+- Codex, Claude, and Copilot resource truth lives under `resources/kast/`.
 - Generated request schemas and samples under `protocol/source/requests/` are
   derived from the catalog. Regenerate them through the contract generator.
 - Generated protocol markdown, OpenAPI YAML, and example fixtures live under
@@ -136,7 +134,7 @@ For workspace-files, resource, or catalog changes, run the relevant
 generated-contract and docs gates below:
 
 ```console
-cargo run --manifest-path cli-rs/Cargo.toml --bin kast -- developer release generate contract --check
+cargo test --manifest-path cli-rs/Cargo.toml --locked --test rpc_catalog_smoke
 cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema_version_smoke
 .github/scripts/docs/test-docs-content-contract.sh
 .github/scripts/docs/test-docs-navigation-contract.sh
