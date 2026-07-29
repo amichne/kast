@@ -16,7 +16,7 @@ reject() {
   ! grep -Fq -- "$2" <<<"$1" || { echo "$3" >&2; exit 1; }
 }
 
-openapi=$(job build-openapi-spec publish-maven)
+openapi=$(job build-openapi-spec publish-maven-central)
 real_repositories=$(job real-repository-indexing publish-release)
 publish=$(job publish-release verify-release-state)
 verify=$(sed -n '/^  verify-release-state:/,$p' "$release")
