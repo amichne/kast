@@ -73,6 +73,19 @@ class KastExplorerModelTest {
     }
 
     @Test
+    fun `current symbol does not fall back to a declaration in another file`() {
+        val persisted = KastExplorerSearchItem(
+            declaration("io.demo.overloaded", "Other.kt", 10),
+        )
+        val current = KastCurrentSymbol(
+            fqName = FqName("io.demo.overloaded"),
+            navigationTarget = KastSourceTarget(tempDir.resolve("Overloads.kt"), 40),
+        )
+
+        assertNull(explorerSelectionIndex(listOf(persisted), current))
+    }
+
+    @Test
     fun `inspection separates indexed and semantic graph evidence`() {
         val model = KastExplorerModel()
         val selected = KastExplorerSearchItem(declaration("io.demo.GraphExplorer", "GraphExplorer.kt", 42))
