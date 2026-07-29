@@ -4,6 +4,7 @@ package io.github.amichne.kast.idea.backend.relationships
 
 import com.intellij.openapi.application.readAction
 import com.intellij.psi.PsiElement
+import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.result.ImplementationRelation
 import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
@@ -19,6 +20,8 @@ import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.idea.timedReadAction
 import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.analysis.typeHierarchyDeclaration
+import io.github.amichne.kast.shared.hierarchy.EdgeDiscoveryBudget
+import io.github.amichne.kast.shared.hierarchy.EdgeDiscoveryCompletion
 import kotlinx.coroutines.withContext
 
 internal suspend fun KastPluginBackend.implementationsOperation(
@@ -38,10 +41,16 @@ internal suspend fun KastPluginBackend.implementationsOperation(
         queue += rootTarget
         var exhaustive = true
         val limit = query.maxResults.value
+        val providerBudget = EdgeDiscoveryBudget(
+            maxCandidates = KastPluginBackend.RELATIONSHIP_STATE_CAPACITY,
+        )
 
         while (queue.isNotEmpty() && implementations.size < limit) {
             val current = queue.removeFirst()
-            val edges = resolver.subtypeEdges(current)
+            val edges = resolver.subtypeEdges(current, providerBudget)
+            if (providerBudget.completion == EdgeDiscoveryCompletion.CANDIDATE_LIMIT_REACHED) {
+                exhaustive = false
+            }
             for (edge in edges) {
                 val key = "${edge.symbol.fqName}|${edge.symbol.location.filePath}:${edge.symbol.location.startOffset}"
                 if (!visited.add(key)) continue
@@ -70,6 +79,7 @@ internal suspend fun KastPluginBackend.implementationsOperation(
 internal suspend fun KastPluginBackend.implementationRelationsOperation(
     query: KastImplementationsQuery,
 ): ImplementationRelationsResult = withContext(readDispatcher) {
+    val searchScope = GlobalSearchScope.projectScope(project)
     val continuationQuery = RelationshipContinuationStore.ImplementationQuery(
         selector = query.selector,
         limit = query.maxResults,
@@ -79,7 +89,11 @@ internal suspend fun KastPluginBackend.implementationRelationsOperation(
         IdeaTelemetryScope.IMPLEMENTATIONS,
         "kast.idea.implementationRelations.admit",
     ) {
-        completeRelationshipCoverageAdmission(query.selector, RelationshipRootKind.TYPE)
+        completeRelationshipCoverageAdmission(
+            query.selector,
+            RelationshipRootKind.TYPE,
+            searchScope,
+        )
     }
     val generation = when (initialAdmission) {
         is CompleteRelationshipCoverageAdmission.Proven -> initialAdmission.generation
@@ -97,6 +111,7 @@ internal suspend fun KastPluginBackend.implementationRelationsOperation(
                 val commit = completeRelationshipCoverageAdmission(
                     query.selector,
                     RelationshipRootKind.TYPE,
+                    searchScope,
                 )
             ) {
                 is CompleteRelationshipCoverageAdmission.Limited ->
@@ -140,11 +155,13 @@ internal suspend fun KastPluginBackend.implementationRelationsOperation(
             val commit = completeRelationshipCoverageAdmission(
                 query.selector,
                 RelationshipRootKind.TYPE,
+                searchScope,
                 requiredGeneration = generation,
+                knownMinimumCount = records.size,
             )
         ) {
             is CompleteRelationshipCoverageAdmission.Limited ->
-                ImplementationRelationsResult.Limited(commit.evidence)
+                ImplementationRelationsResult.Limited(commit.evidence, records)
             is CompleteRelationshipCoverageAdmission.Proven ->
                 relationshipContinuations.implementations(
                     continuationQuery,

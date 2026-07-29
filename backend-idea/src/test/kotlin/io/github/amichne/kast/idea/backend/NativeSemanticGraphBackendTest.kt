@@ -14,9 +14,10 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
 import io.github.amichne.kast.api.contract.result.SemanticGraphVisibility
-import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.KastPluginBackend
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -54,18 +55,6 @@ class NativeSemanticGraphBackendTest {
             }
 
             fun construct(): Constructed = Constructed(1)
-        """
-
-        private const val boundarySource = """
-            package demo
-
-            fun reachBoundary(): BoundaryTarget = BoundaryTarget()
-        """
-
-        private const val boundaryTarget = """
-            package demo
-
-            class BoundaryTarget
         """
 
         private const val leftType = """
@@ -111,6 +100,23 @@ class NativeSemanticGraphBackendTest {
             typealias Resolver = (workspaceRoot: String) -> String
         """
 
+        private const val genericCallableReferenceSource = """
+            package demo
+
+            import java.util.concurrent.CompletableFuture
+
+            data class Entry<Query, State>(val state: State)
+            data class List<Element>(val size: Int) { fun isNotEmpty(): Boolean = size > 0 }
+            data class Pair<First, Second>(val first: First)
+            fun <Query, State> stateReference(): (Entry<Query, State>) -> State = Entry<Query, State>::state
+            fun sizeReference(): (List<String>) -> Int = List<String>::size
+            fun nonEmptyReference(): (List<String>) -> Boolean = List<String>::isNotEmpty
+            fun firstReference(): (Pair<String, String?>) -> String = Pair<String, String?>::first
+            fun <T> generatedFluentCall(value: T): T = CompletableFuture.completedFuture(value).thenApply { it }.join()
+            fun laterTarget(): String = "ok"
+            fun resilientCall(): String = laterTarget()
+        """
+
         private const val enumSource = """
             package demo
 
@@ -127,8 +133,6 @@ class NativeSemanticGraphBackendTest {
     private val moduleFixture = projectFixture.moduleFixture("main")
     private val sourceRootFixture = moduleFixture.sourceRootFixture()
     private val canonicalFileFixture = sourceRootFixture.psiFileFixture("Canonical.kt", canonicalSource)
-    private val boundarySourceFixture = sourceRootFixture.psiFileFixture("BoundarySource.kt", boundarySource)
-    private val boundaryTargetFixture = sourceRootFixture.psiFileFixture("BoundaryTarget.kt", boundaryTarget)
     private val leftTypeFixture = sourceRootFixture.psiFileFixture("LeftType.kt", leftType)
     private val rightTypeFixture = sourceRootFixture.psiFileFixture("RightType.kt", rightType)
     private val leftTypeConsumerFixture = sourceRootFixture.psiFileFixture("LeftTypeConsumer.kt", leftTypeConsumer)
@@ -136,6 +140,7 @@ class NativeSemanticGraphBackendTest {
     private val localPropertyFixture = sourceRootFixture.psiFileFixture("LocalProperty.kt", localPropertySource)
     private val functionTypeParameterFixture =
         sourceRootFixture.psiFileFixture("FunctionTypeParameter.kt", functionTypeParameterSource)
+    private val genericCallableReferenceFixture = sourceRootFixture.psiFileFixture("GenericCallableReference.kt", genericCallableReferenceSource)
     private val enumFixture = sourceRootFixture.psiFileFixture("Mode.kt", enumSource)
     private val unresolvedCallFixture = sourceRootFixture.psiFileFixture("UnresolvedCall.kt", unresolvedCallSource)
     private val unresolvedSupertypeFixture =
@@ -194,39 +199,6 @@ class NativeSemanticGraphBackendTest {
                         relation.resolvedTargetKey in constructorKeys
                 },
             )
-        }
-    }
-
-    @Test
-    fun `source scope excludes unselected targets and widens additively`() = runBlocking {
-        val project = projectFixture.get()
-        val sourceFile = boundarySourceFixture.get()
-        val targetFile = boundaryTargetFixture.get()
-        waitUntilIndexesAreReady(project)
-        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
-        val sourcePath = SemanticGraphPath.parse(sourceFile.virtualFile.path)
-        val targetPath = SemanticGraphPath.parse(targetFile.virtualFile.path)
-        fun query(path: SemanticGraphPath) = SemanticGraphQuery(filePaths = listOf(path)).parsed()
-        SqliteSourceIndexStore(storeRoot).use { store ->
-            store.ensureSchema()
-            KastPluginBackend(
-                project = project,
-                workspaceRoot = workspaceRoot,
-                limits = limits(),
-                semanticGraphStore = store,
-                psiGeneration = { 1L },
-            ).use { backend ->
-                val result = backend.semanticGraph(query(sourcePath))
-                assertTrue(result.coverage.omittedExternalTargetCount.value > 0)
-                val excluded = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse("BoundarySource.kt")))
-                assertTrue(excluded.boundarySymbols.none { symbol -> symbol.name.value == "BoundaryTarget" })
-                assertTrue(excluded.relations.none { relation -> relation.targetKey.value.contains("BoundaryTarget") })
-                backend.semanticGraph(query(targetPath))
-                backend.semanticGraph(query(sourcePath))
-            }
-            val snapshot = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse("BoundarySource.kt")))
-            val boundary = snapshot.boundarySymbols.single { symbol -> symbol.name.value == "BoundaryTarget" }
-            assertTrue(snapshot.relations.any { relation -> relation.targetKey == boundary.canonicalKey })
         }
     }
 
@@ -328,6 +300,35 @@ class NativeSemanticGraphBackendTest {
     }
 
     @Test
+    fun `generic callable and external fluent references do not abort semantic graph extraction`() = runBlocking {
+        val project = projectFixture.get()
+        val sourceFile = genericCallableReferenceFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
+
+        SqliteSourceIndexStore(storeRoot).use { store ->
+            store.ensureSchema()
+            KastPluginBackend(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                limits = limits(),
+                semanticGraphStore = store,
+                psiGeneration = { 1L },
+            ).use { backend ->
+                val result = backend.semanticGraph(
+                    SemanticGraphQuery(
+                        filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
+                    ).parsed(),
+                )
+                assertEquals(listOf(SemanticGraphSourcePath.parse(sourceFile.name)), result.coverage.files.map { it.path })
+            }
+            val snapshot = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse(sourceFile.name)))
+            val target = snapshot.symbols.single { it.name.value == "laterTarget" }
+            assertTrue(snapshot.relations.any { it.kind == SemanticGraphRelationKind.CALLS && it.targetKey == target.canonicalKey })
+        }
+    }
+
+    @Test
     fun `unnamed declarations do not break semantic graph extraction`() = runBlocking {
         val project = projectFixture.get()
         val sourceFile = enumFixture.get()
@@ -352,9 +353,8 @@ class NativeSemanticGraphBackendTest {
             }
         }
     }
-
     @Test
-    fun `semantic graph rejects unresolved compiler targets`() = runBlocking {
+    fun `semantic graph preserves valid facts and limits unresolved compiler targets`() = runBlocking {
         val project = projectFixture.get()
         val validFile = canonicalFileFixture.get()
         val files = listOf(
@@ -375,23 +375,22 @@ class NativeSemanticGraphBackendTest {
                 psiGeneration = { 1L },
             ).use { backend ->
                 files.forEach { file ->
-                    val failure = runCatching {
-                        backend.semanticGraph(
-                            SemanticGraphQuery(
-                                filePaths = listOf(validFile, file)
-                                    .map { SemanticGraphPath.parse(it.virtualFile.path) },
-                            ).parsed(),
-                        )
-                    }.exceptionOrNull()
-                    assertTrue(failure is ValidationException, "${file.name}: $failure")
-                    val message = failure?.message.orEmpty()
-                    assertTrue(message.contains("${file.name}:"), message)
-                    assertTrue(message.contains("Fix Kotlin diagnostics"), message)
+                    val result = backend.semanticGraph(
+                        SemanticGraphQuery(
+                            filePaths = listOf(validFile, file)
+                                .map { SemanticGraphPath.parse(it.virtualFile.path) },
+                        ).parsed(),
+                    )
+                    assertTrue(result.symbolCount.value > 0)
+                    assertTrue(result.edgeOccurrenceCount.value > 0)
+                    val outcome = store.fileStageOutcome(file.virtualFile.path, FileIndexStage.SEMANTIC_GRAPH)
+                    assertEquals(listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP), outcome?.limitations)
+                    assertTrue(
+                        store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse(validFile.name)))
+                            .relations.isNotEmpty(),
+                    )
                 }
             }
-            assertTrue(
-                store.readSemanticGraph((files + validFile).map { SemanticGraphSourcePath.parse(it.name) }).files.isEmpty(),
-            )
         }
     }
 

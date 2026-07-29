@@ -50,8 +50,10 @@ fn load_native_graph(
         NativeGraphScope::Symbol => {
             let mut statement = connection
                 .prepare(
-                    "SELECT source_id, target_id, kind, context
-                       FROM semantic_edge_occurrences ORDER BY id",
+                    "SELECT source_id, target_id, COUNT(*), COUNT(*)
+                       FROM semantic_edge_occurrences
+                       GROUP BY source_id, target_id
+                       ORDER BY source_id, target_id",
                 )
                 .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_QUERY_FAILED", error))?;
             statement
@@ -59,21 +61,19 @@ fn load_native_graph(
                     Ok((
                         row.get::<_, i64>(0)? as u64,
                         row.get::<_, i64>(1)? as u64,
-                        row.get::<_, String>(2)?,
-                        row.get::<_, String>(3)?,
-                        1.0,
+                        row.get::<_, i64>(2)? as usize,
+                        row.get::<_, f64>(3)?,
                     ))
                 })
                 .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_QUERY_FAILED", error))?
                 .collect::<rusqlite::Result<Vec<_>>>()
                 .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_QUERY_FAILED", error))?
                 .into_iter()
-                .filter_map(|(source, target, kind, context, weight)| {
+                .filter_map(|(source, target, occurrence_count, weight)| {
                     Some(NativeGraphEdge {
                         source: *numeric_positions.get(&source)?,
                         target: *numeric_positions.get(&target)?,
-                        kind,
-                        context,
+                        occurrence_count,
                         weight,
                     })
                 })
@@ -90,32 +90,41 @@ fn load_native_graph(
             native_graph_text_edges(
                 connection,
                 &format!(
-                    "SELECT {source_package}, {target_package}, edges.kind, edges.context, COUNT(*)
-                       FROM semantic_edge_occurrences edges
-                       JOIN semantic_symbols source ON source.id = edges.source_id
-                       JOIN semantic_files source_file ON source_file.id = source.file_id
-                       JOIN semantic_symbols target ON target.id = edges.target_id
-                       JOIN semantic_files target_file ON target_file.id = target.file_id
-                       WHERE (source_file.package_name IS NOT NULL OR source_file.refresh_status != 'CACHED')
-                         AND (target_file.package_name IS NOT NULL OR target_file.refresh_status != 'CACHED')
-                       GROUP BY 1, 2, edges.kind, edges.context
-                       ORDER BY 1, 2, 3, 4"
+                    "SELECT source_container, target_container, COUNT(*), SUM(weight)
+                       FROM (
+                           SELECT {source_package} AS source_container,
+                                  {target_package} AS target_container,
+                                  edges.kind,
+                                  edges.context,
+                                  COUNT(*) AS weight
+                           FROM semantic_edge_occurrences edges
+                           JOIN semantic_symbols source ON source.id = edges.source_id
+                           JOIN semantic_files source_file ON source_file.id = source.file_id
+                           JOIN semantic_symbols target ON target.id = edges.target_id
+                           JOIN semantic_files target_file ON target_file.id = target.file_id
+                           WHERE (source_file.package_name IS NOT NULL OR source_file.refresh_status != 'CACHED')
+                             AND (target_file.package_name IS NOT NULL OR target_file.refresh_status != 'CACHED')
+                           GROUP BY 1, 2, edges.kind, edges.context
+                       )
+                       GROUP BY source_container, target_container
+                       ORDER BY source_container, target_container"
                 ),
                 &positions,
             )?
         }
         NativeGraphScope::Module => native_graph_text_edges(
             connection,
-            "SELECT source_container, target_container, kind, context, weight
+            "SELECT source_container, target_container, COUNT(*), SUM(weight)
                FROM semantic_module_quotient
-               ORDER BY source_container, target_container, kind, context",
+               GROUP BY source_container, target_container
+               ORDER BY source_container, target_container",
             &positions,
         )?,
     };
     Ok(native_graph_to_csr(nodes, edges))
 }
 
-fn native_graph_overlay_cte() -> &'static str {
+pub(crate) fn native_graph_overlay_cte() -> &'static str {
     r#"WITH
        effective_file_rows AS (
            SELECT path, package_name, module_name, refresh_status

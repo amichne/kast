@@ -59,7 +59,14 @@ data class KastReferencesDegradedResponse(
     val reason: KastReferencesDegradedReason,
     @Serializable(with = RelationshipResultEvidence.LimitedSerializer::class)
     val evidence: RelationshipResultEvidence.Limited,
-) : KastReferencesResponse
+    val references: List<ReferenceOccurrence> = emptyList(),
+) : KastReferencesResponse {
+    init {
+        require(evidence.cardinality.knownMinimum() >= references.size) {
+            "Degraded reference evidence must cover every returned reference"
+        }
+    }
+}
 
 @Serializable
 @SerialName("CURSOR_STALE")

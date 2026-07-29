@@ -157,6 +157,7 @@ fn project_repository_count(
             cardinality: projection.cardinality,
             selected_identity: projection.selected_identity,
             truncated: projection.truncated,
+            qualification: projection.qualification,
             schema_version: SCHEMA_VERSION,
         },
     )

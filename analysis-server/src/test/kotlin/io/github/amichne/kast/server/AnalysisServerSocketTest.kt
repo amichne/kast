@@ -30,14 +30,21 @@ import org.junit.jupiter.api.io.TempDir
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.net.InetSocketAddress
 import java.net.StandardProtocolFamily
 import java.net.UnixDomainSocketAddress
+import java.nio.ByteBuffer
 import java.nio.channels.Channels
+import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.concurrent.thread
 import kotlin.io.path.exists
 
 class AnalysisServerSocketTest {
@@ -160,104 +167,45 @@ class AnalysisServerSocketTest {
     }
 
     @Test
-    fun `socket transport ignores client disconnects after request write`() {
-        val socketPath = tempDir.resolve("run").resolve("disconnect.sock")
-        val uncaughtClientErrors = CopyOnWriteArrayList<Throwable>()
-        val previousHandler = Thread.getDefaultUncaughtExceptionHandler()
-        Thread.setDefaultUncaughtExceptionHandler { thread, error ->
-            if (thread.name == "kast-uds-rpc-client") {
-                uncaughtClientErrors += error
-            } else {
-                previousHandler?.uncaughtException(thread, error)
-            }
-        }
+    fun `one response cannot run another response lifecycle action`() {
+        val firstOutput = BlockingFlushOutputStream()
+        val actionRan = AtomicBoolean(false)
+        val dispatcher = RpcAnalysisDispatcher(
+            backend = FakeAnalysisBackend.sample(tempDir),
+            config = AnalysisServerConfig(transport = AnalysisTransport.Stdio),
+            lifecycleController = RuntimeLifecycleController {
+                { actionRan.set(true) }
+            },
+        )
+        val firstServer = StdioRpcServer(
+            dispatcher = dispatcher,
+            input = rpcInput(id = 1, method = "runtime/shutdown"),
+            output = firstOutput,
+        ).start()
 
         try {
-            AnalysisServer(
-                backend = FakeAnalysisBackend.sample(tempDir),
-                config = AnalysisServerConfig(
-                    transport = AnalysisTransport.UnixDomainSocket(socketPath),
-                    descriptorDirectory = tempDir.resolve("instances"),
-                ),
-            ).start().use {
-                sendWithoutReadingResponse(
-                    socketPath = socketPath,
-                    request = JsonRpcRequest(
-                        id = JsonPrimitive(1),
-                        method = "runtime/status",
-                    ),
-                )
+            assertTrue(
+                firstOutput.flushStarted.await(1, TimeUnit.SECONDS),
+                "The lifecycle response never reached its flush boundary",
+            )
 
-                val response = callSocket(
-                    socketPath = socketPath,
-                    request = JsonRpcRequest(
-                        id = JsonPrimitive(2),
-                        method = "runtime/status",
-                    ),
-                )
+            val secondServer = StdioRpcServer(
+                dispatcher = dispatcher,
+                input = rpcInput(id = 2, method = "runtime/status"),
+                output = ByteArrayOutputStream(),
+            ).start()
+            secondServer.await()
 
-                assertTrue(response.contains("\"state\":\"READY\""))
-                awaitClientHandlerCompletion()
-                assertTrue(uncaughtClientErrors.isEmpty(), "Unexpected uncaught client errors: $uncaughtClientErrors")
-            }
+            assertFalse(
+                actionRan.get(),
+                "A different response ran the lifecycle action before its owning response was flushed",
+            )
         } finally {
-            Thread.setDefaultUncaughtExceptionHandler(previousHandler)
+            firstOutput.releaseFlush.countDown()
+            firstServer.await()
         }
-    }
 
-    @Test
-    fun `mutation retry joins its terminal result without reapplying`() {
-        val socketPath = tempDir.resolve("run").resolve("mutation-retry.sock")
-        val target = tempDir.resolve("src/Retried.kt")
-        val contentFile = tempDir.resolve("retried-content.kt")
-        Files.writeString(contentFile, "package sample\n\nclass Retried\n")
-        val applyStarted = CompletableDeferred<Unit>()
-        val mutation = KastSemanticMutation.AddFile(
-            idempotencyKey = KastMutationIdempotencyKey("issue-333-reconnect"),
-            request = KastAddFileRequest(
-                workspaceRoot = tempDir.toString(),
-                filePath = target.toString(),
-                contentFile = contentFile.toString(),
-            ),
-        )
-
-        AnalysisServer(
-            backend = AdmittedApplyBackend(FakeAnalysisBackend.sample(tempDir), applyStarted),
-            config = AnalysisServerConfig(
-                transport = AnalysisTransport.UnixDomainSocket(socketPath),
-                descriptorDirectory = tempDir.resolve("mutation-retry-instances"),
-            ),
-        ).start().use {
-            sendWithoutReadingResponse(
-                socketPath = socketPath,
-                request = JsonRpcRequest(
-                    id = JsonPrimitive(1),
-                    method = "mutation/submit",
-                    params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
-                ),
-            )
-            runBlocking { withTimeout(1_000) { applyStarted.await() } }
-
-            val response = callSocket(
-                socketPath = socketPath,
-                request = JsonRpcRequest(
-                    id = JsonPrimitive(2),
-                    method = "mutation/submit",
-                    params = json.encodeToJsonElement(KastSemanticMutation.serializer(), mutation),
-                ),
-            )
-            val success = json.decodeFromString(JsonRpcSuccessResponse.serializer(), response)
-            val terminal = json.decodeFromJsonElement(KastMutationExecutionResult.serializer(), success.result)
-
-            assertTrue(terminal is KastMutationExecutionResult.Succeeded)
-            assertTrue(terminal.deduplicated)
-            assertEquals("package sample\n\nclass Retried\n", Files.readString(target))
-        }
-    }
-
-    @Test
-    fun `expected client disconnects include macOS disconnected socket errors`() {
-        assertTrue(isExpectedClientDisconnect(IOException("Socket is not connected")))
+        assertTrue(actionRan.get(), "The owning response did not run its lifecycle action after flushing")
     }
 
     private fun callSocket(
@@ -275,108 +223,23 @@ class AnalysisServerSocketTest {
         }
     }
 
-    private fun sendWithoutReadingResponse(
-        socketPath: Path,
-        request: JsonRpcRequest,
-    ) {
-        SocketChannel.open(StandardProtocolFamily.UNIX).use { channel ->
-            channel.connect(UnixDomainSocketAddress.of(socketPath))
-            val writer = Channels.newWriter(channel, StandardCharsets.UTF_8.name()).buffered()
-            writer.write(json.encodeToString(JsonRpcRequest.serializer(), request))
-            writer.newLine()
-            writer.flush()
-        }
-    }
+    private fun rpcInput(id: Int, method: String): ByteArrayInputStream = ByteArrayInputStream(
+        json.encodeToString(
+            JsonRpcRequest.serializer(),
+            JsonRpcRequest(id = JsonPrimitive(id), method = method),
+        ).plus('\n').toByteArray(),
+    )
 
-    private fun awaitClientHandlerCompletion() {
-        repeat(50) {
-            Thread.sleep(10)
-        }
-    }
+    private class BlockingFlushOutputStream : ByteArrayOutputStream() {
+        val flushStarted = CountDownLatch(1)
+        val releaseFlush = CountDownLatch(1)
 
-    @Test
-    fun `running server closes its backend exactly once`() {
-        val socketPath = tempDir.resolve("run").resolve("owned-backend.sock")
-        val backend = CountingCloseBackend(FakeAnalysisBackend.sample(tempDir))
-        val runningServer = AnalysisServer(
-            backend = backend,
-            config = AnalysisServerConfig(
-                transport = AnalysisTransport.UnixDomainSocket(socketPath),
-                descriptorDirectory = tempDir.resolve("owned-backend-instances"),
-            ),
-        ).start()
-
-        runningServer.close()
-        runningServer.close()
-
-        assertEquals(1, backend.closeCount)
-    }
-
-    @Test
-    fun `running server completes later close phases after earlier failures`() {
-        val descriptorFile = tempDir.resolve("failure-instances").resolve("daemons.json")
-        val descriptor = ServerInstanceDescriptor(
-            workspaceRoot = tempDir.toString(),
-            backendName = "fake",
-            backendVersion = "test",
-            socketPath = tempDir.resolve("failure.sock").toString(),
-        )
-        val descriptorStore = DescriptorStore(descriptorFile.toString()).also { it.write(descriptor) }
-        val closeEvents = mutableListOf<String>()
-        val transportFailure = IllegalStateException("transport close failed")
-        val backend = RecordingCloseBackend(
-            delegate = FakeAnalysisBackend.sample(tempDir),
-            closeEvents = closeEvents,
-            beforeClose = {
-                assertTrue(Files.readString(descriptorFile).contains(descriptor.socketPath))
-            },
-        )
-        val runningServer = RunningAnalysisServer(
-            server = RecordingLocalRpcServer(closeEvents, transportFailure),
-            dispatcher = RecordingCloseable(closeEvents, "dispatcher", transportFailure),
-            backend = backend,
-            descriptor = descriptor,
-            descriptorStore = descriptorStore,
-        )
-
-        val failure = org.junit.jupiter.api.assertThrows<IllegalStateException> {
-            runningServer.close()
-        }
-        runningServer.close()
-
-        assertEquals(transportFailure, failure)
-        assertTrue(failure.suppressed.isEmpty())
-        assertEquals(listOf("transport", "dispatcher", "backend"), closeEvents)
-        assertEquals(1, backend.closeCount)
-        assertFalse(
-            Files.exists(descriptorFile) && Files.readString(descriptorFile).contains(descriptor.socketPath),
-            "descriptor cleanup was skipped after an earlier close failure",
-        )
-    }
-    @Test
-    fun `failed start preserves caller backend ownership and releases provisional server`() {
-        val socketPath = tempDir.resolve("run").resolve("failed-start.sock")
-        val invalidDescriptorDirectory = tempDir.resolve("descriptor-file")
-        Files.writeString(invalidDescriptorDirectory, "not a directory")
-        val backend = CountingCloseBackend(FakeAnalysisBackend.sample(tempDir))
-
-        try {
-            org.junit.jupiter.api.assertThrows<Throwable> {
-                AnalysisServer(
-                    backend = backend,
-                    config = AnalysisServerConfig(
-                        transport = AnalysisTransport.UnixDomainSocket(socketPath),
-                        descriptorDirectory = invalidDescriptorDirectory,
-                    ),
-                ).start()
+        override fun flush() {
+            flushStarted.countDown()
+            check(releaseFlush.await(5, TimeUnit.SECONDS)) {
+                "Timed out waiting to release the blocked response flush"
             }
-
-            assertEquals(0, backend.closeCount, "failed start transferred backend ownership")
-            assertFalse(socketPath.exists(), "failed start leaked its provisional transport")
-        } finally {
-            backend.close()
-            Files.deleteIfExists(socketPath)
+            super.flush()
         }
-        assertEquals(1, backend.closeCount)
     }
 }

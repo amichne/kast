@@ -44,6 +44,27 @@ pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
             "- Install or replace the complete release with `kast setup --source <bundle>`."
         );
     }
+    if let Some(semantic_graph) = &result.semantic_graph {
+        mdln!(document);
+        mdln!(document, "## Semantic graph");
+        mdln!(document);
+        mdln!(document, "- State: `{:?}`", semantic_graph.state);
+        mdln!(
+            document,
+            "- Files: {} indexed, {} excluded, {} failed, {} stale, {} total",
+            semantic_graph.indexed,
+            semantic_graph.excluded,
+            semantic_graph.failed,
+            semantic_graph.stale,
+            semantic_graph.total
+        );
+        for limitation in &semantic_graph.limitations {
+            mdln!(document, "- Limitation: `{limitation}`");
+        }
+        if let Some(error) = &semantic_graph.error {
+            mdln!(document, "- Error: `{}` — {}", error.code, error.message);
+        }
+    }
     if result.selected.is_some() && result.candidates.len() > 1 {
         mdln!(document);
         mdln!(document, "## Other candidates");

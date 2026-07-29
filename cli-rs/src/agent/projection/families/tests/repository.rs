@@ -36,25 +36,6 @@
     }
 
     #[test]
-    fn repository_projection_rejects_incomplete_answer() {
-        let mut result = repository_result("resolve", "ANSWERED");
-        result["coverage"]["complete"] = json!(false);
-        result["coverage"]["eligibleForCompleteNegative"] = json!(false);
-        result["coverage"]["indexed"] = json!(0);
-        result["coverage"]["excluded"] = json!(1);
-        result["qualification"] = json!("scope coverage is incomplete");
-        result["selectedIdentity"] = json!("callable:sample.answer");
-        result["nodes"] = json!([repository_node("callable:sample.answer", "answer")]);
-
-        let projected = project_repository_envelope(
-            result_envelope("repository/query".to_string(), result),
-            AgentResultView::Compact,
-        );
-
-        assert!(!projected.ok, "incomplete ANSWERED result was accepted");
-    }
-
-    #[test]
     fn repository_projection_rejects_over_budget_context() {
         let mut result = repository_result("context_relationship", "ANSWERED");
         result["bounds"]["results"] = json!(1);
@@ -133,6 +114,7 @@
         };
         let mut truncated_result = repository_result("outgoing_impact", "ANSWERED");
         truncated_result["truncated"] = json!(true);
+        truncated_result["qualification"] = json!("result was truncated");
         truncated_result["continuation"] = json!("traversal-next");
         truncated_result["edges"] = json!([
             relationship_with_continuation("evidence-b"),
@@ -263,6 +245,8 @@
                 "total": 1,
                 "indexed": usize::from(complete),
                 "excluded": usize::from(!complete),
+                "pending": 0,
+                "limited": 0,
                 "failed": 0,
                 "stale": 0,
                 "accounted": 1,

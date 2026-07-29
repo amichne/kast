@@ -117,15 +117,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
         "explanation": "capability explanation ".repeat(200),
         "schemaVersion": 5
     });
-    #[cfg(target_os = "macos")]
     let responses = vec![
-        ("runtime/status", runtime.clone()),
-        ("capabilities", capabilities.clone()),
-    ];
-    #[cfg(not(target_os = "macos"))]
-    let responses = vec![
-        ("runtime/status", runtime.clone()),
-        ("capabilities", capabilities.clone()),
         ("runtime/status", runtime.clone()),
         ("capabilities", capabilities.clone()),
     ];

@@ -168,6 +168,7 @@ internal suspend fun SkillRpcContext.references(request: KastReferencesRequest):
             subject = subject,
             reason = KastReferencesDegradedReason.REFERENCES_UNAVAILABLE,
             evidence = evidence,
+            references = completeResult.references,
         )
     }
     return KastReferencesAvailableResponse(
@@ -258,6 +259,7 @@ internal suspend fun SkillRpcContext.callers(request: KastCallersRequest): KastC
             subject = subject,
             reason = KastCallDegradedReason.CALL_HIERARCHY_UNAVAILABLE,
             evidence = result.evidence,
+            records = result.records,
         )
     }
 }
@@ -333,6 +335,7 @@ internal suspend fun SkillRpcContext.implementations(
             subject = subject,
             reason = KastImplementationsDegradedReason.IMPLEMENTATIONS_UNAVAILABLE,
             evidence = result.evidence,
+            records = result.records,
         )
     }
 }

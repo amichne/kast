@@ -596,6 +596,9 @@ commands:
     - The result reports only generation and persisted fact counts; enumerate native graph nodes with generation-pinned keyset queries.
     request:
       fields:
+        expectedGeneration:
+          optional: true
+          type: integer
         filePaths:
           items: string
           optional: true

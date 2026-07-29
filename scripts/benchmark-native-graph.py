@@ -365,17 +365,21 @@ def latest_logged_database(idea_log, workspace):
 
 
 def database_candidates(receipt, workspace):
-    install_root = Path(receipt["roots"]["install"])
-    state_root = install_root / "state" / "workspaces"
-    name_prefix = f"{workspace.name}--"
-    return sorted(
-        path
-        for path in state_root.glob("**/cache/source-index.db")
-        if path.parent.parent.name.startswith(name_prefix)
-    )
+    state_root = Path(receipt["roots"]["data"]) / "workspaces"
+    workspace = workspace.resolve()
+    candidates = []
+    for database in state_root.glob("**/cache/source-index.db"):
+        metadata = database.parent.parent / "workspace.json"
+        try:
+            prepared_root = Path(load_json(metadata, "WORKSPACE_METADATA_INVALID")["workspaceRoot"])
+        except (BenchmarkError, KeyError, TypeError):
+            continue
+        if prepared_root.is_absolute() and prepared_root.resolve() == workspace:
+            candidates.append(database)
+    return sorted(candidates)
 
 
-def discover_database(explicit, receipt, idea_log, workspace):
+def discover_database(explicit, receipt, idea_log, workspace, source_path=None):
     if explicit:
         database = Path(explicit).expanduser().resolve()
         if not database.is_file():
@@ -383,6 +387,16 @@ def discover_database(explicit, receipt, idea_log, workspace):
                 "DATABASE_MISSING", f"source-index.db does not exist: {database}"
             )
         return database
+    if source_path:
+        data_root = (Path(receipt["roots"]["data"]) / "workspaces").resolve()
+        database = Path(source_path).expanduser().resolve().parent / "cache" / "source-index.db"
+        try:
+            database.relative_to(data_root)
+        except ValueError:
+            pass
+        else:
+            if database.is_file():
+                return database
     logged = latest_logged_database(idea_log, workspace)
     if logged:
         return logged
@@ -825,7 +839,13 @@ def run_benchmark(args):
 
     idea_log = newest_idea_log(args.idea_log)
     log_start = log_offsets.get(idea_log, 0)
-    database = discover_database(args.database, receipt, idea_log, workspace)
+    database = discover_database(
+        args.database,
+        receipt,
+        idea_log,
+        workspace,
+        source_path=backend.get("sourcePath"),
+    )
     files = tracked_kotlin_files(workspace, args.source_root, args.limit)
     write_json(
         run_dir / "preflight.json",
@@ -1010,7 +1030,71 @@ def self_test():
         thread.join()
         assert response["result"]["generation"] == 7
 
-    emit_result("selfTest", {"ok": True, "checks": 5})
+    with tempfile.TemporaryDirectory() as directory:
+        root = Path(directory)
+        database = (
+            root
+            / "data"
+            / "workspaces"
+            / "git"
+            / "local"
+            / "repo--abc"
+            / "cache"
+            / "source-index.db"
+        )
+        database.parent.mkdir(parents=True)
+        database.touch()
+        receipt = {
+            "roots": {
+                "install": str(root / "install"),
+                "data": str(root / "data"),
+            }
+        }
+        metadata = database.parent.parent / "workspace.json"
+        metadata.write_text(json.dumps({"workspaceRoot": str(workspace)}))
+        assert database_candidates(receipt, workspace) == [database]
+        other_database = (
+            root
+            / "data"
+            / "workspaces"
+            / "git"
+            / "local"
+            / "repo--def"
+            / "cache"
+            / "source-index.db"
+        )
+        other_database.parent.mkdir(parents=True)
+        other_database.touch()
+        (other_database.parent.parent / "workspace.json").write_text(
+            json.dumps({"workspaceRoot": "/other/repo"})
+        )
+        assert database_candidates(receipt, workspace) == [database]
+        assert discover_database(
+            None,
+            receipt,
+            root / "idea.log",
+            workspace,
+            source_path=metadata,
+        ) == database.resolve()
+        spaced_workspace = root / "my repo"
+        spaced_database = (
+            root
+            / "data"
+            / "workspaces"
+            / "git"
+            / "local"
+            / "my-repo--ghi"
+            / "cache"
+            / "source-index.db"
+        )
+        spaced_database.parent.mkdir(parents=True)
+        spaced_database.touch()
+        (spaced_database.parent.parent / "workspace.json").write_text(
+            json.dumps({"workspaceRoot": str(spaced_workspace)})
+        )
+        assert database_candidates(receipt, spaced_workspace) == [spaced_database]
+
+    emit_result("selfTest", {"ok": True, "checks": 8})
     return 0
 
 

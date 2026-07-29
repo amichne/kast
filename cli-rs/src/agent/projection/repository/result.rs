@@ -142,5 +142,7 @@ struct AgentRepositoryCountResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     selected_identity: Option<String>,
     truncated: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    qualification: Option<String>,
     schema_version: u32,
 }

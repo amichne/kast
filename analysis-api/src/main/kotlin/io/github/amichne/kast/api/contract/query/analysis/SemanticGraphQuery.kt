@@ -1,6 +1,7 @@
 package io.github.amichne.kast.api.contract.query
 
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.result.SemanticGraphGeneration
 import io.github.amichne.kast.api.docs.DocField
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
@@ -35,6 +36,8 @@ data class SemanticGraphQuery(
     val filePaths: List<SemanticGraphPath>,
     @DocField(description = "Sorted absolute Kotlin paths removed from the workspace.")
     val removedFilePaths: List<SemanticGraphPath> = emptyList(),
+    @DocField(description = "Optional shared source-index generation that must still be current.")
+    val expectedGeneration: SemanticGraphGeneration? = null,
 ) {
     init {
         require(filePaths.isNotEmpty() || removedFilePaths.isNotEmpty()) {

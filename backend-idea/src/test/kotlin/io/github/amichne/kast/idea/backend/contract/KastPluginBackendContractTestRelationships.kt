@@ -70,6 +70,17 @@ import java.util.concurrent.atomic.AtomicInteger
 
 @TestApplication
 internal class KastPluginBackendContractTestRelationships : KastPluginBackendContractTestFixture() {
+    private val indirectImplementationFileFixture = mainSourceRootFixture.psiFileFixture(
+        "IndirectImplementation.kt",
+        """
+            package demo.indirect
+
+            interface Root
+            abstract class Intermediate : Root
+            class Leaf : Intermediate()
+        """.trimIndent(),
+    )
+
     @Test
     fun `type hierarchy returns subtypes for interface`() = runBlocking {
         ensureProjectReady()
@@ -115,6 +126,25 @@ internal class KastPluginBackendContractTestRelationships : KastPluginBackendCon
             implementationFqNames.any { it == "demo.hierarchy.Circle" },
             "Expected Circle in implementations but got: $implementationFqNames",
         )
+    }
+
+    @Test
+    fun `implementation result limit does not discard an indirect concrete subtype`() = runBlocking {
+        ensureProjectReady()
+        val file = indirectImplementationFileFixture.get()
+        val (filePath, offset) = readAction {
+            file.virtualFile.path to file.text.indexOf("Root")
+        }
+
+        val result = backend(Path.of(filePath).parent).implementations(
+            ImplementationsQuery(
+                position = FilePosition(filePath = filePath, offset = offset),
+                maxResults = 1,
+            ),
+        )
+
+        assertEquals(listOf("demo.indirect.Leaf"), result.implementations.map { it.fqName })
+        assertFalse(result.exhaustive)
     }
 
     @Test

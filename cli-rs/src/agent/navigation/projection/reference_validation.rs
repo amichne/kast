@@ -2,6 +2,8 @@ fn project_expected_reference_outcome(
     method: String,
     outcome: AgentReferencesResponseInput,
     provenance: &AgentReferenceRequestProvenance,
+    result_limit: usize,
+    include_records: bool,
 ) -> AgentEnvelope {
     let evidence_is_valid = match &outcome {
         AgentReferencesResponseInput::SubjectNotFound { selector } => {
@@ -24,11 +26,17 @@ fn project_expected_reference_outcome(
             selector,
             subject,
             evidence,
+            references,
+            page,
             ..
         } => {
             let mut subject = subject.clone();
             provenance.matches_selector_and_subject(selector, &mut subject)
                 && evidence.is_valid_limited()
+                && evidence.cardinality().known_minimum() >= references.len()
+                && references.len() <= result_limit
+                && references.iter().all(valid_reference_occurrence)
+                && page.is_none()
         }
         AgentReferencesResponseInput::SelectorHandleRejected { reason, recovery } => {
             provenance.is_handle() && reason.recovery() == *recovery
@@ -70,18 +78,26 @@ fn project_expected_reference_outcome(
             subject,
             reason,
             evidence,
-        } => json!({
-            "type": "KAST_AGENT_REFERENCES_RESULT",
-            "ok": true,
-            "outcome": "DEGRADED",
-            "selector": selector,
-            "subject": subject,
-            "reason": reason,
-            "cardinality": evidence.cardinality(),
-            "coverage": evidence.coverage(),
-            "limitations": evidence.coverage().limitations(),
-            "schemaVersion": SCHEMA_VERSION,
-        }),
+            references,
+            page: _,
+        } => {
+            let mut value = json!({
+                "type": "KAST_AGENT_REFERENCES_RESULT",
+                "ok": true,
+                "outcome": "DEGRADED",
+                "selector": selector,
+                "subject": subject,
+                "reason": reason,
+                "cardinality": evidence.cardinality(),
+                "coverage": evidence.coverage(),
+                "limitations": evidence.coverage().limitations(),
+                "schemaVersion": SCHEMA_VERSION,
+            });
+            if include_records {
+                value["records"] = json!(project_reference_records(references));
+            }
+            value
+        }
         AgentReferencesResponseInput::CursorStale {
             selector,
             reason,
@@ -121,7 +137,10 @@ fn project_expected_reference_outcome(
             "schemaVersion": SCHEMA_VERSION,
         }),
         AgentReferencesResponseInput::Available { .. } => {
-            return invalid_projection_envelope(method, "Available references were projected twice.");
+            return invalid_projection_envelope(
+                method,
+                "Available references were projected twice.",
+            );
         }
     };
     projected_agent_envelope(method, true, value, None)
@@ -148,12 +167,9 @@ impl AgentExpectedRelationshipSelector {
             && declaration_file_matches
             && self.declaration_start_offset == actual.declaration_start_offset
             && self.kind.as_ref().is_none_or(|kind| kind == &actual.kind)
-            && self
-                .containing_type
-                .as_ref()
-                .is_none_or(|containing_type| {
-                    actual.containing_type.as_ref() == Some(containing_type)
-                })
+            && self.containing_type.as_ref().is_none_or(|containing_type| {
+                actual.containing_type.as_ref() == Some(containing_type)
+            })
     }
 
     fn matches_selector(&self, selector: &AgentRelationSelectorProjection) -> bool {
@@ -181,6 +197,17 @@ fn valid_relationship_location(location: &AgentLocationInput) -> bool {
         && location
             .end_offset
             .is_none_or(|end| location.start_offset.is_some_and(|start| start <= end))
+}
+
+fn valid_reference_occurrence(reference: &AgentReferenceOccurrenceInput) -> bool {
+    !reference.location.file_path.trim().is_empty()
+        && reference.location.end_offset.is_none_or(|end| {
+            reference
+                .location
+                .start_offset
+                .is_none_or(|start| start <= end)
+        })
+        && reference.containing_symbol.is_valid()
 }
 
 fn compact_relationship_error(method: String, mut envelope: AgentEnvelope) -> AgentEnvelope {

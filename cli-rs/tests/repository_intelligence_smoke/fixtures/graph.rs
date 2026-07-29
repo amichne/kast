@@ -204,6 +204,7 @@ fn seed_out_of_scope_repository_target(fixture: &WorkspaceIndexFixture) {
             [],
         )
         .expect("outside semantic symbol");
+    fixture.synchronize_semantic_graph_scope_fingerprints();
     connection
         .execute(
             "INSERT INTO semantic_edge_occurrences

@@ -129,7 +129,9 @@ fn effective_backend_diagnostic(
 }
 
 fn plugin_workspace_evidence(workspace_root: &Path) -> Option<PluginWorkspaceEvidence> {
-    let metadata_path = workspace_root.join(".kast/setup/workspace.json");
+    let metadata_path = config::workspace_data_directory(workspace_root)
+        .ok()?
+        .join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
     let raw = fs::read_to_string(&metadata_path).ok()?;
     let metadata: serde_json::Value = serde_json::from_str(&raw).ok()?;
     if metadata

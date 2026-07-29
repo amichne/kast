@@ -9,6 +9,9 @@ import com.intellij.openapi.application.writeAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vcs.ProjectLevelVcsManager
+import com.intellij.openapi.vcs.VcsConfiguration
+import com.intellij.openapi.vcs.VcsShowConfirmationOption
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
@@ -30,6 +33,12 @@ import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.PartialApplyException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.protocol.UnsafeWorkspaceMutationException
+import io.github.amichne.kast.api.validation.EditPlanValidator
+import io.github.amichne.kast.idea.edit.withVcsFileOperationConfirmationsSuppressed
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -42,6 +51,60 @@ import java.nio.file.attribute.PosixFilePermissions
 
 @TestApplication
 internal class IdeaEditApplicationTest : IdeaEditApplicationTestFixture() {
+    @Test
+    fun `VCS confirmation suppression is serialized per project`() = runBlocking {
+        ensureProjectReady()
+
+        val workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize()
+        val operations = EditPlanValidator.validateFileOperations(
+            listOf(FileOperation.CreateFile(workspaceRoot.resolve("Serialized.kt").toString(), "class Serialized\n")),
+        )
+        val applier = IdeaEditApplier(project, workspaceRoot)
+        val option = ProjectLevelVcsManager.getInstance(project)
+            .getStandardConfirmation(VcsConfiguration.StandardConfirmation.ADD, null)
+        val originalValue = option.value
+        option.value = VcsShowConfirmationOption.Value.SHOW_CONFIRMATION
+
+        try {
+            coroutineScope {
+                val firstEntered = CompletableDeferred<Unit>()
+                val releaseFirst = CompletableDeferred<Unit>()
+                val secondEntered = CompletableDeferred<Unit>()
+                val releaseSecond = CompletableDeferred<Unit>()
+
+                val first = async(start = CoroutineStart.UNDISPATCHED) {
+                    applier.withVcsFileOperationConfirmationsSuppressed(operations) {
+                        firstEntered.complete(Unit)
+                        releaseFirst.await()
+                    }
+                }
+                firstEntered.await()
+                val second = async(start = CoroutineStart.UNDISPATCHED) {
+                    applier.withVcsFileOperationConfirmationsSuppressed(operations) {
+                        secondEntered.complete(Unit)
+                        releaseSecond.await()
+                    }
+                }
+
+                try {
+                    assertFalse(secondEntered.isCompleted, "A concurrent override must wait for the project lock")
+                    releaseFirst.complete(Unit)
+                    first.await()
+                    secondEntered.await()
+                    assertEquals(VcsShowConfirmationOption.Value.DO_NOTHING_SILENTLY, option.value)
+                } finally {
+                    releaseFirst.complete(Unit)
+                    releaseSecond.complete(Unit)
+                    first.await()
+                    second.await()
+                }
+                assertEquals(VcsShowConfirmationOption.Value.SHOW_CONFIRMATION, option.value)
+            }
+        } finally {
+            option.value = originalValue
+        }
+    }
+
     @Test
     fun `currentHashes uses unsaved Document text instead of disk`() = runBlocking {
         ensureProjectReady()

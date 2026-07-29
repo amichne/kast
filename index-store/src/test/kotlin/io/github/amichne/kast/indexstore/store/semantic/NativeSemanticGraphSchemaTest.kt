@@ -52,6 +52,21 @@ class NativeSemanticGraphSchemaTest {
                 listOf("id", "source_id", "target_id", "source_file_id", "kind", "context"),
                 leadingColumns(connection, "semantic_edge_occurrences", 6),
             )
+            assertIndex(
+                connection,
+                "idx_semantic_files_package_status_id",
+                "semantic_files",
+                "package_name",
+                "refresh_status",
+                "id",
+            )
+            assertIndex(
+                connection,
+                "idx_semantic_files_module_id",
+                "semantic_files",
+                "module_name",
+                "id",
+            )
             assertIndex(connection, "idx_semantic_symbols_file_id_id", "semantic_symbols", "file_id", "id")
             assertIndex(connection, "idx_semantic_symbols_owner_id_id", "semantic_symbols", "owner_id", "id")
             assertIndex(
@@ -108,11 +123,28 @@ class NativeSemanticGraphSchemaTest {
                    WHERE edges.source_file_id IN (SELECT id FROM requested_semantic_file_ids)
                      AND internal.id IS NULL""",
             )
+            val packagePlan = explain(
+                connection,
+                """SELECT id FROM semantic_files
+                   WHERE package_name = 'sample' AND refresh_status != 'CACHED'""",
+            )
+            val modulePlan = explain(
+                connection,
+                """SELECT id FROM semantic_files WHERE module_name = 'app'""",
+            )
 
             assertTrue(scopedPlan.any { it.contains("SEARCH symbols USING") }, scopedPlan.joinToString())
             assertTrue(boundaryPlan.any { it.contains("SEARCH edges USING") }, boundaryPlan.joinToString())
             assertTrue(boundaryPlan.none { it.contains("SCAN semantic_symbols") }, boundaryPlan.joinToString())
             assertTrue(boundaryPlan.none { it.contains("SCAN semantic_edge_occurrences") }, boundaryPlan.joinToString())
+            assertTrue(
+                packagePlan.any { it.contains("idx_semantic_files_package_status_id") },
+                packagePlan.joinToString(),
+            )
+            assertTrue(
+                modulePlan.any { it.contains("idx_semantic_files_module_id") },
+                modulePlan.joinToString(),
+            )
         }
     }
 

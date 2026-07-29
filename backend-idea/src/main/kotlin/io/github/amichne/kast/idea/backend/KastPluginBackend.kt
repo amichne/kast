@@ -109,16 +109,23 @@ internal class KastPluginBackend(
     internal val psiGeneration: () -> Long = { PsiModificationTracker.getInstance(project).modificationCount },
     internal val readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
     internal val referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
+    internal val semanticGraphBatchSize: Int = 32,
     internal val indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
         IdeaIndexSemanticAdmission.Status.Ready
+    },
+    internal val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
+        IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
     },
     internal val relationshipCoverageAuthority: RelationshipCoverageAuthority =
         IdeaRelationshipCoverageAuthority(
             project = project,
             workspaceIdentity = workspaceIdentity,
             indexSemanticAdmissionStatus = indexSemanticAdmissionStatus,
+            workspaceModelReader = workspaceModelReader,
+            sourceIndexStore = semanticGraphStore,
         ),
 ) : CloseableAnalysisBackend {
+    init { require(semanticGraphBatchSize > 0) { "Semantic graph batch size must be positive" } }
 
     internal val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
     internal val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
@@ -156,7 +163,11 @@ internal class KastPluginBackend(
     internal val relationshipContinuations = RelationshipContinuationStore(limits)
     internal val workspaceFilePaging = IdeaWorkspaceFilePaging(
         workspaceId = sharedWorkspaceIdentity.canonicalWorkspaceId,
-        inventory = IdeaProjectModelWorkspaceFileInventory(project, workspaceIdentity),
+        inventory = IdeaProjectModelWorkspaceFileInventory(
+            project = project,
+            workspaceIdentity = workspaceIdentity,
+            workspaceModelReader = workspaceModelReader,
+        ),
         limits = limits,
     )
     internal val ideaReadAccess = object : ReadAccessScope {
@@ -378,18 +389,7 @@ internal class KastPluginBackend(
         return GlobalSearchScope.moduleWithDependentsScope(module)
     }
 
-    override fun close() {
-        val failures = listOf(
-            runCatching(referenceContinuations::close).exceptionOrNull(),
-            runCatching(diagnosticContinuations::close).exceptionOrNull(),
-            runCatching(relationshipContinuations::close).exceptionOrNull(),
-            runCatching(workspaceFilePaging::close).exceptionOrNull(),
-        ).filterNotNull()
-        failures.firstOrNull()?.let { first ->
-            failures.drop(1).forEach(first::addSuppressed)
-            throw first
-        }
-    }
+    override fun close() = closeResources()
 
     companion object {
         internal const val RELATIONSHIP_STATE_CAPACITY: Int = 16_384

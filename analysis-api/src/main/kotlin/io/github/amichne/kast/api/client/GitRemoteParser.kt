@@ -48,13 +48,11 @@ object GitWorkspaceResolver {
         val toplevel = gitPath(normalizedRoot, "rev-parse", "--show-toplevel") ?: return null
         val commonDir = gitPath(normalizedRoot, "rev-parse", "--git-common-dir") ?: return null
         val gitDir = gitPath(normalizedRoot, "rev-parse", "--git-dir") ?: return null
-        val remote = gitOutput(normalizedRoot, "config", "--get", "remote.origin.url")
-            ?.let(GitRemoteParser::parse)
         GitWorkspace(
             toplevel = toplevel,
             commonDir = commonDir,
             gitDir = gitDir,
-            remote = remote,
+            remote = null,
         )
     }.getOrNull()
 

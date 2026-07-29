@@ -29,6 +29,10 @@ enum AgentReferencesResponseInput {
         subject: AgentRelationIdentityProjection,
         reason: AgentReferencesDegradedReason,
         evidence: AgentRelationshipResultEvidenceInput,
+        #[serde(default)]
+        references: Vec<AgentReferenceOccurrenceInput>,
+        #[serde(default)]
+        page: Option<AgentReferencePageInput>,
     },
     #[serde(rename = "CURSOR_STALE")]
     CursorStale {

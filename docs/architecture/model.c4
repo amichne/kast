@@ -23,15 +23,64 @@ model {
   ideaPlatform = platform "IntelliJ Platform" {
     #compiler
     description "Exact-root IntelliJ IDEA or Android Studio host with PSI and K2 analysis."
+    icon tech:intellij-idea
     metadata {
       supportedBuilds ["IDEA 262", "Android Studio 261"]
       readiness ["INDEXING", "READY"]
     }
+
+    gradleModel = service "Gradle project model" {
+      #live
+      description "Linked builds, imported modules, source roots, SDKs, and source-set ownership."
+      metadata {
+        retention "live IDEA project state"
+      }
+    }
+
+    smartMode = contract "Smart mode gate" {
+      #live #proof
+      description "DumbService gate that delays compiler admission and indexing until IntelliJ indexes settle."
+    }
+
+    vfs = service "Virtual File System" {
+      #live
+      description "Discovers and refreshes workspace files before PSI admission."
+    }
+
+    kotlinIndex = service "Kotlin file index" {
+      #live
+      description "FileTypeIndex evidence that a VirtualFile is admitted as Kotlin."
+    }
   }
 
-  kotlinCompiler = platform "Kotlin compiler and PSI" {
+  kotlinCompiler = platform "Kotlin compiler stack" {
     #compiler
-    description "Compiler-owned identities, references, diagnostics, and safe edit primitives."
+    description "Live PSI and K2 semantic state queried through the Kotlin Analysis API."
+    icon tech:kotlin
+
+    psi = service "PSI" {
+      #compiler #live
+      description "KtFile syntax trees, declarations, references, and edit state. PSI objects are never retained in SQLite."
+      technology "IntelliJ PSI"
+    }
+
+    analysisApi = contract "Analysis API" {
+      #compiler #live
+      description "KaSession boundary for compiler-owned symbols, types, calls, and diagnostics."
+      technology "Kotlin Analysis API"
+    }
+
+    k2Frontend = service "K2 Frontend" {
+      #compiler #live
+      description "Kotlin semantic analysis, call resolution, and type inference used by the IDE."
+      technology "K2"
+    }
+
+    fir = service "FIR semantic model" {
+      #compiler #live
+      description "Compiler-internal Frontend Intermediate Representation below the Analysis API; Kast does not retain or call FIR directly."
+      technology "FIR"
+    }
   }
 
   workspaceState = datastore "Workspace state" {
@@ -153,6 +202,31 @@ model {
         link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/KastPluginBackend.kt "Source"
       }
 
+      ideaAdmission = contract "IDEA semantic admission" {
+        #compiler #proof
+        technology "DumbService + PSI + Analysis API"
+        description "Proves smart mode, Kotlin modules and classpaths, PSI availability, and Analysis API diagnostics."
+        metadata {
+          fqName "io.github.amichne.kast.idea.IdeaIndexSemanticAdmission"
+          retention "typed readiness evidence only"
+        }
+        link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaIndexSemanticAdmission.kt "Source"
+      }
+
+      ideaRefresh = service "Focused IDEA refresh" {
+        #compiler #trigger
+        technology "VFS + FileTypeIndex + PSI"
+        description "Refreshes selected paths through VFS and Kotlin admission. It does not rebuild references or semantic graph rows."
+        link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/mutation/MutationOperations.kt "Source"
+      }
+
+      ideaDiagnostics = service "IDEA diagnostics" {
+        #compiler #proof
+        technology "PSI + Analysis API"
+        description "Captures compiler diagnostics with a PSI generation and current content hash."
+        link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/diagnostics/DiagnosticOperations.kt "Source"
+      }
+
       headless = service "HeadlessRuntime bootstrap" {
         technology "IntelliJ headless runtime"
         description "Starts the same IDEA backend runtime on supported non-macOS hosts."
@@ -164,16 +238,149 @@ model {
       }
     }
 
+    indexing = platform "Indexing and refresh pipelines" {
+      #indexing
+      description "Project-open reference indexing and explicit semantic graph refresh remain separate retained products."
+
+      projectOpen = service "Project-open index trigger" {
+        #trigger
+        technology "KastStartupActivity"
+        description "Runs after exact-root project open and Gradle import; the production trigger for full source and relationship indexing."
+        link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/runtime/startup/KastProjectOpenAutoIndexing.kt "Source"
+      }
+
+      projectIndexer = service "IdeaProjectIndexer" {
+        #indexing
+        technology "Kotlin coroutines"
+        description "Builds the complete identifier inventory, then dependency-prioritized declarations and references."
+        metadata {
+          fqName "io.github.amichne.kast.idea.IdeaProjectIndexer"
+          trigger "project open, backend restart, or configuration reload"
+        }
+        link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/workspace/indexing/IdeaProjectIndexer.kt "Source"
+      }
+
+      sourceScanner = service "Identifier inventory scanner" {
+        #indexing
+        technology "PsiSourceIndexScanner"
+        description "Reads eligible Kotlin text and retains identifiers, imports, package evidence, and Gradle ownership."
+        link https://github.com/amichne/kast/blob/main/backend-shared/src/main/kotlin/io/github/amichne/kast/shared/analysis/PsiSourceIndexScanner.kt "Source"
+      }
+
+      referenceIndexer = service "ReferenceIndexer" {
+        #indexing
+        technology "Bounded coroutine batches"
+        description "Lazily batches module-prioritized files, scans outside transactions, and serializes successful SQLite writes."
+        metadata {
+          fqName "io.github.amichne.kast.indexstore.indexing.ReferenceIndexer"
+          incrementalCallers "none in production"
+        }
+        link https://github.com/amichne/kast/blob/main/index-store/src/main/kotlin/io/github/amichne/kast/indexstore/indexing/ReferenceIndexer.kt "Source"
+      }
+
+      referenceScanner = service "PSI reference resolver" {
+        #compiler #indexing
+        technology "PsiReferenceScanner"
+        description "Walks PSI, resolves references to KtNamedDeclaration targets, and classifies typed reference occurrences."
+        link https://github.com/amichne/kast/blob/main/backend-shared/src/main/kotlin/io/github/amichne/kast/shared/analysis/PsiReferenceScanner.kt "Source"
+      }
+
+      declarationScanner = service "PSI declaration scanner" {
+        #compiler #indexing
+        technology "Kotlin PSI"
+        description "Extracts canonical declarations and supertypes for retained exact-reference identity."
+      }
+
+      graphExtractor = service "Scoped semantic graph extractor" {
+        #compiler #indexing
+        technology "PSI + K2 Analysis API"
+        description "Diagnostic-gated extraction of symbols, types, calls, ownership, and typed edge occurrences."
+        link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphExtraction.kt "Source"
+      }
+
+      graphWriter = service "SemanticGraphWriter" {
+        #indexing
+        technology "SQLite transaction"
+        description "Atomically replaces selected semantic files, deletes removals, and advances the shared generation."
+        metadata {
+          fqName "io.github.amichne.kast.indexstore.store.sqlite.semantic.SemanticGraphWriter"
+        }
+        link https://github.com/amichne/kast/blob/main/index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/sqlite/semantic/SemanticGraphWriter.kt "Source"
+      }
+
+      referenceLookup = service "Exact reference lookup" {
+        #proof
+        technology "SQLite first, PSI fallback"
+        description "Binds FQN, target path, declaration offset, and generation; rehydrates rows in PSI or falls back to bounded live search."
+      }
+
+      snapshotCoordinator = service "Repository snapshot coordinator" {
+        #indexing
+        technology "Immutable base + worktree overlay"
+        description "Hydrates compatible retained state and publishes only stable, complete main indexes."
+      }
+
+      refreshStatus = contract "refresh_status evidence" {
+        #proof
+        description "Per-path admission, content hash, diagnostics, omissions, symbol and edge counts, scope fingerprint, and generation."
+      }
+    }
+
     evidence = platform "Evidence and projection" {
-      index = datastore "SqliteSourceIndexStore" {
+      index = platform "SqliteSourceIndexStore" {
         #persisted #proof
         technology "SQLite WAL"
-        description "Stores source inventory, declarations, references, snapshots, and semantic graph facts."
+        description "One workspace-scoped source-index.db with independently refreshed reference and semantic graph partitions."
+        icon tech:sqlite
         metadata {
           fqName "io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore"
           kastEvidence "compiler-resolved"
+          pragmas ["journal_mode=WAL", "synchronous=NORMAL", "busy_timeout=5000"]
         }
         link https://github.com/amichne/kast/blob/main/index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt "Source"
+
+        writer = service "Serialized SQLite writer" {
+          #persisted
+          technology "SqliteSourceIndexStoreState.writeLock"
+          description "Keeps parallel compiler scans outside transactions and serializes each retained batch."
+        }
+
+        interning = service "StringInterningCodec cache" {
+          #persisted
+          technology "Path prefix and FQN interning"
+          description "Hydrates in-memory codecs once and reloads them when PRAGMA main.data_version proves an external commit."
+          link https://github.com/amichne/kast/blob/main/index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/StringInterningCodec.kt "Source"
+        }
+
+        inventory = datastore "Source inventory and manifest" {
+          #persisted
+          description "Identifier paths, imports, packages, file hashes, and Gradle project/source-set ownership."
+        }
+
+        relationships = datastore "Declarations and reference occurrences" {
+          #persisted
+          description "Canonical declarations, supertypes, and typed symbol reference occurrences."
+        }
+
+        moduleProgress = datastore "Module progress" {
+          #persisted #proof
+          description "PENDING, INDEXING, and COMPLETE relationship-index state by module."
+        }
+
+        semanticGraph = datastore "semantic_files and graph facts" {
+          #persisted #proof
+          description "Selected file hashes and diagnostics, symbols, types, annotations, and edge occurrences."
+        }
+
+        generation = datastore "Schema and generation guard" {
+          #persisted #proof
+          description "Schema version plus the monotonically advancing generation used to invalidate stale continuations."
+        }
+
+        snapshots = datastore "Immutable repository snapshots" {
+          #persisted
+          description "Complete main-index snapshots reusable as an immutable base with worktree overlays and tombstones."
+        }
       }
 
       projection = service "Typed result projection" {
@@ -209,9 +416,63 @@ model {
   kast.backend.headless -[control]-> kast.backend.idea "boots the shared backend"
   kast.backend.idea -[call]-> ideaPlatform "runs inside"
   kast.backend.idea -[call]-> kotlinCompiler "resolves PSI and compiler semantics"
+  kast.backend.idea -[call]-> kast.backend.ideaAdmission "gates indexing and semantic work"
+  kast.backend.idea -[call]-> kast.backend.ideaRefresh "refreshes focused workspace paths"
+  kast.backend.idea -[call]-> kast.backend.ideaDiagnostics "collects compiler diagnostics"
+  kast.backend.idea -[call]-> kast.indexing "drives project-open and explicit indexing"
   kast.backend.idea -[evidence]-> kast.evidence.index "reads and writes indexed facts"
+  kast.indexing -[retain]-> kast.evidence.index "retains independently refreshed products"
   kast.server.orchestrator -[evidence]-> kast.evidence.index "combines persisted evidence"
   kast.server.orchestrator -[evidence]-> kast.evidence.projection "returns typed reads"
   kast.server.mutation -[evidence]-> kast.evidence.projection "returns apply and validation evidence"
   kast.evidence.projection -[evidence]-> kast.cli "projects the result"
+
+  ideaPlatform.gradleModel -[control]-> ideaPlatform.smartMode "settles imported project state"
+  ideaPlatform.vfs -[call]-> ideaPlatform.kotlinIndex "discovers admitted Kotlin files"
+  ideaPlatform.kotlinIndex -[call]-> kotlinCompiler.psi "opens KtFile syntax trees"
+  kotlinCompiler.psi -[call]-> kotlinCompiler.analysisApi "supplies the analysis context"
+  kotlinCompiler.analysisApi -[implement]-> kotlinCompiler.k2Frontend "queries K2 semantics"
+  kotlinCompiler.k2Frontend -[implement]-> kotlinCompiler.fir "builds and resolves FIR internally"
+
+  kast.backend.ideaAdmission -[call]-> ideaPlatform.smartMode "awaits smart mode"
+  kast.backend.ideaAdmission -[call]-> kotlinCompiler.psi "proves Kotlin PSI"
+  kast.backend.ideaAdmission -[call]-> kotlinCompiler.analysisApi "proves compiler diagnostics"
+  kast.backend.ideaRefresh -[refresh]-> ideaPlatform.vfs "refreshes selected paths"
+  kast.backend.ideaRefresh -[call]-> ideaPlatform.kotlinIndex "checks Kotlin admission"
+  kast.backend.ideaRefresh -[call]-> kotlinCompiler.psi "checks KtFile availability"
+  kast.backend.ideaRefresh -[call]-> kotlinCompiler.analysisApi "checks semantic admission"
+  kast.backend.ideaDiagnostics -[call]-> kotlinCompiler.psi "captures PSI generation and content"
+  kast.backend.ideaDiagnostics -[call]-> kotlinCompiler.analysisApi "collects diagnostics"
+  kast.backend.ideaRefresh -[evidence]-> kast.indexing.refreshStatus "returns per-path admission"
+  kast.backend.ideaDiagnostics -[evidence]-> kast.indexing.refreshStatus "returns diagnostics proof"
+
+  kast.indexing.projectOpen -[control]-> ideaPlatform.gradleModel "waits for Gradle import"
+  kast.indexing.projectOpen -[call]-> kast.indexing.projectIndexer "starts the full reference index"
+  kast.indexing.projectIndexer -[call]-> kast.backend.ideaAdmission "gates on compiler readiness"
+  kast.indexing.projectIndexer -[call]-> kast.indexing.sourceScanner "builds identifier inventory"
+  kast.indexing.projectIndexer -[call]-> kast.indexing.referenceIndexer "indexes dependency-prioritized modules"
+  kast.indexing.sourceScanner -[call]-> ideaPlatform.vfs "discovers eligible Kotlin paths"
+  kast.indexing.sourceScanner -[call]-> kotlinCompiler.psi "reads text and package evidence"
+  kast.indexing.sourceScanner -[retain]-> kast.evidence.index.writer "replaces the full inventory"
+  kast.indexing.referenceIndexer -[call]-> kast.indexing.referenceScanner "scans reference batches"
+  kast.indexing.referenceIndexer -[call]-> kast.indexing.declarationScanner "scans declaration batches"
+  kast.indexing.referenceScanner -[call]-> kotlinCompiler.psi "resolves KtNamedDeclaration targets"
+  kast.indexing.declarationScanner -[call]-> kotlinCompiler.psi "extracts declarations and supertypes"
+  kast.indexing.referenceIndexer -[retain]-> kast.evidence.index.writer "serializes successful batches"
+  kast.indexing.graphExtractor -[call]-> kotlinCompiler.analysisApi "extracts selected compiler facts"
+  kast.indexing.graphExtractor -[call]-> kast.indexing.graphWriter "passes provider-neutral facts"
+  kast.indexing.graphWriter -[retain]-> kast.evidence.index.writer "atomically replaces semantic files"
+  kast.indexing.referenceLookup -[evidence]-> kast.evidence.index.relationships "queries exact generation-bound rows"
+  kast.indexing.referenceLookup -[call]-> kotlinCompiler.psi "rehydrates rows or falls back to live search"
+  kast.indexing.referenceLookup -[evidence]-> kast.evidence.projection "returns rows with coverage"
+  kast.indexing.snapshotCoordinator -[retain]-> kast.evidence.index.snapshots "hydrates or publishes compatible state"
+
+  kast.evidence.index.writer -[call]-> kast.evidence.index.interning "encodes path prefixes and FQNs"
+  kast.evidence.index.writer -[retain]-> kast.evidence.index.inventory "stores inventory and ownership"
+  kast.evidence.index.writer -[retain]-> kast.evidence.index.relationships "stores declarations and references"
+  kast.evidence.index.writer -[retain]-> kast.evidence.index.moduleProgress "updates module completion"
+  kast.evidence.index.writer -[retain]-> kast.evidence.index.semanticGraph "stores selected graph facts"
+  kast.evidence.index.writer -[retain]-> kast.evidence.index.generation "advances generation"
+  kast.evidence.index.interning -[evidence]-> kast.evidence.index.generation "checks data_version before cache reuse"
+  kast.evidence.index.snapshots -[evidence]-> kast.evidence.index.writer "hydrates a compatible immutable base"
 }

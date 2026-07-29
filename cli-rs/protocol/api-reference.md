@@ -1371,6 +1371,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             |-----------|-------------|
             | `#!kotlin filePaths: List<String>` | Sorted absolute Kotlin files to refresh or read. |
             | `#!kotlin removedFilePaths: List<String>?` | Sorted absolute Kotlin paths removed from the workspace. |
+            | `#!kotlin expectedGeneration: SemanticGraphGeneration?` | Optional shared source-index generation that must still be current. |
         === "Output: SemanticGraphResult"
 
             | Signature | Description |

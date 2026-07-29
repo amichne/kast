@@ -1,4 +1,15 @@
 pub(super) fn read_workspace_index(root: &WorkspaceRoot) -> WorkspaceIndexRead {
+    read_workspace_index_with_path_validation(root, WorkspaceIndexPathValidation::LiveFilesystem)
+}
+
+pub(super) fn read_persisted_workspace_index(root: &WorkspaceRoot) -> WorkspaceIndexRead {
+    read_workspace_index_with_path_validation(root, WorkspaceIndexPathValidation::PersistedLexical)
+}
+
+fn read_workspace_index_with_path_validation(
+    root: &WorkspaceRoot,
+    path_validation: WorkspaceIndexPathValidation,
+) -> WorkspaceIndexRead {
     let database_path = match config::workspace_database_path(root.as_path()) {
         Ok(path) => path,
         Err(error) => {
@@ -14,7 +25,7 @@ pub(super) fn read_workspace_index(root: &WorkspaceRoot) -> WorkspaceIndexRead {
             database_path.display()
         ));
     }
-    match read_database(root, &database_path) {
+    match read_database(root, &database_path, path_validation) {
         Ok(snapshot) => WorkspaceIndexRead::Snapshot(snapshot),
         Err(ReadDatabaseError::Unavailable(detail)) => unavailable(detail),
         Err(ReadDatabaseError::Incompatible(detail)) => incompatible(detail),
@@ -24,6 +35,7 @@ pub(super) fn read_workspace_index(root: &WorkspaceRoot) -> WorkspaceIndexRead {
 fn read_database(
     root: &WorkspaceRoot,
     database_path: &Path,
+    path_validation: WorkspaceIndexPathValidation,
 ) -> Result<WorkspaceIndexSnapshot, ReadDatabaseError> {
     let mut connection = Connection::open_with_flags(
         database_path,
@@ -35,7 +47,7 @@ fn read_database(
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Deferred)
         .map_err(|error| ReadDatabaseError::Unavailable(error.to_string()))?;
-    let snapshot = read_transaction(root, &transaction)?;
+    let snapshot = read_transaction(root, &transaction, path_validation)?;
     transaction
         .commit()
         .map_err(|error| ReadDatabaseError::Unavailable(error.to_string()))?;
@@ -45,6 +57,7 @@ fn read_database(
 fn read_transaction(
     root: &WorkspaceRoot,
     transaction: &Transaction<'_>,
+    path_validation: WorkspaceIndexPathValidation,
 ) -> Result<WorkspaceIndexSnapshot, ReadDatabaseError> {
     verify_required_structure(transaction)?;
     let generation = read_generation(transaction)?;
@@ -94,7 +107,14 @@ fn read_transaction(
             );
             continue;
         };
-        let (drift, containment) = contain_path(root, relative_path.as_path());
+        let (drift, containment) = match path_validation {
+            WorkspaceIndexPathValidation::LiveFilesystem => {
+                contain_path(root, relative_path.as_path())
+            }
+            WorkspaceIndexPathValidation::PersistedLexical => {
+                (WorkspaceFileDrift::Unknown, PathContainment::Contained)
+            }
+        };
         match containment {
             PathContainment::Contained => {}
             PathContainment::Outside => {

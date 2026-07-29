@@ -3,6 +3,7 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.result.*
 import io.github.amichne.kast.indexstore.api.graph.*
+import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.sql.Connection
@@ -11,10 +12,31 @@ internal class SemanticGraphWriter(
     private val state: SqliteSourceIndexStoreState,
 ) {
     private val repositoryBasePath get() = state.repositoryBasePath
+
     fun replaceSemanticGraphFiles(
         updates: List<SemanticGraphFileIndexUpdate>,
         removedPaths: List<SemanticGraphSourcePath> = emptyList(),
-    ): SemanticGraphWriteResult {
+    ): SemanticGraphWriteResult =
+        when (val result = replaceSemanticGraphFiles(updates, removedPaths, expectedGeneration = null) {}) {
+            is SemanticGraphCommitResult.Committed -> result.writeResult
+            is SemanticGraphCommitResult.GenerationChanged ->
+                error("An unconditional semantic graph commit cannot reject its generation")
+        }
+
+    fun replaceSemanticGraphFilesIfGeneration(
+        expectedGeneration: SourceIndexGeneration,
+        updates: List<SemanticGraphFileIndexUpdate>,
+        removedPaths: List<SemanticGraphSourcePath> = emptyList(),
+        commitStageState: (Connection) -> Unit = {},
+    ): SemanticGraphCommitResult =
+        replaceSemanticGraphFiles(updates, removedPaths, expectedGeneration, commitStageState)
+
+    private fun replaceSemanticGraphFiles(
+        updates: List<SemanticGraphFileIndexUpdate>,
+        removedPaths: List<SemanticGraphSourcePath>,
+        expectedGeneration: SourceIndexGeneration?,
+        commitStageState: (Connection) -> Unit,
+    ): SemanticGraphCommitResult {
         require(updates.isNotEmpty() || removedPaths.isNotEmpty()) {
             "Semantic graph replacement requires an updated or removed file"
         }
@@ -22,6 +44,14 @@ internal class SemanticGraphWriter(
             val conn = state.connection()
             conn.autoCommit = false
             return try {
+                val actualGeneration = state.readGenerationInTransaction(conn)
+                if (expectedGeneration != null && expectedGeneration != actualGeneration) {
+                    conn.rollback()
+                    return SemanticGraphCommitResult.GenerationChanged(
+                        expectedGeneration = expectedGeneration,
+                        actualGeneration = actualGeneration,
+                    )
+                }
                 removedPaths
                     .distinct()
                     .sorted()
@@ -66,24 +96,26 @@ internal class SemanticGraphWriter(
                 updates.sortedBy(SemanticGraphFileIndexUpdate::path).forEach { update ->
                     insertSemanticEdges(conn, update)
                 }
+                commitStageState(conn)
                 state.incrementGenerationInTransaction(conn)
                 val generation = state.readGenerationInTransaction(conn)
                 conn.commit()
-                SemanticGraphWriteResult(
-                    generation = generation,
-                    fileCount = updates.size,
-                    symbolCount = updates.sumOf { update -> update.symbols.size },
-                    edgeOccurrenceCount = updates.sumOf { update -> update.relations.size },
+                SemanticGraphCommitResult.Committed(
+                    SemanticGraphWriteResult(
+                        generation = generation,
+                        fileCount = updates.size,
+                        symbolCount = updates.sumOf { update -> update.symbols.size },
+                        edgeOccurrenceCount = updates.sumOf { update -> update.relations.size },
+                    ),
                 )
             } catch (failure: Exception) {
-                conn.rollback()
+                state.rollbackAndReloadPrefixes(conn)
                 throw failure
             } finally {
                 conn.autoCommit = true
             }
         }
     }
-
     private fun insertBoundarySemanticFile(conn: Connection, path: SemanticGraphSourcePath) {
         conn.prepareStatement(
             """INSERT INTO semantic_files(path, package_name, module_name, content_hash, refresh_status, diagnostics_json)
@@ -94,7 +126,6 @@ internal class SemanticGraphWriter(
             statement.executeUpdate()
         }
     }
-
     private fun prepareSemanticGraphFileUpdate(conn: Connection, update: SemanticGraphFileIndexUpdate) {
         val fileId = optionalSemanticId(
             conn,
@@ -133,7 +164,6 @@ internal class SemanticGraphWriter(
             statement.executeBatch()
         }
     }
-
     private fun insertSemanticFile(conn: Connection, update: SemanticGraphFileIndexUpdate) {
         clearRepositoryOverlayTombstone(conn, update.path.value)
         conn.prepareStatement(
@@ -156,7 +186,6 @@ internal class SemanticGraphWriter(
             statement.executeUpdate()
         }
     }
-
     private fun insertSemanticType(
         conn: Connection,
         type: io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact,
@@ -178,7 +207,6 @@ internal class SemanticGraphWriter(
             statement.executeUpdate()
         }
     }
-
     private fun replaceSemanticTypeEdges(
         conn: Connection,
         type: io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact,
@@ -204,7 +232,6 @@ internal class SemanticGraphWriter(
             statement.executeBatch()
         }
     }
-
     private fun insertSemanticSymbol(conn: Connection, symbol: SemanticGraphSymbol, authoritative: Boolean) {
         val sql = buildString {
             append(
@@ -286,7 +313,6 @@ internal class SemanticGraphWriter(
             }
         }
     }
-
     private fun updateSemanticSymbolOwner(conn: Connection, symbol: SemanticGraphSymbol) {
         val ownerKey = symbol.ownerKey ?: return
         conn.prepareStatement(
@@ -299,7 +325,6 @@ internal class SemanticGraphWriter(
             statement.executeUpdate()
         }
     }
-
     private fun insertSemanticEdges(conn: Connection, update: SemanticGraphFileIndexUpdate) {
         val sourceFileId = semanticFileId(conn, update.path.value)
         conn.prepareStatement(
@@ -334,32 +359,24 @@ internal class SemanticGraphWriter(
             statement.executeBatch()
         }
     }
-
     private fun semanticFileId(conn: Connection, path: String): Long =
         requiredSemanticId(conn, "SELECT id FROM semantic_files WHERE path = ?", path)
-
     private fun semanticSymbolId(conn: Connection, key: String): Long =
         requiredSemanticId(conn, "SELECT id FROM semantic_symbols WHERE stable_key = ?", key)
-
     private fun semanticSymbolIdOrNull(conn: Connection, key: String): Long? =
         optionalSemanticId(conn, "SELECT id FROM semantic_symbols WHERE stable_key = ?", key)
-
     private fun semanticTypeId(conn: Connection, key: String): Long =
         requiredSemanticId(conn, "SELECT id FROM semantic_types WHERE stable_key = ?", key)
-
     private fun semanticTypeIdOrNull(conn: Connection, key: String): Long? =
         optionalSemanticId(conn, "SELECT id FROM semantic_types WHERE stable_key = ?", key)
-
     private fun requiredSemanticId(conn: Connection, sql: String, value: String): Long =
         requireNotNull(optionalSemanticId(conn, sql, value)) { "Missing canonical semantic identity: $value" }
-
     private fun optionalSemanticId(conn: Connection, sql: String, value: String): Long? =
         conn.prepareStatement(sql).use { statement ->
             statement.setString(1, value)
             val rows = statement.executeQuery()
             if (rows.next()) rows.getLong(1) else null
         }
-
     private fun deleteSemanticGraphFile(conn: Connection, path: String) {
         conn.prepareStatement("DELETE FROM semantic_files WHERE path = ?").use { statement ->
             statement.setString(1, path)
@@ -374,12 +391,10 @@ internal class SemanticGraphWriter(
             }
         }
     }
-
     private fun clearRepositoryOverlayTombstone(conn: Connection, path: String) {
         conn.prepareStatement("DELETE FROM repository_overlay_tombstones WHERE path = ?").use { statement ->
             statement.setString(1, path)
             statement.executeUpdate()
         }
     }
-
 }

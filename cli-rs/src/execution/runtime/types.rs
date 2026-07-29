@@ -85,6 +85,8 @@ pub struct WorkspaceStatusResult {
     pub path_resolution: PathResolutionReport,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub selected: Option<RuntimeCandidateStatus>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub semantic_graph: Option<crate::repository_intelligence::SemanticGraphReadiness>,
     pub candidates: Vec<RuntimeCandidateStatus>,
     pub schema_version: u32,
 }

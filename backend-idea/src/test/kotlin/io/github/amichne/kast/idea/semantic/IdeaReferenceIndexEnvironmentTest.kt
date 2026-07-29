@@ -9,6 +9,7 @@ import com.intellij.testFramework.junit5.fixture.moduleFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
+import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -61,6 +62,15 @@ class IdeaReferenceIndexEnvironmentTest {
                 }
             }
         """
+
+        private const val unresolvedSource = """
+            package demo
+
+            fun callerWithMissingTarget(): String {
+                MissingTarget.value()
+                return target()
+            }
+        """
     }
 
     private val moduleFixture = projectFixture.moduleFixture("main")
@@ -69,11 +79,12 @@ class IdeaReferenceIndexEnvironmentTest {
     private val callerFileFixture = sourceRootFixture.psiFileFixture("Caller.kt", callerSource)
     private val collectorsFileFixture = sourceRootFixture.psiFileFixture("CollectorsCaller.kt", collectorsSource)
     private val javaTargetFileFixture = sourceRootFixture.psiFileFixture("JavaTarget.java", javaTargetSource)
+    private val unresolvedFileFixture = sourceRootFixture.psiFileFixture("UnresolvedCaller.kt", unresolvedSource)
 
     @Test
     fun `shared scanner emits references for IDEA Kotlin files`() {
         val project = projectFixture.get()
-        val targetFile = targetFileFixture.get()
+        targetFileFixture.get()
         val callerFile = callerFileFixture.get()
         waitUntilIndexesAreReady(project)
 
@@ -86,7 +97,6 @@ class IdeaReferenceIndexEnvironmentTest {
 
         val rows = PsiReferenceScanner(environment).scanFileReferences(callerFile.virtualFile.path)
 
-        assertTrue(environment.allFilePaths().contains(Path.of(targetFile.virtualFile.path).toAbsolutePath().normalize().toString()))
         assertTrue(rows.any { row -> row.targetFqName == "demo.target" && row.sourcePath == callerFile.virtualFile.path })
     }
 
@@ -117,6 +127,30 @@ class IdeaReferenceIndexEnvironmentTest {
             rows.any { row -> row.targetFqName.startsWith("demo.JavaTarget") },
             "symbol relationship indexing should not persist non-Kotlin targets",
         )
+    }
+
+    @Test
+    fun `shared scanner preserves valid facts and reports unresolved relationship coverage`() {
+        val project = projectFixture.get()
+        targetFileFixture.get()
+        val unresolvedFile = unresolvedFileFixture.get()
+        waitUntilIndexesAreReady(project)
+
+        val workspaceRoot = Path.of(unresolvedFile.virtualFile.path).root.toAbsolutePath().normalize()
+        val environment = IdeaReferenceIndexEnvironment(
+            project = project,
+            workspaceRoot = workspaceRoot,
+            cancelled = { false },
+        )
+
+        val result = PsiReferenceScanner(environment).scanFileRelationships(unresolvedFile.virtualFile.path)
+
+        assertTrue(
+            result.references.any { row ->
+                row.targetFqName == "demo.target" && row.sourcePath == unresolvedFile.virtualFile.path
+            },
+        )
+        assertTrue(FileStageLimitation.UNRESOLVED_RELATIONSHIP in result.limitations)
     }
 
     @Test

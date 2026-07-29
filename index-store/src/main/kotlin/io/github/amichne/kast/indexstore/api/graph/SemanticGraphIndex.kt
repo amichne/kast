@@ -39,10 +39,33 @@ data class SemanticGraphWriteResult(
     val edgeOccurrenceCount: Int,
 )
 
+data class SemanticGraphScopeSnapshot(
+    val generation: SourceIndexGeneration,
+    val sourcePaths: Set<SemanticGraphSourcePath>,
+)
+
+sealed interface SemanticGraphCommitResult {
+    data class Committed(
+        val writeResult: SemanticGraphWriteResult,
+    ) : SemanticGraphCommitResult
+
+    data class GenerationChanged(
+        val expectedGeneration: SourceIndexGeneration,
+        val actualGeneration: SourceIndexGeneration,
+    ) : SemanticGraphCommitResult
+}
+
 data class SemanticGraphIndexSnapshot(
     val generation: SourceIndexGeneration,
     val files: List<SemanticGraphFileCoverage>,
     val symbols: List<SemanticGraphSymbol>,
     val boundarySymbols: List<SemanticGraphSymbol>,
     val relations: List<SemanticGraphRelation>,
+)
+
+data class SemanticGraphIndexSummary(
+    val generation: SourceIndexGeneration,
+    val files: List<SemanticGraphFileCoverage>,
+    val symbolCount: Int,
+    val edgeOccurrenceCount: Int,
 )

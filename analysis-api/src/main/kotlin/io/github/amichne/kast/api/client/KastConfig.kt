@@ -34,15 +34,16 @@ data class KastConfig(
 
     companion object {
         fun defaults(): KastConfig {
+            val resolvedPaths = resolveKastPathDefaults()
             val paths = PathsConfig(
-                installRoot = PathsInstallRoot(defaultConfigInstallRoot().toString()),
-                binDir = PathsBinDir(defaultConfigBinDir().toString()),
-                libDir = PathsLibDir(defaultConfigLibDir().toString()),
-                cacheDir = PathsCacheDir(defaultConfigCacheDir().toString()),
-                logsDir = PathsLogsDir(defaultConfigLogsDir().toString()),
-                runtimeDir = PathsRuntimeDir(defaultConfigRuntimeDir().toString()),
-                descriptorDir = PathsDescriptorDir(defaultConfigDescriptorDir().toString()),
-                socketDir = PathsSocketDir(defaultConfigSocketDir()),
+                installRoot = PathsInstallRoot(resolvedPaths.installRoot.toString()),
+                binDir = PathsBinDir(resolvedPaths.binDir.toString()),
+                libDir = PathsLibDir(resolvedPaths.libDir.toString()),
+                cacheDir = PathsCacheDir(resolvedPaths.cacheDir.toString()),
+                logsDir = PathsLogsDir(resolvedPaths.logsDir.toString()),
+                runtimeDir = PathsRuntimeDir(resolvedPaths.runtimeDir.toString()),
+                descriptorDir = PathsDescriptorDir(resolvedPaths.descriptorDir.toString()),
+                socketDir = PathsSocketDir(resolvedPaths.socketDir.toString()),
             )
             return KastConfig(
                 server = ServerConfig(
@@ -112,14 +113,14 @@ data class KastConfig(
                     headless = HeadlessBackendConfig(
                         enabled = HeadlessBackendEnabled(true),
                         runtimeLibsDir = HeadlessRuntimeLibsDir(
-                            OptionalConfigString(defaultConfigHeadlessRuntimeLibsDir(paths.libDir.value).toString()),
+                            OptionalConfigString(resolvedPaths.headlessRuntimeLibsDir.toString()),
                         ),
                         ideaHome = HeadlessIdeaHome(OptionalConfigString.Unset),
                     ),
                     idea = IdeaBackendConfig(enabled = IdeaBackendEnabled(true)),
                 ),
                 paths = paths,
-                cli = CliConfig(binaryPath = CliBinaryPath(defaultConfigCliBinaryPath(paths.binDir.value).toString())),
+                cli = CliConfig(binaryPath = CliBinaryPath(resolvedPaths.cliBinary.toString())),
             )
         }
 

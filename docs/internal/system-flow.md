@@ -29,10 +29,19 @@ code_sources:
     symbols: [SkillRpcOrchestrator]
   - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/KastPluginBackend.kt
     symbols: [KastPluginBackend]
+  - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/mutation/MutationOperations.kt
+  - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/workspace/indexing/IdeaProjectIndexer.kt
+    symbols: [IdeaProjectIndexer]
   - path: backend-headless/src/main/kotlin/io/github/amichne/kast/headless/runtime/HeadlessRuntime.kt
     symbols: [HeadlessRuntime]
+  - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/indexing/ReferenceIndexer.kt
+    symbols: [ReferenceIndexer]
+  - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/StringInterningCodec.kt
+    symbols: [StringInterningCodec]
   - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt
     symbols: [SqliteSourceIndexStore]
+  - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/sqlite/semantic/SemanticGraphWriter.kt
+    symbols: [SemanticGraphWriter]
   - path: .agents/adr/0025-backend-bound-opaque-selector-handles.md
   - path: .agents/adr/0026-proof-carrying-relationship-coverage.md
   - path: .agents/adr/0027-effective-agent-environment-readiness.md
@@ -140,6 +149,12 @@ parameters. `SkillRpcOrchestrator` handles public agent workflows.
 compiler. The headless host starts the same IDEA backend runtime with a
 different host bootstrap. Both return the same result contracts.
 
+<kast-view view-id="idea-semantic-pipeline" browser="true"></kast-view>
+
+PSI, Analysis API sessions, K2 frontend state, and FIR are live compiler
+objects. Kast retains provider-neutral identities, diagnostics, references,
+and semantic graph facts instead of retaining those objects.
+
 <kast-view view-id="compiler-read" browser="true" dynamic-variant="sequence"></kast-view>
 
 ### Repository and graph flow
@@ -152,6 +167,27 @@ state. Compiler refresh and relationship requests route through the backend.
 `SqliteSourceIndexStore` owns indexed files, declarations, references,
 generations, snapshots, and semantic graph facts. A graph answer is usable
 only when its generation and coverage match the requested scope.
+
+<kast-view view-id="indexing-landscape" browser="true"></kast-view>
+
+Use the routing view to open the project-index, SQLite, or refresh sequence:
+
+<kast-view view-id="indexing-guide" browser="true"></kast-view>
+
+Project open after Gradle import is the production full-reference-index
+trigger. It replaces the source inventory first, then dependency-prioritizes
+modules and persists successful declaration and reference batches through
+serialized SQLite transactions.
+
+<kast-view view-id="reference-indexing" browser="true" dynamic-variant="sequence"></kast-view>
+
+The reference index and the explicit semantic graph are separate retained
+products. Both share the workspace database and generation guard, but only
+`kast agent graph --operation refresh` replaces selected `semantic_files`.
+
+<kast-view view-id="retained-evidence" browser="true"></kast-view>
+
+<kast-view view-id="sqlite-pipeline" browser="true" dynamic-variant="sequence"></kast-view>
 
 <kast-view view-id="compiler-evidence" browser="true"></kast-view>
 
@@ -166,6 +202,10 @@ The public result preserves typed failure. A failed apply, stale identity,
 incomplete analysis, or missing capability does not become success through
 projection.
 
+Ordinary writes refresh live VFS, Kotlin-index, PSI, Analysis API admission,
+and focused diagnostics. They do not automatically rebuild retained reference
+rows or semantic graph facts.
+
 <kast-view view-id="semantic-mutation" browser="true" dynamic-variant="sequence"></kast-view>
 
 ### Codex hook flow
@@ -175,6 +215,12 @@ workspace and accepts `INDEXING` as bootstrap reachability. The `PostToolUse`
 hook checks runtime health and invokes `kast agent diagnostics` only for
 successful Kotlin writes. Hook failures add advisory context; they do not run
 setup or claim compiler proof.
+
+No-path workspace refresh schedules IntelliJ VFS refresh without per-file
+completeness. Explicit graph refresh extracts selected K2 Analysis API facts
+and atomically replaces the matching semantic graph rows.
+
+<kast-view view-id="refresh-lifecycle" browser="true" dynamic-variant="sequence"></kast-view>
 
 ### Work with the diagrams locally
 

@@ -37,11 +37,21 @@ fn evaluate(event: CodexHookEvent) -> Result<Value> {
         return Ok(json!({}));
     }
     let input = read_input()?;
-    let cwd = input.cwd.clone().unwrap_or(std::env::current_dir()?);
-    let workspace = crate::config::resolve_workspace_root_from(&cwd);
+    evaluate_with_runner(event, input, run_kast)
+}
+
+fn evaluate_with_runner(
+    event: CodexHookEvent,
+    input: HookInput,
+    runner: impl Fn(&[OsString]) -> Result<String>,
+) -> Result<Value> {
+    let cwd = crate::config::normalize(input.cwd.clone().unwrap_or(std::env::current_dir()?));
+    let Some(workspace) = crate::config::find_workspace_root_from(&cwd) else {
+        return Ok(json!({}));
+    };
     Ok(match event {
-        CodexHookEvent::SessionStart => session_start(&workspace),
-        CodexHookEvent::PostToolUse => post_tool_use(&input, &workspace, &cwd),
+        CodexHookEvent::SessionStart => session_start_with_runner(&workspace, runner),
+        CodexHookEvent::PostToolUse => post_tool_use_with_runner(&input, &workspace, &cwd, runner),
     })
 }
 
@@ -64,10 +74,6 @@ fn read_input() -> Result<HookInput> {
     })
 }
 
-fn session_start(workspace: &Path) -> Value {
-    session_start_with_runner(workspace, run_kast)
-}
-
 fn session_start_with_runner(
     workspace: &Path,
     runner: impl FnOnce(&[OsString]) -> Result<String>,
@@ -84,13 +90,21 @@ fn session_start_with_runner(
         OsString::from("idea"),
         OsString::from("--accept-indexing"),
     ];
-    additional_context(
-        CodexHookEvent::SessionStart,
-        advisory_result("Kast session launch", runner(&args)),
-    )
+    match runner(&args) {
+        Ok(_) => json!({}),
+        Err(error) => additional_context(
+            CodexHookEvent::SessionStart,
+            advisory_result("Kast session launch", Err(error)),
+        ),
+    }
 }
 
-fn post_tool_use(input: &HookInput, workspace: &Path, cwd: &Path) -> Value {
+fn post_tool_use_with_runner(
+    input: &HookInput,
+    workspace: &Path,
+    cwd: &Path,
+    runner: impl Fn(&[OsString]) -> Result<String>,
+) -> Value {
     let paths = qualifying_kotlin_paths(input, workspace, cwd);
     if paths.is_empty() {
         return json!({});
@@ -104,38 +118,20 @@ fn post_tool_use(input: &HookInput, workspace: &Path, cwd: &Path) -> Value {
         OsString::from("--backend"),
         OsString::from("idea"),
     ];
-    let status = match run_kast(&status_args) {
-        Ok(status) if status_is_healthy(&status, workspace) => status,
-        Ok(status) => {
-            return additional_context(
-                CodexHookEvent::PostToolUse,
-                format!("Kast status is unhealthy; diagnostics skipped.\n{status}"),
-            );
-        }
-        Err(error) => {
-            return additional_context(
-                CodexHookEvent::PostToolUse,
-                format!(
-                    "Kast status is unhealthy; diagnostics skipped.\n{}: {}",
-                    error.code, error.message
-                ),
-            );
-        }
-    };
+    if !matches!(runner(&status_args), Ok(status) if status_is_healthy(&status, workspace)) {
+        return json!({});
+    }
     let diagnostics = paths
         .iter()
         .map(|path| {
             advisory_result(
                 "Kast diagnostics",
-                run_kast(&diagnostics_args(workspace, path)),
+                runner(&diagnostics_args(workspace, path)),
             )
         })
         .collect::<Vec<_>>()
         .join("\n");
-    additional_context(
-        CodexHookEvent::PostToolUse,
-        format!("Kast status is healthy.\n{status}\n{diagnostics}"),
-    )
+    additional_context(CodexHookEvent::PostToolUse, diagnostics)
 }
 
 fn diagnostics_args(workspace: &Path, path: &str) -> [OsString; 10] {

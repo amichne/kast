@@ -3,8 +3,12 @@ package io.github.amichne.kast.shared.analysis
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.psi.PsiElement
+import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiRecursiveElementWalkingVisitor
 import io.github.amichne.kast.api.contract.SymbolVisibility
+import io.github.amichne.kast.api.validation.FileHashing
+import io.github.amichne.kast.indexstore.api.index.FileContentHash
+import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
@@ -27,100 +31,200 @@ import org.jetbrains.kotlin.psi.KtTypeAlias
 import org.jetbrains.kotlin.psi.KtTypeReference
 import java.util.concurrent.CancellationException
 
+data class PsiRelationshipScanResult(
+    val contentHash: FileContentHash,
+    val references: List<SymbolReferenceRow>,
+    val declarations: List<DeclarationRow>,
+    val limitations: List<FileStageLimitation>,
+)
+
 class PsiReferenceScanner(
     private val environment: ReferenceIndexEnvironment,
     private val moduleNameForFile: (String) -> String? = { null },
 ) {
+    fun scanFileRelationships(filePath: String): PsiRelationshipScanResult =
+        // One epoch binds every persisted relationship fact to one immutable PSI revision.
+        environment.withExclusiveAccess {
+            val psiFile = requirePsiFile(filePath)
+            val sourceFilePath = psiFile.sourceFilePath(filePath)
+            val referenceResult = scanFileReferenceCoverage(psiFile, sourceFilePath)
+            val declarationResult = scanFileDeclarationCoverage(psiFile, sourceFilePath)
+            PsiRelationshipScanResult(
+                contentHash = psiFile.contentHash(),
+                references = referenceResult.rows,
+                declarations = declarationResult.rows,
+                limitations = (referenceResult.limitations + declarationResult.limitations).distinct(),
+            )
+        }
+
     fun scanFileReferences(filePath: String): List<SymbolReferenceRow> =
+        scanFileReferenceCoverage(filePath).rows
+
+    fun scanFileDeclarations(filePath: String): List<DeclarationRow> =
+        scanFileDeclarationCoverage(filePath).rows
+
+    private fun scanFileReferenceCoverage(filePath: String): ScanCoverage<SymbolReferenceRow> =
         // Exclusive access required: the headless backend's K2 FIR lazy declaration
         // resolver is not thread-safe for concurrent resolution within a single session.
         environment.withExclusiveAccess {
-            val rows = mutableListOf<SymbolReferenceRow>()
-            val psiFile = environment.findPsiFile(filePath) ?: return@withExclusiveAccess emptyList()
-            val sourceFilePath = runCatching { psiFile.resolvedFilePath().value }.getOrElse { filePath }
-
-            psiFile.accept(
-                object : PsiRecursiveElementWalkingVisitor() {
-                    override fun visitElement(element: PsiElement) {
-                        try {
-                            if (environment.isCancelled()) {
-                                stopWalking()
-                                return
-                            }
-                            ProgressManager.checkCanceled()
-                            recoverRuntimePsiFailure { element.references }.orEmpty().forEach { reference ->
-                                try {
-                                    val resolved = recoverRuntimePsiFailure { reference.resolve() }
-                                        as? KtNamedDeclaration ?: return@forEach
-                                    val (fqName, _) = recoverRuntimePsiFailure {
-                                        resolved.targetFqNameAndPackage()
-                                    } ?: return@forEach
-                                    val targetPath = recoverRuntimePsiFailure { resolved.resolvedFilePath().value }
-                                    val targetOffset = recoverRuntimePsiFailure {
-                                        resolved.declarationIdentityOffset()
-                                    }
-                                    val sourceElementStart = recoverRuntimePsiFailure {
-                                        reference.element.textRange.startOffset
-                                    } ?: return@forEach
-                                    val sourceOffset = sourceElementStart +
-                                                       reference.rangeInElement.startOffset
-                                    rows += SymbolReferenceRow(
-                                        sourcePath = sourceFilePath,
-                                        sourceOffset = sourceOffset,
-                                        sourceFqName = recoverRuntimePsiFailure {
-                                            reference.element.enclosingDeclarationFqName()
-                                        },
-                                        targetFqName = fqName.value,
-                                        targetPath = targetPath,
-                                        targetOffset = targetOffset,
-                                        edgeKind = reference.element.edgeKind(),
-                                    )
-                                } catch (error: ProcessCanceledException) {
-                                    throw error
-                                } catch (error: CancellationException) {
-                                    throw error
-                                } catch (_: Exception) {
-                                    // Skip one bad reference while continuing to index the file.
-                                }
-                            }
-                            recoverRuntimePsiFailure { super.visitElement(element) }
-                        } catch (error: ProcessCanceledException) {
-                            throw error
-                        } catch (error: CancellationException) {
-                            throw error
-                        } catch (_: Exception) {
-                            // Skip elements with invalid PSI mirrors (e.g., compiled JDK classes)
-                            // and continue walking the tree
-                        }
-                    }
-                },
-            )
-            rows
+            val psiFile = requirePsiFile(filePath)
+            scanFileReferenceCoverage(psiFile, psiFile.sourceFilePath(filePath))
         }
 
-    fun scanFileDeclarations(filePath: String): List<DeclarationRow> =
-        environment.withExclusiveAccess {
-            val rows = mutableListOf<DeclarationRow>()
-            val psiFile = environment.findPsiFile(filePath) ?: return@withExclusiveAccess emptyList()
-            val sourceFilePath = runCatching { psiFile.resolvedFilePath().value }.getOrElse { filePath }
-            val (modulePath, sourceSet) = splitModuleName(moduleNameForFile(sourceFilePath))
-            psiFile.accept(
-                object : PsiRecursiveElementWalkingVisitor() {
-                    override fun visitElement(element: PsiElement) {
+    private fun scanFileReferenceCoverage(
+        psiFile: PsiFile,
+        sourceFilePath: String,
+    ): ScanCoverage<SymbolReferenceRow> {
+        val rows = mutableListOf<SymbolReferenceRow>()
+        val limitations = linkedSetOf<FileStageLimitation>()
+        val markUnresolved: () -> Unit = {
+            limitations += FileStageLimitation.UNRESOLVED_RELATIONSHIP
+        }
+        psiFile.accept(
+            object : PsiRecursiveElementWalkingVisitor() {
+                override fun visitElement(element: PsiElement) {
+                    try {
                         if (environment.isCancelled()) {
                             stopWalking()
                             return
                         }
                         ProgressManager.checkCanceled()
-                        recoverRuntimePsiFailure {
+                        recoverRuntimePsiFailure(
+                            onFailure = markUnresolved,
+                        ) {
+                            element.references
+                        }.orEmpty().forEach { reference ->
+                            try {
+                                val resolvedElement = recoverRuntimePsiFailure(
+                                    onFailure = markUnresolved,
+                                ) {
+                                    reference.resolve()
+                                }
+                                if (resolvedElement == null) {
+                                    markUnresolved()
+                                    return@forEach
+                                }
+                                val resolved = resolvedElement as? KtNamedDeclaration ?: return@forEach
+                                val target = recoverRuntimePsiFailure(
+                                    onFailure = markUnresolved,
+                                ) {
+                                    resolved.targetFqNameAndPackage()
+                                }
+                                if (target == null) {
+                                    markUnresolved()
+                                    return@forEach
+                                }
+                                val (fqName, _) = target
+                                val targetPath = recoverRuntimePsiFailure { resolved.resolvedFilePath().value }
+                                val targetOffset = recoverRuntimePsiFailure {
+                                    resolved.declarationIdentityOffset()
+                                }
+                                val sourceElementStart = recoverRuntimePsiFailure(
+                                    onFailure = markUnresolved,
+                                ) {
+                                    reference.element.textRange.startOffset
+                                }
+                                if (sourceElementStart == null) {
+                                    markUnresolved()
+                                    return@forEach
+                                }
+                                val sourceOffset = sourceElementStart +
+                                                   reference.rangeInElement.startOffset
+                                rows += SymbolReferenceRow(
+                                    sourcePath = sourceFilePath,
+                                    sourceOffset = sourceOffset,
+                                    sourceFqName = recoverRuntimePsiFailure {
+                                        reference.element.enclosingDeclarationFqName()
+                                    },
+                                    targetFqName = fqName.value,
+                                    targetPath = targetPath,
+                                    targetOffset = targetOffset,
+                                    edgeKind = reference.element.edgeKind(),
+                                )
+                            } catch (error: ProcessCanceledException) {
+                                throw error
+                            } catch (error: CancellationException) {
+                                throw error
+                            } catch (_: Exception) {
+                                markUnresolved()
+                            }
+                        }
+                        recoverRuntimePsiFailure(
+                            onFailure = markUnresolved,
+                        ) {
+                            super.visitElement(element)
+                        }
+                    } catch (error: ProcessCanceledException) {
+                        throw error
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        markUnresolved()
+                    }
+                }
+            },
+        )
+        return ScanCoverage(rows = rows, limitations = limitations.toList())
+    }
+
+    private fun scanFileDeclarationCoverage(filePath: String): ScanCoverage<DeclarationRow> =
+        environment.withExclusiveAccess {
+            val psiFile = requirePsiFile(filePath)
+            scanFileDeclarationCoverage(psiFile, psiFile.sourceFilePath(filePath))
+        }
+
+    private fun scanFileDeclarationCoverage(
+        psiFile: PsiFile,
+        sourceFilePath: String,
+    ): ScanCoverage<DeclarationRow> {
+        val rows = mutableListOf<DeclarationRow>()
+        val limitations = linkedSetOf<FileStageLimitation>()
+        val markUnresolved: () -> Unit = {
+            limitations += FileStageLimitation.UNRESOLVED_RELATIONSHIP
+        }
+        val (modulePath, sourceSet) = splitModuleName(moduleNameForFile(sourceFilePath))
+        psiFile.accept(
+            object : PsiRecursiveElementWalkingVisitor() {
+                override fun visitElement(element: PsiElement) {
+                    try {
+                        if (environment.isCancelled()) {
+                            stopWalking()
+                            return
+                        }
+                        ProgressManager.checkCanceled()
+                        recoverRuntimePsiFailure(
+                            onFailure = markUnresolved,
+                        ) {
                             element.declarationRow(sourceFilePath, modulePath, sourceSet)
                         }?.let(rows::add)
-                        super.visitElement(element)
+                        recoverRuntimePsiFailure(
+                            onFailure = markUnresolved,
+                        ) {
+                            super.visitElement(element)
+                        }
+                    } catch (error: ProcessCanceledException) {
+                        throw error
+                    } catch (error: CancellationException) {
+                        throw error
+                    } catch (_: Exception) {
+                        markUnresolved()
                     }
-                },
-            )
-            rows
+                }
+            },
+        )
+        return ScanCoverage(rows = rows, limitations = limitations.toList())
+    }
+
+    private fun requirePsiFile(filePath: String): PsiFile =
+        requireNotNull(environment.findPsiFile(filePath)) {
+            "PSI file is unavailable for relationship indexing: $filePath"
         }
+
+    private fun PsiFile.sourceFilePath(fallback: String): String =
+        runCatching { resolvedFilePath().value }.getOrElse { fallback }
+
+    private fun PsiFile.contentHash(): FileContentHash =
+        FileContentHash.parse(FileHashing.sha256(text))
 
     private fun PsiElement.declarationRow(
         sourceFilePath: String,
@@ -195,7 +299,15 @@ class PsiReferenceScanner(
 
 }
 
-internal inline fun <T> recoverRuntimePsiFailure(action: () -> T): T? =
+private data class ScanCoverage<T>(
+    val rows: List<T>,
+    val limitations: List<FileStageLimitation>,
+)
+
+internal inline fun <T> recoverRuntimePsiFailure(
+    onFailure: () -> Unit = {},
+    action: () -> T,
+): T? =
     try {
         action()
     } catch (error: ProcessCanceledException) {
@@ -203,8 +315,9 @@ internal inline fun <T> recoverRuntimePsiFailure(action: () -> T): T? =
     } catch (error: CancellationException) {
         throw error
     } catch (_: StackOverflowError) {
-        // ponytail: K2/FIR can recurse on one bad PSI reference; skip that element unless the platform fixes it.
+        onFailure()
         null
     } catch (_: Exception) {
+        onFailure()
         null
     }

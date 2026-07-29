@@ -3,6 +3,8 @@ package io.github.amichne.kast.idea
 import io.github.amichne.kast.idea.diagnostics.*
 
 import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
+import io.github.amichne.kast.api.contract.RuntimeState
+import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.result.CallRelationsResult
@@ -25,6 +27,38 @@ import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
 class ObservedAnalysisBackendTest {
+    @Test
+    fun `enriched runtime state is also recorded for the UI`() = runBlocking {
+        val ready = RuntimeStatusResponse(
+            state = RuntimeState.READY,
+            healthy = true,
+            active = true,
+            indexing = false,
+            backendName = "idea",
+            backendVersion = "test",
+            workspaceRoot = "/workspace",
+        )
+        val delegate = RecordingRelationshipBackend(
+            calls = emptyCallRelationsResult(),
+            implementations = emptyImplementationRelationsResult(),
+            hierarchy = emptyHierarchyRelationsResult(),
+            runtimeStatus = ready,
+        )
+        val parentDisposable = com.intellij.openapi.util.Disposer.newDisposable()
+        val unusedProject = com.intellij.mock.MockProject(null, parentDisposable)
+
+        try {
+            val diagnostics = KastDiagnosticsService(unusedProject)
+            diagnostics.recordIndexFailed(IllegalStateException("Gradle import failed"))
+            val observed = ObservedAnalysisBackend(delegate, diagnostics)
+
+            assertEquals(RuntimeState.DEGRADED, observed.runtimeStatus().state)
+            assertEquals(KastBackendUiState.DEGRADED, diagnostics.snapshot().backendState)
+        } finally {
+            com.intellij.openapi.util.Disposer.dispose(parentDisposable)
+        }
+    }
+
     @Test
     fun `selector handle authority remains available through observation`() {
         val selectorHandles = DigestSelectorHandleAuthority(
@@ -145,6 +179,7 @@ private class RecordingRelationshipBackend(
     private val implementations: ImplementationRelationsResult,
     private val hierarchy: HierarchyRelationsResult,
     override val selectorHandles: SelectorHandleAuthority = SelectorHandleAuthority.Unsupported,
+    private val runtimeStatus: RuntimeStatusResponse? = null,
 ) : CloseableAnalysisBackend {
     var callRelationsCount: Int = 0
         private set
@@ -173,6 +208,9 @@ private class RecordingRelationshipBackend(
     override suspend fun capabilities(): io.github.amichne.kast.api.contract.BackendCapabilities =
         unexpected("capabilities")
 
+    override suspend fun runtimeStatus(): RuntimeStatusResponse =
+        runtimeStatus ?: unexpected("runtimeStatus")
+
     override suspend fun resolveSymbol(
         query: io.github.amichne.kast.api.validation.ParsedSymbolQuery,
     ): io.github.amichne.kast.api.contract.result.SymbolResult = unexpected("resolveSymbol")
@@ -197,3 +235,24 @@ private class RecordingRelationshipBackend(
 
     private fun unexpected(operation: String): Nothing = error("Unexpected delegate invocation: $operation")
 }
+
+private fun emptyPage(): RelationTraversalPageInfo = RelationTraversalPageInfo.create(
+    evidence = RelationshipResultEvidence.Complete(
+        cardinality = ResultCardinality.Exact(0),
+        coverage = RelationshipSearchCoverage.complete(),
+    ),
+    returnedCount = 0,
+    returnedBefore = 0,
+    visitedCandidateCount = 0,
+    candidateVisitLimit = 16_384,
+    nextHandle = null,
+)
+
+private fun emptyCallRelationsResult(): CallRelationsResult =
+    CallRelationsResult.Available(emptyList(), emptyPage())
+
+private fun emptyImplementationRelationsResult(): ImplementationRelationsResult =
+    ImplementationRelationsResult.Available(emptyList(), emptyPage())
+
+private fun emptyHierarchyRelationsResult(): HierarchyRelationsResult =
+    HierarchyRelationsResult.Available(emptyList(), emptyPage())

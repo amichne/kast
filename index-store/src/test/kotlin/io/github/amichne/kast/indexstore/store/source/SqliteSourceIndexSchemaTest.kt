@@ -125,6 +125,42 @@ class SqliteSourceIndexSchemaTest {
     }
 
     @Test
+    fun `claimed current schema rejects a non-null stage input fingerprint`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val dbPath = sourceIndexDatabasePath(normalized)
+        SqliteSourceIndexStore(normalized).use { store -> store.ensureSchema() }
+
+        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { conn ->
+            conn.createStatement().use { stmt ->
+                stmt.execute("ALTER TABLE file_stage_outcomes RENAME TO old_file_stage_outcomes")
+                stmt.execute(
+                    """CREATE TABLE file_stage_outcomes (
+                        prefix_id INTEGER NOT NULL,
+                        filename TEXT NOT NULL,
+                        stage TEXT NOT NULL CHECK(stage IN ('SOURCE','RELATIONSHIPS','SEMANTIC_GRAPH')),
+                        content_hash TEXT NOT NULL,
+                        stage_version TEXT NOT NULL,
+                        stage_input_fingerprint TEXT NOT NULL,
+                        outcome_status TEXT NOT NULL CHECK(outcome_status IN ('COMPLETE','LIMITED','FAILED')),
+                        limitations_json TEXT NOT NULL,
+                        PRIMARY KEY (prefix_id, filename, stage)
+                    )""",
+                )
+                stmt.execute("DROP TABLE old_file_stage_outcomes")
+                stmt.execute(
+                    """CREATE INDEX idx_file_stage_outcomes_stage
+                       ON file_stage_outcomes(stage, prefix_id, filename)""",
+                )
+            }
+        }
+
+        val failure = assertThrows(IllegalStateException::class.java) {
+            SqliteSourceIndexStore(normalized).use { store -> store.ensureSchema() }
+        }
+        assertTrue(failure.message.orEmpty().contains("stage_input_fingerprint"))
+    }
+
+    @Test
     fun `ensureSchema reloads interning tables after database replacement`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val dbPath = sourceIndexDatabasePath(normalized)

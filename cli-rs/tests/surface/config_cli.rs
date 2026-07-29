@@ -16,6 +16,37 @@ fn run(home: &Path, config_home: &Path, workspace: &Path, args: &[&str]) -> std:
 }
 
 #[test]
+fn explicit_config_home_owns_the_global_config_file() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&config_home).expect("config home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        config_home.join("config.toml"),
+        "[indexing.relationships]\nparallelism = 7\n",
+    )
+    .expect("global config");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+
+    let listed = run(&home, &config_home, &workspace, &["list"]);
+
+    assert!(
+        listed.status.success(),
+        "list failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&listed.stdout),
+        String::from_utf8_lossy(&listed.stderr),
+    );
+    let listed: serde_json::Value = serde_json::from_slice(&listed.stdout).expect("list JSON");
+    assert_eq!(
+        listed["effective"]["indexing"]["relationships"]["parallelism"],
+        7,
+    );
+}
+
+#[test]
 fn workspace_config_lists_sets_and_unsets_effective_values() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

@@ -258,7 +258,11 @@ fn typed_relationship_commands_project_closed_non_available_outcomes() {
         ]);
         let stdout = run_agent_json(&home, &config, args);
         assert_eq!(stdout["result"]["outcome"], expected_outcome);
-        assert!(stdout["result"].get("records").is_none());
+        if expected_outcome == "DEGRADED" {
+            assert_eq!(stdout["result"]["records"], serde_json::json!([]));
+        } else {
+            assert!(stdout["result"].get("records").is_none());
+        }
         backend.join().expect("outcome backend");
     }
 }

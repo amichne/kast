@@ -29,6 +29,11 @@ fn verify_required_structure(transaction: &Transaction<'_>) -> Result<(), ReadDa
     verify_primary_key(transaction, "path_prefixes", &["prefix_id"])?;
     verify_primary_key(transaction, "fq_names", &["fq_id"])?;
     verify_primary_key(transaction, "file_manifest", &["prefix_id", "filename"])?;
+    verify_primary_key(
+        transaction,
+        "file_stage_outcomes",
+        &["prefix_id", "filename", "stage"],
+    )?;
     verify_primary_key(transaction, "module_index_progress", &["module_name"])?;
     verify_primary_key(
         transaction,
@@ -53,6 +58,24 @@ fn verify_required_structure(transaction: &Transaction<'_>) -> Result<(), ReadDa
         transaction,
         "file_manifest",
         &["prefix_id", "filename", "last_modified_millis"],
+    )?;
+    verify_not_null(
+        transaction,
+        "file_stage_outcomes",
+        &[
+            "prefix_id",
+            "filename",
+            "stage",
+            "content_hash",
+            "stage_version",
+            "outcome_status",
+            "limitations_json",
+        ],
+    )?;
+    verify_nullable(
+        transaction,
+        "file_stage_outcomes",
+        &["stage_input_fingerprint"],
     )?;
     verify_not_null(
         transaction,
@@ -115,5 +138,6 @@ fn verify_required_structure(transaction: &Transaction<'_>) -> Result<(), ReadDa
     verify_unique_key(transaction, "fq_names", &["fq_name"])?;
     verify_package_checks(transaction)?;
     verify_progress_checks(transaction)?;
+    verify_file_stage_outcome_checks(transaction)?;
     Ok(())
 }

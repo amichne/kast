@@ -1,4 +1,4 @@
-<idea-plugin>
+<idea-plugin require-restart="true">
     <id>io.github.amichne.kast</id>
     <name>Kast Analysis Backend</name>
     <vendor url="https://github.com/amichne/kast">amichne</vendor>

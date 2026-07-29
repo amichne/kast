@@ -9,6 +9,7 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.api.contract.ByteOffset
+import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.LineNumber
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.result.SemanticGraphDiagnosticEvidence
@@ -26,10 +27,12 @@ import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.idea.backend.workspace.isWorkspaceFile
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
+import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.analysis.api.resolution.singleFunctionCallOrNull
 import org.jetbrains.kotlin.analysis.api.symbols.KaConstructorSymbol
 import org.jetbrains.kotlin.psi.KtCallExpression
+import org.jetbrains.kotlin.psi.KtCallableReferenceExpression
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtConstructor
@@ -48,31 +51,30 @@ internal data class ExtractedSemanticGraphFile(
     val update: SemanticGraphFileIndexUpdate,
     val boundarySymbols: List<SemanticGraphSymbol>,
     val omittedExternalTargetCount: Int,
+    val limitations: List<FileStageLimitation>,
 )
-
 private data class ResolvedSemanticCallTarget(
     val compilerTarget: SemanticGraphCompilerTarget,
     val exactConstructorSignature: String?,
 )
-
 private sealed interface SemanticGraphTargetAdmission {
     data object External : SemanticGraphTargetAdmission
-
+    data object Unresolved : SemanticGraphTargetAdmission
     data class Workspace(
         val element: PsiElement,
         val target: ResolvedSemanticTarget,
     ) : SemanticGraphTargetAdmission
 }
-
 private fun KastPluginBackend.admitSemanticTarget(
     compilerTarget: SemanticGraphCompilerTarget,
     path: SemanticGraphSourcePath,
     occurrence: PsiElement,
     semanticScope: Set<SemanticGraphSourcePath>,
 ): SemanticGraphTargetAdmission {
-    val element = when (val resolved = compilerTarget.requireResolved(path, occurrence)) {
+    val element = when (compilerTarget) {
+        SemanticGraphCompilerTarget.Unresolved -> return SemanticGraphTargetAdmission.Unresolved
         SemanticGraphCompilerTarget.External -> return SemanticGraphTargetAdmission.External
-        is SemanticGraphCompilerTarget.Source -> resolved.element
+        is SemanticGraphCompilerTarget.Source -> compilerTarget.element
     }
     semanticTarget(element, path, semanticScope)?.let { target ->
         return SemanticGraphTargetAdmission.Workspace(element, target)
@@ -85,7 +87,6 @@ private fun KastPluginBackend.admitSemanticTarget(
             "${path.value}:${occurrence.semanticGraphLine()}. Update Kast or change the declaration before refreshing this file.",
     )
 }
-
 internal fun KastPluginBackend.extractSemanticGraphFile(
     file: KtFile,
     path: SemanticGraphSourcePath,
@@ -191,6 +192,7 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
     val symbols = listOf(fileSymbol) + symbolByDeclaration.values + syntheticSymbols
     val boundarySymbols = mutableMapOf<SemanticGraphSymbolKey, SemanticGraphSymbol>()
     val relations = syntheticRelations.toMutableList()
+    val limitations = linkedSetOf<FileStageLimitation>()
     declarations.forEach { declaration ->
         val symbol = symbolByDeclaration.getValue(declaration)
         val owner = nearestProjectedOwner(declaration, symbolByDeclaration) ?: fileSymbol
@@ -230,6 +232,7 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
     }
 
     PsiTreeUtil.findChildrenOfType(file, KtCallExpression::class.java)
+        .filterNot { call -> call.parent is KtCallableReferenceExpression && call.valueArgumentList == null }
         .sortedBy { it.textRange.startOffset }
         .forEach { call ->
             val target = analyze(call) {
@@ -245,9 +248,20 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
                     exactConstructorSignature = (symbol as? KaConstructorSymbol)?.compilerStableSignature(),
                 )
             }
+            if (target.compilerTarget == SemanticGraphCompilerTarget.Unresolved) {
+                val calleeRange = call.calleeExpression?.textRange ?: return@forEach
+                val sourceError = diagnostics.any { diagnostic ->
+                    diagnostic.severity == DiagnosticSeverity.ERROR &&
+                        diagnostic.startOffset.value < calleeRange.endOffset &&
+                        diagnostic.endOffset.value > calleeRange.startOffset
+                }
+                if (!sourceError) return@forEach
+            }
             val source = nearestProjectedOwner(call, symbolByDeclaration) ?: fileSymbol
             when (val admitted = admitSemanticTarget(target.compilerTarget, path, call, semanticScope)) {
                 SemanticGraphTargetAdmission.External -> omittedExternalTargetCount++
+                SemanticGraphTargetAdmission.Unresolved ->
+                    limitations += FileStageLimitation.UNRESOLVED_RELATIONSHIP
                 is SemanticGraphTargetAdmission.Workspace -> {
                     admitted.target.boundarySymbol?.let { symbol ->
                         boundarySymbols[symbol.canonicalKey] = symbol
@@ -280,6 +294,8 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
                 ?: SemanticGraphCompilerTarget.Unresolved
             when (val admitted = admitSemanticTarget(target, path, entry, semanticScope)) {
                 SemanticGraphTargetAdmission.External -> omittedExternalTargetCount++
+                SemanticGraphTargetAdmission.Unresolved ->
+                    limitations += FileStageLimitation.UNRESOLVED_RELATIONSHIP
                 is SemanticGraphTargetAdmission.Workspace -> {
                     admitted.target.boundarySymbol?.let { symbol ->
                         boundarySymbols[symbol.canonicalKey] = symbol
@@ -323,6 +339,8 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
                         )
                     ) {
                         SemanticGraphTargetAdmission.External -> omittedExternalTargetCount++
+                        SemanticGraphTargetAdmission.Unresolved ->
+                            limitations += FileStageLimitation.UNRESOLVED_RELATIONSHIP
                         is SemanticGraphTargetAdmission.Workspace -> {
                             admitted.target.boundarySymbol?.let { symbol ->
                                 boundarySymbols[symbol.canonicalKey] = symbol
@@ -354,13 +372,16 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
             contentHash = contentHash,
             status = SemanticGraphFileStatus.REFRESHED,
             diagnostics = diagnostics,
-            types = semanticTypeFacts(file, path),
+            types = semanticTypeFacts(file) {
+                limitations += FileStageLimitation.UNRESOLVED_RELATIONSHIP
+            },
             symbols = symbols,
             boundarySymbols = boundarySymbols.values.sortedBy(SemanticGraphSymbol::canonicalKey),
             relations = relations.distinct().sortedWith(semanticGraphRelationOrder),
         ),
         boundarySymbols = boundarySymbols.values.sortedBy(SemanticGraphSymbol::canonicalKey),
         omittedExternalTargetCount = omittedExternalTargetCount,
+        limitations = limitations.toList(),
     )
 }
 

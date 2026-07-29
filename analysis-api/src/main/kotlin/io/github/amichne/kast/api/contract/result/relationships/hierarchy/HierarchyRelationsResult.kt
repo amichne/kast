@@ -8,5 +8,12 @@ sealed interface HierarchyRelationsResult {
 
     data class Limited(
         val evidence: RelationshipResultEvidence.Limited,
-    ) : HierarchyRelationsResult
+        val records: List<TypeHierarchyRelation> = emptyList(),
+    ) : HierarchyRelationsResult {
+        init {
+            require(evidence.cardinality.knownMinimum() >= records.size) {
+                "Limited hierarchy relationship evidence must cover every returned record"
+            }
+        }
+    }
 }

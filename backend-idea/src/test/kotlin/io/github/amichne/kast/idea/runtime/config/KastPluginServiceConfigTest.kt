@@ -113,16 +113,58 @@ class KastPluginServiceConfigTest {
     }
 
     @Test
-    fun `config reload restarts backend only when effective config changes`() {
+    fun `config reload only restarts for fields consumed by the running IDEA backend`() {
         val defaults = KastConfig.defaults()
-        val changed = defaults.copy(
+        val projectOpenOnly = defaults.copy(
+            projectOpen = defaults.projectOpen.copy(
+                gradleLoadEnabled = defaults.projectOpen.gradleLoadEnabled.copy(value = false),
+            ),
+        )
+        val hooksOnly = defaults.copy(
+            codex = defaults.codex.copy(
+                hooks = defaults.codex.hooks.copy(
+                    enabled = defaults.codex.hooks.enabled.copy(value = false),
+                ),
+            ),
+        )
+        val serverChanged = defaults.copy(
             server = defaults.server.copy(
                 maxResults = ServerMaxResults(42),
             ),
         )
+        val indexingChanged = defaults.copy(
+            indexing = defaults.indexing.copy(
+                identifierIndexWaitMillis = defaults.indexing.identifierIndexWaitMillis.copy(value = 123L),
+            ),
+        )
+        val telemetryChanged = defaults.copy(
+            telemetry = defaults.telemetry.copy(
+                enabled = defaults.telemetry.enabled.copy(value = true),
+            ),
+        )
+        val pathsChanged = defaults.copy(
+            paths = defaults.paths.copy(
+                descriptorDir = defaults.paths.descriptorDir.copy(value = "/tmp/kast-descriptors"),
+            ),
+        )
+        val disabled = defaults.copy(
+            backends = defaults.backends.copy(
+                idea = defaults.backends.idea.copy(
+                    enabled = defaults.backends.idea.enabled.copy(value = false),
+                ),
+            ),
+        )
 
         assertEquals(KastConfigReloadDecision.UNCHANGED, configReloadDecision(defaults, defaults))
-        assertEquals(KastConfigReloadDecision.RESTART_BACKEND, configReloadDecision(defaults, changed))
+        assertEquals(KastConfigReloadDecision.UNCHANGED, configReloadDecision(defaults, projectOpenOnly))
+        assertEquals(KastConfigReloadDecision.UNCHANGED, configReloadDecision(defaults, hooksOnly))
+        assertEquals(KastConfigReloadDecision.RESTART_BACKEND, configReloadDecision(defaults, serverChanged))
+        assertEquals(KastConfigReloadDecision.RESTART_BACKEND, configReloadDecision(defaults, indexingChanged))
+        assertEquals(KastConfigReloadDecision.RESTART_BACKEND, configReloadDecision(defaults, telemetryChanged))
+        assertEquals(KastConfigReloadDecision.RESTART_BACKEND, configReloadDecision(defaults, pathsChanged))
+        assertEquals(KastConfigReloadDecision.STOP_BACKEND, configReloadDecision(defaults, disabled))
+        assertEquals(KastConfigReloadDecision.START_BACKEND, configReloadDecision(null, defaults))
+        assertEquals(KastConfigReloadDecision.UNCHANGED, configReloadDecision(null, disabled))
     }
 
     @Test

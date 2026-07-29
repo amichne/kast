@@ -65,7 +65,7 @@ pub(crate) struct BuildQualifiedGradleProjectIdentity {
 }
 
 impl BuildQualifiedGradleProjectIdentity {
-    pub(super) fn parse(build_root: String, project_path: String) -> Option<Self> {
+    pub(crate) fn parse(build_root: String, project_path: String) -> Option<Self> {
         Some(Self {
             build_root: WorkspaceRelativeGradleBuildRoot::parse(build_root)?,
             project_path: GradleProjectPath::parse(project_path)?,
@@ -105,7 +105,7 @@ pub(crate) struct BuildQualifiedGradleSourceSetIdentity {
 }
 
 impl BuildQualifiedGradleSourceSetIdentity {
-    pub(super) fn parse(
+    pub(crate) fn parse(
         build_root: String,
         project_path: String,
         source_set_name: String,

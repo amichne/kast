@@ -116,3 +116,51 @@ fn repository_scope_is_strict_and_build_qualified() {
         );
     }
 }
+
+#[test]
+fn repository_scope_completes_while_unrelated_module_remains_pending() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(2);
+    fixture
+        .connection()
+        .execute_batch(
+            "DELETE FROM file_gradle_source_sets
+                 WHERE filename = 'Source0001.kt';
+             UPDATE file_gradle_projects
+                 SET project_path = ':other'
+                 WHERE filename = 'Source0001.kt';
+             INSERT INTO file_gradle_source_sets(
+                 prefix_id, filename, build_root, project_path, source_set_name
+             ) VALUES (1, 'Source0001.kt', '.', ':other', 'main');
+             DELETE FROM file_stage_outcomes
+                 WHERE filename = 'Source0001.kt' AND stage = 'SEMANTIC_GRAPH';",
+        )
+        .expect("make unrelated module pending");
+    fixture.seed_progress("app", "COMPLETE", 1, 1);
+    fixture.seed_progress("other", "INDEXING", 0, 1);
+
+    let (_, scoped) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        graph_coverage_page_request("scoped-complete", None, 100),
+    );
+    let (_, unscoped) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "unscoped-partial",
+            "method": "graph/coverage",
+            "params": {"scope": {"language": "kotlin"}}
+        }),
+    );
+
+    assert_eq!(scoped["result"]["coverage"]["complete"], true, "{scoped:#}");
+    assert_eq!(scoped["result"]["coverage"]["total"], 1, "{scoped:#}");
+    assert_eq!(
+        unscoped["result"]["coverage"]["pending"],
+        1,
+        "{unscoped:#}"
+    );
+}

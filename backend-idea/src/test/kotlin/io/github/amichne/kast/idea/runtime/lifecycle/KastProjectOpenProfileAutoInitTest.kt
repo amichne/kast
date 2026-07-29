@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.client.fields.ProjectOpenAutoExcludeGit
 import io.github.amichne.kast.api.client.fields.ProjectOpenGradleLoadEnabled
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfile
 import io.github.amichne.kast.api.client.fields.ProjectOpenProfileAutoInit
+import io.github.amichne.kast.api.client.fields.PathsSocketDir
 import io.github.amichne.kast.api.contract.compatibility.CliImplementationVersion
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.int
@@ -45,6 +46,40 @@ class KastProjectOpenProfileAutoInitTest {
     }
 
     @Test
+    fun `required workspace compatibility metadata ignores the optional profile flag`() {
+        val workspace = gradleWorkspace()
+        val binary = fakeKastBinary()
+        val socketDirectory = tempDir.resolve("runtime")
+        val requests = mutableListOf<PluginWorkspaceBootstrapRequest>()
+
+        val result = KastProjectOpenProfileAutoInit.prepareRequiredWithDependencies(
+            workspaceRoot = workspace,
+            config = autoInitConfig(
+                enabled = false,
+                binaryPath = binary,
+                socketDirectory = socketDirectory,
+            ),
+            loadInstallReceipt = matchingInstallReceipt(binary),
+            prepareWorkspace = { request ->
+                requests += request
+                prepareWorkspaceGlobally(request)
+            },
+        )
+
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
+        assertEquals(1, requests.size)
+        assertEquals(
+            io.github.amichne.kast.api.client.socketPathForWorkspaceRoot(
+                workspaceRoot = workspace,
+                socketDirectory = socketDirectory,
+            ),
+            requests.single().socketPath,
+        )
+        assertTrue((result as ProjectOpenProfileAutoInitResult.Installed).metadataPath.isRegularFile())
+        assertFalse(workspace.resolve(".kast").exists())
+    }
+
+    @Test
     fun `enabled project-open profile skips non-Gradle project`() {
         val workspace = tempDir.resolve("workspace")
         Files.createDirectories(workspace)
@@ -69,12 +104,14 @@ class KastProjectOpenProfileAutoInitTest {
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = binary),
             loadInstallReceipt = matchingInstallReceipt(binary),
+            prepareWorkspace = ::prepareWorkspaceGlobally,
         )
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
         val installed = result as ProjectOpenProfileAutoInitResult.Installed
-        assertEquals(workspace.resolve(".kast/setup/workspace.json"), installed.metadataPath)
+        assertEquals(globalWorkspaceDirectory(workspace).resolve("workspace.json"), installed.metadataPath)
         assertEquals(emptyList<Path>(), installed.backups)
+        assertFalse(workspace.resolve(".kast").exists())
         assertFalse(workspace.resolve(".agents/skills/kast").exists())
         assertFalse(workspace.resolve("AGENTS.local.md").exists())
         val metadata = Files.readString(installed.metadataPath)
@@ -86,7 +123,7 @@ class KastProjectOpenProfileAutoInitTest {
         assertFalse(metadataObject.containsKey("cliVersion"))
         val compatibility = metadataObject.getValue("compatibility").jsonObject
         assertEquals(
-            listOf(".kast/setup/workspace.json"),
+            listOf("workspace.json"),
             metadataObject.getValue("requiredArtifacts").jsonArray.map { artifact ->
                 artifact.jsonPrimitive.content
             },
@@ -101,6 +138,34 @@ class KastProjectOpenProfileAutoInitTest {
         assertTrue(
             compatibility.getValue("mutationCapabilities").jsonArray
                 .any { capability -> capability.jsonPrimitive.content == "RENAME" },
+        )
+    }
+
+    @Test
+    fun `workspace metadata uses the globally configured socket directory`() {
+        val workspace = gradleWorkspace()
+        val binary = fakeKastBinary()
+        val socketDirectory = Path.of("/tmp/kast-global-runtime")
+
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
+            workspaceRoot = workspace,
+            config = autoInitConfig(
+                binaryPath = binary,
+                socketDirectory = socketDirectory,
+            ),
+            loadInstallReceipt = matchingInstallReceipt(binary),
+            prepareWorkspace = ::prepareWorkspaceGlobally,
+        )
+
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
+        val metadataPath = (result as ProjectOpenProfileAutoInitResult.Installed).metadataPath
+        val metadata = Json.parseToJsonElement(Files.readString(metadataPath)).jsonObject
+        val workspaceHash = io.github.amichne.kast.api.validation.FileHashing.sha256(
+            workspace.toAbsolutePath().normalize().toString(),
+        ).take(12)
+        assertEquals(
+            socketDirectory.resolve("kast-$workspaceHash.sock").toAbsolutePath().normalize(),
+            Path.of(metadata.getValue("socketPath").jsonPrimitive.content),
         )
     }
 
@@ -123,7 +188,7 @@ class KastProjectOpenProfileAutoInitTest {
             prepareWorkspace = { request ->
                 requests.add(request)
                 PluginWorkspaceBootstrapResult.Prepared(
-                    workspace.resolve(".kast/setup/workspace.json"),
+                    globalWorkspaceDirectory(workspace).resolve("workspace.json"),
                     emptyList(),
                 )
             },
@@ -147,7 +212,7 @@ class KastProjectOpenProfileAutoInitTest {
             prepareWorkspace = { request ->
                 requests.add(request)
                 PluginWorkspaceBootstrapResult.Prepared(
-                    workspace.resolve(".kast/setup/workspace.json"),
+                    globalWorkspaceDirectory(workspace).resolve("workspace.json"),
                     emptyList(),
                 )
             },
@@ -162,6 +227,10 @@ class KastProjectOpenProfileAutoInitTest {
     fun `plugin bootstrap leaves user and provider resources untouched`() {
         val workspace = gradleWorkspace()
         val binary = fakeKastBinary()
+        Files.createDirectories(workspace.resolve(".kast/setup"))
+        Files.writeString(workspace.resolve(".kast/setup/workspace.json"), "legacy")
+        Files.writeString(workspace.resolve(".kast/setup/keep.txt"), "keep")
+        Files.writeString(workspace.resolve(".kast/keep.txt"), "keep")
         Files.createDirectories(workspace.resolve(".agents/instructions/kast"))
         Files.writeString(workspace.resolve(".agents/instructions/kast/README.md"), "old")
         Files.createDirectories(workspace.resolve(".github/extensions/kast"))
@@ -173,11 +242,15 @@ class KastProjectOpenProfileAutoInitTest {
             workspaceRoot = workspace,
             config = autoInitConfig(binaryPath = binary),
             loadInstallReceipt = matchingInstallReceipt(binary),
+            prepareWorkspace = ::prepareWorkspaceGlobally,
         )
 
         assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
         val installed = result as ProjectOpenProfileAutoInitResult.Installed
         assertEquals(emptyList<Path>(), installed.backups)
+        assertFalse(workspace.resolve(".kast/setup/workspace.json").exists())
+        assertTrue(workspace.resolve(".kast/setup/keep.txt").isRegularFile())
+        assertTrue(workspace.resolve(".kast/keep.txt").isRegularFile())
         assertTrue(workspace.resolve(".agents/instructions/kast/README.md").isRegularFile())
         assertTrue(workspace.resolve(".github/extensions/kast/extension.mjs").isRegularFile())
         assertTrue(workspace.resolve(".agents/skills/kast/old.txt").isRegularFile())
@@ -198,6 +271,65 @@ class KastProjectOpenProfileAutoInitTest {
         assertFalse(workspace.resolve(".agents/skills/kast/SKILL.md").exists())
     }
 
+    @Test
+    fun `workspace metadata write failure returns failed and removes staging file`() {
+        val workspace = gradleWorkspace()
+        val binary = fakeKastBinary()
+        val metadataPath = globalWorkspaceDirectory(workspace).resolve("workspace.json")
+        Files.createDirectories(metadataPath)
+
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
+            workspaceRoot = workspace,
+            config = autoInitConfig(binaryPath = binary),
+            loadInstallReceipt = matchingInstallReceipt(binary),
+            prepareWorkspace = ::prepareWorkspaceGlobally,
+        )
+
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Failed)
+        assertTrue((result as ProjectOpenProfileAutoInitResult.Failed).message.contains(metadataPath.toString()))
+        Files.list(metadataPath.parent).use { paths ->
+            assertFalse(paths.anyMatch { path -> path.fileName.toString().startsWith(".workspace-") })
+        }
+    }
+
+    @Test
+    fun `plugin bootstrap removes an empty legacy metadata tree`() {
+        val workspace = gradleWorkspace()
+        val binary = fakeKastBinary()
+        val legacyMetadata = workspace.resolve(".kast/setup/workspace.json")
+        Files.createDirectories(legacyMetadata.parent)
+        Files.writeString(legacyMetadata, "legacy")
+
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
+            workspaceRoot = workspace,
+            config = autoInitConfig(binaryPath = binary),
+            loadInstallReceipt = matchingInstallReceipt(binary),
+            prepareWorkspace = ::prepareWorkspaceGlobally,
+        )
+
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
+        assertFalse(workspace.resolve(".kast").exists())
+    }
+
+    @Test
+    fun `plugin bootstrap preserves a non-file legacy metadata entry`() {
+        val workspace = gradleWorkspace()
+        val binary = fakeKastBinary()
+        val legacyMetadata = workspace.resolve(".kast/setup/workspace.json")
+        Files.createDirectories(legacyMetadata)
+        Files.writeString(legacyMetadata.resolve("keep.txt"), "user")
+
+        val result = KastProjectOpenProfileAutoInit.executeWithDependencies(
+            workspaceRoot = workspace,
+            config = autoInitConfig(binaryPath = binary),
+            loadInstallReceipt = matchingInstallReceipt(binary),
+            prepareWorkspace = ::prepareWorkspaceGlobally,
+        )
+
+        assertTrue(result is ProjectOpenProfileAutoInitResult.Installed)
+        assertTrue(legacyMetadata.resolve("keep.txt").isRegularFile())
+    }
+
     private fun gradleWorkspace(): Path {
         val workspace = tempDir.resolve("workspace-${System.nanoTime()}")
         Files.createDirectories(workspace)
@@ -212,12 +344,22 @@ class KastProjectOpenProfileAutoInitTest {
         return binary
     }
 
+    private fun prepareWorkspaceGlobally(
+        request: PluginWorkspaceBootstrapRequest,
+    ): PluginWorkspaceBootstrapResult =
+        PluginWorkspaceBootstrap.prepare(request, ::globalWorkspaceDirectory)
+
+    private fun globalWorkspaceDirectory(workspaceRoot: Path): Path =
+        tempDir.resolve("global-workspaces").resolve(workspaceRoot.fileName.toString())
+
     private fun autoInitConfig(
         enabled: Boolean = true,
         profile: String = ProjectOpenProfile.JETBRAINS_PLUGIN,
         binaryPath: Path = fakeKastBinary(),
+        socketDirectory: Path? = null,
     ): KastConfig =
-        KastConfig.defaults().copy(
+        KastConfig.defaults().let { defaults ->
+            defaults.copy(
             projectOpen = ProjectOpenConfig(
                 profileAutoInit = ProjectOpenProfileAutoInit(enabled),
                 profile = ProjectOpenProfile(profile),
@@ -225,7 +367,13 @@ class KastProjectOpenProfileAutoInitTest {
                 gradleLoadEnabled = ProjectOpenGradleLoadEnabled(true),
             ),
             cli = CliConfig(CliBinaryPath(binaryPath.toString())),
+            paths = defaults.paths.copy(
+                socketDir = socketDirectory
+                    ?.let { directory -> PathsSocketDir(directory.toString()) }
+                    ?: defaults.paths.socketDir,
+            ),
         )
+        }
 
     private fun matchingInstallReceipt(
         binary: Path,

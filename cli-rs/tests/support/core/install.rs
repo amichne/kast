@@ -139,15 +139,39 @@ pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
     );
 }
 
+pub(crate) fn write_macos_plugin_workspace_metadata_at_home(workspace: &Path, home: &Path) {
+    write_macos_plugin_workspace_metadata_for_cli_at_home(
+        workspace,
+        home,
+        Path::new(env!("CARGO_BIN_EXE_kast")),
+        env!("CARGO_PKG_VERSION"),
+    );
+}
+
 pub(crate) fn write_macos_plugin_workspace_metadata_for_cli(
     workspace: &Path,
+    cli_binary: &Path,
+    cli_version: &str,
+) {
+    let home = inferred_fixture_home(workspace);
+    write_macos_plugin_workspace_metadata_for_cli_at_home(
+        workspace,
+        &home,
+        cli_binary,
+        cli_version,
+    );
+}
+
+fn write_macos_plugin_workspace_metadata_for_cli_at_home(
+    workspace: &Path,
+    home: &Path,
     cli_binary: &Path,
     cli_version: &str,
 ) {
     #[cfg(target_os = "macos")]
     {
         let workspace: PathBuf = workspace.components().collect();
-        let metadata = workspace.join(".kast/setup/workspace.json");
+        let metadata = macos_plugin_workspace_metadata_path_at_home(&workspace, home);
         std::fs::create_dir_all(metadata.parent().expect("metadata parent")).expect("metadata dir");
         std::fs::write(
             metadata,
@@ -191,7 +215,7 @@ pub(crate) fn write_macos_plugin_workspace_metadata_for_cli(
                     }
                 },
                 "requiredArtifacts": [
-                    ".kast/setup/workspace.json"
+                    "workspace.json"
                 ]
             }))
             .expect("metadata json"),
@@ -200,6 +224,139 @@ pub(crate) fn write_macos_plugin_workspace_metadata_for_cli(
     }
     #[cfg(not(target_os = "macos"))]
     {
-        let _ = (workspace, cli_binary, cli_version);
+        let _ = (workspace, home, cli_binary, cli_version);
+    }
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn macos_plugin_workspace_metadata_path(workspace: &Path) -> PathBuf {
+    workspace_data_directory_for_test(workspace).join("workspace.json")
+}
+
+#[cfg(not(target_os = "macos"))]
+pub(crate) fn macos_plugin_workspace_metadata_path(workspace: &Path) -> PathBuf {
+    workspace.join("workspace.json")
+}
+
+#[cfg(target_os = "macos")]
+fn macos_plugin_workspace_metadata_path_at_home(workspace: &Path, home: &Path) -> PathBuf {
+    workspace_data_directory_for_test_at_home(workspace, home).join("workspace.json")
+}
+
+pub(crate) fn workspace_database_path_for_test(workspace: &Path) -> PathBuf {
+    workspace_data_directory_for_test(workspace).join("cache/source-index.db")
+}
+
+fn workspace_data_directory_for_test(workspace: &Path) -> PathBuf {
+    let home = inferred_fixture_home(workspace);
+    workspace_data_directory_for_test_at_home(workspace, &home)
+}
+
+fn inferred_fixture_home(workspace: &Path) -> PathBuf {
+    workspace
+        .parent()
+        .unwrap_or_else(|| panic!("workspace fixture has no parent: {}", workspace.display()))
+        .join("home")
+}
+
+fn workspace_data_directory_for_test_at_home(workspace: &Path, home: &Path) -> PathBuf {
+    let workspace: PathBuf = workspace.components().collect();
+    let install_root = default_install_root(home);
+    let data_root = if install_root.join("current/receipt.json").is_file() {
+        install_root.join("state")
+    } else {
+        install_root.join("state/data")
+    };
+    let workspaces_root = data_root.join("workspaces");
+    if let (Some(toplevel), Some(common_dir), Some(git_dir)) = (
+        git_path_for_test(&workspace, &["rev-parse", "--show-toplevel"]),
+        git_path_for_test(&workspace, &["rev-parse", "--git-common-dir"]),
+        git_path_for_test(&workspace, &["rev-parse", "--git-dir"]),
+    ) {
+        use sha2::{Digest, Sha256};
+        let common_hash = hex::encode(Sha256::digest(common_dir.to_string_lossy().as_bytes()));
+        let worktree_hash = hex::encode(Sha256::digest(
+            format!("{}\n{}", toplevel.display(), git_dir.display()).as_bytes(),
+        ));
+        let slug = sanitized_workspace_segment(
+            toplevel
+                .file_name()
+                .and_then(|name| name.to_str())
+                .unwrap_or("workspace"),
+        );
+        let repository_root = workspaces_root.join("git/local").join(&common_hash[..12]);
+        return repository_root
+            .join("worktrees")
+            .join(format!("{slug}--{}", &worktree_hash[..12]));
+    }
+    let registry_path = workspaces_root.join("local-workspaces.json");
+    let registry: std::collections::BTreeMap<String, String> = if registry_path.is_file() {
+        serde_json::from_slice(&std::fs::read(&registry_path).expect("workspace registry"))
+            .unwrap_or_default()
+    } else {
+        std::collections::BTreeMap::new()
+    };
+    let key = workspace.display().to_string();
+    let id = registry
+        .get(&key)
+        .cloned()
+        .unwrap_or_else(|| {
+            use sha2::{Digest, Sha256};
+            hex::encode(Sha256::digest(key.as_bytes()))[..12].to_string()
+        });
+    let sanitized = sanitized_workspace_segment(&workspace.display().to_string());
+    workspaces_root
+        .join("local")
+        .join(format!("{sanitized}--{id}"))
+}
+
+fn git_path_for_test(workspace: &Path, args: &[&str]) -> Option<PathBuf> {
+    let raw = git_output_for_test(workspace, args)?;
+    let path = PathBuf::from(raw);
+    Some(
+        if path.is_absolute() {
+            path
+        } else {
+            workspace.join(path)
+        }
+        .components()
+        .collect(),
+    )
+}
+
+fn git_output_for_test(workspace: &Path, args: &[&str]) -> Option<String> {
+    let output = std::process::Command::new("git")
+        .args(args)
+        .current_dir(workspace)
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let raw = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if raw.is_empty() {
+        return None;
+    }
+    Some(raw)
+}
+
+fn sanitized_workspace_segment(value: &str) -> String {
+    let mut sanitized = String::new();
+    for character in value.chars() {
+        if character.is_ascii_alphanumeric() || matches!(character, '.' | '_' | '-') {
+            sanitized.push(character);
+        } else if !sanitized.ends_with('-') {
+            sanitized.push('-');
+        }
+    }
+    let sanitized = sanitized
+        .trim_matches('-')
+        .chars()
+        .take(80)
+        .collect::<String>();
+    if sanitized.is_empty() || matches!(sanitized.as_str(), "." | "..") {
+        "workspace".to_string()
+    } else {
+        sanitized
     }
 }

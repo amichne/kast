@@ -2423,9 +2423,16 @@ components:
           type: array
           items:
             type: string
+        expectedGeneration:
+          anyOf:
+            - "$ref": "#/components/schemas/SemanticGraphGeneration"
+            - type: "null"
       additionalProperties: false
       required:
         - filePaths
+    SemanticGraphGeneration:
+      type: integer
+      format: int64
     SemanticGraphResult:
       type: object
       properties:
@@ -2446,9 +2453,6 @@ components:
         - coverage
         - symbolCount
         - edgeOccurrenceCount
-    SemanticGraphGeneration:
-      type: integer
-      format: int64
     SemanticGraphSha256:
       type: string
     SemanticGraphCoverage:

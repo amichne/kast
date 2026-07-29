@@ -1,18 +1,22 @@
 fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value, AgentError> {
+    let scope = args.scope.unwrap_or(NativeGraphScope::Symbol);
+    let after_id = args.after_id.unwrap_or(0);
+    let limit = args.limit.unwrap_or(100);
+    let resolution = args.resolution.unwrap_or(1.0);
     if !args.file_paths.is_empty() || !args.removed_file_paths.is_empty() {
         return Err(agent_error(
             "AGENT_USAGE",
             "--file-path and --removed-file-path require --operation refresh.",
         ));
     }
-    if !args.resolution.is_finite() || args.resolution <= 0.0 {
+    if !resolution.is_finite() || resolution <= 0.0 {
         return Err(agent_error(
             "AGENT_USAGE",
             "--resolution must be a finite number greater than zero.",
         ));
     }
     if args.operation == NativeGraphOperation::Nodes
-        && args.after_id > 0
+        && after_id > 0
         && args.generation.is_none()
     {
         return Err(agent_error(
@@ -43,7 +47,7 @@ fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value
         ));
     }
     if args.operation == NativeGraphOperation::Nodes {
-        if args.scope != NativeGraphScope::Symbol {
+        if scope != NativeGraphScope::Symbol {
             return Err(agent_error(
                 "AGENT_USAGE",
                 "Generation-pinned nodes enumeration is available only for --scope symbol.",
@@ -52,29 +56,28 @@ fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value
         return native_graph_symbol_page(
             &connection,
             generation,
-            args.after_id,
-            usize::from(args.limit),
+            after_id,
+            usize::from(limit),
+            has_repository_base,
+        );
+    }
+
+    if args.operation == NativeGraphOperation::Neighbors {
+        let symbol = args.symbol.as_deref().ok_or_else(|| {
+            agent_error("AGENT_USAGE", "--symbol is required for --operation neighbors.")
+        })?;
+        return native_graph_neighbors(
+            &connection,
+            generation,
+            scope,
+            symbol,
             has_repository_base,
         );
     }
 
     let load_started = std::time::Instant::now();
-    let graph = load_native_graph(&connection, args.scope, has_repository_base)?;
+    let graph = load_native_graph(&connection, scope, has_repository_base)?;
     let load_nanos = load_started.elapsed().as_nanos();
-    if args.operation == NativeGraphOperation::Neighbors {
-        let symbol = args.symbol.as_deref().ok_or_else(|| {
-            agent_error("AGENT_USAGE", "--symbol is required for --operation neighbors.")
-        })?;
-        let body = native_graph_neighbors(&graph, generation, args.scope, symbol)?;
-        if native_graph_generation(&connection)? != generation {
-            return Err(agent_error(
-                "NATIVE_GRAPH_GENERATION_CHANGED",
-                "Source-index generation changed while native graph neighbors were being computed.",
-            ));
-        }
-        return Ok(body);
-    }
-
     let body = match args.operation {
         NativeGraphOperation::Refresh => {
             unreachable!("refresh returned before native graph database access")
@@ -83,16 +86,16 @@ fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value
             let compute_started = std::time::Instant::now();
             let components = native_connected_components(&graph);
             let strongly_connected = native_tarjan_scc(&graph);
-            let communities = native_weighted_leiden(&graph, args.resolution);
+            let communities = native_weighted_leiden(&graph, resolution);
             let compute_nanos = compute_started.elapsed().as_nanos();
             let measurements =
                 native_graph_measurements(&connection, &database, load_nanos, compute_nanos)?;
             json!({
                 "type": "KAST_NATIVE_GRAPH_SUMMARY",
-                "scope": args.scope,
+                "scope": scope,
                 "generation": generation,
                 "nodeCount": graph.nodes.len(),
-                "edgeOccurrenceCount": graph.edges.len(),
+                "edgeOccurrenceCount": graph.edges.iter().map(|edge| edge.occurrence_count).sum::<usize>(),
                 "weightedEdgeCount": graph.edges.iter().map(|edge| edge.weight).sum::<f64>(),
                 "componentCount": components.iter().copied().max().map_or(0, |value| value + 1),
                 "stronglyConnectedComponentCount": strongly_connected.iter().copied().max().map_or(0, |value| value + 1),
@@ -109,7 +112,7 @@ fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value
                 native_condensation_topological_order(&graph, &strongly_connected);
             json!({
                 "type": "KAST_NATIVE_GRAPH_TOPOLOGY",
-                "scope": args.scope,
+                "scope": scope,
                 "generation": generation,
                 "nodes": graph.nodes.iter().map(|node| &node.key).collect::<Vec<_>>(),
                 "components": components,
@@ -119,12 +122,12 @@ fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value
             })
         }
         NativeGraphOperation::Communities => {
-            let communities = native_weighted_leiden(&graph, args.resolution);
+            let communities = native_weighted_leiden(&graph, resolution);
             json!({
                 "type": "KAST_NATIVE_GRAPH_COMMUNITIES",
-                "scope": args.scope,
+                "scope": scope,
                 "generation": generation,
-                "resolution": args.resolution,
+                "resolution": resolution,
                 "nodes": graph.nodes.iter().zip(communities).map(|(node, community)| {
                     json!({"key": node.key, "community": community})
                 }).collect::<Vec<_>>(),

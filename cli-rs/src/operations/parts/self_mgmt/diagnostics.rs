@@ -110,17 +110,20 @@ mod tests {
     fn macos_plugin_workspace_metadata_accepts_resolved_config_socket_path() {
         let temp = tempfile::tempdir().expect("tempdir");
         let workspace_root = config::normalize(temp.path().join("workspace"));
-        fs::create_dir_all(workspace_root.join(".kast/setup")).expect("metadata dir");
-        let metadata_path = workspace_root.join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
+        let metadata_path = temp.path().join("global-workspace/workspace.json");
+        fs::create_dir_all(metadata_path.parent().expect("metadata parent")).expect("metadata dir");
         fs::write(&metadata_path, "{}").expect("metadata file");
+        let mut metadata = test_macos_plugin_workspace_metadata(&workspace_root);
+        metadata.required_artifacts = vec![PathBuf::from("workspace.json")];
 
         validate_macos_plugin_workspace_metadata(
             &workspace_root,
             &metadata_path,
-            test_macos_plugin_workspace_metadata(&workspace_root),
+            metadata,
             true,
         )
         .expect("resolved config socket path should be accepted");
+        assert!(!workspace_root.join(".kast").exists());
     }
 
     #[cfg(target_os = "macos")]
@@ -128,8 +131,8 @@ mod tests {
     fn macos_running_plugin_workspace_metadata_accepts_relaxed_plugin_match() {
         let temp = tempfile::tempdir().expect("tempdir");
         let workspace_root = config::normalize(temp.path().join("workspace"));
-        fs::create_dir_all(workspace_root.join(".kast/setup")).expect("metadata dir");
-        let metadata_path = workspace_root.join(MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE);
+        let metadata_path = temp.path().join("global-workspace/workspace.json");
+        fs::create_dir_all(metadata_path.parent().expect("metadata parent")).expect("metadata dir");
         fs::write(&metadata_path, "{}").expect("metadata file");
         let mut metadata = test_macos_plugin_workspace_metadata(&workspace_root);
         metadata.compatibility.plugin_version = "newer-plugin".to_string();

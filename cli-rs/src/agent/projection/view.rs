@@ -161,6 +161,8 @@ struct AgentStepCommandProjectionInput {
     file_paths: Vec<String>,
     #[serde(default)]
     semantic_workspace: Option<AgentSemanticWorkspaceProjection>,
+    #[serde(default)]
+    semantic_graph: Option<crate::repository_intelligence::SemanticGraphReadiness>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

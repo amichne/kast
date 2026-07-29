@@ -4,9 +4,16 @@ import com.intellij.openapi.externalSystem.importing.ImportSpecBuilder;
 import com.intellij.openapi.externalSystem.model.DataNode;
 import com.intellij.openapi.externalSystem.model.ExternalProjectInfo;
 import com.intellij.openapi.externalSystem.model.ProjectKeys;
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTask;
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskId;
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskNotificationListener;
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskState;
+import com.intellij.openapi.externalSystem.model.task.ExternalSystemTaskType;
 import com.intellij.openapi.externalSystem.model.project.ContentRootData;
 import com.intellij.openapi.externalSystem.model.project.ExternalSystemSourceType;
 import com.intellij.openapi.externalSystem.model.project.ModuleData;
+import com.intellij.openapi.externalSystem.service.internal.ExternalSystemProcessingManager;
+import com.intellij.openapi.externalSystem.service.notification.ExternalSystemProgressNotificationManager;
 import com.intellij.openapi.externalSystem.service.project.ProjectDataManager;
 import com.intellij.openapi.externalSystem.service.execution.ProgressExecutionMode;
 import com.intellij.openapi.externalSystem.util.ExternalSystemUtil;
@@ -27,6 +34,7 @@ import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 
 public final class IdeaGradleProjectLoadBridge {
@@ -41,6 +49,73 @@ public final class IdeaGradleProjectLoadBridge {
             .map(Path::of)
             .map(IdeaGradleProjectLoadBridge::normalizePath)
             .anyMatch(normalizedExternalProjectPath::equals);
+    }
+
+    public static boolean isExternalGradleProjectModelComplete(Project project, Path externalProjectPath) {
+        String normalizedExternalProjectPath = normalizePath(externalProjectPath);
+        return ProjectDataManager.getInstance()
+            .getExternalProjectsData(project, GradleConstants.SYSTEM_ID)
+            .stream()
+            .filter(projectInfo -> {
+                String projectPath = projectInfo.getExternalProjectPath();
+                return projectPath != null &&
+                    normalizedExternalProjectPath.equals(normalizePath(Path.of(projectPath)));
+            })
+            .anyMatch(IdeaGradleProjectLoadBridge::isImportedModelComplete);
+    }
+
+    /**
+     * Joins IDEA's exact-project Gradle import when it already owns one. The caller
+     * can issue a refresh when this returns false.
+     */
+    public static boolean awaitExternalGradleProjectImport(
+        Project project,
+        Path externalProjectPath,
+        CompletableFuture<Void> importFuture
+    ) {
+        ExternalSystemTask task = ExternalSystemProcessingManager.getInstance().findTask(
+            ExternalSystemTaskType.RESOLVE_PROJECT,
+            GradleConstants.SYSTEM_ID,
+            normalizePath(externalProjectPath)
+        );
+        if (task == null || task.getState().isStopped()) {
+            return false;
+        }
+
+        ExternalSystemProgressNotificationManager notifications =
+            ExternalSystemProgressNotificationManager.getInstance();
+        ExternalSystemTaskNotificationListener listener = new ExternalSystemTaskNotificationListener() {
+            @Override
+            public void onSuccess(ExternalSystemTaskId id) {
+                importFuture.complete(null);
+            }
+
+            @Override
+            public void onFailure(ExternalSystemTaskId id, Exception error) {
+                importFuture.completeExceptionally(error);
+            }
+
+            @Override
+            public void onCancel(ExternalSystemTaskId id) {
+                importFuture.completeExceptionally(
+                    new CancellationException("Gradle project import was canceled")
+                );
+            }
+
+            @Override
+            public void onEnd(ExternalSystemTaskId id) {
+                completeFromTaskState(task, importFuture);
+            }
+        };
+        if (!notifications.addNotificationListener(task.getId(), listener)) {
+            return false;
+        }
+        importFuture.whenComplete((ignored, error) ->
+            notifications.removeNotificationListener(listener)
+        );
+        task.refreshState();
+        completeFromTaskState(task, importFuture);
+        return true;
     }
 
     /**
@@ -77,14 +152,12 @@ public final class IdeaGradleProjectLoadBridge {
         };
         for (ExternalProjectInfo projectInfo :
             ProjectDataManager.getInstance().getExternalProjectsData(project, GradleConstants.SYSTEM_ID)) {
+            if (!isImportedModelComplete(projectInfo)) {
+                importedModelComplete[0] = false;
+            }
             DataNode<?> projectStructure = projectInfo.getExternalProjectStructure();
             if (projectStructure == null || !projectStructure.isReady()) {
-                importedModelComplete[0] = false;
                 continue;
-            }
-            if (projectInfo.getLastSuccessfulImportTimestamp() <= 0 ||
-                projectInfo.getLastSuccessfulImportTimestamp() < projectInfo.getLastImportTimestamp()) {
-                importedModelComplete[0] = false;
             }
             projectStructure.visit(node -> {
                 if (!(node.getData() instanceof ModuleData moduleData)) {
@@ -281,6 +354,37 @@ public final class IdeaGradleProjectLoadBridge {
             .dontNavigateToError()
             .dontReportRefreshErrors()
             .withCallback(importFuture);
+    }
+
+    private static boolean isImportedModelComplete(ExternalProjectInfo projectInfo) {
+        DataNode<?> structure = projectInfo.getExternalProjectStructure();
+        return structure != null &&
+            structure.isReady() &&
+            projectInfo.getLastSuccessfulImportTimestamp() > 0 &&
+            projectInfo.getLastSuccessfulImportTimestamp() >= projectInfo.getLastImportTimestamp();
+    }
+
+    private static void completeFromTaskState(
+        ExternalSystemTask task,
+        CompletableFuture<Void> importFuture
+    ) {
+        ExternalSystemTaskState state = task.getState();
+        if (state == ExternalSystemTaskState.FINISHED) {
+            importFuture.complete(null);
+        } else if (state == ExternalSystemTaskState.FAILED) {
+            Throwable error = task.getError();
+            importFuture.completeExceptionally(
+                error == null ? new IllegalStateException("Gradle project import failed") : error
+            );
+        } else if (state == ExternalSystemTaskState.CANCELED) {
+            importFuture.completeExceptionally(
+                new CancellationException("Gradle project import was canceled")
+            );
+        } else if (state.isStopped()) {
+            importFuture.completeExceptionally(
+                new IllegalStateException("Gradle project import stopped in state " + state)
+            );
+        }
     }
 
     private static String normalizePath(Path path) {

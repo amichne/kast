@@ -42,7 +42,9 @@ internal class MutationExecutionService(
             }
             Submission(ExecutionEntry(fingerprint).also { executions[mutation.idempotencyKey] = it }, deduplicated = false)
         }
-        if (!submission.deduplicated) submission.entry.result.complete(execute(mutation))
+        if (!submission.deduplicated) {
+            submission.entry.result.complete(execute(mutation))
+        }
         return submission.entry.result.await().toResult(submission.deduplicated)
     }
 

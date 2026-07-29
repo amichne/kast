@@ -23,8 +23,7 @@ pub use agent_readiness::{AgentResourceState, DoctorAgentEnvironmentDiagnostic};
 
 pub use crate::manifest::KastInstallManifest as InstallState;
 
-#[cfg(target_os = "macos")]
-const MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE: &str = ".kast/setup/workspace.json";
+const MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE: &str = "workspace.json";
 #[cfg(target_os = "macos")]
 const MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION: u32 = 3;
 #[cfg(target_os = "macos")]
@@ -265,7 +264,13 @@ fn apply_ready_target_checks(
             }
         }
         ReadyTarget::Kotlin => {
-            if install.is_none_or(|install| install.backends.is_empty()) {
+            if install.is_none_or(|install| {
+                install.backends.is_empty()
+                    && !install
+                        .components
+                        .iter()
+                        .any(|component| component == "idea-plugin")
+            }) {
                 issues.push(
                     "Kotlin readiness requires an installed semantic backend in the manifest"
                         .to_string(),

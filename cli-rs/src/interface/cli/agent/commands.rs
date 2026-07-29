@@ -129,11 +129,7 @@ pub struct AgentVerifyArgs {
 }
 
 #[derive(Debug, Args, Clone)]
-#[command(group(
-    clap::ArgGroup::new("native_graph_query")
-        .multiple(true)
-        .args(["scope", "symbol", "generation", "after_id", "limit", "resolution"])
-), after_help = "Examples:\n  kast agent graph --workspace-root \"$PWD\" --operation summary\n  kast agent graph --workspace-root \"$PWD\" --operation nodes --limit 50\n  kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path src/main/kotlin/App.kt")]
+#[command(after_help = "Examples:\n  kast agent graph --workspace-root \"$PWD\" --operation summary\n  kast agent graph --workspace-root \"$PWD\" --operation nodes --limit 50\n  kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path src/main/kotlin/App.kt")]
 pub struct AgentNativeGraphArgs {
     #[command(flatten)]
     pub runtime: AgentRuntimeArgs,
@@ -141,25 +137,25 @@ pub struct AgentNativeGraphArgs {
     #[arg(long)]
     pub database: Option<PathBuf>,
     /// Canonical graph or SQL-derived quotient to query.
-    #[arg(long, value_enum, default_value_t = NativeGraphScope::Symbol)]
-    pub scope: NativeGraphScope,
+    #[arg(long, value_enum)]
+    pub scope: Option<NativeGraphScope>,
     /// Native graph operation to execute.
     #[arg(long, value_enum, default_value_t = NativeGraphOperation::Summary)]
     pub operation: NativeGraphOperation,
     /// Kotlin file to refresh through the compiler-backed graph. Repeat for multiple files.
-    #[arg(long = "file-path", conflicts_with = "native_graph_query")]
+    #[arg(long = "file-path")]
     pub file_paths: Vec<String>,
     /// Removed Kotlin file to delete from the persisted graph. Repeat for multiple files.
-    #[arg(long = "removed-file-path", conflicts_with = "native_graph_query")]
+    #[arg(long = "removed-file-path")]
     pub removed_file_paths: Vec<String>,
     /// Add files owned by a model-proven Gradle module. Repeat to select multiple modules.
-    #[arg(long = "module", conflicts_with = "native_graph_query")]
+    #[arg(long = "module")]
     pub modules: Vec<WorkspaceModuleSelector>,
     /// Add files from a model-proven Gradle source set. Repeat to select multiple source sets.
-    #[arg(long = "source-set", conflicts_with = "native_graph_query")]
+    #[arg(long = "source-set")]
     pub source_sets: Vec<WorkspaceSourceSetName>,
     /// Remove persisted graph files outside the selected refresh scope.
-    #[arg(long, conflicts_with = "native_graph_query")]
+    #[arg(long)]
     pub exclusive: bool,
     /// Canonical symbol key used by the neighbors operation.
     #[arg(long)]
@@ -168,14 +164,14 @@ pub struct AgentNativeGraphArgs {
     #[arg(long)]
     pub generation: Option<u64>,
     /// Last numeric symbol id returned by a preceding nodes query.
-    #[arg(long, default_value_t = 0)]
-    pub after_id: u64,
+    #[arg(long)]
+    pub after_id: Option<u64>,
     /// Maximum symbols returned by generation-pinned keyset enumeration.
-    #[arg(long, default_value_t = 100, value_parser = clap::value_parser!(u16).range(1..=500))]
-    pub limit: u16,
+    #[arg(long, value_parser = clap::value_parser!(u16).range(1..=500))]
+    pub limit: Option<u16>,
     /// Resolution used by deterministic weighted Leiden clustering.
-    #[arg(long, default_value_t = 1.0)]
-    pub resolution: f64,
+    #[arg(long)]
+    pub resolution: Option<f64>,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq, Serialize, Deserialize)]

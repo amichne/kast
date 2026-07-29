@@ -160,7 +160,9 @@ class AnalysisDispatcherReferencesTest : AnalysisDispatcherTestSupport() {
             ),
         )
 
-        assertInstanceOf(KastReferencesDegradedResponse::class.java, result)
+        val degraded = assertInstanceOf(KastReferencesDegradedResponse::class.java, result)
+        assertEquals(1, degraded.references.size)
+        assertFalse("page" in json.encodeToJsonElement(KastReferencesResponse.serializer(), degraded).jsonObject)
     }
 
     @Test

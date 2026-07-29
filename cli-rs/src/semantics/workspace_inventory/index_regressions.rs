@@ -188,6 +188,85 @@ fn claimed_current_schema_with_nondeterministic_consumed_shapes_fails_closed() {
 }
 
 #[test]
+fn claimed_current_schema_with_non_nullable_stage_fingerprint_fails_closed() {
+    let (_temp, root, fixture) = fixture();
+    fixture
+        .connection()
+        .execute_batch(
+            r#"
+            ALTER TABLE file_stage_outcomes RENAME TO original_file_stage_outcomes;
+            CREATE TABLE file_stage_outcomes (
+                prefix_id INTEGER NOT NULL,
+                filename TEXT NOT NULL,
+                stage TEXT NOT NULL
+                    CHECK(stage IN ('SOURCE','RELATIONSHIPS','SEMANTIC_GRAPH')),
+                content_hash TEXT NOT NULL,
+                stage_version TEXT NOT NULL,
+                stage_input_fingerprint TEXT NOT NULL,
+                outcome_status TEXT NOT NULL
+                    CHECK(outcome_status IN ('COMPLETE','LIMITED','FAILED')),
+                limitations_json TEXT NOT NULL,
+                PRIMARY KEY(prefix_id, filename, stage)
+            );
+            DROP TABLE original_file_stage_outcomes;
+            "#,
+        )
+        .expect("non-nullable stage fingerprint schema");
+
+    let read = read_workspace_index(&root);
+    assert!(
+        matches!(read, WorkspaceIndexRead::Incompatible(_)),
+        "{read:?}"
+    );
+}
+
+#[test]
+fn claimed_current_schema_without_file_stage_enum_checks_fails_closed() {
+    let corruptions = [
+        (
+            "stage enum",
+            "stage TEXT NOT NULL",
+            "outcome_status TEXT NOT NULL CHECK(outcome_status IN ('COMPLETE','LIMITED','FAILED'))",
+        ),
+        (
+            "outcome status enum",
+            "stage TEXT NOT NULL CHECK(stage IN ('SOURCE','RELATIONSHIPS','SEMANTIC_GRAPH'))",
+            "outcome_status TEXT NOT NULL",
+        ),
+    ];
+
+    for (label, stage_column, status_column) in corruptions {
+        let (_temp, root, fixture) = fixture();
+        fixture
+            .connection()
+            .execute_batch(&format!(
+                r#"
+                ALTER TABLE file_stage_outcomes RENAME TO original_file_stage_outcomes;
+                CREATE TABLE file_stage_outcomes (
+                    prefix_id INTEGER NOT NULL,
+                    filename TEXT NOT NULL,
+                    {stage_column},
+                    content_hash TEXT NOT NULL,
+                    stage_version TEXT NOT NULL,
+                    stage_input_fingerprint TEXT,
+                    {status_column},
+                    limitations_json TEXT NOT NULL,
+                    PRIMARY KEY(prefix_id, filename, stage)
+                );
+                DROP TABLE original_file_stage_outcomes;
+                "#
+            ))
+            .unwrap_or_else(|error| panic!("{label}: {error}"));
+
+        let read = read_workspace_index(&root);
+        assert!(
+            matches!(read, WorkspaceIndexRead::Incompatible(_)),
+            "{label}: {read:?}"
+        );
+    }
+}
+
+#[test]
 fn claimed_current_schema_with_invalid_pending_applied_state_fails_closed() {
     let (_temp, root, fixture) = fixture();
     fixture

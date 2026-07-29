@@ -44,10 +44,10 @@ class AnalysisDispatcherRuntimeTest : AnalysisDispatcherTestSupport() {
             },
         )
 
-        val raw = runBlocking {
-            dispatcher.dispatch(JsonRpcRequest(id = JsonPrimitive(1), method = "runtime/restart"))
+        val dispatchResult = runBlocking {
+            dispatcher.dispatchForTransport(JsonRpcRequest(id = JsonPrimitive(1), method = "runtime/restart"))
         }
-        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), dispatchResult.response)
         val result = json.decodeFromJsonElement(
             RuntimeLifecycleResponse.serializer(),
             response.result,
@@ -57,9 +57,9 @@ class AnalysisDispatcherRuntimeTest : AnalysisDispatcherTestSupport() {
         assertTrue(result.accepted)
         assertTrue(actions.isEmpty(), "Lifecycle action must wait until the transport flushes the response")
 
-        assertTrue(dispatcher.runAfterResponseActions())
+        assertTrue(dispatchResult.runAfterFlushAction())
         assertEquals(listOf(RuntimeLifecycleAction.RESTART), actions)
-        assertFalse(dispatcher.runAfterResponseActions())
+        assertFalse(dispatchResult.runAfterFlushAction())
     }
 
     @Test
@@ -82,8 +82,8 @@ class AnalysisDispatcherRuntimeTest : AnalysisDispatcherTestSupport() {
             requestId = RuntimeOpenProjectRequestId.parse("a7370b30-7ca5-4fa5-93c0-e59d30aa6157"),
         )
 
-        val raw = runBlocking {
-            dispatcher.dispatch(
+        val dispatchResult = runBlocking {
+            dispatcher.dispatchForTransport(
                 JsonRpcRequest(
                     id = JsonPrimitive(1),
                     method = "runtime/open-project",
@@ -91,13 +91,13 @@ class AnalysisDispatcherRuntimeTest : AnalysisDispatcherTestSupport() {
                 ),
             )
         }
-        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), raw)
+        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), dispatchResult.response)
         val result = json.decodeFromJsonElement(RuntimeOpenProjectResponse.serializer(), response.result)
 
         assertEquals(request, received)
         assertEquals(RuntimeOpenProjectResult.OPENED_NEW_PROJECT, result.result)
         assertFalse(opened, "Project opening must wait until the transport flushes the response")
-        assertTrue(dispatcher.runAfterResponseActions())
+        assertTrue(dispatchResult.runAfterFlushAction())
         assertTrue(opened)
     }
 

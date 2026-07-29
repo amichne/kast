@@ -63,8 +63,8 @@ internal class ObservedAnalysisBackend(
 
     override suspend fun runtimeStatus(): RuntimeStatusResponse = observe(KastBackendOperation.RUNTIME_STATUS) {
         delegate.runtimeStatus()
-            .also(diagnostics::recordRuntimeStatus)
             .let(diagnostics::enrichRuntimeStatus)
+            .also(diagnostics::recordRuntimeStatus)
     }
 
     override suspend fun health(): HealthResponse = observe(KastBackendOperation.HEALTH) {

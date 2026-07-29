@@ -39,18 +39,28 @@ fn load_native_overlay_graph(
         .collect::<BTreeMap<_, _>>();
     let edge_projection = match scope {
         NativeGraphScope::Symbol => {
-            "source.stable_key, target.stable_key, edges.kind, edges.context, 1.0".to_string()
+            "source.stable_key AS source_container,
+             target.stable_key AS target_container,
+             edges.kind, edges.context, 1.0 AS weight"
+                .to_string()
         }
         NativeGraphScope::File => {
-            "source.file_path, target.file_path, edges.kind, edges.context, COUNT(*)".to_string()
+            "source.file_path AS source_container,
+             target.file_path AS target_container,
+             edges.kind, edges.context, COUNT(*) AS weight"
+                .to_string()
         }
         NativeGraphScope::Package => format!(
-            "{}, {}, edges.kind, edges.context, COUNT(*)",
+            "{} AS source_container,
+             {} AS target_container,
+             edges.kind, edges.context, COUNT(*) AS weight",
             native_graph_package_key_sql("source_file.package_name"),
             native_graph_package_key_sql("target_file.package_name"),
         ),
         NativeGraphScope::Module => {
-            "source_file.module_name, target_file.module_name, edges.kind, edges.context, COUNT(*)"
+            "source_file.module_name AS source_container,
+             target_file.module_name AS target_container,
+             edges.kind, edges.context, COUNT(*) AS weight"
                 .to_string()
         }
     };
@@ -71,25 +81,30 @@ fn load_native_overlay_graph(
         }
         NativeGraphScope::Symbol | NativeGraphScope::File => "",
     };
-    let grouping = if scope == NativeGraphScope::Symbol {
-        ""
-    } else {
-        "GROUP BY 1, 2, edges.kind, edges.context"
-    };
     let edge_sql = format!(
-        "{} SELECT {}
-            FROM raw_edge_occurrences edges
-            JOIN effective_symbols source ON source.stable_key = edges.source_key
-            JOIN effective_symbols target ON target.stable_key = edges.target_key
-            {}
-            WHERE 1 = 1 {}
-            {}
-            ORDER BY 1, 2, 3, 4",
+        "{},
+         typed_edges AS (
+             SELECT {}
+             FROM raw_edge_occurrences edges
+             JOIN effective_symbols source ON source.stable_key = edges.source_key
+             JOIN effective_symbols target ON target.stable_key = edges.target_key
+             {}
+             WHERE 1 = 1 {}
+             {}
+         )
+         SELECT source_container, target_container, COUNT(*), SUM(weight)
+         FROM typed_edges
+         GROUP BY source_container, target_container
+         ORDER BY source_container, target_container",
         native_graph_overlay_cte(),
         edge_projection,
         container_joins,
         non_null_filter,
-        grouping,
+        if scope == NativeGraphScope::Symbol {
+            ""
+        } else {
+            "GROUP BY 1, 2, edges.kind, edges.context"
+        },
     );
     let mut statement = connection
         .prepare(&edge_sql)
@@ -99,9 +114,8 @@ fn load_native_overlay_graph(
             Ok((
                 row.get::<_, String>(0)?,
                 row.get::<_, String>(1)?,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, f64>(4)?,
+                row.get::<_, i64>(2)? as usize,
+                row.get::<_, f64>(3)?,
             ))
         })
         .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_QUERY_FAILED", error))?
@@ -109,12 +123,11 @@ fn load_native_overlay_graph(
         .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_QUERY_FAILED", error))?;
     let edges = rows
         .into_iter()
-        .filter_map(|(source, target, kind, context, weight)| {
+        .filter_map(|(source, target, occurrence_count, weight)| {
             Some(NativeGraphEdge {
                 source: *positions.get(&source)?,
                 target: *positions.get(&target)?,
-                kind,
-                context,
+                occurrence_count,
                 weight,
             })
         })
@@ -150,8 +163,9 @@ fn native_graph_numeric_quotient_edges(
     positions: &BTreeMap<u64, usize>,
 ) -> std::result::Result<Vec<NativeGraphEdge>, AgentError> {
     let sql = format!(
-        "SELECT source_container_id, target_container_id, kind, context, weight FROM {view} \
-         ORDER BY source_container_id, target_container_id, kind, context"
+        "SELECT source_container_id, target_container_id, COUNT(*), SUM(weight) FROM {view} \
+         GROUP BY source_container_id, target_container_id \
+         ORDER BY source_container_id, target_container_id"
     );
     let mut statement = connection
         .prepare(&sql)
@@ -161,9 +175,8 @@ fn native_graph_numeric_quotient_edges(
             Ok((
                 row.get::<_, i64>(0)? as u64,
                 row.get::<_, i64>(1)? as u64,
-                row.get::<_, String>(2)?,
-                row.get::<_, String>(3)?,
-                row.get::<_, f64>(4)?,
+                row.get::<_, i64>(2)? as usize,
+                row.get::<_, f64>(3)?,
             ))
         })
         .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_QUERY_FAILED", error))?
@@ -171,12 +184,11 @@ fn native_graph_numeric_quotient_edges(
         .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_QUERY_FAILED", error))?;
     Ok(rows
         .into_iter()
-        .filter_map(|(source, target, kind, context, weight)| {
+        .filter_map(|(source, target, occurrence_count, weight)| {
             Some(NativeGraphEdge {
                 source: *positions.get(&source)?,
                 target: *positions.get(&target)?,
-                kind,
-                context,
+                occurrence_count,
                 weight,
             })
         })

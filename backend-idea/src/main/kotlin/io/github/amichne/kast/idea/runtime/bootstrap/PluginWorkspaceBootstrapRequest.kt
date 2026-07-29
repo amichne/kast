@@ -8,4 +8,5 @@ data class PluginWorkspaceBootstrapRequest(
     val cliBinary: Path,
     val cliVersion: CliImplementationVersion,
     val pluginVersion: PluginVersion,
+    val socketPath: Path,
 )

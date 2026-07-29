@@ -22,7 +22,11 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import java.io.Closeable
-import java.util.concurrent.ConcurrentLinkedQueue
+
+internal data class RpcMethodResult(
+    val result: JsonElement,
+    val afterResponseAction: (() -> Unit)? = null,
+)
 
 internal class RpcMethodRouter(
     internal val backend: AnalysisBackend,
@@ -37,39 +41,28 @@ internal class RpcMethodRouter(
         capacity = config.typedContinuationCapacity,
         timeToLive = config.typedContinuationTtl,
     )
-    private val afterResponseActions = ConcurrentLinkedQueue<() -> Unit>()
 
     suspend fun dispatch(
         method: String,
         params: JsonElement?,
-    ): JsonElement = when {
-        method == "health" -> encode(HealthResponse.serializer(), backend.health())
-        method == "runtime/status" -> encode(RuntimeStatusResponse.serializer(), backend.runtimeStatus())
-        method == "runtime/shutdown" -> encode(
-            RuntimeLifecycleResponse.serializer(),
-            requestLifecycle(RuntimeLifecycleAction.SHUTDOWN),
+    ): RpcMethodResult = when {
+        method == "health" -> RpcMethodResult(encode(HealthResponse.serializer(), backend.health()))
+        method == "runtime/status" -> RpcMethodResult(
+            encode(RuntimeStatusResponse.serializer(), backend.runtimeStatus()),
         )
-        method == "runtime/restart" -> encode(
-            RuntimeLifecycleResponse.serializer(),
-            requestLifecycle(RuntimeLifecycleAction.RESTART),
+        method == "runtime/shutdown" -> requestLifecycle(RuntimeLifecycleAction.SHUTDOWN)
+        method == "runtime/restart" -> requestLifecycle(RuntimeLifecycleAction.RESTART)
+        method == "runtime/open-project" -> requestProjectOpen(
+            decodeParams(RuntimeOpenProjectRequest.serializer(), params),
         )
-        method == "runtime/open-project" -> encode(
-            RuntimeOpenProjectResponse.serializer(),
-            requestProjectOpen(decodeParams(RuntimeOpenProjectRequest.serializer(), params)),
+        method == "capabilities" -> RpcMethodResult(
+            encode(BackendCapabilities.serializer(), backend.capabilities()),
         )
-        method == "capabilities" -> encode(BackendCapabilities.serializer(), backend.capabilities())
-        else -> dispatchRawMethod(method, params)
-            ?: dispatchSkillMethod(method, params)
-            ?: throw UnknownRpcMethodException(method)
-    }
-
-    internal fun runAfterResponseActions(): Boolean {
-        var ranAction = false
-        while (true) {
-            val action = afterResponseActions.poll() ?: return ranAction
-            ranAction = true
-            runCatching(action)
-        }
+        else -> RpcMethodResult(
+            dispatchRawMethod(method, params)
+                ?: dispatchSkillMethod(method, params)
+                ?: throw UnknownRpcMethodException(method),
+        )
     }
 
     override fun close() {
@@ -119,28 +112,35 @@ internal class RpcMethodRouter(
         value: T,
     ): JsonElement = json.encodeToJsonElement(serializer, value)
 
-    private suspend fun requestLifecycle(action: RuntimeLifecycleAction): RuntimeLifecycleResponse {
+    private suspend fun requestLifecycle(action: RuntimeLifecycleAction): RpcMethodResult {
         val afterResponseAction = lifecycleController.afterResponseAction(action)
             ?: throw CapabilityNotSupportedException(
                 capability = "RUNTIME_LIFECYCLE",
                 message = "Runtime lifecycle actions are not available for this backend host",
             )
         val capabilities = backend.capabilities()
-        afterResponseActions += afterResponseAction
-        return RuntimeLifecycleResponse(
-            accepted = true,
-            action = action,
-            backendName = capabilities.backendName,
-            backendVersion = capabilities.backendVersion,
-            workspaceRoot = capabilities.workspaceRoot,
-            message = "Runtime ${action.name.lowercase()} accepted; action will run after this response is flushed.",
+        return RpcMethodResult(
+            result = encode(
+                RuntimeLifecycleResponse.serializer(),
+                RuntimeLifecycleResponse(
+                    accepted = true,
+                    action = action,
+                    backendName = capabilities.backendName,
+                    backendVersion = capabilities.backendVersion,
+                    workspaceRoot = capabilities.workspaceRoot,
+                    message = "Runtime ${action.name.lowercase()} accepted; action will run after this response is flushed.",
+                ),
+            ),
+            afterResponseAction = afterResponseAction,
         )
     }
 
-    private fun requestProjectOpen(request: RuntimeOpenProjectRequest): RuntimeOpenProjectResponse {
+    private fun requestProjectOpen(request: RuntimeOpenProjectRequest): RpcMethodResult {
         val plan = projectOpenController.openProject(request)
-        afterResponseActions += plan.afterResponseAction
-        return plan.response
+        return RpcMethodResult(
+            result = encode(RuntimeOpenProjectResponse.serializer(), plan.response),
+            afterResponseAction = plan.afterResponseAction,
+        )
     }
 }
 

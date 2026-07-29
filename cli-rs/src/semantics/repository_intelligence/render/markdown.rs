@@ -153,6 +153,8 @@ pub(crate) fn render_markdown_report(response: &Value) -> Option<String> {
             "indexed": result.pointer("/coverage/indexed"),
             "accounted": result.pointer("/coverage/accounted"),
             "excluded": result.pointer("/coverage/excluded"),
+            "pending": result.pointer("/coverage/pending"),
+            "limited": result.pointer("/coverage/limited"),
             "failed": result.pointer("/coverage/failed"),
             "stale": result.pointer("/coverage/stale"),
             "pendingUpdateCount": result.pointer("/coverage/pendingUpdateCount")
