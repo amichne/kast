@@ -244,8 +244,19 @@ fn read_transaction(
             progress.status() != super::model::SourceIndexProgressStatus::Complete
                 || progress.indexed_file_count() != progress.total_file_count()
         });
-    let source_progress_incomplete =
-        source_file_stage_progress == SourceFileStageProgress::Incomplete;
+    let relationship_progress_terminal = !stamp.module_progress().is_empty()
+        && stamp.module_progress().iter().all(|progress| {
+            matches!(
+                progress.status(),
+                super::model::SourceIndexProgressStatus::Complete
+                    | super::model::SourceIndexProgressStatus::Failed
+            ) && progress.indexed_file_count() == progress.total_file_count()
+        });
+    let source_progress_incomplete = match source_file_stage_progress {
+        SourceFileStageProgress::Complete => !relationship_progress_terminal,
+        SourceFileStageProgress::Empty => relationship_progress_incomplete,
+        SourceFileStageProgress::Incomplete => true,
+    };
     if source_progress_incomplete {
         candidate_partial = true;
     }

@@ -66,6 +66,7 @@ fn read_module_progress(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SourceFileStageProgress {
     Complete,
+    Empty,
     Incomplete,
 }
 
@@ -85,18 +86,18 @@ fn read_source_file_stage_progress(
                  ON outcomes.prefix_id = manifest.prefix_id
                 AND outcomes.filename = manifest.filename
                 AND outcomes.stage = 'SOURCE'
-               WHERE manifest.filename GLOB '*.kt'"#,
+               WHERE manifest.filename GLOB '*.kt'
+                 AND manifest.content_hash IS NOT NULL
+                 AND manifest.desired_source_version IS NOT NULL"#,
             [],
             |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
         )
         .map_err(incompatible_sql)?;
-    Ok(
-        if total_count > 0 && complete_count == total_count {
-            SourceFileStageProgress::Complete
-        } else {
-            SourceFileStageProgress::Incomplete
-        },
-    )
+    Ok(match (total_count, complete_count) {
+        (0, 0) => SourceFileStageProgress::Empty,
+        (total, complete) if total == complete => SourceFileStageProgress::Complete,
+        _ => SourceFileStageProgress::Incomplete,
+    })
 }
 
 fn read_pending_count(
