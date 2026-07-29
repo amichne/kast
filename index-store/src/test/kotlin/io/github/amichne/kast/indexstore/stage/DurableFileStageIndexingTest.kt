@@ -391,9 +391,7 @@ class DurableFileStageIndexingTest {
         )
 
     private fun version(value: String): FileStageVersion = FileStageVersion.parse("test-$value")
-
     private fun hash(character: Char): FileContentHash = FileContentHash.parse(character.toString().repeat(64))
-
     private data class PersistedFacts(
         val references: Map<String, List<SymbolReferenceRow>>,
         val completedModules: Set<String>,

@@ -21,6 +21,8 @@ internal class FileStageBatchStore(
     private val stages: FileStageInventoryStore,
     private val semanticGraph: SemanticGraphWriter,
 ) {
+    private val failureStore = FileStageFailureStore(state)
+
     fun commitSourceBatch(updates: List<SourceFileStageUpdate>) {
         if (updates.isEmpty()) return
         requireUniquePaths(updates.map { update -> update.work.path })
@@ -93,7 +95,7 @@ internal class FileStageBatchStore(
             failures.forEach { failure ->
                 references.clearReferencesFromFileInTransaction(conn, failure.work.path)
                 declarations.clearDeclarationsFromFileInTransaction(conn, failure.work.path)
-                stages.writeFailureOutcomeInTransaction(
+                failureStore.writeFailureOutcomeInTransaction(
                     conn = conn,
                     work = failure.work,
                     code = failure.code,
@@ -111,7 +113,7 @@ internal class FileStageBatchStore(
         state.loadInterningTables(conn)
         conn.autoCommit = false
         try {
-            val current = stages.currentFailureByIdInTransaction(conn, failureId)
+            val current = failureStore.currentFailureByIdInTransaction(conn, failureId)
             val result = when (current?.status) {
                 null -> FileStageFailureExternalizationResult.NOT_FOUND
                 FileStageOutcomeStatus.EXTERNAL_BOUNDARY ->
@@ -128,7 +130,7 @@ internal class FileStageBatchStore(
                         contentHash = current.contentHash,
                         failure = current.failure,
                     )
-                    stages.markFailureExternalInTransaction(conn, failureId)
+                    failureStore.markFailureExternalInTransaction(conn, failureId)
                     stages.recomputeModuleProgressInTransaction(conn)
                     state.incrementGenerationInTransaction(conn)
                     FileStageFailureExternalizationResult.EXTERNALIZED

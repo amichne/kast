@@ -6,9 +6,9 @@ resource: file://docs/internal/system-flow.md
 tags: [architecture, cli, runtime, okf]
 code_sources:
   - path: cli-rs/src/main.rs
-  - path: cli-rs/src/interface/cli/agent_surface.rs
+  - path: cli-rs/src/interface/cli/agent/agent_surface.rs
     symbols: [KastCli, KastCommand]
-  - path: cli-rs/src/agent_adapter.rs
+  - path: cli-rs/src/agent/adapter/mod.rs
   - path: cli-rs/src/interface/cli/root.rs
     symbols: [Cli, Command]
   - path: cli-rs/src/interface/entrypoint/dispatch.rs

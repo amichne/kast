@@ -279,7 +279,6 @@ class ReferenceIndexerExternalBoundaryTest {
         val version = FileStageVersion.parse(label)
         return FileStageVersions(version, version, version)
     }
-
     private fun reference(
         path: String,
         targetFqName: String = "demo.Target",

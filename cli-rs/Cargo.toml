@@ -62,15 +62,15 @@ path = "tests/agent/readiness.rs"
 
 [[test]]
 name = "kast_agent_surface"
-path = "tests/kast_agent_surface.rs"
+path = "tests/agent/public/kast_agent_surface.rs"
 
 [[test]]
 name = "kast_public_operations"
-path = "tests/kast_public_operations.rs"
+path = "tests/agent/public/kast_public_operations.rs"
 
 [[test]]
 name = "kast_resources"
-path = "tests/kast_resources.rs"
+path = "tests/agent/public/kast_resources.rs"
 
 [[test]]
 name = "agent_result_projection_smoke"

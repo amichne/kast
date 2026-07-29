@@ -7,7 +7,7 @@ orchestration, source-index CLI reads, and release packaging.
 
 ## Local purpose
 
-- `src/interface/cli/agent_surface.rs` and `src/main.rs` define the public
+- `src/interface/cli/agent/agent_surface.rs` and `src/main.rs` define the public
   agent-facing `kast` CLI. `src/interface/cli/root.rs` retains administrative
   operations behind the `_kastctl` multicall name.
 - `src/interface/cli/agent.rs` and `src/agent/` own typed compiler-backed agent commands:

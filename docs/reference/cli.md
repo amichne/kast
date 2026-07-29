@@ -4,8 +4,8 @@ title: CLI Reference
 description: The public Kast command surface for coding agents.
 tags: [cli, reference, commands, agents]
 code_sources:
-  - path: cli-rs/src/interface/cli/agent_surface.rs
-  - path: cli-rs/src/agent_adapter.rs
+  - path: cli-rs/src/interface/cli/agent/agent_surface.rs
+  - path: cli-rs/src/agent/adapter/mod.rs
   - path: cli-rs/src/main.rs
 ---
 
