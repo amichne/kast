@@ -22,6 +22,9 @@ internal class IdeaReferenceIndexEnvironment(
     private val refreshVirtualFile: (Path) -> VirtualFile? = {
         LocalFileSystem.getInstance().refreshAndFindFileByNioFile(it)
     },
+    private val psiFileForVirtualFile: (VirtualFile) -> PsiFile? = {
+        PsiManager.getInstance(project).findFile(it)
+    },
 ) : ReferenceIndexEnvironment {
     constructor(
         project: Project,
@@ -29,13 +32,33 @@ internal class IdeaReferenceIndexEnvironment(
         cancelled: () -> Boolean,
     ) : this(project, WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot), cancelled)
 
-    override fun findPsiFile(filePath: String): PsiFile? {
+    override fun findPsiFile(filePath: String): PsiFile? =
+        withPsiFileReadAccess(filePath) { psiFile -> psiFile }
+
+    override fun <T> withPsiFileReadAccess(
+        filePath: String,
+        action: (PsiFile) -> T,
+    ): T? = withPsiFileAccess(filePath, action)
+
+    override fun <T> withPsiFileExclusiveAccess(
+        filePath: String,
+        action: (PsiFile) -> T,
+    ): T? = withPsiFileAccess(filePath, action)
+
+    private fun <T> withPsiFileAccess(
+        filePath: String,
+        action: (PsiFile) -> T,
+    ): T? {
         val path = Path.of(filePath).toAbsolutePath().normalize()
         if (!workspaceIdentity.contains(path)) return null
         val virtualFile = findVirtualFile(path)
             ?: refreshVirtualFile(path)
             ?: return null
-        return withReadAccess { PsiManager.getInstance(project).findFile(virtualFile) }
+        return withExclusiveAccess {
+            psiFileForVirtualFile(virtualFile)
+                ?.takeIf { psiFile -> psiFile.isValid }
+                ?.let(action)
+        }
     }
 
     override fun <T> withReadAccess(action: () -> T): T =
