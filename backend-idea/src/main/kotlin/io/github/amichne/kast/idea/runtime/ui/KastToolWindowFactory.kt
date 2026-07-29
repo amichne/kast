@@ -26,10 +26,17 @@ import javax.swing.table.AbstractTableModel
 internal class KastToolWindowFactory : ToolWindowFactory, DumbAware {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val contentManager = toolWindow.contentManager
+        val explorerPanel = KastExplorerPanel(project)
         val activityPanel = KastActivityPanel(project)
 
         contentManager.addContent(
-            contentManager.factory.createContent(activityPanel, "Activity", false).apply {
+            contentManager.factory.createContent(explorerPanel, KastToolWindowContent.EXPLORE.title, false).apply {
+                setPreferredFocusableComponent(explorerPanel)
+                setDisposer(explorerPanel)
+            },
+        )
+        contentManager.addContent(
+            contentManager.factory.createContent(activityPanel, KastToolWindowContent.ACTIVITY.title, false).apply {
                 setPreferredFocusableComponent(activityPanel)
                 setDisposer(activityPanel)
             },

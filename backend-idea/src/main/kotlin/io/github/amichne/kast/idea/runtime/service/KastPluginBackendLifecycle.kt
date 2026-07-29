@@ -31,6 +31,9 @@ internal interface KastIdeaBackendHandle {
 
     fun failIndexing(error: Throwable)
 
+    fun explore(request: KastExplorerRequest): KastExplorerResult =
+        KastExplorerResult.Problem(io.github.amichne.kast.api.contract.NonBlankString("Kast explorer is unavailable"))
+
     fun closeAsync(): CompletableFuture<Unit>
 }
 
@@ -109,6 +112,13 @@ internal class KastPluginBackendLifecycle(
     fun markIndexFailed(error: Throwable) = lock.withLock {
         admission = KastGradleIndexAdmission.Failed(error)
         (state as? State.Running)?.backend?.failIndexing(error)
+    }
+
+    fun explore(request: KastExplorerRequest): KastExplorerResult = lock.withLock {
+        (state as? State.Running)?.backend?.explore(request)
+            ?: KastExplorerResult.Problem(
+                io.github.amichne.kast.api.contract.NonBlankString("Kast backend is not ready"),
+            )
     }
 
     internal fun status(): KastPluginBackendLifecycleStatus = lock.withLock {

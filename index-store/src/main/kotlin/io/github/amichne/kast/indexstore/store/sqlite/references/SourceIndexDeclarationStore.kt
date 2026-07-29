@@ -1,5 +1,7 @@
 package io.github.amichne.kast.indexstore.store
 
+import io.github.amichne.kast.api.contract.NonBlankString
+import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.api.reference.*
 import java.sql.Connection
@@ -81,6 +83,63 @@ internal class SourceIndexDeclarationStore(
                             ),
                         )
                     }
+                }
+            }
+        }
+    }
+
+    fun searchDeclarations(
+        pattern: NonBlankString,
+        maxResults: PositiveInt,
+    ): List<DeclarationRow> = synchronized(state.writeLock) {
+        val conn = state.connection()
+        state.loadInterningTables(conn)
+        val query = pattern.value.trim()
+        val searchClause = if (query.length >= 3) {
+            "fq_names_fts MATCH ?"
+        } else {
+            "instr(lower(names.fq_name), lower(?)) > 0"
+        }
+        val source = if (query.length >= 3) {
+            """fq_names_fts
+               JOIN fq_names names ON names.fq_id = fq_names_fts.rowid"""
+        } else {
+            "fq_names names"
+        }
+        conn.prepareStatement(
+            """SELECT names.fq_name, declarations.kind, declarations.visibility,
+                      declarations.prefix_id, declarations.filename,
+                      declarations.declaration_offset, declarations.module_path,
+                      declarations.source_set
+               FROM $source
+               JOIN declarations ON declarations.fq_id = names.fq_id
+               WHERE $searchClause
+               ORDER BY names.fq_name, declarations.prefix_id, declarations.filename
+               LIMIT ?""",
+        ).use { statement ->
+            statement.setString(
+                1,
+                if (query.length >= 3) {
+                    "\"${query.replace("\"", "\"\"")}\""
+                } else {
+                    query
+                },
+            )
+            statement.setInt(2, maxResults.value)
+            val rows = statement.executeQuery()
+            buildList {
+                while (rows.next()) {
+                    add(
+                        DeclarationRow(
+                            fqName = rows.getString(1),
+                            kind = DeclarationKind.valueOf(rows.getString(2)),
+                            visibility = DeclarationVisibility.valueOf(rows.getString(3)),
+                            filePath = state.pathCodec.decode(rows.getInt(4), rows.getString(5)),
+                            declarationOffset = rows.getNullableInt(6),
+                            modulePath = rows.getString(7),
+                            sourceSet = rows.getString(8),
+                        ),
+                    )
                 }
             }
         }
