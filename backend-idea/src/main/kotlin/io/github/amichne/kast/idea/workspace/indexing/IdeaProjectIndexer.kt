@@ -53,6 +53,7 @@ internal class IdeaProjectIndexer(
     private val inventory = IdeaProjectModelWorkspaceFileInventory(
         project = project,
         workspaceIdentity = ideaWorkspaceIdentity,
+        workspaceModelReader = readGradleWorkspaceModel,
     )
 
     fun indexProject(config: KastConfig) {
@@ -112,11 +113,9 @@ internal class IdeaProjectIndexer(
 
     fun indexSourceIdentifiers(): Collection<String> {
         store.ensureSchema()
-        val (gradleProvenance, inventorySnapshot) = runIdeaReadAction {
-            val gradleModel = readGradleWorkspaceModel()
-            IdeaGradleFileProvenance.fromWorkspaceModel(gradleModel, ideaWorkspaceIdentity) to
-                inventory.snapshot(WorkspaceFileKindDomain.MIXED, gradleModel)
-        }
+        val captured = inventory.snapshotWithGradleModel(WorkspaceFileKindDomain.MIXED)
+        val gradleProvenance = IdeaGradleFileProvenance.fromWorkspaceModel(captured.gradleModel, ideaWorkspaceIdentity)
+        val inventorySnapshot = captured.inventory
         val ownerModuleNamesByPath = referenceIndexOwnersByPath(inventorySnapshot)
         val inventoryEntries = buildFileInventoryEntries(
             ownerModuleNamesByPath = ownerModuleNamesByPath,

@@ -11,7 +11,9 @@ verify_setup="$repo_root/scripts/verify-setup-bundle.sh"
 release_preflight="$(sed -n '/^  release-preflight:/,/^  bump-version:/p' "$release")"
 bump_version="$(sed -n '/^  bump-version:/,/^  prepare-release:/p' "$release")"
 prepare_release="$(sed -n '/^  prepare-release:/,/^  validate-jvm:/p' "$release")"
+build_openapi="$(sed -n '/^  build-openapi-spec:/,/^  publish-maven-central:/p' "$release")"
 publish_maven="$(sed -n '/^  publish-maven-central:/,/^  build-cli:/p' "$release")"
+real_repository_indexing="$(sed -n '/^  real-repository-indexing:/,/^  publish-release:/p' "$release")"
 publish_release="$(sed -n '/^  publish-release:/,/^  verify-release-state:/p' "$release")"
 verify_release="$(sed -n '/^  verify-release-state:/,$p' "$release")"
 
@@ -80,6 +82,22 @@ grep -Fq 'continue-on-error: true' <<<"$publish_maven" \
   || { printf '%s\n' 'error: immutable release publication must not depend on Maven Central' >&2; exit 1; }
 ! grep -Fq 'publish-maven-central' <<<"$verify_release" \
   || { printf '%s\n' 'error: immutable release verification must not depend on Maven Central' >&2; exit 1; }
+! grep -Fq -- '- validate-jvm' <<<"$build_openapi" \
+  || { printf '%s\n' 'error: OpenAPI build must not wait for unrelated JVM validation' >&2; exit 1; }
+grep -Fq "vars.CI_AUX_IDEA_PERFORMANCE != 'optional'" <<<"$real_repository_indexing" \
+  || { printf '%s\n' 'error: lean releases must skip the optional real-repository performance gate' >&2; exit 1; }
+grep -Fq "vars.CI_AUX_IDEA_PERFORMANCE == 'optional'" <<<"$publish_release" \
+  || { printf '%s\n' 'error: release publication must recognize the lean profile' >&2; exit 1; }
+grep -Fq "needs.real-repository-indexing.result == 'skipped'" <<<"$publish_release" \
+  || { printf '%s\n' 'error: publication must accept an intentionally skipped performance gate' >&2; exit 1; }
+for artifact_job in build-cli build-agent-resources build-idea-plugin build-headless-backend; do
+  grep -Fq -- "- $artifact_job" <<<"$publish_release" \
+    || { printf 'error: %s release artifacts must remain mandatory\n' "$artifact_job" >&2; exit 1; }
+done
+grep -Fq 'needs.publish-release.result }}" != "success"' <<<"$verify_release" \
+  || { printf '%s\n' 'error: published-state verification must require successful publication' >&2; exit 1; }
+grep -Fq 'scripts/release/verify-release-state.sh' <<<"$verify_release" \
+  || { printf '%s\n' 'error: published-state verification must remain mandatory' >&2; exit 1; }
 
 for file in "$ci" "$release" "$verify_state"; do
   reject "$file" 'homebrew' 'retired Homebrew authority remains in release flow'

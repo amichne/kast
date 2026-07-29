@@ -3,15 +3,18 @@ package io.github.amichne.kast.idea
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.moduleFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
+import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
 import io.github.amichne.kast.shared.analysis.PsiRelationshipScanResult
+import io.github.amichne.kast.shared.analysis.PsiSourceIndexScanner
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -199,6 +202,64 @@ class IdeaReferenceIndexEnvironmentTest {
         } finally {
             stopRead.set(true)
             readFuture.get(2, TimeUnit.SECONDS)
+            writeFuture.get(2, TimeUnit.SECONDS)
+            executor.shutdownNow()
+        }
+    }
+
+    @Test
+    fun `VFS cache miss resolves before scanner read access`() {
+        val project = projectFixture.get()
+        val callerFile = callerFileFixture.get()
+        waitUntilIndexesAreReady(project)
+
+        val workspaceRoot = Path.of(callerFile.virtualFile.path).root.toAbsolutePath().normalize()
+        val virtualFile = requireNotNull(
+            LocalFileSystem.getInstance().findFileByNioFile(Path.of(callerFile.virtualFile.path)),
+        )
+        val refreshStarted = CountDownLatch(1)
+        val writeCompleted = CountDownLatch(1)
+        val psiResolutionEntered = AtomicBoolean(false)
+        val environment = IdeaReferenceIndexEnvironment(
+            project = project,
+            workspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot),
+            cancelled = { false },
+            findVirtualFile = { null },
+            refreshVirtualFile = {
+                refreshStarted.countDown()
+                assertTrue(
+                    writeCompleted.await(2, TimeUnit.SECONDS),
+                    "VFS refresh must not hold IDEA read access while an EDT write is queued",
+                )
+                virtualFile
+            },
+            psiFileForVirtualFile = {
+                psiResolutionEntered.set(true)
+                assertTrue(
+                    ApplicationManager.getApplication().isReadAccessAllowed,
+                    "PSI must be resolved and validated inside IDEA read access",
+                )
+                callerFile
+            },
+        )
+        val executor = Executors.newFixedThreadPool(2)
+        val scanFuture = executor.submit {
+            PsiSourceIndexScanner(environment).scanFile(callerFile.virtualFile.path)
+        }
+        assertTrue(refreshStarted.await(1, TimeUnit.SECONDS), "VFS cache-miss refresh did not start")
+        val writeFuture = executor.submit {
+            ApplicationManager.getApplication().invokeAndWait {
+                ApplicationManager.getApplication().runWriteAction {
+                    writeCompleted.countDown()
+                }
+            }
+        }
+
+        try {
+            scanFuture.get(5, TimeUnit.SECONDS)
+            assertTrue(psiResolutionEntered.get(), "scanner should resolve PSI after the queued write completes")
+        } finally {
+            scanFuture.cancel(true)
             writeFuture.get(2, TimeUnit.SECONDS)
             executor.shutdownNow()
         }

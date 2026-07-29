@@ -48,9 +48,7 @@ class PsiReferenceScanner(
 ) {
     fun scanFileRelationships(filePath: String): PsiRelationshipScanResult =
         // One epoch binds every persisted relationship fact to one immutable PSI revision.
-        environment.withExclusiveAccess scan@{
-            val psiFile = environment.findPsiFile(filePath)
-                ?: return@scan PsiRelationshipScanResult.PsiUnavailable
+        environment.withPsiFileExclusiveAccess(filePath) { psiFile ->
             val sourceFilePath = psiFile.sourceFilePath(filePath)
             val referenceResult = scanFileReferenceCoverage(psiFile, sourceFilePath)
             val declarationResult = scanFileDeclarationCoverage(psiFile, sourceFilePath)
@@ -60,7 +58,7 @@ class PsiReferenceScanner(
                 declarations = declarationResult.rows,
                 limitations = (referenceResult.limitations + declarationResult.limitations).distinct(),
             )
-        }
+        } ?: PsiRelationshipScanResult.PsiUnavailable
 
     fun scanFileReferences(filePath: String): List<SymbolReferenceRow> =
         scanFileReferenceCoverage(filePath).rows
@@ -71,9 +69,12 @@ class PsiReferenceScanner(
     private fun scanFileReferenceCoverage(filePath: String): ScanCoverage<SymbolReferenceRow> =
         // Exclusive access required: the headless backend's K2 FIR lazy declaration
         // resolver is not thread-safe for concurrent resolution within a single session.
-        environment.withExclusiveAccess {
-            val psiFile = requirePsiFile(filePath)
-            scanFileReferenceCoverage(psiFile, psiFile.sourceFilePath(filePath))
+        requireNotNull(
+            environment.withPsiFileExclusiveAccess(filePath) { psiFile ->
+                scanFileReferenceCoverage(psiFile, psiFile.sourceFilePath(filePath))
+            },
+        ) {
+            "PSI file is unavailable for relationship indexing: $filePath"
         }
 
     private fun scanFileReferenceCoverage(
@@ -173,9 +174,12 @@ class PsiReferenceScanner(
     }
 
     private fun scanFileDeclarationCoverage(filePath: String): ScanCoverage<DeclarationRow> =
-        environment.withExclusiveAccess {
-            val psiFile = requirePsiFile(filePath)
-            scanFileDeclarationCoverage(psiFile, psiFile.sourceFilePath(filePath))
+        requireNotNull(
+            environment.withPsiFileExclusiveAccess(filePath) { psiFile ->
+                scanFileDeclarationCoverage(psiFile, psiFile.sourceFilePath(filePath))
+            },
+        ) {
+            "PSI file is unavailable for relationship indexing: $filePath"
         }
 
     private fun scanFileDeclarationCoverage(
@@ -219,11 +223,6 @@ class PsiReferenceScanner(
         )
         return ScanCoverage(rows = rows, limitations = limitations.toList())
     }
-
-    private fun requirePsiFile(filePath: String): PsiFile =
-        requireNotNull(environment.findPsiFile(filePath)) {
-            "PSI file is unavailable for relationship indexing: $filePath"
-        }
 
     private fun PsiFile.sourceFilePath(fallback: String): String =
         runCatching { resolvedFilePath().value }.getOrElse { fallback }

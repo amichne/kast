@@ -8,6 +8,7 @@ import com.intellij.psi.PsiClass
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.searches.DirectClassInheritorsSearch
+import com.intellij.util.Processor
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.shared.analysis.supertypeNames
 import io.github.amichne.kast.shared.analysis.toSymbolModel
@@ -77,7 +78,7 @@ internal class IdeaTypeEdgeResolver(
         val subtypes = ApplicationManager.getApplication().runReadAction<List<PsiClass>> {
             val scope = GlobalSearchScope.projectScope(project)
             buildList {
-                DirectClassInheritorsSearch.search(psiClass, scope).forEach { subtype ->
+                DirectClassInheritorsSearch.search(psiClass, scope).forEach(Processor { subtype ->
                     ProgressManager.checkCanceled()
                     if (!budget.tryAdmitCandidate()) {
                         false
@@ -85,7 +86,7 @@ internal class IdeaTypeEdgeResolver(
                         add(subtype)
                         true
                     }
-                }
+                })
             }
         }
 

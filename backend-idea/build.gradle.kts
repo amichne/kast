@@ -9,6 +9,7 @@ import org.gradle.api.attributes.java.TargetJvmVersion
 import org.gradle.jvm.tasks.Jar
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
@@ -102,6 +103,13 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.0")
 }
 
+configurations.named("intellijPlatformRuntimeClasspath") {
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-jdk8")
+}
+
 val headlessRuntimeElements: Configuration by configurations.creating {
     isCanBeConsumed = true
     isCanBeResolved = false
@@ -138,6 +146,10 @@ intellijPlatform {
     }
 
     pluginVerification {
+        failureLevel.addAll(
+            VerifyPluginTask.FailureLevel.DEPRECATED_API_USAGES,
+            VerifyPluginTask.FailureLevel.SCHEDULED_FOR_REMOVAL_API_USAGES,
+        )
         ides {
             create(IntelliJPlatformType.IntellijIdea, "2026.2")
             create(IntelliJPlatformType.AndroidStudio, "2026.1.2.10")
@@ -183,6 +195,7 @@ tasks.register<VerifyPluginXmlPresentTask>("verifyPluginXmlPresent") {
     distributionsDirectory.set(layout.buildDirectory.dir("distributions"))
     expectedPluginId.set("io.github.amichne.kast")
     rejectedPluginId.set("io.github.amichne.kast.idea")
+    forbiddenBundledJarPrefixes.set(listOf("kotlin-stdlib-", "kotlinx-coroutines-"))
 }
 
 tasks.withType<Test>().configureEach {
