@@ -61,9 +61,14 @@ require_contains "${docs_root}/how-to/install-or-update.md" "current/bin/kast"
 require_contains "${docs_root}/tutorials/first-compiler-backed-task.md" "IdeaIndexSemanticAdmission"
 require_contains "${docs_root}/how-to/explore-kotlin-code.md" "coverage is complete or limited"
 require_contains "${docs_root}/how-to/plan-safe-edits.md" "one exact compiler identity"
-require_contains "${docs_root}/reference/cli.md" 'kast agent'
+for command in help version context config setup ready start status stop demo rpc developer agent; do
+  require_contains "${docs_root}/reference/cli.md" "\`kast ${command}"
+done
 require_contains "${docs_root}/reference/cli.md" '`toon`'
 require_contains "${docs_root}/reference/codex-plugin.md" 'tracks its `main` branch independently'
+require_contains "${docs_root}/reference/codex-plugin.md" '`kast-query` skill'
+require_contains "${docs_root}/reference/codex-plugin.md" '`kast-change` skill'
+require_contains "${docs_root}/reference/codex-plugin.md" '`kast-codex` hook'
 require_contains "${docs_root}/explanation/architecture.md" "exact workspace"
 require_contains "${docs_root}/explanation/compiler-evidence.md" "scope fingerprint"
 require_contains "${docs_root}/explanation/repository-intelligence.md" "Incomplete positive answers fail closed"
@@ -87,10 +92,19 @@ for page in "${docs_root}"/how-to/*.md; do
   require_contains "$page" "# How to "
 done
 require_contains "${docs_root}/reference/cli.md" "cli-rs/protocol/source/commands.json"
+require_contains "${docs_root}/reference/cli.md" '`selected.ready`'
+require_contains "${docs_root}/reference/cli.md" '`semanticGraph.state`'
+require_contains "${docs_root}/reference/codex-plugin.md" "### Intents"
+require_contains "${docs_root}/reference/codex-plugin.md" "### Result status"
+require_contains "${docs_root}/reference/codex-plugin.md" "### Bounds and resumption"
 require_contains "${docs_root}/explanation/architecture.md" \
   '<kast-view view-id="system-landscape"'
 require_contains "${docs_root}/explanation/compiler-evidence.md" \
   '<kast-view view-id="compiler-evidence"'
+require_contains "${docs_root}/explanation/compiler-evidence.md" \
+  "Kotlin Analysis API (AA)"
+require_contains "${docs_root}/explanation/compiler-evidence.md" \
+  "Front-end Intermediate Representation (FIR)"
 require_contains "${docs_root}/explanation/repository-intelligence.md" \
   '<kast-view view-id="runtime-components"'
 hidden_system_map="${docs_root}/internal/system-flow.md"
@@ -147,6 +161,7 @@ require_not_contains "$docs_root" "Homebrew"
 require_not_contains "$docs_root" "kast repair"
 require_not_contains "$docs_root" "kast machine"
 require_not_contains "$docs_root" "raw/semantic-graph"
+require_not_contains "$docs_root" "kast ready --for kotlin"
 
 python3 - "$docs_root" "${expected_pages[@]}" <<'PY'
 import sys

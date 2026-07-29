@@ -1,6 +1,6 @@
 ---
 type: How-to Guide
-title: Install or Update Kast
+title: How to Install or Update Kast
 description: Activate one verified Kast release on macOS or Linux and prepare a workspace for compiler-backed tasks.
 tags: [install, update, macos, linux, idea, headless]
 code_sources:
@@ -10,7 +10,7 @@ code_sources:
   - path: cli-rs/src/configuration/manifest.rs
 ---
 
-# Install or Update Kast
+# How to Install or Update Kast
 
 Use the same setup transaction for a first install, an update, a downgrade, or
 recovery.
@@ -82,15 +82,30 @@ selected IDE and relaunches that app in the background after setup.
 On Linux or a hosted agent, the bundle contains the headless backend. Keep the
 task rooted at the Gradle workspace you intend to analyze.
 
-Check readiness:
+Start or resume the exact-root backend. On macOS, run:
 
 ```console
-kast ready --for kotlin
+kast start \
+  --workspace-root "$PWD" \
+  --backend idea \
+  --accept-indexing
 ```
 
-If the result is not ready, follow its reported next action or use
-[Troubleshoot Kast](troubleshoot.md).
+On Linux, use `--backend headless` instead.
+
+Inspect the selected runtime and persisted graph separately:
+
+```console
+kast --output json status \
+  --workspace-root "$PWD" \
+  --backend idea
+```
+
+Replace `idea` with `headless` on Linux. Continue when `selected.ready` is
+`true`. For graph-backed work, also inspect `semanticGraph.state` and its
+limitations; a ready runtime can still have incomplete persisted coverage.
 
 An `INDEXING` result is an expected early success: the exact runtime is
 reachable while Gradle import, IDEA smart mode, Kotlin admission, or Kast's
-reference index is still running. Semantic work begins after `READY`.
+reference index is still running. If the selected runtime is not ready, follow
+its reported next action or use [Troubleshoot Kast](troubleshoot.md).

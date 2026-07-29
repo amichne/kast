@@ -1,6 +1,6 @@
 ---
 type: How-to Guide
-title: Explore Kotlin Code
+title: How to Explore Kotlin Code
 description: Resolve Kotlin declarations and navigate their relationships with compiler-backed evidence.
 tags: [kotlin, codex, symbols, references, callers]
 code_sources:
@@ -9,23 +9,36 @@ code_sources:
   - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/relationships/evidence/RelationshipResultEvidence.kt
 ---
 
-# Explore Kotlin Code
+# How to Explore Kotlin Code
 
 Use this guide when you know the Kotlin question you want answered but not the
 files you need to read.
 
 ## Prepare the exact workspace
 
-Open the project root in IntelliJ IDEA or Android Studio and let indexing
-finish. Start Codex at that same root, then check:
+Start Codex at the exact Gradle workspace root. On macOS, start or resume the
+IDEA backend:
 
 ```console
-kast ready --for kotlin
+kast start \
+  --workspace-root "$PWD" \
+  --backend idea \
+  --accept-indexing
 ```
 
-Kast does not silently attach a different checkout. If more than one backend
-is ready for the root, select the intended backend explicitly or close the
-unwanted runtime.
+On Linux or a hosted agent, use `--backend headless` instead. Then inspect the
+selected runtime:
+
+```console
+kast --output json status \
+  --workspace-root "$PWD" \
+  --backend idea
+```
+
+Replace `idea` with `headless` on Linux. Continue when `selected.ready` is
+`true`. Kast does not silently attach a different checkout. For native graph
+queries, also require complete reported coverage or retain the returned
+limitation in the answer.
 
 ## Ask for the declaration first
 

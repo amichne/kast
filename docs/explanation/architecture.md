@@ -16,17 +16,11 @@ Kast separates installation authority from semantic runtime authority. That
 separation lets one verified release serve multiple exact workspaces without
 pretending that installing a binary also proves a compiler is ready.
 
-```mermaid
-flowchart LR
-    codex["Codex + kast@kast"] --> cli["Kast CLI"]
-    cli --> route["Exact-root admission"]
-    route --> idea["IDEA compiler backend"]
-    route --> headless["Headless compiler backend"]
-    idea --> api["Typed analysis contract"]
-    headless --> api
-    api --> projection["Bounded, source-located result"]
-    projection --> codex
-```
+The interactive landscape starts at Kast's public boundary. Select Kast to
+drill into the runtime components, or open the diagram browser to move between
+related views.
+
+<kast-view view-id="system-landscape" browser="true"></kast-view>
 
 ## Setup chooses one release
 
@@ -34,7 +28,7 @@ flowchart LR
 backend artifacts. It verifies the complete release before switching the
 active `current` link. This is persistent machine state.
 
-The Codex marketplace is distributed independently. Its routing skill and
+The Codex marketplace is distributed independently. Its routing skills and
 hooks locate the active CLI; they do not become another semantic backend.
 
 ## Admission chooses one exact workspace
@@ -51,17 +45,7 @@ edits through a runtime attached to a different checkout.
 
 On macOS, admission also owns the normal project-opening path:
 
-```mermaid
-flowchart LR
-    root["Codex exact root"] --> host{"Supported IDE state"}
-    host -->|exact root open| reuse["Reuse project runtime"]
-    host -->|one IDE running| frame["Open a new project frame"]
-    host -->|IDE closed| launch["Background-launch selected app"]
-    frame --> bootstrap["Plugin metadata and Gradle import"]
-    launch --> bootstrap
-    reuse --> state["INDEXING or READY"]
-    bootstrap --> state
-```
+<kast-view view-id="macos-runtime" browser="true"></kast-view>
 
 The IDE application process may host several worktrees, but each canonical
 root has separate metadata, descriptors, leases, sockets, and indexes. A
@@ -84,6 +68,9 @@ It reports `READY` only after Gradle completion, IDEA smart mode, Kotlin
 semantic admission, and Kast reference-index completion. One failed phase
 produces `DEGRADED` with an actionable cause.
 
+`READY` proves that direct compiler operations can run. Persisted semantic
+graph coverage is reported separately and can still be incomplete.
+
 Both backends return the shared Kotlin models defined by `analysis-api`.
 Callers therefore consume typed symbols, relationships, diagnostics, edits,
 and coverage instead of backend-specific PSI objects.
@@ -100,3 +87,6 @@ The repository-scale query path adds generation-pinned coverage, discovery,
 traversal, topology, and context projections over persisted compiler evidence.
 See [Repository intelligence architecture](repository-intelligence.md) for
 that subsystem's authority chain and current operating limits.
+
+For the complete public-command map and its source anchors, continue to
+[How Kast works](../internal/system-flow.md).

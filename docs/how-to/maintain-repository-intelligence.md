@@ -1,6 +1,6 @@
 ---
 type: How-to Guide
-title: Maintain Repository Intelligence
+title: How to Maintain Repository Intelligence
 description: Operate and release Kast's compiler-backed repository query path.
 tags: [maintenance, repository-intelligence, validation, recovery, release]
 code_sources:
@@ -12,7 +12,7 @@ code_sources:
   - path: scripts/release/verify-release-state.sh
 ---
 
-# Maintain Repository Intelligence
+# How to Maintain Repository Intelligence
 
 Use this guide when changing the repository question contract, compiler graph
 production, SQLite persistence, query algorithms, projection, tests,
@@ -22,6 +22,10 @@ benchmarks, or release evidence. It assumes the architecture described in
 The shortest safe maintenance path is to identify the authority that owns the
 behavior, run its focused proof, and broaden validation only when a shared
 contract moved.
+
+For every change, follow **Start → Route → Trace → Prove → Broaden**. Use the
+diagnosis, persistence, benchmark, and release sections only when that
+authority is in scope.
 
 ## Start from the exact worktree
 
@@ -47,9 +51,11 @@ kast developer runtime up \
   --accept-indexing
 ```
 
-An `INDEXING` response is progress, not green proof. Wait until the exact-root
-runtime is `READY` before expecting complete compiler-backed evidence. Do not
-open another IDE process or substitute a runtime attached to another worktree.
+An `INDEXING` response is progress, not green proof. Runtime readiness and
+persisted graph completeness are separate: require `selected.ready` to be
+`true`, then inspect `semanticGraph.state` and its limitations. A runtime can
+be `READY` while graph coverage remains incomplete. Do not open another IDE
+process or substitute a runtime attached to another worktree.
 
 ## Route the change to its owner
 
@@ -94,7 +100,7 @@ Fix a shared invariant at the narrowest common boundary. For example, required
 semantic-table admission belongs in the shared discovery loader, not in each
 CLI view that happens to expose discovery.
 
-## Preserve the authority chain
+## Trace every affected boundary
 
 Before editing, trace the behavior through the stages it actually crosses:
 
@@ -107,10 +113,9 @@ Before editing, trace the behavior through the stages it actually crosses:
 7. Certainty and qualification construction.
 8. Agent projection and output formatting.
 
-A change is incomplete when one of those stages still encodes the old
-contract. Typical examples are adding a request field without projector
-validation, adding a relation without occurrence evidence, or adding a new
-status without updating compact and detailed views.
+A change is incomplete while any affected stage encodes the old contract.
+Trace the complete authority chain described in
+[Repository intelligence architecture](../explanation/repository-intelligence.md).
 
 For Kotlin production changes, trace the other direction as well:
 
@@ -205,7 +210,7 @@ rendered site:
 ```console
 .github/scripts/docs/test-docs-content-contract.sh
 .github/scripts/docs/test-docs-navigation-contract.sh
-zensical build --clean
+zensical build --clean --strict
 ```
 
 Use `git diff --check` and inspect the final path-restricted diff before
@@ -233,16 +238,10 @@ Inspect these fields together:
 - `bounds`, `ordering`, and both continuation fields
 - selected canonical identities and their occurrence evidence
 
-For a context result, the combined count of `contextRelations`,
-`contextFindings`, `unresolvedReferences`, and `ambiguousReferences` must not
-exceed `bounds.results`. The budget admits ambiguity evidence first, followed
-by relations, unresolved references, and findings. If any record is omitted,
-`truncated` must be true.
-
-An `EMPTY` result is definitive only when coverage is complete and execution
-is not truncated. `QUALIFIED_EMPTY` is explicitly non-definitive. Positive
-evidence with incomplete coverage fails before projection with
-`REPOSITORY_COVERAGE_INCOMPLETE`; it must never appear as `ANSWERED`.
+Use the [Codex plugin reference](../reference/codex-plugin.md) to check exact
+result bounds and status meanings. The
+[certainty explanation](../explanation/repository-intelligence.md#certainty-is-a-result-property)
+shows how coverage and truncation constrain an answer.
 
 ## Diagnose by failed authority
 
@@ -282,14 +281,16 @@ kast developer runtime up \
   --accept-indexing
 ```
 
-Then inspect readiness:
+Then inspect runtime and graph state:
 
 ```console
-kast status
-kast ready --for kotlin
+kast --output json status \
+  --workspace-root "$PWD" \
+  --backend idea
 ```
 
-After the runtime is `READY`, refresh the affected Kotlin file through the
+Continue when `selected.ready` is `true`. Use `semanticGraph.limitations` to
+choose targeted refreshes. Refresh the affected Kotlin file through the
 compiler-backed graph operation:
 
 ```console
@@ -313,7 +314,7 @@ unsupported target, then rerun the refresh. If a SQLite write fails, the
 replacement transaction rolls back; resolve the underlying storage error and
 retry the supported operation.
 
-## Review persistence changes carefully
+## Validate persistence invariants
 
 Persistence changes have failure modes that ordinary query tests can miss.
 Check all of these behaviors when editing `SemanticGraphWriter` or schema code:
@@ -327,13 +328,10 @@ Check all of these behaviors when editing `SemanticGraphWriter` or schema code:
 - Any exception rolls back rows and generation together.
 - Rust and Kotlin consume the same source-index schema version.
 
-The shared generation advances for more than semantic graph writes. Inventory
-and reference-index updates can also move it. Never reinterpret it as a
-graph-only counter.
-
-Schema version mismatch is a supported rebuild path. Structural corruption at
-the current version is not equivalent; preserve the failure evidence and
-diagnose the database rather than assuming an automatic rebuild occurred.
+- Verify that the shared generation still covers inventory and reference-index
+  writes; never reinterpret it as a graph-only counter.
+- Test schema-mismatch rebuild separately from current-version corruption.
+  Preserve structural failure evidence instead of assuming a rebuild occurred.
 
 ## Refresh benchmark evidence intentionally
 

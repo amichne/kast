@@ -1,6 +1,6 @@
 ---
 type: How-to Guide
-title: Plan a Safe Kotlin Edit
+title: How to Plan a Safe Kotlin Edit
 description: Use exact symbol identity, impact evidence, and diagnostics before accepting a Kotlin change.
 tags: [kotlin, refactoring, rename, diagnostics, impact]
 code_sources:
@@ -9,7 +9,7 @@ code_sources:
   - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
 ---
 
-# Plan a Safe Kotlin Edit
+# How to Plan a Safe Kotlin Edit
 
 Use this guide for renames or scoped declaration changes where matching text is
 not enough to identify the target.

@@ -1,0 +1,26 @@
+.md-typeset__table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.md-typeset__table table:not([class]) {
+  min-width: 40rem;
+  width: 100%;
+}
+
+.md-typeset__table th,
+.md-typeset__table td {
+  vertical-align: top;
+}
+
+.md-typeset__table code {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+kast-view {
+  display: block;
+  margin-block: 1.5rem 2rem;
+}
