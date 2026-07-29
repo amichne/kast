@@ -1,7 +1,19 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.api.contract.ByteOffset
+import io.github.amichne.kast.api.contract.FqName
+import io.github.amichne.kast.api.contract.LineNumber
 import io.github.amichne.kast.api.contract.NonBlankString
+import io.github.amichne.kast.api.contract.result.SemanticGraphFileStatus
+import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
+import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
+import io.github.amichne.kast.api.contract.result.SemanticGraphSha256
+import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbol
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
+import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
 import io.github.amichne.kast.idea.diagnostics.KastBackendUiState
+import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
 import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
@@ -122,6 +134,118 @@ class KastExplorerModelTest {
     }
 
     @Test
+    fun `semantic graph matches the name offset inside the declaration range`() {
+        val sourcePath = SemanticGraphSourcePath.parse("Example.kt")
+        val selected = semanticSymbol(
+            key = "class:Example",
+            name = "Example",
+            fqName = "io.demo.Example",
+            path = sourcePath,
+            startOffset = 0,
+            endOffset = 20,
+        )
+        val target = semanticSymbol(
+            key = "function:target",
+            name = "target",
+            fqName = "io.demo.target",
+            path = sourcePath,
+            startOffset = 22,
+            endOffset = 40,
+        )
+        val declaration = declaration("io.demo.Example", "Example.kt", 6)
+
+        SqliteSourceIndexStore(tempDir).use { store ->
+            store.ensureSchema()
+            store.replaceSemanticGraphFiles(
+                listOf(
+                    semanticUpdate(
+                        path = sourcePath,
+                        symbols = listOf(selected, target),
+                        relations = listOf(semanticRelation(selected, target)),
+                    ),
+                ),
+            )
+
+            val inspection = store.explore(
+                tempDir,
+                KastExplorerRequest.Inspect(KastExplorerSearchItem(declaration)),
+            ) as KastExplorerResult.Inspection
+
+            assertEquals(
+                listOf("io.demo.target"),
+                inspection.value.relations.map { relation -> relation.title.value },
+            )
+        }
+    }
+
+    @Test
+    fun `semantic graph falls back to the projected constructor target`() {
+        val sourcePath = SemanticGraphSourcePath.parse("Factory.kt")
+        val targetPath = SemanticGraphSourcePath.parse("Target.kt")
+        val selected = semanticSymbol(
+            key = "function:factory",
+            name = "factory",
+            fqName = "io.demo.factory",
+            path = sourcePath,
+            startOffset = 0,
+            endOffset = 20,
+        )
+        val projectedTarget = semanticSymbol(
+            key = "class:Target",
+            name = "Target",
+            fqName = "io.demo.Target",
+            path = targetPath,
+            startOffset = 0,
+            endOffset = 20,
+        )
+        val resolvedConstructor = semanticSymbol(
+            key = "constructor:Target",
+            name = "Target",
+            fqName = "io.demo.Target",
+            path = targetPath,
+            startOffset = 10,
+            endOffset = 18,
+        )
+
+        SqliteSourceIndexStore(tempDir).use { store ->
+            store.ensureSchema()
+            store.replaceSemanticGraphFiles(
+                listOf(
+                    semanticUpdate(
+                        path = sourcePath,
+                        symbols = listOf(selected),
+                        boundarySymbols = listOf(projectedTarget),
+                        relations = listOf(
+                            semanticRelation(
+                                selected,
+                                projectedTarget,
+                                resolvedTargetKey = resolvedConstructor.canonicalKey,
+                            ),
+                        ),
+                    ),
+                    semanticUpdate(
+                        path = targetPath,
+                        symbols = listOf(projectedTarget, resolvedConstructor),
+                        relations = emptyList(),
+                    ),
+                ),
+            )
+
+            val inspection = store.explore(
+                tempDir,
+                KastExplorerRequest.Inspect(
+                    KastExplorerSearchItem(declaration("io.demo.factory", "Factory.kt", 0)),
+                ),
+            ) as KastExplorerResult.Inspection
+
+            assertEquals(
+                listOf("io.demo.Target"),
+                inspection.value.relations.map { relation -> relation.title.value },
+            )
+        }
+    }
+
+    @Test
     fun `overview results are independent from interactive request ordering`() {
         assertTrue(
             shouldAcceptExplorerResult(
@@ -165,5 +289,56 @@ class KastExplorerModelTest {
         declarationOffset = offset,
         modulePath = ":demo",
         sourceSet = "main",
+    )
+
+    private fun semanticSymbol(
+        key: String,
+        name: String,
+        fqName: String,
+        path: SemanticGraphSourcePath,
+        startOffset: Int,
+        endOffset: Int,
+    ): SemanticGraphSymbol = SemanticGraphSymbol(
+        canonicalKey = SemanticGraphSymbolKey.parse(key),
+        kind = SemanticGraphSymbolKind.FUNCTION,
+        name = NonBlankString(name),
+        fqName = FqName(fqName),
+        path = path,
+        startOffset = ByteOffset(startOffset),
+        endOffset = ByteOffset(endOffset),
+        line = LineNumber(1),
+    )
+
+    private fun semanticRelation(
+        source: SemanticGraphSymbol,
+        target: SemanticGraphSymbol,
+        resolvedTargetKey: SemanticGraphSymbolKey? = null,
+    ): SemanticGraphRelation = SemanticGraphRelation(
+        sourceKey = source.canonicalKey,
+        targetKey = target.canonicalKey,
+        resolvedTargetKey = resolvedTargetKey,
+        kind = SemanticGraphRelationKind.CALLS,
+        sourcePath = source.path,
+        startOffset = source.startOffset,
+        endOffset = source.endOffset,
+        line = LineNumber(1),
+    )
+
+    private fun semanticUpdate(
+        path: SemanticGraphSourcePath,
+        symbols: List<SemanticGraphSymbol>,
+        boundarySymbols: List<SemanticGraphSymbol> = emptyList(),
+        relations: List<SemanticGraphRelation>,
+    ): SemanticGraphFileIndexUpdate = SemanticGraphFileIndexUpdate(
+        path = path,
+        packageName = "io.demo",
+        moduleName = ":demo",
+        contentHash = SemanticGraphSha256.parse("a".repeat(64)),
+        status = SemanticGraphFileStatus.REFRESHED,
+        diagnostics = emptyList(),
+        types = emptyList(),
+        symbols = symbols,
+        boundarySymbols = boundarySymbols,
+        relations = relations,
     )
 }
