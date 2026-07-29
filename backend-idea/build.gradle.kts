@@ -102,6 +102,13 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.0")
 }
 
+configurations.named("intellijPlatformRuntimeClasspath") {
+    exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-core-jvm")
+    exclude(group = "org.jetbrains.kotlinx", module = "kotlinx-coroutines-jdk8")
+}
+
 val headlessRuntimeElements: Configuration by configurations.creating {
     isCanBeConsumed = true
     isCanBeResolved = false
@@ -183,6 +190,7 @@ tasks.register<VerifyPluginXmlPresentTask>("verifyPluginXmlPresent") {
     distributionsDirectory.set(layout.buildDirectory.dir("distributions"))
     expectedPluginId.set("io.github.amichne.kast")
     rejectedPluginId.set("io.github.amichne.kast.idea")
+    forbiddenBundledJarPrefixes.set(listOf("kotlin-stdlib-", "kotlinx-coroutines-"))
 }
 
 tasks.withType<Test>().configureEach {
