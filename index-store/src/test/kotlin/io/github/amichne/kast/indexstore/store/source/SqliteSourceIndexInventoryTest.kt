@@ -169,6 +169,15 @@ class SqliteSourceIndexInventoryTest {
     }
 
     @Test
+    fun `module progress exposes no manual completion mutations`() {
+        val methodNames = SqliteSourceIndexStore::class.java.methods.map { method -> method.name }
+
+        assertFalse(methodNames.contains("initializeModuleProgress"))
+        assertFalse(methodNames.contains("markModuleIndexing"))
+        assertFalse(methodNames.contains("markModuleComplete"))
+    }
+
+    @Test
     fun `symbol reference entry points reject Kotlin script paths`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
 
