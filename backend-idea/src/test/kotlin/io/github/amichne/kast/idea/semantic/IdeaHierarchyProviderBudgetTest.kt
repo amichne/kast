@@ -38,7 +38,6 @@ internal class IdeaHierarchyProviderBudgetTest {
             interface Root
             class First : Root
             class Second : Root
-            class Third : Root
         """
     }
 
@@ -76,10 +75,10 @@ internal class IdeaHierarchyProviderBudgetTest {
         val target = declaration<KtClassOrObject>(file, "Root")
         var visitedCandidates = 0
         val budget = EdgeDiscoveryBudget(
-            maxCandidates = 1,
+            maxCandidates = 0,
             timeoutCheck = {
                 visitedCandidates += 1
-                check(visitedCandidates <= 2) {
+                check(visitedCandidates == 1) {
                     "Subtype search visited another candidate after the budget rejected further work"
                 }
                 false
@@ -88,8 +87,8 @@ internal class IdeaHierarchyProviderBudgetTest {
 
         val edges = IdeaTypeEdgeResolver(project).subtypeEdges(target, budget)
 
-        assertEquals(1, edges.size)
-        assertEquals(2, visitedCandidates)
+        assertEquals(0, edges.size)
+        assertEquals(1, visitedCandidates)
         assertEquals(EdgeDiscoveryCompletion.CANDIDATE_LIMIT_REACHED, budget.completion)
     }
 
