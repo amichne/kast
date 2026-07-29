@@ -6,12 +6,17 @@ import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleProjectIdentity
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleSourceSetIdentity
+import io.github.amichne.kast.indexstore.api.index.FileContentHash
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
+import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.GradleProjectPath
 import io.github.amichne.kast.indexstore.api.index.GradleSourceSetName
 import io.github.amichne.kast.indexstore.api.index.IndexedPackageEvidence
 import io.github.amichne.kast.indexstore.api.index.IndexedPackageUnprovenReason
 import io.github.amichne.kast.indexstore.api.index.WorkspaceRelativeGradleBuildRoot
+import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import io.github.amichne.kast.indexstore.store.SourceIndexPageReadObserver
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -47,8 +52,17 @@ class SqliteSourceIndexProvenanceTest {
         val producer = ProducerVersion.parse("test-producer")
         SqliteSourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
-            store.initializeModuleProgress(mapOf("main" to 1))
-            store.markModuleComplete("main", 1)
+            val path = workspaceRoot.resolve("A.kt").toAbsolutePath().normalize().toString()
+            store.reconcileFileInventory(
+                listOf(
+                    FileInventoryEntry(path, 1, FileContentHash.parse("a".repeat(64)), "main", "main"),
+                ),
+                FileStageVersions.CURRENT,
+            )
+            val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).single()
+            store.commitRelationshipBatch(
+                listOf(RelationshipFileStageUpdate(work, emptyList(), emptyList())),
+            )
 
             val exact = store.exportSnapshotDatabase(workspaceRoot.resolve("exact.db"), tree, producer)
             assertTrue(exact.proves(key(tree, producer)))

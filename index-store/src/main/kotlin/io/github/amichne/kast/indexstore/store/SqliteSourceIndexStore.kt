@@ -107,14 +107,6 @@ class SqliteSourceIndexStore private constructor(
         limitPerRoot: Int? = null,
     ): Map<Path, List<Path>> = inventory.filesBySourceRoot(sourceRoots, limitPerRoot)
 
-    fun initializeModuleProgress(modules: Map<String, Int>) =
-        inventory.initializeModuleProgress(modules)
-
-    fun markModuleIndexing(moduleName: String) = inventory.markModuleIndexing(moduleName)
-
-    fun markModuleComplete(moduleName: String, fileCount: Int) =
-        inventory.markModuleComplete(moduleName, fileCount)
-
     fun moduleIndexStatus(moduleName: String): String? = inventory.moduleIndexStatus(moduleName)
 
     fun completedModules(): Set<String> = inventory.completedModules()

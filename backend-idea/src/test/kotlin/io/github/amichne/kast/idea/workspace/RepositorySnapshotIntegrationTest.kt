@@ -6,6 +6,11 @@ import io.github.amichne.kast.idea.snapshot.gitWorkspaceScope
 import io.github.amichne.kast.idea.snapshot.stableClasspathRootUrl
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.indexstore.api.index.FileContentHash
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
+import io.github.amichne.kast.indexstore.api.index.FileStageVersions
+import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.indexstore.snapshot.RepositorySnapshotStore
@@ -104,8 +109,23 @@ class RepositorySnapshotIntegrationTest {
 
         SqliteSourceIndexStore(workspace).use { store ->
             store.ensureSchema()
-            store.initializeModuleProgress(mapOf("main" to 1))
-            store.markModuleComplete("main", 1)
+            val path = workspace.resolve("A.kt").toAbsolutePath().normalize().toString()
+            store.reconcileFileInventory(
+                listOf(
+                    FileInventoryEntry(
+                        path,
+                        1,
+                        FileContentHash.parse(sha256(workspace.resolve("A.kt"))),
+                        "main",
+                        "main",
+                    ),
+                ),
+                FileStageVersions.CURRENT,
+            )
+            val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).single()
+            store.commitRelationshipBatch(
+                listOf(RelationshipFileStageUpdate(work, emptyList(), emptyList())),
+            )
             val result = RepositorySnapshotCoordinator(
                 workspaceRoot = workspace,
                 repositoryDirectory = repositoryDirectory,

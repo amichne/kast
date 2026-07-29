@@ -6,7 +6,11 @@ import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleProjectIdentity
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleSourceSetIdentity
+import io.github.amichne.kast.indexstore.api.index.FileContentHash
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
+import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.GradleProjectPath
 import io.github.amichne.kast.indexstore.api.index.GradleSourceSetName
 import io.github.amichne.kast.indexstore.api.index.IndexedPackageEvidence
@@ -19,6 +23,7 @@ import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import io.github.amichne.kast.indexstore.snapshot.GitObjectId
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
+import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -143,27 +148,38 @@ class SqliteSourceIndexInventoryTest {
     @Test
     fun `module index progress records pending indexing and completion state`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val appA = writeKotlinFile(normalized.resolve("app/A.kt")).toString()
+        val appB = writeKotlinFile(normalized.resolve("app/B.kt")).toString()
+        val lib = writeKotlinFile(normalized.resolve("lib/Lib.kt")).toString()
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
-
-            store.initializeModuleProgress(
-                mapOf(
-                    ":app[main]" to 2,
-                    ":lib[main]" to 1,
+            store.reconcileFileInventory(
+                listOf(
+                    FileInventoryEntry(appA, 1, FileContentHash.parse("a".repeat(64)), ":app[main]", "main"),
+                    FileInventoryEntry(appB, 1, FileContentHash.parse("b".repeat(64)), ":app[main]", "main"),
+                    FileInventoryEntry(lib, 1, FileContentHash.parse("c".repeat(64)), ":lib[main]", "main"),
                 ),
+                FileStageVersions.CURRENT,
             )
 
             assertEquals("PENDING", store.moduleIndexStatus(":app[main]"))
             assertEquals(emptySet<String>(), store.completedModules())
 
-            store.markModuleIndexing(":app[main]")
+            val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).associateBy { pending -> pending.path }
+            store.commitRelationshipBatch(
+                listOf(RelationshipFileStageUpdate(work.getValue(appA), emptyList(), emptyList())),
+            )
             assertEquals("INDEXING", store.moduleIndexStatus(":app[main]"))
 
-            store.markModuleComplete(":app[main]", fileCount = 2)
+            store.commitRelationshipBatch(
+                listOf(RelationshipFileStageUpdate(work.getValue(appB), emptyList(), emptyList())),
+            )
             assertEquals("COMPLETE", store.moduleIndexStatus(":app[main]"))
             assertEquals(setOf(":app[main]"), store.completedModules())
 
-            store.markModuleComplete(":lib[main]", fileCount = 1)
+            store.commitRelationshipBatch(
+                listOf(RelationshipFileStageUpdate(work.getValue(lib), emptyList(), emptyList())),
+            )
             assertEquals(setOf(":app[main]", ":lib[main]"), store.completedModules())
         }
     }
