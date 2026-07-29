@@ -4,9 +4,19 @@ import com.intellij.openapi.application.readAction
 import com.intellij.testFramework.junit5.TestApplication
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.SearchScope
+import io.github.amichne.kast.api.contract.SymbolKind
+import io.github.amichne.kast.api.contract.TypeHierarchyDirection
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
+import io.github.amichne.kast.api.contract.result.CallRelationsResult
+import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
 import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
 import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
+import io.github.amichne.kast.api.contract.result.ResultCardinality
+import io.github.amichne.kast.api.contract.skill.KastCallersQuery
+import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
+import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
+import io.github.amichne.kast.api.contract.skill.WrapperCallDirection
+import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
@@ -23,28 +33,95 @@ import org.junit.jupiter.api.Test
 internal class KastPluginBackendContractTestPersistedSearchScope : KastPluginBackendContractTestFixture() {
     @Test
     fun `pending dependent module prevents exhaustive persisted reference coverage`() = runBlocking {
+        withPendingDependentScope { inputs, backend ->
+            val result = backend.findReferences(
+                ReferencesQuery(
+                    position = FilePosition(inputs.declarationPath, inputs.declarationOffset),
+                ),
+            )
+
+            val evidence = result.evidence as RelationshipResultEvidence.Limited
+            assertTrue(RelationshipSearchLimitation.INDEX_NOT_READY in evidence.coverage.limitations)
+            assertFalse(result.searchScope?.exhaustive ?: true)
+            assertEquals(SearchScope.CandidateCoverage.PARTIAL, result.searchScope?.candidateCoverage)
+        }
+    }
+
+    @Test
+    fun `pending dependent module prevents exact call admission`() = runBlocking {
+        withPendingDependentScope { inputs, backend ->
+            val result = backend.callRelations(
+                KastCallersQuery(
+                    workspaceRoot = inputs.workspaceRoot.toString(),
+                    selector = inputs.callableSelector,
+                    direction = WrapperCallDirection.INCOMING,
+                    depth = 1,
+                    maxResults = 4,
+                ),
+            )
+
+            val limited = result as CallRelationsResult.Limited
+            assertTrue(limited.evidence.cardinality is ResultCardinality.KnownMinimum)
+            assertTrue(RelationshipSearchLimitation.INDEX_NOT_READY in limited.evidence.coverage.limitations)
+        }
+    }
+
+    @Test
+    fun `pending dependent module prevents exact hierarchy admission`() = runBlocking {
+        withPendingDependentScope { inputs, backend ->
+            val result = backend.hierarchyRelations(
+                KastHierarchyQuery(
+                    workspaceRoot = inputs.workspaceRoot.toString(),
+                    selector = inputs.typeSelector,
+                    direction = TypeHierarchyDirection.SUBTYPES,
+                    depth = 1,
+                    maxResults = 4,
+                ),
+            )
+
+            val limited = result as HierarchyRelationsResult.Limited
+            assertTrue(limited.evidence.cardinality is ResultCardinality.KnownMinimum)
+            assertTrue(RelationshipSearchLimitation.INDEX_NOT_READY in limited.evidence.coverage.limitations)
+        }
+    }
+
+    private suspend fun withPendingDependentScope(
+        block: suspend (PersistedSearchScopeInputs, KastPluginBackend) -> Unit,
+    ) {
         ensureInternalVisibilityProjectReady()
         val inputs = readAction {
             val declaration = sampleFileFixture.get()
+            val typeDeclaration = hierarchyFileFixture.get()
             val dependent = internalDependentFileFixture.get()
+            val declarationPath = declaration.virtualFile.path
+            val declarationOffset = declaration.text.indexOf("greet")
             PersistedSearchScopeInputs(
-                workspaceRoot = commonWorkspaceRoot(
-                    declaration.virtualFile.path,
-                    dependent.virtualFile.path,
+                workspaceRoot = commonWorkspaceRoot(declarationPath, dependent.virtualFile.path),
+                declarationPath = declarationPath,
+                declarationOffset = declarationOffset,
+                callableSelector = KastExactSymbolSelector(
+                    fqName = "demo.greet",
+                    declarationFile = declarationPath,
+                    declarationStartOffset = declarationOffset,
+                    kind = SymbolKind.FUNCTION,
                 ),
-                declarationPath = declaration.virtualFile.path,
-                declarationOffset = declaration.text.indexOf("greet"),
+                typeSelector = KastExactSymbolSelector(
+                    fqName = "demo.hierarchy.Shape",
+                    declarationFile = typeDeclaration.virtualFile.path,
+                    declarationStartOffset = typeDeclaration.text.indexOf("Shape"),
+                    kind = SymbolKind.INTERFACE,
+                ),
                 declaringModulePaths = listOf(
-                    declaration.virtualFile.path,
+                    declarationPath,
                     sampleUsageFileFixture.get().virtualFile.path,
-                    hierarchyFileFixture.get().virtualFile.path,
+                    typeDeclaration.virtualFile.path,
                     internalDeclarationFileFixture.get().virtualFile.path,
                 ),
                 dependentPath = dependent.virtualFile.path,
             )
         }
-
-        SqliteSourceIndexStore(inputs.workspaceRoot).use { store ->
+        val store = SqliteSourceIndexStore(inputs.workspaceRoot)
+        try {
             store.ensureSchema()
             val declaringEntries = inputs.declaringModulePaths.mapIndexed { index, path ->
                 inventory(path, hashCharacter = 'a' + index, moduleName = ":main[main]")
@@ -69,20 +146,15 @@ internal class KastPluginBackendContractTestPersistedSearchScope : KastPluginBac
                     )
                 },
             )
-
-            val result = backend(
-                workspaceRoot = inputs.workspaceRoot,
-                relationshipCoverageAuthority = relationshipCoverageAuthority(sourceIndexStore = store),
-            ).findReferences(
-                ReferencesQuery(
-                    position = FilePosition(inputs.declarationPath, inputs.declarationOffset),
+            block(
+                inputs,
+                backend(
+                    workspaceRoot = inputs.workspaceRoot,
+                    relationshipCoverageAuthority = relationshipCoverageAuthority(sourceIndexStore = store),
                 ),
             )
-
-            val evidence = result.evidence as RelationshipResultEvidence.Limited
-            assertTrue(RelationshipSearchLimitation.INDEX_NOT_READY in evidence.coverage.limitations)
-            assertFalse(result.searchScope?.exhaustive ?: true)
-            assertEquals(SearchScope.CandidateCoverage.PARTIAL, result.searchScope?.candidateCoverage)
+        } finally {
+            store.close()
         }
     }
 
@@ -102,6 +174,8 @@ internal class KastPluginBackendContractTestPersistedSearchScope : KastPluginBac
         val workspaceRoot: java.nio.file.Path,
         val declarationPath: String,
         val declarationOffset: Int,
+        val callableSelector: KastExactSymbolSelector,
+        val typeSelector: KastExactSymbolSelector,
         val declaringModulePaths: List<String>,
         val dependentPath: String,
     )
