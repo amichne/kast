@@ -4,6 +4,7 @@ package io.github.amichne.kast.idea.backend.relationships
 
 import com.intellij.openapi.application.readAction
 import com.intellij.psi.PsiElement
+import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.result.ImplementationRelation
 import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
@@ -78,6 +79,7 @@ internal suspend fun KastPluginBackend.implementationsOperation(
 internal suspend fun KastPluginBackend.implementationRelationsOperation(
     query: KastImplementationsQuery,
 ): ImplementationRelationsResult = withContext(readDispatcher) {
+    val searchScope = GlobalSearchScope.projectScope(project)
     val continuationQuery = RelationshipContinuationStore.ImplementationQuery(
         selector = query.selector,
         limit = query.maxResults,
@@ -87,7 +89,11 @@ internal suspend fun KastPluginBackend.implementationRelationsOperation(
         IdeaTelemetryScope.IMPLEMENTATIONS,
         "kast.idea.implementationRelations.admit",
     ) {
-        completeRelationshipCoverageAdmission(query.selector, RelationshipRootKind.TYPE)
+        completeRelationshipCoverageAdmission(
+            query.selector,
+            RelationshipRootKind.TYPE,
+            searchScope,
+        )
     }
     val generation = when (initialAdmission) {
         is CompleteRelationshipCoverageAdmission.Proven -> initialAdmission.generation
@@ -105,6 +111,7 @@ internal suspend fun KastPluginBackend.implementationRelationsOperation(
                 val commit = completeRelationshipCoverageAdmission(
                     query.selector,
                     RelationshipRootKind.TYPE,
+                    searchScope,
                 )
             ) {
                 is CompleteRelationshipCoverageAdmission.Limited ->
@@ -148,6 +155,7 @@ internal suspend fun KastPluginBackend.implementationRelationsOperation(
             val commit = completeRelationshipCoverageAdmission(
                 query.selector,
                 RelationshipRootKind.TYPE,
+                searchScope,
                 requiredGeneration = generation,
                 knownMinimumCount = records.size,
             )

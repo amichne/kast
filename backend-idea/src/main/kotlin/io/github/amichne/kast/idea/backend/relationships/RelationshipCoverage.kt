@@ -166,6 +166,7 @@ internal fun KastPluginBackend.limitedReferenceEvidence(
 internal fun KastPluginBackend.completeRelationshipCoverageAdmission(
         selector: KastExactSymbolSelector,
         rootKind: RelationshipRootKind,
+        searchScope: GlobalSearchScope,
         requiredGeneration: Long? = null,
         knownMinimumCount: Int = 0,
     ): CompleteRelationshipCoverageAdmission {
@@ -177,7 +178,7 @@ internal fun KastPluginBackend.completeRelationshipCoverageAdmission(
         }
         val coverage = relationshipCoverageAuthority.assess(
             RelationshipCoverageAuthority.FamilyCompletion.COMPLETE,
-            selector.declarationFile,
+            searchScope,
         )
         val generation = psiGeneration()
         if (requiredGeneration != null && generation != requiredGeneration) {
