@@ -88,6 +88,54 @@ fn agent_ready_uses_the_idea_plugin_without_a_global_skill() {
 
 #[cfg(target_os = "macos")]
 #[test]
+fn kotlin_ready_accepts_an_installed_idea_plugin_backend() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+
+    let active_binary = write_active_kast_for_test(&home, &config_home);
+    let receipt_path = install_manifest_path(&home);
+    let mut receipt: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&receipt_path).expect("install receipt"))
+            .expect("install receipt JSON");
+    receipt["profile"] = serde_json::json!("macos-idea");
+    receipt["components"] = serde_json::json!(["cli", "idea-plugin"]);
+    std::fs::write(
+        receipt_path,
+        serde_json::to_vec_pretty(&receipt).expect("install receipt JSON"),
+    )
+    .expect("install receipt");
+    write_macos_plugin_workspace_metadata_for_cli(
+        &workspace,
+        &active_binary,
+        env!("CARGO_PKG_VERSION"),
+    );
+
+    let ready = kast_at(&active_binary, &home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "ready",
+            "--for",
+            "kotlin",
+            "--workspace-root",
+        ])
+        .arg(&workspace)
+        .output()
+        .expect("Kotlin ready");
+
+    assert!(
+        ready.status.success(),
+        "IDEA plugin installation should satisfy Kotlin readiness: stdout={}, stderr={}",
+        String::from_utf8_lossy(&ready.stdout),
+        String::from_utf8_lossy(&ready.stderr),
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
 fn workspace_resources_do_not_affect_machine_readiness() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
