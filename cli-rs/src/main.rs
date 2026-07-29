@@ -126,6 +126,7 @@ fn invoked_as_kagent() -> bool {
 struct KAgentError<'a> {
     error: &'a str,
     message: &'a str,
+    next: &'static str,
 }
 
 fn print_kagent_error(error: &CliError) -> Result<()> {
@@ -133,33 +134,31 @@ fn print_kagent_error(error: &CliError) -> Result<()> {
         &KAgentError {
             error: error.code,
             message: &error.message,
+            next: "Run `kagent --help` for valid commands and arguments.",
         },
         OutputFormat::Toon,
     )
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct KAgentHome {
     bin: String,
     description: &'static str,
     root: String,
-    state: &'static str,
-    next: Vec<&'static str>,
+    ready: bool,
+    runtime: String,
+    reference_index_ready: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limitation: Option<String>,
+    next: Vec<String>,
 }
 
 fn run_kagent(cli: KAgentCli) -> Result<i32> {
     let Some(command) = cli.command else {
         let root = config::resolve_workspace_root(None)?;
-        output::print_structured(
-            &KAgentHome {
-                bin: display_invoked_executable(),
-                description: "Compiler-backed Kotlin knowledge and changes for coding agents.",
-                root: root.display().to_string(),
-                state: "UNKNOWN",
-                next: vec!["kagent up", "kagent refresh"],
-            },
-            OutputFormat::Toon,
-        )?;
+        let home = kagent_home(root)?;
+        output::print_structured(&home, OutputFormat::Toon)?;
         return Ok(0);
     };
     Err(CliError::new(
@@ -169,6 +168,57 @@ fn run_kagent(cli: KAgentCli) -> Result<i32> {
             kagent_command_name(&command)
         ),
     ))
+}
+
+fn kagent_home(root: PathBuf) -> Result<KAgentHome> {
+    let readiness = self_mgmt::doctor(cli::ReadyTarget::Agent, Some(&root))?;
+    let mut runtime_state = "DOWN".to_string();
+    let mut reference_index_ready = false;
+    let mut limitation = readiness.issues.first().cloned();
+    if readiness.ok {
+        match runtime::workspace_status(cli::RuntimeArgs {
+            workspace_root: Some(root.clone()),
+            ..default_runtime_args()
+        }) {
+            Ok(status) => {
+                if let Some(selected) = status.selected {
+                    reference_index_ready = selected
+                        .runtime_status
+                        .as_ref()
+                        .is_some_and(|runtime| runtime.reference_index_ready);
+                    runtime_state = selected
+                        .runtime_status
+                        .as_ref()
+                        .map(|runtime| format!("{:?}", runtime.state).to_uppercase())
+                        .unwrap_or_else(|| "UNREACHABLE".to_string());
+                    limitation = selected.error_message;
+                }
+            }
+            Err(error) => {
+                runtime_state = "BLOCKED".to_string();
+                limitation = Some(error.message);
+            }
+        }
+    }
+    let ready = runtime_state == "READY" && reference_index_ready;
+    let next = if ready {
+        vec![
+            "kagent refresh".to_string(),
+            "kagent symbol find <query>".to_string(),
+        ]
+    } else {
+        vec!["kagent up".to_string()]
+    };
+    Ok(KAgentHome {
+        bin: display_invoked_executable(),
+        description: "Compiler-backed Kotlin knowledge and changes for coding agents.",
+        root: root.display().to_string(),
+        ready,
+        runtime: runtime_state,
+        reference_index_ready,
+        limitation,
+        next,
+    })
 }
 
 fn kagent_command_name(command: &KAgentCommand) -> &'static str {

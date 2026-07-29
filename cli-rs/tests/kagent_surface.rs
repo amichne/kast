@@ -58,7 +58,7 @@ fn home_reports_live_workspace_state_without_protocol_cruft() {
     assert!(stdout.contains("root:"), "{stdout}");
     assert!(stdout.contains("ready:"), "{stdout}");
     assert!(stdout.contains("referenceIndexReady:"), "{stdout}");
-    assert!(stdout.contains("next:"), "{stdout}");
+    assert!(stdout.contains("next["), "{stdout}");
     for cruft in ["state: UNKNOWN", "schemaVersion", "ok:", "method:"] {
         assert!(!stdout.contains(cruft), "leaked {cruft}: {stdout}");
     }
@@ -73,7 +73,10 @@ fn regular_kast_surface_is_unchanged() {
     assert!(output.status.success(), "{output:?}");
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    assert!(stdout.contains("Usage: kast [OPTIONS] [COMMAND]"), "{stdout}");
+    assert!(
+        stdout.contains("Usage: kast [OPTIONS] [COMMAND]"),
+        "{stdout}"
+    );
     for command in ["setup", "developer", "rpc", "agent"] {
         assert!(stdout.contains(command), "missing {command}: {stdout}");
     }
