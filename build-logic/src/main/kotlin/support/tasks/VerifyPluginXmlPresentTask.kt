@@ -11,9 +11,17 @@ import java.io.File
 import java.util.jar.JarInputStream
 import java.util.zip.ZipFile
 
-internal fun selectPluginZip(distributionsDirectory: File): File =
-    distributionsDirectory.listFiles()?.firstOrNull { it.name.endsWith(".zip") }
-        ?: error("No plugin zip found in $distributionsDirectory")
+internal fun selectPluginZip(distributionsDirectory: File): File {
+    val pluginZips = distributionsDirectory.listFiles()
+        ?.filter { it.isFile && it.name.endsWith(".zip") }
+        ?.sortedBy(File::getName)
+        .orEmpty()
+    check(pluginZips.size == 1) {
+        "Expected exactly one plugin zip in $distributionsDirectory, " +
+            "found ${pluginZips.size}: ${pluginZips.joinToString { it.name }}"
+    }
+    return pluginZips.single()
+}
 
 abstract class VerifyPluginXmlPresentTask : DefaultTask() {
     init {
