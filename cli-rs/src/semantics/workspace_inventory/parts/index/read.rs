@@ -62,6 +62,7 @@ fn read_transaction(
     verify_required_structure(transaction)?;
     let generation = read_generation(transaction)?;
     let (module_progress, invalid_progress_count) = read_module_progress(transaction)?;
+    let source_file_stage_progress = read_source_file_stage_progress(transaction)?;
     let pending_count = read_pending_count(transaction)?;
     let stamp = SourceIndexSnapshotStamp::new(
         generation,
@@ -238,13 +239,17 @@ fn read_transaction(
             usize::try_from(stamp.pending_count().value()).unwrap_or(usize::MAX),
         );
     }
-    if stamp.module_progress().is_empty()
+    let relationship_progress_incomplete = stamp.module_progress().is_empty()
         || stamp.module_progress().iter().any(|progress| {
             progress.status() != super::model::SourceIndexProgressStatus::Complete
                 || progress.indexed_file_count() != progress.total_file_count()
-        })
-    {
+        });
+    let source_progress_incomplete =
+        source_file_stage_progress == SourceFileStageProgress::Incomplete;
+    if source_progress_incomplete {
         candidate_partial = true;
+    }
+    if source_progress_incomplete || relationship_progress_incomplete {
         increment_limitation(
             &mut limitations,
             WorkspaceInventoryLimitationCode::SourceIndexProgressIncomplete,
