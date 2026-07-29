@@ -58,6 +58,21 @@ class KastExplorerModelTest {
     }
 
     @Test
+    fun `current symbol preserves the exact caret declaration offset`() {
+        val persisted = KastExplorerSearchItem(
+            declaration("io.demo.overloaded", "Overloads.kt", 10),
+        )
+        val current = KastCurrentSymbol(
+            fqName = FqName("io.demo.overloaded"),
+            navigationTarget = KastSourceTarget(tempDir.resolve("Overloads.kt"), 40),
+        )
+
+        val selected = preferExactCurrentSymbol(listOf(persisted), current).single()
+
+        assertEquals(current.navigationTarget, selected.navigationTarget)
+    }
+
+    @Test
     fun `inspection separates indexed and semantic graph evidence`() {
         val model = KastExplorerModel()
         val selected = KastExplorerSearchItem(declaration("io.demo.GraphExplorer", "GraphExplorer.kt", 42))
@@ -94,6 +109,22 @@ class KastExplorerModelTest {
             model.inspection?.sections?.map(KastExplorerSection::layer),
         )
         assertEquals(type, model.inspection?.sections?.last()?.relations?.single()?.navigationTarget)
+    }
+
+    @Test
+    fun `empty search clears the previous inspection`() {
+        val model = KastExplorerModel()
+        val selected = KastExplorerSearchItem(declaration("io.demo.GraphExplorer", "GraphExplorer.kt", 42))
+        model.accept(
+            KastExplorerResult.Inspection(
+                KastExplorerInspection(selected, emptyList()),
+            ),
+        )
+
+        model.accept(KastExplorerResult.SearchResults(emptyList()))
+
+        assertTrue(model.searchItems.isEmpty())
+        assertNull(model.inspection)
     }
 
     @Test
