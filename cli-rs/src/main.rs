@@ -53,7 +53,7 @@ mod validate;
 mod workspace_inventory;
 
 use clap::{CommandFactory, Parser};
-use cli::{Cli, Command, GenerateCommand, OutputFormat};
+use cli::{Cli, Command, GenerateCommand, KAgentCli, KAgentCommand, OutputFormat};
 use error::{CliError, Result};
 use serde::Serialize;
 use std::env;
@@ -65,6 +65,15 @@ const AGENT_JSON_DEPRECATION_WARNING: &str =
     "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.";
 
 fn main() {
+    let exit_code = if invoked_as_kagent() {
+        kagent_main()
+    } else {
+        kast_main()
+    };
+    std::process::exit(exit_code);
+}
+
+fn kast_main() -> i32 {
     let exit_code = match parse_cli() {
         Ok(Some(cli)) => {
             warn_for_deprecated_agent_json(&cli);
@@ -83,7 +92,109 @@ fn main() {
             error_exit_code(&error)
         }
     };
-    std::process::exit(exit_code);
+    exit_code
+}
+
+fn kagent_main() -> i32 {
+    match KAgentCli::try_parse() {
+        Ok(cli) => match run_kagent(cli) {
+            Ok(code) => code,
+            Err(error) => {
+                let _ = print_kagent_error(&error);
+                error_exit_code(&error)
+            }
+        },
+        Err(error) if !error.use_stderr() => {
+            let _ = error.print();
+            0
+        }
+        Err(error) => {
+            let error = CliError::from_clap(error);
+            let _ = print_kagent_error(&error);
+            error_exit_code(&error)
+        }
+    }
+}
+
+fn invoked_as_kagent() -> bool {
+    Path::new(&current_executable_argument())
+        .file_stem()
+        .is_some_and(|name| name == "kagent")
+}
+
+#[derive(Debug, Serialize)]
+struct KAgentError<'a> {
+    error: &'a str,
+    message: &'a str,
+}
+
+fn print_kagent_error(error: &CliError) -> Result<()> {
+    output::print_structured(
+        &KAgentError {
+            error: error.code,
+            message: &error.message,
+        },
+        OutputFormat::Toon,
+    )
+}
+
+#[derive(Debug, Serialize)]
+struct KAgentHome {
+    bin: String,
+    description: &'static str,
+    root: String,
+    state: &'static str,
+    next: Vec<&'static str>,
+}
+
+fn run_kagent(cli: KAgentCli) -> Result<i32> {
+    let Some(command) = cli.command else {
+        let root = config::resolve_workspace_root(None)?;
+        output::print_structured(
+            &KAgentHome {
+                bin: display_invoked_executable(),
+                description: "Compiler-backed Kotlin knowledge and changes for coding agents.",
+                root: root.display().to_string(),
+                state: "UNKNOWN",
+                next: vec!["kagent up", "kagent refresh"],
+            },
+            OutputFormat::Toon,
+        )?;
+        return Ok(0);
+    };
+    Err(CliError::new(
+        "KAGENT_NOT_IMPLEMENTED",
+        format!(
+            "`kagent {}` is not implemented yet.",
+            kagent_command_name(&command)
+        ),
+    ))
+}
+
+fn kagent_command_name(command: &KAgentCommand) -> &'static str {
+    match command {
+        KAgentCommand::Up => "up",
+        KAgentCommand::Refresh(_) => "refresh",
+        KAgentCommand::Files { .. } => "files",
+        KAgentCommand::Symbol(_) => "symbol",
+        KAgentCommand::Graph(_) => "graph",
+        KAgentCommand::Check(_) => "check",
+        KAgentCommand::Change(_) => "change",
+        KAgentCommand::Apply { .. } => "apply",
+    }
+}
+
+fn display_invoked_executable() -> String {
+    let raw = current_executable_argument();
+    let home = env::var_os("HOME")
+        .map(PathBuf::from)
+        .map(|path| path.display().to_string());
+    if let Some(home) = home
+        && let Some(stripped) = raw.strip_prefix(&home)
+    {
+        return format!("~{stripped}");
+    }
+    raw
 }
 
 fn parse_cli() -> Result<Option<Cli>> {
