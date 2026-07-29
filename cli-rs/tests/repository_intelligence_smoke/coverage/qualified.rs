@@ -40,10 +40,12 @@ fn repository_incomplete_coverage_returns_qualified_positive_answer() {
     fixture
         .connection()
         .execute(
-            "UPDATE file_manifest SET content_hash = ? WHERE filename = 'Source0001.kt'",
-            params!["e".repeat(64)],
+            "UPDATE file_stage_outcomes
+             SET stage_version = 'semantic-graph-old'
+             WHERE stage = 'SEMANTIC_GRAPH' AND filename = 'Source0001.kt'",
+            [],
         )
-        .expect("advance unrelated persisted source hash");
+        .expect("stale unrelated semantic graph version");
 
     let (status, response) = rpc(
         &home,

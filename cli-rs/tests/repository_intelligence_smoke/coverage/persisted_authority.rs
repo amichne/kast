@@ -138,20 +138,8 @@ fn repository_scope_fingerprint_uses_kotlin_utf16_path_order() {
             )
             .expect("Unicode semantic path");
     }
-    let fingerprint_input = format!(
-        "selected:src/main/kotlin/sample/Source0000.kt\n\
-         selected:{non_bmp}\n\
-         selected:{private_use}\n"
-    );
-    connection
-        .execute(
-            "UPDATE file_stage_outcomes
-             SET stage_input_fingerprint = ?
-             WHERE stage = 'SEMANTIC_GRAPH'",
-            params![hex::encode(Sha256::digest(fingerprint_input.as_bytes()))],
-        )
-        .expect("Kotlin-ordered scope fingerprint");
     drop(connection);
+    fixture.synchronize_semantic_graph_scope_fingerprints();
     fixture.seed_progress("app", "COMPLETE", 3, 3);
 
     let (status, response) = rpc(
