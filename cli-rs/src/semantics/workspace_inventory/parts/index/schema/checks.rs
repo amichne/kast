@@ -38,6 +38,25 @@ fn verify_progress_checks(transaction: &Transaction<'_>) -> Result<(), ReadDatab
     Ok(())
 }
 
+fn verify_file_stage_outcome_checks(
+    transaction: &Transaction<'_>,
+) -> Result<(), ReadDatabaseError> {
+    let normalized = normalized_table_sql(transaction, "file_stage_outcomes")?;
+    let required_tokens = [
+        "STAGEIN('SOURCE','RELATIONSHIPS','SEMANTIC_GRAPH')",
+        "OUTCOME_STATUSIN('COMPLETE','LIMITED','FAILED')",
+    ];
+    if required_tokens
+        .iter()
+        .any(|token| !normalized.contains(token))
+    {
+        return Err(ReadDatabaseError::Incompatible(
+            "file_stage_outcomes enum CHECK contract is incomplete".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 fn normalized_table_sql(
     transaction: &Transaction<'_>,
     table: &str,

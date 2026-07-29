@@ -6,12 +6,6 @@ enum RepositoryIntentState {
     Empty,
 }
 
-impl RepositoryIntentState {
-    fn has_answer(self) -> bool {
-        matches!(self, Self::Answered | Self::AmbiguousWithAnswer)
-    }
-}
-
 struct RepositoryIntentResult {
     fields: serde_json::Map<String, Value>,
     state: RepositoryIntentState,
@@ -154,9 +148,6 @@ fn repository_query_at_snapshot(
             &params.limits,
         )?,
     })?;
-    if result.state.has_answer() && !snapshot.coverage.complete {
-        return Err(incomplete_repository_answer(&snapshot.coverage));
-    }
     let status = match result.state {
         RepositoryIntentState::Ambiguous | RepositoryIntentState::AmbiguousWithAnswer => {
             "AMBIGUOUS"
@@ -231,23 +222,6 @@ fn repository_query_at_snapshot(
         object.insert(key, value);
     }
     Ok(response)
-}
-
-fn incomplete_repository_answer(coverage: &CoverageSummary) -> CliError {
-    let mut error = CliError::new(
-        "REPOSITORY_COVERAGE_INCOMPLETE",
-        "repository answer rejected because compiler coverage is incomplete",
-    );
-    error.details.insert(
-        "coverageLimitations".to_string(),
-        coverage.limitations.join(","),
-    );
-    error.details.insert(
-        "remedy".to_string(),
-        "Run `kast developer runtime up --workspace-root \"$PWD\" --backend idea --accept-indexing`; wait until `kast ready --for kotlin` succeeds; refresh each stale or missing Kotlin file with `kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path <path-to-kotlin-file>`; then retry the repository query."
-            .to_string(),
-    );
-    error
 }
 
 fn invalid_repository_intent_result(message: impl Into<String>) -> CliError {

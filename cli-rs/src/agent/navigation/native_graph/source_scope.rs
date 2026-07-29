@@ -1,7 +1,17 @@
 #[derive(Debug, Default)]
 struct NativeGraphSourceCandidate {
-    projects: BTreeSet<(String, String)>,
-    source_sets: BTreeSet<(String, String, String)>,
+    projects: BTreeSet<BuildQualifiedGradleProjectIdentity>,
+    source_sets: BTreeSet<BuildQualifiedGradleSourceSetIdentity>,
+    ownership_unproven: bool,
+    relationship_stage_complete: bool,
+    pending_update: bool,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NativeGraphSourceCandidateMatch {
+    Selected,
+    Excluded,
+    Unproven,
 }
 
 struct NativeGraphRefreshScopeSnapshot {
@@ -55,29 +65,6 @@ fn native_graph_source_scope_paths(
     workspace_root: &Path,
     connection: &rusqlite::Connection,
 ) -> std::result::Result<Vec<String>, AgentError> {
-    let pending: i64 = connection
-        .query_row(
-            "SELECT COUNT(*) FROM pending_updates WHERE applied = 0",
-            [],
-            |row| row.get(0),
-        )
-        .map_err(|error| native_graph_sql_error("GRAPH_SOURCE_SCOPE_UNAVAILABLE", error))?;
-    let (modules, incomplete): (i64, i64) = connection
-        .query_row(
-            "SELECT COUNT(*), COALESCE(SUM(CASE
-                 WHEN relationship_index_status = 'COMPLETE' AND indexed_file_count = total_file_count THEN 0
-                 ELSE 1 END), 0)
-             FROM module_index_progress",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .map_err(|error| native_graph_sql_error("GRAPH_SOURCE_SCOPE_UNAVAILABLE", error))?;
-    if pending != 0 || modules == 0 || incomplete != 0 {
-        return Err(agent_error(
-            "GRAPH_SOURCE_SCOPE_INCOMPLETE",
-            "Module/source-set graph selection requires a complete source-index snapshot.",
-        ));
-    }
     if args
         .modules
         .iter()
@@ -94,9 +81,29 @@ fn native_graph_source_scope_paths(
         .prepare(
             "SELECT prefixes.dir_path, manifest.filename,
                     projects.build_root, projects.project_path,
-                    source_sets.build_root, source_sets.project_path, source_sets.source_set_name
+                    source_sets.build_root, source_sets.project_path, source_sets.source_set_name,
+                    CASE
+                        WHEN manifest.content_hash IS NOT NULL
+                         AND manifest.desired_relationships_version IS NOT NULL
+                         AND outcomes.content_hash = manifest.content_hash
+                         AND outcomes.stage_version = manifest.desired_relationships_version
+                         AND outcomes.outcome_status = 'COMPLETE'
+                         AND outcomes.limitations_json = '[]'
+                        THEN 1 ELSE 0
+                    END,
+                    CASE WHEN EXISTS (
+                        SELECT 1
+                        FROM pending_updates pending
+                        WHERE pending.prefix_id = manifest.prefix_id
+                          AND pending.filename = manifest.filename
+                          AND pending.applied = 0
+                    ) THEN 1 ELSE 0 END
              FROM file_manifest manifest
              JOIN path_prefixes prefixes ON prefixes.prefix_id = manifest.prefix_id
+             LEFT JOIN file_stage_outcomes outcomes
+               ON outcomes.prefix_id = manifest.prefix_id
+              AND outcomes.filename = manifest.filename
+              AND outcomes.stage = 'RELATIONSHIPS'
              LEFT JOIN file_gradle_projects projects
                ON projects.prefix_id = manifest.prefix_id AND projects.filename = manifest.filename
              LEFT JOIN file_gradle_source_sets source_sets
@@ -126,8 +133,18 @@ fn native_graph_source_scope_paths(
         let project_path: Option<String> = row
             .get(3)
             .map_err(|error| native_graph_sql_error("GRAPH_SOURCE_SCOPE_UNAVAILABLE", error))?;
-        if let (Some(build_root), Some(project_path)) = (project_build_root, project_path) {
-            candidate.projects.insert((build_root, project_path));
+        match (project_build_root, project_path) {
+            (Some(build_root), Some(project_path)) => {
+                if let Some(project) =
+                    BuildQualifiedGradleProjectIdentity::parse(build_root, project_path)
+                {
+                    candidate.projects.insert(project);
+                } else {
+                    candidate.ownership_unproven = true;
+                }
+            }
+            (None, None) => {}
+            _ => candidate.ownership_unproven = true,
         }
         let source_build_root: Option<String> = row
             .get(4)
@@ -138,51 +155,130 @@ fn native_graph_source_scope_paths(
         let source_set: Option<String> = row
             .get(6)
             .map_err(|error| native_graph_sql_error("GRAPH_SOURCE_SCOPE_UNAVAILABLE", error))?;
-        if let (Some(build_root), Some(project_path), Some(source_set)) =
-            (source_build_root, source_project_path, source_set)
-        {
-            candidate
-                .source_sets
-                .insert((build_root, project_path, source_set));
+        match (source_build_root, source_project_path, source_set) {
+            (Some(build_root), Some(project_path), Some(source_set)) => {
+                if let Some(source_set) = BuildQualifiedGradleSourceSetIdentity::parse(
+                    build_root,
+                    project_path,
+                    source_set,
+                ) {
+                    candidate.source_sets.insert(source_set);
+                } else {
+                    candidate.ownership_unproven = true;
+                }
+            }
+            (None, None, None) => {}
+            _ => candidate.ownership_unproven = true,
+        }
+        candidate.relationship_stage_complete = row
+            .get::<_, i64>(7)
+            .map_err(|error| native_graph_sql_error("GRAPH_SOURCE_SCOPE_UNAVAILABLE", error))?
+            == 1;
+        candidate.pending_update = row
+            .get::<_, i64>(8)
+            .map_err(|error| native_graph_sql_error("GRAPH_SOURCE_SCOPE_UNAVAILABLE", error))?
+            == 1;
+    }
+    let unknown_pending_updates: i64 = connection
+        .query_row(
+            "SELECT COUNT(*)
+             FROM pending_updates pending
+             LEFT JOIN file_manifest manifest
+               ON manifest.prefix_id = pending.prefix_id
+              AND manifest.filename = pending.filename
+             WHERE pending.applied = 0
+               AND pending.filename LIKE '%.kt'
+               AND manifest.filename IS NULL",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(|error| native_graph_sql_error("GRAPH_SOURCE_SCOPE_UNAVAILABLE", error))?;
+    if unknown_pending_updates != 0 {
+        return Err(agent_error(
+            "GRAPH_SOURCE_SCOPE_UNPROVEN",
+            "The source index has unapplied Kotlin updates without persisted scope ownership.",
+        ));
+    }
+    let mut selected = Vec::new();
+    for (relative, candidate) in candidates {
+        match native_graph_source_candidate_match(&candidate, args) {
+            NativeGraphSourceCandidateMatch::Selected => selected.push((relative, candidate)),
+            NativeGraphSourceCandidateMatch::Excluded => {}
+            NativeGraphSourceCandidateMatch::Unproven => {
+                return Err(agent_error(
+                    "GRAPH_SOURCE_SCOPE_UNPROVEN",
+                    "The requested Gradle module/source-set scope includes a persisted Kotlin file without sufficient model ownership evidence.",
+                ));
+            }
         }
     }
-    let selected = candidates
-        .into_iter()
-        .filter(|(_, candidate)| native_graph_source_candidate_matches(candidate, args))
-        .map(|(relative, _)| workspace_root.join(relative).to_string_lossy().into_owned())
-        .collect::<Vec<_>>();
     if selected.is_empty() {
         return Err(agent_error(
             "GRAPH_SOURCE_SCOPE_EMPTY",
             "The requested Gradle module/source-set scope matched no indexed Kotlin files.",
         ));
     }
-    Ok(selected)
+    if selected.iter().any(|(_, candidate)| {
+        !candidate.relationship_stage_complete || candidate.pending_update
+    })
+    {
+        return Err(agent_error(
+            "GRAPH_SOURCE_SCOPE_INCOMPLETE",
+            "The selected module/source-set has incomplete persisted relationship indexing.",
+        ));
+    }
+    Ok(selected
+        .into_iter()
+        .map(|(relative, _)| workspace_root.join(relative).to_string_lossy().into_owned())
+        .collect())
 }
 
-fn native_graph_source_candidate_matches(
+fn native_graph_source_candidate_match(
     candidate: &NativeGraphSourceCandidate,
     args: &AgentNativeGraphArgs,
-) -> bool {
-    let module_matches = args.modules.is_empty() || args.modules.iter().any(|selector| {
-        let WorkspaceModuleSelector::Gradle {
-            build_root,
-            project_path,
-        } = selector
-        else {
-            return false;
-        };
-        candidate.projects.iter().any(|(actual_root, actual_path)| {
-            actual_root == build_root.as_str() && actual_path == project_path.as_str()
-        })
-    });
-    let source_set_matches = args.source_sets.is_empty()
-        || args.source_sets.iter().any(|expected| {
-            candidate
-                .source_sets
-                .iter()
-                .any(|(actual_root, actual_path, actual)| {
-                    actual == expected.as_str()
+) -> NativeGraphSourceCandidateMatch {
+    if candidate.ownership_unproven
+        || candidate
+            .source_sets
+            .iter()
+            .any(|source_set| !candidate.projects.contains(source_set.project()))
+    {
+        return NativeGraphSourceCandidateMatch::Unproven;
+    }
+    if !args.modules.is_empty() {
+        if candidate.projects.is_empty() {
+            return NativeGraphSourceCandidateMatch::Unproven;
+        }
+        let module_matches = args.modules.iter().any(|selector| {
+            let WorkspaceModuleSelector::Gradle {
+                build_root,
+                project_path,
+            } = selector
+            else {
+                return false;
+            };
+            BuildQualifiedGradleProjectIdentity::parse(
+                build_root.as_str().to_string(),
+                project_path.as_str().to_string(),
+            )
+            .is_some_and(|expected| candidate.projects.contains(&expected))
+        });
+        if !module_matches {
+            return NativeGraphSourceCandidateMatch::Excluded;
+        }
+    }
+    if args.source_sets.is_empty() {
+        return NativeGraphSourceCandidateMatch::Selected;
+    }
+    if candidate.source_sets.is_empty() {
+        return NativeGraphSourceCandidateMatch::Unproven;
+    }
+    if args.source_sets.iter().any(|expected| {
+        candidate
+            .source_sets
+            .iter()
+                .any(|actual| {
+                    actual.source_set_name().as_str() == expected.as_str()
                         && (args.modules.is_empty()
                             || args.modules.iter().any(|selector| {
                                 matches!(
@@ -190,13 +286,18 @@ fn native_graph_source_candidate_matches(
                                     WorkspaceModuleSelector::Gradle {
                                         build_root,
                                         project_path,
-                                    } if actual_root == build_root.as_str()
-                                        && actual_path == project_path.as_str()
+                                    } if BuildQualifiedGradleProjectIdentity::parse(
+                                        build_root.as_str().to_string(),
+                                        project_path.as_str().to_string(),
+                                    ).as_ref() == Some(actual.project())
                                 )
                             }))
-                })
-        });
-    module_matches && source_set_matches
+            })
+    }) {
+        NativeGraphSourceCandidateMatch::Selected
+    } else {
+        NativeGraphSourceCandidateMatch::Excluded
+    }
 }
 
 fn native_graph_relative_source_path(

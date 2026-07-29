@@ -51,8 +51,7 @@ fn project_typed_implementations_envelope(
             record.relation == "IMPLEMENTATION"
                 && record.implementation.is_valid()
                 && valid_relationship_location(&record.declaration_location)
-                && record.implementation.declaration_file
-                    == record.declaration_location.file_path
+                && record.implementation.declaration_file == record.declaration_location.file_path
                 && Some(record.implementation.declaration_start_offset)
                     == record.declaration_location.start_offset
         },
@@ -91,8 +90,7 @@ fn project_typed_hierarchy_envelope(
             relation_matches
                 && record.related_symbol.is_valid()
                 && valid_relationship_location(&record.declaration_location)
-                && record.related_symbol.declaration_file
-                    == record.declaration_location.file_path
+                && record.related_symbol.declaration_file == record.declaration_location.file_path
                 && Some(record.related_symbol.declaration_start_offset)
                     == record.declaration_location.start_offset
                 && (1..=max_depth).contains(&record.depth)
@@ -122,17 +120,17 @@ where
     let Some(result) = envelope.result else {
         return invalid_projection_envelope(method, "Relationship endpoint returned no result.");
     };
-    let input = match serde_json::from_value::<AgentTypedTraversalResponseInput<Record, Reason>>(
-        result,
-    ) {
-        Ok(input) => input,
-        Err(error) => {
-            return invalid_projection_envelope(
-                method,
-                format!("Relationship endpoint violated its closed response contract: {error}"),
-            );
-        }
-    };
+    let input =
+        match serde_json::from_value::<AgentTypedTraversalResponseInput<Record, Reason>>(result) {
+            Ok(input) => input,
+            Err(error) => {
+                return invalid_projection_envelope(
+                    method,
+                    format!("Relationship endpoint violated its closed response contract: {error}"),
+                );
+            }
+        };
+    let include_degraded_records = relationship_view_includes_records(&view);
     match input {
         AgentTypedTraversalResponseInput::Available {
             mut subject,
@@ -167,7 +165,10 @@ where
             result_type,
             expected,
             other,
+            result_limit,
+            include_degraded_records,
             admitted_kind,
+            record_is_valid,
         ),
     }
 }
@@ -206,7 +207,10 @@ fn project_typed_available_relationship<Record: Serialize>(
     let mut result = serde_json::Map::from_iter([
         ("type".to_string(), Value::String(result_type.to_string())),
         ("ok".to_string(), Value::Bool(true)),
-        ("outcome".to_string(), Value::String("AVAILABLE".to_string())),
+        (
+            "outcome".to_string(),
+            Value::String("AVAILABLE".to_string()),
+        ),
         ("schemaVersion".to_string(), Value::from(SCHEMA_VERSION)),
     ]);
     if selected(AgentRelationField::Subject) {

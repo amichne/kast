@@ -2,6 +2,7 @@ fn assert_exact_path_evidence(
     home: &std::path::Path,
     config_home: &std::path::Path,
     workspace: &std::path::Path,
+    fixture: &WorkspaceIndexFixture,
 ) -> serde_json::Value {
     let (_, exact) = rpc(
         home,
@@ -87,10 +88,21 @@ fn assert_exact_path_evidence(
     assert_eq!(derived_edge["evidenceTruncated"], true);
     let continuation = derived_edge["evidenceContinuation"].clone();
 
-    let source_path = workspace.join("src/main/kotlin/sample/Source0000.kt");
-    let source = std::fs::read(&source_path).expect("indexed Kotlin source");
-    std::fs::write(&source_path, b"changed after evidence page")
-        .expect("change coverage composition");
+    let original_hash: String = fixture
+        .connection()
+        .query_row(
+            "SELECT content_hash FROM file_manifest WHERE filename = 'Source0000.kt'",
+            [],
+            |row| row.get(0),
+        )
+        .expect("original persisted source hash");
+    fixture
+        .connection()
+        .execute(
+            "UPDATE file_manifest SET content_hash = ? WHERE filename = 'Source0000.kt'",
+            params!["b".repeat(64)],
+        )
+        .expect("change persisted coverage composition");
     let (changed_status, changed) = rpc(
         home,
         config_home,
@@ -102,7 +114,13 @@ fn assert_exact_path_evidence(
         changed["code"], "STALE_REPOSITORY_CONTINUATION",
         "{changed:#}"
     );
-    std::fs::write(&source_path, source).expect("restore indexed Kotlin source");
+    fixture
+        .connection()
+        .execute(
+            "UPDATE file_manifest SET content_hash = ? WHERE filename = 'Source0000.kt'",
+            params![original_hash],
+        )
+        .expect("restore persisted coverage composition");
 
     let (mismatched_status, mismatched) = rpc(
         home,

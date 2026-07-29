@@ -1,4 +1,4 @@
-fn native_graph_attach_repository_base(
+pub(crate) fn native_graph_attach_repository_base(
     connection: &rusqlite::Connection,
     database: &Path,
 ) -> std::result::Result<bool, AgentError> {

@@ -187,6 +187,8 @@ struct AgentRepositoryCoverage {
     total: usize,
     indexed: usize,
     excluded: usize,
+    pending: usize,
+    limited: usize,
     failed: usize,
     stale: usize,
     accounted: usize,

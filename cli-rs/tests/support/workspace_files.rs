@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use rusqlite::{Connection, params};
+use sha2::{Digest, Sha256};
 
 pub(crate) struct WorkspaceIndexFixture {
     workspace_root: PathBuf,
@@ -37,15 +38,46 @@ impl WorkspaceIndexFixture {
         std::fs::create_dir_all(&source_root).expect("Kotlin source root");
         let mut connection = self.connection();
         let transaction = connection.transaction().expect("source seed transaction");
+        let semantic_graph_scope_fingerprint = semantic_graph_scope_fingerprint(
+            (0..count).map(|index| format!("src/main/kotlin/sample/Source{index:04}.kt")),
+        );
         for index in 0..count {
             let filename = format!("Source{index:04}.kt");
-            std::fs::write(source_root.join(&filename), "package sample\n").expect("Kotlin source");
+            let content = b"package sample\n";
+            std::fs::write(source_root.join(&filename), content).expect("Kotlin source");
+            let content_hash = hex::encode(Sha256::digest(content));
             transaction
                 .execute(
-                    "INSERT INTO file_manifest(prefix_id, filename, last_modified_millis) VALUES (1, ?, 1)",
-                    params![filename],
+                    "INSERT INTO file_manifest(
+                         prefix_id, filename, last_modified_millis, content_hash,
+                         desired_source_version, desired_relationships_version,
+                         desired_semantic_graph_version, module_name, source_set
+                     ) VALUES (1, ?, 1, ?, 'source-1', 'relationships-1', 'semantic-graph-1', 'app', 'main')",
+                    params![filename, content_hash],
                 )
                 .expect("source manifest row");
+            for (stage, version) in [
+                ("SOURCE", "source-1"),
+                ("RELATIONSHIPS", "relationships-1"),
+                ("SEMANTIC_GRAPH", "semantic-graph-1"),
+            ] {
+                transaction
+                    .execute(
+                        "INSERT INTO file_stage_outcomes(
+                             prefix_id, filename, stage, content_hash, stage_version,
+                             stage_input_fingerprint, outcome_status, limitations_json
+                         ) VALUES (1, ?, ?, ?, ?, ?, 'COMPLETE', '[]')",
+                        params![
+                            filename,
+                            stage,
+                            content_hash,
+                            version,
+                            (stage == "SEMANTIC_GRAPH")
+                                .then_some(semantic_graph_scope_fingerprint.as_str())
+                        ],
+                    )
+                    .expect("complete file stage");
+            }
             transaction
                 .execute(
                     "INSERT INTO file_metadata(prefix_id, filename, package_fq_id, package_state, package_unproven_reason, module_path, source_set) VALUES (1, ?, 1, 'PROVEN_NAMED', NULL, 'idea.app.main', 'main')",
@@ -66,6 +98,35 @@ impl WorkspaceIndexFixture {
                 .expect("source Gradle source-set row");
         }
         transaction.commit().expect("source seed commit");
+    }
+
+    #[allow(dead_code)] // Shared support is also compiled by unit-test harnesses without graph fixtures.
+    pub(crate) fn synchronize_semantic_graph_scope_fingerprints(&self) {
+        let connection = self.connection();
+        let paths = {
+            let mut statement = connection
+                .prepare(
+                    "SELECT path
+                     FROM semantic_files
+                     WHERE refresh_status != 'CACHED'
+                     ORDER BY path",
+                )
+                .expect("semantic scope query");
+            statement
+                .query_map([], |row| row.get::<_, String>(0))
+                .expect("semantic scope rows")
+                .collect::<rusqlite::Result<Vec<_>>>()
+                .expect("semantic scope paths")
+        };
+        let fingerprint = semantic_graph_scope_fingerprint(paths);
+        connection
+            .execute(
+                "UPDATE file_stage_outcomes
+                 SET stage_input_fingerprint = ?
+                 WHERE stage = 'SEMANTIC_GRAPH'",
+                params![fingerprint],
+            )
+            .expect("synchronize semantic scope fingerprint");
     }
 
     pub(crate) fn seed_non_source_manifest_rows(&self) {
@@ -105,10 +166,14 @@ impl WorkspaceIndexFixture {
     }
 
     pub(crate) fn seed_pending_update(&self, filename: &str, applied: bool) {
+        self.seed_pending_update_at(1, filename, applied);
+    }
+
+    pub(crate) fn seed_pending_update_at(&self, prefix_id: i64, filename: &str, applied: bool) {
         self.connection()
             .execute(
-                "INSERT INTO pending_updates(op, prefix_id, filename, epoch_ms, applied) VALUES ('upsert_file', 1, ?, 1, ?)",
-                params![filename, i64::from(applied)],
+                "INSERT INTO pending_updates(op, prefix_id, filename, epoch_ms, applied) VALUES ('upsert_file', ?, ?, 1, ?)",
+                params![prefix_id, filename, i64::from(applied)],
             )
             .expect("pending update");
     }
@@ -120,6 +185,15 @@ impl WorkspaceIndexFixture {
         filename: &str,
         create_on_disk: bool,
     ) {
+        let path = self.workspace_root.join(dir_path).join(filename);
+        if create_on_disk {
+            std::fs::create_dir_all(path.parent().expect("manifest file parent"))
+                .expect("manifest file parent");
+            std::fs::write(&path, "package fixture\n").expect("manifest source file");
+        }
+        let content_hash = std::fs::read(&path)
+            .ok()
+            .map(|content| hex::encode(Sha256::digest(content)));
         let connection = self.connection();
         connection
             .execute(
@@ -129,15 +203,40 @@ impl WorkspaceIndexFixture {
             .expect("path prefix");
         connection
             .execute(
-                "INSERT INTO file_manifest(prefix_id, filename, last_modified_millis) VALUES (?, ?, 1)",
-                params![prefix_id, filename],
+                "INSERT INTO file_manifest(
+                     prefix_id, filename, last_modified_millis, content_hash,
+                     desired_source_version, desired_relationships_version,
+                     desired_semantic_graph_version
+                 ) VALUES (?, ?, 1, ?, 'source-1', 'relationships-1', 'semantic-graph-1')",
+                params![prefix_id, filename, content_hash],
             )
             .expect("manifest file");
-        if create_on_disk {
-            let path = self.workspace_root.join(dir_path).join(filename);
-            std::fs::create_dir_all(path.parent().expect("manifest file parent"))
-                .expect("manifest file parent");
-            std::fs::write(path, "package fixture\n").expect("manifest source file");
+        if let Some(content_hash) = content_hash {
+            let semantic_graph_scope_fingerprint =
+                semantic_graph_scope_fingerprint([format!("{dir_path}/{filename}")]);
+            for (stage, version) in [
+                ("SOURCE", "source-1"),
+                ("RELATIONSHIPS", "relationships-1"),
+                ("SEMANTIC_GRAPH", "semantic-graph-1"),
+            ] {
+                connection
+                    .execute(
+                        "INSERT INTO file_stage_outcomes(
+                             prefix_id, filename, stage, content_hash, stage_version,
+                             stage_input_fingerprint, outcome_status, limitations_json
+                         ) VALUES (?, ?, ?, ?, ?, ?, 'COMPLETE', '[]')",
+                        params![
+                            prefix_id,
+                            filename,
+                            stage,
+                            content_hash,
+                            version,
+                            (stage == "SEMANTIC_GRAPH")
+                                .then_some(semantic_graph_scope_fingerprint.as_str())
+                        ],
+                    )
+                    .expect("complete file stage");
+            }
         }
     }
 
@@ -226,104 +325,18 @@ impl WorkspaceIndexFixture {
             )
             .expect("replace package-check schema");
     }
+}
 
-    fn create_schema(&self) {
-        let connection = self.connection();
-        connection
-            .execute_batch(&format!(
-                r#"
-                PRAGMA foreign_keys=ON;
-                CREATE TABLE schema_version (
-                    version INTEGER NOT NULL,
-                    generation INTEGER NOT NULL DEFAULT 0,
-                    head_commit TEXT
-                );
-                INSERT INTO schema_version(version, generation, head_commit)
-                    VALUES ({}, 41, 'fixture-head');
-                CREATE TABLE path_prefixes (
-                    prefix_id INTEGER PRIMARY KEY,
-                    dir_path TEXT NOT NULL UNIQUE
-                );
-                INSERT INTO path_prefixes(prefix_id, dir_path)
-                    VALUES (1, 'src/main/kotlin/sample');
-                CREATE TABLE fq_names (
-                    fq_id INTEGER PRIMARY KEY,
-                    fq_name TEXT NOT NULL UNIQUE
-                );
-                INSERT INTO fq_names(fq_id, fq_name) VALUES (1, 'sample');
-                CREATE TABLE file_manifest (
-                    prefix_id INTEGER NOT NULL,
-                    filename TEXT NOT NULL,
-                    last_modified_millis INTEGER NOT NULL,
-                    PRIMARY KEY(prefix_id, filename)
-                );
-                CREATE TABLE file_metadata (
-                    prefix_id INTEGER NOT NULL,
-                    filename TEXT NOT NULL,
-                    package_fq_id INTEGER,
-                    package_state TEXT NOT NULL CHECK(package_state IN ('PROVEN_ROOT','PROVEN_NAMED','UNPROVEN')),
-                    package_unproven_reason TEXT,
-                    module_path TEXT,
-                    source_set TEXT,
-                    PRIMARY KEY(prefix_id, filename),
-                    FOREIGN KEY(package_fq_id) REFERENCES fq_names(fq_id),
-                    CHECK(
-                        (package_state = 'PROVEN_ROOT' AND package_fq_id IS NULL AND package_unproven_reason IS NULL)
-                        OR (package_state = 'PROVEN_NAMED' AND package_fq_id IS NOT NULL AND package_unproven_reason IS NULL)
-                        OR (
-                            package_state = 'UNPROVEN'
-                            AND package_fq_id IS NULL
-                            AND package_unproven_reason IN (
-                                'NOT_SCANNED',
-                                'SEMANTIC_ANALYSIS_UNAVAILABLE',
-                                'SEMANTIC_ANALYSIS_FAILED',
-                                'LEGACY_TEXT_ONLY'
-                            )
-                        )
-                    )
-                );
-                CREATE TABLE file_gradle_projects (
-                    prefix_id INTEGER NOT NULL,
-                    filename TEXT NOT NULL,
-                    build_root TEXT NOT NULL,
-                    project_path TEXT NOT NULL,
-                    PRIMARY KEY(prefix_id, filename, build_root, project_path),
-                    FOREIGN KEY(prefix_id, filename) REFERENCES file_metadata(prefix_id, filename) ON DELETE CASCADE
-                );
-                CREATE TABLE file_gradle_source_sets (
-                    prefix_id INTEGER NOT NULL,
-                    filename TEXT NOT NULL,
-                    build_root TEXT NOT NULL,
-                    project_path TEXT NOT NULL,
-                    source_set_name TEXT NOT NULL,
-                    PRIMARY KEY(prefix_id, filename, build_root, project_path, source_set_name),
-                    FOREIGN KEY(prefix_id, filename, build_root, project_path)
-                        REFERENCES file_gradle_projects(prefix_id, filename, build_root, project_path)
-                        ON DELETE CASCADE
-                );
-                CREATE TABLE module_index_progress (
-                    module_name TEXT PRIMARY KEY,
-                    relationship_index_status TEXT NOT NULL
-                        CHECK(relationship_index_status IN ('PENDING','INDEXING','COMPLETE','FAILED')),
-                    indexed_file_count INTEGER NOT NULL,
-                    total_file_count INTEGER NOT NULL,
-                    last_indexed_epoch_ms INTEGER
-                );
-                CREATE TABLE pending_updates (
-                    seq INTEGER PRIMARY KEY AUTOINCREMENT,
-                    op TEXT NOT NULL,
-                    prefix_id INTEGER NOT NULL,
-                    filename TEXT NOT NULL,
-                    payload TEXT,
-                    session_id TEXT,
-                    epoch_ms INTEGER NOT NULL,
-                    applied INTEGER NOT NULL DEFAULT 0
-                );
-                "#,
-                env!("KAST_SOURCE_INDEX_SCHEMA_VERSION")
-            ))
-            .expect("workspace index schema");
+include!("workspace_files/schema.rs");
+
+fn semantic_graph_scope_fingerprint(paths: impl IntoIterator<Item = String>) -> String {
+    let mut digest = Sha256::new();
+    for path in paths {
+        digest.update(b"selected:");
+        digest.update(path.as_bytes());
+        digest.update(b"\n");
     }
+    hex::encode(digest.finalize())
 }
 
 impl Drop for WorkspaceIndexFixture {

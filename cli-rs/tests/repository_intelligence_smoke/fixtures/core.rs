@@ -80,6 +80,7 @@ fn coverage_fixture_with_file_count(
         )
         .expect("semantic graph file");
     }
+    fixture.synchronize_semantic_graph_scope_fingerprints();
     (temp, home, config_home, workspace, fixture)
 }
 

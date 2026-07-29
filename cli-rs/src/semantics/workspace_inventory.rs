@@ -15,6 +15,12 @@ pub(crate) fn read_workspace_index(root: &model::WorkspaceRoot) -> model::Worksp
     index::read_workspace_index(root)
 }
 
+pub(crate) fn read_persisted_workspace_index(
+    root: &model::WorkspaceRoot,
+) -> model::WorkspaceIndexRead {
+    index::read_persisted_workspace_index(root)
+}
+
 #[cfg(test)]
 #[path = "../../tests/support/workspace_files.rs"]
 mod workspace_files_test_support;

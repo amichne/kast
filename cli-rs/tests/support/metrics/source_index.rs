@@ -25,7 +25,29 @@ pub(crate) fn seed_source_index(workspace: &std::path::Path) {
         END;
         CREATE TABLE identifier_paths (identifier TEXT NOT NULL, prefix_id INTEGER NOT NULL, filename TEXT NOT NULL, PRIMARY KEY (identifier, prefix_id, filename));
         CREATE TABLE file_metadata (prefix_id INTEGER NOT NULL, filename TEXT NOT NULL, package_fq_id INTEGER, module_path TEXT, source_set TEXT, PRIMARY KEY (prefix_id, filename));
-        CREATE TABLE file_manifest (prefix_id INTEGER NOT NULL, filename TEXT NOT NULL, last_modified_millis INTEGER NOT NULL, PRIMARY KEY (prefix_id, filename));
+        CREATE TABLE file_manifest (
+            prefix_id INTEGER NOT NULL,
+            filename TEXT NOT NULL,
+            last_modified_millis INTEGER NOT NULL,
+            content_hash TEXT,
+            desired_source_version TEXT,
+            desired_relationships_version TEXT,
+            desired_semantic_graph_version TEXT,
+            module_name TEXT,
+            source_set TEXT,
+            PRIMARY KEY (prefix_id, filename)
+        );
+        CREATE TABLE file_stage_outcomes (
+            prefix_id INTEGER NOT NULL,
+            filename TEXT NOT NULL,
+            stage TEXT NOT NULL,
+            content_hash TEXT NOT NULL,
+            stage_version TEXT NOT NULL,
+            stage_input_fingerprint TEXT,
+            outcome_status TEXT NOT NULL,
+            limitations_json TEXT NOT NULL,
+            PRIMARY KEY (prefix_id, filename, stage)
+        );
         CREATE TABLE declarations (
             fq_id INTEGER NOT NULL,
             kind TEXT NOT NULL,

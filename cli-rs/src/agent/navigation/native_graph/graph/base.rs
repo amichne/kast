@@ -124,7 +124,7 @@ fn load_native_graph(
     Ok(native_graph_to_csr(nodes, edges))
 }
 
-fn native_graph_overlay_cte() -> &'static str {
+pub(crate) fn native_graph_overlay_cte() -> &'static str {
     r#"WITH
        effective_file_rows AS (
            SELECT path, package_name, module_name, refresh_status

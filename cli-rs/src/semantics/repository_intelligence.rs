@@ -11,8 +11,8 @@ use crate::symbol_query::{SymbolDiscoveryDocument, SymbolDiscoveryField, rank_sy
 use crate::workspace_inventory;
 use crate::workspace_inventory::model::{
     BuildQualifiedGradleProjectIdentity, BuildQualifiedGradleSourceSetIdentity,
-    SourceIndexProgressStatus, WorkspaceCoverageDimension, WorkspaceFileIndexState,
-    WorkspaceIndexRead, WorkspaceInventoryFile, WorkspaceRoot, WorkspaceSourceSetEvidence,
+    WorkspaceFileIndexState, WorkspaceIndexRead, WorkspaceInventoryFile,
+    WorkspaceInventoryLimitationCode, WorkspaceRoot, WorkspaceSourceSetEvidence,
 };
 use rusqlite::types::Type;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};
@@ -43,6 +43,7 @@ include!("repository_intelligence/coverage/query.rs");
 include!("repository_intelligence/query/continuation.rs");
 include!("repository_intelligence/query/execution.rs");
 include!("repository_intelligence/render/markdown.rs");
+include!("repository_intelligence/coverage/fingerprint.rs");
 include!("repository_intelligence/coverage/read.rs");
 include!("repository_intelligence/coverage/scope.rs");
 include!("repository_intelligence/discovery/regex.rs");

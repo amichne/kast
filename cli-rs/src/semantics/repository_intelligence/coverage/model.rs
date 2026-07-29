@@ -22,6 +22,8 @@ pub struct SemanticGraphReadiness {
     pub total: usize,
     pub indexed: usize,
     pub excluded: usize,
+    pub pending: usize,
+    pub limited: usize,
     pub failed: usize,
     pub stale: usize,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -38,9 +40,31 @@ impl SemanticGraphReadiness {
 
 #[derive(Debug, Clone)]
 struct SemanticFileRow {
-    content_hash: Option<String>,
-    refresh_status: String,
-    diagnostics: Vec<Value>,
+    manifest_content_hash: Option<PersistedFileContentHash>,
+    desired_stage_version: Option<PersistedFileStageVersion>,
+    outcome: Option<SemanticFileOutcome>,
+}
+
+#[derive(Debug, Clone)]
+struct SemanticFileOutcome {
+    content_hash: PersistedFileContentHash,
+    stage_version: PersistedFileStageVersion,
+    input_fingerprint: Option<SemanticGraphStageInputFingerprint>,
+    status: SemanticFileOutcomeStatus,
+    limitations: Vec<String>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SemanticFileOutcomeStatus {
+    Complete,
+    Limited,
+    Failed,
+}
+
+#[derive(Debug, Clone)]
+enum PersistedPendingUpdateTarget {
+    CanonicalPath(String),
+    Unproven,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -48,6 +72,8 @@ struct SemanticFileRow {
 enum GraphFileState {
     Indexed,
     Excluded,
+    Pending,
+    Limited,
     Failed,
     Stale,
 }
@@ -65,6 +91,8 @@ struct GraphFileCoverage {
     current_content_hash: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     diagnostics: Vec<Value>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    limitations: Vec<String>,
     gradle_projects: Vec<String>,
     source_sets: Vec<String>,
     #[serde(skip)]
@@ -77,6 +105,8 @@ struct StateCounts {
     total: usize,
     indexed: usize,
     excluded: usize,
+    pending: usize,
+    limited: usize,
     failed: usize,
     stale: usize,
 }
@@ -87,6 +117,8 @@ impl StateCounts {
         match state {
             GraphFileState::Indexed => self.indexed += 1,
             GraphFileState::Excluded => self.excluded += 1,
+            GraphFileState::Pending => self.pending += 1,
+            GraphFileState::Limited => self.limited += 1,
             GraphFileState::Failed => self.failed += 1,
             GraphFileState::Stale => self.stale += 1,
         }
@@ -171,7 +203,12 @@ impl RepositoryExecutionScope {
             indexed_files: snapshot
                 .files
                 .iter()
-                .filter(|file| file.state == GraphFileState::Indexed)
+                .filter(|file| {
+                    matches!(
+                        file.state,
+                        GraphFileState::Indexed | GraphFileState::Limited
+                    )
+                })
                 .map(|file| (file.path.clone(), file.ownership.clone()))
                 .collect(),
         }

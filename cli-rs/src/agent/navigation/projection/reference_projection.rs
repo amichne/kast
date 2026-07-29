@@ -23,6 +23,7 @@ fn project_references_envelope(
             );
         }
     };
+    let include_degraded_records = relationship_view_includes_records(&view);
     match input {
         AgentReferencesResponseInput::Available {
             subject,
@@ -39,7 +40,13 @@ fn project_references_envelope(
             page,
             &provenance,
         ),
-        other => project_expected_reference_outcome(method, other, &provenance),
+        other => project_expected_reference_outcome(
+            method,
+            other,
+            &provenance,
+            result_limit,
+            include_degraded_records,
+        ),
     }
 }
 
@@ -138,16 +145,14 @@ fn project_available_references(
     if !evidence.is_valid_available()
         || !provenance.matches_subject(&mut subject)
         || references.len() > result_limit
-        || references.iter().any(|reference| {
-            reference.location.file_path.trim().is_empty()
-                || reference
-                    .location
-                    .end_offset
-                    .is_some_and(|end| reference.location.start_offset.is_some_and(|start| start > end))
-                || !reference.containing_symbol.is_valid()
-        })
+        || references
+            .iter()
+            .any(|reference| !valid_reference_occurrence(reference))
     {
-        return invalid_projection_envelope(method, "References contained invalid or unbounded evidence.");
+        return invalid_projection_envelope(
+            method,
+            "References contained invalid or unbounded evidence.",
+        );
     }
     let returned_count = references.len();
     let truncated = page.as_ref().is_some_and(|page| page.truncated);
@@ -157,16 +162,12 @@ fn project_available_references(
         || cardinality.known_minimum() < returned_count
         || truncated != next_page_token.is_some()
     {
-        return invalid_projection_envelope(method, "References contained inconsistent page evidence.");
+        return invalid_projection_envelope(
+            method,
+            "References contained inconsistent page evidence.",
+        );
     }
-    let records = references
-        .into_iter()
-        .map(|reference| AgentReferenceRecordProjection {
-            relation: "REFERENCE",
-            location: reference.location.compact_relationship(),
-            containing_symbol: reference.containing_symbol,
-        })
-        .collect::<Vec<_>>();
+    let records = project_reference_records(references);
     let selected = |field| match &view {
         AgentResultView::Fields(fields) => fields.contains(&field),
         AgentResultView::Count => false,
@@ -200,4 +201,25 @@ fn project_available_references(
         },
         None,
     )
+}
+
+fn project_reference_records(
+    references: Vec<AgentReferenceOccurrenceInput>,
+) -> Vec<AgentReferenceRecordProjection> {
+    references
+        .into_iter()
+        .map(|reference| AgentReferenceRecordProjection {
+            relation: "REFERENCE",
+            location: reference.location.compact_relationship(),
+            containing_symbol: reference.containing_symbol,
+        })
+        .collect()
+}
+
+fn relationship_view_includes_records(view: &AgentResultView<AgentRelationField>) -> bool {
+    match view {
+        AgentResultView::Fields(fields) => fields.contains(&AgentRelationField::Records),
+        AgentResultView::Count => false,
+        AgentResultView::Compact | AgentResultView::Verbose | AgentResultView::Explain => true,
+    }
 }

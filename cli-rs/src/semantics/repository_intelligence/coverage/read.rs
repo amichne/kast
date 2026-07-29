@@ -18,6 +18,8 @@ pub fn semantic_graph_readiness(workspace_root: &Path) -> SemanticGraphReadiness
                 total: coverage.counts.total,
                 indexed: coverage.counts.indexed,
                 excluded: coverage.counts.excluded,
+                pending: coverage.counts.pending,
+                limited: coverage.counts.limited,
                 failed: coverage.counts.failed,
                 stale: coverage.counts.stale,
                 limitations: coverage.limitations,
@@ -30,6 +32,8 @@ pub fn semantic_graph_readiness(workspace_root: &Path) -> SemanticGraphReadiness
             total: 0,
             indexed: 0,
             excluded: 0,
+            pending: 0,
+            limited: 0,
             failed: 0,
             stale: 0,
             limitations: vec![error.code.to_string()],
@@ -84,7 +88,7 @@ fn read_coverage(workspace_root: &Path, scope: RepositoryScope) -> Result<Covera
     for _ in 0..2 {
         let root = workspace_inventory::model::WorkspaceRoot::try_from(workspace_root)
             .map_err(|error| CliError::new("INVALID_REPOSITORY_SCOPE", error.to_string()))?;
-        let index = match workspace_inventory::read_workspace_index(&root) {
+        let index = match workspace_inventory::read_persisted_workspace_index(&root) {
             WorkspaceIndexRead::Snapshot(index) => index,
             WorkspaceIndexRead::Unavailable(failure)
             | WorkspaceIndexRead::Incompatible(failure) => {
@@ -96,14 +100,20 @@ fn read_coverage(workspace_root: &Path, scope: RepositoryScope) -> Result<Covera
         };
         let generation = index.stamp().generation().value();
         let resolved_scope = resolve_repository_scope(scope.clone(), index.files())?;
-        let (semantic_generation, semantic_files) = read_semantic_files(workspace_root)?;
+        let PersistedSemanticCoverageRead {
+            generation: semantic_generation,
+            scope_fingerprint,
+            semantic_files,
+            pending_updates,
+        } = read_semantic_files(workspace_root)?;
         if generation != semantic_generation {
             continue;
         }
         return Ok(classify_coverage(
-            workspace_root,
             index,
             semantic_files,
+            &scope_fingerprint,
+            &pending_updates,
             resolved_scope,
         ));
     }
@@ -113,73 +123,11 @@ fn read_coverage(workspace_root: &Path, scope: RepositoryScope) -> Result<Covera
     ))
 }
 
-fn read_semantic_files(workspace_root: &Path) -> Result<(u64, BTreeMap<String, SemanticFileRow>)> {
-    let database = config::workspace_database_path(workspace_root)?;
-    let mut connection = Connection::open_with_flags(
-        database,
-        OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
-    )
-    .map_err(|error| CliError::new("GRAPH_COVERAGE_UNAVAILABLE", error.to_string()))?;
-    source_index_db::configure_read_connection(&connection)
-        .map_err(|error| CliError::new("GRAPH_COVERAGE_UNAVAILABLE", error.to_string()))?;
-    let transaction = connection
-        .transaction_with_behavior(TransactionBehavior::Deferred)
-        .map_err(|error| CliError::new("GRAPH_COVERAGE_UNAVAILABLE", error.to_string()))?;
-    let generation = transaction
-        .query_row("SELECT generation FROM schema_version", [], |row| {
-            row.get::<_, i64>(0)
-        })
-        .map_err(|error| CliError::new("GRAPH_COVERAGE_UNAVAILABLE", error.to_string()))
-        .and_then(|generation| {
-            u64::try_from(generation).map_err(|_| {
-                CliError::new(
-                    "GRAPH_COVERAGE_UNAVAILABLE",
-                    "source-index generation is negative",
-                )
-            })
-        })?;
-    let mut statement = transaction
-        .prepare(
-            "SELECT path, content_hash, refresh_status, diagnostics_json
-             FROM semantic_files
-             ORDER BY path",
-        )
-        .map_err(|error| CliError::new("GRAPH_COVERAGE_UNAVAILABLE", error.to_string()))?;
-    let rows = statement
-        .query_map([], |row| {
-            let diagnostics_json = row.get::<_, String>(3)?;
-            Ok((
-                row.get::<_, String>(0)?,
-                SemanticFileRow {
-                    content_hash: row.get(1)?,
-                    refresh_status: row.get(2)?,
-                    diagnostics: serde_json::from_str::<Vec<Value>>(&diagnostics_json).map_err(
-                        |error| {
-                            rusqlite::Error::FromSqlConversionFailure(
-                                3,
-                                Type::Text,
-                                Box::new(error),
-                            )
-                        },
-                    )?,
-                },
-            ))
-        })
-        .map_err(|error| CliError::new("GRAPH_COVERAGE_UNAVAILABLE", error.to_string()))?;
-    let semantic_files = rows
-        .collect::<rusqlite::Result<BTreeMap<_, _>>>()
-        .map_err(|error| CliError::new("GRAPH_COVERAGE_UNAVAILABLE", error.to_string()))?;
-    drop(statement);
-    transaction
-        .commit()
-        .map_err(|error| CliError::new("GRAPH_COVERAGE_UNAVAILABLE", error.to_string()))?;
-    Ok((generation, semantic_files))
-}
-
 fn classify_coverage(
-    workspace_root: &Path,
     index: workspace_inventory::model::WorkspaceIndexSnapshot,
     semantic_files: BTreeMap<String, SemanticFileRow>,
+    scope_fingerprint: &SemanticGraphStageInputFingerprint,
+    pending_updates: &[PersistedPendingUpdateTarget],
     scope: ResolvedRepositoryScope,
 ) -> CoverageSnapshot {
     let mut files = Vec::new();
@@ -195,9 +143,9 @@ fn classify_coverage(
         .collect::<Vec<_>>();
     for file in filtered {
         files.push(classify_file(
-            workspace_root,
             file,
             semantic_files.get(&file.path().to_string()),
+            scope_fingerprint,
         ));
     }
     files.sort_by(|left, right| left.path.cmp(&right.path));
@@ -232,18 +180,23 @@ fn classify_coverage(
             total_file_count: progress.total_file_count(),
         })
         .collect::<Vec<_>>();
-    let progress_complete = !index_modules.is_empty()
-        && index_modules.iter().all(|module| {
-            module.status == SourceIndexProgressStatus::Complete.canonical()
-                && module.indexed_file_count == module.total_file_count
-        });
-    let pending_update_count = index.stamp().pending_count().value();
-    let inventory_complete =
-        index.coverage().candidate_inventory() == WorkspaceCoverageDimension::Complete;
+    let pending_update_count = scoped_pending_update_count(&index, &scope, pending_updates);
+    let inventory_complete = index.limitations().keys().all(|limitation| {
+        !matches!(
+            limitation,
+            WorkspaceInventoryLimitationCode::SourceIndexIncompatible
+                | WorkspaceInventoryLimitationCode::PathContainmentUnprovable
+                | WorkspaceInventoryLimitationCode::OutOfRootExcluded
+        )
+    });
+    let semantic_scope_proven = counts.indexed > 0;
+    let persisted_updates_complete = pending_update_count == 0;
     let complete = inventory_complete
         && eligibility_proven
-        && progress_complete
-        && pending_update_count == 0
+        && semantic_scope_proven
+        && persisted_updates_complete
+        && counts.pending == 0
+        && counts.limited == 0
         && counts.failed == 0
         && counts.stale == 0;
     let mut limitations = Vec::new();
@@ -253,11 +206,24 @@ fn classify_coverage(
     if !eligibility_proven {
         limitations.push("SCOPE_OWNERSHIP_UNPROVEN".to_string());
     }
-    if !progress_complete {
-        limitations.push("MODULE_INDEX_INCOMPLETE".to_string());
+    if !semantic_scope_proven {
+        limitations.push("SEMANTIC_GRAPH_SCOPE_UNPROVEN".to_string());
     }
-    if pending_update_count > 0 {
+    if !persisted_updates_complete {
         limitations.push("SOURCE_INDEX_UPDATES_PENDING".to_string());
+    }
+    if counts.pending > 0 {
+        limitations.push("SEMANTIC_GRAPH_FILES_PENDING".to_string());
+    }
+    if counts.limited > 0 {
+        limitations.push("SEMANTIC_GRAPH_FILES_LIMITED".to_string());
+        limitations.extend(
+            files
+                .iter()
+                .filter(|file| file.state == GraphFileState::Limited)
+                .flat_map(|file| file.limitations.iter().cloned())
+                .collect::<BTreeSet<_>>(),
+        );
     }
     if counts.failed > 0 {
         limitations.push("SEMANTIC_GRAPH_FILES_FAILED".to_string());

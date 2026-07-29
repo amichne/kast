@@ -58,6 +58,23 @@ fn verify_not_null(
     Ok(())
 }
 
+fn verify_nullable(
+    transaction: &Transaction<'_>,
+    table: &str,
+    required: &[&str],
+) -> Result<(), ReadDatabaseError> {
+    let columns = table_info(transaction, table)?;
+    if let Some(column) = required
+        .iter()
+        .find(|column| columns.get(**column).is_none_or(|shape| shape.not_null))
+    {
+        return Err(ReadDatabaseError::Incompatible(format!(
+            "source-index column `{table}.{column}` must be nullable"
+        )));
+    }
+    Ok(())
+}
+
 fn verify_unique_key(
     transaction: &Transaction<'_>,
     table: &str,

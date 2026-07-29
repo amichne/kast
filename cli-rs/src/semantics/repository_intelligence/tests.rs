@@ -18,14 +18,18 @@ mod tests {
             [
                 GraphFileState::Indexed,
                 GraphFileState::Excluded,
+                GraphFileState::Pending,
+                GraphFileState::Limited,
                 GraphFileState::Failed,
                 GraphFileState::Stale,
             ]
             .into_iter(),
         );
-        assert_eq!(counts.total, 4);
+        assert_eq!(counts.total, 6);
         assert_eq!(counts.indexed, 1);
         assert_eq!(counts.excluded, 1);
+        assert_eq!(counts.pending, 1);
+        assert_eq!(counts.limited, 1);
         assert_eq!(counts.failed, 1);
         assert_eq!(counts.stale, 1);
     }

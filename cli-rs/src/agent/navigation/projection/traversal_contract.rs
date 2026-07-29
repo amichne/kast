@@ -1,5 +1,9 @@
 #[derive(Debug, Deserialize)]
-#[serde(tag = "type", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "type",
+    rename_all_fields = "camelCase",
+    bound(deserialize = "Record: Deserialize<'de>, Reason: Deserialize<'de>")
+)]
 enum AgentTypedTraversalResponseInput<Record, Reason> {
     #[serde(rename = "AVAILABLE")]
     Available {
@@ -27,6 +31,10 @@ enum AgentTypedTraversalResponseInput<Record, Reason> {
         subject: AgentRelationIdentityProjection,
         reason: Reason,
         evidence: AgentRelationshipResultEvidenceInput,
+        #[serde(default)]
+        records: Vec<Record>,
+        #[serde(default)]
+        page: Option<AgentTypedTraversalPageInput>,
     },
     #[serde(rename = "CURSOR_STALE")]
     CursorStale {
