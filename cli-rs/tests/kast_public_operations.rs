@@ -7,10 +7,8 @@ use std::os::unix::fs::PermissionsExt;
 use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
-use support::workspace_files::WorkspaceIndexFixture;
 use support::{
     ScriptedCliAuthority, spawn_scripted_idea_backend, spawn_scripted_idea_backend_for_invocations,
-    workspace_database_path_for_test,
 };
 
 fn kast(home: &Path, config_home: &Path, workspace: &Path) -> Command {
@@ -232,38 +230,6 @@ fn refresh_combines_diagnostics_and_graph_for_the_exact_files() {
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let source = source.canonicalize().expect("canonical source");
     let failure_id = uuid::Uuid::new_v4().hyphenated().to_string();
-    let index = WorkspaceIndexFixture::at_database_path(
-        &workspace,
-        &workspace_database_path_for_test(&workspace),
-    );
-    let connection = index.connection();
-    connection
-        .execute(
-            "UPDATE path_prefixes SET dir_path = 'src' WHERE prefix_id = 1",
-            [],
-        )
-        .expect("source prefix");
-    connection
-        .execute(
-            "INSERT INTO file_manifest(
-                 prefix_id, filename, last_modified_millis, content_hash,
-                 desired_relationships_version
-             ) VALUES (1, 'App.kt', 1, ?, 'relationships-1')",
-            rusqlite::params!["d".repeat(64)],
-        )
-        .expect("source manifest");
-    connection
-        .execute(
-            "INSERT INTO file_stage_outcomes(
-                 prefix_id, filename, stage, content_hash, stage_version,
-                 outcome_status, limitations_json, failure_id, failure_code, failure_message
-             ) VALUES (
-                 1, 'App.kt', 'RELATIONSHIPS', ?, 'relationships-1',
-                 'FAILED', '[]', ?, 'PSI_UNAVAILABLE', 'PSI was unavailable'
-             )",
-            rusqlite::params!["d".repeat(64), failure_id],
-        )
-        .expect("externalizable relationship failure");
     let socket = fixture.path().join("refresh.sock");
     let backend = spawn_scripted_idea_backend_for_invocations(
         &home,
@@ -276,7 +242,10 @@ fn refresh_combines_diagnostics_and_graph_for_the_exact_files() {
         ),
         2,
         vec![
-            ("raw/workspace-refresh", complete_refresh(&source)),
+            (
+                "raw/workspace-refresh",
+                complete_refresh(&source, &failure_id),
+            ),
             ("raw/diagnostics", diagnostics_with_error(&source)),
             (
                 "raw/semantic-graph",
@@ -325,8 +294,7 @@ fn refresh_combines_diagnostics_and_graph_for_the_exact_files() {
         json!([{
             "path": source,
             "failureId": failure_id,
-            "code": "PSI_UNAVAILABLE",
-            "message": "PSI was unavailable"
+            "code": "PSI_UNAVAILABLE"
         }])
     );
     assert_eq!(
@@ -429,7 +397,7 @@ fn refresh_external_projects_only_actionable_outcomes() {
     assert_eq!(request["params"]["filePaths"], json!([]));
 }
 
-fn complete_refresh(file: &Path) -> Value {
+fn complete_refresh(file: &Path, failure_id: &str) -> Value {
     let file = file.display().to_string();
     json!({
         "refreshedFiles": [file],
@@ -442,6 +410,11 @@ fn complete_refresh(file: &Path) -> Value {
             "indexAdmission": "ADMITTED",
             "analysisAvailability": "AVAILABLE",
             "analysisStatus": {"filePath": file, "state": "ANALYZED"}
+        }],
+        "relationshipFailures": [{
+            "failureId": failure_id,
+            "filePath": file,
+            "code": "PSI_UNAVAILABLE"
         }],
         "semanticOutcome": "COMPLETE",
         "requestedFileCount": 1,
