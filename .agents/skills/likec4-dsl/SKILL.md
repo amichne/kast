@@ -15,7 +15,7 @@ Architecture-as-code tool. Describe systems in `.c4`/`.likec4` files and LikeC4 
 4. **Strings** — `'single'`, `"double"` — all support multi-line. Escape quotes with backslash: `\'` or `\"`.
 5. **Markdown** — properties like `summary`/`description`/`notes` can contain Markdown. Use triple quotes `'''` or `"""`. Begin a new line after opening quotes and indent Markdown content for better formatting and syntax highlighting.
 6. **Comments** — `// single line` and `/* multi-line */` comments supported anywhere.
-7. **Identifier** — letters, digits, hyphens, underscores only. No dots (dots are FQN separators). Can't start with a digit. Examples: `customer`, `payment-service`, `frontendApp`, `queue-1`. **Critical:** `payment-api` is valid; `payment.api` is NOT an identifier (dots separate FQN hierarchy). See `references/identifier-validity.md`.
+7. **Identifier** — letters, digits, hyphens, underscores only. No dots (dots are FQN separators). Can't start with a digit. Examples: `customer`, `payment-service`, `frontendApp`, `queue-1`. **Critical:** `payment-api` is valid; `payment.api` is NOT an identifier (dots separate FQN hierarchy). See `references/guides/identifier-validity.md`.
 8. **FQN** — Fully Qualified Name (FQN) is a dot-separated path to an element, MUST be unique within the project. Examples: `customer`, `saas.backend.payment-service.paymentsApi`, `infra.eu.zone1.node1`.
 9. **References** — LikeC4 has lexical scoping with hoisting, nested scope may shadow outer, like in JavaScript. That scope does **not** carry across files: even with imports/includes in the same project, cross-file references must use full FQNs. Tiny reminder: `backend.api` does not survive a file boundary; across files write the full path such as `cloud.backend.api`.
 
@@ -393,7 +393,7 @@ Return-arrow precision:
 
 ## Common Mistakes & Debugging
 
-When a model errors or an eval answer seems wrong, load `references/troubleshooting.md` which contains:
+When a model errors or an eval answer seems wrong, load `references/guides/troubleshooting.md` which contains:
 
 - **Syntax errors** — identifier format (dots forbidden in identifiers), unknown kinds, duplicate FQNs, malformed `where` predicates
 - **Model & Hierarchy** — broken FQN references, parent-child relationship constraint, cross-file visibility
@@ -417,12 +417,12 @@ Load a reference file when the task involves the corresponding topic. Claude rea
 | `references/style-tokens-colors.md`          | Applying colors, shapes, icons, or relationship line styles; need exact token names                                             |
 | `references/views.md`                        | Writing views, include/exclude rules, style rules in views, groups, autoLayout, global predicates                               |
 | `references/predicates.md`                   | Complex `where` conditions, metadata filters, `with` overrides, global predicate groups, reusable predicates                    |
-| `references/include-predicates-wildcards.md` | Wildcard confusion suspected (`*` vs `_` vs `**`); need exact scoped-view semantics                                             |
+| `references/guides/include-predicates-wildcards.md` | Wildcard confusion suspected (`*` vs `_` vs `**`); need exact scoped-view semantics                                             |
 | `references/dynamic-views.md`                | Writing dynamic views: steps, return arrows, chained steps, flow-control blocks (`parallel`/`opt`/`loop`/`alt`/`try`), `variant sequence` |
-| `references/identifier-validity.md`          | Identifier vs FQN confusion; "dots in names" errors; understanding FQN construction                                             |
-| `references/relationships-bidirectional.md`  | Bidirectional relationship syntax and `<->` view predicate patterns                                                             |
-| `references/bridge-leanix-drawio.md`         | LeanIX bridge · `drawio --profile leanix` · round-trip · mapping · MCP vs bridge · sync/artifacts/managed cells                 |
+| `references/guides/identifier-validity.md`          | Identifier vs FQN confusion; "dots in names" errors; understanding FQN construction                                             |
+| `references/guides/relationships-bidirectional.md`  | Bidirectional relationship syntax and `<->` view predicate patterns                                                             |
+| `references/guides/bridge-leanix-drawio.md`         | LeanIX bridge · `drawio --profile leanix` · round-trip · mapping · MCP vs bridge · sync/artifacts/managed cells                 |
 | `references/cli.md`                          | Full CLI reference: serve, build, export, codegen, mcp, format; flag disambiguation                                             |
 | `references/configuration.md`                | Project config options, multi-project setup, include/exclude paths, generators                                                  |
-| `references/examples.md`                     | Compact real-world examples: extend, groups, globals, dynamic views, deployment, rank                                           |
-| `references/troubleshooting.md`              | Errors, unexpected output, eval failures — 6 error tables, 5-step debug workflow, 7 best practices                              |
+| `references/guides/examples.md`                     | Compact real-world examples: extend, groups, globals, dynamic views, deployment, rank                                           |
+| `references/guides/troubleshooting.md`              | Errors, unexpected output, eval failures — 6 error tables, 5-step debug workflow, 7 best practices                              |

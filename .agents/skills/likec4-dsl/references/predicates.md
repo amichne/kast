@@ -46,7 +46,7 @@ Expressions inside `exclude` clause match against the accumulated result of prev
 - `<element_ref>._` - selects direct children of `<element_ref>` that have relationships with accumulated result
 - `<element_ref>.**` - selects **all recursive descendants** of `<element_ref>` that have relationships with accumulated result
 
-For detailed wildcard edge cases (`*` vs `_` vs `**`), load `references/include-predicates-wildcards.md`.
+For detailed wildcard edge cases (`*` vs `_` vs `**`), load `references/guides/include-predicates-wildcards.md`.
 
 ### Wildcard expression
 
