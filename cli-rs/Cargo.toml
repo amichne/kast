@@ -65,6 +65,10 @@ name = "kast_agent_surface"
 path = "tests/kast_agent_surface.rs"
 
 [[test]]
+name = "kast_public_operations"
+path = "tests/kast_public_operations.rs"
+
+[[test]]
 name = "kast_resources"
 path = "tests/kast_resources.rs"
 
