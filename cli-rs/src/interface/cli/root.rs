@@ -1,6 +1,6 @@
 #[derive(Debug, Parser)]
 #[command(
-    name = "kast",
+    name = "_kastctl",
     version = version(),
     about = "Repo-local control plane for workspace daemons and Kotlin analysis requests.",
     disable_help_subcommand = true

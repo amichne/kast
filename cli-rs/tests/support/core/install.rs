@@ -1,3 +1,5 @@
+use std::os::unix::process::CommandExt;
+
 pub(crate) fn kast(home: &std::path::Path, config_home: &std::path::Path) -> Command {
     kast_at(Path::new(env!("CARGO_BIN_EXE_kast")), home, config_home)
 }
@@ -5,6 +7,7 @@ pub(crate) fn kast(home: &std::path::Path, config_home: &std::path::Path) -> Com
 pub(crate) fn kast_at(binary: &Path, home: &Path, config_home: &Path) -> Command {
     let mut command = Command::new(binary);
     command
+        .arg0("_kastctl")
         .env("HOME", home)
         .env("KAST_CONFIG_HOME", config_home);
     command

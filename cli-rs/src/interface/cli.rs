@@ -6,7 +6,7 @@ include!("cli/root.rs");
 include!("cli/workspace/config.rs");
 include!("cli/inspect_metrics_demo_rpc.rs");
 include!("cli/agent.rs");
-include!("cli/kagent.rs");
+include!("cli/agent_surface.rs");
 include!("cli/release_package_generate.rs");
 include!("cli/workspace/runtime.rs");
 include!("cli/codex.rs");

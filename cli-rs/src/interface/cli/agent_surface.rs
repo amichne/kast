@@ -1,62 +1,62 @@
 #[derive(Debug, Parser)]
 #[command(
-    name = "kagent",
+    name = "kast",
     version = version(),
     about = "Compiler-backed Kotlin knowledge and changes for coding agents.",
     disable_help_subcommand = true
 )]
-pub struct KAgentCli {
+pub struct KastCli {
     #[command(subcommand)]
-    pub command: Option<KAgentCommand>,
+    pub command: Option<KastCommand>,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum KAgentCommand {
+pub enum KastCommand {
     #[command(name = "__internal", hide = true)]
-    Internal(KAgentInternalArgs),
+    Internal(KastInternalArgs),
     /// Start or reuse the current workspace and wait for semantic evidence.
     Up,
     /// Refresh changed semantic evidence or externalize an eligible failure.
-    Refresh(KAgentRefreshArgs),
+    Refresh(KastRefreshArgs),
     /// List Kotlin source and script files in the current workspace.
     Files {
         /// Optional path or name pattern.
         pattern: Option<String>,
     },
     /// Find symbols and traverse compiler-backed relationships.
-    Symbol(KAgentSymbolArgs),
+    Symbol(KastSymbolArgs),
     /// Inspect persisted topology and graph statistics.
-    Graph(KAgentGraphArgs),
+    Graph(KastGraphArgs),
     /// Check compiler diagnostics for changed or selected files.
-    Check(KAgentPathsArgs),
+    Check(KastPathsArgs),
     /// Create a validated semantic change plan.
-    Change(KAgentChangeArgs),
+    Change(KastChangeArgs),
     /// Apply one validated semantic change plan.
     Apply {
-        /// Opaque plan identifier returned by `kagent change`.
+        /// Opaque plan identifier returned by `kast change`.
         plan_id: String,
     },
 }
 
 #[derive(Debug, Args)]
-pub struct KAgentInternalArgs {
+pub struct KastInternalArgs {
     #[command(subcommand)]
-    pub command: KAgentInternalCommand,
+    pub command: KastInternalCommand,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum KAgentInternalCommand {
-    Resources(KAgentResourcesArgs),
+pub enum KastInternalCommand {
+    Resources(KastResourcesArgs),
 }
 
 #[derive(Debug, Args)]
-pub struct KAgentResourcesArgs {
+pub struct KastResourcesArgs {
     #[command(subcommand)]
-    pub command: KAgentResourcesCommand,
+    pub command: KastResourcesCommand,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum KAgentResourcesCommand {
+pub enum KastResourcesCommand {
     Install {
         #[arg(
             long = "harness",
@@ -64,52 +64,54 @@ pub enum KAgentResourcesCommand {
             value_enum,
             action = clap::ArgAction::Append
         )]
-        harnesses: Vec<KAgentHarness>,
+        harnesses: Vec<KastHarness>,
     },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
-pub enum KAgentHarness {
+pub enum KastHarness {
     Codex,
     Claude,
     Copilot,
 }
 
+pub type KAgentHarness = KastHarness;
+
 #[derive(Debug, Args)]
 #[command(args_conflicts_with_subcommands = true, subcommand_precedence_over_arg = true)]
-pub struct KAgentRefreshArgs {
+pub struct KastRefreshArgs {
     #[command(subcommand)]
-    pub command: Option<KAgentRefreshCommand>,
+    pub command: Option<KastRefreshCommand>,
     /// Files to retry even when their content is unchanged.
     #[arg(value_name = "PATH")]
     pub paths: Vec<PathBuf>,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum KAgentRefreshCommand {
+pub enum KastRefreshCommand {
     /// Mark eligible, content-bound failures as external graph boundaries.
     External {
-        /// Opaque failure identifiers returned by `kagent refresh`.
+        /// Opaque failure identifiers returned by `kast refresh`.
         #[arg(required = true)]
         failure_ids: Vec<String>,
     },
 }
 
 #[derive(Debug, Args)]
-pub struct KAgentPathsArgs {
+pub struct KastPathsArgs {
     /// Files to inspect; defaults to changed Kotlin files.
     #[arg(value_name = "PATH")]
     pub paths: Vec<PathBuf>,
 }
 
 #[derive(Debug, Args)]
-pub struct KAgentSymbolArgs {
+pub struct KastSymbolArgs {
     #[command(subcommand)]
-    pub command: KAgentSymbolCommand,
+    pub command: KastSymbolCommand,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum KAgentSymbolCommand {
+pub enum KastSymbolCommand {
     /// Find symbols by name, signature, or fully-qualified name.
     Find { query: String },
     /// Show one symbol selected by query or opaque identifier.
@@ -129,13 +131,13 @@ pub enum KAgentSymbolCommand {
 }
 
 #[derive(Debug, Args)]
-pub struct KAgentGraphArgs {
+pub struct KastGraphArgs {
     #[command(subcommand)]
-    pub command: Option<KAgentGraphCommand>,
+    pub command: Option<KastGraphCommand>,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum KAgentGraphCommand {
+pub enum KastGraphCommand {
     /// Summarize graph coverage and size.
     Summary,
     /// Enumerate graph nodes.
@@ -157,13 +159,13 @@ pub enum KAgentGraphCommand {
 }
 
 #[derive(Debug, Args)]
-pub struct KAgentChangeArgs {
+pub struct KastChangeArgs {
     #[command(subcommand)]
-    pub command: KAgentChangeCommand,
+    pub command: KastChangeCommand,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum KAgentChangeCommand {
+pub enum KastChangeCommand {
     /// Rename one compiler-resolved symbol.
     Rename { symbol: String, new_name: String },
     /// Create a Kotlin file from stdin.

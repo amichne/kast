@@ -53,7 +53,7 @@ mod validate;
 mod workspace_inventory;
 
 use clap::{CommandFactory, Parser};
-use cli::{Cli, Command, GenerateCommand, KAgentCli, KAgentCommand, OutputFormat};
+use cli::{Cli, Command, GenerateCommand, KastCli, KastCommand, OutputFormat};
 use error::{CliError, Result};
 use serde::Serialize;
 use std::env;
@@ -65,15 +65,21 @@ const AGENT_JSON_DEPRECATION_WARNING: &str =
     "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.";
 
 fn main() {
-    let exit_code = if invoked_as_kagent() {
-        kagent_main()
-    } else {
-        kast_main()
+    let exit_code = match invoked_entrypoint() {
+        Some(Entrypoint::Agent) => agent_main(),
+        Some(Entrypoint::Control) => control_main(),
+        None => unrecognized_entrypoint_main(),
     };
     std::process::exit(exit_code);
 }
 
-fn kast_main() -> i32 {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Entrypoint {
+    Agent,
+    Control,
+}
+
+fn control_main() -> i32 {
     let exit_code = match parse_cli() {
         Ok(Some(cli)) => {
             warn_for_deprecated_agent_json(&cli);
@@ -95,12 +101,12 @@ fn kast_main() -> i32 {
     exit_code
 }
 
-fn kagent_main() -> i32 {
-    match KAgentCli::try_parse() {
-        Ok(cli) => match run_kagent(cli) {
+fn agent_main() -> i32 {
+    match KastCli::try_parse() {
+        Ok(cli) => match run_kast_agent(cli) {
             Ok(code) => code,
             Err(error) => {
-                let _ = print_kagent_error(&error);
+                let _ = print_agent_error(&error);
                 error_exit_code(&error)
             }
         },
@@ -110,31 +116,52 @@ fn kagent_main() -> i32 {
         }
         Err(error) => {
             let error = CliError::from_clap(error);
-            let _ = print_kagent_error(&error);
+            let _ = print_agent_error(&error);
             error_exit_code(&error)
         }
     }
 }
 
-fn invoked_as_kagent() -> bool {
-    Path::new(&current_executable_argument())
+fn invoked_entrypoint() -> Option<Entrypoint> {
+    match Path::new(&current_executable_argument())
         .file_stem()
-        .is_some_and(|name| name == "kagent")
+        .and_then(|name| name.to_str())
+    {
+        Some("kast") => Some(Entrypoint::Agent),
+        Some("_kastctl") => Some(Entrypoint::Control),
+        _ => None,
+    }
+}
+
+fn unrecognized_entrypoint_main() -> i32 {
+    let invoked = Path::new(&current_executable_argument())
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+    let error = CliError::new(
+        "CLI_USAGE",
+        format!(
+            "This executable must be invoked as `kast` or `_kastctl`; `{invoked}` is not supported."
+        ),
+    );
+    let _ = print_agent_error(&error);
+    2
 }
 
 #[derive(Debug, Serialize)]
-struct KAgentError<'a> {
+struct AgentError<'a> {
     error: &'a str,
     message: &'a str,
     next: &'static str,
 }
 
-fn print_kagent_error(error: &CliError) -> Result<()> {
+fn print_agent_error(error: &CliError) -> Result<()> {
     output::print_structured(
-        &KAgentError {
+        &AgentError {
             error: error.code,
             message: &error.message,
-            next: "Run `kagent --help` for valid commands and arguments.",
+            next: "Run `kast --help` for valid commands and arguments.",
         },
         OutputFormat::Toon,
     )
@@ -142,7 +169,7 @@ fn print_kagent_error(error: &CliError) -> Result<()> {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-struct KAgentHome {
+struct KastHome {
     bin: String,
     description: &'static str,
     root: String,
@@ -154,37 +181,37 @@ struct KAgentHome {
     next: Vec<String>,
 }
 
-fn run_kagent(cli: KAgentCli) -> Result<i32> {
+fn run_kast_agent(cli: KastCli) -> Result<i32> {
     let Some(command) = cli.command else {
         let root = config::resolve_workspace_root(None)?;
-        let home = kagent_home(root)?;
+        let home = kast_home(root)?;
         output::print_structured(&home, OutputFormat::Toon)?;
         return Ok(0);
     };
     match command {
-        KAgentCommand::Internal(cli::KAgentInternalArgs {
+        KastCommand::Internal(cli::KastInternalArgs {
             command:
-                cli::KAgentInternalCommand::Resources(cli::KAgentResourcesArgs {
-                    command: cli::KAgentResourcesCommand::Install { harnesses },
+                cli::KastInternalCommand::Resources(cli::KastResourcesArgs {
+                    command: cli::KastResourcesCommand::Install { harnesses },
                 }),
         }) => {
             install::install_agent_resources(&harnesses)?;
             Ok(0)
         }
-        KAgentCommand::Graph(cli::KAgentGraphArgs {
-            command: Some(cli::KAgentGraphCommand::Summary),
-        }) => run_kagent_graph_summary(),
+        KastCommand::Graph(cli::KastGraphArgs {
+            command: Some(cli::KastGraphCommand::Summary),
+        }) => run_kast_graph_summary(),
         command => Err(CliError::new(
-            "KAGENT_NOT_IMPLEMENTED",
+            "KAST_AGENT_NOT_IMPLEMENTED",
             format!(
-                "`kagent {}` is not implemented yet.",
-                kagent_command_name(&command)
+                "`kast {}` is not implemented yet.",
+                kast_command_name(&command)
             ),
         )),
     }
 }
 
-fn run_kagent_graph_summary() -> Result<i32> {
+fn run_kast_graph_summary() -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(None)?;
     let envelope = agent::execute_projected(cli::AgentCommand::Graph(cli::AgentNativeGraphArgs {
         runtime: cli::AgentRuntimeArgs {
@@ -208,15 +235,15 @@ fn run_kagent_graph_summary() -> Result<i32> {
     if !envelope.ok {
         let error = envelope.error.ok_or_else(|| {
             CliError::new(
-                "KAGENT_INVALID_AGENT_RESULT",
+                "KAST_INVALID_AGENT_RESULT",
                 "The graph operation failed without an actionable error.",
             )
         })?;
         output::print_structured(
-            &KAgentError {
+            &AgentError {
                 error: &error.code,
                 message: &error.message,
-                next: "Run `kagent --help` for valid commands and arguments.",
+                next: "Run `kast --help` for valid commands and arguments.",
             },
             OutputFormat::Toon,
         )?;
@@ -224,15 +251,15 @@ fn run_kagent_graph_summary() -> Result<i32> {
     }
     let result = envelope.result.ok_or_else(|| {
         CliError::new(
-            "KAGENT_INVALID_AGENT_RESULT",
+            "KAST_INVALID_AGENT_RESULT",
             "The graph operation completed without a result.",
         )
     })?;
-    output::print_structured(&sanitize_kagent_result(result, true), OutputFormat::Toon)?;
+    output::print_structured(&sanitize_agent_result(result, true), OutputFormat::Toon)?;
     Ok(0)
 }
 
-fn sanitize_kagent_result(value: serde_json::Value, root: bool) -> serde_json::Value {
+fn sanitize_agent_result(value: serde_json::Value, root: bool) -> serde_json::Value {
     match value {
         serde_json::Value::Object(fields) => serde_json::Value::Object(
             fields
@@ -240,21 +267,21 @@ fn sanitize_kagent_result(value: serde_json::Value, root: bool) -> serde_json::V
                 .filter_map(|(key, value)| {
                     let protocol_cruft = matches!(key.as_str(), "ok" | "method" | "schemaVersion");
                     (!(protocol_cruft || root && key == "type"))
-                        .then(|| (key, sanitize_kagent_result(value, false)))
+                        .then(|| (key, sanitize_agent_result(value, false)))
                 })
                 .collect(),
         ),
         serde_json::Value::Array(items) => serde_json::Value::Array(
             items
                 .into_iter()
-                .map(|item| sanitize_kagent_result(item, false))
+                .map(|item| sanitize_agent_result(item, false))
                 .collect(),
         ),
         scalar => scalar,
     }
 }
 
-fn kagent_home(root: PathBuf) -> Result<KAgentHome> {
+fn kast_home(root: PathBuf) -> Result<KastHome> {
     let readiness = self_mgmt::doctor(cli::ReadyTarget::Agent, Some(&root))?;
     let mut runtime_state = "DOWN".to_string();
     let mut reference_index_ready = false;
@@ -287,13 +314,13 @@ fn kagent_home(root: PathBuf) -> Result<KAgentHome> {
     let ready = runtime_state == "READY" && reference_index_ready;
     let next = if ready {
         vec![
-            "kagent refresh".to_string(),
-            "kagent symbol find <query>".to_string(),
+            "kast refresh".to_string(),
+            "kast symbol find <query>".to_string(),
         ]
     } else {
-        vec!["kagent up".to_string()]
+        vec!["kast up".to_string()]
     };
-    Ok(KAgentHome {
+    Ok(KastHome {
         bin: display_invoked_executable(),
         description: "Compiler-backed Kotlin knowledge and changes for coding agents.",
         root: root.display().to_string(),
@@ -305,17 +332,17 @@ fn kagent_home(root: PathBuf) -> Result<KAgentHome> {
     })
 }
 
-fn kagent_command_name(command: &KAgentCommand) -> &'static str {
+fn kast_command_name(command: &KastCommand) -> &'static str {
     match command {
-        KAgentCommand::Internal(_) => "__internal",
-        KAgentCommand::Up => "up",
-        KAgentCommand::Refresh(_) => "refresh",
-        KAgentCommand::Files { .. } => "files",
-        KAgentCommand::Symbol(_) => "symbol",
-        KAgentCommand::Graph(_) => "graph",
-        KAgentCommand::Check(_) => "check",
-        KAgentCommand::Change(_) => "change",
-        KAgentCommand::Apply { .. } => "apply",
+        KastCommand::Internal(_) => "__internal",
+        KastCommand::Up => "up",
+        KastCommand::Refresh(_) => "refresh",
+        KastCommand::Files { .. } => "files",
+        KastCommand::Symbol(_) => "symbol",
+        KastCommand::Graph(_) => "graph",
+        KastCommand::Check(_) => "check",
+        KastCommand::Change(_) => "change",
+        KastCommand::Apply { .. } => "apply",
     }
 }
 
