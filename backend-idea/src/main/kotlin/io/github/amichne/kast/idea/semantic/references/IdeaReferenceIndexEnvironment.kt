@@ -4,6 +4,7 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
 import io.github.amichne.kast.api.client.WorkspaceIdentity
@@ -15,6 +16,12 @@ internal class IdeaReferenceIndexEnvironment(
     private val project: Project,
     private val workspaceIdentity: WorkspaceIdentity,
     private val cancelled: () -> Boolean,
+    private val findVirtualFile: (Path) -> VirtualFile? = {
+        LocalFileSystem.getInstance().findFileByNioFile(it)
+    },
+    private val refreshVirtualFile: (Path) -> VirtualFile? = {
+        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(it)
+    },
 ) : ReferenceIndexEnvironment {
     constructor(
         project: Project,
@@ -25,9 +32,8 @@ internal class IdeaReferenceIndexEnvironment(
     override fun findPsiFile(filePath: String): PsiFile? {
         val path = Path.of(filePath).toAbsolutePath().normalize()
         if (!workspaceIdentity.contains(path)) return null
-        val fileSystem = LocalFileSystem.getInstance()
-        val virtualFile = fileSystem.findFileByNioFile(path)
-            ?: fileSystem.refreshAndFindFileByNioFile(path)
+        val virtualFile = findVirtualFile(path)
+            ?: refreshVirtualFile(path)
             ?: return null
         return withReadAccess { PsiManager.getInstance(project).findFile(virtualFile) }
     }
