@@ -158,19 +158,24 @@ fn setup_rolls_back_when_the_new_release_fails_readiness() {
     let active = std::fs::canonicalize(kast_home.join("current")).expect("active release");
 
     let broken = write_install_bundle_source(temp.path(), "v2.0.0");
-    let broken_cli = broken.join("commands/kast");
+    let broken_cli = broken.join("commands/_kastctl");
     std::fs::create_dir_all(broken_cli.parent().expect("broken CLI parent"))
         .expect("broken CLI directory");
-    std::fs::rename(broken.join("bin/kast"), &broken_cli).expect("custom CLI path");
+    std::fs::rename(broken.join("bin/_kastctl"), &broken_cli).expect("custom CLI path");
     std::fs::write(&broken_cli, "#!/bin/sh\nexit 1\n").expect("broken CLI");
     set_executable_for_test(&broken_cli);
+    let broken_agent_cli = broken.join("bin/kast");
+    std::fs::write(&broken_agent_cli, "#!/bin/sh\nexit 1\n").expect("broken agent CLI");
+    set_executable_for_test(&broken_agent_cli);
     let manifest_path = broken.join("manifest.json");
     let mut manifest: serde_json::Value =
         serde_json::from_str(&std::fs::read_to_string(&manifest_path).expect("bundle manifest"))
             .expect("manifest JSON");
-    manifest["activation"]["cli"]["path"] = serde_json::json!("commands/kast");
-    manifest["artifacts"][0]["path"] = serde_json::json!("commands/kast");
+    manifest["activation"]["cli"]["path"] = serde_json::json!("commands/_kastctl");
+    manifest["artifacts"][0]["path"] = serde_json::json!("commands/_kastctl");
     manifest["artifacts"][0]["sha256"] = serde_json::Value::String(test_path_sha256(&broken_cli));
+    manifest["artifacts"][1]["sha256"] =
+        serde_json::Value::String(test_path_sha256(&broken_agent_cli));
     std::fs::write(
         &manifest_path,
         serde_json::to_string_pretty(&manifest).expect("manifest JSON"),

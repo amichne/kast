@@ -181,6 +181,7 @@ fn failed_current_idea_setup_preserves_unrelated_legacy_state() {
     assert!(run().status.success(), "initial setup should succeed");
     let local_bin = home.join(".local/bin");
     std::fs::remove_file(local_bin.join("kast")).expect("managed user command");
+    std::fs::remove_file(local_bin.join("_kastctl")).expect("managed control command");
     std::fs::remove_dir(&local_bin).expect("empty command directory");
     std::fs::write(&local_bin, "blocks command projection").expect("blocking command path");
     let legacy_config = home.join(".config/kast/config.toml");
