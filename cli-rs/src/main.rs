@@ -1,5 +1,6 @@
 mod agent;
 mod agent_adapter;
+mod agent_plan;
 #[path = "configuration/bundle.rs"]
 mod bundle;
 #[path = "configuration/catalog_schema.rs"]
@@ -204,13 +205,9 @@ fn run_kast_agent(cli: KastCli) -> Result<i32> {
         KastCommand::Symbol(args) => agent_adapter::run_symbol(args),
         KastCommand::Graph(args) => agent_adapter::run_graph(args),
         KastCommand::Check(args) => agent_adapter::run_check(args),
-        command => Err(CliError::new(
-            "KAST_AGENT_NOT_IMPLEMENTED",
-            format!(
-                "`kast {}` is not implemented yet.",
-                kast_command_name(&command)
-            ),
-        )),
+        KastCommand::Refresh(args) => agent_adapter::run_refresh(args),
+        KastCommand::Change(args) => agent_plan::run_change(args),
+        KastCommand::Apply { plan_id } => agent_plan::run_apply(plan_id),
     }
 }
 
@@ -263,20 +260,6 @@ fn kast_home(root: PathBuf) -> Result<KastHome> {
         limitation,
         next,
     })
-}
-
-fn kast_command_name(command: &KastCommand) -> &'static str {
-    match command {
-        KastCommand::Internal(_) => "__internal",
-        KastCommand::Up => "up",
-        KastCommand::Refresh(_) => "refresh",
-        KastCommand::Files { .. } => "files",
-        KastCommand::Symbol(_) => "symbol",
-        KastCommand::Graph(_) => "graph",
-        KastCommand::Check(_) => "check",
-        KastCommand::Change(_) => "change",
-        KastCommand::Apply { .. } => "apply",
-    }
 }
 
 fn display_invoked_executable() -> String {

@@ -6,14 +6,16 @@ use crate::cli::{
     AgentRelationLimit, AgentRelationViewArgs, AgentReusableSymbolSelectorArgs, AgentRuntimeArgs,
     AgentSelectorHandle, AgentSymbolArgs, AgentSymbolMode, AgentSymbolViewArgs,
     AgentWorkspaceFilesArgs, AgentWorkspaceFilesField, AgentWorkspaceFilesViewArgs, KastGraphArgs,
-    KastGraphCommand, KastPathsArgs, KastSymbolArgs, KastSymbolCommand, NativeGraphOperation,
-    OutputFormat, WorkspaceDirtyFilter, WorkspaceRelativeGlob,
+    KastGraphCommand, KastPathsArgs, KastRefreshArgs, KastRefreshCommand, KastSymbolArgs,
+    KastSymbolCommand, NativeGraphOperation, OutputFormat, WorkspaceDirtyFilter,
+    WorkspaceRelativeGlob,
 };
 use crate::error::{CliError, Result};
 use crate::runtime::{RuntimeState, RuntimeStatusResponse};
 use crate::{config, output, runtime};
 use serde::Serialize;
-use serde_json::Value;
+use serde_json::{Value, json};
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -42,6 +44,22 @@ struct EmptyCheckResult {
     changed_file_count: usize,
     diagnostic_count: usize,
     message: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EmptyRefreshResult {
+    file_count: usize,
+    message: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ExternalizableFailure {
+    path: String,
+    failure_id: String,
+    code: String,
+    message: String,
 }
 
 pub(crate) fn run_up() -> Result<i32> {
@@ -254,6 +272,97 @@ pub(crate) fn run_check(args: KastPathsArgs) -> Result<i32> {
     }))
 }
 
+pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
+    let workspace_root = config::resolve_workspace_root(None)?;
+    if let Some(KastRefreshCommand::External { failure_ids }) = args.command {
+        return run_external_refresh(workspace_root, failure_ids);
+    }
+
+    let file_paths = if args.paths.is_empty() {
+        match changed_kotlin_files(&workspace_root)? {
+            Ok(file_paths) => file_paths,
+            Err(envelope) => return print_projected_value(envelope),
+        }
+    } else {
+        args.paths
+            .into_iter()
+            .map(|path| path.display().to_string())
+            .collect()
+    };
+    if file_paths.is_empty() {
+        return print_direct(&EmptyRefreshResult {
+            file_count: 0,
+            message: "No changed Kotlin files were found.",
+        });
+    }
+
+    let diagnostics = projected_value(AgentCommand::Diagnostics(AgentDiagnosticsArgs {
+        runtime: agent_runtime(workspace_root.clone()),
+        file_paths,
+        skip_refresh: false,
+        limit: 500,
+        page_token: None,
+        view: AgentDiagnosticsViewArgs::default(),
+    }))?;
+    if diagnostics.get("ok") != Some(&Value::Bool(true)) {
+        return print_projected_value(diagnostics);
+    }
+    let diagnostics_result = projected_result(&diagnostics)?;
+    let canonical_paths = diagnostics_result
+        .get("filePaths")
+        .and_then(Value::as_array)
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "Diagnostics completed without canonical file paths.",
+            )
+        })?
+        .iter()
+        .map(|path| {
+            path.as_str().map(str::to_string).ok_or_else(|| {
+                CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "Diagnostics returned a non-string file path.",
+                )
+            })
+        })
+        .collect::<Result<Vec<_>>>()?;
+
+    let graph = projected_value(native_graph_command(
+        workspace_root.clone(),
+        NativeGraphOperation::Refresh,
+        None,
+        canonical_paths.clone(),
+    ))?;
+    if graph.get("ok") != Some(&Value::Bool(true)) {
+        return print_projected_value(graph);
+    }
+    let graph_result = projected_result(&graph)?;
+    let externalizable_failures = externalizable_failures(&workspace_root, &canonical_paths)?;
+    let next = externalizable_failures
+        .iter()
+        .map(|failure| format!("kast refresh external {}", failure.failure_id))
+        .collect::<Vec<_>>();
+
+    print_direct(&json!({
+        "fileCount": canonical_paths.len(),
+        "files": canonical_paths,
+        "diagnostics": {
+            "severityCounts": required_field(diagnostics_result, "severityCounts")?,
+            "cardinality": diagnostic_cardinality(diagnostics_result)?,
+            "diagnostics": required_field(diagnostics_result, "diagnostics")?,
+        },
+        "graph": {
+            "generation": required_field(graph_result, "generation")?,
+            "symbolCount": required_field(graph_result, "symbolCount")?,
+            "edgeOccurrenceCount": required_field(graph_result, "edgeOccurrenceCount")?,
+            "coverage": required_field(graph_result, "coverage")?,
+        },
+        "externalizableFailures": externalizable_failures,
+        "next": next,
+    }))
+}
+
 pub(crate) fn print_projected(command: AgentCommand) -> Result<i32> {
     print_projected_value(projected_value(command)?)
 }
@@ -263,12 +372,26 @@ fn print_native_graph(
     operation: NativeGraphOperation,
     symbol: Option<String>,
 ) -> Result<i32> {
-    print_projected(AgentCommand::Graph(AgentNativeGraphArgs {
+    print_projected(native_graph_command(
+        workspace_root,
+        operation,
+        symbol,
+        Vec::new(),
+    ))
+}
+
+fn native_graph_command(
+    workspace_root: PathBuf,
+    operation: NativeGraphOperation,
+    symbol: Option<String>,
+    file_paths: Vec<String>,
+) -> AgentCommand {
+    AgentCommand::Graph(AgentNativeGraphArgs {
         runtime: agent_runtime(workspace_root),
         database: None,
         scope: None,
         operation,
-        file_paths: Vec::new(),
+        file_paths,
         removed_file_paths: Vec::new(),
         modules: Vec::new(),
         source_sets: Vec::new(),
@@ -278,7 +401,7 @@ fn print_native_graph(
         after_id: None,
         limit: (operation == NativeGraphOperation::Nodes).then_some(500),
         resolution: None,
-    }))
+    })
 }
 
 fn run_symbol_relation(
@@ -422,11 +545,11 @@ fn collect_string_fields(value: &Value, key: &str, values: &mut Vec<String>) {
     }
 }
 
-fn projected_value(command: AgentCommand) -> Result<Value> {
+pub(crate) fn projected_value(command: AgentCommand) -> Result<Value> {
     serde_json::to_value(agent::execute_projected(command)).map_err(CliError::from)
 }
 
-fn print_projected_value(envelope: Value) -> Result<i32> {
+pub(crate) fn print_projected_value(envelope: Value) -> Result<i32> {
     let ok = envelope.get("ok").and_then(Value::as_bool).ok_or_else(|| {
         CliError::new(
             "KAST_INVALID_AGENT_RESULT",
@@ -467,6 +590,10 @@ fn print_projected_value(envelope: Value) -> Result<i32> {
     print_direct(&sanitize_agent_result(result, true))
 }
 
+pub(crate) fn print_agent_result(result: Value) -> Result<i32> {
+    print_direct(&sanitize_agent_result(result, true))
+}
+
 fn print_direct(value: &impl Serialize) -> Result<i32> {
     output::print_structured(value, OutputFormat::Toon)?;
     Ok(0)
@@ -474,16 +601,29 @@ fn print_direct(value: &impl Serialize) -> Result<i32> {
 
 fn sanitize_agent_result(value: Value, root: bool) -> Value {
     match value {
-        Value::Object(fields) => Value::Object(
-            fields
+        Value::Object(fields) => {
+            let nodes_truncated = fields.get("nextAfterId").map(|next| !next.is_null());
+            let mut sanitized = fields
                 .into_iter()
                 .filter_map(|(key, value)| {
-                    let protocol_cruft = matches!(key.as_str(), "ok" | "method" | "schemaVersion");
+                    let protocol_cruft = matches!(
+                        key.as_str(),
+                        "ok" | "method"
+                            | "schemaVersion"
+                            | "pageToken"
+                            | "nextPageToken"
+                            | "afterId"
+                            | "nextAfterId"
+                    );
                     (!(protocol_cruft || root && key == "type"))
                         .then(|| (key, sanitize_agent_result(value, false)))
                 })
-                .collect(),
-        ),
+                .collect::<serde_json::Map<_, _>>();
+            if let Some(truncated) = nodes_truncated {
+                sanitized.insert("truncated".to_string(), Value::Bool(truncated));
+            }
+            Value::Object(sanitized)
+        }
         Value::Array(items) => Value::Array(
             items
                 .into_iter()
@@ -494,11 +634,227 @@ fn sanitize_agent_result(value: Value, root: bool) -> Value {
     }
 }
 
-fn agent_runtime(workspace_root: PathBuf) -> AgentRuntimeArgs {
+pub(crate) fn agent_runtime(workspace_root: PathBuf) -> AgentRuntimeArgs {
     AgentRuntimeArgs {
         workspace_root: Some(workspace_root),
         ..Default::default()
     }
+}
+
+fn projected_result(envelope: &Value) -> Result<&Value> {
+    envelope.get("result").ok_or_else(|| {
+        CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "The typed operation completed without a result.",
+        )
+    })
+}
+
+fn required_field<'a>(result: &'a Value, field: &str) -> Result<&'a Value> {
+    result.get(field).ok_or_else(|| {
+        CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            format!("The typed operation returned no `{field}` field."),
+        )
+    })
+}
+
+fn diagnostic_cardinality(result: &Value) -> Result<Value> {
+    let cardinality = required_field(result, "cardinality")?;
+    Ok(json!({
+        "totalCount": required_field(cardinality, "totalCount")?,
+        "returnedCount": required_field(cardinality, "returnedCount")?,
+        "truncated": required_field(cardinality, "truncated")?,
+    }))
+}
+
+fn run_external_refresh(workspace_root: PathBuf, failure_ids: Vec<String>) -> Result<i32> {
+    let request = json!({
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "raw/workspace-refresh",
+        "params": {
+            "filePaths": [],
+            "externalFailureIds": &failure_ids,
+        }
+    });
+    let raw = runtime::raw_request_passthrough(
+        serde_json::to_string(&request)?,
+        Some(workspace_root),
+        None,
+    )?;
+    let response: Value = serde_json::from_str(&raw)?;
+    if let Some(error) = response.get("error") {
+        let code = error
+            .get("data")
+            .and_then(|data| data.get("code"))
+            .or_else(|| error.get("code"))
+            .and_then(Value::as_str)
+            .unwrap_or("RPC_ERROR");
+        let message = error
+            .get("data")
+            .and_then(|data| data.get("message"))
+            .or_else(|| error.get("message"))
+            .and_then(Value::as_str)
+            .unwrap_or("External graph-boundary refresh failed.");
+        return print_failure(code, message);
+    }
+    let outcomes = response
+        .get("result")
+        .and_then(|result| result.get("externalFailureOutcomes"))
+        .and_then(Value::as_array)
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "External graph-boundary refresh returned no outcomes.",
+            )
+        })?;
+    if outcomes.len() != failure_ids.len() {
+        return Err(CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "External graph-boundary refresh returned the wrong number of outcomes.",
+        ));
+    }
+    let external = outcomes
+        .iter()
+        .zip(&failure_ids)
+        .map(|(outcome, requested_id)| {
+            let failure_id = outcome
+                .get("failureId")
+                .and_then(Value::as_str)
+                .ok_or_else(|| {
+                    CliError::new(
+                        "KAST_INVALID_AGENT_RESULT",
+                        "External graph-boundary refresh returned an outcome without a failure id.",
+                    )
+                })?;
+            if failure_id != requested_id {
+                return Err(CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "External graph-boundary refresh returned outcomes out of order.",
+                ));
+            }
+            let status = outcome
+                .get("status")
+                .and_then(Value::as_str)
+                .filter(|status| {
+                    matches!(*status, "EXTERNALIZED" | "ALREADY_EXTERNAL" | "NOT_FOUND")
+                })
+                .ok_or_else(|| {
+                    CliError::new(
+                        "KAST_INVALID_AGENT_RESULT",
+                        "External graph-boundary refresh returned an unknown status.",
+                    )
+                })?;
+            Ok(json!({"failureId": failure_id, "status": status}))
+        })
+        .collect::<Result<Vec<_>>>()?;
+    print_direct(&json!({"external": external}))
+}
+
+fn print_failure(code: &str, message: &str) -> Result<i32> {
+    output::print_structured(
+        &ProjectedError {
+            error: code.to_string(),
+            message: message.to_string(),
+            next: "Run `kast --help` for valid commands and arguments.",
+        },
+        OutputFormat::Toon,
+    )?;
+    Ok(1)
+}
+
+fn externalizable_failures(
+    workspace_root: &Path,
+    selected_paths: &[String],
+) -> Result<Vec<ExternalizableFailure>> {
+    let database = config::workspace_database_path(workspace_root)?;
+    let connection = rusqlite::Connection::open_with_flags(
+        &database,
+        rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY
+            | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX
+            | rusqlite::OpenFlags::SQLITE_OPEN_URI,
+    )
+    .map_err(external_failure_sql_error)?;
+    crate::source_index_db::configure_read_connection(&connection)
+        .map_err(external_failure_sql_error)?;
+    crate::source_index_db::enable_query_only(&connection).map_err(external_failure_sql_error)?;
+    let selected = selected_paths.iter().cloned().collect::<BTreeSet<_>>();
+    let mut statement = connection
+        .prepare(
+            "SELECT prefixes.dir_path, outcomes.filename,
+                    outcomes.failure_id, outcomes.failure_code, outcomes.failure_message
+             FROM file_stage_outcomes outcomes
+             JOIN path_prefixes prefixes ON prefixes.prefix_id = outcomes.prefix_id
+             JOIN file_manifest manifest
+               ON manifest.prefix_id = outcomes.prefix_id
+              AND manifest.filename = outcomes.filename
+             WHERE outcomes.stage = 'RELATIONSHIPS'
+               AND outcomes.outcome_status = 'FAILED'
+               AND outcomes.content_hash = manifest.content_hash
+               AND outcomes.stage_version = manifest.desired_relationships_version
+             ORDER BY prefixes.dir_path, outcomes.filename",
+        )
+        .map_err(external_failure_sql_error)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, String>(3)?,
+                row.get::<_, String>(4)?,
+            ))
+        })
+        .map_err(external_failure_sql_error)?;
+    let mut failures = Vec::new();
+    for row in rows {
+        let (directory, filename, failure_id, code, message) =
+            row.map_err(external_failure_sql_error)?;
+        let path = compose_index_path(workspace_root, &directory, &filename);
+        if !selected.contains(&path) {
+            continue;
+        }
+        let valid_id = uuid::Uuid::parse_str(&failure_id)
+            .ok()
+            .is_some_and(|id| id.hyphenated().to_string() == failure_id);
+        if !valid_id || code != "PSI_UNAVAILABLE" || message.trim().is_empty() {
+            return Err(CliError::new(
+                "KAST_EXTERNAL_FAILURE_EVIDENCE_INVALID",
+                "The source index contains malformed externalizable failure evidence.",
+            ));
+        }
+        failures.push(ExternalizableFailure {
+            path,
+            failure_id,
+            code,
+            message,
+        });
+    }
+    Ok(failures)
+}
+
+fn compose_index_path(workspace_root: &Path, directory: &str, filename: &str) -> String {
+    let path = if let Some(absolute) = directory.strip_prefix("__kast_abs__/") {
+        PathBuf::from(absolute).join(filename)
+    } else {
+        let relative = directory.strip_prefix("__kast_rel__/").unwrap_or(directory);
+        relative
+            .split('/')
+            .filter(|segment| !segment.is_empty())
+            .fold(workspace_root.to_path_buf(), |path, segment| {
+                path.join(segment)
+            })
+            .join(filename)
+    };
+    config::normalize(path).display().to_string()
+}
+
+fn external_failure_sql_error(error: rusqlite::Error) -> CliError {
+    CliError::new(
+        "KAST_EXTERNAL_FAILURE_EVIDENCE_UNAVAILABLE",
+        format!("Externalizable failure evidence is unavailable: {error}"),
+    )
 }
 
 fn workspace_files_args(workspace_root: PathBuf) -> AgentWorkspaceFilesArgs {
@@ -617,5 +973,21 @@ mod tests {
         );
 
         assert_eq!(result, json!({"item": {"type": "NESTED"}}));
+    }
+
+    #[test]
+    fn sanitizer_replaces_unusable_continuations_with_honest_truncation() {
+        let result = sanitize_agent_result(
+            json!({
+                "type": "KAST_NATIVE_GRAPH_NODES",
+                "afterId": 0,
+                "nextAfterId": 42,
+                "nextPageToken": "opaque",
+                "nodes": []
+            }),
+            true,
+        );
+
+        assert_eq!(result, json!({"nodes": [], "truncated": true}));
     }
 }

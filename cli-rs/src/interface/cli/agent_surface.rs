@@ -162,12 +162,12 @@ pub enum KastChangeCommand {
     Rename { symbol: String, new_name: String },
     /// Create a Kotlin file from stdin.
     AddFile { path: PathBuf },
-    /// Add a declaration from stdin.
-    AddDeclaration { path: PathBuf, scope: Option<String> },
-    /// Add implementation content from stdin.
-    AddImplementation { path: PathBuf, scope: Option<String> },
-    /// Add a statement from stdin inside a named executable scope.
-    AddStatement { path: PathBuf, scope: String },
+    /// Add a declaration at the bottom of one file from stdin.
+    AddDeclaration { path: PathBuf },
+    /// Add implementation content at the end of one named scope from stdin.
+    AddImplementation { scope: String },
+    /// Add a statement at the end of one named executable scope from stdin.
+    AddStatement { scope: String },
     /// Replace one named declaration with content from stdin.
     Replace { symbol: String },
 }
