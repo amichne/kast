@@ -29,7 +29,7 @@ fn verify_package_checks(transaction: &Transaction<'_>) -> Result<(), ReadDataba
 fn verify_progress_checks(transaction: &Transaction<'_>) -> Result<(), ReadDatabaseError> {
     let normalized = normalized_table_sql(transaction, "module_index_progress")?;
     if !normalized.contains(
-        "RELATIONSHIP_INDEX_STATUSIN('PENDING','INDEXING','COMPLETE','FAILED')",
+        "RELATIONSHIP_INDEX_STATUSIN('PENDING','INDEXING','COMPLETE','DEGRADED','FAILED')",
     ) {
         return Err(ReadDatabaseError::Incompatible(
             "module_index_progress status CHECK contract is incomplete".to_string(),

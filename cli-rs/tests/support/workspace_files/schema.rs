@@ -108,7 +108,7 @@ impl WorkspaceIndexFixture {
                 CREATE TABLE module_index_progress (
                     module_name TEXT PRIMARY KEY,
                     relationship_index_status TEXT NOT NULL
-                        CHECK(relationship_index_status IN ('PENDING','INDEXING','COMPLETE','FAILED')),
+                        CHECK(relationship_index_status IN ('PENDING','INDEXING','COMPLETE','DEGRADED','FAILED')),
                     indexed_file_count INTEGER NOT NULL,
                     total_file_count INTEGER NOT NULL,
                     last_indexed_epoch_ms INTEGER
