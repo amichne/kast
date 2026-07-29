@@ -39,9 +39,31 @@ class SemanticGraphFileStageFingerprintTest {
         }
 
         SqliteSourceIndexStore(workspaceRoot).use { store ->
-            assertNull(store.pendingFileStage(outcomePath, contentHash, stage, version, first))
-            assertNotNull(store.pendingFileStage(outcomePath, contentHash, stage, version, wider))
+            assertNull(store.pendingFileStage(outcomePath, defaultContentHash, stage, version, first))
+            assertNotNull(store.pendingFileStage(outcomePath, defaultContentHash, stage, version, wider))
             assertEquals(generation, store.readGeneration())
+        }
+    }
+
+    @Test
+    fun `one semantic content change invalidates only that file after restart`() {
+        val firstPath = workspaceRoot.resolve("src/A.kt").toString()
+        val siblingPath = workspaceRoot.resolve("src/B.kt").toString()
+        val firstSource = SemanticGraphSourcePath.parse("src/A.kt")
+        val siblingSource = SemanticGraphSourcePath.parse("src/B.kt")
+        val input = fingerprint('1')
+        val firstHash = hash('a')
+        val siblingHash = hash('b')
+
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            commit(store, firstPath, firstSource, input, "first", firstHash)
+            commit(store, siblingPath, siblingSource, input, "sibling", siblingHash)
+        }
+
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            assertNotNull(store.pendingFileStage(firstPath, hash('c'), stage, version, input))
+            assertNull(store.pendingFileStage(siblingPath, siblingHash, stage, version, input))
         }
     }
 
@@ -89,6 +111,7 @@ class SemanticGraphFileStageFingerprintTest {
         sourcePath: SemanticGraphSourcePath,
         inputFingerprint: FileStageInputFingerprint,
         symbolName: String,
+        contentHash: FileContentHash = defaultContentHash,
     ) {
         val work = checkNotNull(
             store.pendingFileStage(outcomePath, contentHash, stage, version, inputFingerprint),
@@ -100,7 +123,7 @@ class SemanticGraphFileStageFingerprintTest {
                     work = work,
                     update = semanticUpdate(
                         sourcePath,
-                        "a",
+                        contentHash.value.first().toString(),
                         listOf(semanticSymbol("demo#$symbolName", symbolName, sourcePath)),
                     ),
                 ),
@@ -112,8 +135,11 @@ class SemanticGraphFileStageFingerprintTest {
     private fun fingerprint(character: Char): FileStageInputFingerprint =
         FileStageInputFingerprint.parse(character.toString().repeat(64))
 
+    private fun hash(character: Char): FileContentHash =
+        FileContentHash.parse(character.toString().repeat(64))
+
     private companion object {
-        val contentHash: FileContentHash = FileContentHash.parse("a".repeat(64))
+        val defaultContentHash: FileContentHash = FileContentHash.parse("a".repeat(64))
         val stage: FileIndexStage = FileIndexStage.SEMANTIC_GRAPH
         val version: FileStageVersion = FileStageVersion.parse("semantic-graph-1")
     }

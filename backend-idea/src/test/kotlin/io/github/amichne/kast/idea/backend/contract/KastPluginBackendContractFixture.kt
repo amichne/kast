@@ -202,6 +202,7 @@ internal abstract class KastPluginBackendContractTestFixture {
     }
 
     protected fun relationshipCoverageAuthority(
+        sourceIndexStore: SqliteSourceIndexStore? = null,
         transform: (IdeaGradleProjectLoadBridge.GradleWorkspaceModel) ->
             IdeaGradleProjectLoadBridge.GradleWorkspaceModel = { model -> model },
     ): IdeaRelationshipCoverageAuthority {
@@ -237,6 +238,7 @@ internal abstract class KastPluginBackendContractTestFixture {
             workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
             indexSemanticAdmissionStatus = { IdeaIndexSemanticAdmission.Status.Ready },
             workspaceModelReader = { transform(model) },
+            sourceIndexStore = sourceIndexStore,
         )
     }
 

@@ -74,7 +74,7 @@ class DurableFileStageIndexingTest {
     }
 
     @Test
-    fun `failed relationship batch leaves facts outcomes progress and generation unchanged`() {
+    fun `failed relationship batch rolls back facts limitations progress and generation`() {
         val path = file("src/App.kt")
         val entries = listOf(inventory(path, hash('a'), ":app[main]"))
 
@@ -82,8 +82,21 @@ class DurableFileStageIndexingTest {
             store.ensureSchema()
             store.reconcileFileInventory(entries, versions("1"))
             commitSources(store, FileIndexStage.SOURCE, listOf(path))
+            val firstWork = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).single()
+            store.commitRelationshipBatch(
+                listOf(
+                    RelationshipFileStageUpdate(
+                        work = firstWork,
+                        references = listOf(reference(path, "demo.Preserved")),
+                        declarations = emptyList(),
+                    ),
+                ),
+            )
+            store.reconcileFileInventory(entries, versions("1").copy(relationships = version("2")))
             val generation = store.readGeneration()
             val status = store.moduleIndexStatus(":app[main]")
+            val outcome = store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS)
+            val references = store.referencesFromFile(path)
 
             DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(workspaceRoot)}").use { connection ->
                 connection.createStatement().use { statement ->
@@ -104,15 +117,17 @@ class DurableFileStageIndexingTest {
                     listOf(
                         RelationshipFileStageUpdate(
                             work = work,
-                            references = listOf(reference(path, "demo.Target")),
+                            references = listOf(reference(path, "demo.Replacement")),
                             declarations = emptyList(),
+                            limitations = listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP),
                         ),
                     ),
                 )
             }
 
-            assertTrue(store.referencesToSymbol("demo.Target").isEmpty())
-            assertNull(store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS))
+            assertEquals(references, store.referencesFromFile(path))
+            assertEquals(outcome, store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS))
+            assertEquals(FileStageOutcomeStatus.COMPLETE, outcome?.status)
             assertEquals(status, store.moduleIndexStatus(":app[main]"))
             assertEquals(generation, store.readGeneration())
         }
@@ -163,44 +178,52 @@ class DurableFileStageIndexingTest {
 
     @Test
     fun `independent sessions complete only the scopes backed by persisted outcomes`() {
-        val app = file("app/src/main/kotlin/App.kt")
+        val app = listOf(
+            file("app/src/main/kotlin/App.kt"),
+            file("app/src/main/kotlin/AppSibling.kt"),
+        )
         val lib = file("lib/src/main/kotlin/Lib.kt")
         val entries = listOf(
-            inventory(app, hash('a'), ":app[main]"),
-            inventory(lib, hash('b'), ":lib[main]"),
+            inventory(app.first(), hash('a'), ":app[main]"),
+            inventory(app.last(), hash('b'), ":app[main]"),
+            inventory(lib, hash('c'), ":lib[main]"),
         )
 
         SqliteSourceIndexStore(workspaceRoot).use { firstSession ->
             firstSession.ensureSchema()
             firstSession.reconcileFileInventory(entries, versions("1"))
-            commitSources(firstSession, FileIndexStage.SOURCE, listOf(app, lib))
-            commitRelationships(firstSession, listOf(app))
-            assertTrue(
-                firstSession.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, app) is
-                    FileStageScopeCoverage.Complete,
-            )
+            commitSources(firstSession, FileIndexStage.SOURCE, app + lib)
+            commitRelationships(firstSession, listOf(app.first()))
+            app.forEach { path ->
+                assertTrue(
+                    firstSession.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, path) is
+                        FileStageScopeCoverage.Limited,
+                )
+            }
             assertTrue(
                 firstSession.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, lib) is
                     FileStageScopeCoverage.Limited,
             )
-            assertEquals(setOf(":app[main]"), firstSession.completedModules())
+            assertTrue(firstSession.completedModules().isEmpty())
         }
 
         SqliteSourceIndexStore(workspaceRoot).use { secondSession ->
             assertEquals(
-                listOf(lib),
+                listOf(app.last(), lib),
                 secondSession.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { work -> work.path },
             )
-            commitRelationships(secondSession, listOf(lib))
-            assertTrue(
-                secondSession.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, app) is
-                    FileStageScopeCoverage.Complete,
-            )
+            commitRelationships(secondSession, listOf(app.last()))
+            app.forEach { path ->
+                assertTrue(
+                    secondSession.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, path) is
+                        FileStageScopeCoverage.Complete,
+                )
+            }
             assertTrue(
                 secondSession.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, lib) is
-                    FileStageScopeCoverage.Complete,
+                    FileStageScopeCoverage.Limited,
             )
-            assertEquals(setOf(":app[main]", ":lib[main]"), secondSession.completedModules())
+            assertEquals(setOf(":app[main]"), secondSession.completedModules())
         }
     }
 

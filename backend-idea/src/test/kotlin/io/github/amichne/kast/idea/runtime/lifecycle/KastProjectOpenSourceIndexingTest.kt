@@ -95,10 +95,8 @@ class KastProjectOpenSourceIndexingTest {
                 onRelationshipFileScan = relationshipScans::add,
             )
             indexer.indexProject(KastConfig.defaults())
-            val sourceScansAfterFirstRun = sourceScans.toList()
-            val relationshipScansAfterFirstRun = relationshipScans.toList()
-            assertTrue(sourceScansAfterFirstRun.isNotEmpty())
-            assertTrue(relationshipScansAfterFirstRun.isNotEmpty())
+            assertTrue(sourceScans.isNotEmpty())
+            assertTrue(relationshipScans.isNotEmpty())
 
             val snapshot = store.loadSourceIndexSnapshot()
             assertEquals(listOf(callerPath), snapshot.candidatePathsByIdentifier.getValue("caller"))
@@ -153,13 +151,24 @@ class KastProjectOpenSourceIndexingTest {
                 assertEquals(2, result.references.size)
                 assertEquals(true, result.searchScope?.exhaustive)
             }
+        }
 
-            indexer.indexProject(KastConfig.defaults())
-            assertEquals(sourceScansAfterFirstRun, sourceScans, "unchanged source files must not be rescanned")
-            assertEquals(
-                relationshipScansAfterFirstRun,
-                relationshipScans,
-                "unchanged relationship files must not be rescanned",
+        val restartedSourceScans = mutableListOf<String>()
+        val restartedRelationshipScans = mutableListOf<String>()
+        SqliteSourceIndexStore(workspaceRoot).use { reopened ->
+            IdeaProjectIndexer(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                store = reopened,
+                cancelled = { false },
+                readGradleWorkspaceModel = { completeGradleModel },
+                onSourceFileScan = restartedSourceScans::add,
+                onRelationshipFileScan = restartedRelationshipScans::add,
+            ).indexProject(KastConfig.defaults())
+            assertTrue(restartedSourceScans.isEmpty(), "unchanged source files must not be rescanned after restart")
+            assertTrue(
+                restartedRelationshipScans.isEmpty(),
+                "unchanged relationship files must not be rescanned after restart",
             )
         }
     }
