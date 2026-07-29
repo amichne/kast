@@ -18,6 +18,7 @@ class IdeaProjectIndexerReadActionTest {
             .substringBefore("private fun indexSymbolRelationships")
 
         assertFalse(source.contains("runIdeaReadAction"))
-        assertTrue(source.contains("runIdeaCancellableReadAction { readGradleWorkspaceModel() }"))
+        assertFalse(source.contains("readGradleWorkspaceModel()"))
+        assertTrue(source.contains("inventory.snapshotWithGradleModel"))
     }
 }
