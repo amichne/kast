@@ -12,7 +12,7 @@ require_file() {
 }
 
 require_contains() {
-  rg --fixed-strings --quiet "$2" "${repo_root}/$1" || {
+  grep --fixed-strings --quiet -- "$2" "${repo_root}/$1" || {
     echo "$1 must contain: $2" >&2
     exit 1
   }
