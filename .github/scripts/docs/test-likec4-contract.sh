@@ -25,22 +25,28 @@ for file in \
   docs/architecture/model.c4 \
   docs/architecture/deployment.c4 \
   docs/architecture/views.c4 \
-  docs/architecture/flows.c4; do
+  docs/architecture/flows.c4 \
+  docs/architecture/likec4-views.mjs; do
   require_file "$file"
 done
 
 require_contains package.json '"diagrams:dev"'
 require_contains package.json '"diagrams:validate"'
+require_contains package.json '"diagrams:embed"'
 require_contains package.json '"diagrams:build"'
+require_contains zensical.toml 'path = "architecture/likec4-views.mjs"'
 require_contains docs/architecture/views.c4 'view system-landscape'
 require_contains docs/architecture/views.c4 'view runtime-components'
 require_contains docs/architecture/deployment.c4 'deployment view macos-runtime'
 require_contains docs/architecture/flows.c4 'dynamic view compiler-read'
 require_contains docs/architecture/flows.c4 'dynamic view semantic-mutation'
 require_contains docs/architecture/flows.c4 'variant sequence'
-require_contains docs/architecture/flows.c4 'navigateTo runtime-components'
+require_contains docs/architecture/flows.c4 'navigateTo runtime-admission'
 require_contains docs/architecture/views.c4 'style'
 require_contains docs/architecture/model.c4 'metadata'
-require_contains docs/internal/system-flow.md '```likec4-view'
+require_contains docs/internal/system-flow.md '<kast-view'
+require_contains docs/internal/system-flow.md 'dynamic-variant="sequence"'
+require_contains docs/internal/system-flow.md 'npm run diagrams:dev'
+require_contains docs/internal/system-flow.md 'npm run diagrams:embed'
 
 echo "LikeC4 architecture contract passed"

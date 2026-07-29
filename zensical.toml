@@ -28,8 +28,12 @@ nav = [
     { "Repository intelligence" = "explanation/repository-intelligence.md" },
     { "Compiler-backed evidence" = "explanation/compiler-evidence.md" },
   ] },
+  { "More documentation" = "internal/system-flow.md" },
 ]
 
+[[project.extra_javascript]]
+path = "architecture/likec4-views.mjs"
+type = "module"
 [project.markdown_extensions.admonition]
 [project.markdown_extensions.pymdownx.details]
 [project.markdown_extensions.pymdownx.superfences]

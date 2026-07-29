@@ -1,0 +1,88 @@
+deployment {
+  environment macos {
+    title "macOS IDEA golden pathway"
+    metadata {
+      backend "idea"
+      readiness "INDEXING then READY"
+    }
+
+    developerMachine workstation {
+      process terminal {
+        cli = instanceOf kast.cli
+        control = instanceOf kast.control
+        agent = instanceOf kast.agent
+        rpcClient = instanceOf kast.rpcClient
+      }
+
+      ideHost idea {
+        plugin = instanceOf kast.backend.idea
+        dispatcher = instanceOf kast.server.dispatcher
+        router = instanceOf kast.server.router
+        orchestrator = instanceOf kast.server.orchestrator
+        mutation = instanceOf kast.server.mutation
+      }
+
+      dataVolume localState {
+        sourceIndex = instanceOf kast.evidence.index
+        workspace = instanceOf workspaceState
+      }
+    }
+  }
+
+  environment headless {
+    title "Supported headless pathway"
+    metadata {
+      backend "headless"
+      host "non-macOS"
+    }
+
+    process cliProcess {
+      cli = instanceOf kast.cli
+      control = instanceOf kast.control
+      agent = instanceOf kast.agent
+      rpcClient = instanceOf kast.rpcClient
+    }
+
+    process headlessJvm {
+      bootstrap = instanceOf kast.backend.headless
+      backend = instanceOf kast.backend.idea
+      dispatcher = instanceOf kast.server.dispatcher
+      router = instanceOf kast.server.router
+      orchestrator = instanceOf kast.server.orchestrator
+      mutation = instanceOf kast.server.mutation
+    }
+
+    dataVolume cache {
+      sourceIndex = instanceOf kast.evidence.index
+      workspace = instanceOf workspaceState
+    }
+  }
+}
+
+views {
+  deployment view macos-runtime {
+    title "macOS exact-root runtime"
+    description "The CLI borrows or opens one compatible exact-root IDEA host and keeps persistent evidence local."
+    include macos.**
+    style macos.workstation.idea {
+      color secondary
+    }
+    style macos.workstation.localState {
+      color green
+    }
+    autoLayout LeftRight 120 80
+  }
+
+  deployment view headless-runtime {
+    title "Headless runtime"
+    description "Supported non-macOS hosts start the packaged bootstrap around the same IDEA backend implementation."
+    include headless.**
+    style headless.headlessJvm {
+      color secondary
+    }
+    style headless.cache {
+      color green
+    }
+    autoLayout LeftRight 120 80
+  }
+}

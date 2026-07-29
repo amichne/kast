@@ -1,0 +1,22 @@
+{
+  "$schema": "https://likec4.dev/schemas/config.json",
+  "name": "kast-architecture",
+  "title": "Kast Architecture",
+  "metadata": {
+    "owner": "Kast maintainers",
+    "domain": "compiler-backed Kotlin tooling"
+  },
+  "implicitViews": true,
+  "landingPage": {
+    "include": [
+      "system-landscape",
+      "runtime-components",
+      "compiler-evidence",
+      "macos-runtime",
+      "headless-runtime",
+      "runtime-admission",
+      "compiler-read",
+      "semantic-mutation"
+    ]
+  }
+}

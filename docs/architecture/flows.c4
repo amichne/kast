@@ -1,0 +1,90 @@
+views {
+  dynamic view runtime-admission {
+    title "Exact-root runtime admission"
+    description "Reachability may return INDEXING; semantic commands still wait for READY."
+
+    developer -> kast.cli "requests runtime status"
+    kast.cli -> kast.control "resolves the canonical workspace"
+
+    alt {
+      when "compatible exact-root IDEA host exists" {
+        kast.control -> ideaPlatform "reuses or opens the project"
+      }
+      else "supported headless host" {
+        kast.control -> kast.backend.headless "starts packaged runtime"
+        kast.backend.headless -> kast.backend.idea "boots shared backend"
+      }
+    }
+
+    kast.control -> workspaceState "persists an owned descriptor"
+    developer <- kast.cli "returns typed INDEXING or READY evidence"
+
+    style kast.control {
+      color amber
+    }
+  }
+
+  dynamic view compiler-read {
+    variant sequence
+    title "Compiler-backed read"
+    description "A bounded agent request crosses the local RPC boundary and returns data with explicit coverage."
+
+    developer -> kast.cli "kast agent symbol"
+    kast.cli -> kast.agent "normalizes the command"
+    kast.agent -> kast.rpcClient "opens exact-root request" {
+      navigateTo runtime-admission
+      notes """
+        The CLI validates the command catalog and preserves the selected
+        workspace, backend, limits, and output contract.
+      """
+    }
+    kast.rpcClient -> kast.server.dispatcher "sends JSON-RPC"
+    kast.server.dispatcher -> kast.server.router "validates and dispatches"
+    kast.server.router -> kast.server.orchestrator "routes semantic read"
+    kast.server.orchestrator -> kast.backend.api "calls typed backend"
+    kast.backend.api -> kast.backend.idea "selects compiler implementation"
+
+    parallel {
+      kast.backend.idea -> kotlinCompiler "resolves PSI and K2 semantics"
+      kast.backend.idea -> kast.evidence.index "reads indexed graph facts"
+    }
+
+    kast.backend.idea <- kotlinCompiler "compiler identity and diagnostics"
+    kast.backend.idea <- kast.evidence.index "rows plus generation and coverage"
+    kast.backend.api <- kast.backend.idea "typed backend result"
+    kast.server.orchestrator <- kast.backend.api "semantic response"
+    kast.server.orchestrator -> kast.evidence.projection "adds limitations and next actions"
+    kast.cli <- kast.evidence.projection "projects human, TOON, or JSON"
+    developer <- kast.cli "receives proof-carrying evidence"
+  }
+
+  dynamic view semantic-mutation {
+    variant sequence
+    title "Semantic mutation"
+    description "A mutation resolves exact identity, applies through the compiler host, and returns terminal validation evidence."
+
+    developer -> kast.cli "requests a typed mutation"
+    kast.cli -> kast.agent "checks exact-root admission"
+    kast.agent -> kast.rpcClient "opens reusable RPC session"
+    kast.rpcClient -> kast.server.dispatcher "sends validated request"
+    kast.server.dispatcher -> kast.server.router "dispatches"
+    kast.server.router -> kast.server.mutation "routes mutation"
+
+    try "plan and apply" {
+      kast.server.mutation -> kast.server.orchestrator "resolves selector identity"
+      kast.server.orchestrator -> kast.backend.api "requests semantic operation"
+      kast.backend.api -> kast.backend.idea "applies in write action"
+      kast.backend.idea -> kotlinCompiler "updates PSI and optimizes imports"
+      kast.backend.idea <- kotlinCompiler "returns compiler diagnostics"
+      kast.server.orchestrator <- kast.backend.api "returns apply evidence"
+    } catch "typed failure" {
+      kast.server.mutation -> kast.evidence.projection "preserves stale identity, capability, or validation failure"
+    } finally "refresh evidence" {
+      kast.backend.idea -> kast.evidence.index "refreshes touched semantic facts"
+    }
+
+    kast.server.mutation -> kast.evidence.projection "returns terminal result"
+    kast.cli <- kast.evidence.projection "projects apply and diagnostics evidence"
+    developer <- kast.cli "receives success or typed failure"
+  }
+}

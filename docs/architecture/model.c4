@@ -1,0 +1,217 @@
+model {
+  developer = person "User or coding agent" {
+    #public
+    description "Invokes Kast and consumes typed compiler evidence."
+    metadata {
+      boundary "public"
+      trust "caller"
+    }
+  }
+
+  installer = adapter "install.sh bootstrap" {
+    #adapter
+    description "Downloads or opens a bundle, then delegates persistent installation to `kast setup`."
+    link https://github.com/amichne/kast/blob/main/install.sh "Source"
+  }
+
+  codexHooks = adapter "Codex hooks" {
+    #adapter
+    description "Translate session-start and successful Kotlin write events into Kast CLI commands."
+    link https://github.com/amichne/kast/blob/main/cli-rs/src/interface/codex/hook/runtime.rs "Source"
+  }
+
+  ideaPlatform = platform "IntelliJ Platform" {
+    #compiler
+    description "Exact-root IntelliJ IDEA or Android Studio host with PSI and K2 analysis."
+    metadata {
+      supportedBuilds ["IDEA 262", "Android Studio 261"]
+      readiness ["INDEXING", "READY"]
+    }
+  }
+
+  kotlinCompiler = platform "Kotlin compiler and PSI" {
+    #compiler
+    description "Compiler-owned identities, references, diagnostics, and safe edit primitives."
+  }
+
+  workspaceState = datastore "Workspace state" {
+    #persisted
+    description "Active release receipt, exact-root descriptors, configuration, and local caches."
+    metadata {
+      identity "canonical workspace root"
+      authority "active installation receipt"
+    }
+  }
+
+  kast = platform "Kast" {
+    #public #proof
+    description """
+      One typed command-line boundary for compiler-backed Kotlin discovery,
+      runtime lifecycle, evidence, and semantic mutation.
+    """
+    link https://github.com/amichne/kast "Repository"
+
+    cli = executable "kast CLI" {
+      #public
+      technology "Rust + Clap"
+      description "Parses public commands and dispatches typed command families."
+      metadata {
+        source "cli-rs/src/interface/cli/root.rs"
+        output ["human", "TOON", "JSON compatibility"]
+      }
+      link https://github.com/amichne/kast/blob/main/cli-rs/src/interface/cli/root.rs "Source"
+    }
+
+    control = service "Local control and runtime admission" {
+      technology "Rust"
+      description "Owns setup, configuration, exact-root backend selection, readiness, and lifecycle."
+      metadata {
+        source "cli-rs/src/execution/runtime/backend/workspace.rs"
+        invariant "exact semantic workspace"
+      }
+      link https://github.com/amichne/kast/blob/main/cli-rs/src/execution/runtime/backend/workspace.rs "Source"
+    }
+
+    agent = service "Agent command dispatch" {
+      #public
+      technology "Rust"
+      description "Normalizes agent commands into bounded requests with coverage and next-action evidence."
+      metadata {
+        source "cli-rs/src/agent/core/dispatch/commands.rs"
+        request "AgentEnvelope"
+      }
+      link https://github.com/amichne/kast/blob/main/cli-rs/src/agent/core/dispatch/commands.rs "Source"
+    }
+
+    rpcClient = service "Runtime client" {
+      technology "Rust + local socket"
+      description "Validates the internal command catalog and exchanges typed JSON-RPC messages."
+      metadata {
+        transport "Unix domain socket or local runtime transport"
+        scope "exact workspace"
+      }
+    }
+
+    server = platform "Analysis server" {
+      dispatcher = service "RpcAnalysisDispatcher" {
+        technology "Kotlin coroutines"
+        description "Validates JSON-RPC envelopes and applies bounded request timeouts."
+        metadata {
+          fqName "io.github.amichne.kast.server.dispatch.RpcAnalysisDispatcher"
+          source "analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcAnalysisDispatcher.kt"
+        }
+        link https://github.com/amichne/kast/blob/main/analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcAnalysisDispatcher.kt "Source"
+      }
+
+      router = service "RpcMethodRouter" {
+        technology "Kotlin"
+        description "Checks advertised capabilities and routes raw, skill, lifecycle, and mutation methods."
+        metadata {
+          fqName "io.github.amichne.kast.server.dispatch.RpcMethodRouter"
+          kastEvidence "compiler-resolved"
+        }
+        link https://github.com/amichne/kast/blob/main/analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcMethodRouter.kt "Source"
+      }
+
+      orchestrator = service "SkillRpcOrchestrator" {
+        technology "Kotlin"
+        description "Owns compiler-backed discovery, navigation, diagnostics, and semantic workflows."
+        metadata {
+          fqName "io.github.amichne.kast.server.SkillRpcOrchestrator"
+          source "analysis-server/src/main/kotlin/io/github/amichne/kast/server/skill/SkillRpcOrchestrator.kt"
+        }
+        link https://github.com/amichne/kast/blob/main/analysis-server/src/main/kotlin/io/github/amichne/kast/server/skill/SkillRpcOrchestrator.kt "Source"
+      }
+
+      mutation = service "MutationExecutionService" {
+        technology "Kotlin"
+        description "Plans and applies semantic mutations while preserving terminal validation evidence."
+        link https://github.com/amichne/kast/blob/main/analysis-server/src/main/kotlin/io/github/amichne/kast/server/mutation/MutationExecutionService.kt "Source"
+      }
+    }
+
+    backend = platform "Compiler backend" {
+      api = contract "AnalysisBackend" {
+        #compiler
+        technology "Kotlin interface"
+        description "Shared typed boundary implemented by compiler-backed hosts."
+        metadata {
+          fqName "io.github.amichne.kast.api.contract.backend.AnalysisBackend"
+          source "analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt"
+        }
+        link https://github.com/amichne/kast/blob/main/analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt "Source"
+      }
+
+      idea = service "KastPluginBackend" {
+        #compiler
+        technology "IntelliJ PSI + Kotlin K2"
+        description "Executes reads and writes inside IntelliJ read/write actions."
+        metadata {
+          fqName "io.github.amichne.kast.idea.backend.KastPluginBackend"
+          kastEvidence "compiler-resolved"
+        }
+        link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/KastPluginBackend.kt "Source"
+      }
+
+      headless = service "HeadlessRuntime bootstrap" {
+        technology "IntelliJ headless runtime"
+        description "Starts the same IDEA backend runtime on supported non-macOS hosts."
+        metadata {
+          fqName "io.github.amichne.kast.headless.runtime.HeadlessRuntime"
+          source "backend-headless/src/main/kotlin/io/github/amichne/kast/headless/runtime/HeadlessRuntime.kt"
+        }
+        link https://github.com/amichne/kast/blob/main/backend-headless/src/main/kotlin/io/github/amichne/kast/headless/runtime/HeadlessRuntime.kt "Source"
+      }
+    }
+
+    evidence = platform "Evidence and projection" {
+      index = datastore "SqliteSourceIndexStore" {
+        #persisted #proof
+        technology "SQLite WAL"
+        description "Stores source inventory, declarations, references, snapshots, and semantic graph facts."
+        metadata {
+          fqName "io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore"
+          kastEvidence "compiler-resolved"
+        }
+        link https://github.com/amichne/kast/blob/main/index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt "Source"
+      }
+
+      projection = service "Typed result projection" {
+        #proof
+        technology "Rust and Kotlin serializers"
+        description "Returns data together with coverage, limitations, typed failures, and next actions."
+        metadata {
+          formats ["human", "TOON", "JSON compatibility"]
+          invariant "data is not completeness"
+        }
+      }
+    }
+  }
+
+  developer -[call]-> kast.cli "invokes"
+  installer -[call]-> kast.cli "delegates setup"
+  codexHooks -[call]-> kast.cli "invokes lifecycle or diagnostics"
+  kast.cli -[call]-> kast.control "dispatches local and lifecycle commands"
+  kast.cli -[call]-> kast.agent "dispatches agent commands"
+  kast.control -[control]-> workspaceState "reads and updates owned state"
+  kast.control -[control]-> kast.rpcClient "controls an admitted runtime"
+  kast.control -[control]-> ideaPlatform "reuses or opens the exact-root project"
+  kast.control -[control]-> kast.backend.headless "starts on supported hosts"
+  kast.agent -[evidence]-> kast.evidence.index "queries persisted evidence locally"
+  kast.agent -[transport]-> kast.rpcClient "opens a bounded compiler request"
+  kast.rpcClient -[transport]-> kast.server.dispatcher "sends JSON-RPC"
+  kast.server.dispatcher -[call]-> kast.server.router "dispatches a validated envelope"
+  kast.server.router -[call]-> kast.server.orchestrator "routes semantic reads"
+  kast.server.router -[call]-> kast.server.mutation "routes semantic writes"
+  kast.server.mutation -[call]-> kast.server.orchestrator "reuses typed semantic operations"
+  kast.server.orchestrator -[call]-> kast.backend.api "calls the shared backend contract"
+  kast.backend.api -[implement]-> kast.backend.idea "is implemented by"
+  kast.backend.headless -[control]-> kast.backend.idea "boots the shared backend"
+  kast.backend.idea -[call]-> ideaPlatform "runs inside"
+  kast.backend.idea -[call]-> kotlinCompiler "resolves PSI and compiler semantics"
+  kast.backend.idea -[evidence]-> kast.evidence.index "reads and writes indexed facts"
+  kast.server.orchestrator -[evidence]-> kast.evidence.index "combines persisted evidence"
+  kast.server.orchestrator -[evidence]-> kast.evidence.projection "returns typed reads"
+  kast.server.mutation -[evidence]-> kast.evidence.projection "returns apply and validation evidence"
+  kast.evidence.projection -[evidence]-> kast.cli "projects the result"
+}

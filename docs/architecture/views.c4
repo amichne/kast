@@ -1,0 +1,87 @@
+global {
+  styleGroup semantic-boundaries {
+    style element.tag = #public {
+      color primary
+      border solid
+    }
+    style element.tag = #compiler {
+      color indigo
+    }
+    style element.tag = #persisted {
+      color green
+    }
+    style element.tag = #proof {
+      border dashed
+    }
+    style element.tag = #adapter {
+      color muted
+      opacity 70%
+    }
+  }
+}
+
+views {
+  view system-landscape {
+    title "Kast system landscape"
+    description "Public callers and adapters enter one Kast boundary; compiler and workspace state remain explicit dependencies."
+    include *
+    global style semantic-boundaries
+    style kast {
+      color primary
+      size xl
+    }
+    autoLayout LeftRight 140 100
+  }
+
+  view runtime-components of kast {
+    title "Kast runtime components"
+    description "Drill into CLI dispatch, runtime admission, server routing, compiler backend, and proof-carrying output."
+    include *
+    include kast.server.*
+    include kast.backend.*
+    include kast.evidence.*
+    global style semantic-boundaries
+    style kast.server, kast.backend, kast.evidence {
+      color secondary
+    }
+    autoLayout LeftRight 110 70
+  }
+
+  view compiler-evidence {
+    title "Compiler evidence pipeline"
+    description "Exact request path from the public CLI to compiler semantics, persisted facts, and typed result projection."
+    include developer
+    include kast.cli
+    include kast.agent
+    include kast.rpcClient
+    include kast.server.dispatcher
+    include kast.server.router
+    include kast.server.orchestrator
+    include kast.backend.api
+    include kast.backend.idea
+    include kotlinCompiler
+    include kast.evidence.index
+    include kast.evidence.projection
+    global style semantic-boundaries
+    style kast.backend.api, kast.backend.idea, kotlinCompiler {
+      color indigo
+    }
+    style kast.evidence.index, kast.evidence.projection {
+      color green
+    }
+    autoLayout LeftRight 90 60
+  }
+
+  view public-entrypoints {
+    title "Public entry points"
+    description "The installer and Codex hooks are adapters; `kast` remains the only public command contract."
+    include developer
+    include installer
+    include codexHooks
+    include kast.cli
+    include kast.control
+    include kast.agent
+    global style semantic-boundaries
+    autoLayout LeftRight 120 80
+  }
+}
