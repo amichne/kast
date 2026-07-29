@@ -4,12 +4,19 @@ import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 
 class KastExplorerModelTest {
+    @TempDir
+    lateinit var tempDir: Path
+
     @Test
     fun `tool window prioritizes exploration while retaining activity`() {
         assertEquals(
@@ -42,7 +49,6 @@ class KastExplorerModelTest {
         val model = KastExplorerModel()
         val selected = KastExplorerSearchItem(declaration("io.demo.GraphExplorer", "GraphExplorer.kt", 42))
         val caller = KastSourceTarget(tempDir.resolve("Caller.kt"), 17)
-        val callee = KastSourceTarget(tempDir.resolve("Callee.kt"), 23)
         val type = KastSourceTarget(tempDir.resolve("GraphNode.kt"), 11)
 
         model.accept(
@@ -55,12 +61,6 @@ class KastExplorerModelTest {
                             title = NonBlankString("io.demo.Caller"),
                             detail = NonBlankString("CALL"),
                             navigationTarget = caller,
-                        ),
-                        KastExplorerRelation(
-                            layer = KastExplorerEvidenceLayer.OUTGOING,
-                            title = NonBlankString("io.demo.Callee"),
-                            detail = NonBlankString("CALL"),
-                            navigationTarget = callee,
                         ),
                         KastExplorerRelation(
                             layer = KastExplorerEvidenceLayer.SEMANTIC_GRAPH,
@@ -76,7 +76,6 @@ class KastExplorerModelTest {
         assertEquals(
             listOf(
                 KastExplorerEvidenceLayer.INCOMING,
-                KastExplorerEvidenceLayer.OUTGOING,
                 KastExplorerEvidenceLayer.SEMANTIC_GRAPH,
             ),
             model.inspection?.sections?.map(KastExplorerSection::layer),
@@ -84,7 +83,61 @@ class KastExplorerModelTest {
         assertEquals(type, model.inspection?.sections?.last()?.relations?.single()?.navigationTarget)
     }
 
-    private val tempDir: Path = Path.of("/tmp/kast-explorer-model-test").toAbsolutePath().normalize()
+    @Test
+    fun `inspection isolates declarations that share an fq name`() {
+        SqliteSourceIndexStore(tempDir).use { store ->
+            store.ensureSchema()
+            val first = declaration("io.demo.overloaded", "First.kt", 10)
+            val second = declaration("io.demo.overloaded", "Second.kt", 40)
+            store.replaceDeclarationsFromFiles(
+                listOf(first.filePath to listOf(first), second.filePath to listOf(second)),
+            )
+            store.upsertSymbolReference(
+                sourcePath = tempDir.resolve("FirstCaller.kt").toString(),
+                sourceOffset = 1,
+                targetFqName = first.fqName,
+                targetPath = first.filePath,
+                targetOffset = first.declarationOffset,
+            )
+            store.upsertSymbolReference(
+                sourcePath = tempDir.resolve("SecondCaller.kt").toString(),
+                sourceOffset = 2,
+                targetFqName = second.fqName,
+                targetPath = second.filePath,
+                targetOffset = second.declarationOffset,
+            )
+
+            val inspection = store.explore(
+                tempDir,
+                KastExplorerRequest.Inspect(KastExplorerSearchItem(second)),
+            ) as KastExplorerResult.Inspection
+
+            assertEquals(
+                listOf(tempDir.resolve("SecondCaller.kt")),
+                inspection.value.relations.mapNotNull(KastExplorerRelation::navigationTarget)
+                    .map(KastSourceTarget::filePath),
+            )
+        }
+    }
+
+    @Test
+    fun `overview results are independent from interactive request ordering`() {
+        val overview = KastExplorerResult.Overview(
+            KastExplorerOverview(
+                graphGeneration = io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration(1),
+                graphFileCount = io.github.amichne.kast.api.contract.NonNegativeInt(2),
+            ),
+        )
+
+        assertTrue(shouldAcceptExplorerResult(overview, resultSequence = 1, currentSequence = 2))
+        assertFalse(
+            shouldAcceptExplorerResult(
+                KastExplorerResult.SearchResults(emptyList()),
+                resultSequence = 1,
+                currentSequence = 2,
+            ),
+        )
+    }
 
     private fun declaration(
         fqName: String,
