@@ -68,18 +68,18 @@ fn setup_installs_native_cli_and_idea_plugin() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),
     );
-    assert!(kast_home.join("current/bin/kast").is_file());
+    assert!(kast_home.join("current/bin/_kastctl").is_file());
     assert_eq!(
+        std::fs::read(kast_home.join("current/bin/_kastctl")).expect("_kastctl bytes"),
         std::fs::read(kast_home.join("current/bin/kast")).expect("kast bytes"),
-        std::fs::read(kast_home.join("current/bin/kagent")).expect("kagent bytes"),
     );
     assert_eq!(
         std::fs::read_link(home.join(".local/bin/kast")).expect("user command"),
         kast_home.join("current/bin/kast"),
     );
     assert_eq!(
-        std::fs::read_link(home.join(".local/bin/kagent")).expect("agent user command"),
-        kast_home.join("current/bin/kagent"),
+        std::fs::read_link(home.join(".local/bin/_kastctl")).expect("control user command"),
+        kast_home.join("current/bin/_kastctl"),
     );
     assert!(plugins.join("kast/lib/plugin.jar").is_file());
     let receipt: serde_json::Value = serde_json::from_slice(

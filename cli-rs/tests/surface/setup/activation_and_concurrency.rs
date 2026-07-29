@@ -120,8 +120,8 @@ fn setup_activates_one_validated_release_and_converges_on_rerun() {
         kast_home.join("current/bin/kast"),
     );
     assert_eq!(
-        std::fs::read_link(home.join(".local/bin/kagent")).expect("agent user command"),
-        kast_home.join("current/bin/kagent"),
+        std::fs::read_link(home.join(".local/bin/_kastctl")).expect("control user command"),
+        kast_home.join("current/bin/_kastctl"),
     );
     assert!(!kast_home.join("install.json").exists());
     assert!(!home.join(".config/kast").exists());
