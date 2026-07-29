@@ -141,6 +141,59 @@ fn graph_summary_is_a_direct_deterministic_toon_result_without_protocol_cruft() 
 }
 
 #[test]
+fn public_read_commands_delegate_to_typed_operations() {
+    let fixture = tempfile::tempdir().expect("temporary workspace");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+
+    for args in [
+        &["up"][..],
+        &["files"][..],
+        &["files", "src/**/*.kt"][..],
+        &["symbol", "find", "Widget"][..],
+        &["symbol", "show", "sample.Widget"][..],
+        &["symbol", "refs", "sample.Widget"][..],
+        &["symbol", "callers", "sample.Widget.run"][..],
+        &["symbol", "callees", "sample.Widget.run"][..],
+        &["symbol", "implementations", "sample.Widget"][..],
+        &["symbol", "supertypes", "sample.Widget"][..],
+        &["symbol", "subtypes", "sample.Widget"][..],
+        &["graph", "nodes"][..],
+        &["graph", "neighbors", "class:sample.Widget"][..],
+        &["graph", "path", "sample.Source", "sample.Target"][..],
+        &["graph", "topology"][..],
+        &["graph", "communities"][..],
+        &["graph", "cycles"][..],
+        &["graph", "bridges"][..],
+        &["graph", "impact", "sample.Widget"][..],
+        &["check", "src/main/kotlin/App.kt"][..],
+    ] {
+        let output = named("kast")
+            .current_dir(&workspace)
+            .env("HOME", fixture.path().join("home"))
+            .env("KAST_HOME", fixture.path().join("kast"))
+            .env("KAST_CONFIG_HOME", fixture.path().join("config"))
+            .args(args)
+            .output()
+            .unwrap_or_else(|error| panic!("run `kast {}`: {error}", args.join(" ")));
+        let stdout = String::from_utf8(output.stdout).expect("UTF-8 agent output");
+
+        assert!(
+            !stdout.contains("KAST_AGENT_NOT_IMPLEMENTED"),
+            "`kast {}` did not delegate:\n{stdout}",
+            args.join(" ")
+        );
+        for cruft in ["schemaVersion", "method:", "ok:"] {
+            assert!(
+                !stdout.contains(cruft),
+                "`kast {}` leaked {cruft}:\n{stdout}",
+                args.join(" ")
+            );
+        }
+    }
+}
+
+#[test]
 fn internal_control_surface_preserves_the_existing_cli() {
     let output = named("_kastctl")
         .arg("--help")
