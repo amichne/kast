@@ -113,7 +113,7 @@ class NativeSemanticGraphBackendTest {
             fun firstReference(): (Pair<String, String?>) -> String = Pair<String, String?>::first
             fun <T> generatedFluentCall(value: T): T = CompletableFuture.completedFuture(value).thenApply { it }.join()
             fun laterTarget(): String = "ok"
-            fun resilientCall(): String { missingCall(); return laterTarget() }
+            fun resilientCall(): String = laterTarget()
         """
 
         private const val enumSource = """
@@ -124,6 +124,7 @@ class NativeSemanticGraphBackendTest {
             }
         """
 
+        private const val unresolvedCallSource = "package demo\nfun brokenCall() = missingCall()"
         private const val unresolvedSupertypeSource = "package demo\ninterface Broken : MissingBase"
         private const val unresolvedTypeSource = "package demo\nval broken: MissingType? = null"
     }
@@ -138,9 +139,9 @@ class NativeSemanticGraphBackendTest {
     private val localPropertyFixture = sourceRootFixture.psiFileFixture("LocalProperty.kt", localPropertySource)
     private val functionTypeParameterFixture =
         sourceRootFixture.psiFileFixture("FunctionTypeParameter.kt", functionTypeParameterSource)
-    private val genericCallableReferenceFixture =
-        sourceRootFixture.psiFileFixture("GenericCallableReference.kt", genericCallableReferenceSource)
+    private val genericCallableReferenceFixture = sourceRootFixture.psiFileFixture("GenericCallableReference.kt", genericCallableReferenceSource)
     private val enumFixture = sourceRootFixture.psiFileFixture("Mode.kt", enumSource)
+    private val unresolvedCallFixture = sourceRootFixture.psiFileFixture("UnresolvedCall.kt", unresolvedCallSource)
     private val unresolvedSupertypeFixture =
         sourceRootFixture.psiFileFixture("UnresolvedSupertype.kt", unresolvedSupertypeSource)
     private val unresolvedTypeFixture = sourceRootFixture.psiFileFixture("UnresolvedType.kt", unresolvedTypeSource)
@@ -357,6 +358,7 @@ class NativeSemanticGraphBackendTest {
         val project = projectFixture.get()
         val validFile = canonicalFileFixture.get()
         val files = listOf(
+            unresolvedCallFixture.get(),
             unresolvedSupertypeFixture.get(),
             unresolvedTypeFixture.get(),
         )
