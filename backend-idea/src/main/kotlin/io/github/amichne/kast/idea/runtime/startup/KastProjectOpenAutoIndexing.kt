@@ -45,25 +45,23 @@ internal object KastProjectOpenAutoIndexing {
             LOG.warn("Kast IDEA backend startup failed for $workspaceRoot", backendStartFailure)
             return false
         }
+        startReferenceIndex(project)
 
         if (config.projectOpen.gradleLoadEnabled.value) {
             val gradleLoadResult = loadGradleProject(workspaceRoot, config) { failure ->
-                if (failure == null) {
-                    startReferenceIndex(project)
-                } else {
+                if (failure != null) {
                     failReadiness(project, failure)
                 }
             }
             KastProjectOpenGradleLoad.log(gradleLoadResult)
             when (gradleLoadResult) {
                 is ProjectOpenGradleLoadResult.Requested -> {}
-                is ProjectOpenGradleLoadResult.Skipped -> startReferenceIndex(project)
+                is ProjectOpenGradleLoadResult.Skipped -> {}
                 is ProjectOpenGradleLoadResult.Failed ->
                     failReadiness(project, IllegalStateException(gradleLoadResult.message))
             }
         } else {
             LOG.info("Kast Gradle project load skipped because projectOpen.gradleLoadEnabled is disabled")
-            startReferenceIndex(project)
         }
         return true
     }
