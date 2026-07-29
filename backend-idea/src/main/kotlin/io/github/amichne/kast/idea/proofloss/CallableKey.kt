@@ -16,7 +16,6 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 internal fun KtCallElement.toCallableKey(): CallableKey? = analyze(this) {
     this@toCallableKey.resolveToCall()
         ?.singleFunctionCallOrNull()
-        ?.partiallyAppliedSymbol
         ?.signature
         ?.symbol
         ?.toCallableKey()

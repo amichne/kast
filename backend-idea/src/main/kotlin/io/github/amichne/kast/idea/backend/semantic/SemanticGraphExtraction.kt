@@ -238,7 +238,6 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
             val target = analyze(call) {
                 val symbol = call.resolveToCall()
                     ?.singleFunctionCallOrNull()
-                    ?.partiallyAppliedSymbol
                     ?.signature
                     ?.symbol
                 ResolvedSemanticCallTarget(
