@@ -1,11 +1,13 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.ide.highlighter.JavaFileType
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.fileTypes.FileType
+import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
-import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
@@ -52,22 +54,39 @@ internal class IdeaRelationshipCoverageAuthority(
                 RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE,
             )
         val workspace = workspaceIdentity.workspaceIdentity
-        val candidatePaths = ApplicationManager.getApplication().runReadAction<List<String>> {
-            FileTypeIndex.getFiles(kotlinFileType, searchScope)
-                .asSequence()
-                .filter { file -> file.isValid && !file.isDirectory }
-                .map { file -> Path.of(file.path).toAbsolutePath().normalize() }
-                .filter(workspace::contains)
-                .map(Path::toString)
-                .distinct()
-                .sorted()
-                .toList()
+        val candidates = ApplicationManager.getApplication().runReadAction<PersistedScopeCandidates> {
+            val filesInWorkspace = { fileType: FileType ->
+                FileTypeIndex.getFiles(fileType, searchScope)
+                    .asSequence()
+                    .filter { file -> file.isValid && !file.isDirectory }
+                    .map { file -> Path.of(file.path).toAbsolutePath().normalize() }
+                    .filter(workspace::contains)
+            }
+            PersistedScopeCandidates(
+                kotlinPaths = filesInWorkspace(kotlinFileType)
+                    .map(Path::toString)
+                    .distinct()
+                    .sorted()
+                    .toList(),
+                hasJava = filesInWorkspace(JavaFileType.INSTANCE).any(),
+            )
+        }
+        if (candidates.hasJava) {
+            return RelationshipSearchCoverage.limited(
+                RelationshipSearchLimitation.SOURCE_SET_EXCLUDED,
+                RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE,
+            )
         }
         return combine(
             liveCoverage,
-            store.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, candidatePaths),
+            store.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, candidates.kotlinPaths),
         )
     }
+
+    private data class PersistedScopeCandidates(
+        val kotlinPaths: List<String>,
+        val hasJava: Boolean,
+    )
 
     private fun combine(
         liveCoverage: RelationshipSearchCoverage,

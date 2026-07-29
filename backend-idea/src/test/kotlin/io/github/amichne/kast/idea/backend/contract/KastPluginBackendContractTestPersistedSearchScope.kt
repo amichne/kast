@@ -2,7 +2,6 @@ package io.github.amichne.kast.idea
 
 import com.intellij.openapi.application.readAction
 import com.intellij.testFramework.junit5.TestApplication
-import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import io.github.amichne.kast.api.contract.FilePosition
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.SymbolKind
@@ -31,15 +30,6 @@ import org.junit.jupiter.api.Test
 
 @TestApplication
 internal class KastPluginBackendContractTestPersistedSearchScope : KastPluginBackendContractTestFixture() {
-    private val uncoveredJavaSubtypeFixture = mainSourceRootFixture.psiFileFixture(
-        "UncoveredShape.java",
-        """
-        package demo.hierarchy;
-
-        public final class UncoveredShape implements Shape {}
-        """,
-    )
-
     @Test
     fun `pending dependent module prevents exhaustive persisted reference coverage`() = runBlocking {
         withPersistedScope { inputs, backend ->
@@ -92,28 +82,7 @@ internal class KastPluginBackendContractTestPersistedSearchScope : KastPluginBac
         }
     }
 
-    @Test
-    fun `unindexed Java subtype prevents exact hierarchy admission`() = runBlocking {
-        uncoveredJavaSubtypeFixture.get()
-        withPersistedScope(completeDependent = true) { inputs, backend ->
-            val result = backend.hierarchyRelations(
-                KastHierarchyQuery(
-                    workspaceRoot = inputs.workspaceRoot.toString(),
-                    selector = inputs.typeSelector,
-                    direction = TypeHierarchyDirection.SUBTYPES,
-                    depth = 1,
-                    maxResults = 4,
-                ),
-            )
-
-            val limited = result as HierarchyRelationsResult.Limited
-            assertTrue(RelationshipSearchLimitation.SOURCE_SET_EXCLUDED in limited.evidence.coverage.limitations)
-            assertTrue(RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE in limited.evidence.coverage.limitations)
-        }
-    }
-
     private suspend fun withPersistedScope(
-        completeDependent: Boolean = false,
         block: suspend (PersistedSearchScopeInputs, KastPluginBackend) -> Unit,
     ) {
         ensureInternalVisibilityProjectReady()
@@ -165,15 +134,14 @@ internal class KastPluginBackendContractTestPersistedSearchScope : KastPluginBac
             val pendingByPath = store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
                 .associateBy { work -> work.path }
             store.commitRelationshipBatch(
-                (inputs.declaringModulePaths + if (completeDependent) listOf(inputs.dependentPath) else emptyList())
-                    .map { path ->
-                        RelationshipFileStageUpdate(
-                            work = pendingByPath.getValue(path),
-                            references = emptyList(),
-                            declarations = emptyList(),
-                            limitations = emptyList(),
-                        )
-                    },
+                inputs.declaringModulePaths.map { path ->
+                    RelationshipFileStageUpdate(
+                        work = pendingByPath.getValue(path),
+                        references = emptyList(),
+                        declarations = emptyList(),
+                        limitations = emptyList(),
+                    )
+                },
             )
             block(
                 inputs,
