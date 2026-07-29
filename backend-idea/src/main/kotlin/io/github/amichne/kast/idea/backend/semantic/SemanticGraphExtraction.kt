@@ -52,23 +52,18 @@ internal data class ExtractedSemanticGraphFile(
     val omittedExternalTargetCount: Int,
     val limitations: List<FileStageLimitation>,
 )
-
 private data class ResolvedSemanticCallTarget(
     val compilerTarget: SemanticGraphCompilerTarget,
     val exactConstructorSignature: String?,
 )
-
 private sealed interface SemanticGraphTargetAdmission {
     data object External : SemanticGraphTargetAdmission
-
     data object Unresolved : SemanticGraphTargetAdmission
-
     data class Workspace(
         val element: PsiElement,
         val target: ResolvedSemanticTarget,
     ) : SemanticGraphTargetAdmission
 }
-
 private fun KastPluginBackend.admitSemanticTarget(
     compilerTarget: SemanticGraphCompilerTarget,
     path: SemanticGraphSourcePath,
@@ -91,7 +86,6 @@ private fun KastPluginBackend.admitSemanticTarget(
             "${path.value}:${occurrence.semanticGraphLine()}. Update Kast or change the declaration before refreshing this file.",
     )
 }
-
 internal fun KastPluginBackend.extractSemanticGraphFile(
     file: KtFile,
     path: SemanticGraphSourcePath,

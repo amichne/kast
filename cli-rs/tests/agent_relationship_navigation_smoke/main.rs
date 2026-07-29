@@ -2,8 +2,8 @@
 mod support;
 
 include!("cases/surface.rs");
-include!("cases/coverage.rs");
-include!("cases/qualified_positive.rs");
+include!("cases/coverage/exactness.rs");
+include!("cases/coverage/qualified_positive.rs");
 include!("cases/degraded_and_impact.rs");
 include!("cases/resolution.rs");
 include!("cases/identity.rs");
