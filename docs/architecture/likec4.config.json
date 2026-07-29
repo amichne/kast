@@ -6,17 +6,48 @@
     "owner": "Kast maintainers",
     "domain": "compiler-backed Kotlin tooling"
   },
+  "styles": {
+    "theme": {
+      "colors": {
+        "primary": "#2563EB",
+        "secondary": "#7C3AED",
+        "indigo": "#4F46E5",
+        "green": "#059669",
+        "amber": "#D97706",
+        "muted": "#64748B"
+      }
+    },
+    "defaults": {
+      "group": {
+        "color": "slate",
+        "opacity": 8,
+        "border": "solid"
+      },
+      "relationship": {
+        "color": "slate",
+        "line": "solid",
+        "arrow": "vee"
+      }
+    }
+  },
   "implicitViews": true,
   "landingPage": {
     "include": [
       "system-landscape",
       "runtime-components",
       "compiler-evidence",
+      "indexing-landscape",
+      "indexing-guide",
+      "idea-semantic-pipeline",
+      "retained-evidence",
       "macos-runtime",
       "headless-runtime",
       "runtime-admission",
       "compiler-read",
-      "semantic-mutation"
+      "semantic-mutation",
+      "reference-indexing",
+      "sqlite-pipeline",
+      "refresh-lifecycle"
     ]
   }
 }

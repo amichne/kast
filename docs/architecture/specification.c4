@@ -4,6 +4,9 @@ specification {
   tag compiler
   tag persisted
   tag proof
+  tag live
+  tag trigger
+  tag indexing
 
   element person {
     notation "Person or agent"
@@ -82,6 +85,17 @@ specification {
     color indigo
     line dashed
     head normal
+  }
+  relationship retain {
+    technology "generation-bound persistence"
+    color green
+    head normal
+  }
+  relationship refresh {
+    technology "explicit refresh"
+    color amber
+    line dotted
+    head vee
   }
 
   deploymentNode environment {
