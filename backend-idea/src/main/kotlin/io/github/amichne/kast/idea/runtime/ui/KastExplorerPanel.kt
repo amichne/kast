@@ -3,7 +3,7 @@
 package io.github.amichne.kast.idea
 
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.ReadAction
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.project.Project
@@ -235,10 +235,10 @@ internal class KastExplorerPanel(
     }
 
     private fun searchCurrentSymbol() {
-        val fqName = ReadAction.compute<String?, RuntimeException> {
-            val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return@compute null
-            val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.document) ?: return@compute null
-            val element = file.findElementAt(editor.caretModel.offset) ?: return@compute null
+        val fqName = ApplicationManager.getApplication().runReadAction<String?> {
+            val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return@runReadAction null
+            val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.document) ?: return@runReadAction null
+            val element = file.findElementAt(editor.caretModel.offset) ?: return@runReadAction null
             PsiTreeUtil.getParentOfType(element, KtNamedDeclaration::class.java, false)?.fqName?.asString()
         }
         if (fqName == null) {
