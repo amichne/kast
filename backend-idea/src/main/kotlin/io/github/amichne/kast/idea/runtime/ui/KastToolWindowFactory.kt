@@ -22,7 +22,9 @@ import java.time.format.DateTimeFormatter
 import javax.swing.JComponent
 import javax.swing.SwingUtilities
 import javax.swing.table.AbstractTableModel
+import kotlin.jvm.JvmDefaultWithoutCompatibility
 
+@JvmDefaultWithoutCompatibility
 internal class KastToolWindowFactory : ToolWindowFactory, DumbAware {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val contentManager = toolWindow.contentManager

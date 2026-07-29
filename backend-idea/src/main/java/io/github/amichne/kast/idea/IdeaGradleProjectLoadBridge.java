@@ -86,24 +86,24 @@ public final class IdeaGradleProjectLoadBridge {
             ExternalSystemProgressNotificationManager.getInstance();
         ExternalSystemTaskNotificationListener listener = new ExternalSystemTaskNotificationListener() {
             @Override
-            public void onSuccess(ExternalSystemTaskId id) {
+            public void onSuccess(String projectPath, ExternalSystemTaskId id) {
                 importFuture.complete(null);
             }
 
             @Override
-            public void onFailure(ExternalSystemTaskId id, Exception error) {
+            public void onFailure(String projectPath, ExternalSystemTaskId id, Exception error) {
                 importFuture.completeExceptionally(error);
             }
 
             @Override
-            public void onCancel(ExternalSystemTaskId id) {
+            public void onCancel(String projectPath, ExternalSystemTaskId id) {
                 importFuture.completeExceptionally(
                     new CancellationException("Gradle project import was canceled")
                 );
             }
 
             @Override
-            public void onEnd(ExternalSystemTaskId id) {
+            public void onEnd(String projectPath, ExternalSystemTaskId id) {
                 completeFromTaskState(task, importFuture);
             }
         };
