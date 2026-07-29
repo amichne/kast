@@ -372,16 +372,16 @@ internal class FileStageInventoryStore(
                               WHEN SUM(CASE
                                   WHEN outcomes.content_hash = manifest.content_hash
                                    AND outcomes.stage_version = manifest.desired_relationships_version
-                                   AND outcomes.outcome_status IN ('LIMITED','FAILED') THEN 1 ELSE 0 END) > 0
+                                   AND outcomes.outcome_status = 'FAILED' THEN 1 ELSE 0 END) > 0
                                   THEN 'FAILED'
                               WHEN COUNT(*) = SUM(CASE
                                   WHEN outcomes.content_hash = manifest.content_hash
                                    AND outcomes.stage_version = manifest.desired_relationships_version
-                                   AND outcomes.outcome_status IN ('COMPLETE','EXTERNAL_BOUNDARY') THEN 1 ELSE 0 END)
+                                   AND outcomes.outcome_status IN ('COMPLETE','LIMITED','EXTERNAL_BOUNDARY') THEN 1 ELSE 0 END)
                                AND SUM(CASE
                                   WHEN outcomes.content_hash = manifest.content_hash
                                    AND outcomes.stage_version = manifest.desired_relationships_version
-                                   AND outcomes.outcome_status = 'EXTERNAL_BOUNDARY' THEN 1 ELSE 0 END) > 0
+                                   AND outcomes.outcome_status IN ('LIMITED','EXTERNAL_BOUNDARY') THEN 1 ELSE 0 END) > 0
                                   THEN 'DEGRADED'
                               WHEN SUM(CASE
                                   WHEN outcomes.content_hash = manifest.content_hash

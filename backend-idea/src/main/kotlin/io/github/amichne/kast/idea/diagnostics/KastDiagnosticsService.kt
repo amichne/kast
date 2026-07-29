@@ -230,7 +230,7 @@ internal fun RuntimeStatusResponse.withReferenceIndex(
     )
     index.state == KastIndexState.READY -> copy(referenceIndexReady = true)
     index.state == KastIndexState.DEGRADED -> copy(
-        message = "Kast reference index is usable with external boundaries: ${index.displayText()}",
+        message = "Kast reference index is usable with graph boundaries: ${index.displayText()}",
         referenceIndexReady = true,
     )
     state == io.github.amichne.kast.api.contract.RuntimeState.READY -> copy(

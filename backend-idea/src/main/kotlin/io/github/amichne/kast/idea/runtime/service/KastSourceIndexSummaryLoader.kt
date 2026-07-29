@@ -28,7 +28,7 @@ internal fun SqliteSourceIndexStore.loadKastSourceIndexSummary(): KastSourceInde
             snapshot.wildcardImportPackagesByPath.values.sumOf(List<String>::size),
         message = when {
             failedModules > 0 -> "$failedModules modules require a file-local failure decision"
-            degradedModules > 0 -> "$degradedModules modules contain external graph boundaries"
+            degradedModules > 0 -> "$degradedModules modules contain limited or external graph boundaries"
             else -> null
         },
     )
