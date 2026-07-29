@@ -22,7 +22,7 @@ class ReadActionBatchingTest {
         val stopRead = AtomicBoolean(false)
         val executor = Executors.newFixedThreadPool(2)
         val readFuture = executor.submit {
-            runIdeaReadAction {
+            runIdeaCancellableReadAction {
                 readStarted.countDown()
                 while (writeCompleted.count > 0 && !stopRead.get()) {
                     ProgressManager.checkCanceled()

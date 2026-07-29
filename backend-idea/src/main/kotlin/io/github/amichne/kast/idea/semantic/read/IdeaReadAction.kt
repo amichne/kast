@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
 import com.intellij.openapi.application.readAction
 import io.github.amichne.kast.api.validation.*
@@ -14,6 +15,9 @@ import io.github.amichne.kast.idea.backend.*
 import java.util.concurrent.Callable
 
 internal inline fun <T> runIdeaReadAction(crossinline action: () -> T): T =
+    ApplicationManager.getApplication().runReadAction<T> { action() }
+
+internal inline fun <T> runIdeaCancellableReadAction(crossinline action: () -> T): T =
     ReadAction.nonBlocking(Callable { action() }).executeSynchronously()
 
 internal suspend inline fun <T> timedReadAction(

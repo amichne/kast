@@ -192,15 +192,21 @@ internal class IdeaProjectModelWorkspaceFileInventory(
         override val isIndexing: Boolean
             get() = DumbService.isDumb(project)
 
-        override fun read(): IdeaWorkspaceFileProjectModel = runIdeaReadAction {
+        override fun read(): IdeaWorkspaceFileProjectModel = runIdeaCancellableReadAction {
             val gradleModel = workspaceModelReader()
             requireImportedGradleModelComplete(gradleModel)
-            read(gradleModel)
+            readProjectModel(gradleModel)
         }
 
         override fun read(
             gradleModel: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
-        ): IdeaWorkspaceFileProjectModel = runIdeaReadAction {
+        ): IdeaWorkspaceFileProjectModel = runIdeaCancellableReadAction {
+            readProjectModel(gradleModel)
+        }
+
+        private fun readProjectModel(
+            gradleModel: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
+        ): IdeaWorkspaceFileProjectModel {
             val kotlinFileType = FileTypeManager.getInstance().findFileTypeByName("Kotlin")
                 ?: throw IllegalStateException("Kotlin file type is unavailable from the IDEA project model")
             val modules = ModuleManager.getInstance(project).modules
@@ -214,7 +220,7 @@ internal class IdeaProjectModelWorkspaceFileInventory(
                             ?.toNioPath()
                     }
                 }.toSet()
-            IdeaWorkspaceFileProjectModel(
+            return IdeaWorkspaceFileProjectModel(
                 modules = modules,
                 linkedBuildRoots = gradleModel.linkedBuildRoots(),
                 moduleAssociations = gradleModel.moduleAssociations().map { association ->
