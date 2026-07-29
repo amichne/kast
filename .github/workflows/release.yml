@@ -528,8 +528,14 @@ jobs:
         run: |
           set -euo pipefail
           bin="target/${{ matrix.target }}/release/kast"
-          "$bin" --help >/dev/null
-          "$bin" version | grep -F "Kast CLI" >/dev/null
+          smoke_dir="$RUNNER_TEMP/kast-cli-smoke"
+          mkdir -p "$smoke_dir"
+          cp "$bin" "$smoke_dir/_kastctl"
+          cp "$bin" "$smoke_dir/kast"
+          "$smoke_dir/_kastctl" --help >/dev/null
+          "$smoke_dir/_kastctl" version | grep -F "Kast CLI" >/dev/null
+          "$smoke_dir/kast" --help >/dev/null
+          cmp -s "$smoke_dir/_kastctl" "$smoke_dir/kast"
 
       - name: Package CLI asset
         shell: bash
@@ -540,9 +546,11 @@ jobs:
           staging_dir="$RUNNER_TEMP/kast-${{ matrix.asset_id }}"
           rm -rf "$staging_dir" dist
           mkdir -p "$staging_dir" dist
+          cp "cli-rs/target/${{ matrix.target }}/release/kast" "$staging_dir/_kastctl"
           cp "cli-rs/target/${{ matrix.target }}/release/kast" "$staging_dir/kast"
-          chmod 755 "$staging_dir/kast"
-          (cd "$staging_dir" && zip -9 -q "$GITHUB_WORKSPACE/dist/${asset_name}" kast)
+          chmod 755 "$staging_dir/_kastctl" "$staging_dir/kast"
+          cmp -s "$staging_dir/_kastctl" "$staging_dir/kast"
+          (cd "$staging_dir" && zip -9 -q "$GITHUB_WORKSPACE/dist/${asset_name}" _kastctl kast)
           python3 - "$GITHUB_WORKSPACE/dist/${asset_name}" "dist/build-provenance-cli-${{ matrix.asset_id }}.json" <<'PY'
           import hashlib
           import json
@@ -600,6 +608,49 @@ jobs:
           name: rust-cli-${{ matrix.asset_id }}-${{ github.run_id }}
           path: dist/
           if-no-files-found: warn
+
+  build-agent-resources:
+    name: Build agent resource assets
+    needs: [prepare-release]
+    if: always() && needs.prepare-release.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.prepare-release.outputs.release_tag }}
+
+      - name: Build and publish deterministic agent resources
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ needs.prepare-release.outputs.release_tag }}"
+          output="$RUNNER_TEMP/kast-agent-resources"
+          .github/scripts/release/agent-resource-assets.py build \
+            --source cli-rs/resources/kast \
+            --output "$output" \
+            --tag "$tag" \
+            --git-sha "$GITHUB_SHA"
+          .github/scripts/release/agent-resource-assets.py verify \
+            --release-dir "$output" \
+            --tag "$tag" \
+            --git-sha "$GITHUB_SHA"
+          for asset in \
+            "$output/kast-codex-${tag}.tar" \
+            "$output/kast-codex-${tag}.tar.sha256sum" \
+            "$output/kast-claude-${tag}.tar" \
+            "$output/kast-claude-${tag}.tar.sha256sum" \
+            "$output/kast-copilot-${tag}.tar" \
+            "$output/kast-copilot-${tag}.tar.sha256sum" \
+            "$output/kast-agent-resources-provenance.json"
+          do
+            .github/scripts/release/upload-immutable-release-asset.sh \
+              --tag "$tag" \
+              --asset "$asset"
+          done
 
   build-idea-plugin:
     name: Build IDEA plugin
@@ -1178,11 +1229,12 @@ jobs:
       - validate-jvm
       - build-openapi-spec
       - build-cli
+      - build-agent-resources
       - build-idea-plugin
       - build-headless-backend
       - build-linux-headless-tarball
       - real-repository-indexing
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success' && needs.real-repository-indexing.result == 'success'
+    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success' && needs.build-openapi-spec.result == 'success' && needs.build-cli.result == 'success' && needs.build-agent-resources.result == 'success' && needs.build-idea-plugin.result == 'success' && needs.build-headless-backend.result == 'success' && needs.build-linux-headless-tarball.result == 'success' && needs.real-repository-indexing.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -1281,11 +1333,11 @@ jobs:
           (cd "$work/backend" && zip -X -0 -q -r "$work/backend.zip" backend-headless)
           gh release download "$tag" --pattern "kast-idea-${tag}.zip" --dir "$work"
           python3 -m zipfile -e "provenance-cli/kast-${tag}-linux-x64.zip" "$work/packager"
-          chmod 755 "$work/packager/kast"
+          chmod 755 "$work/packager/_kastctl"
           mkdir -p dist/provenance
           for platform in linux-x64 linux-arm64 macos-x64 macos-arm64; do
             asset="dist/kast-${platform}-${tag}.tar.gz"
-            "$work/packager/kast" developer release package ubuntu-debian-bundle \
+            "$work/packager/_kastctl" developer release package ubuntu-debian-bundle \
               --repo-root "$PWD" \
               --cli-archive "provenance-cli/kast-${tag}-${platform}.zip" \
               --backend-archive "$work/backend.zip" \

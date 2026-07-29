@@ -92,7 +92,9 @@ class AgentResourceAssetsTest(unittest.TestCase):
             subprocess.run(verify, check=True)
             with (first / f"kast-codex-{TAG}.tar").open("ab") as asset:
                 asset.write(b"tampered")
-            self.assertNotEqual(0, subprocess.run(verify, check=False).returncode)
+            self.assertNotEqual(
+                0, subprocess.run(verify, check=False, capture_output=True).returncode
+            )
 
     @staticmethod
     def write_source(source: Path) -> None:
