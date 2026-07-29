@@ -38,6 +38,7 @@ internal class IdeaHierarchyProviderBudgetTest {
             interface Root
             class First : Root
             class Second : Root
+            class Third : Root
         """
     }
 
@@ -68,16 +69,27 @@ internal class IdeaHierarchyProviderBudgetTest {
     }
 
     @Test
-    fun `subtype provider stops at the candidate budget`() {
+    fun `subtype provider stops searching after the candidate budget rejects further work`() {
         val project = projectFixture.get()
         val file = typeFileFixture.get()
         waitUntilIndexesAreReady(project)
         val target = declaration<KtClassOrObject>(file, "Root")
-        val budget = EdgeDiscoveryBudget(maxCandidates = 1)
+        var visitedCandidates = 0
+        val budget = EdgeDiscoveryBudget(
+            maxCandidates = 1,
+            timeoutCheck = {
+                visitedCandidates += 1
+                check(visitedCandidates <= 2) {
+                    "Subtype search visited another candidate after the budget rejected further work"
+                }
+                false
+            },
+        )
 
         val edges = IdeaTypeEdgeResolver(project).subtypeEdges(target, budget)
 
         assertEquals(1, edges.size)
+        assertEquals(2, visitedCandidates)
         assertEquals(EdgeDiscoveryCompletion.CANDIDATE_LIMIT_REACHED, budget.completion)
     }
 
