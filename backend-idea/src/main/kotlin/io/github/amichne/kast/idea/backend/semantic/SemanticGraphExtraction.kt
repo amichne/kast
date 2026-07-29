@@ -9,6 +9,7 @@ import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.psi.PsiElement
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.api.contract.ByteOffset
+import io.github.amichne.kast.api.contract.DiagnosticSeverity
 import io.github.amichne.kast.api.contract.LineNumber
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.result.SemanticGraphDiagnosticEvidence
@@ -246,6 +247,15 @@ internal fun KastPluginBackend.extractSemanticGraphFile(
                         ?: SemanticGraphCompilerTarget.Unresolved,
                     exactConstructorSignature = (symbol as? KaConstructorSymbol)?.compilerStableSignature(),
                 )
+            }
+            if (target.compilerTarget == SemanticGraphCompilerTarget.Unresolved) {
+                val calleeRange = call.calleeExpression?.textRange ?: return@forEach
+                val sourceError = diagnostics.any { diagnostic ->
+                    diagnostic.severity == DiagnosticSeverity.ERROR &&
+                        diagnostic.startOffset.value < calleeRange.endOffset &&
+                        diagnostic.endOffset.value > calleeRange.startOffset
+                }
+                if (!sourceError) return@forEach
             }
             val source = nearestProjectedOwner(call, symbolByDeclaration) ?: fileSymbol
             when (val admitted = admitSemanticTarget(target.compilerTarget, path, call, semanticScope)) {

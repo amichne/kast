@@ -102,16 +102,18 @@ class NativeSemanticGraphBackendTest {
         private const val genericCallableReferenceSource = """
             package demo
 
-            data class Entry<Query, State>(val state: State)
-            data class List<Element>(val size: Int) {
-                fun isNotEmpty(): Boolean = size > 0
-            }
-            data class Pair<First, Second>(val first: First)
+            import java.util.concurrent.CompletableFuture
 
+            data class Entry<Query, State>(val state: State)
+            data class List<Element>(val size: Int) { fun isNotEmpty(): Boolean = size > 0 }
+            data class Pair<First, Second>(val first: First)
             fun <Query, State> stateReference(): (Entry<Query, State>) -> State = Entry<Query, State>::state
             fun sizeReference(): (List<String>) -> Int = List<String>::size
             fun nonEmptyReference(): (List<String>) -> Boolean = List<String>::isNotEmpty
             fun firstReference(): (Pair<String, String?>) -> String = Pair<String, String?>::first
+            fun <T> generatedFluentCall(value: T): T = CompletableFuture.completedFuture(value).thenApply { it }.join()
+            fun laterTarget(): String = "ok"
+            fun resilientCall(): String = laterTarget()
         """
 
         private const val enumSource = """
@@ -137,8 +139,7 @@ class NativeSemanticGraphBackendTest {
     private val localPropertyFixture = sourceRootFixture.psiFileFixture("LocalProperty.kt", localPropertySource)
     private val functionTypeParameterFixture =
         sourceRootFixture.psiFileFixture("FunctionTypeParameter.kt", functionTypeParameterSource)
-    private val genericCallableReferenceFixture =
-        sourceRootFixture.psiFileFixture("GenericCallableReference.kt", genericCallableReferenceSource)
+    private val genericCallableReferenceFixture = sourceRootFixture.psiFileFixture("GenericCallableReference.kt", genericCallableReferenceSource)
     private val enumFixture = sourceRootFixture.psiFileFixture("Mode.kt", enumSource)
     private val unresolvedCallFixture = sourceRootFixture.psiFileFixture("UnresolvedCall.kt", unresolvedCallSource)
     private val unresolvedSupertypeFixture =
@@ -298,7 +299,7 @@ class NativeSemanticGraphBackendTest {
     }
 
     @Test
-    fun `generic callable references do not abort semantic graph extraction`() = runBlocking {
+    fun `generic callable and external fluent references do not abort semantic graph extraction`() = runBlocking {
         val project = projectFixture.get()
         val sourceFile = genericCallableReferenceFixture.get()
         waitUntilIndexesAreReady(project)
@@ -318,12 +319,11 @@ class NativeSemanticGraphBackendTest {
                         filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
                     ).parsed(),
                 )
-                assertTrue(result.symbolCount.value > 0)
-                assertEquals(
-                    listOf(SemanticGraphSourcePath.parse(sourceFile.name)),
-                    result.coverage.files.map { coverage -> coverage.path },
-                )
+                assertEquals(listOf(SemanticGraphSourcePath.parse(sourceFile.name)), result.coverage.files.map { it.path })
             }
+            val snapshot = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse(sourceFile.name)))
+            val target = snapshot.symbols.single { it.name.value == "laterTarget" }
+            assertTrue(snapshot.relations.any { it.kind == SemanticGraphRelationKind.CALLS && it.targetKey == target.canonicalKey })
         }
     }
 
