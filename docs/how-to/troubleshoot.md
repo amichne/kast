@@ -59,8 +59,9 @@ kast --output json status \
 ```
 
 Use `--backend headless` on Linux. `selected.ready` reports runtime readiness.
-`semanticGraph.state` and `semanticGraph.limitations` report persisted graph
-coverage. A runtime can be `READY` while graph coverage remains incomplete; in
+Runtime status does not report graph coverage. Rerun the blocked repository or
+relationship operation with `--explain` and inspect its coverage and
+limitations. A runtime can be `READY` while that result remains incomplete; in
 that case, refresh only the affected files and retain the limitation until
 coverage is complete.
 

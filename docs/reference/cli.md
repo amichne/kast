@@ -77,4 +77,10 @@ are no separate public update, repair, or uninstall command families.
 The default is `agent`. These targets validate task and installation
 prerequisites; they do not prove persisted graph completeness. Use
 `kast --output json status --workspace-root <path> --backend <name>` to inspect
-`selected.ready`, `semanticGraph.state`, and their typed limitations.
+`selected.ready` and its typed runtime limitations.
+
+Runtime status does not report graph coverage.
+`kast agent graph --operation summary` reports the retained generation and
+graph cardinality, while repository and relationship operations carry
+scope-specific coverage. Use `--fields coverage` or `--explain` on the relevant
+operation before making a completeness claim.

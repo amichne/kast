@@ -53,9 +53,10 @@ kast developer runtime up \
 
 An `INDEXING` response is progress, not green proof. Runtime readiness and
 persisted graph completeness are separate: require `selected.ready` to be
-`true`, then inspect `semanticGraph.state` and its limitations. A runtime can
-be `READY` while graph coverage remains incomplete. Do not open another IDE
-process or substitute a runtime attached to another worktree.
+`true`, then inspect the coverage returned by the repository or relationship
+operation under test. Runtime status does not report graph coverage. A runtime
+can be `READY` while the task result remains incomplete. Do not open another
+IDE process or substitute a runtime attached to another worktree.
 
 ## Route the change to its owner
 
@@ -289,7 +290,8 @@ kast --output json status \
   --backend idea
 ```
 
-Continue when `selected.ready` is `true`. Use `semanticGraph.limitations` to
+Continue when `selected.ready` is `true`. Rerun the failed repository or
+relationship operation with `--explain`, then use its coverage limitations to
 choose targeted refreshes. Refresh the affected Kotlin file through the
 compiler-backed graph operation:
 

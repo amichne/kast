@@ -102,8 +102,21 @@ kast --output json status \
 ```
 
 Replace `idea` with `headless` on Linux. Continue when `selected.ready` is
-`true`. For graph-backed work, also inspect `semanticGraph.state` and its
-limitations; a ready runtime can still have incomplete persisted coverage.
+`true`. Runtime status does not report persisted graph completeness. For
+graph-backed work, inspect the coverage and limitations returned by the
+relevant repository or relationship operation. A ready runtime can still have
+incomplete persisted coverage.
+
+To confirm that a persisted graph exists without claiming completeness, run:
+
+```console
+kast agent graph \
+  --workspace-root "$PWD" \
+  --operation summary
+```
+
+The summary reports generation and cardinality only. A task-specific result
+must carry complete coverage before it supports an exhaustive claim.
 
 An `INDEXING` result is an expected early success: the exact runtime is
 reachable while Gradle import, IDEA smart mode, Kotlin admission, or Kast's

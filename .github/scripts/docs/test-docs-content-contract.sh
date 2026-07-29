@@ -93,7 +93,10 @@ for page in "${docs_root}"/how-to/*.md; do
 done
 require_contains "${docs_root}/reference/cli.md" "cli-rs/protocol/source/commands.json"
 require_contains "${docs_root}/reference/cli.md" '`selected.ready`'
-require_contains "${docs_root}/reference/cli.md" '`semanticGraph.state`'
+require_contains "${docs_root}/reference/cli.md" \
+  '`kast agent graph --operation summary`'
+require_contains "${docs_root}/reference/cli.md" \
+  "Runtime status does not report graph coverage"
 require_contains "${docs_root}/reference/codex-plugin.md" "### Intents"
 require_contains "${docs_root}/reference/codex-plugin.md" "### Result status"
 require_contains "${docs_root}/reference/codex-plugin.md" "### Bounds and resumption"
@@ -162,6 +165,7 @@ require_not_contains "$docs_root" "kast repair"
 require_not_contains "$docs_root" "kast machine"
 require_not_contains "$docs_root" "raw/semantic-graph"
 require_not_contains "$docs_root" "kast ready --for kotlin"
+require_not_contains "$docs_root" "semanticGraph.state"
 
 python3 - "$docs_root" "${expected_pages[@]}" <<'PY'
 import sys
