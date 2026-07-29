@@ -75,8 +75,6 @@ pub enum KastHarness {
     Copilot,
 }
 
-pub type KAgentHarness = KastHarness;
-
 #[derive(Debug, Args)]
 #[command(args_conflicts_with_subcommands = true, subcommand_precedence_over_arg = true)]
 pub struct KastRefreshArgs {

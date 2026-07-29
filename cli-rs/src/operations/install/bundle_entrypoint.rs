@@ -68,7 +68,7 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
     let backups = targets.resolved.install_root.join("backups");
     fs::create_dir_all(&backups)?;
     let home = manifest::home_dir();
-    let user_command = home.join(".local/bin/kast");
+    let user_command = home.join(".local/bin/_kastctl");
     let user_command_is_managed = fs::read_link(&user_command)
         .is_ok_and(|target| target.starts_with(&targets.current_link));
     let mut legacy = vec![
@@ -87,13 +87,13 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
         ),
     ];
     if !user_command_is_managed {
-        legacy.push((user_command, "legacy-local-bin-kast"));
+        legacy.push((user_command, "legacy-local-bin-kastctl"));
     }
-    let agent_user_command = home.join(".local/bin/kagent");
+    let agent_user_command = home.join(".local/bin/kast");
     let agent_user_command_is_managed = fs::read_link(&agent_user_command)
         .is_ok_and(|target| target.starts_with(&targets.current_link));
     if !agent_user_command_is_managed {
-        legacy.push((agent_user_command, "legacy-local-bin-kagent"));
+        legacy.push((agent_user_command, "legacy-local-bin-kast"));
     }
     let mut archived = None;
     for (source, name) in legacy {
@@ -111,10 +111,13 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
 fn install_user_command(targets: &ActivationTargetPaths) -> Result<()> {
     let local_bin = manifest::home_dir().join(".local/bin");
     let commands = [
-        (local_bin.join("kast"), targets.resolved.active_binary.clone()),
         (
-            local_bin.join("kagent"),
-            targets.current_link.join(KAGENT_BUNDLE_PATH),
+            local_bin.join("_kastctl"),
+            targets.resolved.active_binary.clone(),
+        ),
+        (
+            local_bin.join("kast"),
+            targets.current_link.join(AGENT_CLI_BUNDLE_PATH),
         ),
     ];
     let receipt_path = targets

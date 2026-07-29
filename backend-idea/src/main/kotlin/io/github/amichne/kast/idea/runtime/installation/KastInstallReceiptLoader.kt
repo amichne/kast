@@ -28,7 +28,7 @@ internal object KastInstallReceiptLoader {
         loadCliVersion: (Path) -> CliImplementationVersion? = ::loadConfiguredCliVersion,
     ): KastInstallReceiptLoadResult {
         if (!Files.isRegularFile(path)) {
-            return rejected("Kast install receipt is missing at $path; rerun `kast setup --source <bundle>`.")
+            return rejected("Kast install receipt is missing at $path; rerun `_kastctl setup --source <bundle>`.")
         }
         val receipt = runCatching {
             Json.parseToJsonElement(Files.readString(path)).jsonObject
@@ -78,7 +78,7 @@ internal object KastInstallReceiptLoader {
                 .singleOrNull { artifact -> artifact.string("role") == "cli" }
         }.getOrNull()
         val cliPath = cliArtifact?.string("path")
-            ?.takeIf { value -> value == "bin/kast" }
+            ?.takeIf { value -> value == "bin/_kastctl" }
             ?: return invalid(path, "bundle manifest CLI path is missing or invalid")
         val cliDigest = cliArtifact.string("sha256")
             ?.takeIf { value -> value.matches(digestPattern) }
@@ -104,7 +104,7 @@ internal object KastInstallReceiptLoader {
         }
         val version = loadCliVersion(canonicalBinary)
             ?: return rejected(
-                "Kast CLI at $canonicalBinary did not report a valid implementation version; rerun `kast setup --source <bundle>`.",
+                "Kast control CLI at $canonicalBinary did not report a valid implementation version; rerun `_kastctl setup --source <bundle>`.",
             )
         return KastInstallReceiptLoadResult.Loaded(binary = canonicalBinary, version = version)
     }

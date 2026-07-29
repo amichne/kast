@@ -6,7 +6,8 @@ pub(crate) const BUNDLE_MANIFEST_KIND: &str = "KAST_INSTALL_BUNDLE";
 pub(crate) const UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID: &str = "ubuntu-debian-headless-x86_64";
 pub(crate) const UBUNTU_DEBIAN_HEADLESS_PROFILE: &str = "ubuntu-debian-headless";
 pub(crate) const UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT: &str = "install.sh";
-pub(crate) const KAGENT_BUNDLE_PATH: &str = "bin/kagent";
+pub(crate) const CONTROL_CLI_BUNDLE_PATH: &str = "bin/_kastctl";
+pub(crate) const AGENT_CLI_BUNDLE_PATH: &str = "bin/kast";
 pub(crate) const HEADLESS_BACKEND_KIND: &str = "headless";
 pub(crate) const HEADLESS_BACKEND_NAME: &str = "headless";
 pub(crate) const HEADLESS_BACKEND_ROLE: &str = "headless-backend";
@@ -131,7 +132,7 @@ pub(crate) fn ubuntu_debian_headless_manifest(
         build_commit,
         activation: BundleActivation {
             cli: BundleCliActivation {
-                path: "bin/kast".to_string(),
+                path: CONTROL_CLI_BUNDLE_PATH.to_string(),
             },
             backend: BundleBackendActivation {
                 kind: HEADLESS_BACKEND_KIND.to_string(),
@@ -152,12 +153,12 @@ pub(crate) fn ubuntu_debian_headless_manifest(
         artifacts: vec![
             BundleArtifact {
                 role: "cli".to_string(),
-                path: "bin/kast".to_string(),
+                path: CONTROL_CLI_BUNDLE_PATH.to_string(),
                 sha256: cli_sha256,
             },
             BundleArtifact {
                 role: "agent-cli".to_string(),
-                path: KAGENT_BUNDLE_PATH.to_string(),
+                path: AGENT_CLI_BUNDLE_PATH.to_string(),
                 sha256: agent_cli_sha256,
             },
             BundleArtifact {

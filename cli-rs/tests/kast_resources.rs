@@ -5,9 +5,9 @@ use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
 
-fn kagent() -> Command {
+fn kast() -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_kast"));
-    command.arg0("kagent");
+    command.arg0("kast");
     command
 }
 
@@ -39,10 +39,10 @@ fn resource_files(root: &Path) -> Vec<String> {
 fn embedded_provider_resource_sources_are_complete_and_local() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("resources")
-        .join("kagent");
+        .join("kast");
     assert!(
         root.is_dir(),
-        "missing embedded kagent resource root: {}",
+        "missing embedded Kast resource root: {}",
         root.display()
     );
 
@@ -64,7 +64,7 @@ fn embedded_provider_resource_sources_are_complete_and_local() {
         let contents = fs::read_to_string(root.join(path)).expect("read embedded resource");
         assert!(
             !contents.contains("amichne/kast-marketplace")
-                && !contents.contains("kast@kast")
+                && !contents.contains("kagent")
                 && !contents.contains("--ref main"),
             "legacy remote marketplace leaked into {path}"
         );
@@ -81,7 +81,7 @@ fn write_provider(path: &Path) {
         r#"#!/usr/bin/env bash
 set -euo pipefail
 provider="${0##*/}"
-printf '%s %s\n' "$provider" "$*" >>"${KAGENT_PROVIDER_LOG:?}"
+printf '%s %s\n' "$provider" "$*" >>"${KAST_PROVIDER_LOG:?}"
 if [[ "$*" == *"--version"* ]]; then
   printf '%s\n' "${provider} 999.0.0"
 elif [[ "$*" == *"--json"* ]]; then
@@ -113,7 +113,7 @@ fn provider_install_attempts_every_harness_before_reporting_failure() {
     ));
     let path = std::env::join_paths(path_entries).expect("provider PATH");
 
-    let output = kagent()
+    let output = kast()
         .args([
             "__internal",
             "resources",
@@ -128,7 +128,7 @@ fn provider_install_attempts_every_harness_before_reporting_failure() {
         .env("PATH", path)
         .env("HOME", fixture.path().join("home"))
         .env("KAST_HOME", fixture.path().join("kast"))
-        .env("KAGENT_PROVIDER_LOG", &provider_log)
+        .env("KAST_PROVIDER_LOG", &provider_log)
         .output()
         .expect("run embedded provider installer");
 

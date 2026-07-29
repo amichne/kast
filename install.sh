@@ -21,7 +21,7 @@ Usage: install.sh [--source <bundle-directory-or-tar.gz>] [--version <vX.Y.Z>]
 Downloads one platform bundle when --source is omitted, then delegates every
 installation write to:
 
-  kast setup --source <bundle>
+  _kastctl setup --source <bundle>
 
 Options:
   --configure             Select IDEA and Codex defaults interactively.
@@ -165,15 +165,15 @@ download_artifact() {
 
 install_agent_harnesses() {
   (($# > 0)) || return 0
-  local kagent_path="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin/kagent"
+  local agent_path="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin/kast"
   local harness
   local -a args=(__internal resources install)
-  [[ -x "$kagent_path" ]] || die "installed kagent is missing: $kagent_path"
+  [[ -x "$agent_path" ]] || die "installed Kast agent CLI is missing: $agent_path"
   for harness in "$@"; do
     args+=(--harness "$harness")
   done
   ui_step "Connecting agent harnesses"
-  "$kagent_path" "${args[@]}" || die "agent harness installation failed"
+  "$agent_path" "${args[@]}" || die "agent harness installation failed"
   ui_success "Agent harnesses connected"
 }
 
@@ -420,9 +420,10 @@ run_setup() {
 
 finish_install() {
   local bin_dir="${HOME}/.local/bin"
-  local path="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin/kast"
+  local install_root="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin"
   ui_success "Kast is ready"
-  ui_detail "${bin_dir}/kast -> ${path}"
+  ui_detail "${bin_dir}/kast -> ${install_root}/kast"
+  ui_detail "${bin_dir}/_kastctl -> ${install_root}/_kastctl"
   if [[ ":${PATH:-}:" != *":${bin_dir}:"* ]]; then
     ui_warning "${bin_dir} is not on PATH"
     ui_detail 'export PATH="$HOME/.local/bin:$PATH"'
@@ -505,8 +506,11 @@ main() {
       ui_step "Preparing installer"
       mkdir -p "${setup_scratch}/cli"
       unzip -q "$cli_archive" -d "${setup_scratch}/cli"
+      [[ -f "${setup_scratch}/cli/_kastctl" ]] || die "native CLI bundle is missing _kastctl"
       [[ -f "${setup_scratch}/cli/kast" ]] || die "native CLI bundle is missing kast"
-      chmod 755 "${setup_scratch}/cli/kast"
+      cmp -s "${setup_scratch}/cli/_kastctl" "${setup_scratch}/cli/kast" \
+        || die "native CLI entrypoints are not byte-identical"
+      chmod 755 "${setup_scratch}/cli/_kastctl" "${setup_scratch}/cli/kast"
       ui_success "Installer prepared"
       if ((configure == 1)); then
         config_defaults="${setup_scratch}/config.toml"
@@ -518,7 +522,7 @@ main() {
         [[ -f "$config_defaults" ]] || die "config defaults do not exist: $config_defaults"
       fi
       ui_step "Installing Kast and the IDEA plugin"
-      setup_args=("${setup_scratch}/cli/kast" setup --idea-plugin "$plugin_archive")
+      setup_args=("${setup_scratch}/cli/_kastctl" setup --idea-plugin "$plugin_archive")
       if [[ -n "$config_defaults" ]]; then
         setup_args+=(--config-defaults "$config_defaults")
       fi
@@ -555,9 +559,13 @@ main() {
     [[ -n "$bundle_root" ]] || die "bundle archive has no root directory: $source"
   fi
 
-  [[ -x "${bundle_root}/bin/kast" ]] || die "bundle CLI is missing: ${bundle_root}/bin/kast"
+  [[ -x "${bundle_root}/bin/_kastctl" ]] \
+    || die "bundle control CLI is missing: ${bundle_root}/bin/_kastctl"
+  [[ -x "${bundle_root}/bin/kast" ]] \
+    || die "bundle agent CLI is missing: ${bundle_root}/bin/kast"
   ui_step "Installing Kast"
-  run_setup "${bundle_root}/bin/kast" setup --source "$bundle_root" || die "Kast setup failed"
+  run_setup "${bundle_root}/bin/_kastctl" setup --source "$bundle_root" \
+    || die "Kast setup failed"
   ui_success "Kast installed"
   install_agent_harnesses "${selected_harnesses[@]}"
   finish_install

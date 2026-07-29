@@ -133,8 +133,9 @@ fn setup_activates_one_validated_release_and_converges_on_rerun() {
         String::from_utf8_lossy(&second.stdout),
         String::from_utf8_lossy(&second.stderr),
     );
+    let second_stderr = String::from_utf8_lossy(&second.stderr).into_owned();
     let second: serde_json::Value = serde_json::from_slice(&second.stdout).expect("setup JSON");
-    assert_eq!(second["status"], "CURRENT");
+    assert_eq!(second["status"], "CURRENT", "{second_stderr}");
     assert_eq!(second["releaseDigest"], release_digest);
     assert_eq!(second["verified"], true);
 

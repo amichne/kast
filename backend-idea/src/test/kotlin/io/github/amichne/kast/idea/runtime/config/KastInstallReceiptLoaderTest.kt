@@ -23,7 +23,7 @@ class KastInstallReceiptLoaderTest {
             KastInstallReceiptLoader.load(receipt) { CliImplementationVersion("1.2.3") },
         )
 
-        assertEquals(receipt.parent.resolve("bin/kast").toRealPath(), loaded.binary)
+        assertEquals(receipt.parent.resolve("bin/_kastctl").toRealPath(), loaded.binary)
         assertEquals("1.2.3", loaded.version.value)
     }
 
@@ -36,7 +36,7 @@ class KastInstallReceiptLoaderTest {
             KastInstallReceiptLoader.load(receipt) { CliImplementationVersion("1.2.3") },
         )
 
-        assertEquals(receipt.parent.resolve("bin/kast").toRealPath(), loaded.binary)
+        assertEquals(receipt.parent.resolve("bin/_kastctl").toRealPath(), loaded.binary)
     }
 
     @Test
@@ -55,7 +55,7 @@ class KastInstallReceiptLoaderTest {
     @Test
     fun `CLI drift rejects the complete active release`() {
         val receipt = writeActiveInstallReceipt()
-        Files.writeString(receipt.parent.resolve("bin/kast"), "modified")
+        Files.writeString(receipt.parent.resolve("bin/_kastctl"), "modified")
 
         val rejected = assertInstanceOf(
             KastInstallReceiptLoadResult.Rejected::class.java,
@@ -75,7 +75,7 @@ class KastInstallReceiptLoaderTest {
 
     private fun writeActiveInstallReceipt(binaryContents: ByteArray = "binary".toByteArray()): Path {
         val current = tempDir.resolve(".local/share/kast/current")
-        val binary = current.resolve("bin/kast")
+        val binary = current.resolve("bin/_kastctl")
         val manifest = current.resolve("manifest.json")
         Files.createDirectories(binary.parent)
         Files.write(binary, binaryContents)
@@ -85,7 +85,7 @@ class KastInstallReceiptLoaderTest {
             """
             {
               "artifacts": [
-                {"role": "cli", "path": "bin/kast", "sha256": "${sha256(binary)}"}
+                {"role": "cli", "path": "bin/_kastctl", "sha256": "${sha256(binary)}"}
               ]
             }
             """.trimIndent(),

@@ -1,10 +1,10 @@
 use crate::SCHEMA_VERSION;
 use crate::bundle::{
-    BUNDLE_MANIFEST_FILE, BUNDLE_MANIFEST_KIND, BUNDLE_MANIFEST_SCHEMA_VERSION, BundleManifest,
-    BundleVersion, HEADLESS_BACKEND_KIND, HEADLESS_BACKEND_NAME, KAGENT_BUNDLE_PATH,
-    UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID,
+    AGENT_CLI_BUNDLE_PATH, BUNDLE_MANIFEST_FILE, BUNDLE_MANIFEST_KIND,
+    BUNDLE_MANIFEST_SCHEMA_VERSION, BundleManifest, BundleVersion, CONTROL_CLI_BUNDLE_PATH,
+    HEADLESS_BACKEND_KIND, HEADLESS_BACKEND_NAME, UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID,
 };
-use crate::cli::{KAgentHarness, SetupArgs};
+use crate::cli::{KastHarness, SetupArgs};
 use crate::config;
 use crate::error::{CliError, Result};
 use crate::manifest;

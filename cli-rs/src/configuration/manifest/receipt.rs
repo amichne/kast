@@ -147,8 +147,8 @@ pub fn default_resolved_paths() -> ResolvedKastPaths {
         socket_dir: runtime_dir,
         config_file: config_root.join("config.toml"),
         config_root,
-        shim_path: current.join("bin/kast"),
-        active_binary: current.join("bin/kast"),
+        shim_path: current.join(CONTROL_CLI_BUNDLE_PATH),
+        active_binary: current.join(CONTROL_CLI_BUNDLE_PATH),
         headless_runtime_libs_dir: lib_dir.join("backends/headless/current/runtime-libs"),
         headless_idea_home: None,
     }

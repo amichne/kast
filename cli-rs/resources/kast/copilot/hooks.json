@@ -2,8 +2,8 @@
   "hooks": {
     "sessionStart": [
       {
-        "bash": "\"${HOME}/.local/bin/kagent\"",
-        "powershell": "& \"$HOME\\.local\\bin\\kagent\"",
+        "bash": "\"${HOME}/.local/bin/kast\"",
+        "powershell": "& \"$HOME\\.local\\bin\\kast\"",
         "timeoutSec": 30,
         "type": "command"
       }

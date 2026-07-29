@@ -1,18 +1,18 @@
 {
   "interface": {
-    "displayName": "Kagent"
+    "displayName": "Kast"
   },
-  "name": "kagent",
+  "name": "kast",
   "plugins": [
     {
       "category": "Coding",
-      "name": "kagent",
+      "name": "kast",
       "policy": {
         "authentication": "ON_INSTALL",
         "installation": "AVAILABLE"
       },
       "source": {
-        "path": "./plugins/kagent",
+        "path": "./plugins/kast",
         "source": "local"
       }
     }

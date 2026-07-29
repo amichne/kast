@@ -4,7 +4,7 @@
       {
         "hooks": [
           {
-            "command": "\"${HOME}/.local/bin/kagent\"",
+            "command": "\"${HOME}/.local/bin/kast\"",
             "timeout": 30,
             "type": "command"
           }

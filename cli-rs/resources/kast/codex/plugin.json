@@ -9,10 +9,10 @@
       "Write"
     ],
     "category": "Coding",
-    "displayName": "Kagent",
+    "displayName": "Kast",
     "shortDescription": "Compiler-backed Kotlin and Gradle semantics"
   },
-  "name": "kagent",
+  "name": "kast",
   "skills": "./skills/",
-  "version": "${KAGENT_VERSION}"
+  "version": "${KAST_VERSION}"
 }

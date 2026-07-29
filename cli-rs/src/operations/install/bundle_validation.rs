@@ -29,7 +29,7 @@ fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
     validate_headless_activation(&manifest)?;
 
     let cli_path = root.join(&cli_relative);
-    let agent_cli_path = root.join(KAGENT_BUNDLE_PATH);
+    let agent_cli_path = root.join(AGENT_CLI_BUNDLE_PATH);
     require_executable(&root.join(entrypoint_relative), "bundle setup entrypoint")?;
     let backend_install_dir = root.join(&backend_install_relative);
     let backend_launcher = backend_install_dir.join(&launcher_relative);
@@ -42,7 +42,7 @@ fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
     if manifest::sha256_file(&cli_path)? != manifest::sha256_file(&agent_cli_path)? {
         return Err(CliError::new(
             "BUNDLE_SHAPE_INVALID",
-            "Bundle kast and kagent entrypoints must be byte-identical.",
+            "Bundle _kastctl and kast entrypoints must be byte-identical.",
         ));
     }
     require_directory(&backend_install_dir, "headless backend install directory")?;

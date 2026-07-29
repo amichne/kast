@@ -1,46 +1,46 @@
-const KAGENT_SKILL: &str =
-    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/resources/kagent/SKILL.md"));
-const KAGENT_CODEX_MARKETPLACE: &str = include_str!(concat!(
+const KAST_AGENT_SKILL: &str =
+    include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/resources/kast/SKILL.md"));
+const KAST_CODEX_MARKETPLACE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/resources/kagent/codex/marketplace.json"
+    "/resources/kast/codex/marketplace.json"
 ));
-const KAGENT_CODEX_PLUGIN: &str = include_str!(concat!(
+const KAST_CODEX_PLUGIN: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/resources/kagent/codex/plugin.json"
+    "/resources/kast/codex/plugin.json"
 ));
-const KAGENT_CODEX_HOOKS: &str = include_str!(concat!(
+const KAST_CODEX_HOOKS: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/resources/kagent/codex/hooks.json"
+    "/resources/kast/codex/hooks.json"
 ));
-const KAGENT_CLAUDE_MARKETPLACE: &str = include_str!(concat!(
+const KAST_CLAUDE_MARKETPLACE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/resources/kagent/claude/marketplace.json"
+    "/resources/kast/claude/marketplace.json"
 ));
-const KAGENT_CLAUDE_PLUGIN: &str = include_str!(concat!(
+const KAST_CLAUDE_PLUGIN: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/resources/kagent/claude/plugin.json"
+    "/resources/kast/claude/plugin.json"
 ));
-const KAGENT_CLAUDE_HOOKS: &str = include_str!(concat!(
+const KAST_CLAUDE_HOOKS: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/resources/kagent/claude/hooks.json"
+    "/resources/kast/claude/hooks.json"
 ));
-const KAGENT_COPILOT_MARKETPLACE: &str = include_str!(concat!(
+const KAST_COPILOT_MARKETPLACE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/resources/kagent/copilot/marketplace.json"
+    "/resources/kast/copilot/marketplace.json"
 ));
-const KAGENT_COPILOT_PLUGIN: &str = include_str!(concat!(
+const KAST_COPILOT_PLUGIN: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/resources/kagent/copilot/plugin.json"
+    "/resources/kast/copilot/plugin.json"
 ));
-const KAGENT_COPILOT_HOOKS: &str = include_str!(concat!(
+const KAST_COPILOT_HOOKS: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
-    "/resources/kagent/copilot/hooks.json"
+    "/resources/kast/copilot/hooks.json"
 ));
 
-const KAGENT_VERSION_PLACEHOLDER: &str = "${KAGENT_VERSION}";
+const KAST_VERSION_PLACEHOLDER: &str = "${KAST_VERSION}";
 
-pub fn install_agent_resources(requested: &[KAgentHarness]) -> Result<()> {
-    let selected = [KAgentHarness::Codex, KAgentHarness::Claude, KAgentHarness::Copilot]
+pub fn install_agent_resources(requested: &[KastHarness]) -> Result<()> {
+    let selected = [KastHarness::Codex, KastHarness::Claude, KastHarness::Copilot]
         .into_iter()
         .filter(|harness| requested.contains(harness))
         .collect::<Vec<_>>();
@@ -54,7 +54,7 @@ pub fn install_agent_resources(requested: &[KAgentHarness]) -> Result<()> {
         return Ok(());
     }
     Err(CliError::new(
-        "KAGENT_RESOURCE_INSTALL_FAILED",
+        "KAST_AGENT_RESOURCE_INSTALL_FAILED",
         format!(
             "Agent resources could not be installed for {}.",
             failures.join("; ")
@@ -62,11 +62,11 @@ pub fn install_agent_resources(requested: &[KAgentHarness]) -> Result<()> {
     ))
 }
 
-fn install_agent_harness(harness: KAgentHarness) -> std::result::Result<(), String> {
+fn install_agent_harness(harness: KastHarness) -> std::result::Result<(), String> {
     let marketplace_root = materialize_agent_harness(harness).map_err(|error| error.to_string())?;
     let root = marketplace_root.display().to_string();
     let commands = match harness {
-        KAgentHarness::Codex => vec![
+        KastHarness::Codex => vec![
             vec![
                 "plugin".to_string(),
                 "marketplace".to_string(),
@@ -77,11 +77,11 @@ fn install_agent_harness(harness: KAgentHarness) -> std::result::Result<(), Stri
             vec![
                 "plugin".to_string(),
                 "add".to_string(),
-                "kagent@kagent".to_string(),
+                "kast@kast".to_string(),
                 "--json".to_string(),
             ],
         ],
-        KAgentHarness::Claude => vec![
+        KastHarness::Claude => vec![
             vec![
                 "plugin".to_string(),
                 "marketplace".to_string(),
@@ -93,12 +93,12 @@ fn install_agent_harness(harness: KAgentHarness) -> std::result::Result<(), Stri
             vec![
                 "plugin".to_string(),
                 "install".to_string(),
-                "kagent@kagent".to_string(),
+                "kast@kast".to_string(),
                 "--scope".to_string(),
                 "user".to_string(),
             ],
         ],
-        KAgentHarness::Copilot => vec![
+        KastHarness::Copilot => vec![
             vec![
                 "plugin".to_string(),
                 "marketplace".to_string(),
@@ -108,7 +108,7 @@ fn install_agent_harness(harness: KAgentHarness) -> std::result::Result<(), Stri
             vec![
                 "plugin".to_string(),
                 "install".to_string(),
-                "kagent@kagent".to_string(),
+                "kast@kast".to_string(),
             ],
         ],
     };
@@ -119,7 +119,7 @@ fn install_agent_harness(harness: KAgentHarness) -> std::result::Result<(), Stri
 }
 
 fn run_agent_harness_command(
-    harness: KAgentHarness,
+    harness: KastHarness,
     args: &[String],
 ) -> std::result::Result<(), String> {
     let output = ProcessCommand::new(harness_name(harness))
@@ -145,50 +145,50 @@ fn run_agent_harness_command(
     }
 }
 
-fn materialize_agent_harness(harness: KAgentHarness) -> Result<PathBuf> {
+fn materialize_agent_harness(harness: KastHarness) -> Result<PathBuf> {
     let digest = agent_resources_digest();
     let root = manifest::default_install_root()
         .join("state")
         .join("agent-resources")
         .join(digest)
         .join(harness_name(harness));
-    let skill = render_agent_resource(KAGENT_SKILL);
+    let skill = render_agent_resource(KAST_AGENT_SKILL);
     let (marketplace_path, plugin_path, hooks_path, marketplace, plugin, hooks) = match harness {
-        KAgentHarness::Codex => (
+        KastHarness::Codex => (
             ".agents/plugins/marketplace.json",
-            "plugins/kagent/.codex-plugin/plugin.json",
-            "plugins/kagent/hooks/hooks.json",
-            KAGENT_CODEX_MARKETPLACE,
-            KAGENT_CODEX_PLUGIN,
-            KAGENT_CODEX_HOOKS,
+            "plugins/kast/.codex-plugin/plugin.json",
+            "plugins/kast/hooks/hooks.json",
+            KAST_CODEX_MARKETPLACE,
+            KAST_CODEX_PLUGIN,
+            KAST_CODEX_HOOKS,
         ),
-        KAgentHarness::Claude => (
+        KastHarness::Claude => (
             ".claude-plugin/marketplace.json",
-            "plugins/kagent/.claude-plugin/plugin.json",
-            "plugins/kagent/hooks/hooks.json",
-            KAGENT_CLAUDE_MARKETPLACE,
-            KAGENT_CLAUDE_PLUGIN,
-            KAGENT_CLAUDE_HOOKS,
+            "plugins/kast/.claude-plugin/plugin.json",
+            "plugins/kast/hooks/hooks.json",
+            KAST_CLAUDE_MARKETPLACE,
+            KAST_CLAUDE_PLUGIN,
+            KAST_CLAUDE_HOOKS,
         ),
-        KAgentHarness::Copilot => (
+        KastHarness::Copilot => (
             ".github/plugin/marketplace.json",
-            "plugins/kagent/plugin.json",
-            "plugins/kagent/hooks.json",
-            KAGENT_COPILOT_MARKETPLACE,
-            KAGENT_COPILOT_PLUGIN,
-            KAGENT_COPILOT_HOOKS,
+            "plugins/kast/plugin.json",
+            "plugins/kast/hooks.json",
+            KAST_COPILOT_MARKETPLACE,
+            KAST_COPILOT_PLUGIN,
+            KAST_COPILOT_HOOKS,
         ),
     };
     for (relative, contents) in [
         (marketplace_path, render_agent_resource(marketplace)),
         (plugin_path, render_agent_resource(plugin)),
         (hooks_path, render_agent_resource(hooks)),
-        ("plugins/kagent/skills/kagent/SKILL.md", skill),
+        ("plugins/kast/skills/kast/SKILL.md", skill),
     ] {
         let target = root.join(relative);
         let parent = target.parent().ok_or_else(|| {
             CliError::new(
-                "KAGENT_RESOURCE_PATH_INVALID",
+                "KAST_AGENT_RESOURCE_PATH_INVALID",
                 format!("Embedded resource path has no parent: {relative}"),
             )
         })?;
@@ -204,16 +204,16 @@ fn materialize_agent_harness(harness: KAgentHarness) -> Result<PathBuf> {
 fn agent_resources_digest() -> String {
     let mut digest = Sha256::new();
     for (path, contents) in [
-        ("SKILL.md", KAGENT_SKILL),
-        ("claude/hooks.json", KAGENT_CLAUDE_HOOKS),
-        ("claude/marketplace.json", KAGENT_CLAUDE_MARKETPLACE),
-        ("claude/plugin.json", KAGENT_CLAUDE_PLUGIN),
-        ("codex/hooks.json", KAGENT_CODEX_HOOKS),
-        ("codex/marketplace.json", KAGENT_CODEX_MARKETPLACE),
-        ("codex/plugin.json", KAGENT_CODEX_PLUGIN),
-        ("copilot/hooks.json", KAGENT_COPILOT_HOOKS),
-        ("copilot/marketplace.json", KAGENT_COPILOT_MARKETPLACE),
-        ("copilot/plugin.json", KAGENT_COPILOT_PLUGIN),
+        ("SKILL.md", KAST_AGENT_SKILL),
+        ("claude/hooks.json", KAST_CLAUDE_HOOKS),
+        ("claude/marketplace.json", KAST_CLAUDE_MARKETPLACE),
+        ("claude/plugin.json", KAST_CLAUDE_PLUGIN),
+        ("codex/hooks.json", KAST_CODEX_HOOKS),
+        ("codex/marketplace.json", KAST_CODEX_MARKETPLACE),
+        ("codex/plugin.json", KAST_CODEX_PLUGIN),
+        ("copilot/hooks.json", KAST_COPILOT_HOOKS),
+        ("copilot/marketplace.json", KAST_COPILOT_MARKETPLACE),
+        ("copilot/plugin.json", KAST_COPILOT_PLUGIN),
     ] {
         digest.update(path.as_bytes());
         digest.update([0]);
@@ -224,13 +224,13 @@ fn agent_resources_digest() -> String {
 }
 
 fn render_agent_resource(contents: &str) -> String {
-    contents.replace(KAGENT_VERSION_PLACEHOLDER, crate::cli::version())
+    contents.replace(KAST_VERSION_PLACEHOLDER, crate::cli::version())
 }
 
-fn harness_name(harness: KAgentHarness) -> &'static str {
+fn harness_name(harness: KastHarness) -> &'static str {
     match harness {
-        KAgentHarness::Codex => "codex",
-        KAgentHarness::Claude => "claude",
-        KAgentHarness::Copilot => "copilot",
+        KastHarness::Codex => "codex",
+        KastHarness::Claude => "claude",
+        KastHarness::Copilot => "copilot",
     }
 }

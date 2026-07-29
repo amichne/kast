@@ -22,8 +22,8 @@ fn setup_idea_plugin(
         manifest::sha256_bytes(format!("{cli_sha256}\n{plugin_sha256}\n").as_bytes());
     let mut bundle_manifest = serde_json::to_vec_pretty(&serde_json::json!({
         "artifacts": [
-            {"role": "cli", "path": "bin/kast", "sha256": cli_sha256},
-            {"role": "agent-cli", "path": KAGENT_BUNDLE_PATH, "sha256": cli_sha256},
+            {"role": "cli", "path": CONTROL_CLI_BUNDLE_PATH, "sha256": cli_sha256},
+            {"role": "agent-cli", "path": AGENT_CLI_BUNDLE_PATH, "sha256": cli_sha256},
             {"role": "idea-plugin", "path": "idea/kast.zip", "sha256": plugin_sha256}
         ]
     }))?;
@@ -134,27 +134,32 @@ fn setup_idea_plugin(
 }
 
 fn install_current_idea_user_command(targets: &ActivationTargetPaths) -> Result<Option<PathBuf>> {
-    let user_command = manifest::home_dir().join(".local/bin/kast");
-    let is_managed = fs::read_link(&user_command)
-        .is_ok_and(|target| target.starts_with(&targets.current_link));
-    if is_managed || fs::symlink_metadata(&user_command).is_err() {
-        install_user_command(targets)?;
-        return Ok(None);
+    let local_bin = manifest::home_dir().join(".local/bin");
+    let backups = targets.resolved.install_root.join("backups");
+    fs::create_dir_all(&backups)?;
+    let mut moved = Vec::new();
+    for (user_command, backup_name) in [
+        (local_bin.join("_kastctl"), "legacy-local-bin-kastctl"),
+        (local_bin.join("kast"), "legacy-local-bin-kast"),
+    ] {
+        let is_managed = fs::read_link(&user_command)
+            .is_ok_and(|target| target.starts_with(&targets.current_link));
+        if is_managed || fs::symlink_metadata(&user_command).is_err() {
+            continue;
+        }
+        let backup = backups.join(backup_name);
+        manifest::remove_path(&backup)?;
+        fs::rename(&user_command, &backup)?;
+        moved.push((user_command, backup));
     }
-
-    let backup = targets
-        .resolved
-        .install_root
-        .join("backups/legacy-local-bin-kast");
-    fs::create_dir_all(backup.parent().expect("backup parent"))?;
-    manifest::remove_path(&backup)?;
-    fs::rename(&user_command, &backup)?;
     if let Err(error) = install_user_command(targets) {
-        manifest::remove_path(&user_command)?;
-        fs::rename(&backup, &user_command)?;
+        for (user_command, backup) in &moved {
+            manifest::remove_path(user_command)?;
+            fs::rename(backup, user_command)?;
+        }
         return Err(error);
     }
-    Ok(Some(backup))
+    Ok(moved.first().map(|(_, backup)| backup.clone()))
 }
 
 fn idea_activation_target_paths(
@@ -189,10 +194,10 @@ fn install_idea_release(
     fs::create_dir_all(staged.join("bin"))?;
     fs::create_dir_all(staged.join("idea"))?;
     fs::create_dir_all(staged.join("config"))?;
-    fs::copy(current_exe, staged.join("bin/kast"))?;
-    manifest::make_executable(&staged.join("bin/kast"))?;
-    fs::copy(current_exe, staged.join(KAGENT_BUNDLE_PATH))?;
-    manifest::make_executable(&staged.join(KAGENT_BUNDLE_PATH))?;
+    fs::copy(current_exe, staged.join(CONTROL_CLI_BUNDLE_PATH))?;
+    manifest::make_executable(&staged.join(CONTROL_CLI_BUNDLE_PATH))?;
+    fs::copy(current_exe, staged.join(AGENT_CLI_BUNDLE_PATH))?;
+    manifest::make_executable(&staged.join(AGENT_CLI_BUNDLE_PATH))?;
     fs::copy(idea_plugin, staged.join("idea/kast.zip"))?;
     fs::write(staged.join("config/config.toml"), config_defaults)?;
     fs::write(staged.join(BUNDLE_MANIFEST_FILE), bundle_manifest)?;
@@ -314,8 +319,8 @@ fn idea_install_manifest(
         ],
         backends: vec![],
         managed_paths: vec![
-            "bin/kast".to_string(),
-            KAGENT_BUNDLE_PATH.to_string(),
+            CONTROL_CLI_BUNDLE_PATH.to_string(),
+            AGENT_CLI_BUNDLE_PATH.to_string(),
             "idea/kast.zip".to_string(),
         ],
         owned_paths: manifest::owned_paths(&targets.resolved),
