@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.api.contract.FqName
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.PositiveInt
@@ -32,6 +33,32 @@ data class KastExplorerSearchItem(
     val ownerName: String = declaration.fqName.substringBeforeLast('.', "")
     val navigationTarget: KastSourceTarget? = declaration.declarationOffset?.let { offset ->
         KastSourceTarget(Path.of(declaration.filePath).toAbsolutePath().normalize(), offset)
+    }
+}
+
+internal data class KastCurrentSymbol(
+    val fqName: FqName,
+    val navigationTarget: KastSourceTarget,
+)
+
+internal fun preferExactCurrentSymbol(
+    items: List<KastExplorerSearchItem>,
+    current: KastCurrentSymbol?,
+): List<KastExplorerSearchItem> {
+    current ?: return items
+    return items.map { item ->
+        if (item.declaration.fqName == current.fqName.value &&
+            Path.of(item.declaration.filePath).toAbsolutePath().normalize() == current.navigationTarget.filePath
+        ) {
+            item.copy(
+                declaration = item.declaration.copy(
+                    filePath = current.navigationTarget.filePath.toString(),
+                    declarationOffset = current.navigationTarget.offset,
+                ),
+            )
+        } else {
+            item
+        }
     }
 }
 

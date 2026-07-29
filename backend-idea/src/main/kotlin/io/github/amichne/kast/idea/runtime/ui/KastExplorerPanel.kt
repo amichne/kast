@@ -21,6 +21,7 @@ import com.intellij.ui.components.JBPanel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.JBUI
+import io.github.amichne.kast.api.contract.FqName
 import io.github.amichne.kast.idea.diagnostics.KastDiagnosticsService
 import io.github.amichne.kast.idea.diagnostics.KastDiagnosticsSnapshot
 import io.github.amichne.kast.idea.diagnostics.KastBackendUiState
@@ -65,7 +66,7 @@ internal class KastExplorerPanel(
     private val openSourceButton = JButton("Open Source")
     private var requestSequence = 0L
     private var lastBackendState = KastBackendUiState.STOPPED
-    private var preferredFqName: String? = null
+    private var preferredCurrentSymbol: KastCurrentSymbol? = null
     private var disposed = false
 
     init {
@@ -236,18 +237,24 @@ internal class KastExplorerPanel(
     }
 
     private fun searchCurrentSymbol() {
-        val fqName = ApplicationManager.getApplication().runReadAction<String?> {
+        val current = ApplicationManager.getApplication().runReadAction<KastCurrentSymbol?> {
             val editor = FileEditorManager.getInstance(project).selectedTextEditor ?: return@runReadAction null
             val file = PsiDocumentManager.getInstance(project).getPsiFile(editor.document) ?: return@runReadAction null
             val element = file.findElementAt(editor.caretModel.offset) ?: return@runReadAction null
-            PsiTreeUtil.getParentOfType(element, KtNamedDeclaration::class.java, false)?.fqName?.asString()
+            val declaration =
+                PsiTreeUtil.getParentOfType(element, KtNamedDeclaration::class.java, false)
+                    ?: return@runReadAction null
+            val fqName = declaration.fqName?.asString() ?: return@runReadAction null
+            val path = file.virtualFile?.path ?: return@runReadAction null
+            val offset = declaration.nameIdentifier?.textRange?.startOffset ?: declaration.textRange.startOffset
+            KastCurrentSymbol(FqName(fqName), KastSourceTarget(Path.of(path), offset))
         }
-        if (fqName == null) {
+        if (current == null) {
             detailHint.text = "Place the caret inside a named Kotlin declaration."
             return
         }
-        preferredFqName = fqName
-        searchField.text = fqName
+        preferredCurrentSymbol = current
+        searchField.text = current.fqName.value
         search()
     }
 
@@ -280,14 +287,31 @@ internal class KastExplorerPanel(
     }
 
     private fun renderSearchResults(items: List<KastExplorerSearchItem>) {
+        val current = preferredCurrentSymbol
+        preferredCurrentSymbol = null
+        val exactItems = preferExactCurrentSymbol(items, current)
         searchButton.isEnabled = true
         resultModel.clear()
-        items.forEach(resultModel::addElement)
+        exactItems.forEach(resultModel::addElement)
         results.emptyText.text = "No indexed declarations match"
-        val preferred = preferredFqName
-        preferredFqName = null
-        val selectedIndex = items.indexOfFirst { item -> item.declaration.fqName == preferred }.takeIf { it >= 0 } ?: 0
-        if (items.isNotEmpty()) results.selectedIndex = selectedIndex
+        if (exactItems.isEmpty()) {
+            clearInspection()
+            return
+        }
+        val selectedIndex = current
+            ?.let { preferred -> exactItems.indexOfFirst { item -> item.navigationTarget == preferred.navigationTarget } }
+            ?.takeIf { index -> index >= 0 }
+            ?: 0
+        results.selectedIndex = selectedIndex
+    }
+
+    private fun clearInspection() {
+        relationRoot.removeAllChildren()
+        relationModel.reload()
+        detailTitle.text = "No matching declarations"
+        detailMeta.text = ""
+        detailHint.text = "Try another symbol name or use Current Symbol."
+        openSourceButton.isEnabled = false
     }
 
     private fun renderSelection(selected: KastExplorerSearchItem) {
