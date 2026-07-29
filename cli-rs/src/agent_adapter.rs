@@ -726,6 +726,19 @@ fn run_external_refresh(workspace_root: PathBuf, failure_ids: Vec<String>) -> Re
             Ok(json!({"failureId": failure_id, "status": status}))
         })
         .collect::<Result<Vec<_>>>()?;
+    if external
+        .iter()
+        .any(|outcome| outcome["status"] == "NOT_FOUND")
+    {
+        output::print_structured(
+            &json!({
+                "external": external,
+                "next": "Run `kast refresh <path>` for the affected file, then externalize the new failure ID."
+            }),
+            OutputFormat::Toon,
+        )?;
+        return Ok(1);
+    }
     print_direct(&json!({"external": external}))
 }
 

@@ -103,8 +103,8 @@ fn run_context(args: cli::RuntimeArgs, output_format: OutputFormat) -> Result<i3
         output_default: "Kast agent commands always default to TOON; JSON remains deprecated compatibility output.",
         commands: context_command_hints(),
         help: vec![
-            "Run `kast --help` for command reference.".to_string(),
-            "Rerun `kast setup --source <bundle>` whenever installation readiness fails."
+            "Run `_kastctl --help` for command reference.".to_string(),
+            "Rerun `_kastctl setup --source <bundle>` whenever installation readiness fails."
                 .to_string(),
         ],
         schema_version: SCHEMA_VERSION,
@@ -120,27 +120,27 @@ fn run_context(args: cli::RuntimeArgs, output_format: OutputFormat) -> Result<i3
 fn context_command_hints() -> Vec<ContextCommandHint> {
     vec![
         ContextCommandHint {
-            command: "kast start --workspace-root <repo>".to_string(),
+            command: "_kastctl start --workspace-root <repo>".to_string(),
             purpose: "Start or resume the workspace backend and indexing.".to_string(),
         },
         ContextCommandHint {
-            command: "kast status --workspace-root <repo>".to_string(),
+            command: "_kastctl status --workspace-root <repo>".to_string(),
             purpose: "Inspect backend and indexing state.".to_string(),
         },
         ContextCommandHint {
-            command: "kast stop --workspace-root <repo>".to_string(),
+            command: "_kastctl stop --workspace-root <repo>".to_string(),
             purpose: "Stop indexing and the workspace backend.".to_string(),
         },
         ContextCommandHint {
-            command: "kast config list --workspace-root <repo>".to_string(),
+            command: "_kastctl config list --workspace-root <repo>".to_string(),
             purpose: "Inspect effective workspace configuration and mutable fields.".to_string(),
         },
         ContextCommandHint {
-            command: "kast agent verify --workspace-root <repo>".to_string(),
+            command: "_kastctl agent verify --workspace-root <repo>".to_string(),
             purpose: "Check backend health, runtime state, and capabilities.".to_string(),
         },
         ContextCommandHint {
-            command: "kast agent symbol --query <name> --workspace-root <repo>".to_string(),
+            command: "_kastctl agent symbol --query <name> --workspace-root <repo>".to_string(),
             purpose: "Resolve Kotlin symbol identity before reading or editing.".to_string(),
         },
     ]
