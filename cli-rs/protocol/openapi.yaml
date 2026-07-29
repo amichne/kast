@@ -3011,6 +3011,10 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/RefreshExternalFailureOutcome"
+        relationshipFailures:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RefreshRelationshipFailure"
         semanticOutcome:
           "$ref": "#/components/schemas/SemanticAnalysisOutcome"
         requestedFileCount:
@@ -3113,6 +3117,20 @@ components:
         - EXTERNALIZED
         - ALREADY_EXTERNAL
         - NOT_FOUND
+    RefreshRelationshipFailure:
+      type: object
+      properties:
+        failureId:
+          "$ref": "#/components/schemas/SemanticGraphExternalBoundaryFailureId"
+        filePath:
+          type: string
+        code:
+          "$ref": "#/components/schemas/SemanticGraphExternalBoundaryReason"
+      additionalProperties: false
+      required:
+        - failureId
+        - filePath
+        - code
     FileOperation.CreateFile:
       type: object
       properties:

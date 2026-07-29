@@ -18,6 +18,8 @@
                 }
             }
         ],
+        "externalFailureOutcomes": [],
+        "relationshipFailures": [],
         "semanticOutcome": "COMPLETE",
         "requestedFileCount": 1,
         "analyzedFileCount": 1,

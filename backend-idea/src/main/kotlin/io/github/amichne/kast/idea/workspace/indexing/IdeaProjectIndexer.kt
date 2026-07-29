@@ -2,6 +2,8 @@ package io.github.amichne.kast.idea
 
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ModuleRootManager
@@ -15,6 +17,8 @@ import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
+import io.github.amichne.kast.indexstore.api.index.FileStageOutcome
+import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
 import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
@@ -71,6 +75,41 @@ internal class IdeaProjectIndexer(
         }
     }
 
+    fun refreshSymbolRelationships(filePaths: Collection<String>): List<FileStageOutcome> {
+        require(filePaths.all(SourceIndexFilePolicy::isEligible)) {
+            "Focused relationship refresh accepts Kotlin source files only"
+        }
+        requireActive()
+        val currentFilePaths = indexSourceIdentifiers().toSet()
+        requireActive()
+        val requestedPaths = filePaths.distinct().filter(currentFilePaths::contains)
+        val previousFailureIds = requestedPaths.associateWith { path ->
+            store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS)?.failure?.id
+        }
+        indexSymbolRelationships(
+            currentFilePaths = requestedPaths,
+            moduleOrder = emptyList(),
+            batchSize = SOURCE_INDEX_BATCH_SIZE,
+            parallelism = 1,
+        )
+        requireActive()
+
+        val failures = requestedPaths.mapNotNull { path ->
+            store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS)
+                ?.takeIf { outcome -> outcome.status == FileStageOutcomeStatus.FAILED }
+                ?.takeIf { outcome -> outcome.failure?.id != previousFailureIds[path] }
+        }
+        val failedPaths = failures.mapTo(mutableSetOf(), FileStageOutcome::path)
+        val unfinishedPaths = store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
+            .mapTo(mutableSetOf()) { work -> work.path }
+            .intersect(requestedPaths.toSet())
+            .minus(failedPaths)
+        check(unfinishedPaths.isEmpty()) {
+            "Focused relationship refresh did not commit current facts for: ${unfinishedPaths.sorted().joinToString()}"
+        }
+        return failures
+    }
+
     fun indexSourceIdentifiers(): Collection<String> {
         store.ensureSchema()
         val (gradleProvenance, inventorySnapshot) = runIdeaReadAction {
@@ -115,6 +154,11 @@ internal class IdeaProjectIndexer(
             }
         }
         return inventoryEntries.map(FileInventoryEntry::path)
+    }
+
+    private fun requireActive() {
+        ProgressManager.checkCanceled()
+        if (environment.isCancelled()) throw ProcessCanceledException()
     }
 
     private fun indexSymbolRelationships(

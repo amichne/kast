@@ -9,9 +9,11 @@ import io.github.amichne.kast.api.contract.result.IndexAdmissionState
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RefreshExternalFailureOutcome
 import io.github.amichne.kast.api.contract.result.RefreshExternalFailureStatus
+import io.github.amichne.kast.api.contract.result.RefreshRelationshipFailure
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryFailureId
+import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryReason
 import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -81,6 +83,26 @@ class RefreshResultTest {
         assertEquals(IndexAdmissionState.ADMITTED, admissionStatus.indexAdmission)
         assertEquals(AnalysisAvailabilityState.PENDING, admissionStatus.analysisAvailability)
         assertEquals(FileAnalysisState.PENDING_INDEX, admissionStatus.analysisStatus?.state)
+    }
+
+    @Test
+    fun `focused refresh exposes current actionable relationship failures`() {
+        val failure = RefreshRelationshipFailure(
+            failureId = SemanticGraphExternalBoundaryFailureId.parse(
+                "00000000-0000-0000-0000-000000000453",
+            ),
+            filePath = admittedPath.value,
+            code = SemanticGraphExternalBoundaryReason.PSI_UNAVAILABLE,
+        )
+
+        val result = RefreshResult.focused(
+            fileStatuses = listOf(SemanticAdmissionStatus.admitted(admittedPath)),
+            attemptCount = 1,
+            elapsedMillis = 0,
+            relationshipFailures = listOf(failure),
+        )
+
+        assertEquals(listOf(failure), result.relationshipFailures)
     }
 
     @Test

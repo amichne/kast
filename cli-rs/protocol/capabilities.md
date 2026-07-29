@@ -514,6 +514,7 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin fullRefresh: Boolean` | True when an unbounded full workspace refresh was performed. |
             | `#!kotlin fileStatuses: List<SemanticAdmissionStatus>` | Ordered semantic-admission state for every focused refresh path. |
             | `#!kotlin externalFailureOutcomes: List<RefreshExternalFailureOutcome>?` | Ordered outcomes for requested external graph-boundary failures. |
+            | `#!kotlin relationshipFailures: List<RefreshRelationshipFailure>?` | Current file-local relationship failures eligible for externalization. |
             | `#!kotlin semanticOutcome: SemanticAnalysisOutcome` | Whether every existing focused path reached semantic admission. |
             | `#!kotlin requestedFileCount: Int` | Number of existing paths that required semantic admission. |
             | `#!kotlin analyzedFileCount: Int` | Number of existing paths that reached semantic admission. |
