@@ -7,8 +7,13 @@ import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import java.io.File
 import java.util.jar.JarInputStream
 import java.util.zip.ZipFile
+
+internal fun selectPluginZip(distributionsDirectory: File): File =
+    distributionsDirectory.listFiles()?.firstOrNull { it.name.endsWith(".zip") }
+        ?: error("No plugin zip found in $distributionsDirectory")
 
 abstract class VerifyPluginXmlPresentTask : DefaultTask() {
     init {
@@ -31,8 +36,7 @@ abstract class VerifyPluginXmlPresentTask : DefaultTask() {
     @TaskAction
     fun verify() {
         val distDir = distributionsDirectory.get().asFile
-        val pluginZip = distDir.listFiles()?.firstOrNull { it.name.endsWith(".zip") }
-            ?: error("No plugin zip found in $distDir")
+        val pluginZip = selectPluginZip(distDir)
 
         val content = ZipFile(pluginZip).use { zipFile ->
             val forbiddenBundledJars = zipFile.entries().asSequence()
