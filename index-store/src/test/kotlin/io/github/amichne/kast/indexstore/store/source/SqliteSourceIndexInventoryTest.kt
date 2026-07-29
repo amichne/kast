@@ -10,6 +10,7 @@ import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
+import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.GradleProjectPath
 import io.github.amichne.kast.indexstore.api.index.GradleSourceSetName
@@ -191,6 +192,54 @@ class SqliteSourceIndexInventoryTest {
         assertFalse(methodNames.contains("initializeModuleProgress"))
         assertFalse(methodNames.contains("markModuleIndexing"))
         assertFalse(methodNames.contains("markModuleComplete"))
+    }
+
+    @Test
+    fun `adding inventory requeues limited relationship outcomes`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val caller = normalized.resolve("src/Caller.kt").toString()
+        val target = normalized.resolve("src/Target.kt").toString()
+        val callerEntry = FileInventoryEntry(
+            caller,
+            1,
+            FileContentHash.parse("a".repeat(64)),
+            ":app[main]",
+            "main",
+        )
+        val targetEntry = FileInventoryEntry(
+            target,
+            1,
+            FileContentHash.parse("b".repeat(64)),
+            ":app[main]",
+            "main",
+        )
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.reconcileFileInventory(listOf(callerEntry), FileStageVersions.CURRENT)
+            val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).single()
+            store.commitRelationshipBatch(
+                listOf(
+                    RelationshipFileStageUpdate(
+                        work,
+                        emptyList(),
+                        emptyList(),
+                        limitations = listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP),
+                    ),
+                ),
+            )
+            assertTrue(store.pendingFileStages(FileIndexStage.RELATIONSHIPS).isEmpty())
+        }
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.reconcileFileInventory(listOf(callerEntry, targetEntry), FileStageVersions.CURRENT)
+
+            assertEquals(
+                listOf(caller, target),
+                store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { work -> work.path },
+            )
+            assertNull(store.fileStageOutcome(caller, FileIndexStage.RELATIONSHIPS))
+        }
     }
 
     @Test

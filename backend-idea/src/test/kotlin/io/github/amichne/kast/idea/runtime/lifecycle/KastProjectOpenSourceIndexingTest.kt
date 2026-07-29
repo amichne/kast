@@ -1,6 +1,8 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.moduleFixture
@@ -9,6 +11,7 @@ import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.RemoteIndexConfig
+import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.client.fields.IndexingRemoteEnabled
 import io.github.amichne.kast.api.client.fields.IndexingRemoteSourceIndexUrl
 import io.github.amichne.kast.api.client.fields.OptionalConfigString
@@ -21,12 +24,14 @@ import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -174,6 +179,16 @@ class KastProjectOpenSourceIndexingTest {
     }
 
     @Test
+    fun `source scan rejects facts from a newer PSI revision`() {
+        assertChangedPsiDoesNotCommit(FileIndexStage.SOURCE)
+    }
+
+    @Test
+    fun `relationship scan rejects facts from a newer PSI revision`() {
+        assertChangedPsiDoesNotCommit(FileIndexStage.RELATIONSHIPS)
+    }
+
+    @Test
     fun `remote source index hydration copies configured snapshot before local indexing opens the store`() {
         val remoteWorkspaceRoot = tempDir.resolve("remote-workspace")
         val localWorkspaceRoot = tempDir.resolve("local-workspace")
@@ -220,5 +235,65 @@ class KastProjectOpenSourceIndexingTest {
         }
         Files.deleteIfExists(Path.of("$dbPath-wal"))
         Files.deleteIfExists(Path.of("$dbPath-shm"))
+    }
+
+    private fun assertChangedPsiDoesNotCommit(stage: FileIndexStage) {
+        val project = projectFixture.get()
+        val callerFile = callerFileFixture.get()
+        targetFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(callerFile.virtualFile.path).parent.toAbsolutePath().normalize()
+        val callerPath = Path.of(callerFile.virtualFile.path).toAbsolutePath().normalize().toString()
+        val workspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).copy(
+            sourceIndexDatabasePath = NormalizedPath.ofAbsolute(
+                tempDir.resolve("changed-${stage.name.lowercase()}.db"),
+            ),
+        )
+        val completeGradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            emptyList(),
+            true,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+        )
+        var changed = false
+        val changeCaller: (String) -> Unit = { path ->
+            if (!changed && path == callerPath) {
+                changed = true
+                replaceFile(callerFile.virtualFile, callerSource.replace("caller", "changedCaller"))
+            }
+        }
+
+        replaceFile(callerFile.virtualFile, callerSource)
+        try {
+            SqliteSourceIndexStore(workspaceIdentity).use { store ->
+                IdeaProjectIndexer(
+                    project = project,
+                    workspaceRoot = workspaceRoot,
+                    store = store,
+                    cancelled = { false },
+                    workspaceIdentity = workspaceIdentity,
+                    readGradleWorkspaceModel = { completeGradleModel },
+                    onSourceFileScan = if (stage == FileIndexStage.SOURCE) changeCaller else { _ -> },
+                    onRelationshipFileScan = if (stage == FileIndexStage.RELATIONSHIPS) changeCaller else { _ -> },
+                ).indexProject(KastConfig.defaults())
+
+                assertNull(store.fileStageOutcome(callerPath, stage))
+                assertTrue(
+                    store.pendingFileStages(stage).any { work -> work.path == callerPath },
+                    "A scan from a newer PSI revision must remain pending",
+                )
+            }
+        } finally {
+            replaceFile(callerFile.virtualFile, callerSource)
+        }
+    }
+
+    private fun replaceFile(virtualFile: VirtualFile, content: String) {
+        val application = ApplicationManager.getApplication()
+        application.invokeAndWait {
+            application.runWriteAction { virtualFile.setBinaryContent(content.toByteArray()) }
+        }
     }
 }
