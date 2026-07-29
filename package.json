@@ -2,7 +2,7 @@
   "name": "kast-architecture",
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": ">=22.22.3"
   },
   "scripts": {
     "diagrams:dev": "likec4 serve docs/architecture",
