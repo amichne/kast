@@ -1,6 +1,6 @@
 use crate::SCHEMA_VERSION;
 use crate::bundle::{
-    BundleVersion, HEADLESS_BACKEND_ARCHIVE_ROOT, HEADLESS_BACKEND_LAUNCHER,
+    BundleVersion, HEADLESS_BACKEND_ARCHIVE_ROOT, HEADLESS_BACKEND_LAUNCHER, KAGENT_BUNDLE_PATH,
     UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT, ubuntu_debian_headless_manifest,
 };
 use crate::cli::{PackageArgs, PackageCommand, UbuntuDebianBundlePackageArgs};
@@ -94,12 +94,22 @@ pub fn package_ubuntu_debian_bundle(
     extract_zip_archive(&backend_archive, &backend_extract)?;
 
     let cli_bin = cli_extract.join("kast");
+    let agent_cli_bin = cli_extract.join("kagent");
     require_file(&cli_bin, "CLI archive root kast binary")?;
+    require_file(&agent_cli_bin, "CLI archive root kagent binary")?;
+    if file_sha256(&cli_bin)? != file_sha256(&agent_cli_bin)? {
+        return Err(CliError::new(
+            "CLI_ARCHIVE_INVALID",
+            "CLI archive root kast and kagent binaries must be byte-identical.",
+        ));
+    }
     let backend_root = backend_extract.join(HEADLESS_BACKEND_ARCHIVE_ROOT);
     validate_backend_archive_root(&backend_root)?;
 
     fs::copy(&cli_bin, staging_root.join("bin/kast"))?;
     make_executable(&staging_root.join("bin/kast"))?;
+    fs::copy(&agent_cli_bin, staging_root.join(KAGENT_BUNDLE_PATH))?;
+    make_executable(&staging_root.join(KAGENT_BUNDLE_PATH))?;
     let backend_install_name = format!("headless-{}", version.as_str());
     let backend_install_dir = staging_root
         .join("lib/backends")
@@ -119,12 +129,13 @@ pub fn package_ubuntu_debian_bundle(
     copy_license(&repo_root, &staging_root)?;
 
     let cli_sha = path_sha256(&staging_root.join("bin/kast"))?;
+    let agent_cli_sha = path_sha256(&staging_root.join(KAGENT_BUNDLE_PATH))?;
     let backend_sha = path_sha256(&backend_install_dir)?;
     let plugin_sha = path_sha256(&staging_root.join("plugins/kast.zip"))?;
     let manifest = ubuntu_debian_headless_manifest(
         version.as_str(),
         platform,
-        [cli_sha, backend_sha, plugin_sha],
+        [cli_sha, agent_cli_sha, backend_sha, plugin_sha],
         build_commit(&repo_root),
     );
     fs::write(

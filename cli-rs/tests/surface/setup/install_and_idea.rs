@@ -88,7 +88,7 @@ fn setup_installs_native_cli_and_idea_plugin() {
     .expect("setup receipt JSON");
     assert_eq!(
         receipt["components"],
-        serde_json::json!(["cli", "idea-plugin"])
+        serde_json::json!(["cli", "agent-cli", "idea-plugin"])
     );
     let platform = match std::env::consts::ARCH {
         "aarch64" => "macos-arm64".to_string(),

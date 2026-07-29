@@ -23,6 +23,7 @@ fn setup_idea_plugin(
     let mut bundle_manifest = serde_json::to_vec_pretty(&serde_json::json!({
         "artifacts": [
             {"role": "cli", "path": "bin/kast", "sha256": cli_sha256},
+            {"role": "agent-cli", "path": KAGENT_BUNDLE_PATH, "sha256": cli_sha256},
             {"role": "idea-plugin", "path": "idea/kast.zip", "sha256": plugin_sha256}
         ]
     }))?;
@@ -190,6 +191,8 @@ fn install_idea_release(
     fs::create_dir_all(staged.join("config"))?;
     fs::copy(current_exe, staged.join("bin/kast"))?;
     manifest::make_executable(&staged.join("bin/kast"))?;
+    fs::copy(current_exe, staged.join(KAGENT_BUNDLE_PATH))?;
+    manifest::make_executable(&staged.join(KAGENT_BUNDLE_PATH))?;
     fs::copy(idea_plugin, staged.join("idea/kast.zip"))?;
     fs::write(staged.join("config/config.toml"), config_defaults)?;
     fs::write(staged.join(BUNDLE_MANIFEST_FILE), bundle_manifest)?;
@@ -304,9 +307,17 @@ fn idea_install_manifest(
         backend_version: String::new(),
         installed_at: format!("macos-idea:{version}"),
         platform: macos_platform_id(),
-        components: vec!["cli".to_string(), "idea-plugin".to_string()],
+        components: vec![
+            "cli".to_string(),
+            "agent-cli".to_string(),
+            "idea-plugin".to_string(),
+        ],
         backends: vec![],
-        managed_paths: vec!["bin/kast".to_string(), "idea/kast.zip".to_string()],
+        managed_paths: vec![
+            "bin/kast".to_string(),
+            KAGENT_BUNDLE_PATH.to_string(),
+            "idea/kast.zip".to_string(),
+        ],
         owned_paths: manifest::owned_paths(&targets.resolved),
         shell_rc_patches: vec![],
         schema_version: crate::protocol_schema_versions::INSTALL_RECEIPT_SCHEMA_VERSION,

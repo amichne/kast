@@ -33,6 +33,7 @@ fn install_validated_bundle(
     copy_bundle_tree(&bundle.root, &staged)?;
     link_active_headless_backend(bundle, &staged)?;
     manifest::make_executable(&staged.join(&bundle.cli_relative))?;
+    manifest::make_executable(&staged.join(KAGENT_BUNDLE_PATH))?;
     write_headless_config(&staged.join("config/config.toml"))?;
     manifest::write_manifest_atomic(
         &staged.join(manifest::INSTALL_MANIFEST_FILE),
@@ -160,8 +161,16 @@ fn verify_activated_bundle(
 ) -> Result<()> {
     let receipt = targets.current_link.join(manifest::INSTALL_MANIFEST_FILE);
     let active_binary = targets.current_link.join(&bundle.cli_relative);
+    let agent_binary = targets.current_link.join(KAGENT_BUNDLE_PATH);
     require_file(&receipt, "install receipt")?;
     require_executable(&active_binary, "kast CLI")?;
+    require_executable(&agent_binary, "kagent CLI")?;
+    if manifest::sha256_file(&active_binary)? != manifest::sha256_file(&agent_binary)? {
+        return Err(CliError::new(
+            "BUNDLE_INSTALL_MISMATCH",
+            "Installed kast and kagent entrypoints are not byte-identical.",
+        ));
+    }
     require_directory(&targets.version_dir, "installed bundle version")?;
     require_file(
         &targets

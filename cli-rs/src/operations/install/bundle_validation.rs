@@ -29,6 +29,7 @@ fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
     validate_headless_activation(&manifest)?;
 
     let cli_path = root.join(&cli_relative);
+    let agent_cli_path = root.join(KAGENT_BUNDLE_PATH);
     require_executable(&root.join(entrypoint_relative), "bundle setup entrypoint")?;
     let backend_install_dir = root.join(&backend_install_relative);
     let backend_launcher = backend_install_dir.join(&launcher_relative);
@@ -37,6 +38,13 @@ fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
     let required_plugin = backend_install_dir.join(&required_plugin_relative);
 
     require_executable(&cli_path, "bundle CLI")?;
+    require_executable(&agent_cli_path, "bundle agent CLI")?;
+    if manifest::sha256_file(&cli_path)? != manifest::sha256_file(&agent_cli_path)? {
+        return Err(CliError::new(
+            "BUNDLE_SHAPE_INVALID",
+            "Bundle kast and kagent entrypoints must be byte-identical.",
+        ));
+    }
     require_directory(&backend_install_dir, "headless backend install directory")?;
     require_executable(&backend_launcher, "headless backend launcher")?;
     require_file(
@@ -174,7 +182,7 @@ fn validate_bundle_artifacts(root: &Path, manifest: &BundleManifest) -> Result<(
         }
         roles.insert(artifact.role.as_str());
     }
-    for role in ["cli", "headless-backend", "plugin"] {
+    for role in ["cli", "agent-cli", "headless-backend", "plugin"] {
         if !roles.contains(role) {
             return Err(CliError::new(
                 "BUNDLE_MANIFEST_INVALID",
