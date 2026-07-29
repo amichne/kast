@@ -43,11 +43,20 @@ def write_entry(archive, name, data, mode=0o644):
     archive.writestr(info, data)
 
 asset_path.parent.mkdir(parents=True, exist_ok=True)
-if kind in {"cli", "cli-missing-kast", "cli-non-executable-kast"}:
+if kind in {
+    "cli",
+    "cli-mismatched-entrypoints",
+    "cli-missing-kast",
+    "cli-missing-kastctl",
+    "cli-non-executable-kast",
+}:
     with zipfile.ZipFile(asset_path, "w") as archive:
+        if kind != "cli-missing-kastctl":
+            write_entry(archive, "_kastctl", b"cli", 0o755)
         if kind != "cli-missing-kast":
             mode = 0o644 if kind == "cli-non-executable-kast" else 0o755
-            write_entry(archive, "kast", b"cli", mode)
+            data = b"agent" if kind == "cli-mismatched-entrypoints" else b"cli"
+            write_entry(archive, "kast", data, mode)
 elif kind == "idea":
     with zipfile.ZipFile(asset_path, "w") as archive:
         write_entry(archive, "backend-idea/lib/backend-idea.jar", b"plugin")
@@ -225,8 +234,10 @@ write_provenance
 
 "$verifier" --release-dir "$release_dir" --tag "$tag"
 
+assert_cli_archive_rejected cli-missing-kastctl "regular _kastctl" "CLI archive without _kastctl"
 assert_cli_archive_rejected cli-missing-kast "regular kast" "CLI archive without kast"
-assert_cli_archive_rejected cli-non-executable-kast "executable kast" "CLI archive with non-executable kast"
+assert_cli_archive_rejected cli-non-executable-kast "entrypoints must be executable" "CLI archive with non-executable kast"
+assert_cli_archive_rejected cli-mismatched-entrypoints "byte-identical" "CLI archive with mismatched entrypoints"
 assert_cli_archive_rejected invalid "invalid CLI archive" "Invalid CLI archive"
 
 rm -rf "$release_dir"

@@ -144,8 +144,8 @@ for command in up refresh files symbol graph check change apply; do
 done
 for source in \
   cli-rs/src/main.rs \
-  cli-rs/src/interface/cli/agent_surface.rs \
-  cli-rs/src/agent_adapter.rs \
+  cli-rs/src/interface/cli/agent/agent_surface.rs \
+  cli-rs/src/agent/adapter/mod.rs \
   cli-rs/src/interface/cli/root.rs \
   cli-rs/src/interface/entrypoint/dispatch.rs \
   cli-rs/src/operations/install/bundle_entrypoint.rs \
