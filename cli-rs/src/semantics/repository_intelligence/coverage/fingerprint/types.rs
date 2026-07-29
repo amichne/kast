@@ -93,17 +93,22 @@ impl SemanticGraphStageInputFingerprint {
         Ok(Self(value))
     }
 
-    fn from_paths(paths: impl IntoIterator<Item = PersistedSemanticGraphSourcePath>) -> Self {
-        let mut paths = paths.into_iter().collect::<Vec<_>>();
-        paths.sort_by(|left, right| {
-            left.0
-                .encode_utf16()
-                .cmp(right.0.encode_utf16())
-        });
+    fn from_inputs(
+        inputs: impl IntoIterator<
+            Item = (
+                PersistedSemanticGraphSourcePath,
+                PersistedFileContentHash,
+            ),
+        >,
+    ) -> Self {
+        let mut inputs = inputs.into_iter().collect::<Vec<_>>();
+        inputs.sort_by(|left, right| left.0.0.encode_utf16().cmp(right.0.0.encode_utf16()));
         let mut digest = Sha256::new();
-        for path in paths {
-            digest.update(b"selected:");
+        for (path, content_hash) in inputs {
+            digest.update(b"source:");
             digest.update(path.0.as_bytes());
+            digest.update(b":");
+            digest.update(content_hash.0.as_bytes());
             digest.update(b"\n");
         }
         Self(hex::encode(digest.finalize()))

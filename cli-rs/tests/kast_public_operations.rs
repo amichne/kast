@@ -219,7 +219,7 @@ fn change_persists_a_private_root_bound_plan_and_apply_consumes_it_after_success
 }
 
 #[test]
-fn refresh_combines_diagnostics_and_graph_for_the_exact_files() {
+fn refresh_keeps_relationship_failure_actionable_without_graph_extraction() {
     let fixture = tempfile::tempdir().expect("fixture");
     let home = fixture.path().join("home");
     let config_home = fixture.path().join("config");
@@ -229,6 +229,7 @@ fn refresh_combines_diagnostics_and_graph_for_the_exact_files() {
     std::fs::write(&source, "fun app() = missing\n").expect("source");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let workspace = workspace.canonicalize().expect("canonical workspace");
+    let _index = seed_empty_graph_scope(&workspace);
     let source = source.canonicalize().expect("canonical source");
     let failure_id = uuid::Uuid::new_v4().hyphenated().to_string();
     let socket = fixture.path().join("refresh.sock");
@@ -248,24 +249,6 @@ fn refresh_combines_diagnostics_and_graph_for_the_exact_files() {
                 complete_refresh(&source, &failure_id),
             ),
             ("raw/diagnostics", diagnostics_with_error(&source)),
-            (
-                "raw/semantic-graph",
-                json!({
-                    "generation": 9,
-                    "scopeFingerprint": "a".repeat(64),
-                    "coverage": {
-                        "files": [{
-                            "path": source.display().to_string(),
-                            "contentHash": "b".repeat(64),
-                            "status": "REFRESHED",
-                            "diagnostics": []
-                        }],
-                        "omittedExternalTargetCount": 0
-                    },
-                    "symbolCount": 2,
-                    "edgeOccurrenceCount": 1
-                }),
-            ),
         ],
     );
 
@@ -289,7 +272,7 @@ fn refresh_combines_diagnostics_and_graph_for_the_exact_files() {
         refresh["diagnostics"]["diagnostics"][0]["severity"],
         "ERROR"
     );
-    assert_eq!(refresh["graph"]["generation"], 9);
+    assert_eq!(refresh["graph"]["updated"], false);
     assert_eq!(
         refresh["externalizableFailures"],
         json!([{
@@ -317,11 +300,7 @@ fn refresh_combines_diagnostics_and_graph_for_the_exact_files() {
             .iter()
             .map(|request| request["method"].as_str().expect("method"))
             .collect::<Vec<_>>(),
-        [
-            "raw/workspace-refresh",
-            "raw/diagnostics",
-            "raw/semantic-graph"
-        ]
+        ["raw/workspace-refresh", "raw/diagnostics"]
     );
     for request in semantic_requests {
         assert_eq!(request["params"]["filePaths"], json!([source]));
@@ -416,24 +395,6 @@ fn refresh_bootstraps_clean_pending_graph_files() {
                 complete_refresh(&source, &failure_id),
             ),
             ("raw/diagnostics", diagnostics_with_error(&source)),
-            (
-                "raw/semantic-graph",
-                json!({
-                    "generation": 42,
-                    "scopeFingerprint": "a".repeat(64),
-                    "coverage": {
-                        "files": [{
-                            "path": source.display().to_string(),
-                            "contentHash": "b".repeat(64),
-                            "status": "REFRESHED",
-                            "diagnostics": []
-                        }],
-                        "omittedExternalTargetCount": 0
-                    },
-                    "symbolCount": 2,
-                    "edgeOccurrenceCount": 1
-                }),
-            ),
         ],
     );
 
@@ -584,6 +545,7 @@ fn refresh_removes_graph_facts_without_diagnosing_a_deleted_file() {
     std::fs::create_dir_all(workspace.join("src")).expect("source directory");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let workspace = workspace.canonicalize().expect("canonical workspace");
+    let _index = seed_empty_graph_scope(&workspace);
     let removed = workspace.join("src/Removed.kt");
     let socket = fixture.path().join("removed-refresh.sock");
     let backend = spawn_scripted_idea_backend_for_invocations(
@@ -683,6 +645,28 @@ fn complete_refresh(file: &Path, failure_id: &str) -> Value {
         "elapsedMillis": 0,
         "schemaVersion": 5
     })
+}
+
+fn seed_empty_graph_scope(workspace: &Path) -> WorkspaceIndexFixture {
+    let index = WorkspaceIndexFixture::at_database_path(
+        workspace,
+        &workspace_database_path_for_test(workspace),
+    );
+    index
+        .connection()
+        .execute_batch(
+            "CREATE TABLE semantic_files(
+                 id INTEGER PRIMARY KEY,
+                 path TEXT NOT NULL UNIQUE,
+                 package_name TEXT,
+                 module_name TEXT,
+                 content_hash TEXT,
+                 refresh_status TEXT NOT NULL,
+                 diagnostics_json TEXT NOT NULL
+             );",
+        )
+        .expect("empty semantic graph scope");
+    index
 }
 
 fn diagnostics_with_error(file: &Path) -> Value {

@@ -15,6 +15,7 @@ use crate::runtime::{RuntimeState, RuntimeStatusResponse};
 use crate::{config, output, runtime};
 use serde::Serialize;
 use serde_json::{Value, json};
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -42,13 +43,6 @@ struct UpResult {
 struct EmptyCheckResult {
     changed_file_count: usize,
     diagnostic_count: usize,
-    message: &'static str,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct EmptyRefreshResult {
-    file_count: usize,
     message: &'static str,
 }
 
@@ -268,22 +262,34 @@ pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
         return run_external_refresh(workspace_root, failure_ids);
     }
 
-    let requested_paths = if args.paths.is_empty() {
-        match changed_kotlin_files(&workspace_root)? {
-            Ok(file_paths) => file_paths,
-            Err(envelope) => return print_projected_value(envelope),
+    let inferred_scope = args.paths.is_empty();
+    let mut requested_paths = if inferred_scope {
+        let plan = crate::repository_intelligence::semantic_graph_refresh_plan(&workspace_root)
+            .map_err(|error| {
+                CliError::new(
+                    "GRAPH_EVIDENCE_UNAVAILABLE",
+                    format!("Cannot plan semantic graph refresh: {}", error.message),
+                )
+            })?;
+        let mut file_paths = plan.file_paths;
+        file_paths.extend(plan.removed_file_paths);
+        if file_paths.is_empty() {
+            file_paths = match changed_kotlin_files(&workspace_root)? {
+                Ok(file_paths) => file_paths,
+                Err(envelope) => return print_projected_value(envelope),
+            };
         }
+        file_paths
     } else {
         args.paths
             .into_iter()
             .map(|path| path.display().to_string())
             .collect()
     };
+    requested_paths.sort();
+    requested_paths.dedup();
     if requested_paths.is_empty() {
-        return print_direct(&EmptyRefreshResult {
-            file_count: 0,
-            message: "No changed Kotlin files were found.",
-        });
+        return print_refresh_noop(&workspace_root);
     }
     let runtime_args = agent_runtime(workspace_root.clone());
     let file_paths = match agent::normalize_public_file_paths(&runtime_args, &requested_paths) {
@@ -307,7 +313,7 @@ pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
         })
     } else {
         let envelope = projected_value(AgentCommand::Diagnostics(AgentDiagnosticsArgs {
-            runtime: runtime_args,
+            runtime: runtime_args.clone(),
             file_paths: refreshed_paths.clone(),
             skip_refresh: true,
             limit: 500,
@@ -315,27 +321,78 @@ pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
             view: AgentDiagnosticsViewArgs::default(),
         }))?;
         if envelope.get("ok") != Some(&Value::Bool(true)) {
-            return print_projected_value(envelope);
+            let limitation = envelope
+                .get("error")
+                .and_then(|error| error.get("code"))
+                .and_then(Value::as_str)
+                .unwrap_or("DIAGNOSTICS_UNAVAILABLE");
+            json!({
+                "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+                "cardinality": {"totalCount": 0, "returnedCount": 0, "truncated": false},
+                "diagnostics": [],
+                "limitation": limitation,
+            })
+        } else {
+            let result = projected_result(&envelope)?;
+            json!({
+                "severityCounts": required_field(result, "severityCounts")?,
+                "cardinality": diagnostic_cardinality(result)?,
+                "diagnostics": required_field(result, "diagnostics")?,
+            })
         }
-        let result = projected_result(&envelope)?;
-        json!({
-            "severityCounts": required_field(result, "severityCounts")?,
-            "cardinality": diagnostic_cardinality(result)?,
-            "diagnostics": required_field(result, "diagnostics")?,
-        })
     };
 
-    let graph = projected_value(native_graph_command(
-        workspace_root.clone(),
-        NativeGraphOperation::Refresh,
-        None,
-        refreshed_paths.clone(),
-        removed_paths.clone(),
-    ))?;
-    if graph.get("ok") != Some(&Value::Bool(true)) {
-        return print_projected_value(graph);
+    let post_plan = crate::repository_intelligence::semantic_graph_refresh_plan(&workspace_root);
+    let mut graph_paths = refreshed_paths.clone();
+    let mut graph_removed_paths = removed_paths.clone();
+    match post_plan {
+        Ok(plan) => {
+            graph_paths.extend(normalize_planned_paths(&runtime_args, &plan.file_paths)?);
+            graph_removed_paths.extend(normalize_planned_paths(
+                &runtime_args,
+                &plan.removed_file_paths,
+            )?);
+        }
+        Err(error) => {
+            return print_actionable_failure(
+                "GRAPH_EVIDENCE_UNAVAILABLE",
+                &error.message,
+                "kast refresh",
+            );
+        }
     }
-    let graph_result = projected_result(&graph)?;
+    let failed_paths = externalizable_failures
+        .iter()
+        .filter_map(|failure| failure.get("path").and_then(Value::as_str))
+        .collect::<BTreeSet<_>>();
+    graph_paths.retain(|path| !failed_paths.contains(path.as_str()));
+    graph_paths.sort();
+    graph_paths.dedup();
+    graph_removed_paths.sort();
+    graph_removed_paths.dedup();
+    let graph_summary = if graph_paths.is_empty() && graph_removed_paths.is_empty() {
+        json!({"updated": false})
+    } else {
+        let graph = projected_value(native_graph_command(
+            workspace_root.clone(),
+            NativeGraphOperation::Refresh,
+            None,
+            graph_paths,
+            graph_removed_paths,
+            None,
+        ))?;
+        if graph.get("ok") != Some(&Value::Bool(true)) {
+            return print_projected_value(graph);
+        }
+        let graph_result = projected_result(&graph)?;
+        json!({
+            "updated": true,
+            "generation": required_field(graph_result, "generation")?,
+            "symbolCount": required_field(graph_result, "symbolCount")?,
+            "edgeOccurrenceCount": required_field(graph_result, "edgeOccurrenceCount")?,
+            "coverage": required_field(graph_result, "coverage")?,
+        })
+    };
     let next = externalizable_failures
         .iter()
         .map(|failure| {
@@ -353,12 +410,7 @@ pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
         "files": refreshed_paths,
         "removedFiles": removed_paths,
         "diagnostics": diagnostics,
-        "graph": {
-            "generation": required_field(graph_result, "generation")?,
-            "symbolCount": required_field(graph_result, "symbolCount")?,
-            "edgeOccurrenceCount": required_field(graph_result, "edgeOccurrenceCount")?,
-            "coverage": required_field(graph_result, "coverage")?,
-        },
+        "graph": graph_summary,
         "externalizableFailures": externalizable_failures,
         "next": next,
     }))
@@ -373,13 +425,55 @@ fn print_native_graph(
     operation: NativeGraphOperation,
     symbol: Option<String>,
 ) -> Result<i32> {
-    print_projected(native_graph_command(
+    let admission =
+        match crate::repository_intelligence::semantic_graph_read_admission(&workspace_root) {
+            Ok(admission) => admission,
+            Err(error) => {
+                return print_actionable_failure(
+                    "GRAPH_EVIDENCE_UNAVAILABLE",
+                    &error.message,
+                    "kast refresh",
+                );
+            }
+        };
+    if admission.is_rejected() {
+        return print_actionable_failure(
+            "GRAPH_EVIDENCE_INCOMPLETE",
+            "Persisted semantic graph evidence is incomplete.",
+            "kast refresh",
+        );
+    }
+    let envelope = projected_value(native_graph_command(
         workspace_root,
         operation,
         symbol,
         Vec::new(),
         Vec::new(),
-    ))
+        Some(admission.generation()),
+    ))?;
+    if envelope.get("ok") != Some(&Value::Bool(true)) {
+        return print_projected_value(envelope);
+    }
+    let mut result = projected_result(&envelope)?.clone();
+    let fields = result.as_object_mut().ok_or_else(|| {
+        CliError::new(
+            "KAST_INVALID_AGENT_RESULT",
+            "The native graph operation returned a non-object result.",
+        )
+    })?;
+    fields.insert(
+        "qualification".to_string(),
+        json!(
+            admission
+                .qualification()
+                .expect("non-rejected graph evidence has a qualification")
+        ),
+    );
+    fields.insert(
+        "coverage".to_string(),
+        serde_json::to_value(admission.coverage())?,
+    );
+    print_direct(&sanitize_agent_result(result, true))
 }
 
 fn native_graph_command(
@@ -388,6 +482,7 @@ fn native_graph_command(
     symbol: Option<String>,
     file_paths: Vec<String>,
     removed_file_paths: Vec<String>,
+    generation: Option<u64>,
 ) -> AgentCommand {
     AgentCommand::Graph(AgentNativeGraphArgs {
         runtime: agent_runtime(workspace_root),
@@ -400,7 +495,7 @@ fn native_graph_command(
         source_sets: Vec::new(),
         exclusive: false,
         symbol,
-        generation: None,
+        generation,
         after_id: None,
         limit: (operation == NativeGraphOperation::Nodes).then_some(500),
         resolution: None,
@@ -472,6 +567,44 @@ fn selector_args(selector_handle: AgentSelectorHandle) -> AgentReusableSymbolSel
         containing_type: None,
         selector_handle: Some(selector_handle),
     }
+}
+
+fn normalize_planned_paths(runtime: &AgentRuntimeArgs, paths: &[String]) -> Result<Vec<String>> {
+    agent::normalize_public_file_paths(runtime, paths).map_err(|error| {
+        CliError::new(
+            "KAST_REFRESH_PLAN_INVALID",
+            format!("{}: {}", error.code, error.message),
+        )
+    })
+}
+
+fn print_refresh_noop(workspace_root: &Path) -> Result<i32> {
+    let admission =
+        match crate::repository_intelligence::semantic_graph_read_admission(workspace_root) {
+            Ok(admission) => admission,
+            Err(error) => {
+                return print_actionable_failure(
+                    "GRAPH_EVIDENCE_UNAVAILABLE",
+                    &error.message,
+                    "kast refresh",
+                );
+            }
+        };
+    if admission.is_rejected() {
+        return print_actionable_failure(
+            "GRAPH_EVIDENCE_INCOMPLETE",
+            "Persisted semantic graph evidence is incomplete.",
+            "kast refresh",
+        );
+    }
+    print_direct(&json!({
+        "fileCount": 0,
+        "qualification": admission
+            .qualification()
+            .expect("non-rejected graph evidence has a qualification"),
+        "coverage": admission.coverage(),
+        "message": "Semantic graph evidence is current.",
+    }))
 }
 
 fn changed_kotlin_files(workspace_root: &Path) -> Result<std::result::Result<Vec<String>, Value>> {
@@ -782,12 +915,16 @@ fn rpc_failure(response: &Value) -> Option<(&str, &str)> {
 }
 
 fn print_failure(code: &str, message: &str) -> Result<i32> {
+    print_actionable_failure(
+        code,
+        message,
+        "Run `kast --help` for valid commands and arguments.",
+    )
+}
+
+fn print_actionable_failure(code: &str, message: &str, next: &str) -> Result<i32> {
     output::print_structured(
-        &ProjectedError {
-            error: code.to_string(),
-            message: message.to_string(),
-            next: "Run `kast --help` for valid commands and arguments.",
-        },
+        &json!({"error": code, "message": message, "next": next}),
         OutputFormat::Toon,
     )?;
     Ok(1)

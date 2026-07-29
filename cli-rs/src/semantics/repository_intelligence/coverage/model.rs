@@ -42,7 +42,24 @@ impl SemanticGraphReadiness {
 struct SemanticFileRow {
     manifest_content_hash: Option<PersistedFileContentHash>,
     desired_stage_version: Option<PersistedFileStageVersion>,
+    desired_relationships_version: Option<PersistedFileStageVersion>,
+    relationship_boundary: Option<RelationshipExternalBoundary>,
     outcome: Option<SemanticFileOutcome>,
+}
+
+#[derive(Debug, Clone)]
+struct RelationshipExternalBoundary {
+    content_hash: PersistedFileContentHash,
+    stage_version: PersistedFileStageVersion,
+}
+
+impl SemanticFileRow {
+    fn has_current_external_boundary(&self) -> bool {
+        self.relationship_boundary.as_ref().is_some_and(|boundary| {
+            Some(&boundary.content_hash) == self.manifest_content_hash.as_ref()
+                && Some(&boundary.stage_version) == self.desired_relationships_version.as_ref()
+        })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -165,6 +182,74 @@ struct CoverageSnapshot {
     resolved_scope: ResolvedRepositoryScopeProof,
     coverage: CoverageSummary,
     files: Vec<GraphFileCoverage>,
+    semantic_scope: BTreeSet<String>,
+    orphaned_semantic_paths: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct SemanticGraphRefreshPlan {
+    pub file_paths: Vec<String>,
+    pub removed_file_paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SemanticGraphEvidenceCoverage {
+    total: usize,
+    indexed: usize,
+    excluded: usize,
+    pending: usize,
+    limited: usize,
+    failed: usize,
+    stale: usize,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    limitations: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum SemanticGraphReadAdmission {
+    Current {
+        generation: u64,
+        coverage: SemanticGraphEvidenceCoverage,
+    },
+    Qualified {
+        generation: u64,
+        coverage: SemanticGraphEvidenceCoverage,
+    },
+    Rejected {
+        generation: u64,
+        coverage: SemanticGraphEvidenceCoverage,
+    },
+}
+
+impl SemanticGraphReadAdmission {
+    pub fn generation(&self) -> u64 {
+        match self {
+            Self::Current { generation, .. }
+            | Self::Qualified { generation, .. }
+            | Self::Rejected { generation, .. } => *generation,
+        }
+    }
+
+    pub fn qualification(&self) -> Option<&'static str> {
+        match self {
+            Self::Current { .. } => Some("CURRENT"),
+            Self::Qualified { .. } => Some("QUALIFIED"),
+            Self::Rejected { .. } => None,
+        }
+    }
+
+    pub fn coverage(&self) -> &SemanticGraphEvidenceCoverage {
+        match self {
+            Self::Current { coverage, .. }
+            | Self::Qualified { coverage, .. }
+            | Self::Rejected { coverage, .. } => coverage,
+        }
+    }
+
+    pub fn is_rejected(&self) -> bool {
+        matches!(self, Self::Rejected { .. })
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]

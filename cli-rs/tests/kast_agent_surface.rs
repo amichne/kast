@@ -161,6 +161,52 @@ fn graph_summary_rejects_stale_persisted_facts() {
     assert_eq!(decoded["next"], "kast refresh", "{decoded:#}");
 }
 
+#[test]
+fn graph_summary_qualifies_current_external_boundaries() {
+    let fixture = tempfile::tempdir().expect("temporary graph fixture");
+    let home = fixture.path().join("home");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let index = seed_public_graph(&workspace, false);
+    let failure_id = uuid::Uuid::new_v4().hyphenated().to_string();
+    index
+        .connection()
+        .execute_batch(&format!(
+            "DELETE FROM file_stage_outcomes
+             WHERE stage = 'SEMANTIC_GRAPH' AND filename = 'Source0000.kt';
+             UPDATE file_stage_outcomes
+             SET outcome_status = 'EXTERNAL_BOUNDARY',
+                 limitations_json = '[]',
+                 failure_id = '{failure_id}',
+                 failure_code = 'PSI_UNAVAILABLE',
+                 failure_message = 'PSI is unavailable'
+             WHERE stage = 'RELATIONSHIPS' AND filename = 'Source0000.kt';
+             DELETE FROM semantic_edge_occurrences;
+             DELETE FROM semantic_symbols;
+             DELETE FROM semantic_files;"
+        ))
+        .expect("external graph boundary");
+
+    let output = named("kast")
+        .current_dir(&workspace)
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", fixture.path().join("config"))
+        .args(["graph", "summary"])
+        .output()
+        .expect("run qualified graph summary");
+
+    assert!(output.status.success(), "{output:?}");
+    let decoded: serde_json::Value =
+        toon_format::decode_default(std::str::from_utf8(&output.stdout).expect("UTF-8").trim())
+            .expect("qualified graph summary is valid TOON");
+    assert_eq!(decoded["qualification"], "QUALIFIED", "{decoded:#}");
+    assert_eq!(decoded["coverage"]["limited"], 1, "{decoded:#}");
+    assert_eq!(decoded["coverage"]["pending"], 0, "{decoded:#}");
+    assert_eq!(decoded["nodeCount"], 0, "{decoded:#}");
+}
+
 fn seed_public_graph(workspace: &Path, stale: bool) -> WorkspaceIndexFixture {
     let database = workspace_database_path_for_test(workspace);
     let index = WorkspaceIndexFixture::at_database_path(workspace, &database);
