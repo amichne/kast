@@ -1,6 +1,7 @@
 package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.api.contract.NonBlankString
+import io.github.amichne.kast.idea.diagnostics.KastBackendUiState
 import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility

@@ -3,6 +3,7 @@ package io.github.amichne.kast.idea
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.PositiveInt
+import io.github.amichne.kast.idea.diagnostics.KastBackendUiState
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import java.nio.file.Path
@@ -134,3 +135,13 @@ internal fun shouldAcceptExplorerResult(
     resultSequence: Long,
     currentSequence: Long,
 ): Boolean = request is KastExplorerRequest.Overview || resultSequence == currentSequence
+
+internal fun shouldRefreshExplorerOverview(
+    previousState: KastBackendUiState,
+    currentState: KastBackendUiState,
+): Boolean = previousState != KastBackendUiState.READY && currentState == KastBackendUiState.READY
+
+internal fun nextExplorerRequestSequence(
+    request: KastExplorerRequest,
+    currentSequence: Long,
+): Long = if (request is KastExplorerRequest.Overview) currentSequence else currentSequence + 1

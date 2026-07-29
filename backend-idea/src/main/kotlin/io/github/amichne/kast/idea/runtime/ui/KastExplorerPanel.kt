@@ -23,6 +23,7 @@ import com.intellij.ui.treeStructure.Tree
 import com.intellij.util.ui.JBUI
 import io.github.amichne.kast.idea.diagnostics.KastDiagnosticsService
 import io.github.amichne.kast.idea.diagnostics.KastDiagnosticsSnapshot
+import io.github.amichne.kast.idea.diagnostics.KastBackendUiState
 import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import java.awt.BorderLayout
 import java.awt.Component
@@ -63,6 +64,7 @@ internal class KastExplorerPanel(
     private val detailHint = JBLabel("Search indexed Kotlin symbols or inspect the declaration under the caret.")
     private val openSourceButton = JButton("Open Source")
     private var requestSequence = 0L
+    private var lastBackendState = KastBackendUiState.STOPPED
     private var preferredFqName: String? = null
     private var disposed = false
 
@@ -70,7 +72,6 @@ internal class KastExplorerPanel(
         setContent(buildContent())
         configureInteractions()
         diagnostics.addListener(this, ::renderDiagnostics)
-        request(KastExplorerRequest.Overview)
     }
 
     override fun dispose() {
@@ -251,7 +252,8 @@ internal class KastExplorerPanel(
     }
 
     private fun request(request: KastExplorerRequest) {
-        val sequence = ++requestSequence
+        val sequence = nextExplorerRequestSequence(request, requestSequence)
+        requestSequence = sequence
         service.exploreAsync(request) { result ->
             if (disposed || !shouldAcceptExplorerResult(request, sequence, requestSequence)) return@exploreAsync
             if (request is KastExplorerRequest.Overview && result is KastExplorerResult.Problem) {
@@ -317,9 +319,14 @@ internal class KastExplorerPanel(
     }
 
     private fun renderDiagnostics(snapshot: KastDiagnosticsSnapshot) {
+        val previousBackendState = lastBackendState
+        lastBackendState = snapshot.backendState
         compilerValue.text = "${snapshot.backendState.displayName} · K2 / PSI / AA"
         indexValue.text = snapshot.indexSummary.displayText()
         workspaceValue.text = snapshot.workspaceRoot?.let { Path.of(it).fileName.toString() } ?: "No workspace"
+        if (shouldRefreshExplorerOverview(previousBackendState, snapshot.backendState)) {
+            request(KastExplorerRequest.Overview)
+        }
     }
 
     private fun navigate(target: KastSourceTarget) {
