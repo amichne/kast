@@ -28,6 +28,16 @@ fn help_exposes_only_the_agent_contract() {
     for legacy in ["setup", "developer", "rpc", "--output", "schemaVersion"] {
         assert!(!stdout.contains(legacy), "leaked {legacy}: {stdout}");
     }
+
+    let graph = named("kast")
+        .args(["graph", "--help"])
+        .output()
+        .expect("run graph help");
+    assert!(graph.status.success(), "{graph:?}");
+    let graph = String::from_utf8(graph.stdout).expect("UTF-8 graph help");
+    for removed in ["path", "cycles", "bridges"] {
+        assert!(!graph.contains(removed), "leaked {removed}: {graph}");
+    }
 }
 
 #[test]
@@ -160,11 +170,8 @@ fn public_read_commands_delegate_to_typed_operations() {
         &["symbol", "subtypes", "sample.Widget"][..],
         &["graph", "nodes"][..],
         &["graph", "neighbors", "class:sample.Widget"][..],
-        &["graph", "path", "sample.Source", "sample.Target"][..],
         &["graph", "topology"][..],
         &["graph", "communities"][..],
-        &["graph", "cycles"][..],
-        &["graph", "bridges"][..],
         &["graph", "impact", "sample.Widget"][..],
         &["check", "src/main/kotlin/App.kt"][..],
     ] {

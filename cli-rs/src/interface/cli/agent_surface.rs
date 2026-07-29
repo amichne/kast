@@ -112,7 +112,7 @@ pub struct KastSymbolArgs {
 pub enum KastSymbolCommand {
     /// Find symbols by name, signature, or fully-qualified name.
     Find { query: String },
-    /// Show one symbol selected by query or opaque identifier.
+    /// Show one symbol selected by query.
     Show { symbol: String },
     /// Find references to one symbol.
     Refs { symbol: String },
@@ -142,16 +142,10 @@ pub enum KastGraphCommand {
     Nodes,
     /// Show adjacent nodes for one symbol.
     Neighbors { symbol: String },
-    /// Find a bounded path between two symbols.
-    Path { from: String, to: String },
     /// Report topology statistics.
     Topology,
     /// Report deterministic graph communities.
     Communities,
-    /// Report strongly connected cycles.
-    Cycles,
-    /// Report bridge nodes and edges.
-    Bridges,
     /// Report the bounded impact of one symbol.
     Impact { symbol: String },
 }

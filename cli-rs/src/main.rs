@@ -1,4 +1,5 @@
 mod agent;
+mod agent_adapter;
 #[path = "configuration/bundle.rs"]
 mod bundle;
 #[path = "configuration/catalog_schema.rs"]
@@ -198,9 +199,11 @@ fn run_kast_agent(cli: KastCli) -> Result<i32> {
             install::install_agent_resources(&harnesses)?;
             Ok(0)
         }
-        KastCommand::Graph(cli::KastGraphArgs {
-            command: Some(cli::KastGraphCommand::Summary),
-        }) => run_kast_graph_summary(),
+        KastCommand::Up => agent_adapter::run_up(),
+        KastCommand::Files { pattern } => agent_adapter::run_files(pattern),
+        KastCommand::Symbol(args) => agent_adapter::run_symbol(args),
+        KastCommand::Graph(args) => agent_adapter::run_graph(args),
+        KastCommand::Check(args) => agent_adapter::run_check(args),
         command => Err(CliError::new(
             "KAST_AGENT_NOT_IMPLEMENTED",
             format!(
@@ -208,76 +211,6 @@ fn run_kast_agent(cli: KastCli) -> Result<i32> {
                 kast_command_name(&command)
             ),
         )),
-    }
-}
-
-fn run_kast_graph_summary() -> Result<i32> {
-    let workspace_root = config::resolve_workspace_root(None)?;
-    let envelope = agent::execute_projected(cli::AgentCommand::Graph(cli::AgentNativeGraphArgs {
-        runtime: cli::AgentRuntimeArgs {
-            workspace_root: Some(workspace_root),
-            ..Default::default()
-        },
-        database: None,
-        scope: None,
-        operation: cli::NativeGraphOperation::Summary,
-        file_paths: Vec::new(),
-        removed_file_paths: Vec::new(),
-        modules: Vec::new(),
-        source_sets: Vec::new(),
-        exclusive: false,
-        symbol: None,
-        generation: None,
-        after_id: None,
-        limit: None,
-        resolution: None,
-    }));
-    if !envelope.ok {
-        let error = envelope.error.ok_or_else(|| {
-            CliError::new(
-                "KAST_INVALID_AGENT_RESULT",
-                "The graph operation failed without an actionable error.",
-            )
-        })?;
-        output::print_structured(
-            &AgentError {
-                error: &error.code,
-                message: &error.message,
-                next: "Run `kast --help` for valid commands and arguments.",
-            },
-            OutputFormat::Toon,
-        )?;
-        return Ok(1);
-    }
-    let result = envelope.result.ok_or_else(|| {
-        CliError::new(
-            "KAST_INVALID_AGENT_RESULT",
-            "The graph operation completed without a result.",
-        )
-    })?;
-    output::print_structured(&sanitize_agent_result(result, true), OutputFormat::Toon)?;
-    Ok(0)
-}
-
-fn sanitize_agent_result(value: serde_json::Value, root: bool) -> serde_json::Value {
-    match value {
-        serde_json::Value::Object(fields) => serde_json::Value::Object(
-            fields
-                .into_iter()
-                .filter_map(|(key, value)| {
-                    let protocol_cruft = matches!(key.as_str(), "ok" | "method" | "schemaVersion");
-                    (!(protocol_cruft || root && key == "type"))
-                        .then(|| (key, sanitize_agent_result(value, false)))
-                })
-                .collect(),
-        ),
-        serde_json::Value::Array(items) => serde_json::Value::Array(
-            items
-                .into_iter()
-                .map(|item| sanitize_agent_result(item, false))
-                .collect(),
-        ),
-        scalar => scalar,
     }
 }
 
