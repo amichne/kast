@@ -17,6 +17,25 @@ require() {
   grep -Fq -- "$needle" "$file" || die "$description"
 }
 
+reject() {
+  local file="$1"
+  local needle="$2"
+  local description="$3"
+  if grep -Fq -- "$needle" "$file"; then
+    die "$description"
+  fi
+}
+
+require_count() {
+  local file="$1"
+  local needle="$2"
+  local expected="$3"
+  local description="$4"
+  local actual
+  actual="$(awk -v needle="$needle" 'index($0, needle) { count++ } END { print count + 0 }' "$file")"
+  [[ "$actual" -eq "$expected" ]] || die "${description}: expected ${expected}, found ${actual}"
+}
+
 [[ -f "$controls" ]] || die "missing CI auxiliary-control workflow"
 
 flags=(
@@ -28,17 +47,26 @@ flags=(
   CI_AUX_IDEA_PERFORMANCE
 )
 
+criticality_owners=(1 1 1 7 1 1)
+
 require "$controls" "set-one" "workflow must expose the set-one operation"
 require "$controls" "apply-profile" "workflow must expose the apply-profile operation"
-require "$controls" "lean) values=(false false false false false false)" "lean profile must disable every auxiliary flag"
-require "$controls" "standard) values=(true true false false true false)" "standard profile must keep contract smokes only"
-require "$controls" "full) values=(true true true true true true)" "full profile must enable every auxiliary flag"
+require "$controls" "lean) values=(optional optional optional optional optional optional)" "lean profile must make every auxiliary flag optional"
+require "$controls" "standard) values=(required required optional optional required optional)" "standard profile must require contract smokes only"
+require "$controls" "full) values=(required required required required required required)" "full profile must require every auxiliary flag"
 require "$controls" 'gh variable set "$FLAG" --body "$VALUE" --repo "$GITHUB_REPOSITORY"' "set-one job must write the selected flag"
 require "$controls" 'gh variable set "${flags[$index]}" --body "${values[$index]}" --repo "$GITHUB_REPOSITORY"' "profile job must write every flag"
+reject "$controls" '- "true"' "set-one must not expose the old enabled value"
+reject "$controls" '- "false"' "set-one must not expose the old disabled value"
 
-for flag in "${flags[@]}"; do
+for index in "${!flags[@]}"; do
+  flag="${flags[$index]}"
   require "$controls" "- ${flag}" "workflow must offer ${flag}"
-  require "$ci" "vars.${flag} != 'false'" "CI must gate an auxiliary surface with ${flag} while defaulting to enabled"
+  require_count "$ci" \
+    "continue-on-error: vars.${flag} == 'optional'" \
+    "${criticality_owners[$index]}" \
+    "CI must apply ${flag} criticality to every owning job or step"
+  reject "$ci" "if: vars.${flag}" "CI must not skip work with ${flag}"
 done
 
 printf '%s\n' 'CI auxiliary controls contract passed'
