@@ -19,23 +19,56 @@ import io.github.amichne.kast.api.protocol.WorkspaceProjectModelIncompleteReason
 import java.nio.file.Path
 import java.util.concurrent.CancellationException
 
-internal class IdeaProjectModelWorkspaceFileInventory(
+internal class IdeaProjectModelWorkspaceFileInventory private constructor(
     private val workspaceIdentity: WorkspaceIdentity,
     private val projectModelAccess: IdeaWorkspaceFileProjectModelAccess,
+    private val readProjectModelSnapshot: () -> ProjectModelSnapshot,
 ) : IdeaWorkspaceFileInventory {
+    internal constructor(
+        workspaceIdentity: WorkspaceIdentity,
+        projectModelAccess: IdeaWorkspaceFileProjectModelAccess,
+    ) : this(
+        workspaceIdentity = workspaceIdentity,
+        projectModelAccess = projectModelAccess,
+        readProjectModelSnapshot = {
+            error("Gradle model capture is unavailable for injected project-model access")
+        },
+    )
+
     constructor(
         project: Project,
         workspaceIdentity: IdeaWorkspaceIdentity,
         workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
             IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
         },
+    ) : this(workspaceIdentity, IdeaProjectModelAccess(project, workspaceModelReader))
+
+    private constructor(
+        workspaceIdentity: IdeaWorkspaceIdentity,
+        projectModelAccess: IdeaProjectModelAccess,
     ) : this(
         workspaceIdentity = workspaceIdentity.workspaceIdentity,
-        projectModelAccess = IdeaProjectModelAccess(project, workspaceModelReader),
+        projectModelAccess = projectModelAccess,
+        readProjectModelSnapshot = projectModelAccess::readSnapshot,
+    )
+
+    internal data class SnapshotWithGradleModel(
+        val gradleModel: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
+        val inventory: IdeaWorkspaceFileInventorySnapshot,
     )
 
     override fun snapshot(kindDomain: WorkspaceFileKindDomain): IdeaWorkspaceFileInventorySnapshot {
         return snapshot(kindDomain, projectModelAccess::read)
+    }
+
+    internal fun snapshotWithGradleModel(
+        kindDomain: WorkspaceFileKindDomain,
+    ): SnapshotWithGradleModel {
+        val captured = readAvailableProjectModel(readProjectModelSnapshot)
+        return SnapshotWithGradleModel(
+            gradleModel = captured.gradleModel,
+            inventory = readSnapshot(kindDomain, captured.projectModel),
+        )
     }
 
     internal fun snapshot(
@@ -50,6 +83,10 @@ internal class IdeaProjectModelWorkspaceFileInventory(
         kindDomain: WorkspaceFileKindDomain,
         readProjectModel: () -> IdeaWorkspaceFileProjectModel,
     ): IdeaWorkspaceFileInventorySnapshot {
+        return readSnapshot(kindDomain, readAvailableProjectModel(readProjectModel))
+    }
+
+    private fun <T> readAvailableProjectModel(readProjectModel: () -> T): T {
         if (projectModelAccess.isIndexing) {
             throw WorkspaceProjectModelIncompleteException(
                 WorkspaceProjectModelIncompleteReason.RUNTIME_INDEXING,
@@ -69,7 +106,7 @@ internal class IdeaProjectModelWorkspaceFileInventory(
                 message = "Gradle project model is unavailable: ${failure.message ?: failure.javaClass.simpleName}",
             )
         }
-        return readSnapshot(kindDomain, projectModel)
+        return projectModel
     }
 
     private fun readSnapshot(
@@ -192,10 +229,15 @@ internal class IdeaProjectModelWorkspaceFileInventory(
         override val isIndexing: Boolean
             get() = DumbService.isDumb(project)
 
-        override fun read(): IdeaWorkspaceFileProjectModel = runIdeaCancellableReadAction {
+        override fun read(): IdeaWorkspaceFileProjectModel = readSnapshot().projectModel
+
+        fun readSnapshot(): ProjectModelSnapshot = runIdeaCancellableReadAction {
             val gradleModel = workspaceModelReader()
             requireImportedGradleModelComplete(gradleModel)
-            readProjectModel(gradleModel)
+            ProjectModelSnapshot(
+                gradleModel = gradleModel,
+                projectModel = readProjectModel(gradleModel),
+            )
         }
 
         override fun read(
@@ -278,4 +320,9 @@ internal class IdeaProjectModelWorkspaceFileInventory(
             }
         }
     }
+
+    private data class ProjectModelSnapshot(
+        val gradleModel: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
+        val projectModel: IdeaWorkspaceFileProjectModel,
+    )
 }
