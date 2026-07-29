@@ -22,6 +22,9 @@ pub enum KastCommand {
     Files {
         /// Optional path or name pattern.
         pattern: Option<String>,
+        /// Opaque continuation returned as `nextPage`.
+        #[arg(long, value_name = "PAGE")]
+        page: Option<WorkspaceFilesPublicPageToken>,
     },
     /// Find symbols and traverse compiler-backed relationships.
     Symbol(KastSymbolArgs),
@@ -115,17 +118,41 @@ pub enum KastSymbolCommand {
     /// Show one symbol selected by query.
     Show { symbol: String },
     /// Find references to one symbol.
-    Refs { symbol: String },
+    Refs {
+        symbol: String,
+        #[arg(long, value_name = "PAGE")]
+        page: Option<AgentRelationPageToken>,
+    },
     /// Find incoming callers.
-    Callers { symbol: String },
+    Callers {
+        symbol: String,
+        #[arg(long, value_name = "PAGE")]
+        page: Option<AgentRelationPageToken>,
+    },
     /// Find outgoing callees.
-    Callees { symbol: String },
+    Callees {
+        symbol: String,
+        #[arg(long, value_name = "PAGE")]
+        page: Option<AgentRelationPageToken>,
+    },
     /// Find implementations.
-    Implementations { symbol: String },
+    Implementations {
+        symbol: String,
+        #[arg(long, value_name = "PAGE")]
+        page: Option<AgentRelationPageToken>,
+    },
     /// Find direct and transitive supertypes.
-    Supertypes { symbol: String },
+    Supertypes {
+        symbol: String,
+        #[arg(long, value_name = "PAGE")]
+        page: Option<AgentRelationPageToken>,
+    },
     /// Find direct and transitive subtypes.
-    Subtypes { symbol: String },
+    Subtypes {
+        symbol: String,
+        #[arg(long, value_name = "PAGE")]
+        page: Option<AgentRelationPageToken>,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -139,7 +166,11 @@ pub enum KastGraphCommand {
     /// Summarize graph coverage and size.
     Summary,
     /// Enumerate graph nodes.
-    Nodes,
+    Nodes {
+        /// Opaque continuation returned as `nextPage`.
+        #[arg(long, value_name = "PAGE")]
+        page: Option<KastGraphNodesPageToken>,
+    },
     /// Show adjacent nodes for one symbol.
     Neighbors { symbol: String },
     /// Report topology statistics.
@@ -147,7 +178,85 @@ pub enum KastGraphCommand {
     /// Report deterministic graph communities.
     Communities,
     /// Report the bounded impact of one symbol.
-    Impact { symbol: String },
+    Impact {
+        symbol: String,
+        #[arg(long, value_name = "PAGE")]
+        page: Option<AgentImpactPageToken>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KastGraphNodesPageToken {
+    workspace_fingerprint: String,
+    generation: u64,
+    after_id: std::num::NonZeroU64,
+}
+
+impl KastGraphNodesPageToken {
+    pub(crate) fn issue(
+        workspace_fingerprint: String,
+        generation: u64,
+        after_id: u64,
+    ) -> Option<Self> {
+        Some(Self {
+            workspace_fingerprint,
+            generation,
+            after_id: std::num::NonZeroU64::new(after_id)?,
+        })
+    }
+
+    pub(crate) fn workspace_fingerprint(&self) -> &str {
+        &self.workspace_fingerprint
+    }
+
+    pub(crate) fn generation(&self) -> u64 {
+        self.generation
+    }
+
+    pub(crate) fn after_id(&self) -> u64 {
+        self.after_id.get()
+    }
+
+    pub(crate) fn canonical(&self) -> String {
+        format!(
+            "kgn1.{}.{}.{}",
+            self.workspace_fingerprint, self.generation, self.after_id
+        )
+    }
+}
+
+impl std::str::FromStr for KastGraphNodesPageToken {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if value.len() > 128 || !value.is_ascii() || value.chars().any(char::is_control) {
+            return Err("graph page token is malformed".to_string());
+        }
+        let fields = value.split('.').collect::<Vec<_>>();
+        if fields.len() != 4
+            || fields[0] != "kgn1"
+            || fields[1].len() != 24
+            || !fields[1]
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        {
+            return Err("graph page token is malformed".to_string());
+        }
+        let generation = fields[2]
+            .parse::<u64>()
+            .map_err(|_| "graph page token is malformed".to_string())?;
+        let after_id = fields[3]
+            .parse::<std::num::NonZeroU64>()
+            .map_err(|_| "graph page token is malformed".to_string())?;
+        if generation.to_string() != fields[2] || after_id.to_string() != fields[3] {
+            return Err("graph page token is malformed".to_string());
+        }
+        Ok(Self {
+            workspace_fingerprint: fields[1].to_string(),
+            generation,
+            after_id,
+        })
+    }
 }
 
 #[derive(Debug, Args)]

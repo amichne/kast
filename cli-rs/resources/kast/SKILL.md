@@ -18,6 +18,8 @@ Use `kast` as the only interface for Kotlin and Gradle semantic work.
 - Run `kast graph summary` for graph coverage and size. Use `topology`,
   `communities`, `neighbors`, or `impact` for structural and statistical
   questions.
+- When a result has `nextPage`, repeat the same `files`, symbol relationship,
+  `graph nodes`, or `graph impact` command with `--page <nextPage>`.
 - Run `kast check [PATH...]` for compiler diagnostics.
 - Use `kast change` to create a validated plan and `kast apply <PLAN_ID>` to
   apply it.

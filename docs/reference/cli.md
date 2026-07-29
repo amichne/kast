@@ -51,6 +51,10 @@ reference-index readiness, limitations, and suggested next commands.
 
 Use `kast <command> --help` for the small operation-specific grammar.
 
+When `files`, a symbol relationship, `graph nodes`, or `graph impact` returns
+`nextPage`, repeat the same command with `--page <nextPage>`. The continuation
+binds its workspace and query without exposing backend paging controls.
+
 ## Boundary semantics
 
 Diagnostics do not block reference indexing. An eligible file-local failure is

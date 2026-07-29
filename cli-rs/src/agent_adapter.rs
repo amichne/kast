@@ -6,9 +6,9 @@ use crate::cli::{
     AgentRelationLimit, AgentRelationViewArgs, AgentReusableSymbolSelectorArgs, AgentRuntimeArgs,
     AgentSelectorHandle, AgentSymbolArgs, AgentSymbolMode, AgentSymbolViewArgs,
     AgentWorkspaceFilesArgs, AgentWorkspaceFilesField, AgentWorkspaceFilesViewArgs, KastGraphArgs,
-    KastGraphCommand, KastPathsArgs, KastRefreshArgs, KastRefreshCommand, KastSymbolArgs,
-    KastSymbolCommand, NativeGraphOperation, OutputFormat, WorkspaceDirtyFilter,
-    WorkspaceRelativeGlob,
+    KastGraphCommand, KastGraphNodesPageToken, KastPathsArgs, KastRefreshArgs, KastRefreshCommand,
+    KastSymbolArgs, KastSymbolCommand, NativeGraphOperation, OutputFormat, WorkspaceDirtyFilter,
+    WorkspaceFilesPublicPageToken, WorkspaceRelativeGlob,
 };
 use crate::error::{CliError, Result};
 use crate::runtime::{RuntimeState, RuntimeStatusResponse};
@@ -89,9 +89,13 @@ pub(crate) fn run_up() -> Result<i32> {
     ))
 }
 
-pub(crate) fn run_files(pattern: Option<String>) -> Result<i32> {
+pub(crate) fn run_files(
+    pattern: Option<String>,
+    page: Option<WorkspaceFilesPublicPageToken>,
+) -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(None)?;
     let mut args = workspace_files_args(workspace_root);
+    args.page_token = page;
     args.glob = pattern
         .map(|value| {
             value
@@ -115,54 +119,54 @@ pub(crate) fn run_symbol(args: KastSymbolArgs) -> Result<i32> {
             symbol,
             AgentSymbolMode::Exact,
         )),
-        KastSymbolCommand::Refs { symbol } => {
+        KastSymbolCommand::Refs { symbol, page } => {
             run_symbol_relation(workspace_root, symbol, |runtime, selector| {
                 AgentCommand::References(AgentReferencesArgs {
                     runtime,
                     selector,
                     include_declaration: false,
                     limit: maximum_relation_limit(),
-                    page_token: None,
+                    page_token: page,
                     view: AgentRelationViewArgs::default(),
                 })
             })
         }
-        KastSymbolCommand::Callers { symbol } => {
+        KastSymbolCommand::Callers { symbol, page } => {
             run_symbol_relation(workspace_root, symbol, |runtime, selector| {
                 AgentCommand::Callers(AgentCallsArgs {
                     runtime,
                     selector,
                     depth: Default::default(),
                     limit: maximum_relation_limit(),
-                    page_token: None,
+                    page_token: page,
                     view: AgentRelationViewArgs::default(),
                 })
             })
         }
-        KastSymbolCommand::Callees { symbol } => {
+        KastSymbolCommand::Callees { symbol, page } => {
             run_symbol_relation(workspace_root, symbol, |runtime, selector| {
                 AgentCommand::Callees(AgentCallsArgs {
                     runtime,
                     selector,
                     depth: Default::default(),
                     limit: maximum_relation_limit(),
-                    page_token: None,
+                    page_token: page,
                     view: AgentRelationViewArgs::default(),
                 })
             })
         }
-        KastSymbolCommand::Implementations { symbol } => {
+        KastSymbolCommand::Implementations { symbol, page } => {
             run_symbol_relation(workspace_root, symbol, |runtime, selector| {
                 AgentCommand::Implementations(AgentImplementationsArgs {
                     runtime,
                     selector,
                     limit: maximum_relation_limit(),
-                    page_token: None,
+                    page_token: page,
                     view: AgentRelationViewArgs::default(),
                 })
             })
         }
-        KastSymbolCommand::Supertypes { symbol } => {
+        KastSymbolCommand::Supertypes { symbol, page } => {
             run_symbol_relation(workspace_root, symbol, |runtime, selector| {
                 AgentCommand::Hierarchy(AgentHierarchyArgs {
                     runtime,
@@ -170,12 +174,12 @@ pub(crate) fn run_symbol(args: KastSymbolArgs) -> Result<i32> {
                     direction: AgentHierarchyDirection::Supertypes,
                     depth: maximum_relation_depth(),
                     limit: maximum_relation_limit(),
-                    page_token: None,
+                    page_token: page,
                     view: AgentRelationViewArgs::default(),
                 })
             })
         }
-        KastSymbolCommand::Subtypes { symbol } => {
+        KastSymbolCommand::Subtypes { symbol, page } => {
             run_symbol_relation(workspace_root, symbol, |runtime, selector| {
                 AgentCommand::Hierarchy(AgentHierarchyArgs {
                     runtime,
@@ -183,7 +187,7 @@ pub(crate) fn run_symbol(args: KastSymbolArgs) -> Result<i32> {
                     direction: AgentHierarchyDirection::Subtypes,
                     depth: maximum_relation_depth(),
                     limit: maximum_relation_limit(),
-                    page_token: None,
+                    page_token: page,
                     view: AgentRelationViewArgs::default(),
                 })
             })
@@ -195,30 +199,34 @@ pub(crate) fn run_graph(args: KastGraphArgs) -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(None)?;
     match args.command.unwrap_or(KastGraphCommand::Summary) {
         KastGraphCommand::Summary => {
-            print_native_graph(workspace_root, NativeGraphOperation::Summary, None)
+            print_native_graph(workspace_root, NativeGraphOperation::Summary, None, None)
         }
-        KastGraphCommand::Nodes => {
-            print_native_graph(workspace_root, NativeGraphOperation::Nodes, None)
+        KastGraphCommand::Nodes { page } => {
+            print_native_graph(workspace_root, NativeGraphOperation::Nodes, None, page)
         }
         KastGraphCommand::Neighbors { symbol } => print_native_graph(
             workspace_root,
             NativeGraphOperation::Neighbors,
             Some(symbol),
+            None,
         ),
         KastGraphCommand::Topology => {
-            print_native_graph(workspace_root, NativeGraphOperation::Topology, None)
+            print_native_graph(workspace_root, NativeGraphOperation::Topology, None, None)
         }
-        KastGraphCommand::Communities => {
-            print_native_graph(workspace_root, NativeGraphOperation::Communities, None)
-        }
-        KastGraphCommand::Impact { symbol } => {
+        KastGraphCommand::Communities => print_native_graph(
+            workspace_root,
+            NativeGraphOperation::Communities,
+            None,
+            None,
+        ),
+        KastGraphCommand::Impact { symbol, page } => {
             run_symbol_relation(workspace_root, symbol, |runtime, selector| {
                 AgentCommand::Impact(AgentImpactArgs {
                     runtime,
                     selector,
                     depth: Default::default(),
                     limit: maximum_relation_limit(),
-                    page_token: None,
+                    page_token: page,
                     view: AgentImpactViewArgs::default(),
                 })
             })
@@ -380,6 +388,7 @@ pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
             graph_paths,
             graph_removed_paths,
             None,
+            None,
         ))?;
         if graph.get("ok") != Some(&Value::Bool(true)) {
             return print_projected_value(graph);
@@ -424,7 +433,19 @@ fn print_native_graph(
     workspace_root: PathBuf,
     operation: NativeGraphOperation,
     symbol: Option<String>,
+    page: Option<KastGraphNodesPageToken>,
 ) -> Result<i32> {
+    let workspace_fingerprint = graph_nodes_workspace_fingerprint(&workspace_root);
+    if page
+        .as_ref()
+        .is_some_and(|page| page.workspace_fingerprint() != workspace_fingerprint)
+    {
+        return print_actionable_failure(
+            "GRAPH_PAGE_TOKEN_MISMATCH",
+            "The graph page belongs to a different workspace.",
+            "kast graph nodes",
+        );
+    }
     let admission =
         match crate::repository_intelligence::semantic_graph_read_admission(&workspace_root) {
             Ok(admission) => admission,
@@ -443,6 +464,17 @@ fn print_native_graph(
             "kast refresh",
         );
     }
+    if page
+        .as_ref()
+        .is_some_and(|page| page.generation() != admission.generation())
+    {
+        return print_actionable_failure(
+            "GRAPH_PAGE_EXPIRED",
+            "The graph changed after this page was issued.",
+            "kast graph nodes",
+        );
+    }
+    let after_id = page.as_ref().map(KastGraphNodesPageToken::after_id);
     let envelope = projected_value(native_graph_command(
         workspace_root,
         operation,
@@ -450,6 +482,7 @@ fn print_native_graph(
         Vec::new(),
         Vec::new(),
         Some(admission.generation()),
+        after_id,
     ))?;
     if envelope.get("ok") != Some(&Value::Bool(true)) {
         return print_projected_value(envelope);
@@ -473,6 +506,34 @@ fn print_native_graph(
         "coverage".to_string(),
         serde_json::to_value(admission.coverage())?,
     );
+    if operation == NativeGraphOperation::Nodes {
+        let next_after_id = fields.get("nextAfterId").ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "The native graph node page returned no continuation evidence.",
+            )
+        })?;
+        if !next_after_id.is_null() {
+            let next_after_id = next_after_id.as_u64().ok_or_else(|| {
+                CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "The native graph node page returned an invalid continuation.",
+                )
+            })?;
+            let next_page = KastGraphNodesPageToken::issue(
+                workspace_fingerprint,
+                admission.generation(),
+                next_after_id,
+            )
+            .ok_or_else(|| {
+                CliError::new(
+                    "KAST_INVALID_AGENT_RESULT",
+                    "The native graph node page returned a zero continuation.",
+                )
+            })?;
+            fields.insert("nextPageToken".to_string(), json!(next_page.canonical()));
+        }
+    }
     print_direct(&sanitize_agent_result(result, true))
 }
 
@@ -483,6 +544,7 @@ fn native_graph_command(
     file_paths: Vec<String>,
     removed_file_paths: Vec<String>,
     generation: Option<u64>,
+    after_id: Option<u64>,
 ) -> AgentCommand {
     AgentCommand::Graph(AgentNativeGraphArgs {
         runtime: agent_runtime(workspace_root),
@@ -496,7 +558,7 @@ fn native_graph_command(
         exclusive: false,
         symbol,
         generation,
-        after_id: None,
+        after_id,
         limit: (operation == NativeGraphOperation::Nodes).then_some(500),
         resolution: None,
     })
@@ -576,6 +638,10 @@ fn normalize_planned_paths(runtime: &AgentRuntimeArgs, paths: &[String]) -> Resu
             format!("{}: {}", error.code, error.message),
         )
     })
+}
+
+fn graph_nodes_workspace_fingerprint(workspace_root: &Path) -> String {
+    crate::manifest::sha256_bytes(workspace_root.as_os_str().as_encoded_bytes())[..24].to_string()
 }
 
 fn print_refresh_noop(workspace_root: &Path) -> Result<i32> {
@@ -739,6 +805,10 @@ fn sanitize_agent_result(value: Value, root: bool) -> Value {
     match value {
         Value::Object(fields) => {
             let nodes_truncated = fields.get("nextAfterId").map(|next| !next.is_null());
+            let next_page = fields
+                .get("nextPageToken")
+                .filter(|next| !next.is_null())
+                .cloned();
             let mut sanitized = fields
                 .into_iter()
                 .filter_map(|(key, value)| {
@@ -757,6 +827,12 @@ fn sanitize_agent_result(value: Value, root: bool) -> Value {
                 .collect::<serde_json::Map<_, _>>();
             if let Some(truncated) = nodes_truncated {
                 sanitized.insert("truncated".to_string(), Value::Bool(truncated));
+            }
+            if let Some(next_page) = next_page {
+                sanitized.insert(
+                    "nextPage".to_string(),
+                    sanitize_agent_result(next_page, false),
+                );
             }
             Value::Object(sanitized)
         }
@@ -1110,18 +1186,30 @@ mod tests {
     }
 
     #[test]
-    fn sanitizer_replaces_unusable_continuations_with_honest_truncation() {
+    fn sanitizer_exposes_actionable_continuations_without_protocol_fields() {
         let result = sanitize_agent_result(
             json!({
                 "type": "KAST_NATIVE_GRAPH_NODES",
                 "afterId": 0,
                 "nextAfterId": 42,
                 "nextPageToken": "opaque",
+                "page": {
+                    "truncated": true,
+                    "nextPageToken": "relation-page"
+                },
                 "nodes": []
             }),
             true,
         );
 
-        assert_eq!(result, json!({"nodes": [], "truncated": true}));
+        assert_eq!(
+            result,
+            json!({
+                "nodes": [],
+                "page": {"truncated": true, "nextPage": "relation-page"},
+                "truncated": true,
+                "nextPage": "opaque"
+            })
+        );
     }
 }

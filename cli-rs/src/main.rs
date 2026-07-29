@@ -200,7 +200,7 @@ fn run_kast_agent(cli: KastCli) -> Result<i32> {
             Ok(0)
         }
         KastCommand::Up => agent_adapter::run_up(),
-        KastCommand::Files { pattern } => agent_adapter::run_files(pattern),
+        KastCommand::Files { pattern, page } => agent_adapter::run_files(pattern, page),
         KastCommand::Symbol(args) => agent_adapter::run_symbol(args),
         KastCommand::Graph(args) => agent_adapter::run_graph(args),
         KastCommand::Check(args) => agent_adapter::run_check(args),

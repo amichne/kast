@@ -247,6 +247,29 @@ fn public_graph_nodes_exposes_and_consumes_an_opaque_next_page() {
     assert_eq!(second["nodes"][0]["id"], 501);
     assert_eq!(second["truncated"], false);
     assert!(second.get("nextPage").is_none(), "{second:#}");
+
+    let other_workspace = fixture.path().join("other-workspace");
+    std::fs::create_dir_all(&other_workspace).expect("other workspace");
+    std::fs::write(other_workspace.join("settings.gradle.kts"), "").expect("other Gradle marker");
+    let other_workspace = other_workspace
+        .canonicalize()
+        .expect("canonical other workspace");
+    let _other_index = seed_public_graph(&other_workspace, false);
+    let wrong_root = named("kast")
+        .current_dir(&other_workspace)
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", fixture.path().join("config"))
+        .args(["graph", "nodes", "--page", &next_page])
+        .output()
+        .expect("cross-workspace graph page");
+    assert_eq!(wrong_root.status.code(), Some(1), "{wrong_root:?}");
+    let wrong_root: serde_json::Value = toon_format::decode_default(
+        std::str::from_utf8(&wrong_root.stdout)
+            .expect("UTF-8 cross-workspace page")
+            .trim(),
+    )
+    .expect("cross-workspace page error TOON");
+    assert_eq!(wrong_root["error"], "GRAPH_PAGE_TOKEN_MISMATCH");
 }
 
 #[test]
