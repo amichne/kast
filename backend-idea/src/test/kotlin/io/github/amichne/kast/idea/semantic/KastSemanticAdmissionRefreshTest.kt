@@ -25,6 +25,7 @@ import io.github.amichne.kast.api.contract.result.FileSystemDiscoveryState
 import io.github.amichne.kast.api.contract.result.IndexAdmissionState
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -81,12 +82,18 @@ class KastSemanticAdmissionRefreshTest {
             defaultLimits.requestTimeoutMillis,
         ),
         admissionOperations: IdeaSemanticAdmissionOperations = IdeaSemanticAdmissionOperations.idea(),
+        semanticGraphStore: SqliteSourceIndexStore? = null,
+        workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
+            IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
+        },
     ): KastPluginBackend = KastPluginBackend(
         project = project,
         workspaceRoot = workspaceRoot,
         limits = defaultLimits,
         semanticAdmissionAwaiter = admissionAwaiter,
         semanticAdmissionOperations = admissionOperations,
+        semanticGraphStore = semanticGraphStore,
+        workspaceModelReader = workspaceModelReader,
     )
 
     private fun ensureProjectReady() {
@@ -112,6 +119,46 @@ class KastSemanticAdmissionRefreshTest {
             assertEquals(FileAnalysisState.ANALYZED, refresh.fileStatuses.single().analysisStatus?.state)
             assertEquals(SemanticAnalysisOutcome.COMPLETE, diagnostics.semanticOutcome)
             assertEquals(FileAnalysisState.ANALYZED, diagnostics.fileStatuses.single().state)
+        } finally {
+            Files.deleteIfExists(newFile)
+        }
+    }
+
+    @Test
+    fun `focused refresh updates the persisted relationship index`() = runBlocking {
+        ensureProjectReady()
+        val newFile = productionRoot.resolve("RefreshedCaller.kt")
+        Files.writeString(
+            newFile,
+            """
+            package admission
+
+            fun refreshedCaller(): Int = seed()
+            """.trimIndent(),
+        )
+        val completeGradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            emptyList(),
+            true,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+        )
+
+        try {
+            SqliteSourceIndexStore(workspaceRoot).use { store ->
+                val result = backend(
+                    semanticGraphStore = store,
+                    workspaceModelReader = { completeGradleModel },
+                ).refresh(RefreshQuery(filePaths = listOf(newFile.toString())))
+
+                assertEquals(SemanticAnalysisOutcome.COMPLETE, result.semanticOutcome)
+                assertTrue(
+                    store.referencesFromFile(newFile.toString()).any { reference ->
+                        reference.targetFqName == "admission.seed"
+                    },
+                )
+            }
         } finally {
             Files.deleteIfExists(newFile)
         }
