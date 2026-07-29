@@ -44,6 +44,40 @@ fn help_exposes_only_the_agent_contract() {
 }
 
 #[test]
+fn public_pageable_commands_use_one_page_flag() {
+    for args in [
+        &["files", "--help"][..],
+        &["symbol", "refs", "--help"][..],
+        &["symbol", "callers", "--help"][..],
+        &["symbol", "callees", "--help"][..],
+        &["symbol", "implementations", "--help"][..],
+        &["symbol", "supertypes", "--help"][..],
+        &["symbol", "subtypes", "--help"][..],
+        &["graph", "nodes", "--help"][..],
+        &["graph", "impact", "--help"][..],
+    ] {
+        let output = named("kast")
+            .args(args)
+            .output()
+            .unwrap_or_else(|error| panic!("run `kast {}`: {error}", args.join(" ")));
+        assert!(output.status.success(), "{output:?}");
+        let help = String::from_utf8(output.stdout).expect("UTF-8 help");
+        assert!(
+            help.contains("--page <PAGE>"),
+            "`kast {}` omitted the uniform page input:\n{help}",
+            args.join(" ")
+        );
+        for private in ["--page-token", "--after-id", "--generation"] {
+            assert!(
+                !help.contains(private),
+                "`kast {}` leaked {private}:\n{help}",
+                args.join(" ")
+            );
+        }
+    }
+}
+
+#[test]
 fn removed_output_flag_is_a_usage_error() {
     let output = named("kast")
         .args(["--output", "json"])
@@ -133,6 +167,86 @@ fn graph_summary_is_a_direct_deterministic_toon_result_without_protocol_cruft() 
             "graph summary leaked {cruft}: {decoded:#}"
         );
     }
+}
+
+#[test]
+fn public_graph_nodes_exposes_and_consumes_an_opaque_next_page() {
+    let fixture = tempfile::tempdir().expect("temporary graph fixture");
+    let home = fixture.path().join("home");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let index = seed_public_graph(&workspace, false);
+    let connection = index.connection();
+    for id in 3_i64..=501 {
+        connection
+            .execute(
+                "INSERT INTO semantic_symbols(id, stable_key, kind, name, file_id)
+                 VALUES (?, ?, 'CLASS', ?, 1)",
+                params![
+                    id,
+                    format!("class:sample.Node{id:03}"),
+                    format!("Node{id:03}")
+                ],
+            )
+            .expect("graph symbol");
+    }
+    drop(connection);
+
+    let first = named("kast")
+        .current_dir(&workspace)
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", fixture.path().join("config"))
+        .args(["graph", "nodes"])
+        .output()
+        .expect("first graph page");
+    assert!(
+        first.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&first.stdout),
+        String::from_utf8_lossy(&first.stderr)
+    );
+    let first: serde_json::Value = toon_format::decode_default(
+        std::str::from_utf8(&first.stdout)
+            .expect("UTF-8 first graph page")
+            .trim(),
+    )
+    .expect("first graph page TOON");
+    assert_eq!(first["nodes"].as_array().map(Vec::len), Some(500));
+    assert_eq!(first["truncated"], true);
+    let next_page = first["nextPage"]
+        .as_str()
+        .expect("opaque public graph continuation")
+        .to_string();
+    assert!(next_page.starts_with("kgn1."), "{first:#}");
+    for private in ["pageToken", "nextPageToken", "afterId", "nextAfterId"] {
+        assert!(first.get(private).is_none(), "leaked {private}: {first:#}");
+    }
+
+    let second = named("kast")
+        .current_dir(&workspace)
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", fixture.path().join("config"))
+        .args(["graph", "nodes", "--page", &next_page])
+        .output()
+        .expect("second graph page");
+    assert!(
+        second.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&second.stdout),
+        String::from_utf8_lossy(&second.stderr)
+    );
+    let second: serde_json::Value = toon_format::decode_default(
+        std::str::from_utf8(&second.stdout)
+            .expect("UTF-8 second graph page")
+            .trim(),
+    )
+    .expect("second graph page TOON");
+    assert_eq!(second["nodes"].as_array().map(Vec::len), Some(1));
+    assert_eq!(second["nodes"][0]["id"], 501);
+    assert_eq!(second["truncated"], false);
+    assert!(second.get("nextPage").is_none(), "{second:#}");
 }
 
 #[test]
