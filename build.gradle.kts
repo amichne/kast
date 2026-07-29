@@ -104,18 +104,22 @@ val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
         layout.projectDirectory.file("cli-rs/Cargo.toml").asFile.absolutePath,
         "--locked",
     )
-    doLast {
-        cliCompiledBinary.asFile.copyTo(cliDevelopmentBinary.asFile, overwrite = true)
-        check(cliDevelopmentBinary.asFile.setExecutable(true)) {
-            "Could not make ${cliDevelopmentBinary.asFile} executable"
-        }
+}
+
+val stageDevelopmentControlCli: TaskProvider<Copy> by tasks.registering(Copy::class) {
+    dependsOn(buildDevelopmentCli)
+    from(cliCompiledBinary)
+    into(cliDevelopmentBinary.asFile.parentFile)
+    rename { "_kastctl" }
+    filePermissions {
+        unix("755")
     }
 }
 
 tasks.register<Exec>("refreshDevelopmentMachine") {
     group = "distribution"
     description = "Replaces the active installation through the sole setup transaction."
-    dependsOn(buildDevelopmentCli, ":backend-idea:buildPlugin")
+    dependsOn(stageDevelopmentControlCli, ":backend-idea:buildPlugin")
     commandLine(
         cliDevelopmentBinary.asFile.absolutePath,
         "--output",
