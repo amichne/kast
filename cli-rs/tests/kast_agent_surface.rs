@@ -5,7 +5,10 @@ use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::Command;
 
+use rusqlite::params;
+use sha2::{Digest, Sha256};
 use support::workspace_database_path_for_test;
+use support::workspace_files::WorkspaceIndexFixture;
 
 fn named(name: &str) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_kast"));
@@ -92,26 +95,7 @@ fn graph_summary_is_a_direct_deterministic_toon_result_without_protocol_cruft() 
     .expect("Gradle marker");
     let workspace = workspace.canonicalize().expect("canonical workspace");
 
-    let database = workspace_database_path_for_test(&workspace);
-    std::fs::create_dir_all(database.parent().expect("database parent"))
-        .expect("database directory");
-    let connection = rusqlite::Connection::open(database).expect("graph database");
-    connection
-        .execute_batch(&format!(
-            r#"
-            CREATE TABLE schema_version(version INTEGER NOT NULL, generation INTEGER NOT NULL);
-            INSERT INTO schema_version VALUES ({}, 7);
-            CREATE TABLE semantic_symbols(id INTEGER PRIMARY KEY, stable_key TEXT NOT NULL UNIQUE);
-            INSERT INTO semantic_symbols VALUES
-                (1, 'class:sample.Source'),
-                (2, 'class:sample.Target');
-            CREATE TABLE semantic_edge_occurrences(source_id INTEGER NOT NULL, target_id INTEGER NOT NULL);
-            INSERT INTO semantic_edge_occurrences VALUES (1, 2), (1, 2);
-            "#,
-            env!("KAST_SOURCE_INDEX_SCHEMA_VERSION")
-        ))
-        .expect("graph fixture");
-    drop(connection);
+    let _index = seed_public_graph(&workspace, false);
 
     let output = named("kast")
         .current_dir(&workspace)
@@ -135,9 +119,10 @@ fn graph_summary_is_a_direct_deterministic_toon_result_without_protocol_cruft() 
     );
     let decoded: serde_json::Value =
         toon_format::decode_default(rendered.trim()).expect("graph summary is valid TOON");
-    assert_eq!(decoded["generation"], 7);
+    assert_eq!(decoded["generation"], 41);
     assert_eq!(decoded["nodeCount"], 2);
     assert_eq!(decoded["edgeOccurrenceCount"], 2);
+    assert_eq!(decoded["qualification"], "CURRENT");
     assert!(
         decoded.get("result").is_none(),
         "result must not be envelope-wrapped: {decoded:#}"
@@ -148,6 +133,96 @@ fn graph_summary_is_a_direct_deterministic_toon_result_without_protocol_cruft() 
             "graph summary leaked {cruft}: {decoded:#}"
         );
     }
+}
+
+#[test]
+fn graph_summary_rejects_stale_persisted_facts() {
+    let fixture = tempfile::tempdir().expect("temporary graph fixture");
+    let home = fixture.path().join("home");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let _index = seed_public_graph(&workspace, true);
+
+    let output = named("kast")
+        .current_dir(&workspace)
+        .env("HOME", &home)
+        .env("KAST_CONFIG_HOME", fixture.path().join("config"))
+        .args(["graph", "summary"])
+        .output()
+        .expect("run stale graph summary");
+
+    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    let decoded: serde_json::Value =
+        toon_format::decode_default(std::str::from_utf8(&output.stdout).expect("UTF-8").trim())
+            .expect("stale graph error is valid TOON");
+    assert_eq!(decoded["error"], "GRAPH_EVIDENCE_INCOMPLETE", "{decoded:#}");
+    assert_eq!(decoded["next"], "kast refresh", "{decoded:#}");
+}
+
+fn seed_public_graph(workspace: &Path, stale: bool) -> WorkspaceIndexFixture {
+    let database = workspace_database_path_for_test(workspace);
+    let index = WorkspaceIndexFixture::at_database_path(workspace, &database);
+    index.seed_high_cardinality_sources(1);
+    index.seed_progress("app", "COMPLETE", 1, 1);
+    let source_path = "src/main/kotlin/sample/Source0000.kt";
+    let content_hash = hex::encode(Sha256::digest(
+        std::fs::read(workspace.join(source_path)).expect("graph source"),
+    ));
+    let connection = index.connection();
+    connection
+        .execute_batch(
+            "CREATE TABLE semantic_files(
+                 id INTEGER PRIMARY KEY,
+                 path TEXT NOT NULL UNIQUE,
+                 package_name TEXT,
+                 module_name TEXT,
+                 content_hash TEXT,
+                 refresh_status TEXT NOT NULL,
+                 diagnostics_json TEXT NOT NULL
+             );
+             CREATE TABLE semantic_symbols(
+                 id INTEGER PRIMARY KEY,
+                 stable_key TEXT NOT NULL UNIQUE,
+                 kind TEXT NOT NULL,
+                 name TEXT NOT NULL,
+                 file_id INTEGER NOT NULL
+             );
+             CREATE TABLE semantic_edge_occurrences(
+                 source_id INTEGER NOT NULL,
+                 target_id INTEGER NOT NULL,
+                 source_file_id INTEGER NOT NULL,
+                 kind TEXT NOT NULL,
+                 context TEXT NOT NULL
+             );
+             INSERT INTO semantic_symbols VALUES
+                 (1, 'class:sample.Source', 'CLASS', 'Source', 1),
+                 (2, 'class:sample.Target', 'CLASS', 'Target', 1);
+             INSERT INTO semantic_edge_occurrences VALUES
+                 (1, 2, 1, 'REFERENCE', 'TYPE'),
+                 (1, 2, 1, 'REFERENCE', 'TYPE');",
+        )
+        .expect("native graph schema");
+    connection
+        .execute(
+            "INSERT INTO semantic_files VALUES
+             (1, ?, 'sample', 'app.main', ?, 'REFRESHED', '[]')",
+            params![source_path, content_hash],
+        )
+        .expect("semantic graph file");
+    drop(connection);
+    index.synchronize_semantic_graph_scope_fingerprints();
+    if stale {
+        index
+            .connection()
+            .execute(
+                "UPDATE file_manifest SET content_hash = ? WHERE filename = 'Source0000.kt'",
+                params!["e".repeat(64)],
+            )
+            .expect("stale manifest");
+    }
+    index
 }
 
 #[test]

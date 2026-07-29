@@ -9,6 +9,7 @@ use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use support::{
     ScriptedCliAuthority, spawn_scripted_idea_backend, spawn_scripted_idea_backend_for_invocations,
+    workspace_database_path_for_test, workspace_files::WorkspaceIndexFixture,
 };
 
 fn kast(home: &Path, config_home: &Path, workspace: &Path) -> Command {
@@ -325,6 +326,136 @@ fn refresh_combines_diagnostics_and_graph_for_the_exact_files() {
     for request in semantic_requests {
         assert_eq!(request["params"]["filePaths"], json!([source]));
     }
+}
+
+#[test]
+fn refresh_bootstraps_clean_pending_graph_files() {
+    let fixture = tempfile::tempdir().expect("fixture");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
+    assert!(
+        Command::new("git")
+            .args(["init", "--quiet"])
+            .current_dir(&workspace)
+            .status()
+            .expect("git init")
+            .success()
+    );
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let index = WorkspaceIndexFixture::at_database_path(
+        &workspace,
+        &workspace_database_path_for_test(&workspace),
+    );
+    index.seed_high_cardinality_sources(1);
+    index.seed_progress("app", "COMPLETE", 1, 1);
+    index
+        .connection()
+        .execute(
+            "DELETE FROM file_stage_outcomes WHERE stage = 'SEMANTIC_GRAPH'",
+            [],
+        )
+        .expect("remove semantic graph outcome");
+    index
+        .connection()
+        .execute_batch(
+            "CREATE TABLE semantic_files(
+                 id INTEGER PRIMARY KEY,
+                 path TEXT NOT NULL UNIQUE,
+                 package_name TEXT,
+                 module_name TEXT,
+                 content_hash TEXT,
+                 refresh_status TEXT NOT NULL,
+                 diagnostics_json TEXT NOT NULL
+             );",
+        )
+        .expect("semantic graph table");
+    assert!(
+        Command::new("git")
+            .args(["add", "settings.gradle.kts", "src"])
+            .current_dir(&workspace)
+            .status()
+            .expect("git add")
+            .success()
+    );
+    assert!(
+        Command::new("git")
+            .args([
+                "-c",
+                "user.name=Kast Test",
+                "-c",
+                "user.email=kast@example.invalid",
+                "commit",
+                "--quiet",
+                "-m",
+                "fixture",
+            ])
+            .current_dir(&workspace)
+            .status()
+            .expect("git commit")
+            .success()
+    );
+    let source = workspace.join("src/main/kotlin/sample/Source0000.kt");
+    let failure_id = uuid::Uuid::new_v4().hyphenated().to_string();
+    let socket = fixture.path().join("clean-refresh.sock");
+    let backend = spawn_scripted_idea_backend_for_invocations(
+        &home,
+        &config_home,
+        &workspace,
+        &socket,
+        ScriptedCliAuthority::new(
+            Path::new(env!("CARGO_BIN_EXE_kast")),
+            env!("CARGO_PKG_VERSION"),
+        ),
+        2,
+        vec![
+            (
+                "raw/workspace-refresh",
+                complete_refresh(&source, &failure_id),
+            ),
+            ("raw/diagnostics", diagnostics_with_error(&source)),
+            (
+                "raw/semantic-graph",
+                json!({
+                    "generation": 42,
+                    "scopeFingerprint": "a".repeat(64),
+                    "coverage": {
+                        "files": [{
+                            "path": source.display().to_string(),
+                            "contentHash": "b".repeat(64),
+                            "status": "REFRESHED",
+                            "diagnostics": []
+                        }],
+                        "omittedExternalTargetCount": 0
+                    },
+                    "symbolCount": 2,
+                    "edgeOccurrenceCount": 1
+                }),
+            ),
+        ],
+    );
+
+    let refresh = kast(&home, &config_home, &workspace)
+        .arg("refresh")
+        .output()
+        .expect("refresh");
+    assert!(
+        refresh.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&refresh.stdout),
+        String::from_utf8_lossy(&refresh.stderr)
+    );
+    let refresh = decode(&refresh);
+    assert_eq!(refresh["fileCount"], 1, "{refresh:#}");
+    assert_eq!(refresh["files"], json!([source]), "{refresh:#}");
+    let requests = backend.join().expect("clean refresh backend");
+    let raw = requests
+        .iter()
+        .find(|request| request["method"] == "raw/workspace-refresh")
+        .expect("workspace refresh");
+    assert_eq!(raw["params"]["filePaths"], json!([source]));
 }
 
 #[test]
