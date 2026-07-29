@@ -81,15 +81,24 @@ class KastProjectOpenSourceIndexingTest {
             emptyList(),
             emptyList(),
         )
+        val sourceScans = mutableListOf<String>()
+        val relationshipScans = mutableListOf<String>()
 
         SqliteSourceIndexStore(workspaceRoot).use { store ->
-            IdeaProjectIndexer(
+            val indexer = IdeaProjectIndexer(
                 project = project,
                 workspaceRoot = workspaceRoot,
                 store = store,
                 cancelled = { false },
                 readGradleWorkspaceModel = { completeGradleModel },
-            ).indexProject(KastConfig.defaults())
+                onSourceFileScan = sourceScans::add,
+                onRelationshipFileScan = relationshipScans::add,
+            )
+            indexer.indexProject(KastConfig.defaults())
+            val sourceScansAfterFirstRun = sourceScans.toList()
+            val relationshipScansAfterFirstRun = relationshipScans.toList()
+            assertTrue(sourceScansAfterFirstRun.isNotEmpty())
+            assertTrue(relationshipScansAfterFirstRun.isNotEmpty())
 
             val snapshot = store.loadSourceIndexSnapshot()
             assertEquals(listOf(callerPath), snapshot.candidatePathsByIdentifier.getValue("caller"))
@@ -144,6 +153,14 @@ class KastProjectOpenSourceIndexingTest {
                 assertEquals(2, result.references.size)
                 assertEquals(true, result.searchScope?.exhaustive)
             }
+
+            indexer.indexProject(KastConfig.defaults())
+            assertEquals(sourceScansAfterFirstRun, sourceScans, "unchanged source files must not be rescanned")
+            assertEquals(
+                relationshipScansAfterFirstRun,
+                relationshipScans,
+                "unchanged relationship files must not be rescanned",
+            )
         }
     }
 

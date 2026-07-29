@@ -23,7 +23,13 @@ import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.idea.backend.diagnostics.analyzeDiagnosticsFileInReadEpoch
 import io.github.amichne.kast.idea.runIdeaReadAction
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphCommitResult
-import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
+import io.github.amichne.kast.indexstore.api.index.FileContentHash
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileStageInputFingerprint
+import io.github.amichne.kast.indexstore.api.index.FileStageVersions
+import io.github.amichne.kast.indexstore.api.index.PendingFileStage
+import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageRemoval
+import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageUpdate
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
@@ -51,82 +57,156 @@ private suspend fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSe
         }
     }
     val semanticScope = (scopeSnapshot.sourcePaths - removedPaths.toSet()) + selectedPaths
-    val updates = mutableListOf<SemanticGraphFileIndexUpdate>()
+    val stageInputFingerprint = FileStageInputFingerprint.parse(
+        semanticGraphScopeFingerprint(semanticScope.toList(), emptyList()).value,
+    )
     val coverage = mutableListOf<SemanticGraphFileCoverage>()
     var omittedExternalTargetCount = 0
-    val snapshotPsiGeneration = runIdeaReadAction { psiGeneration() }
-
-    query.filePaths.zip(selectedPaths).forEach { (absolutePath, relativePath) ->
+    val planned = query.filePaths.zip(selectedPaths).map { (absolutePath, relativePath) ->
         checkSemanticGraphCancellation()
-        val refreshed = runIdeaReadAction {
-            readEpochObserver.entered(IdeaReadEpochKind.SEMANTIC_GRAPH)
-            val currentPsiGeneration = psiGeneration()
-            if (snapshotPsiGeneration != currentPsiGeneration) {
-                throw semanticGraphPsiGenerationConflict(snapshotPsiGeneration, currentPsiGeneration)
-            }
-            refreshSemanticGraphFile(
-                absolutePath = absolutePath,
-                relativePath = relativePath,
-                semanticScope = semanticScope,
-            )
-        }
-        checkSemanticGraphCancellation()
-        updates += refreshed.extracted.update
-        coverage += refreshed.coverage
-        omittedExternalTargetCount = Math.addExact(
-            omittedExternalTargetCount,
-            refreshed.extracted.omittedExternalTargetCount,
+        val contentHash = runIdeaReadAction { sha256(findKtFile(absolutePath.value.value).text) }
+        PlannedSemanticGraphFile(
+            absolutePath = absolutePath,
+            relativePath = relativePath,
+            contentHash = contentHash,
+            work = store.pendingFileStage(
+                path = absolutePath.value.value,
+                contentHash = FileContentHash.parse(contentHash.value),
+                stage = FileIndexStage.SEMANTIC_GRAPH,
+                version = FileStageVersions.CURRENT.semanticGraph,
+                inputFingerprint = stageInputFingerprint,
+            ),
         )
     }
-
-    checkSemanticGraphCancellation()
-    val writeResult = if (updates.isNotEmpty() || removedPaths.isNotEmpty()) {
-        val commitGraph = {
-            store.replaceSemanticGraphFilesIfGeneration(
-                expectedGeneration = scopeSnapshot.generation,
-                updates = updates,
-                removedPaths = removedPaths,
-            )
+    val cachedFiles = store.readSemanticGraph(selectedPaths).files.associateBy(SemanticGraphFileCoverage::path)
+    planned.filter { file -> file.work == null }.forEach { file ->
+        val persisted = checkNotNull(cachedFiles[file.relativePath]) {
+            "Committed semantic graph outcome has no graph facts for ${file.relativePath.value}"
         }
-        val commit = runIdeaReadAction {
-            val currentPsiGeneration = psiGeneration()
-            if (snapshotPsiGeneration != currentPsiGeneration) {
-                throw semanticGraphPsiGenerationConflict(snapshotPsiGeneration, currentPsiGeneration)
+        coverage += persisted.copy(
+            status = SemanticGraphFileStatus.CACHED,
+        )
+    }
+    val removals = query.removedFilePaths.zip(removedPaths).map { (absolutePath, relativePath) ->
+        SemanticGraphFileStageRemoval(
+            outcomePath = absolutePath.value.value,
+            sourcePath = relativePath,
+        )
+    }
+    var expectedGeneration = scopeSnapshot.generation
+    var uncommittedRemovals = removals
+    planned.filter { file -> file.work != null }
+        .chunked(semanticGraphBatchSize)
+        .forEach { batch ->
+            checkSemanticGraphCancellation()
+            val batchPsiGeneration = runIdeaReadAction { psiGeneration() }
+            val refreshedBatch = batch.map { file ->
+                val refreshed = runIdeaReadAction {
+                    readEpochObserver.entered(IdeaReadEpochKind.SEMANTIC_GRAPH)
+                    val currentPsiGeneration = psiGeneration()
+                    if (batchPsiGeneration != currentPsiGeneration) {
+                        throw semanticGraphPsiGenerationConflict(batchPsiGeneration, currentPsiGeneration)
+                    }
+                    refreshSemanticGraphFile(
+                        absolutePath = file.absolutePath,
+                        relativePath = file.relativePath,
+                        expectedContentHash = file.contentHash,
+                        semanticScope = semanticScope,
+                    )
+                }
+                checkSemanticGraphCancellation()
+                file to refreshed
             }
-            commitGraph()
+            val updates = refreshedBatch.map { (file, refreshed) ->
+                SemanticGraphFileStageUpdate(
+                    work = requireNotNull(file.work),
+                    update = refreshed.extracted.update,
+                    limitations = refreshed.extracted.limitations,
+                )
+            }
+            val commit = runIdeaReadAction {
+                val currentPsiGeneration = psiGeneration()
+                if (batchPsiGeneration != currentPsiGeneration) {
+                    throw semanticGraphPsiGenerationConflict(batchPsiGeneration, currentPsiGeneration)
+                }
+                store.commitSemanticGraphBatchIfGeneration(
+                    expectedGeneration = expectedGeneration,
+                    updates = updates,
+                    removals = uncommittedRemovals,
+                )
+            }
+            expectedGeneration = commit.semanticGraphGenerationOrThrow()
+            uncommittedRemovals = emptyList()
+            refreshedBatch.forEach { (_, refreshed) ->
+                coverage += refreshed.coverage
+                omittedExternalTargetCount = Math.addExact(
+                    omittedExternalTargetCount,
+                    refreshed.extracted.omittedExternalTargetCount,
+                )
+            }
+    }
+    if (uncommittedRemovals.isNotEmpty()) {
+        val removalPsiGeneration = runIdeaReadAction { psiGeneration() }
+        expectedGeneration = runIdeaReadAction {
+            val currentPsiGeneration = psiGeneration()
+            if (removalPsiGeneration != currentPsiGeneration) {
+                throw semanticGraphPsiGenerationConflict(removalPsiGeneration, currentPsiGeneration)
+            }
+            store.commitSemanticGraphBatchIfGeneration(
+                expectedGeneration = expectedGeneration,
+                updates = emptyList(),
+                removals = uncommittedRemovals,
+            ).semanticGraphGenerationOrThrow()
         }
-        when (commit) {
-            is SemanticGraphCommitResult.Committed -> commit.writeResult
-            is SemanticGraphCommitResult.GenerationChanged -> throw semanticGraphGenerationConflict(
-                commit.expectedGeneration.value,
-                commit.actualGeneration.value,
-            )
-        }
-    } else {
-        null
     }
     coverage += removedPaths.map { path ->
         SemanticGraphFileCoverage(path, null, SemanticGraphFileStatus.REMOVED)
     }
+    val graph = store.readSemanticGraph(selectedPaths)
+    if (graph.generation != expectedGeneration) {
+        throw semanticGraphGenerationConflict(expectedGeneration.value, graph.generation.value)
+    }
     return SemanticGraphResult(
-        generation = SemanticGraphGeneration(writeResult?.generation?.value ?: store.readGeneration().value),
+        generation = SemanticGraphGeneration(graph.generation.value),
         scopeFingerprint = semanticGraphScopeFingerprint(selectedPaths, removedPaths),
         coverage = SemanticGraphCoverage(
             files = coverage.sortedBy(SemanticGraphFileCoverage::path),
             omittedExternalTargetCount = NonNegativeInt(omittedExternalTargetCount),
         ),
-        symbolCount = NonNegativeInt(writeResult?.symbolCount ?: 0),
-        edgeOccurrenceCount = NonNegativeInt(writeResult?.edgeOccurrenceCount ?: 0),
+        symbolCount = NonNegativeInt(graph.symbols.size),
+        edgeOccurrenceCount = NonNegativeInt(graph.relations.size),
     )
 }
+
+private fun SemanticGraphCommitResult.semanticGraphGenerationOrThrow() = when (this) {
+    is SemanticGraphCommitResult.Committed -> writeResult.generation
+    is SemanticGraphCommitResult.GenerationChanged -> throw semanticGraphGenerationConflict(
+        expectedGeneration.value,
+        actualGeneration.value,
+    )
+}
+
+private data class PlannedSemanticGraphFile(
+    val absolutePath: SemanticGraphPath,
+    val relativePath: SemanticGraphSourcePath,
+    val contentHash: SemanticGraphSha256,
+    val work: PendingFileStage?,
+)
 
 private fun KastPluginBackend.refreshSemanticGraphFile(
     absolutePath: SemanticGraphPath,
     relativePath: SemanticGraphSourcePath,
+    expectedContentHash: SemanticGraphSha256,
     semanticScope: Set<SemanticGraphSourcePath>,
 ): RefreshedSemanticGraphFile {
     val file = findKtFile(absolutePath.value.value)
     val contentHash = sha256(file.text)
+    if (contentHash != expectedContentHash) {
+        throw ConflictException(
+            message = "Kotlin content changed while semantic graph work was planned; retry the refresh",
+            details = mapOf("filePath" to absolutePath.value.value),
+        )
+    }
     val diagnostics = analyzeDiagnosticsFileInReadEpoch(absolutePath.value)
     if (diagnostics.status.state.name != "ANALYZED") {
         throw ValidationException(
@@ -142,8 +222,9 @@ private fun KastPluginBackend.refreshSemanticGraphFile(
             line = LineNumber(diagnostic.location.startLine.coerceAtLeast(1)),
         )
     }
+    val extracted = extractSemanticGraphFile(file, relativePath, contentHash, evidence, semanticScope)
     return RefreshedSemanticGraphFile(
-        extracted = extractSemanticGraphFile(file, relativePath, contentHash, evidence, semanticScope),
+        extracted = extracted,
         coverage = SemanticGraphFileCoverage(
             path = relativePath,
             contentHash = contentHash,

@@ -121,9 +121,11 @@ class NativeSemanticGraphGenerationTest {
     fun `concurrent removal prevents an older refresh from resurrecting cached nodes`() = runBlocking {
         val project = projectFixture.get()
         val sourceFile = canonicalFileFixture.get()
+        val targetFile = boundaryTargetFixture.get()
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
         val sourcePath = SemanticGraphPath.parse(sourceFile.virtualFile.path)
+        val targetPath = SemanticGraphPath.parse(targetFile.virtualFile.path)
 
         SqliteSourceIndexStore(storeRoot).use { store ->
             store.ensureSchema()
@@ -159,7 +161,7 @@ class NativeSemanticGraphGenerationTest {
                     val refresh = async(Dispatchers.Default) {
                         backend.semanticGraph(
                             SemanticGraphQuery(
-                                filePaths = listOf(sourcePath),
+                                filePaths = listOf(sourcePath, targetPath),
                                 expectedGeneration = SemanticGraphGeneration(seededGeneration.value),
                             ).parsed(),
                         )

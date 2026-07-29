@@ -10,14 +10,12 @@ import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelationContext
-import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphTypeEdge
 import io.github.amichne.kast.api.contract.result.SemanticGraphTypeFact
 import io.github.amichne.kast.api.contract.result.SemanticGraphTypeKind
 import io.github.amichne.kast.api.contract.result.SemanticGraphTypeNullability
 import io.github.amichne.kast.api.contract.result.SemanticGraphTypeRole
 import io.github.amichne.kast.api.contract.result.SemanticGraphTypeVariance
-import io.github.amichne.kast.api.protocol.ValidationException
 import org.jetbrains.kotlin.analysis.api.analyze
 import org.jetbrains.kotlin.idea.references.KtReference
 import org.jetbrains.kotlin.psi.KtAnnotationEntry
@@ -57,17 +55,17 @@ internal sealed interface SemanticGraphCompilerTarget {
 
 internal fun semanticTypeFacts(
     file: KtFile,
-    path: SemanticGraphSourcePath,
+    onUnresolvedTarget: () -> Unit,
 ): List<SemanticGraphTypeFact> =
     PsiTreeUtil.findChildrenOfType(file, KtTypeReference::class.java)
         .filter { reference -> reference.text.isNotBlank() }
-        .map { reference -> semanticTypeFact(reference, path) }
+        .map { reference -> semanticTypeFact(reference, onUnresolvedTarget) }
         .distinctBy(SemanticGraphTypeFact::stableKey)
         .sortedBy { type -> type.stableKey.value }
 
 private fun semanticTypeFact(
     reference: KtTypeReference,
-    path: SemanticGraphSourcePath,
+    onUnresolvedTarget: () -> Unit,
 ): SemanticGraphTypeFact {
     val text = reference.text.canonicalTypeText()
     val functionType = reference.typeElement as? KtFunctionType
@@ -103,9 +101,11 @@ private fun semanticTypeFact(
     }
     val classifier = PsiTreeUtil.findChildOfType(reference, KtUserType::class.java)
         ?.let { userType ->
-            val resolved = userType.resolveCompilerTarget()
-                .requireResolved(path, userType)
-            when (resolved) {
+            when (val resolved = userType.resolveCompilerTarget()) {
+                SemanticGraphCompilerTarget.Unresolved -> {
+                    onUnresolvedTarget()
+                    userType.referencedName
+                }
                 SemanticGraphCompilerTarget.External -> userType.referencedName
                 is SemanticGraphCompilerTarget.Source ->
                     (resolved.element as? KtNamedDeclaration)
@@ -169,20 +169,6 @@ internal fun KtUserType.resolveCompilerTarget(): SemanticGraphCompilerTarget = a
     symbol?.let { SemanticGraphCompilerTarget.resolved(it.psi) }
         ?: SemanticGraphCompilerTarget.Unresolved
 }
-
-internal fun SemanticGraphCompilerTarget.requireResolved(
-    path: SemanticGraphSourcePath,
-    occurrence: PsiElement,
-): SemanticGraphCompilerTarget.Resolved = when (this) {
-    is SemanticGraphCompilerTarget.Resolved -> this
-    SemanticGraphCompilerTarget.Unresolved -> throw ValidationException(
-        "Kotlin compiler could not resolve semantic graph target at " +
-            "${path.value}:${occurrence.sourceLine()}. Fix Kotlin diagnostics before refreshing this file.",
-    )
-}
-
-private fun PsiElement.sourceLine(): Int =
-    containingFile.text.substring(0, textRange.startOffset).count { it == '\n' } + 1
 
 internal fun String.canonicalTypeText(): String = replace('/', '.')
 

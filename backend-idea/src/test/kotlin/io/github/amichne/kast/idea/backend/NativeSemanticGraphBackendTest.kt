@@ -10,13 +10,14 @@ import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
-import io.github.amichne.kast.api.contract.result.SemanticGraphFileLimitation
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
 import io.github.amichne.kast.api.contract.result.SemanticGraphVisibility
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.KastPluginBackend
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -382,10 +383,8 @@ class NativeSemanticGraphBackendTest {
                     )
                     assertTrue(result.symbolCount.value > 0)
                     assertTrue(result.edgeOccurrenceCount.value > 0)
-                    assertEquals(
-                        listOf(SemanticGraphFileLimitation.UNRESOLVED_COMPILER_TARGET),
-                        result.coverage.files.single { coverage -> coverage.path.value == file.name }.limitations,
-                    )
+                    val outcome = store.fileStageOutcome(file.virtualFile.path, FileIndexStage.SEMANTIC_GRAPH)
+                    assertEquals(listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP), outcome?.limitations)
                     assertTrue(
                         store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse(validFile.name)))
                             .relations.isNotEmpty(),

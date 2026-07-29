@@ -147,6 +147,7 @@ internal class SourceIndexSchemaTables {
                 stage TEXT NOT NULL CHECK(stage IN ('SOURCE','RELATIONSHIPS','SEMANTIC_GRAPH')),
                 content_hash TEXT NOT NULL,
                 stage_version TEXT NOT NULL,
+                stage_input_fingerprint TEXT,
                 outcome_status TEXT NOT NULL CHECK(outcome_status IN ('COMPLETE','LIMITED','FAILED')),
                 limitations_json TEXT NOT NULL,
                 PRIMARY KEY (prefix_id, filename, stage)

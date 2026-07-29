@@ -7,6 +7,9 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileStageScopeCoverage
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import org.jetbrains.jps.model.java.JavaModuleSourceRootTypes
 import java.nio.file.Files
 import java.nio.file.Path
@@ -18,7 +21,37 @@ internal class IdeaRelationshipCoverageAuthority(
     private val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
         IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
     },
+    private val sourceIndexStore: SqliteSourceIndexStore? = null,
 ) : RelationshipCoverageAuthority {
+    override fun assess(
+        completion: RelationshipCoverageAuthority.FamilyCompletion,
+        declarationFile: String,
+    ): RelationshipSearchCoverage {
+        val liveCoverage = assess(completion)
+        if (liveCoverage is RelationshipSearchCoverage.Limited) return liveCoverage
+        val persisted = sourceIndexStore?.fileStageScopeCoverage(
+            FileIndexStage.RELATIONSHIPS,
+            declarationFile,
+        ) ?: return liveCoverage
+        if (persisted is FileStageScopeCoverage.Complete) return liveCoverage
+        persisted as FileStageScopeCoverage.Limited
+        val limitations = linkedSetOf<RelationshipSearchLimitation>()
+        if (persisted.totalFiles == 0) {
+            limitations += RelationshipSearchLimitation.PROJECT_SCOPE_INCOMPLETE
+        }
+        if (persisted.pendingFiles > 0) {
+            limitations += RelationshipSearchLimitation.INDEX_NOT_READY
+        }
+        if (persisted.staleFiles > 0) {
+            limitations += RelationshipSearchLimitation.INDEX_STALE
+        }
+        if (persisted.limitedFiles > 0 || persisted.failedFiles > 0) {
+            limitations += RelationshipSearchLimitation.BACKEND_INCOMPLETE
+        }
+        limitations += RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE
+        return RelationshipSearchCoverage.Limited.from(limitations)
+    }
+
     override fun assess(
         completion: RelationshipCoverageAuthority.FamilyCompletion,
     ): RelationshipSearchCoverage = ApplicationManager.getApplication().runReadAction<RelationshipSearchCoverage> {

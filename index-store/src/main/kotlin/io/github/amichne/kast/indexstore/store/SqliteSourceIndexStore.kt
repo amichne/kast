@@ -129,7 +129,8 @@ class SqliteSourceIndexStore private constructor(
         contentHash: FileContentHash,
         stage: FileIndexStage,
         version: FileStageVersion,
-    ): PendingFileStage? = fileStages.pendingFileStage(path, contentHash, stage, version)
+        inputFingerprint: FileStageInputFingerprint? = null,
+    ): PendingFileStage? = fileStages.pendingFileStage(path, contentHash, stage, version, inputFingerprint)
 
     fun fileStageOutcome(path: String, stage: FileIndexStage): FileStageOutcome? =
         fileStages.fileStageOutcome(path, stage)

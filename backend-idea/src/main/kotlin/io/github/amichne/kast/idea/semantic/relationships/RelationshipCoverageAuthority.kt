@@ -6,6 +6,11 @@ import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
 internal fun interface RelationshipCoverageAuthority {
     fun assess(completion: FamilyCompletion): RelationshipSearchCoverage
 
+    fun assess(
+        completion: FamilyCompletion,
+        declarationFile: String,
+    ): RelationshipSearchCoverage = assess(completion)
+
     enum class FamilyCompletion {
         COMPLETE,
         RESUMABLE,

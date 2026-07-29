@@ -87,6 +87,7 @@ internal suspend fun SkillRpcContext.hierarchy(request: KastHierarchyRequest): K
             subject = subject,
             reason = KastHierarchyDegradedReason.TYPE_HIERARCHY_UNAVAILABLE,
             evidence = result.evidence,
+            records = result.records,
         )
     }
 }

@@ -109,6 +109,7 @@ internal class KastPluginBackend(
     internal val psiGeneration: () -> Long = { PsiModificationTracker.getInstance(project).modificationCount },
     internal val readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
     internal val referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
+    internal val semanticGraphBatchSize: Int = 32,
     internal val indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
         IdeaIndexSemanticAdmission.Status.Ready
     },
@@ -121,8 +122,10 @@ internal class KastPluginBackend(
             workspaceIdentity = workspaceIdentity,
             indexSemanticAdmissionStatus = indexSemanticAdmissionStatus,
             workspaceModelReader = workspaceModelReader,
+            sourceIndexStore = semanticGraphStore,
         ),
 ) : CloseableAnalysisBackend {
+    init { require(semanticGraphBatchSize > 0) { "Semantic graph batch size must be positive" } }
 
     internal val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
     internal val workspaceRoot: Path = workspaceIdentity.workspaceRootPath

@@ -97,6 +97,7 @@ internal class SqliteSourceIndexSchema(
                 "stage" to true,
                 "content_hash" to true,
                 "stage_version" to true,
+                "stage_input_fingerprint" to false,
                 "outcome_status" to true,
                 "limitations_json" to true,
             ),
@@ -165,6 +166,12 @@ internal class SqliteSourceIndexSchema(
                 }
                 check(!mustBeNonNull || actualNonNull) {
                     "Source index schema $SOURCE_INDEX_SCHEMA_VERSION requires $tableName.$columnName to be non-null"
+                }
+                if (tableName == "file_stage_outcomes" && columnName == "stage_input_fingerprint") {
+                    check(!actualNonNull) {
+                        "Source index schema $SOURCE_INDEX_SCHEMA_VERSION requires " +
+                            "file_stage_outcomes.stage_input_fingerprint to be nullable"
+                    }
                 }
             }
         }

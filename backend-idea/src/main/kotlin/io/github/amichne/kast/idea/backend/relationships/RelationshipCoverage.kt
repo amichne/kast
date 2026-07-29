@@ -109,8 +109,9 @@ internal fun KastPluginBackend.flattenHierarchyRelations(
 internal fun KastPluginBackend.relationshipEvidence(
         completion: RelationshipCoverageAuthority.FamilyCompletion,
         knownMinimumCount: Int,
+        declarationFile: String,
     ): RelationshipResultEvidence {
-        val coverage = relationshipCoverageAuthority.assess(completion)
+        val coverage = relationshipCoverageAuthority.assess(completion, declarationFile)
         return when {
             completion == RelationshipCoverageAuthority.FamilyCompletion.COMPLETE &&
                 coverage is RelationshipSearchCoverage.Complete -> RelationshipResultEvidence.Complete(
@@ -139,10 +140,12 @@ internal fun KastPluginBackend.relationshipEvidence(
 internal fun KastPluginBackend.limitedReferenceEvidence(
         knownMinimumCount: Int,
         reason: ReferencePartialReason,
+        declarationFile: String,
     ): RelationshipResultEvidence.Limited {
         val authorityLimitations = when (
             val coverage = relationshipCoverageAuthority.assess(
                 RelationshipCoverageAuthority.FamilyCompletion.INCOMPLETE,
+                declarationFile,
             )
         ) {
             is RelationshipSearchCoverage.Limited -> coverage.limitations
@@ -163,6 +166,7 @@ internal fun KastPluginBackend.completeRelationshipCoverageAdmission(
         selector: KastExactSymbolSelector,
         rootKind: RelationshipRootKind,
         requiredGeneration: Long? = null,
+        knownMinimumCount: Int = 0,
     ): CompleteRelationshipCoverageAdmission {
         if (requiredGeneration != null && psiGeneration() != requiredGeneration) {
             return limitedRelationshipCoverageAdmission(RelationshipSearchLimitation.GENERATION_CHANGED)
@@ -172,6 +176,7 @@ internal fun KastPluginBackend.completeRelationshipCoverageAdmission(
         }
         val coverage = relationshipCoverageAuthority.assess(
             RelationshipCoverageAuthority.FamilyCompletion.COMPLETE,
+            selector.declarationFile,
         )
         val generation = psiGeneration()
         if (requiredGeneration != null && generation != requiredGeneration) {
@@ -183,14 +188,14 @@ internal fun KastPluginBackend.completeRelationshipCoverageAdmission(
             is RelationshipSearchCoverage.Limited ->
                 CompleteRelationshipCoverageAdmission.Limited(
                     RelationshipResultEvidence.Limited(
-                        cardinality = ResultCardinality.KnownMinimum(0),
+                        cardinality = ResultCardinality.KnownMinimum(knownMinimumCount),
                         coverage = coverage,
                     ),
                 )
             is RelationshipSearchCoverage.Resumable ->
                 CompleteRelationshipCoverageAdmission.Limited(
                     RelationshipResultEvidence.Limited(
-                        cardinality = ResultCardinality.KnownMinimum(0),
+                        cardinality = ResultCardinality.KnownMinimum(knownMinimumCount),
                         coverage = RelationshipSearchCoverage.limited(
                             RelationshipSearchLimitation.BACKEND_INCOMPLETE,
                             RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE,

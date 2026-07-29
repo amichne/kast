@@ -192,7 +192,11 @@ class NativeSemanticGraphConcurrencyTest {
                 assertTrue(failure is CancellationException, "expected cancellation, got $failure")
                 assertEquals(2, readCount.get())
                 assertEquals(
-                    setOf(io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath.parse(files.first().name)),
+                    setOf(
+                        io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath.parse(
+                            files.minBy { file -> file.virtualFile.path }.name,
+                        ),
+                    ),
                     store.semanticGraphSourcePaths(),
                 )
             }

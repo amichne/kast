@@ -3,6 +3,7 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
+import io.github.amichne.kast.indexstore.api.index.FileStageInputFingerprint
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcome
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
@@ -75,7 +76,7 @@ internal class FileStageStateReader(
         state.loadInterningTables(conn)
         val encoded = pathCodec.encodeIfInterned(path) ?: return null
         return conn.prepareStatement(
-            """SELECT content_hash, stage_version, outcome_status, limitations_json
+            """SELECT content_hash, stage_version, stage_input_fingerprint, outcome_status, limitations_json
                FROM file_stage_outcomes
                WHERE prefix_id = ? AND filename = ? AND stage = ?""",
         ).use { statement ->
@@ -89,8 +90,9 @@ internal class FileStageStateReader(
                 contentHash = FileContentHash.parse(rows.getString(1)),
                 stage = stage,
                 version = FileStageVersion.parse(rows.getString(2)),
-                status = FileStageOutcomeStatus.valueOf(rows.getString(3)),
-                limitations = defaultCacheJson.decodeFromString<List<String>>(rows.getString(4))
+                inputFingerprint = rows.getString(3)?.let(FileStageInputFingerprint::parse),
+                status = FileStageOutcomeStatus.valueOf(rows.getString(4)),
+                limitations = defaultCacheJson.decodeFromString<List<String>>(rows.getString(5))
                     .map(FileStageLimitation::valueOf),
             )
         }

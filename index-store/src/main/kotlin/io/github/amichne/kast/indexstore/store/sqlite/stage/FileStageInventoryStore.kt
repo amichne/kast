@@ -3,6 +3,7 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
+import io.github.amichne.kast.indexstore.api.index.FileStageInputFingerprint
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcome
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
@@ -119,16 +120,18 @@ internal class FileStageInventoryStore(
         contentHash: FileContentHash,
         stage: FileIndexStage,
         version: FileStageVersion,
+        inputFingerprint: FileStageInputFingerprint? = null,
     ): PendingFileStage? = synchronized(state.writeLock) {
         val outcome = reader.readOutcomeInTransaction(state.connection(), path, stage)
         if (outcome != null &&
             outcome.contentHash == contentHash &&
             outcome.version == version &&
+            outcome.inputFingerprint == inputFingerprint &&
             outcome.status != FileStageOutcomeStatus.FAILED
         ) {
             null
         } else {
-            PendingFileStage(path, contentHash, stage, version)
+            PendingFileStage(path, contentHash, stage, version, inputFingerprint)
         }
     }
 
@@ -154,6 +157,7 @@ internal class FileStageInventoryStore(
             outcome == null ||
                 outcome.contentHash != work.contentHash ||
                 outcome.version != work.version ||
+                outcome.inputFingerprint != work.inputFingerprint ||
                 outcome.status == FileStageOutcomeStatus.FAILED,
         ) { "File stage is no longer pending" }
     }
@@ -167,11 +171,13 @@ internal class FileStageInventoryStore(
         val (prefixId, filename) = pathCodec.encodeOrCreate(conn, work.path)
         conn.prepareStatement(
             """INSERT INTO file_stage_outcomes(
-                   prefix_id, filename, stage, content_hash, stage_version, outcome_status, limitations_json
-               ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                   prefix_id, filename, stage, content_hash, stage_version, stage_input_fingerprint,
+                   outcome_status, limitations_json
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(prefix_id, filename, stage) DO UPDATE SET
                    content_hash = excluded.content_hash,
                    stage_version = excluded.stage_version,
+                   stage_input_fingerprint = excluded.stage_input_fingerprint,
                    outcome_status = excluded.outcome_status,
                    limitations_json = excluded.limitations_json""",
         ).use { statement ->
@@ -180,15 +186,16 @@ internal class FileStageInventoryStore(
             statement.setString(3, work.stage.name)
             statement.setString(4, work.contentHash.value)
             statement.setString(5, work.version.value)
+            statement.setString(6, work.inputFingerprint?.value)
             statement.setString(
-                6,
+                7,
                 if (canonicalLimitations.isEmpty()) {
                     FileStageOutcomeStatus.COMPLETE.name
                 } else {
                     FileStageOutcomeStatus.LIMITED.name
                 },
             )
-            statement.setString(7, defaultCacheJson.encodeToString(canonicalLimitations.map(FileStageLimitation::name)))
+            statement.setString(8, defaultCacheJson.encodeToString(canonicalLimitations.map(FileStageLimitation::name)))
             statement.executeUpdate()
         }
     }

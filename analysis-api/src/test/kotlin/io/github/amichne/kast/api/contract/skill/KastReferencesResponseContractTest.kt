@@ -19,6 +19,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 class KastReferencesResponseContractTest {
     private val json = Json { explicitNulls = false }
@@ -66,8 +67,9 @@ class KastReferencesResponseContractTest {
         )
         fun limitedEvidence(
             limitation: RelationshipSearchLimitation,
+            knownMinimumCount: Int = 0,
         ): RelationshipResultEvidence.Limited = RelationshipResultEvidence.Limited(
-            cardinality = ResultCardinality.KnownMinimum(0),
+            cardinality = ResultCardinality.KnownMinimum(knownMinimumCount),
             coverage = RelationshipSearchCoverage.limited(limitation),
         )
         val responses: Map<String, KastReferencesResponse> = mapOf(
@@ -84,10 +86,14 @@ class KastReferencesResponseContractTest {
             "SUBJECT_IDENTITY_MISMATCH" to KastReferencesSubjectIdentityMismatchResponse(selector, subject),
             "UNSUPPORTED_SUBJECT_KIND" to KastReferencesUnsupportedSubjectKindResponse(selector, subject),
             "DEGRADED" to KastReferencesDegradedResponse(
-                selector,
-                subject,
-                KastReferencesDegradedReason.INDEX_IDENTITY_UNAVAILABLE,
-                limitedEvidence(RelationshipSearchLimitation.BACKEND_INCOMPLETE),
+                selector = selector,
+                subject = subject,
+                reason = KastReferencesDegradedReason.INDEX_IDENTITY_UNAVAILABLE,
+                evidence = limitedEvidence(
+                    RelationshipSearchLimitation.BACKEND_INCOMPLETE,
+                    knownMinimumCount = 1,
+                ),
+                references = listOf(occurrence),
             ),
             "CURSOR_STALE" to KastReferencesCursorStaleResponse(
                 selector,
@@ -120,6 +126,14 @@ class KastReferencesResponseContractTest {
                 else -> Unit
             }
             assertEquals(response, json.decodeFromString(KastReferencesResponse.serializer(), encoded))
+        }
+
+        val degraded = responses.getValue("DEGRADED") as KastReferencesDegradedResponse
+        assertEquals(listOf(occurrence), degraded.references)
+        assertThrows<IllegalArgumentException> {
+            degraded.copy(
+                evidence = limitedEvidence(RelationshipSearchLimitation.BACKEND_INCOMPLETE),
+            )
         }
     }
 }

@@ -18,6 +18,118 @@ import kotlin.io.path.readText
 
 class AnalysisDispatcherRelationshipFailureTest : AnalysisDispatcherTestSupport() {
     @Test
+    fun `limited call relationships preserve qualified records without page proof`() {
+        val subject = lookupSymbol("sample.Service.run", SymbolKind.FUNCTION, "Service.kt")
+        val related = lookupSymbol("sample.Client.call", SymbolKind.FUNCTION, "Client.kt")
+        val record = CallRelation(
+            relation = CallRelation.Kind.CALLER,
+            relatedSymbol = related.relationshipIdentity(),
+            callSite = related.location,
+            depth = 1,
+            containingSymbol = ContainingSymbolEvidence.TopLevel,
+        )
+        val delegate = ExactLookupBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            symbols = listOf(subject),
+        )
+        val backend = object : AnalysisBackend by delegate {
+            override suspend fun callRelations(query: KastCallersQuery): CallRelationsResult =
+                CallRelationsResult.Limited(
+                    evidence = limitedEvidence(1),
+                    records = listOf(record),
+                )
+        }
+
+        val result = dispatchSuccessWithBackend<KastCallersResponse>(
+            backend = backend,
+            method = "symbol/callers",
+            params = json.encodeToJsonElement(
+                KastCallersRequest.serializer(),
+                KastCallersRequest(tempDir.toString(), selector = subject.exactSelector()),
+            ),
+        )
+
+        val degraded = assertInstanceOf(KastCallersDegradedResponse::class.java, result)
+        assertEquals(listOf(record), degraded.records)
+        assertFalse("page" in json.encodeToJsonElement(KastCallersResponse.serializer(), degraded).jsonObject)
+    }
+
+    @Test
+    fun `limited implementation relationships preserve qualified records without page proof`() {
+        val subject = lookupSymbol("sample.Service", SymbolKind.INTERFACE, "Service.kt")
+        val related = lookupSymbol("sample.RealService", SymbolKind.CLASS, "RealService.kt")
+        val record = ImplementationRelation(
+            implementation = related.relationshipIdentity(),
+            declarationLocation = related.location,
+        )
+        val delegate = ExactLookupBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            symbols = listOf(subject),
+        )
+        val backend = object : AnalysisBackend by delegate {
+            override suspend fun implementationRelations(
+                query: KastImplementationsQuery,
+            ): ImplementationRelationsResult = ImplementationRelationsResult.Limited(
+                evidence = limitedEvidence(1),
+                records = listOf(record),
+            )
+        }
+
+        val result = dispatchSuccessWithBackend<KastImplementationsResponse>(
+            backend = backend,
+            method = "symbol/implementations",
+            params = json.encodeToJsonElement(
+                KastImplementationsRequest.serializer(),
+                KastImplementationsRequest(tempDir.toString(), selector = subject.exactSelector()),
+            ),
+        )
+
+        val degraded = assertInstanceOf(KastImplementationsDegradedResponse::class.java, result)
+        assertEquals(listOf(record), degraded.records)
+        assertFalse("page" in json.encodeToJsonElement(KastImplementationsResponse.serializer(), degraded).jsonObject)
+    }
+
+    @Test
+    fun `limited hierarchy relationships preserve qualified records without page proof`() {
+        val subject = lookupSymbol("sample.Service", SymbolKind.INTERFACE, "Service.kt")
+        val related = lookupSymbol("sample.RealService", SymbolKind.CLASS, "RealService.kt")
+        val record = TypeHierarchyRelation(
+            relation = TypeHierarchyRelation.Kind.SUBTYPE,
+            relatedSymbol = related.relationshipIdentity(),
+            declarationLocation = related.location,
+            depth = 1,
+        )
+        val delegate = ExactLookupBackend(
+            delegate = FakeAnalysisBackend.sample(tempDir),
+            symbols = listOf(subject),
+        )
+        val backend = object : AnalysisBackend by delegate {
+            override suspend fun hierarchyRelations(query: KastHierarchyQuery): HierarchyRelationsResult =
+                HierarchyRelationsResult.Limited(
+                    evidence = limitedEvidence(1),
+                    records = listOf(record),
+                )
+        }
+
+        val result = dispatchSuccessWithBackend<KastHierarchyResponse>(
+            backend = backend,
+            method = "symbol/hierarchy",
+            params = json.encodeToJsonElement(
+                KastHierarchyRequest.serializer(),
+                KastHierarchyRequest(
+                    workspaceRoot = tempDir.toString(),
+                    selector = subject.exactSelector(),
+                    direction = TypeHierarchyDirection.SUBTYPES,
+                ),
+            ),
+        )
+
+        val degraded = assertInstanceOf(KastHierarchyDegradedResponse::class.java, result)
+        assertEquals(listOf(record), degraded.records)
+        assertFalse("page" in json.encodeToJsonElement(KastHierarchyResponse.serializer(), degraded).jsonObject)
+    }
+
+    @Test
     fun `call relationship missing capability degrades without entering traversal`() {
         val symbol = lookupSymbol("sample.Service.run", SymbolKind.FUNCTION, "Service.kt")
         val backend = RecordingPagedRelationshipsBackend(
@@ -195,4 +307,21 @@ class AnalysisDispatcherRelationshipFailureTest : AnalysisDispatcherTestSupport(
             assertTrue(expectedLimitation.name in limitations, "$method: $limitations")
         }
     }
+
+    private fun Symbol.relationshipIdentity(): SymbolIdentity =
+        SymbolIdentity(
+            fqName = fqName,
+            kind = kind,
+            declarationFile = NormalizedPath.parse(location.filePath),
+            declarationStartOffset = NonNegativeInt(location.startOffset),
+            containingType = containingDeclaration,
+        )
+
+    private fun limitedEvidence(knownMinimumCount: Int): RelationshipResultEvidence.Limited =
+        RelationshipResultEvidence.Limited(
+            cardinality = ResultCardinality.KnownMinimum(knownMinimumCount),
+            coverage = RelationshipSearchCoverage.limited(
+                RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE,
+            ),
+        )
 }

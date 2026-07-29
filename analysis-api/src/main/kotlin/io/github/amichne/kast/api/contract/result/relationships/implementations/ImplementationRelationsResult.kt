@@ -8,5 +8,12 @@ sealed interface ImplementationRelationsResult {
 
     data class Limited(
         val evidence: RelationshipResultEvidence.Limited,
-    ) : ImplementationRelationsResult
+        val records: List<ImplementationRelation> = emptyList(),
+    ) : ImplementationRelationsResult {
+        init {
+            require(evidence.cardinality.knownMinimum() >= records.size) {
+                "Limited implementation relationship evidence must cover every returned record"
+            }
+        }
+    }
 }

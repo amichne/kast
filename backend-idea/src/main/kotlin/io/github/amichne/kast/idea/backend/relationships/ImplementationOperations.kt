@@ -149,10 +149,11 @@ internal suspend fun KastPluginBackend.implementationRelationsOperation(
                 query.selector,
                 RelationshipRootKind.TYPE,
                 requiredGeneration = generation,
+                knownMinimumCount = records.size,
             )
         ) {
             is CompleteRelationshipCoverageAdmission.Limited ->
-                ImplementationRelationsResult.Limited(commit.evidence)
+                ImplementationRelationsResult.Limited(commit.evidence, records)
             is CompleteRelationshipCoverageAdmission.Proven ->
                 relationshipContinuations.implementations(
                     continuationQuery,

@@ -13,6 +13,14 @@ value class FileContentHash private constructor(val value: String) {
     }
 }
 
+@JvmInline
+value class FileStageInputFingerprint private constructor(val value: String) {
+    companion object {
+        fun parse(value: String): FileStageInputFingerprint =
+            FileStageInputFingerprint(FileContentHash.parse(value).value)
+    }
+}
+
 enum class FileIndexStage {
     SOURCE,
     RELATIONSHIPS,
@@ -81,9 +89,13 @@ data class PendingFileStage(
     val contentHash: FileContentHash,
     val stage: FileIndexStage,
     val version: FileStageVersion,
+    val inputFingerprint: FileStageInputFingerprint? = null,
 ) {
     init {
         require(path.isNotBlank()) { "Pending file-stage path must be non-blank" }
+        require(stage == FileIndexStage.SEMANTIC_GRAPH || inputFingerprint == null) {
+            "Only semantic graph work accepts an input fingerprint"
+        }
     }
 }
 
@@ -94,9 +106,13 @@ data class FileStageOutcome(
     val version: FileStageVersion,
     val status: FileStageOutcomeStatus,
     val limitations: List<FileStageLimitation>,
+    val inputFingerprint: FileStageInputFingerprint? = null,
 ) {
     init {
         require(path.isNotBlank()) { "File-stage outcome path must be non-blank" }
+        require(stage == FileIndexStage.SEMANTIC_GRAPH || inputFingerprint == null) {
+            "Only semantic graph outcomes accept an input fingerprint"
+        }
         require((status == FileStageOutcomeStatus.LIMITED) == limitations.isNotEmpty()) {
             "Only limited file-stage outcomes carry limitations"
         }

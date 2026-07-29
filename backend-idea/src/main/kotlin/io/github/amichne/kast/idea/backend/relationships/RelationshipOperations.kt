@@ -159,10 +159,11 @@ internal suspend fun KastPluginBackend.callRelationsOperation(query: KastCallers
                         query.selector,
                         RelationshipRootKind.CALLABLE,
                         requiredGeneration = generation,
+                        knownMinimumCount = records.size,
                     )
                 ) {
                     is CompleteRelationshipCoverageAdmission.Limited ->
-                        CallRelationsResult.Limited(commit.evidence)
+                        CallRelationsResult.Limited(commit.evidence, records)
                     is CompleteRelationshipCoverageAdmission.Proven ->
                         relationshipContinuations.calls(
                             continuationQuery,
@@ -290,10 +291,11 @@ internal suspend fun KastPluginBackend.hierarchyRelationsOperation(query: KastHi
                         query.selector,
                         RelationshipRootKind.TYPE,
                         requiredGeneration = generation,
+                        knownMinimumCount = records.size,
                     )
                 ) {
                     is CompleteRelationshipCoverageAdmission.Limited ->
-                        HierarchyRelationsResult.Limited(commit.evidence)
+                        HierarchyRelationsResult.Limited(commit.evidence, records)
                     is CompleteRelationshipCoverageAdmission.Proven ->
                         relationshipContinuations.hierarchy(
                             continuationQuery,
