@@ -183,6 +183,7 @@ tasks.register<VerifyPluginXmlPresentTask>("verifyPluginXmlPresent") {
     distributionsDirectory.set(layout.buildDirectory.dir("distributions"))
     expectedPluginId.set("io.github.amichne.kast")
     rejectedPluginId.set("io.github.amichne.kast.idea")
+    forbiddenBundledJarPrefixes.set(listOf("kotlin-stdlib-", "kotlinx-coroutines-"))
 }
 
 tasks.withType<Test>().configureEach {
