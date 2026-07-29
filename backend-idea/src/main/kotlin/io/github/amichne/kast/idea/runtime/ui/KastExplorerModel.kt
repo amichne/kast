@@ -38,7 +38,6 @@ enum class KastExplorerEvidenceLayer(
     val title: String,
 ) {
     INCOMING("Incoming references"),
-    OUTGOING("Outgoing references"),
     SEMANTIC_GRAPH("Semantic graph"),
 }
 
@@ -129,3 +128,9 @@ internal class KastExplorerModel {
         }
     }
 }
+
+internal fun shouldAcceptExplorerResult(
+    result: KastExplorerResult,
+    resultSequence: Long,
+    currentSequence: Long,
+): Boolean = result is KastExplorerResult.Overview || resultSequence == currentSequence

@@ -253,7 +253,7 @@ internal class KastExplorerPanel(
     private fun request(request: KastExplorerRequest) {
         val sequence = ++requestSequence
         service.exploreAsync(request) { result ->
-            if (disposed || sequence != requestSequence) return@exploreAsync
+            if (disposed || !shouldAcceptExplorerResult(result, sequence, requestSequence)) return@exploreAsync
             model.accept(result)
             render(result)
         }

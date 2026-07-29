@@ -2,7 +2,11 @@ package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NonNegativeInt
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
+import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
+import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.nio.file.Path
@@ -30,26 +34,38 @@ private fun SqliteSourceIndexStore.inspect(
     item: KastExplorerSearchItem,
 ): KastExplorerResult.Inspection {
     val declaration = item.declaration
-    val incoming = referencesToSymbol(declaration.fqName)
-        .asSequence()
-        .take(MAX_RELATIONS_PER_LAYER)
-        .map(::incomingRelation)
-    val outgoing = referencesFromFile(declaration.filePath)
-        .asSequence()
-        .filter { reference -> reference.sourceFqName == declaration.fqName }
-        .take(MAX_RELATIONS_PER_LAYER)
-        .map(::outgoingRelation)
+    val incoming = exactIncomingRelations(declaration)
     val graph = semanticGraphRelations(workspaceRoot, item)
     return KastExplorerResult.Inspection(
         KastExplorerInspection(
             selected = item,
-            relations = (incoming + outgoing + graph)
+            relations = (incoming + graph)
                 .distinctBy { relation ->
                     Triple(relation.layer, relation.title, relation.navigationTarget)
                 }
                 .toList(),
         ),
     )
+}
+
+private fun SqliteSourceIndexStore.exactIncomingRelations(
+    declaration: DeclarationRow,
+): Sequence<KastExplorerRelation> {
+    val declarationOffset = declaration.declarationOffset ?: return emptySequence()
+    val page = generatedReferencePageToExactSymbol(
+        target = ExactReferenceTarget(
+            fqName = declaration.fqName,
+            declarationFile = NormalizedPath.parse(declaration.filePath),
+            declarationStartOffset = NonNegativeInt(declarationOffset),
+        ),
+        offset = NonNegativeInt(0),
+        maxResults = PositiveInt(MAX_RELATIONS_PER_LAYER),
+    )
+    return if (page.exactIdentityAvailable) {
+        page.page.references.asSequence().map(::incomingRelation)
+    } else {
+        emptySequence()
+    }
 }
 
 private fun incomingRelation(reference: SymbolReferenceRow): KastExplorerRelation =
@@ -63,16 +79,6 @@ private fun incomingRelation(reference: SymbolReferenceRow): KastExplorerRelatio
         navigationTarget = sourceTarget(reference.sourcePath, reference.sourceOffset),
     )
 
-private fun outgoingRelation(reference: SymbolReferenceRow): KastExplorerRelation =
-    KastExplorerRelation(
-        layer = KastExplorerEvidenceLayer.OUTGOING,
-        title = NonBlankString(reference.targetFqName),
-        detail = NonBlankString(reference.edgeKind.displayName()),
-        navigationTarget = reference.targetPath?.let { path ->
-            reference.targetOffset?.let { offset -> sourceTarget(path, offset) }
-        },
-    )
-
 private fun SqliteSourceIndexStore.semanticGraphRelations(
     workspaceRoot: Path,
     item: KastExplorerSearchItem,
@@ -83,11 +89,15 @@ private fun SqliteSourceIndexStore.semanticGraphRelations(
         workspaceRoot.relativize(declarationPath).toString(),
     )
     val snapshot = readSemanticGraph(listOf(relativePath))
+    val declarationOffset = item.declaration.declarationOffset ?: return emptySequence()
     val allSymbols = (snapshot.symbols + snapshot.boundarySymbols)
         .associateBy { symbol -> symbol.canonicalKey }
     val selectedKeys = snapshot.symbols
         .asSequence()
-        .filter { symbol -> symbol.fqName?.value == item.declaration.fqName }
+        .filter { symbol ->
+            symbol.fqName?.value == item.declaration.fqName &&
+                symbol.startOffset.value == declarationOffset
+        }
         .map { symbol -> symbol.canonicalKey }
         .toSet()
     return snapshot.relations
