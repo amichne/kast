@@ -77,6 +77,11 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     );
     let bundle_root = extract_dir.join("kast-ubuntu-debian-headless-x86_64-v9.8.7");
     assert!(bundle_root.join("bin/kast").is_file());
+    assert_eq!(
+        std::fs::read(bundle_root.join("bin/kast")).expect("kast bytes"),
+        std::fs::read(bundle_root.join("bin/kagent")).expect("kagent bytes"),
+        "kast and kagent must be byte-identical multicall entrypoints",
+    );
     assert!(
         bundle_root
             .join("lib/backends/headless-v9.8.7/kast-headless")
@@ -111,10 +116,11 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
         "-Didea.force.use.core.classloader=true"
     );
     assert_eq!(manifest["artifacts"][0]["role"], "cli");
-    assert_eq!(manifest["artifacts"][1]["role"], "headless-backend");
-    assert_eq!(manifest["artifacts"][2]["role"], "plugin");
+    assert_eq!(manifest["artifacts"][1]["role"], "agent-cli");
+    assert_eq!(manifest["artifacts"][2]["role"], "headless-backend");
+    assert_eq!(manifest["artifacts"][3]["role"], "plugin");
     assert_eq!(
         manifest["artifacts"].as_array().expect("artifacts").len(),
-        3
+        4
     );
 }

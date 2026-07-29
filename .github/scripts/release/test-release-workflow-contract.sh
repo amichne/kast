@@ -32,6 +32,12 @@ require "$build" '"setup",' 'local development refresh must invoke kast setup'
 require "$build" '"--idea-plugin",' 'local development refresh must pass the IDEA plugin'
 
 require "$release" 'for platform in linux-x64 linux-arm64 macos-x64 macos-arm64' 'release must package every supported setup platform'
+require "$release" 'cp "cli-rs/target/${{ matrix.target }}/release/kast" "$staging_dir/kagent"' 'raw CLI assets must include the byte-identical kagent entrypoint'
+require "$release" 'zip -9 -q "$GITHUB_WORKSPACE/dist/${asset_name}" kast kagent' 'raw CLI archives must publish both multicall names'
+require "$release" 'kagent-codex-${tag}.tar' 'release must publish the embedded Codex marketplace'
+require "$release" 'kagent-claude-${tag}.tar' 'release must publish the embedded Claude marketplace'
+require "$release" 'kagent-copilot-${tag}.tar' 'release must publish the embedded Copilot marketplace'
+require "$release" 'kagent-resources-provenance.json' 'release must publish embedded resource provenance'
 for platform in linux-x64 linux-arm64 macos-x64 macos-arm64; do
   require "$verify_assets" "kast-$platform-{tag}.tar.gz" "release verifier must require $platform setup bundle"
 done
