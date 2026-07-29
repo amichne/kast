@@ -71,11 +71,9 @@ internal class IdeaProjectIndexer(
 
     fun indexSourceIdentifiers(): Collection<String> {
         store.ensureSchema()
-        val (gradleProvenance, inventorySnapshot) = runIdeaReadAction {
-            val gradleModel = readGradleWorkspaceModel()
-            IdeaGradleFileProvenance.fromWorkspaceModel(gradleModel, ideaWorkspaceIdentity) to
-                inventory.snapshot(WorkspaceFileKindDomain.MIXED, gradleModel)
-        }
+        val gradleModel = runIdeaCancellableReadAction { readGradleWorkspaceModel() }
+        val gradleProvenance = IdeaGradleFileProvenance.fromWorkspaceModel(gradleModel, ideaWorkspaceIdentity)
+        val inventorySnapshot = inventory.snapshot(WorkspaceFileKindDomain.MIXED, gradleModel)
         val ownerModuleNamesByPath = referenceIndexOwnersByPath(inventorySnapshot)
         val inventoryEntries = buildFileInventoryEntries(
             ownerModuleNamesByPath = ownerModuleNamesByPath,
