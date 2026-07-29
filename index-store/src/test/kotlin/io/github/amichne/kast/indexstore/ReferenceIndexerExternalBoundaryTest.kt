@@ -1,13 +1,27 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.api.contract.ByteOffset
+import io.github.amichne.kast.api.contract.LineNumber
+import io.github.amichne.kast.api.contract.NonBlankString
+import io.github.amichne.kast.api.contract.PositiveInt
+import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryReason
+import io.github.amichne.kast.api.contract.result.SemanticGraphFileStatus
+import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
+import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
+import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureExternalizationResult
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
+import io.github.amichne.kast.indexstore.api.index.FileStageScopeCoverage
 import io.github.amichne.kast.indexstore.api.index.FileStageVersion
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
+import io.github.amichne.kast.indexstore.api.index.RelationshipIndexStatus
+import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
+import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
+import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
 import io.github.amichne.kast.indexstore.indexing.RelationshipScanResult
@@ -142,6 +156,118 @@ class ReferenceIndexerExternalBoundaryTest {
         }
     }
 
+    @Test
+    fun `externalized relationship failure becomes a usable unknown graph boundary`() {
+        val sourcePath = file("src/Source.kt")
+        val failedPath = file("src/Failed.kt")
+        val hashes = mapOf(sourcePath to hash('a'), failedPath to hash('b'))
+        val sourceGraphPath = SemanticGraphSourcePath.parse("src/Source.kt")
+        val failedGraphPath = SemanticGraphSourcePath.parse("src/Failed.kt")
+        val staleGraphPath = SemanticGraphSourcePath.parse("src/Stale.kt")
+        val sourceSymbol = semanticSymbol("source#call", "call", sourceGraphPath)
+        val failedSymbol = semanticSymbol("failed#target", "target", failedGraphPath)
+        val staleSymbol = semanticSymbol("stale#target", "stale", staleGraphPath)
+        val inbound = relation(sourceSymbol.canonicalKey.value, failedSymbol.canonicalKey.value, sourceGraphPath)
+        val staleOutgoing = relation(failedSymbol.canonicalKey.value, staleSymbol.canonicalKey.value, failedGraphPath)
+
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            store.reconcileFileInventory(inventory(hashes), versions("external-boundary-test-1"))
+            ReferenceIndexer(store).indexPendingSymbolRelationships(
+                work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS),
+                scanner = { path ->
+                    RelationshipScanResult.Indexed(
+                        contentHash = hashes.getValue(path),
+                        references = if (path == sourcePath) {
+                            listOf(reference(path, "demo.Failed", failedPath))
+                        } else {
+                            listOf(reference(path, "demo.Stale"))
+                        },
+                        declarations = if (path == failedPath) listOf(declaration(path)) else emptyList(),
+                    )
+                },
+            )
+            store.replaceSemanticGraphFiles(
+                listOf(
+                    semanticUpdate(
+                        path = sourceGraphPath,
+                        hash = "a",
+                        symbols = listOf(sourceSymbol),
+                        boundarySymbols = listOf(failedSymbol),
+                        relations = listOf(inbound),
+                    ),
+                    semanticUpdate(
+                        path = failedGraphPath,
+                        hash = "b",
+                        symbols = listOf(failedSymbol),
+                        boundarySymbols = listOf(staleSymbol),
+                        relations = listOf(staleOutgoing),
+                    ),
+                ),
+            )
+
+            store.reconcileFileInventory(inventory(hashes), versions("external-boundary-test-2"))
+            ReferenceIndexer(store).indexPendingSymbolRelationships(
+                work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS),
+                scanner = { path ->
+                    if (path == failedPath) {
+                        RelationshipScanResult.Failed(
+                            contentHash = hashes.getValue(path),
+                            code = FileStageFailureCode.PSI_UNAVAILABLE,
+                            message = "Kotlin PSI is unavailable for this file",
+                        )
+                    } else {
+                        RelationshipScanResult.Indexed(
+                            contentHash = hashes.getValue(path),
+                            references = listOf(reference(path, "demo.Failed", failedPath)),
+                            declarations = emptyList(),
+                        )
+                    }
+                },
+            )
+            val failure = requireNotNull(
+                store.fileStageOutcome(failedPath, FileIndexStage.RELATIONSHIPS)?.failure,
+            )
+
+            assertEquals(
+                FileStageFailureExternalizationResult.EXTERNALIZED,
+                store.externalizeFileStageFailure(failure.id),
+            )
+
+            assertEquals(RelationshipIndexStatus.DEGRADED, store.moduleIndexStatus(":app[main]"))
+            assertEquals(setOf(":app[main]"), store.completedModules())
+            val coverage = store.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, sourcePath)
+            assertTrue(coverage is FileStageScopeCoverage.Limited)
+            coverage as FileStageScopeCoverage.Limited
+            assertEquals(1, coverage.externalFiles)
+            assertEquals(0, coverage.failedFiles)
+            assertTrue(store.referencesFromFile(failedPath).isEmpty())
+            assertEquals(sourcePath, store.referencesToSymbol("demo.Failed").single().sourcePath)
+            assertTrue(store.searchDeclarations(NonBlankString("Failed"), PositiveInt(10)).isEmpty())
+
+            val semanticOutcome = requireNotNull(
+                store.fileStageOutcome(failedPath, FileIndexStage.SEMANTIC_GRAPH),
+            )
+            assertEquals(FileStageOutcomeStatus.EXTERNAL_BOUNDARY, semanticOutcome.status)
+            assertEquals(failure.id, requireNotNull(semanticOutcome.failure).id)
+            assertTrue(
+                store.pendingFileStages(FileIndexStage.SEMANTIC_GRAPH).none { work -> work.path == failedPath },
+            )
+
+            val graph = store.readSemanticGraph(listOf(sourceGraphPath, failedGraphPath))
+            val failedCoverage = graph.files.single { file -> file.path == failedGraphPath }
+            assertEquals(SemanticGraphFileStatus.UNKNOWN, failedCoverage.status)
+            assertEquals(failure.id.value, requireNotNull(failedCoverage.externalBoundary).failureId.value)
+            assertEquals(
+                SemanticGraphExternalBoundaryReason.PSI_UNAVAILABLE,
+                failedCoverage.externalBoundary?.reason,
+            )
+            assertEquals(listOf(sourceSymbol), graph.symbols)
+            assertEquals(listOf(failedSymbol), graph.boundarySymbols)
+            assertEquals(listOf(inbound), graph.relations)
+        }
+    }
+
     private fun inventory(hashes: Map<String, FileContentHash>): List<FileInventoryEntry> =
         hashes.map { (path, contentHash) ->
             FileInventoryEntry(
@@ -153,18 +279,48 @@ class ReferenceIndexerExternalBoundaryTest {
             )
         }
 
-    private fun versions(): FileStageVersions {
-        val version = FileStageVersion.parse("external-boundary-test-1")
+    private fun versions(label: String = "external-boundary-test-1"): FileStageVersions {
+        val version = FileStageVersion.parse(label)
         return FileStageVersions(version, version, version)
     }
 
-    private fun reference(path: String): SymbolReferenceRow =
+    private fun reference(
+        path: String,
+        targetFqName: String = "demo.Target",
+        targetPath: String? = null,
+    ): SymbolReferenceRow =
         SymbolReferenceRow(
             sourcePath = path,
             sourceOffset = 1,
-            targetFqName = "demo.Target",
-            targetPath = null,
-            targetOffset = null,
+            targetFqName = targetFqName,
+            targetPath = targetPath,
+            targetOffset = targetPath?.let { 0 },
+        )
+
+    private fun declaration(path: String): DeclarationRow =
+        DeclarationRow(
+            fqName = "demo.Failed",
+            kind = DeclarationKind.CLASS,
+            visibility = DeclarationVisibility.PUBLIC,
+            filePath = path,
+            declarationOffset = 0,
+            modulePath = ":app",
+            sourceSet = "main",
+        )
+
+    private fun relation(
+        sourceKey: String,
+        targetKey: String,
+        sourcePath: SemanticGraphSourcePath,
+    ): SemanticGraphRelation =
+        SemanticGraphRelation(
+            sourceKey = io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey.parse(sourceKey),
+            targetKey = io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey.parse(targetKey),
+            kind = SemanticGraphRelationKind.CALLS,
+            sourcePath = sourcePath,
+            startOffset = ByteOffset(0),
+            endOffset = ByteOffset(1),
+            line = LineNumber(1),
         )
 
     private fun file(relativePath: String): String {
