@@ -33,7 +33,7 @@ class KastProjectOpenAutoIndexingTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `project open reports indexing then waits for Gradle before starting reference index`() {
+    fun `project open starts reference index eagerly before Gradle project load completes`() {
         val project = projectFixture.get()
         var loadedGradleWorkspaceRoot: Path? = null
         var startedProject: Project? = null
@@ -62,9 +62,9 @@ class KastProjectOpenAutoIndexingTest {
 
         assertTrue(started)
         assertSame(project, startedProject)
-        assertEquals(listOf("backend", "gradle"), events)
+        assertEquals(listOf("backend", "index", "gradle"), events)
         gradleCompletion?.invoke(null)
-        assertEquals(listOf("backend", "gradle", "index"), events)
+        assertEquals(listOf("backend", "index", "gradle"), events)
         assertNotNull(loadedGradleWorkspaceRoot)
         assertEquals(loadedGradleWorkspaceRoot, loadedGradleWorkspaceRoot?.toAbsolutePath()?.normalize())
     }
