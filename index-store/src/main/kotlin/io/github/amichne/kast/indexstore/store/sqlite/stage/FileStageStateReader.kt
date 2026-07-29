@@ -40,6 +40,20 @@ internal class FileStageStateReader(
         coverage(files)
     }
 
+    fun fileStageScopeCoverage(
+        stage: FileIndexStage,
+        paths: Collection<String>,
+    ): FileStageScopeCoverage = synchronized(state.writeLock) {
+        val conn = state.connection()
+        val inventory = readInventoryInTransaction(conn)
+        coverage(
+            paths.distinct().map { path ->
+                inventory[path]?.let { row -> classifyInventoryFile(conn, row, stage) }
+                    ?: classifyStandaloneOutcome(readOutcomeInTransaction(conn, path, stage))
+            },
+        )
+    }
+
     internal fun readInventoryInTransaction(conn: Connection): Map<String, PersistedFileInventory> {
         state.loadInterningTables(conn)
         return conn.createStatement().use { statement ->
@@ -152,7 +166,7 @@ internal class FileStageStateReader(
 
     private fun coverage(files: List<ClassifiedFile>): FileStageScopeCoverage {
         val complete = files.count { it == ClassifiedFile.Complete }
-        if (complete == files.size) return FileStageScopeCoverage.Complete(files.size)
+        if (files.isNotEmpty() && complete == files.size) return FileStageScopeCoverage.Complete(files.size)
         return FileStageScopeCoverage.Limited(
             totalFiles = files.size,
             completeFiles = complete,

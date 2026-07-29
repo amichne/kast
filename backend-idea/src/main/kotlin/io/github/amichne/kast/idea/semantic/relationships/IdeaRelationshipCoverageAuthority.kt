@@ -5,6 +5,9 @@ import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.fileTypes.FileTypeManager
+import com.intellij.psi.search.FileTypeIndex
+import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
@@ -33,6 +36,43 @@ internal class IdeaRelationshipCoverageAuthority(
             FileIndexStage.RELATIONSHIPS,
             declarationFile,
         ) ?: return liveCoverage
+        return combine(liveCoverage, persisted)
+    }
+
+    override fun assess(
+        completion: RelationshipCoverageAuthority.FamilyCompletion,
+        searchScope: GlobalSearchScope,
+    ): RelationshipSearchCoverage {
+        val liveCoverage = assess(completion)
+        if (liveCoverage is RelationshipSearchCoverage.Limited) return liveCoverage
+        val store = sourceIndexStore ?: return liveCoverage
+        val kotlinFileType = FileTypeManager.getInstance().findFileTypeByName("Kotlin")
+            ?: return RelationshipSearchCoverage.limited(
+                RelationshipSearchLimitation.PROJECT_SCOPE_INCOMPLETE,
+                RelationshipSearchLimitation.FAMILY_SEARCH_INCOMPLETE,
+            )
+        val workspace = workspaceIdentity.workspaceIdentity
+        val candidatePaths = ApplicationManager.getApplication().runReadAction<List<String>> {
+            FileTypeIndex.getFiles(kotlinFileType, searchScope)
+                .asSequence()
+                .filter { file -> file.isValid && !file.isDirectory }
+                .map { file -> Path.of(file.path).toAbsolutePath().normalize() }
+                .filter(workspace::contains)
+                .map(Path::toString)
+                .distinct()
+                .sorted()
+                .toList()
+        }
+        return combine(
+            liveCoverage,
+            store.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, candidatePaths),
+        )
+    }
+
+    private fun combine(
+        liveCoverage: RelationshipSearchCoverage,
+        persisted: FileStageScopeCoverage,
+    ): RelationshipSearchCoverage {
         if (persisted is FileStageScopeCoverage.Complete) return liveCoverage
         persisted as FileStageScopeCoverage.Limited
         val limitations = linkedSetOf<RelationshipSearchLimitation>()

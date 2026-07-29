@@ -141,6 +141,9 @@ internal class FileStageInventoryStore(
     fun fileStageScopeCoverage(stage: FileIndexStage, path: String): FileStageScopeCoverage =
         reader.fileStageScopeCoverage(stage, path)
 
+    fun fileStageScopeCoverage(stage: FileIndexStage, paths: Collection<String>): FileStageScopeCoverage =
+        reader.fileStageScopeCoverage(stage, paths)
+
     internal fun requireCurrentWorkInTransaction(
         conn: Connection,
         work: PendingFileStage,

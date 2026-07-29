@@ -131,6 +131,9 @@ class SqliteSourceIndexStore private constructor(
     fun fileStageScopeCoverage(stage: FileIndexStage, path: String): FileStageScopeCoverage =
         fileStages.fileStageScopeCoverage(stage, path)
 
+    fun fileStageScopeCoverage(stage: FileIndexStage, paths: Collection<String>): FileStageScopeCoverage =
+        fileStages.fileStageScopeCoverage(stage, paths)
+
     fun commitSourceBatch(updates: List<SourceFileStageUpdate>) =
         fileStageBatches.commitSourceBatch(updates)
 

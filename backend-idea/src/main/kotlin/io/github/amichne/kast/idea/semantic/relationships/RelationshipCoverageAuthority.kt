@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
 
@@ -9,6 +10,11 @@ internal fun interface RelationshipCoverageAuthority {
     fun assess(
         completion: FamilyCompletion,
         declarationFile: String,
+    ): RelationshipSearchCoverage = assess(completion)
+
+    fun assess(
+        completion: FamilyCompletion,
+        searchScope: GlobalSearchScope,
     ): RelationshipSearchCoverage = assess(completion)
 
     enum class FamilyCompletion {

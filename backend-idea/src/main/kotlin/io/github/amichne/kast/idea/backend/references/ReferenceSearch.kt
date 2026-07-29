@@ -133,12 +133,12 @@ internal suspend fun KastPluginBackend.findReferencesOperation(query: ParsedRefe
                         RelationshipCoverageAuthority.FamilyCompletion.COMPLETE
                     },
                     knownMinimumCount = projection.knownCount,
-                    declarationFile = query.position.filePath.value,
+                    searchScope = plan.searchScope,
                 )
                 is ReferenceSearchCompletion.Partial -> limitedReferenceEvidence(
                     knownMinimumCount = projection.knownCount,
                     reason = completion.reason,
-                    declarationFile = query.position.filePath.value,
+                    searchScope = plan.searchScope,
                 )
             }
             val page = nextPageToken

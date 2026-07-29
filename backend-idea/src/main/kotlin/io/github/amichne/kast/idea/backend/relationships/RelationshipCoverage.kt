@@ -22,6 +22,7 @@ import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.shared.analysis.typeHierarchyDeclaration
 import org.jetbrains.kotlin.analysis.api.analyze
+import com.intellij.psi.search.GlobalSearchScope
 import java.util.concurrent.CancellationException
 import io.github.amichne.kast.idea.*
 import io.github.amichne.kast.idea.edit.*
@@ -109,9 +110,9 @@ internal fun KastPluginBackend.flattenHierarchyRelations(
 internal fun KastPluginBackend.relationshipEvidence(
         completion: RelationshipCoverageAuthority.FamilyCompletion,
         knownMinimumCount: Int,
-        declarationFile: String,
+        searchScope: GlobalSearchScope,
     ): RelationshipResultEvidence {
-        val coverage = relationshipCoverageAuthority.assess(completion, declarationFile)
+        val coverage = relationshipCoverageAuthority.assess(completion, searchScope)
         return when {
             completion == RelationshipCoverageAuthority.FamilyCompletion.COMPLETE &&
                 coverage is RelationshipSearchCoverage.Complete -> RelationshipResultEvidence.Complete(
@@ -140,12 +141,12 @@ internal fun KastPluginBackend.relationshipEvidence(
 internal fun KastPluginBackend.limitedReferenceEvidence(
         knownMinimumCount: Int,
         reason: ReferencePartialReason,
-        declarationFile: String,
+        searchScope: GlobalSearchScope,
     ): RelationshipResultEvidence.Limited {
         val authorityLimitations = when (
             val coverage = relationshipCoverageAuthority.assess(
                 RelationshipCoverageAuthority.FamilyCompletion.INCOMPLETE,
-                declarationFile,
+                searchScope,
             )
         ) {
             is RelationshipSearchCoverage.Limited -> coverage.limitations
