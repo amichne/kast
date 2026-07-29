@@ -61,9 +61,10 @@ reject "$controls" '- "false"' "set-one must not expose the old disabled value"
 
 for index in "${!flags[@]}"; do
   flag="${flags[$index]}"
+  criticality="continue-on-error: \${{ vars.${flag} == 'optional' }}"
   require "$controls" "- ${flag}" "workflow must offer ${flag}"
   require_count "$ci" \
-    "continue-on-error: vars.${flag} == 'optional'" \
+    "$criticality" \
     "${criticality_owners[$index]}" \
     "CI must apply ${flag} criticality to every owning job or step"
   reject "$ci" "if: vars.${flag}" "CI must not skip work with ${flag}"
