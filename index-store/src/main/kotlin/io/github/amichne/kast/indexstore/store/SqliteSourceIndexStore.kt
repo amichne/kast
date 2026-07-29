@@ -7,6 +7,7 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphIndexSnapshot
+import io.github.amichne.kast.indexstore.api.graph.SemanticGraphIndexSummary
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphCommitResult
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphScopeSnapshot
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphWriteResult
@@ -245,6 +246,9 @@ class SqliteSourceIndexStore private constructor(
 
     fun readSemanticGraph(filePaths: Collection<SemanticGraphSourcePath>): SemanticGraphIndexSnapshot =
         semanticGraphReader.readSemanticGraph(filePaths)
+
+    fun readSemanticGraphSummary(filePaths: Collection<SemanticGraphSourcePath>): SemanticGraphIndexSummary =
+        semanticGraphReader.readSemanticGraphSummary(filePaths)
 
     fun semanticGraphSymbolKeys(): Set<SemanticGraphSymbolKey> =
         semanticGraphReader.semanticGraphSymbolKeys()

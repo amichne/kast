@@ -78,7 +78,7 @@ private suspend fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSe
             ),
         )
     }
-    val cachedFiles = store.readSemanticGraph(selectedPaths).files.associateBy(SemanticGraphFileCoverage::path)
+    val cachedFiles = store.readSemanticGraphSummary(selectedPaths).files.associateBy(SemanticGraphFileCoverage::path)
     planned.filter { file -> file.work == null }.forEach { file ->
         val persisted = checkNotNull(cachedFiles[file.relativePath]) {
             "Committed semantic graph outcome has no graph facts for ${file.relativePath.value}"
@@ -162,7 +162,7 @@ private suspend fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSe
     coverage += removedPaths.map { path ->
         SemanticGraphFileCoverage(path, null, SemanticGraphFileStatus.REMOVED)
     }
-    val graph = store.readSemanticGraph(selectedPaths)
+    val graph = store.readSemanticGraphSummary(selectedPaths)
     if (graph.generation != expectedGeneration) {
         throw semanticGraphGenerationConflict(expectedGeneration.value, graph.generation.value)
     }
@@ -173,8 +173,8 @@ private suspend fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSe
             files = coverage.sortedBy(SemanticGraphFileCoverage::path),
             omittedExternalTargetCount = NonNegativeInt(omittedExternalTargetCount),
         ),
-        symbolCount = NonNegativeInt(graph.symbols.size),
-        edgeOccurrenceCount = NonNegativeInt(graph.relations.size),
+        symbolCount = NonNegativeInt(graph.symbolCount),
+        edgeOccurrenceCount = NonNegativeInt(graph.edgeOccurrenceCount),
     )
 }
 
