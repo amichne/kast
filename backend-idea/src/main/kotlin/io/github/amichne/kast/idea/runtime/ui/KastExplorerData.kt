@@ -96,7 +96,7 @@ private fun SqliteSourceIndexStore.semanticGraphRelations(
         .asSequence()
         .filter { symbol ->
             symbol.fqName?.value == item.declaration.fqName &&
-                symbol.startOffset.value == declarationOffset
+                declarationOffset in symbol.startOffset.value until symbol.endOffset.value
         }
         .map { symbol -> symbol.canonicalKey }
         .toSet()
@@ -105,7 +105,9 @@ private fun SqliteSourceIndexStore.semanticGraphRelations(
         .filter { relation -> relation.sourceKey in selectedKeys }
         .take(MAX_RELATIONS_PER_LAYER)
         .mapNotNull { relation ->
-            val target = allSymbols[relation.resolvedTargetKey ?: relation.targetKey] ?: return@mapNotNull null
+            val target = relation.resolvedTargetKey?.let(allSymbols::get)
+                ?: allSymbols[relation.targetKey]
+                ?: return@mapNotNull null
             KastExplorerRelation(
                 layer = KastExplorerEvidenceLayer.SEMANTIC_GRAPH,
                 title = NonBlankString(target.fqName?.value ?: target.name.value),
