@@ -5,6 +5,8 @@ description: Why Kast models Kotlin symbols, relations, coverage, and failures a
 tags: [compiler, kotlin, semantic-graph, evidence, coverage]
 code_sources:
   - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/symbol/SemanticGraphResult.kt
+  - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/docs/internal/ReadOperationDocs.kt
+  - path: backend-shared/src/main/kotlin/io/github/amichne/kast/shared/analysis/ReferenceIndexEnvironment.kt
   - path: cli-rs/src/agent/navigation/native_graph.rs
   - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt
   - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
@@ -18,6 +20,24 @@ which declaration owns a member, whether a type implements another type, and
 whether all relevant source modules were analyzed.
 
 Kast treats those facts as evidence with identity, provenance, and limits.
+
+The interactive view follows one compiler-backed request from the CLI through
+the analysis contract to persisted evidence and typed projection.
+
+<kast-view view-id="compiler-evidence" browser="true"></kast-view>
+
+## PSI, Analysis API, K2, and FIR stay behind the backend
+
+The IDEA backend uses the Program Structure Interface (PSI) to enumerate
+Kotlin elements and retain source ranges. The Kotlin Analysis API (AA) runs K2
+compiler analysis over its Front-end Intermediate Representation (FIR) to
+resolve identities, types, diagnostics, and references.
+
+Those compiler objects never cross Kast's backend contract. The backend
+converts them to provider-neutral symbols, relations, diagnostics, and source
+locations before persistence or projection. On the headless pathway,
+reference indexing also serializes access to the K2/FIR resolver because one
+analysis session cannot resolve those declarations concurrently.
 
 ## Symbols have canonical identity
 

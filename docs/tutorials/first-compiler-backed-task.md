@@ -47,6 +47,10 @@ Gradle import, IDEA/Kotlin indexing, and the Kast reference index, then rerun
 the command. If it reports a typed blocker, use the action it reports before
 continuing.
 
+`READY` proves runtime admission, not persisted graph completeness. If the
+answer uses the native graph, it should also report whether coverage is
+complete or limited.
+
 ## 2. Ask for a semantic explanation
 
 Start a Codex task with this prompt:

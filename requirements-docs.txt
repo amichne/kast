@@ -1,2 +1,2 @@
-zensical==0.0.30
+zensical==0.0.51
 mkdocs-material==9.7.6

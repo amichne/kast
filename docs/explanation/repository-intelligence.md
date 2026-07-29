@@ -1,6 +1,6 @@
 ---
 type: Explanation
-title: Repository Intelligence Architecture
+title: "Repository Intelligence: Authority, Evidence, and Certainty"
 description: Compiler-backed repository queries from exact-root admission to bounded evidence.
 tags: [architecture, repository-intelligence, kotlin, rust, evidence]
 code_sources:
@@ -11,7 +11,7 @@ code_sources:
   - path: cli-rs/src/agent/projection/repository/input.rs
 ---
 
-# Repository Intelligence Architecture
+# Repository Intelligence: Authority, Evidence, and Certainty
 
 Repository intelligence is Kast's read-only semantic router over the
 compiler-backed source index. It accepts a closed question contract, proves
@@ -25,7 +25,7 @@ ownership, type relations, calls, references, source locations, and coverage.
 
 ## Architectural contract
 
-Five invariants define the subsystem and should survive every change:
+Five invariants define the subsystem:
 
 1. One canonical workspace root owns each request.
 2. Gradle ownership and compiler coverage decide which Kotlin files may
@@ -45,24 +45,11 @@ At project scale, Kotlin produces the facts and Rust routes bounded questions
 over those facts. The Codex plugin is guidance and invocation wiring; it is not
 another semantic backend.
 
-```mermaid
-flowchart LR
-    caller["Agent or maintainer"] --> cli["kast agent repository"]
-    cli --> root["Exact-root RPC admission"]
-    root --> scope["Gradle scope and coverage"]
+The interactive component view shows the system boundaries. Each component
+opens its source-backed role; the producer and query sequences below retain the
+granular write and read contracts.
 
-    idea["IDEA Kotlin analysis"] --> model["Typed semantic graph model"]
-    model --> writer["Atomic index writer"]
-    writer --> db[("source-index.db")]
-
-    scope --> query["Closed intent router"]
-    db --> query
-    labels["Optional bound label artifact"] -. retrieval only .-> query
-
-    query --> envelope["Generation-pinned result envelope"]
-    envelope --> projector["Strict agent projection"]
-    projector --> output["TOON, JSON, or human output"]
-```
+<kast-view view-id="runtime-components" browser="true"></kast-view>
 
 The major boundary is the database, not the process boundary. The IDEA backend
 writes compiler evidence to the same workspace source index that the Rust CLI
@@ -79,20 +66,8 @@ being mistaken for compiler truth.
 `query/entrypoint.rs` resolves the RPC request against the canonical workspace
 root. Continuations bind that exact root, and repository-contained input paths
 are canonicalized before use. A token or label file created for another
-checkout is therefore not portable authority.
-
-On macOS, the canonical bootstrap remains:
-
-```console
-kast developer runtime up \
-  --workspace-root "$PWD" \
-  --backend idea \
-  --accept-indexing
-```
-
-`INDEXING` means the exact-root runtime is reachable. It is not semantic
-readiness. Operations that require complete compiler evidence must wait for
-`READY`.
+checkout is therefore not portable authority. Runtime readiness and persisted
+graph coverage remain separate facts about that root.
 
 ### Build and scope authority
 
@@ -122,15 +97,11 @@ scope.
 
 ### Compiler authority
 
-`SemanticGraphResult.kt` defines the host-neutral compiler evidence model.
-Canonical keys are overload-safe identities. Symbols carry declaration kind,
-name, owner, Kotlin path, source range, visibility, modality, origin, type
-facts, and flags such as `expect`, `actual`, and `override`.
-
-Relations identify both endpoint keys and the source occurrence. Their
-contexts distinguish facts such as a call, return type, parameter type,
-generic argument, inheritance edge, or implementation edge. External targets
-may be omitted deliberately, but that omission is counted in coverage.
+`SemanticGraphResult.kt` defines overload-safe compiler identities and
+source-located relations. Identity, ownership, type facts, and occurrence
+provenance outrank display-name or text similarity; deliberate omissions
+remain visible in coverage. [Compiler-backed evidence](compiler-evidence.md)
+describes that model in detail.
 
 ### Snapshot authority
 
@@ -181,74 +152,21 @@ sequenceDiagram
     Writer-->>Operation: generation and counts
 ```
 
-`SemanticGraphOperations.kt` hashes file text, requires analyzed diagnostics,
-extracts facts inside the IDEA read action, and returns coverage tied to the
-write generation. The operation also computes a fingerprint from the selected
-and removed paths.
-
-`SemanticGraphWriter.replaceSemanticGraphFiles` holds the store write lock and
-uses one SQL transaction. It deletes superseded occurrences, updates files and
-types, inserts boundary and authoritative symbols, repairs owner links, writes
-edge occurrences, and increments the generation before commit. Any exception
-rolls the transaction back.
-
-The persisted graph is normalized around these tables:
-
-| Table family | Evidence retained |
-| --- | --- |
-| `semantic_files` | Path, package, module, content hash, refresh state, diagnostics. |
-| `semantic_symbols` | Canonical identity, owner, kind, names, flags, types, source range. |
-| `semantic_types` and `semantic_type_edges` | Stable type facts and their typed structure. |
-| `semantic_edge_occurrences` | Source, target, relation kind, context, and occurrence range. |
-| `schema_version` | Schema identity and current source-index generation. |
-
-The store uses SQLite WAL mode and one database per exact workspace. Worktree
-overlay support may retain a repository base identity, but the active query
-still resolves one concrete database through Kast's workspace paths.
-
-## Rust module ownership
-
-The Rust implementation is split by semantic responsibility rather than CLI
-screen. `repository_intelligence.rs` composes these modules into one private
-subsystem.
-
-| Area | Responsibility | Primary sources |
-| --- | --- | --- |
-| `contract/` | Closed request, result, query syntax, label, and continuation types. | `request.rs`, `result.rs`, `label_index.rs` |
-| `coverage/` | Gradle scope, file eligibility, file states, coverage paging. | `scope.rs`, `read.rs`, `query.rs` |
-| `discovery/` | Exact-key, natural-language, regex, ranking, and ambiguity. | `resolve.rs`, `search.rs`, `regex.rs` |
-| `graph/` | Edge admission, path search, impact traversal, evidence paging. | `storage.rs`, `query.rs`, `traversal.rs`, `path.rs` |
-| `architecture/` | CSR projections, metrics, communities, cycles, bridges. | `query.rs`, `projection.rs`, `findings.rs` |
-| `context/` | Source-backed relations to docs, Gradle, schemas, workflows, Rust. | `query.rs`, `relations.rs`, `targets.rs` |
-| `query/` | Snapshot pinning, intent dispatch, status, continuations, envelope. | `entrypoint.rs`, `execution.rs`, `continuation.rs` |
-| Agent projection | Closed parse, invariant checks, output views. | `agent/projection/repository/` |
-
-Changes that cross these boundaries usually need proof at both sides. For
-example, adding an intent is not only a new algorithm: it changes request
-validation, dispatch, the canonical result, projection, CLI construction,
-protocol reference, and integration tests.
+`SemanticGraphOperations.kt` hashes the selected file text and extracts facts
+inside the IDEA read action. `SemanticGraphWriter` then replaces those files in
+one locked SQL transaction, removes superseded occurrences, repairs ownership,
+increments the shared generation, and commits. An exception rolls back both
+rows and generation. One exact workspace therefore owns one atomic persisted
+evidence snapshot.
 
 ## The request contract is closed
 
-`RepositoryQueryParams` rejects unknown fields and validates cross-field
-combinations before execution. A question can select one of six intents:
-
-| Intent | Observable question |
-| --- | --- |
-| `RESOLVE` | Which exact compiler identity matches this name or description? |
-| `PATH` | What directed semantic path connects two identities? |
-| `INCOMING_IMPACT` | Which admitted identities can reach the selected identity? |
-| `OUTGOING_IMPACT` | Which admitted identities are reachable from it? |
-| `ARCHITECTURE` | What boundary, topology, or metric finding exists in this scope? |
-| `CONTEXT_RELATIONSHIP` | Which admitted non-Kotlin artifact relates to a compiler identity? |
-
-Relations, directions, architecture projections, metrics, and context sources
-are enums rather than free-form strings. Limits are validated centrally:
-traversal depth is at most 6, result count is 1 through 500, and evidence per
-edge is 1 through 50.
-
-Regex is a discovery syntax for resolve operations. It is not a general query
-language, and its compilation failure is returned as a typed invalid query.
+`RepositoryQueryParams` rejects unknown fields and unsupported cross-field
+combinations before execution. Closed intents, relations, directions,
+projections, metrics, context sources, and central bounds make unsupported
+questions fail before they can acquire plausible output. The
+[Codex plugin reference](../reference/codex-plugin.md#repository-intelligence-beta-boundaries)
+lists the exact intents and limits.
 
 ## Query execution retains one snapshot
 
@@ -291,14 +209,11 @@ semantic answer from the conditions under which it was obtained.
 ## Certainty is a result property
 
 The query executor derives one public status from ambiguity, answer presence,
-coverage, and truncation.
-
-| Status | Meaning |
-| --- | --- |
-| `ANSWERED` | The operation returned usable answer evidence from complete compiler coverage. |
-| `AMBIGUOUS` | Discovery found multiple identities and refused to choose. |
-| `EMPTY` | No answer exists in complete coverage and execution was not truncated. |
-| `QUALIFIED_EMPTY` | No answer was found, but incomplete coverage or a bound prevents definitive absence. |
+coverage, and truncation. `ANSWERED` requires usable evidence and complete
+coverage. `AMBIGUOUS` refuses to choose among identities. `EMPTY` proves
+absence only across complete, untruncated coverage; otherwise the result is
+`QUALIFIED_EMPTY`. The reference page provides the compact
+[status contract](../reference/codex-plugin.md#result-status).
 
 Truncation and non-positive results under incomplete coverage also produce a
 qualification string. Signed continuations allow bounded graph and per-edge
@@ -311,13 +226,6 @@ generation, or occurrence position.
     `REPOSITORY_COVERAGE_INCOMPLETE` before the result envelope is built. The
     error carries the coverage limitations and exact-root index recovery.
     Partial compiler evidence cannot therefore appear as `ANSWERED`.
-
-Internally, intent executors currently return `serde_json::Value` with
-`answered`, `ambiguous`, and `truncated` markers. A shared parser requires all
-three booleans and converts their valid combinations into closed empty,
-answered, ambiguous, or ambiguous-with-answer states. Missing or malformed
-markers return `REPOSITORY_RESULT_INVALID` rather than acquiring default
-values.
 
 ## Discovery may rank, but only the compiler identifies
 
@@ -339,21 +247,12 @@ returning an apparently definitive empty corpus.
 
 ### Precomputed labels are retrieval-only
 
-A version-1 label artifact is optional and only participates in
-natural-language retrieval without an exact canonical key. Its trust boundary
-is deliberately strict:
-
-- The path must remain inside the canonical workspace and name a regular file.
-- Admission and read metadata must identify the same file.
-- The file is limited to 8 MiB and strict JSON.
-- It may contain at most 50,000 unique compiler canonical keys.
-- Each entry has 1 through 16 labels of at most 160 characters.
-- Every key must exist in the active compiler snapshot.
-- Every entry's content hash must match the compiler-indexed source file.
-
-Verified labels are appended to a retrieval field for an existing compiler
-identity. They cannot introduce symbols, edges, locations, owners, types, or
-coverage, and they are never evidence in the answer.
+A version-1 label artifact can participate in natural-language retrieval
+without an exact canonical key. It must remain inside the workspace and bind
+each entry to a current compiler identity and source content hash. Verified
+labels can extend retrieval text; they cannot introduce symbols, edges,
+locations, owners, types, coverage, or answer evidence. The reference page
+lists the exact [label limits](../reference/codex-plugin.md#label-artifact).
 
 ## Traversal preserves occurrence evidence
 
@@ -373,7 +272,7 @@ generation, coverage composition, schema version, and resume state. A token
 from a changed question or snapshot is rejected rather than approximately
 resumed.
 
-## Architecture and context are specialized projections
+## Architecture and context make different tradeoffs
 
 Architecture operations convert the admitted graph into a native compressed
 sparse row representation. Closed projections cover boundaries, hubs, strongly
@@ -385,35 +284,17 @@ applying the result limit. That is deterministic and simple, but it makes
 whole-scope memory and latency the practical ceiling for very large
 repositories.
 
-Context relationships deliberately use a different evidence class. They
-inventory Git-visible Markdown, Gradle, schema, workflow, and Rust files, then
-derive closed relations such as `DOCUMENTS`, `CONFIGURES_MODULE`,
-`IMPLEMENTS_PROTOCOL`, and `CONSUMES_SCHEMA`.
-
-Context files are contained and checked against replacement during read, but
-the current implementation reads each admitted file in full and does not
-apply a byte limit. Context relations, findings, unresolved references, and
-ambiguity records share one aggregate result budget. Admission is
-deterministic: ambiguity evidence first, then relations, unresolved
-references, and findings. Omitting any record sets `truncated: true`.
-
-Context results are not pageable. Treat the read and resumption limits as
-operating constraints when enabling broad context sources in a large
-repository.
+Context relationships are contained non-Kotlin evidence, never compiler
+authority. They derive closed relationships from Git-visible documentation,
+Gradle, schemas, workflows, and Rust sources. Full-file reads, one shared
+result budget, and no paging trade broader context for I/O and visible
+truncation.
 
 ## Bounds are part of the public contract
 
 Limits protect consumers from hidden unbounded output. They do not imply that
-every implementation has sublinear memory use.
-
-| Bound | Current contract |
-| --- | --- |
-| Traversal depth | Maximum 6 |
-| Query results | 1 through 500 |
-| Evidence occurrences per edge | 1 through 50 |
-| Coverage page size | 1 through 200 |
-| CLI continuation | At most 16,384 printable ASCII characters |
-| Label artifact | 8 MiB and 50,000 entries |
+every implementation has sublinear memory use. The exact values belong in the
+[reference](../reference/codex-plugin.md#bounds-and-resumption).
 
 Some operations still load all admitted nodes or occurrences before truncating
 the response. Discovery, neighbor-term enrichment, architecture projections,
@@ -421,55 +302,33 @@ and traversal storage are the main hotspots. Optimize those only with measured
 repository evidence, because streaming changes deterministic ordering,
 ambiguity detection, topology algorithms, and continuation semantics.
 
-## Failure classes identify the broken authority
+## Typed failures identify the broken authority
 
-Typed error codes are intended to route recovery instead of exposing a generic
-empty result.
+A typed failure identifies whether root containment, Gradle scope, graph
+coverage, SQLite admission, snapshot stability, a continuation, a label
+artifact, or a context read failed. It must not collapse that failure into an
+empty result. Use the [failure-family reference](../reference/codex-plugin.md#failure-families)
+to classify it, then follow [Troubleshoot Kast](../how-to/troubleshoot.md) for
+recovery.
 
-| Error family | Broken authority |
-| --- | --- |
-| `REPOSITORY_WORKSPACE_*` | Canonical root or workspace containment. |
-| `INVALID_REPOSITORY_SCOPE` / `AMBIGUOUS_REPOSITORY_SCOPE` | Gradle project or source-set identity. |
-| `GRAPH_COVERAGE_*` | File inventory, semantic coverage, or generation stability. |
-| `REPOSITORY_INDEX_*` | SQLite availability, schema, or required semantic tables. |
-| `REPOSITORY_QUERY_UNSTABLE` | Coverage and execution could not pin one generation. |
-| `*_REPOSITORY_CONTINUATION` | Token schema, signature, root, query, or snapshot binding. |
-| `*_REPOSITORY_LABEL_INDEX` | Label containment, schema, size, identity, or hash binding. |
-| `REPOSITORY_CONTEXT_*` | Context file admission, read, or replacement race. |
+## Tradeoffs and current ceilings
 
-The error code should identify the failed authority, while the message and
-remedy should tell an agent what to inspect or rerun. A filesystem path or SQL
-exception without a recovery action is an AXI defect, even when it fails
-closed.
+Repository intelligence retains several visible implementation ceilings:
 
-## Current limitations
+1. Per-intent payloads remain dynamic even though shared result state fails
+   closed.
+2. Bounded output can still require whole-graph or full-file work before
+   truncation.
+3. SQLite generation pinning prevents mixed persisted snapshots, but source
+   files can still move around that transaction.
+4. Path-and-offset identities make moved declarations invalidate
+   continuations and label artifacts.
+5. Compiler type extraction can fall back to normalized source text, and file
+   replacement does not yet prune every orphaned global type row.
 
-The following boundaries are intentional documentation of current behavior,
-not promises of future implementation:
-
-1. Operation-specific intent fields remain dynamic JSON even though the shared
-   state markers now cross a typed, fail-closed boundary.
-2. Context reads have no byte ceiling and context results cannot resume.
-3. Several result-bounded operations materialize the admitted graph before
-   truncating output.
-4. Question, canonical-key, and module strings are validated for shape but do
-   not all have explicit length ceilings.
-5. Source content hashes are read before the query transaction; generation
-   pinning protects persisted rows, but there is no final filesystem
-   revalidation after every query.
-6. Some unavailable-database coverage errors still lack the same structured
-   remedy as missing semantic-table failures.
-7. Class and callable canonical keys include source path and offset; ordinary
-   local keys are path-, offset-, and kind-based. Moving declarations can
-   invalidate continuations and label artifacts even when display names stay
-   the same.
-8. Type extraction can fall back to normalized source text when compiler type
-   analysis throws, and file replacement does not currently prune orphaned
-   rows from the global semantic type table.
-
-These limits should stay visible in review and release evidence. A benchmark
-can prove performance and answer quality for its frozen corpus; it does not
-erase a known certainty or recovery gap.
+These ceilings shape certainty and performance. Streaming or paging would
+also change deterministic ordering, ambiguity detection, topology, and
+continuation semantics, so measured evidence must justify that trade.
 
 ## Continue with maintainer operations
 

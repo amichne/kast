@@ -9,6 +9,7 @@ edit_uri = "edit/main/docs"
 docs_dir = "docs"
 site_dir = "site"
 copyright = "Copyright &copy; 2026 amichne"
+extra_css = ["stylesheets/extra.css"]
 nav = [
   { "Start" = "index.md" },
   { "Tutorials" = [{ "Your first compiler-backed task" = "tutorials/first-compiler-backed-task.md" }] },

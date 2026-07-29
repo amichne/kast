@@ -6,7 +6,7 @@ tags: [cli, reference, commands, output]
 code_sources:
   - path: cli-rs/src/interface/cli/root.rs
   - path: cli-rs/src/main.rs
-  - path: cli-rs/protocol/source/commands.yaml
+  - path: cli-rs/protocol/source/commands.json
 ---
 
 # CLI Reference
@@ -21,10 +21,14 @@ inspection, and agent-facing semantic operations.
 | `kast help [topic...]` | Browse the command tree and scoped help. | Everyone |
 | `kast version` | Print the packaged CLI version. | Everyone |
 | `kast context` | Print compact context for the current workspace. | Agents and diagnostics |
+| `kast config` | Inspect or update workspace-scoped configuration. | Users and diagnostics |
 | `kast setup` | Install or refresh one verified release from a bundle. | Installer and release tooling |
 | `kast ready` | Verify readiness for an agent, Kotlin, release, or machine task. | Users and agents |
+| `kast start` | Start or resume the workspace backend and indexing. | Users and agents |
 | `kast status` | Report current workspace runtime status. | Users and diagnostics |
+| `kast stop` | Stop indexing and the workspace backend. | Users and agents |
 | `kast demo` | Explore a guided semantic story in a Kotlin repository. | Evaluators and developers |
+| `kast rpc` | Send one JSON-RPC request through the canonical machine surface. | Integrations and diagnostics |
 | `kast agent` | Run typed, pipe-friendly semantic operations. | Codex and other agent tooling |
 | `kast developer` | Run development and release-engineering commands. | Kast contributors |
 
@@ -70,6 +74,13 @@ are no separate public update, repair, or uninstall command families.
 ## Readiness targets
 
 `kast ready --for <target>` accepts `agent`, `kotlin`, `release`, or `machine`.
-The default is `agent`. A readiness response can include exact-root evidence,
-limitations, and next actions; it is stronger than checking whether a process
-exists.
+The default is `agent`. These targets validate task and installation
+prerequisites; they do not prove persisted graph completeness. Use
+`kast --output json status --workspace-root <path> --backend <name>` to inspect
+`selected.ready` and its typed runtime limitations.
+
+Runtime status does not report graph coverage.
+`kast agent graph --operation summary` reports the retained generation and
+graph cardinality, while repository and relationship operations carry
+scope-specific coverage. Use `--fields coverage` or `--explain` on the relevant
+operation before making a completeness claim.

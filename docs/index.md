@@ -12,11 +12,13 @@ flowchart LR
     result --> task
 ```
 
+## Choose a reader path
+
 Choose the page that matches what you need now.
 
 <div class="grid cards" markdown>
 
--   :octicons-rocket-24:{ .lg .middle } **Learn the workflow**
+-   :octicons-rocket-24:{ .lg .middle } **Learn by doing**
 
     ---
 
@@ -25,7 +27,7 @@ Choose the page that matches what you need now.
 
     [:octicons-arrow-right-24: Your first compiler-backed task](tutorials/first-compiler-backed-task.md)
 
--   :octicons-tools-24:{ .lg .middle } **Do a task**
+-   :octicons-tools-24:{ .lg .middle } **Complete a task**
 
     ---
 
@@ -34,7 +36,7 @@ Choose the page that matches what you need now.
 
     [:octicons-arrow-right-24: Browse the how-to guides](how-to/explore-kotlin-code.md)
 
--   :octicons-book-24:{ .lg .middle } **Look something up**
+-   :octicons-book-24:{ .lg .middle } **Look up facts**
 
     ---
 
@@ -43,7 +45,7 @@ Choose the page that matches what you need now.
 
     [:octicons-arrow-right-24: CLI reference](reference/cli.md)
 
--   :octicons-light-bulb-24:{ .lg .middle } **Understand the system**
+-   :octicons-light-bulb-24:{ .lg .middle } **Understand why**
 
     ---
 

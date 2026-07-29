@@ -1,6 +1,6 @@
 ---
 type: How-to Guide
-title: Troubleshoot Kast
+title: How to Troubleshoot Kast
 description: Diagnose setup, exact-root runtime, indexing, and semantic evidence failures without editing Kast state by hand.
 tags: [troubleshooting, setup, idea, indexing, runtime]
 code_sources:
@@ -9,7 +9,7 @@ code_sources:
   - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaIndexSemanticAdmission.kt
 ---
 
-# Troubleshoot Kast
+# How to Troubleshoot Kast
 
 Start with the visible phase that failed. Kast separates installation,
 workspace routing, runtime readiness, and semantic evidence so one recovery
@@ -23,8 +23,8 @@ action does not have to guess at all four.
 | `IDEA_VERSION_UNSUPPORTED` | Check the product build | Use IntelliJ IDEA 2026.2/build 262 or Android Studio 2026.1.2/build 261. |
 | `IDEA_HOST_AMBIGUOUS` | Check running processes and installed bundles | Set `runtime.ideaLaunch.command` to the exact supported app. |
 | `IDE_PROFILE_AMBIGUOUS` | Check supported JetBrains profiles | Rerun setup with `--idea-plugins-dir` for the selected host profile. |
-| IDEA runtime is unavailable | Run `kast ready --for kotlin` from the exact root | Let Kast background-open the project; do not start a duplicate IDE process. |
-| Runtime reports indexing | Wait for Gradle, IDEA/Kotlin, and Kast indexing | Retry `kast ready --for kotlin`. |
+| IDEA runtime is unavailable | Run `kast status --backend idea` from the exact root | Run `kast start --backend idea --accept-indexing`; do not start a duplicate IDE process. |
+| Runtime reports indexing | Wait for Gradle, IDEA/Kotlin, and Kast indexing | Retry `kast status --backend idea`. |
 | Runtime reports degraded | Read its single actionable cause | Repair the named Gradle, Kotlin admission, or reference-index failure. |
 | Kotlin source modules are unavailable | Check the IDE project model and SDK | Repair the IDE/Gradle model, then reopen the project. |
 | Relationships are limited | Read the result's coverage and next action | Resume or narrow the query; do not treat a partial result as exhaustive. |
@@ -53,13 +53,17 @@ or installed artifacts by hand.
 Run these read-only checks from the intended workspace:
 
 ```console
-kast status
-kast ready --for kotlin
+kast --output json status \
+  --workspace-root "$PWD" \
+  --backend idea
 ```
 
-`status` describes the current workspace runtime. `ready` evaluates whether
-that runtime is suitable for the requested task and reports typed limitations
-such as indexing, missing source modules, or an unprepared workspace.
+Use `--backend headless` on Linux. `selected.ready` reports runtime readiness.
+Runtime status does not report graph coverage. Rerun the blocked repository or
+relationship operation with `--explain` and inspect its coverage and
+limitations. A runtime can be `READY` while that result remains incomplete; in
+that case, refresh only the affected files and retain the limitation until
+coverage is complete.
 
 Kast progress and success are silent. It emits one deduplicated notification
 for an actionable terminal Kast failure. Git, shallow-clone, IDE, and
