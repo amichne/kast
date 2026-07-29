@@ -2,6 +2,7 @@ package io.github.amichne.kast.api.validation
 
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.*
+import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryFailureId
 import io.github.amichne.kast.api.protocol.*
 import java.nio.file.FileSystems
 
@@ -117,6 +118,7 @@ data class ParsedApplyEditsQuery(
 
 data class ParsedRefreshQuery(
     val filePaths: List<NormalizedPath>,
+    val externalFailureIds: List<SemanticGraphExternalBoundaryFailureId>,
 )
 
 data class ParsedFileOutlineQuery(
@@ -280,7 +282,17 @@ fun ApplyEditsQuery.parsed(): ParsedApplyEditsQuery = validationBoundary {
 }
 
 fun RefreshQuery.parsed(): ParsedRefreshQuery = validationBoundary {
-    ParsedRefreshQuery(filePaths = filePaths.map(NormalizedPath::parse))
+    require(filePaths.isEmpty() || externalFailureIds.isEmpty()) {
+        "Refresh file paths and external failure IDs are mutually exclusive"
+    }
+    val parsedFailureIds = externalFailureIds.map(SemanticGraphExternalBoundaryFailureId::parse)
+    require(parsedFailureIds.distinct().size == parsedFailureIds.size) {
+        "External failure IDs must be unique"
+    }
+    ParsedRefreshQuery(
+        filePaths = filePaths.map(NormalizedPath::parse),
+        externalFailureIds = parsedFailureIds,
+    )
 }
 
 fun FileOutlineQuery.parsed(): ParsedFileOutlineQuery = validationBoundary {

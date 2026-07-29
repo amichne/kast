@@ -44,7 +44,7 @@ class ExternalFailureRefreshTest {
         SqliteSourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             store.reconcileFileInventory(
-                inventory = listOf(
+                entries = listOf(
                     FileInventoryEntry(
                         path = failedPath.toString(),
                         lastModifiedMillis = 1,
@@ -72,7 +72,11 @@ class ExternalFailureRefreshTest {
             KastPluginBackend(
                 project = projectFixture.get(),
                 workspaceRoot = workspaceRoot,
-                limits = ServerLimits(),
+                limits = ServerLimits(
+                    maxResults = 500,
+                    requestTimeoutMillis = 30_000,
+                    maxConcurrentRequests = 4,
+                ),
                 semanticGraphStore = store,
             ).use { backend ->
                 val first = backend.refresh(
@@ -90,6 +94,10 @@ class ExternalFailureRefreshTest {
                         RefreshExternalFailureStatus.NOT_FOUND,
                     ),
                     first.externalFailureOutcomes.map { it.status },
+                )
+                assertEquals(
+                    listOf(failureId, missingFailureId),
+                    first.externalFailureOutcomes.map { it.failureId.value },
                 )
                 assertEquals(
                     listOf(RefreshExternalFailureStatus.ALREADY_EXTERNAL),

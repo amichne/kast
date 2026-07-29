@@ -9,6 +9,14 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class RefreshQuery(
-    @DocField(description = "Absolute paths of files to refresh. Empty for a full workspace refresh.", defaultValue = "emptyList()")
+    @DocField(
+        description = "Absolute paths of files to refresh. Empty with no external failure IDs for a full workspace refresh.",
+        defaultValue = "emptyList()",
+    )
     val filePaths: List<String> = emptyList(),
+    @DocField(
+        description = "Failure IDs to accept as unknown external graph boundaries. Mutually exclusive with filePaths.",
+        defaultValue = "emptyList()",
+    )
+    val externalFailureIds: List<String> = emptyList(),
 )

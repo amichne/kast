@@ -2482,6 +2482,10 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/SemanticGraphDiagnosticEvidence"
+        externalBoundary:
+          anyOf:
+            - "$ref": "#/components/schemas/SemanticGraphExternalBoundary"
+            - type: "null"
       additionalProperties: false
       required:
         - path
@@ -2495,6 +2499,7 @@ components:
         - REFRESHED
         - CACHED
         - REMOVED
+        - UNKNOWN
     SemanticGraphDiagnosticEvidence:
       type: object
       properties:
@@ -2523,6 +2528,23 @@ components:
     LineNumber:
       type: integer
       format: int32
+    SemanticGraphExternalBoundary:
+      type: object
+      properties:
+        failureId:
+          "$ref": "#/components/schemas/SemanticGraphExternalBoundaryFailureId"
+        reason:
+          "$ref": "#/components/schemas/SemanticGraphExternalBoundaryReason"
+      additionalProperties: false
+      required:
+        - failureId
+        - reason
+    SemanticGraphExternalBoundaryFailureId:
+      type: string
+    SemanticGraphExternalBoundaryReason:
+      type: string
+      enum:
+        - PSI_UNAVAILABLE
     NonNegativeInt:
       type: integer
       format: int32
@@ -2963,6 +2985,10 @@ components:
           type: array
           items:
             type: string
+        externalFailureIds:
+          type: array
+          items:
+            type: string
       additionalProperties: false
     RefreshResult:
       type: object
@@ -2981,6 +3007,10 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/SemanticAdmissionStatus"
+        externalFailureOutcomes:
+          type: array
+          items:
+            "$ref": "#/components/schemas/RefreshExternalFailureOutcome"
         semanticOutcome:
           "$ref": "#/components/schemas/SemanticAnalysisOutcome"
         requestedFileCount:
@@ -3066,6 +3096,23 @@ components:
         - PENDING
         - FAILED
         - NOT_APPLICABLE
+    RefreshExternalFailureOutcome:
+      type: object
+      properties:
+        failureId:
+          "$ref": "#/components/schemas/SemanticGraphExternalBoundaryFailureId"
+        status:
+          "$ref": "#/components/schemas/RefreshExternalFailureStatus"
+      additionalProperties: false
+      required:
+        - failureId
+        - status
+    RefreshExternalFailureStatus:
+      type: string
+      enum:
+        - EXTERNALIZED
+        - ALREADY_EXTERNAL
+        - NOT_FOUND
     FileOperation.CreateFile:
       type: object
       properties:

@@ -44,6 +44,7 @@ import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.DiagnosticSeverityCounts
 import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.RefreshExternalFailureOutcome
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.result.SymbolResult
@@ -234,6 +235,7 @@ class DocFieldCoverageTest {
         "ApplyEditsResult" to ApplyEditsResult.serializer(),
         "RefreshQuery" to RefreshQuery.serializer(),
         "RefreshResult" to RefreshResult.serializer(),
+        "RefreshExternalFailureOutcome" to RefreshExternalFailureOutcome.serializer(),
         "SemanticAdmissionStatus" to SemanticAdmissionStatus.serializer(),
 
         // FileOperation sealed hierarchy subtypes
