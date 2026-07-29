@@ -62,6 +62,15 @@ internal fun preferExactCurrentSymbol(
     }
 }
 
+internal fun explorerSelectionIndex(
+    items: List<KastExplorerSearchItem>,
+    current: KastCurrentSymbol?,
+): Int? = if (current == null) {
+    items.indices.firstOrNull()
+} else {
+    items.indexOfFirst { item -> item.navigationTarget == current.navigationTarget }.takeIf { it >= 0 }
+}
+
 enum class KastExplorerEvidenceLayer(
     val title: String,
 ) {

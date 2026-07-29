@@ -225,12 +225,13 @@ internal class KastExplorerPanel(
         })
     }
 
-    private fun search() {
+    private fun search(current: KastCurrentSymbol? = null) {
         val request = KastExplorerRequest.Search.parse(searchField.text)
         if (request == null) {
             results.emptyText.text = "Enter a symbol name"
             return
         }
+        preferredCurrentSymbol = current
         results.emptyText.text = "Searching persistent FTS…"
         searchButton.isEnabled = false
         request(request)
@@ -253,9 +254,8 @@ internal class KastExplorerPanel(
             detailHint.text = "Place the caret inside a named Kotlin declaration."
             return
         }
-        preferredCurrentSymbol = current
         searchField.text = current.fqName.value
-        search()
+        search(current)
     }
 
     private fun request(request: KastExplorerRequest) {
@@ -298,10 +298,12 @@ internal class KastExplorerPanel(
             clearInspection()
             return
         }
-        val selectedIndex = current
-            ?.let { preferred -> exactItems.indexOfFirst { item -> item.navigationTarget == preferred.navigationTarget } }
-            ?.takeIf { index -> index >= 0 }
-            ?: 0
+        val selectedIndex = explorerSelectionIndex(exactItems, current)
+        if (selectedIndex == null) {
+            clearInspection()
+            detailHint.text = "The current declaration is not available in the persistent index."
+            return
+        }
         results.selectedIndex = selectedIndex
     }
 
