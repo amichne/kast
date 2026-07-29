@@ -138,6 +138,20 @@ class KastExplorerModelTest {
         )
     }
 
+    @Test
+    fun `overview refreshes once on ready without invalidating interactive requests`() {
+        assertTrue(shouldRefreshExplorerOverview(KastBackendUiState.INDEXING, KastBackendUiState.READY))
+        assertFalse(shouldRefreshExplorerOverview(KastBackendUiState.READY, KastBackendUiState.READY))
+        assertEquals(4, nextExplorerRequestSequence(KastExplorerRequest.Overview, 4))
+        assertEquals(
+            5,
+            nextExplorerRequestSequence(
+                KastExplorerRequest.Search(NonBlankString("GraphExplorer")),
+                4,
+            ),
+        )
+    }
+
     private fun declaration(
         fqName: String,
         fileName: String,
