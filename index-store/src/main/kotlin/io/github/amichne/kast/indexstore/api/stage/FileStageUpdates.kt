@@ -6,6 +6,7 @@ import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.PendingFileStage
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
@@ -45,6 +46,26 @@ data class RelationshipFileStageUpdate(
         require(declarations.all { declaration -> declaration.filePath == work.path }) {
             "Every declaration must originate in the pending file"
         }
+    }
+}
+
+data class FileStageFailureUpdate(
+    val work: PendingFileStage,
+    val scannedContentHash: FileContentHash,
+    val code: FileStageFailureCode,
+    val message: String,
+) {
+    init {
+        require(work.stage == FileIndexStage.RELATIONSHIPS) {
+            "Relationship failure requires RELATIONSHIPS work"
+        }
+        require(scannedContentHash == work.contentHash) {
+            "Failure content hash must match pending work"
+        }
+        require(message.isNotBlank() && message == message.trim() && message.none(Char::isISOControl)) {
+            "Failure message must be non-blank, trimmed, and printable"
+        }
+        require(message.length <= 512) { "Failure message must be at most 512 characters" }
     }
 }
 

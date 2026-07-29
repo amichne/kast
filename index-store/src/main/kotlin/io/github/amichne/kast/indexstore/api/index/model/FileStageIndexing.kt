@@ -1,5 +1,7 @@
 package io.github.amichne.kast.indexstore.api.index
 
+import java.util.UUID
+
 @JvmInline
 value class FileContentHash private constructor(val value: String) {
     companion object {
@@ -78,10 +80,47 @@ enum class FileStageLimitation {
     UNRESOLVED_RELATIONSHIP,
 }
 
+@JvmInline
+value class FileStageFailureId private constructor(val value: String) {
+    companion object {
+        fun create(): FileStageFailureId = FileStageFailureId(UUID.randomUUID().toString())
+
+        fun parse(value: String): FileStageFailureId {
+            val parsed = UUID.fromString(value)
+            require(parsed.toString() == value) { "File-stage failure ID must be a canonical UUID" }
+            return FileStageFailureId(value)
+        }
+    }
+}
+
+enum class FileStageFailureCode {
+    PSI_UNAVAILABLE,
+}
+
+data class FileStageFailure(
+    val id: FileStageFailureId,
+    val code: FileStageFailureCode,
+    val message: String,
+) {
+    init {
+        require(message.isNotBlank() && message == message.trim() && message.none(Char::isISOControl)) {
+            "File-stage failure message must be non-blank, trimmed, and printable"
+        }
+        require(message.length <= 512) { "File-stage failure message must be at most 512 characters" }
+    }
+}
+
+enum class FileStageFailureExternalizationResult {
+    EXTERNALIZED,
+    ALREADY_EXTERNAL,
+    NOT_FOUND,
+}
+
 enum class FileStageOutcomeStatus {
     COMPLETE,
     LIMITED,
     FAILED,
+    EXTERNAL_BOUNDARY,
 }
 
 data class PendingFileStage(
@@ -107,6 +146,7 @@ data class FileStageOutcome(
     val status: FileStageOutcomeStatus,
     val limitations: List<FileStageLimitation>,
     val inputFingerprint: FileStageInputFingerprint? = null,
+    val failure: FileStageFailure? = null,
 ) {
     init {
         require(path.isNotBlank()) { "File-stage outcome path must be non-blank" }
@@ -115,6 +155,12 @@ data class FileStageOutcome(
         }
         require((status == FileStageOutcomeStatus.LIMITED) == limitations.isNotEmpty()) {
             "Only limited file-stage outcomes carry limitations"
+        }
+        require(
+            (status == FileStageOutcomeStatus.FAILED ||
+                status == FileStageOutcomeStatus.EXTERNAL_BOUNDARY) == (failure != null),
+        ) {
+            "Failed and external-boundary outcomes require failure evidence"
         }
     }
 }

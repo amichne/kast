@@ -44,10 +44,23 @@ impl WorkspaceIndexFixture {
                     stage_version TEXT NOT NULL,
                     stage_input_fingerprint TEXT,
                     outcome_status TEXT NOT NULL
-                        CHECK(outcome_status IN ('COMPLETE','LIMITED','FAILED')),
+                        CHECK(outcome_status IN ('COMPLETE','LIMITED','FAILED','EXTERNAL_BOUNDARY')),
                     limitations_json TEXT NOT NULL,
+                    failure_id TEXT,
+                    failure_code TEXT
+                        CHECK(failure_code IS NULL OR failure_code IN ('PSI_UNAVAILABLE')),
+                    failure_message TEXT,
+                    CHECK(
+                        (outcome_status IN ('COMPLETE','LIMITED')
+                            AND failure_id IS NULL AND failure_code IS NULL AND failure_message IS NULL)
+                        OR
+                        (outcome_status IN ('FAILED','EXTERNAL_BOUNDARY')
+                            AND failure_id IS NOT NULL AND failure_code IS NOT NULL AND failure_message IS NOT NULL)
+                    ),
                     PRIMARY KEY(prefix_id, filename, stage)
                 );
+                CREATE UNIQUE INDEX idx_file_stage_outcomes_failure_id
+                    ON file_stage_outcomes(failure_id) WHERE failure_id IS NOT NULL;
                 CREATE TABLE file_metadata (
                     prefix_id INTEGER NOT NULL,
                     filename TEXT NOT NULL,

@@ -1,14 +1,15 @@
 package io.github.amichne.kast.indexstore.indexing
 
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.index.PendingFileStage
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
+import io.github.amichne.kast.indexstore.api.stage.FileStageFailureUpdate
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.util.concurrent.Callable
-import java.util.concurrent.CancellationException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.ExecutionException
 import java.util.concurrent.Executors
@@ -16,12 +17,31 @@ import java.util.concurrent.atomic.AtomicInteger
 
 private const val DEFAULT_REFERENCE_BATCH_SIZE = 50
 
-data class RelationshipScanResult(
-    val contentHash: FileContentHash,
-    val references: List<SymbolReferenceRow>,
-    val declarations: List<DeclarationRow>,
-    val limitations: List<FileStageLimitation> = emptyList(),
-)
+sealed interface RelationshipScanResult {
+    val contentHash: FileContentHash
+
+    data class Indexed(
+        override val contentHash: FileContentHash,
+        val references: List<SymbolReferenceRow>,
+        val declarations: List<DeclarationRow>,
+        val limitations: List<FileStageLimitation> = emptyList(),
+    ) : RelationshipScanResult
+
+    data class Failed(
+        override val contentHash: FileContentHash,
+        val code: FileStageFailureCode,
+        val message: String,
+    ) : RelationshipScanResult
+
+    companion object {
+        operator fun invoke(
+            contentHash: FileContentHash,
+            references: List<SymbolReferenceRow>,
+            declarations: List<DeclarationRow>,
+            limitations: List<FileStageLimitation> = emptyList(),
+        ): RelationshipScanResult = Indexed(contentHash, references, declarations, limitations)
+    }
+}
 
 /**
  * Batch engine for rebuilding `symbol_references`.
@@ -93,7 +113,11 @@ class ReferenceIndexer(
                 val scanned = scanBatch(batch, { pending -> scanner(pending.path) }, isCancelled, executor)
                 if (isCancelled()) break
                 val updates = scanned.mapNotNull { (pending, result) ->
-                    if (result.contentHash != pending.contentHash) return@mapNotNull null
+                    if (result !is RelationshipScanResult.Indexed ||
+                        result.contentHash != pending.contentHash
+                    ) {
+                        return@mapNotNull null
+                    }
                     RelationshipFileStageUpdate(
                         work = pending,
                         scannedContentHash = result.contentHash,
@@ -102,8 +126,21 @@ class ReferenceIndexer(
                         limitations = result.limitations,
                     )
                 }
-                if (updates.isEmpty()) continue
-                store.commitRelationshipBatch(updates)
+                val failures = scanned.mapNotNull { (pending, result) ->
+                    if (result !is RelationshipScanResult.Failed ||
+                        result.contentHash != pending.contentHash
+                    ) {
+                        return@mapNotNull null
+                    }
+                    FileStageFailureUpdate(
+                        work = pending,
+                        scannedContentHash = result.contentHash,
+                        code = result.code,
+                        message = result.message,
+                    )
+                }
+                if (updates.isEmpty() && failures.isEmpty()) continue
+                store.commitRelationshipBatch(updates, failures)
                 if (isCancelled()) break
                 onFilesIndexed(updates.map { update -> update.work.path })
             }
@@ -147,12 +184,7 @@ class ReferenceIndexer(
         } else {
             batch.mapNotNull { input ->
                 if (isCancelled()) return@mapNotNull null
-                try {
-                    input to scanner(input)
-                } catch (error: Exception) {
-                    if (error.isCancellation()) throw error
-                    null
-                }
+                input to scanner(input)
             }
         }
 
@@ -160,8 +192,8 @@ class ReferenceIndexer(
      * Scans [batch] files concurrently using a fixed thread pool of size [parallelism].
      * Thread names are prefixed with `"kast-ref-indexer-"`.
      *
-     * Non-cancellation exceptions from [scanner] are swallowed (file is skipped).
-     * Cancellation exceptions are rethrown to the caller.
+     * Scanner failures are rethrown to the caller. Expected file-local failures
+     * must be returned as [RelationshipScanResult.Failed].
      */
     private fun <K, T> scanBatchParallel(
         batch: List<K>,
@@ -173,12 +205,7 @@ class ReferenceIndexer(
             executor.submit(
                 Callable<Pair<K, T>?> {
                     if (isCancelled()) return@Callable null
-                    try {
-                        input to scanner(input)
-                    } catch (error: Exception) {
-                        if (error.isCancellation()) throw error
-                        null
-                    }
+                    input to scanner(input)
                 },
             )
         }
@@ -186,10 +213,7 @@ class ReferenceIndexer(
             try {
                 future.get()
             } catch (e: ExecutionException) {
-                val cause = e.cause ?: return@mapNotNull null
-                if (cause.isCancellation()) throw cause
-                if (cause !is Exception) throw cause
-                null
+                throw checkNotNull(e.cause) { "Parallel scan failed without a cause" }
             } catch (e: InterruptedException) {
                 Thread.currentThread().interrupt()
                 throw InterruptedException("Interrupted while awaiting parallel scan result")
@@ -206,9 +230,4 @@ class ReferenceIndexer(
             }
         }
     }
-
-    private fun Throwable.isCancellation(): Boolean =
-        this is CancellationException ||
-            this is InterruptedException ||
-            javaClass.name == "com.intellij.openapi.progress.ProcessCanceledException"
 }

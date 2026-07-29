@@ -118,37 +118,38 @@ class ReferenceIndexerTest {
     }
 
     @Test
-    fun `excludes one declaration scan dropout without aborting batch`() {
+    fun `unexpected declaration scanner failure aborts batch without writes`() {
         val filePaths = (0 until 5).map { i -> "/src/File$i.kt" }
         val failingPath = filePaths[2]
         val indexedPaths = mutableListOf<String>()
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store).indexSymbolRelationships(
-                filePaths,
-                referenceScanner = { path ->
-                    listOf(
-                        SymbolReferenceRow(
-                            sourcePath = path,
-                            sourceOffset = 0,
-                            targetFqName = "sample.target",
-                            targetPath = null,
-                            targetOffset = null,
-                        ),
-                    )
-                },
-                declarationScanner = { path ->
-                    if (path == failingPath) {
-                        throw RuntimeException("Simulated scanner failure")
-                    }
-                    emptyList()
-                },
-                onFilesIndexed = indexedPaths::addAll,
-            )
+            val failure = assertThrows(RuntimeException::class.java) {
+                ReferenceIndexer(store).indexSymbolRelationships(
+                    filePaths,
+                    referenceScanner = { path ->
+                        listOf(
+                            SymbolReferenceRow(
+                                sourcePath = path,
+                                sourceOffset = 0,
+                                targetFqName = "sample.target",
+                                targetPath = null,
+                                targetOffset = null,
+                            ),
+                        )
+                    },
+                    declarationScanner = { path ->
+                        if (path == failingPath) {
+                            throw RuntimeException("Simulated scanner failure")
+                        }
+                        emptyList()
+                    },
+                    onFilesIndexed = indexedPaths::addAll,
+                )
+            }
 
-            val refs = store.referencesToSymbol("sample.target")
-            assertEquals(4, refs.size)
-            assertTrue(refs.none { it.sourcePath == failingPath })
-            assertEquals(filePaths - failingPath, indexedPaths)
+            assertEquals("Simulated scanner failure", failure.message)
+            assertTrue(store.referencesToSymbol("sample.target").isEmpty())
+            assertTrue(indexedPaths.isEmpty())
         }
     }
 

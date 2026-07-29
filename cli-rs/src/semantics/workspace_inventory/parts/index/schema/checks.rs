@@ -44,7 +44,12 @@ fn verify_file_stage_outcome_checks(
     let normalized = normalized_table_sql(transaction, "file_stage_outcomes")?;
     let required_tokens = [
         "STAGEIN('SOURCE','RELATIONSHIPS','SEMANTIC_GRAPH')",
-        "OUTCOME_STATUSIN('COMPLETE','LIMITED','FAILED')",
+        "OUTCOME_STATUSIN('COMPLETE','LIMITED','FAILED','EXTERNAL_BOUNDARY')",
+        "FAILURE_CODEIN('PSI_UNAVAILABLE')",
+        "OUTCOME_STATUSIN('COMPLETE','LIMITED')",
+        "FAILURE_IDISNULL",
+        "OUTCOME_STATUSIN('FAILED','EXTERNAL_BOUNDARY')",
+        "FAILURE_IDISNOTNULL",
     ];
     if required_tokens
         .iter()

@@ -14,6 +14,7 @@ import io.github.amichne.kast.indexstore.api.graph.SemanticGraphWriteResult
 import io.github.amichne.kast.indexstore.api.index.*
 import io.github.amichne.kast.indexstore.api.reference.*
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
+import io.github.amichne.kast.indexstore.api.stage.FileStageFailureUpdate
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageRemoval
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageUpdate
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
@@ -137,8 +138,15 @@ class SqliteSourceIndexStore private constructor(
     fun commitSourceBatch(updates: List<SourceFileStageUpdate>) =
         fileStageBatches.commitSourceBatch(updates)
 
-    fun commitRelationshipBatch(updates: List<RelationshipFileStageUpdate>) =
-        fileStageBatches.commitRelationshipBatch(updates)
+    fun commitRelationshipBatch(
+        updates: List<RelationshipFileStageUpdate>,
+        failures: List<FileStageFailureUpdate> = emptyList(),
+    ) = fileStageBatches.commitRelationshipBatch(updates, failures)
+
+    fun externalizeFileStageFailure(
+        failureId: FileStageFailureId,
+    ): FileStageFailureExternalizationResult =
+        fileStageBatches.externalizeFileStageFailure(failureId)
 
     fun upsertSymbolReference(
         sourcePath: String,

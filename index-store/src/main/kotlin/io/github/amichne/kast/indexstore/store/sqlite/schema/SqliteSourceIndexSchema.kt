@@ -100,6 +100,9 @@ internal class SqliteSourceIndexSchema(
                 "stage_input_fingerprint" to false,
                 "outcome_status" to true,
                 "limitations_json" to true,
+                "failure_id" to false,
+                "failure_code" to false,
+                "failure_message" to false,
             ),
             "module_index_progress" to mapOf(
                 "relationship_index_status" to true,
@@ -167,10 +170,17 @@ internal class SqliteSourceIndexSchema(
                 check(!mustBeNonNull || actualNonNull) {
                     "Source index schema $SOURCE_INDEX_SCHEMA_VERSION requires $tableName.$columnName to be non-null"
                 }
-                if (tableName == "file_stage_outcomes" && columnName == "stage_input_fingerprint") {
+                if (tableName == "file_stage_outcomes" &&
+                    columnName in setOf(
+                        "stage_input_fingerprint",
+                        "failure_id",
+                        "failure_code",
+                        "failure_message",
+                    )
+                ) {
                     check(!actualNonNull) {
                         "Source index schema $SOURCE_INDEX_SCHEMA_VERSION requires " +
-                            "file_stage_outcomes.stage_input_fingerprint to be nullable"
+                            "file_stage_outcomes.$columnName to be nullable"
                     }
                 }
             }
@@ -369,6 +379,10 @@ internal class SqliteSourceIndexSchema(
         stmt.execute(
             "CREATE INDEX IF NOT EXISTS idx_file_stage_outcomes_stage " +
                 "ON file_stage_outcomes(stage, prefix_id, filename)",
+        )
+        stmt.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_file_stage_outcomes_failure_id " +
+                "ON file_stage_outcomes(failure_id) WHERE failure_id IS NOT NULL",
         )
         stmt.execute(
             "CREATE INDEX IF NOT EXISTS idx_semantic_files_package_status_id " +

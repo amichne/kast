@@ -46,6 +46,9 @@ pub(crate) fn seed_source_index(workspace: &std::path::Path) {
             stage_input_fingerprint TEXT,
             outcome_status TEXT NOT NULL,
             limitations_json TEXT NOT NULL,
+            failure_id TEXT,
+            failure_code TEXT,
+            failure_message TEXT,
             PRIMARY KEY (prefix_id, filename, stage)
         );
         CREATE TABLE declarations (

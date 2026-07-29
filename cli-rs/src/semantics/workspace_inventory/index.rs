@@ -57,6 +57,9 @@ const REQUIRED_TABLE_COLUMNS: &[(&str, &[&str])] = &[
             "stage_input_fingerprint",
             "outcome_status",
             "limitations_json",
+            "failure_id",
+            "failure_code",
+            "failure_message",
         ],
     ),
     (

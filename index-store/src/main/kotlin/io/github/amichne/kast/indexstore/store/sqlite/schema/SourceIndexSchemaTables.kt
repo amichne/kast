@@ -148,8 +148,18 @@ internal class SourceIndexSchemaTables {
                 content_hash TEXT NOT NULL,
                 stage_version TEXT NOT NULL,
                 stage_input_fingerprint TEXT,
-                outcome_status TEXT NOT NULL CHECK(outcome_status IN ('COMPLETE','LIMITED','FAILED')),
+                outcome_status TEXT NOT NULL CHECK(outcome_status IN ('COMPLETE','LIMITED','FAILED','EXTERNAL_BOUNDARY')),
                 limitations_json TEXT NOT NULL,
+                failure_id TEXT,
+                failure_code TEXT CHECK(failure_code IS NULL OR failure_code IN ('PSI_UNAVAILABLE')),
+                failure_message TEXT,
+                CHECK(
+                    (outcome_status IN ('COMPLETE','LIMITED')
+                        AND failure_id IS NULL AND failure_code IS NULL AND failure_message IS NULL)
+                    OR
+                    (outcome_status IN ('FAILED','EXTERNAL_BOUNDARY')
+                        AND failure_id IS NOT NULL AND failure_code IS NOT NULL AND failure_message IS NOT NULL)
+                ),
                 PRIMARY KEY (prefix_id, filename, stage)
             )""",
         )
