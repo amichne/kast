@@ -18,6 +18,7 @@ import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
+import io.github.amichne.kast.idea.IdeaFileHashComputer
 import io.github.amichne.kast.idea.IdeaReadEpochKind
 import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.idea.backend.diagnostics.analyzeDiagnosticsFileInReadEpoch
@@ -57,14 +58,16 @@ private suspend fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSe
         }
     }
     val semanticScope = (scopeSnapshot.sourcePaths - removedPaths.toSet()) + selectedPaths
-    val stageInputFingerprint = FileStageInputFingerprint.parse(
-        semanticGraphScopeFingerprint(semanticScope.toList(), emptyList()).value,
-    )
+    val stageInputs = currentSemanticGraphStageInputs(semanticScope)
+    val contentHashes = stageInputs.associate { input -> input.sourcePath to input.contentHash }
+    val stageInputFingerprint = semanticGraphStageInputFingerprint(stageInputs)
     val coverage = mutableListOf<SemanticGraphFileCoverage>()
     var omittedExternalTargetCount = 0
     val planned = query.filePaths.zip(selectedPaths).map { (absolutePath, relativePath) ->
         checkSemanticGraphCancellation()
-        val contentHash = runIdeaReadAction { sha256(findKtFile(absolutePath.value.value).text) }
+        val contentHash = checkNotNull(contentHashes[relativePath]) {
+            "Semantic graph scope has no current content hash for ${relativePath.value}"
+        }
         PlannedSemanticGraphFile(
             absolutePath = absolutePath,
             relativePath = relativePath,
@@ -186,6 +189,31 @@ private fun SemanticGraphCommitResult.semanticGraphGenerationOrThrow() = when (t
     )
 }
 
+private data class SemanticGraphStageInput(
+    val sourcePath: SemanticGraphSourcePath,
+    val contentHash: SemanticGraphSha256,
+)
+
+private suspend fun KastPluginBackend.currentSemanticGraphStageInputs(
+    sourcePaths: Set<SemanticGraphSourcePath>,
+): List<SemanticGraphStageInput> {
+    val absolutePaths = sourcePaths.associateWith { sourcePath ->
+        workspaceRoot.resolve(sourcePath.value).toString()
+    }
+    val contentHashes = IdeaFileHashComputer.currentHashes(absolutePaths.values)
+        .associate { fileHash ->
+            fileHash.filePath to SemanticGraphSha256.parse(fileHash.hash)
+        }
+    return absolutePaths.map { (sourcePath, absolutePath) ->
+        SemanticGraphStageInput(
+            sourcePath = sourcePath,
+            contentHash = checkNotNull(contentHashes[absolutePath]) {
+                "IDEA did not hash semantic graph scope file $absolutePath"
+            },
+        )
+    }
+}
+
 private data class PlannedSemanticGraphFile(
     val absolutePath: SemanticGraphPath,
     val relativePath: SemanticGraphSourcePath,
@@ -281,6 +309,22 @@ private fun sha256(value: String): SemanticGraphSha256 = SemanticGraphSha256.par
     MessageDigest.getInstance("SHA-256")
         .digest(value.toByteArray(StandardCharsets.UTF_8))
         .joinToString("") { byte -> "%02x".format(byte) },
+)
+
+private fun semanticGraphStageInputFingerprint(
+    inputs: List<SemanticGraphStageInput>,
+): FileStageInputFingerprint = FileStageInputFingerprint.parse(
+    sha256(
+        buildString {
+            inputs.sortedBy(SemanticGraphStageInput::sourcePath).forEach { input ->
+                append("source:")
+                    .append(input.sourcePath.value)
+                    .append(':')
+                    .append(input.contentHash.value)
+                    .append('\n')
+            }
+        },
+    ).value,
 )
 
 private fun semanticGraphScopeFingerprint(

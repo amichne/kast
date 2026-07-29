@@ -180,6 +180,9 @@ internal class KastPluginBackendContractTestCoverage : KastPluginBackendContract
                 listOf(
                     RelationshipFileStageUpdate(
                         work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).single(),
+                        scannedContentHash = store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
+                            .single()
+                            .contentHash,
                         references = emptyList(),
                         declarations = emptyList(),
                         limitations = listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP),

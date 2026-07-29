@@ -137,6 +137,7 @@ internal class KastPluginBackendContractTestPersistedSearchScope : KastPluginBac
                 inputs.declaringModulePaths.map { path ->
                     RelationshipFileStageUpdate(
                         work = pendingByPath.getValue(path),
+                        scannedContentHash = pendingByPath.getValue(path).contentHash,
                         references = emptyList(),
                         declarations = emptyList(),
                         limitations = emptyList(),

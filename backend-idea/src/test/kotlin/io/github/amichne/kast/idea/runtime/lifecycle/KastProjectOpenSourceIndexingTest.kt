@@ -1,8 +1,9 @@
 package io.github.amichne.kast.idea
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.moduleFixture
@@ -31,6 +32,7 @@ import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -41,7 +43,7 @@ import java.nio.file.Path
 @TestApplication
 class KastProjectOpenSourceIndexingTest {
     companion object {
-        private val projectFixture: TestFixture<Project> = projectFixture()
+        private val projectFixture: TestFixture<Project> = projectFixture(openAfterCreation = true)
 
         private const val targetSource = """
             package demo
@@ -244,6 +246,10 @@ class KastProjectOpenSourceIndexingTest {
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(callerFile.virtualFile.path).parent.toAbsolutePath().normalize()
         val callerPath = Path.of(callerFile.virtualFile.path).toAbsolutePath().normalize().toString()
+        val targetPath = Path.of(targetFileFixture.get().virtualFile.path).toAbsolutePath().normalize().toString()
+        val document = runIdeaReadAction {
+            FileDocumentManager.getInstance().getDocument(callerFile.virtualFile)!!
+        }
         val workspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).copy(
             sourceIndexDatabasePath = NormalizedPath.ofAbsolute(
                 tempDir.resolve("changed-${stage.name.lowercase()}.db"),
@@ -261,11 +267,11 @@ class KastProjectOpenSourceIndexingTest {
         val changeCaller: (String) -> Unit = { path ->
             if (!changed && path == callerPath) {
                 changed = true
-                replaceFile(callerFile.virtualFile, callerSource.replace("caller", "changedCaller"))
+                replaceDocument(project, document, callerSource.replace("caller", "changedCaller"))
             }
         }
 
-        replaceFile(callerFile.virtualFile, callerSource)
+        replaceDocument(project, document, callerSource)
         try {
             SqliteSourceIndexStore(workspaceIdentity).use { store ->
                 IdeaProjectIndexer(
@@ -280,20 +286,26 @@ class KastProjectOpenSourceIndexingTest {
                 ).indexProject(KastConfig.defaults())
 
                 assertNull(store.fileStageOutcome(callerPath, stage))
+                assertNotNull(store.fileStageOutcome(targetPath, stage))
                 assertTrue(
                     store.pendingFileStages(stage).any { work -> work.path == callerPath },
                     "A scan from a newer PSI revision must remain pending",
                 )
             }
         } finally {
-            replaceFile(callerFile.virtualFile, callerSource)
+            replaceDocument(project, document, callerSource)
         }
     }
 
-    private fun replaceFile(virtualFile: VirtualFile, content: String) {
+    private fun replaceDocument(
+        project: Project,
+        document: com.intellij.openapi.editor.Document,
+        content: String,
+    ) {
         val application = ApplicationManager.getApplication()
         application.invokeAndWait {
-            application.runWriteAction { virtualFile.setBinaryContent(content.toByteArray()) }
+            application.runWriteAction { document.setText(content) }
+            PsiDocumentManager.getInstance(project).commitDocument(document)
         }
     }
 }

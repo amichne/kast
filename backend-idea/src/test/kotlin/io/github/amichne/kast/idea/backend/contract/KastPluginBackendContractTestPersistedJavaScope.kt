@@ -75,6 +75,7 @@ internal class KastPluginBackendContractTestPersistedJavaScope : KastPluginBacke
                 inputs.kotlinPaths.map { path ->
                     RelationshipFileStageUpdate(
                         work = pending.getValue(path),
+                        scannedContentHash = pending.getValue(path).contentHash,
                         references = emptyList(),
                         declarations = emptyList(),
                     )

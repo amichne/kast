@@ -61,7 +61,7 @@ class SqliteSourceIndexProvenanceTest {
             )
             val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).single()
             store.commitRelationshipBatch(
-                listOf(RelationshipFileStageUpdate(work, emptyList(), emptyList())),
+                listOf(RelationshipFileStageUpdate(work, work.contentHash, emptyList(), emptyList())),
             )
 
             val exact = store.exportSnapshotDatabase(workspaceRoot.resolve("exact.db"), tree, producer)

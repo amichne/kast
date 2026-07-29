@@ -1,5 +1,6 @@
 package io.github.amichne.kast.indexstore.indexing
 
+import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.index.PendingFileStage
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
@@ -16,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger
 private const val DEFAULT_REFERENCE_BATCH_SIZE = 50
 
 data class RelationshipScanResult(
+    val contentHash: FileContentHash,
     val references: List<SymbolReferenceRow>,
     val declarations: List<DeclarationRow>,
     val limitations: List<FileStageLimitation> = emptyList(),
@@ -90,19 +92,20 @@ class ReferenceIndexer(
                 if (isCancelled()) break
                 val scanned = scanBatch(batch, { pending -> scanner(pending.path) }, isCancelled, executor)
                 if (isCancelled()) break
-                if (scanned.isEmpty()) continue
-                store.commitRelationshipBatch(
-                    scanned.map { (pending, result) ->
-                        RelationshipFileStageUpdate(
-                            work = pending,
-                            references = result.references,
-                            declarations = result.declarations,
-                            limitations = result.limitations,
-                        )
-                    },
-                )
+                val updates = scanned.mapNotNull { (pending, result) ->
+                    if (result.contentHash != pending.contentHash) return@mapNotNull null
+                    RelationshipFileStageUpdate(
+                        work = pending,
+                        scannedContentHash = result.contentHash,
+                        references = result.references,
+                        declarations = result.declarations,
+                        limitations = result.limitations,
+                    )
+                }
+                if (updates.isEmpty()) continue
+                store.commitRelationshipBatch(updates)
                 if (isCancelled()) break
-                onFilesIndexed(scanned.map { result -> result.first.path })
+                onFilesIndexed(updates.map { update -> update.work.path })
             }
         } finally {
             executor?.shutdownNow()

@@ -1,8 +1,9 @@
 package io.github.amichne.kast.idea
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.moduleFixture
@@ -37,7 +38,7 @@ import java.util.concurrent.atomic.AtomicLong
 @TestApplication
 class NativeSemanticGraphGenerationTest {
     companion object {
-        private val projectFixture: TestFixture<Project> = projectFixture()
+        private val projectFixture: TestFixture<Project> = projectFixture(openAfterCreation = true)
 
         private const val canonicalSource = """
             package demo
@@ -131,7 +132,10 @@ class NativeSemanticGraphGenerationTest {
             filePaths = listOf(sourceFile, targetFile)
                 .map { file -> SemanticGraphPath.parse(file.virtualFile.path) },
         ).parsed()
-        val originalText = runIdeaReadAction { targetFile.text }
+        val document = runIdeaReadAction {
+            FileDocumentManager.getInstance().getDocument(targetFile.virtualFile)!!
+        }
+        val originalText = runIdeaReadAction { document.text }
 
         try {
             SqliteSourceIndexStore(storeRoot).use { store ->
@@ -144,7 +148,7 @@ class NativeSemanticGraphGenerationTest {
                     psiGeneration = { 1L },
                 ).use { backend ->
                     backend.semanticGraph(query)
-                    replaceFile(targetFile.virtualFile, "$originalText\nval targetRevision = 2\n")
+                    replaceDocument(project, document, "$originalText\nval targetRevision = 2\n")
 
                     val refreshed = backend.semanticGraph(query)
 
@@ -160,7 +164,7 @@ class NativeSemanticGraphGenerationTest {
                 }
             }
         } finally {
-            replaceFile(targetFile.virtualFile, originalText)
+            replaceDocument(project, document, originalText)
         }
     }
 
@@ -337,10 +341,15 @@ class NativeSemanticGraphGenerationTest {
     private fun limits(): ServerLimits =
         ServerLimits(maxResults = 500, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4)
 
-    private fun replaceFile(virtualFile: VirtualFile, content: String) {
+    private fun replaceDocument(
+        project: Project,
+        document: com.intellij.openapi.editor.Document,
+        content: String,
+    ) {
         val application = ApplicationManager.getApplication()
         application.invokeAndWait {
-            application.runWriteAction { virtualFile.setBinaryContent(content.toByteArray()) }
+            application.runWriteAction { document.setText(content) }
+            PsiDocumentManager.getInstance(project).commitDocument(document)
         }
     }
 }

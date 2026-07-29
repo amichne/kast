@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
+import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleProjectIdentity
 import io.github.amichne.kast.indexstore.api.index.BuildQualifiedGradleSourceSetIdentity
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
@@ -168,18 +169,39 @@ class SqliteSourceIndexInventoryTest {
 
             val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).associateBy { pending -> pending.path }
             store.commitRelationshipBatch(
-                listOf(RelationshipFileStageUpdate(work.getValue(appA), emptyList(), emptyList())),
+                listOf(
+                    RelationshipFileStageUpdate(
+                        work.getValue(appA),
+                        work.getValue(appA).contentHash,
+                        emptyList(),
+                        emptyList(),
+                    ),
+                ),
             )
             assertEquals("INDEXING", store.moduleIndexStatus(":app[main]"))
 
             store.commitRelationshipBatch(
-                listOf(RelationshipFileStageUpdate(work.getValue(appB), emptyList(), emptyList())),
+                listOf(
+                    RelationshipFileStageUpdate(
+                        work.getValue(appB),
+                        work.getValue(appB).contentHash,
+                        emptyList(),
+                        emptyList(),
+                    ),
+                ),
             )
             assertEquals("COMPLETE", store.moduleIndexStatus(":app[main]"))
             assertEquals(setOf(":app[main]"), store.completedModules())
 
             store.commitRelationshipBatch(
-                listOf(RelationshipFileStageUpdate(work.getValue(lib), emptyList(), emptyList())),
+                listOf(
+                    RelationshipFileStageUpdate(
+                        work.getValue(lib),
+                        work.getValue(lib).contentHash,
+                        emptyList(),
+                        emptyList(),
+                    ),
+                ),
             )
             assertEquals(setOf(":app[main]", ":lib[main]"), store.completedModules())
         }
@@ -222,7 +244,16 @@ class SqliteSourceIndexInventoryTest {
                 listOf(
                     RelationshipFileStageUpdate(
                         work,
-                        emptyList(),
+                        work.contentHash,
+                        listOf(
+                            SymbolReferenceRow(
+                                sourcePath = caller,
+                                sourceOffset = 1,
+                                targetFqName = "demo.Missing",
+                                targetPath = null,
+                                targetOffset = null,
+                            ),
+                        ),
                         emptyList(),
                         limitations = listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP),
                     ),
@@ -239,6 +270,8 @@ class SqliteSourceIndexInventoryTest {
                 store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { work -> work.path },
             )
             assertNull(store.fileStageOutcome(caller, FileIndexStage.RELATIONSHIPS))
+            assertEquals("demo.Missing", store.referencesFromFile(caller).single().targetFqName)
+            assertEquals("PENDING", store.moduleIndexStatus(":app[main]"))
         }
     }
 

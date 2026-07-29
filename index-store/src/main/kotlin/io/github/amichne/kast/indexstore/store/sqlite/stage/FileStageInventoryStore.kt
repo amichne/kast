@@ -39,10 +39,14 @@ internal class FileStageInventoryStore(
             val current = reader.readInventoryInTransaction(conn)
             val desiredState = desired.mapValues { (_, entry) -> PersistedFileInventoryState.from(entry, versions) }
             if (current.mapValues { (_, row) -> row.state } == desiredState) return
+            val resolutionInputsChanged = desired.any { (path, entry) ->
+                current[path]?.contentHash != entry.contentHash.value
+            }
 
             conn.autoCommit = false
             try {
                 mutations.internPathsInTransaction(conn, desired.keys)
+                if (resolutionInputsChanged) invalidateLimitedRelationshipOutcomesInTransaction(conn)
                 current.keys.minus(desired.keys).forEach { removedPath ->
                     deleteOutcomeRowsInTransaction(conn, removedPath)
                     current.getValue(removedPath).let { row ->
@@ -299,6 +303,16 @@ internal class FileStageInventoryStore(
             statement.setString(7, versions.semanticGraph.value)
             statement.setString(8, entry.moduleName)
             statement.setString(9, entry.sourceSet)
+            statement.executeUpdate()
+        }
+    }
+
+    private fun invalidateLimitedRelationshipOutcomesInTransaction(conn: Connection) {
+        conn.prepareStatement(
+            "DELETE FROM file_stage_outcomes WHERE stage = ? AND outcome_status = ?",
+        ).use { statement ->
+            statement.setString(1, FileIndexStage.RELATIONSHIPS.name)
+            statement.setString(2, FileStageOutcomeStatus.LIMITED.name)
             statement.executeUpdate()
         }
     }

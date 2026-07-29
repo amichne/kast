@@ -72,7 +72,10 @@ The store compares that manifest with `file_stage_outcomes`. An unchanged file
 with a matching non-failed outcome produces no scan. A content or stage-version
 change makes only the affected file-stage work pending. A changed or removed
 relationship target also invalidates outcomes for source files that held
-inbound references to that target.
+inbound references to that target. Adding a file or changing its content also
+clears existing `LIMITED` relationship outcomes because new declarations may
+resolve callers that previously had no target row. Facts for unchanged
+requeued callers remain until the pending rescan replaces them.
 
 This boundary improves both speed and accuracy:
 
@@ -115,16 +118,24 @@ transaction writes its facts, file-stage outcomes, derived module progress, and
 new generation together. A failed transaction rolls back all four. Cancellation
 between batches leaves earlier commits available to the next IDEA session.
 
+Each source or relationship scan carries the hash of the exact PSI text used to
+extract its facts. If that hash differs from the pending manifest work, the
+indexer does not commit the result and leaves the file pending for retry.
+
 Relationship scanning keeps valid references when one target cannot resolve.
 It records `UNRESOLVED_RELATIONSHIP` on that file's `LIMITED` outcome instead
 of discarding the other facts.
 
-Semantic graph refresh computes one input fingerprint for the selected scope.
-It is request-driven rather than part of background project indexing. It reuses
-matching files and extracts only pending files. Each semantic batch verifies
-both the source-index generation and the IDEA PSI generation before it
-commits graph facts, stage outcomes, and the new generation. Summary reads count
-requested symbols and edges in SQLite instead of materializing all graph facts.
+Semantic graph refresh computes one content-aware input fingerprint for the
+effective semantic source scope. It pairs each canonical source path with the
+current IDEA content hash, so changing a dependency makes cached callers
+pending. The response keeps its path-only scope fingerprint contract. Semantic
+refresh is request-driven rather than part of background project indexing. It
+reuses matching files and extracts only pending files. Each semantic batch
+verifies both the source-index generation and the IDEA PSI generation before it
+commits graph facts, stage outcomes, and the new generation. Summary reads
+count requested symbols and edges in SQLite instead of materializing all graph
+facts.
 
 ```mermaid
 sequenceDiagram

@@ -94,9 +94,12 @@ internal class IdeaProjectIndexer(
             if (environment.isCancelled()) break
             val updates = batch.mapNotNull { work ->
                 onSourceFileScan(work.path)
-                scanner.scanFile(work.path)?.let { update ->
+                scanner.scanFile(work.path)?.let { result ->
+                    if (result.contentHash != work.contentHash) return@mapNotNull null
+                    val update = result.update
                     SourceFileStageUpdate(
                         work = work,
+                        scannedContentHash = result.contentHash,
                         update = gradleProvenance.applyTo(
                             update = update,
                             ownerModuleNames = ownerModuleNamesByPath.getValue(update.path),
@@ -150,6 +153,7 @@ internal class IdeaProjectIndexer(
                 onRelationshipFileScan(path)
                 val result = scanner.scanFileRelationships(path)
                 RelationshipScanResult(
+                    contentHash = result.contentHash,
                     references = result.references,
                     declarations = result.declarations,
                     limitations = result.limitations,

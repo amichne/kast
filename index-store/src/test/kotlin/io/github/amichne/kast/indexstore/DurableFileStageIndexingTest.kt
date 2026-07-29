@@ -86,7 +86,7 @@ class DurableFileStageIndexingTest {
             store.commitRelationshipBatch(
                 listOf(
                     RelationshipFileStageUpdate(
-                        work = firstWork,
+                        work = firstWork, scannedContentHash = firstWork.contentHash,
                         references = listOf(reference(path, "demo.Preserved")),
                         declarations = emptyList(),
                     ),
@@ -116,7 +116,7 @@ class DurableFileStageIndexingTest {
                 store.commitRelationshipBatch(
                     listOf(
                         RelationshipFileStageUpdate(
-                            work = work,
+                            work = work, scannedContentHash = work.contentHash,
                             references = listOf(reference(path, "demo.Replacement")),
                             declarations = emptyList(),
                             limitations = listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP),
@@ -146,7 +146,7 @@ class DurableFileStageIndexingTest {
             store.commitRelationshipBatch(
                 listOf(
                     RelationshipFileStageUpdate(
-                        work = work,
+                        work = work, scannedContentHash = work.contentHash,
                         references = listOf(reference(path, "demo.Valid")),
                         declarations = emptyList(),
                         limitations = listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP),
@@ -257,11 +257,11 @@ class DurableFileStageIndexingTest {
                 store.commitRelationshipBatch(
                     listOf(
                         RelationshipFileStageUpdate(
-                            work = work.getValue(caller),
+                            work = work.getValue(caller), scannedContentHash = work.getValue(caller).contentHash,
                             references = listOf(reference(caller, "demo.Target", target)),
                             declarations = emptyList(),
                         ),
-                        RelationshipFileStageUpdate(work.getValue(target), emptyList(), emptyList()),
+                        RelationshipFileStageUpdate(work.getValue(target), work.getValue(target).contentHash, emptyList(), emptyList()),
                     ),
                 )
 
@@ -320,7 +320,7 @@ class DurableFileStageIndexingTest {
         store.commitSourceBatch(
             paths.map { path ->
                 SourceFileStageUpdate(
-                    work = workByPath.getValue(path),
+                    work = workByPath.getValue(path), scannedContentHash = workByPath.getValue(path).contentHash,
                     update = sourceUpdate(path),
                 )
             },
@@ -333,7 +333,7 @@ class DurableFileStageIndexingTest {
         store.commitRelationshipBatch(
             paths.map { path ->
                 RelationshipFileStageUpdate(
-                    work = workByPath.getValue(path),
+                    work = workByPath.getValue(path), scannedContentHash = workByPath.getValue(path).contentHash,
                     references = listOf(reference(path, "demo.${Path.of(path).fileName}")),
                     declarations = emptyList(),
                 )

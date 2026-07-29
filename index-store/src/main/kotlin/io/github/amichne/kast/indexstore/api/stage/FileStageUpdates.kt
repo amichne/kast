@@ -2,6 +2,7 @@ package io.github.amichne.kast.indexstore.api.stage
 
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
+import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
@@ -11,17 +12,22 @@ import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 
 data class SourceFileStageUpdate(
     val work: PendingFileStage,
+    val scannedContentHash: FileContentHash,
     val update: FileIndexUpdate,
     val limitations: List<FileStageLimitation> = emptyList(),
 ) {
     init {
         require(work.stage == FileIndexStage.SOURCE) { "Source update requires SOURCE work" }
+        require(scannedContentHash == work.contentHash) {
+            "Source update content hash must match pending work"
+        }
         require(update.path == work.path) { "Source update path must match pending work" }
     }
 }
 
 data class RelationshipFileStageUpdate(
     val work: PendingFileStage,
+    val scannedContentHash: FileContentHash,
     val references: List<SymbolReferenceRow>,
     val declarations: List<DeclarationRow>,
     val limitations: List<FileStageLimitation> = emptyList(),
@@ -29,6 +35,9 @@ data class RelationshipFileStageUpdate(
     init {
         require(work.stage == FileIndexStage.RELATIONSHIPS) {
             "Relationship update requires RELATIONSHIPS work"
+        }
+        require(scannedContentHash == work.contentHash) {
+            "Relationship update content hash must match pending work"
         }
         require(references.all { reference -> reference.sourcePath == work.path }) {
             "Every relationship must originate in the pending file"
