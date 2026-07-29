@@ -130,7 +130,7 @@ internal class KastExplorerModel {
 }
 
 internal fun shouldAcceptExplorerResult(
-    result: KastExplorerResult,
+    request: KastExplorerRequest,
     resultSequence: Long,
     currentSequence: Long,
-): Boolean = result is KastExplorerResult.Overview || resultSequence == currentSequence
+): Boolean = request is KastExplorerRequest.Overview || resultSequence == currentSequence

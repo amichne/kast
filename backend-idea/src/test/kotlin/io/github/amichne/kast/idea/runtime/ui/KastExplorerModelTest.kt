@@ -122,12 +122,9 @@ class KastExplorerModelTest {
 
     @Test
     fun `overview results are independent from interactive request ordering`() {
-        val overviewFailure = KastExplorerResult.Problem(NonBlankString("Graph evidence unavailable"))
-
         assertTrue(
             shouldAcceptExplorerResult(
                 KastExplorerRequest.Overview,
-                overviewFailure,
                 resultSequence = 1,
                 currentSequence = 2,
             ),
@@ -135,7 +132,6 @@ class KastExplorerModelTest {
         assertFalse(
             shouldAcceptExplorerResult(
                 KastExplorerRequest.Search(NonBlankString("GraphExplorer")),
-                KastExplorerResult.SearchResults(emptyList()),
                 resultSequence = 1,
                 currentSequence = 2,
             ),

@@ -253,7 +253,11 @@ internal class KastExplorerPanel(
     private fun request(request: KastExplorerRequest) {
         val sequence = ++requestSequence
         service.exploreAsync(request) { result ->
-            if (disposed || !shouldAcceptExplorerResult(result, sequence, requestSequence)) return@exploreAsync
+            if (disposed || !shouldAcceptExplorerResult(request, sequence, requestSequence)) return@exploreAsync
+            if (request is KastExplorerRequest.Overview && result is KastExplorerResult.Problem) {
+                graphValue.text = result.message.value
+                return@exploreAsync
+            }
             model.accept(result)
             render(result)
         }
