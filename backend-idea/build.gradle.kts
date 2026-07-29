@@ -9,6 +9,7 @@ import org.gradle.api.attributes.java.TargetJvmVersion
 import org.gradle.jvm.tasks.Jar
 import org.jetbrains.intellij.platform.gradle.IntelliJPlatformType
 import org.jetbrains.intellij.platform.gradle.TestFrameworkType
+import org.jetbrains.intellij.platform.gradle.tasks.VerifyPluginTask
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
@@ -138,6 +139,10 @@ intellijPlatform {
     }
 
     pluginVerification {
+        failureLevel.addAll(
+            VerifyPluginTask.FailureLevel.DEPRECATED_API_USAGES,
+            VerifyPluginTask.FailureLevel.SCHEDULED_FOR_REMOVAL_API_USAGES,
+        )
         ides {
             create(IntelliJPlatformType.IntellijIdea, "2026.2")
             create(IntelliJPlatformType.AndroidStudio, "2026.1.2.10")
