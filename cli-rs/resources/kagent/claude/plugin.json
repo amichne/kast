@@ -1,0 +1,6 @@
+{
+  "description": "Compiler-backed Kotlin and Gradle semantics for coding agents.",
+  "hooks": "./hooks/hooks.json",
+  "name": "kagent",
+  "version": "${KAGENT_VERSION}"
+}

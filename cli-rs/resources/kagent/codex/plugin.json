@@ -1,0 +1,18 @@
+{
+  "description": "Compiler-backed Kotlin and Gradle semantics for coding agents.",
+  "hooks": [
+    "./hooks/hooks.json"
+  ],
+  "interface": {
+    "capabilities": [
+      "Interactive",
+      "Write"
+    ],
+    "category": "Coding",
+    "displayName": "Kagent",
+    "shortDescription": "Compiler-backed Kotlin and Gradle semantics"
+  },
+  "name": "kagent",
+  "skills": "./skills/",
+  "version": "${KAGENT_VERSION}"
+}

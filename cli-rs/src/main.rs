@@ -162,6 +162,15 @@ fn run_kagent(cli: KAgentCli) -> Result<i32> {
         return Ok(0);
     };
     match command {
+        KAgentCommand::Internal(cli::KAgentInternalArgs {
+            command:
+                cli::KAgentInternalCommand::Resources(cli::KAgentResourcesArgs {
+                    command: cli::KAgentResourcesCommand::Install { harnesses },
+                }),
+        }) => {
+            install::install_agent_resources(&harnesses)?;
+            Ok(0)
+        }
         KAgentCommand::Graph(cli::KAgentGraphArgs {
             command: Some(cli::KAgentGraphCommand::Summary),
         }) => run_kagent_graph_summary(),
@@ -298,6 +307,7 @@ fn kagent_home(root: PathBuf) -> Result<KAgentHome> {
 
 fn kagent_command_name(command: &KAgentCommand) -> &'static str {
     match command {
+        KAgentCommand::Internal(_) => "__internal",
         KAgentCommand::Up => "up",
         KAgentCommand::Refresh(_) => "refresh",
         KAgentCommand::Files { .. } => "files",

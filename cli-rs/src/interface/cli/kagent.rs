@@ -12,6 +12,8 @@ pub struct KAgentCli {
 
 #[derive(Debug, Subcommand)]
 pub enum KAgentCommand {
+    #[command(name = "__internal", hide = true)]
+    Internal(KAgentInternalArgs),
     /// Start or reuse the current workspace and wait for semantic evidence.
     Up,
     /// Refresh changed semantic evidence or externalize an eligible failure.
@@ -34,6 +36,43 @@ pub enum KAgentCommand {
         /// Opaque plan identifier returned by `kagent change`.
         plan_id: String,
     },
+}
+
+#[derive(Debug, Args)]
+pub struct KAgentInternalArgs {
+    #[command(subcommand)]
+    pub command: KAgentInternalCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum KAgentInternalCommand {
+    Resources(KAgentResourcesArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct KAgentResourcesArgs {
+    #[command(subcommand)]
+    pub command: KAgentResourcesCommand,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum KAgentResourcesCommand {
+    Install {
+        #[arg(
+            long = "harness",
+            required = true,
+            value_enum,
+            action = clap::ArgAction::Append
+        )]
+        harnesses: Vec<KAgentHarness>,
+    },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, ValueEnum)]
+pub enum KAgentHarness {
+    Codex,
+    Claude,
+    Copilot,
 }
 
 #[derive(Debug, Args)]

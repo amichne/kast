@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "sessionStart": [
+      {
+        "bash": "\"${HOME}/.local/bin/kagent\"",
+        "powershell": "& \"$HOME\\.local\\bin\\kagent\"",
+        "timeoutSec": 30,
+        "type": "command"
+      }
+    ]
+  },
+  "version": 1
+}

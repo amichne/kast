@@ -1,0 +1,15 @@
+{
+  "description": "Compiler-backed Kotlin and Gradle semantics for coding agents.",
+  "name": "kagent",
+  "owner": {
+    "name": "Kast"
+  },
+  "plugins": [
+    {
+      "category": "development",
+      "description": "Compiler-backed Kotlin and Gradle semantics for coding agents.",
+      "name": "kagent",
+      "source": "./plugins/kagent"
+    }
+  ]
+}
