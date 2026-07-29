@@ -1,5 +1,6 @@
 package io.github.amichne.kast.indexstore.store
 
+import io.github.amichne.kast.indexstore.api.index.RelationshipIndexStatus
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import java.nio.file.Files
 import java.nio.file.Path
@@ -169,14 +170,28 @@ internal class SourceIndexInventoryStore(
         }
     }
 
-    fun moduleIndexStatus(moduleName: String): String? =
+    fun moduleIndexStatus(moduleName: String): RelationshipIndexStatus? =
         synchronized(state.writeLock) {
             state.connection().prepareStatement(
                 "SELECT relationship_index_status FROM module_index_progress WHERE module_name = ?",
             ).use { stmt ->
                 stmt.setString(1, moduleName)
                 val rs = stmt.executeQuery()
-                if (rs.next()) rs.getString(1) else null
+                if (rs.next()) RelationshipIndexStatus.valueOf(rs.getString(1)) else null
+            }
+        }
+
+    fun moduleIndexStatuses(): Map<String, RelationshipIndexStatus> =
+        synchronized(state.writeLock) {
+            state.connection().createStatement().use { stmt ->
+                val rs = stmt.executeQuery(
+                    "SELECT module_name, relationship_index_status FROM module_index_progress ORDER BY module_name",
+                )
+                buildMap {
+                    while (rs.next()) {
+                        put(rs.getString(1), RelationshipIndexStatus.valueOf(rs.getString(2)))
+                    }
+                }
             }
         }
 
@@ -184,7 +199,9 @@ internal class SourceIndexInventoryStore(
         synchronized(state.writeLock) {
             state.connection().createStatement().use { stmt ->
                 val rs = stmt.executeQuery(
-                    "SELECT module_name FROM module_index_progress WHERE relationship_index_status = 'COMPLETE'",
+                    """SELECT module_name
+                       FROM module_index_progress
+                       WHERE relationship_index_status IN ('COMPLETE','DEGRADED')""",
                 )
                 buildSet {
                     while (rs.next()) {

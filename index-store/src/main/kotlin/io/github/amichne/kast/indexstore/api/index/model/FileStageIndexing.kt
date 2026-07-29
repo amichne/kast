@@ -123,6 +123,14 @@ enum class FileStageOutcomeStatus {
     EXTERNAL_BOUNDARY,
 }
 
+enum class RelationshipIndexStatus {
+    PENDING,
+    INDEXING,
+    COMPLETE,
+    DEGRADED,
+    FAILED,
+}
+
 data class PendingFileStage(
     val path: String,
     val contentHash: FileContentHash,
@@ -181,12 +189,23 @@ sealed interface FileStageScopeCoverage {
         val staleFiles: Int,
         val limitedFiles: Int,
         val failedFiles: Int,
+        val externalFiles: Int,
         val limitations: List<FileStageLimitation>,
     ) : FileStageScopeCoverage {
         init {
-            val counts = listOf(totalFiles, completeFiles, pendingFiles, staleFiles, limitedFiles, failedFiles)
+            val counts = listOf(
+                totalFiles,
+                completeFiles,
+                pendingFiles,
+                staleFiles,
+                limitedFiles,
+                failedFiles,
+                externalFiles,
+            )
             require(counts.all { it >= 0 }) { "Limited scope file counts must be non-negative" }
-            require(completeFiles + pendingFiles + staleFiles + limitedFiles + failedFiles == totalFiles) {
+            require(
+                completeFiles + pendingFiles + staleFiles + limitedFiles + failedFiles + externalFiles == totalFiles,
+            ) {
                 "Limited scope outcome counts must equal total files"
             }
         }

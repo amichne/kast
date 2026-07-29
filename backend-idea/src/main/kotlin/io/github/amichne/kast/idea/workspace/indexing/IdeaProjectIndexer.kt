@@ -14,12 +14,14 @@ import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
 import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
 import io.github.amichne.kast.indexstore.indexing.RelationshipScanResult
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
+import io.github.amichne.kast.shared.analysis.PsiRelationshipScanResult
 import io.github.amichne.kast.shared.analysis.PsiSourceIndexScanner
 import java.nio.file.Path
 
@@ -151,13 +153,19 @@ internal class IdeaProjectIndexer(
             work = orderedFilePaths.map(workByPath::getValue),
             scanner = { path ->
                 onRelationshipFileScan(path)
-                val result = scanner.scanFileRelationships(path)
-                RelationshipScanResult(
-                    contentHash = result.contentHash,
-                    references = result.references,
-                    declarations = result.declarations,
-                    limitations = result.limitations,
-                )
+                when (val result = scanner.scanFileRelationships(path)) {
+                    is PsiRelationshipScanResult.Indexed -> RelationshipScanResult.Indexed(
+                        contentHash = result.contentHash,
+                        references = result.references,
+                        declarations = result.declarations,
+                        limitations = result.limitations,
+                    )
+                    PsiRelationshipScanResult.PsiUnavailable -> RelationshipScanResult.Failed(
+                        contentHash = workByPath.getValue(path).contentHash,
+                        code = FileStageFailureCode.PSI_UNAVAILABLE,
+                        message = "Kotlin PSI is unavailable for this file",
+                    )
+                }
             },
             isCancelled = environment::isCancelled,
         )

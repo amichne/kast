@@ -113,6 +113,8 @@ internal class SqliteSourceIndexSchema(
                 "content_hash" to false,
                 "refresh_status" to true,
                 "diagnostics_json" to true,
+                "boundary_failure_id" to false,
+                "boundary_failure_code" to false,
             ),
             "semantic_types" to mapOf(
                 "id" to false,

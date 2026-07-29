@@ -104,9 +104,23 @@ internal class FileStageInventoryStore(
                          OR outcomes.content_hash != manifest.content_hash
                          OR outcomes.stage_version != manifest.$versionColumn
                          OR outcomes.outcome_status = 'FAILED'
+                     )
+                     AND NOT (
+                         ? = 'SEMANTIC_GRAPH'
+                         AND EXISTS (
+                             SELECT 1
+                             FROM file_stage_outcomes boundary
+                             WHERE boundary.prefix_id = manifest.prefix_id
+                               AND boundary.filename = manifest.filename
+                               AND boundary.stage = 'RELATIONSHIPS'
+                               AND boundary.content_hash = manifest.content_hash
+                               AND boundary.stage_version = manifest.desired_relationships_version
+                               AND boundary.outcome_status = 'EXTERNAL_BOUNDARY'
+                         )
                      )""",
             ).use { statement ->
                 statement.setString(1, stage.name)
+                statement.setString(2, stage.name)
                 val rows = statement.executeQuery()
                 buildList {
                     while (rows.next()) {
@@ -130,12 +144,25 @@ internal class FileStageInventoryStore(
         version: FileStageVersion,
         inputFingerprint: FileStageInputFingerprint? = null,
     ): PendingFileStage? = synchronized(state.writeLock) {
-        val outcome = reader.readOutcomeInTransaction(state.connection(), path, stage)
-        if (outcome != null &&
+        val conn = state.connection()
+        val outcome = reader.readOutcomeInTransaction(conn, path, stage)
+        val inventory = reader.inventoryScopeInTransaction(conn, path)
+        val externalRelationshipBoundary = if (stage == FileIndexStage.SEMANTIC_GRAPH) {
+            reader.readOutcomeInTransaction(conn, path, FileIndexStage.RELATIONSHIPS)
+                ?.takeIf { relationship ->
+                    relationship.status == FileStageOutcomeStatus.EXTERNAL_BOUNDARY &&
+                        relationship.contentHash == contentHash &&
+                        relationship.version.value == inventory?.relationshipsVersion
+                }
+        } else {
+            null
+        }
+        if (externalRelationshipBoundary != null ||
+            (outcome != null &&
             outcome.contentHash == contentHash &&
             outcome.version == version &&
             outcome.inputFingerprint == inputFingerprint &&
-            outcome.status != FileStageOutcomeStatus.FAILED
+            outcome.status != FileStageOutcomeStatus.FAILED)
         ) {
             null
         } else {
@@ -258,7 +285,8 @@ internal class FileStageInventoryStore(
     ): CurrentFileStageFailure? {
         state.loadInterningTables(conn)
         return conn.prepareStatement(
-            """SELECT outcomes.prefix_id, outcomes.filename, outcomes.stage, outcomes.outcome_status
+            """SELECT outcomes.prefix_id, outcomes.filename, outcomes.stage, outcomes.outcome_status,
+                      outcomes.content_hash, outcomes.failure_code, outcomes.failure_message
                FROM file_stage_outcomes outcomes
                JOIN file_manifest manifest
                  ON manifest.prefix_id = outcomes.prefix_id
@@ -278,6 +306,12 @@ internal class FileStageInventoryStore(
                 path = pathCodec.decode(rows.getInt(1), rows.getString(2)),
                 stage = FileIndexStage.valueOf(rows.getString(3)),
                 status = FileStageOutcomeStatus.valueOf(rows.getString(4)),
+                contentHash = FileContentHash.parse(rows.getString(5)),
+                failure = FileStageFailure(
+                    id = failureId,
+                    code = FileStageFailureCode.valueOf(rows.getString(6)),
+                    message = rows.getString(7),
+                ),
             )
         }
     }
@@ -338,8 +372,17 @@ internal class FileStageInventoryStore(
                               WHEN SUM(CASE
                                   WHEN outcomes.content_hash = manifest.content_hash
                                    AND outcomes.stage_version = manifest.desired_relationships_version
-                                   AND outcomes.outcome_status IN ('LIMITED','FAILED','EXTERNAL_BOUNDARY') THEN 1 ELSE 0 END) > 0
+                                   AND outcomes.outcome_status IN ('LIMITED','FAILED') THEN 1 ELSE 0 END) > 0
                                   THEN 'FAILED'
+                              WHEN COUNT(*) = SUM(CASE
+                                  WHEN outcomes.content_hash = manifest.content_hash
+                                   AND outcomes.stage_version = manifest.desired_relationships_version
+                                   AND outcomes.outcome_status IN ('COMPLETE','EXTERNAL_BOUNDARY') THEN 1 ELSE 0 END)
+                               AND SUM(CASE
+                                  WHEN outcomes.content_hash = manifest.content_hash
+                                   AND outcomes.stage_version = manifest.desired_relationships_version
+                                   AND outcomes.outcome_status = 'EXTERNAL_BOUNDARY' THEN 1 ELSE 0 END) > 0
+                                  THEN 'DEGRADED'
                               WHEN SUM(CASE
                                   WHEN outcomes.content_hash = manifest.content_hash
                                    AND outcomes.stage_version = manifest.desired_relationships_version
@@ -420,4 +463,6 @@ internal data class CurrentFileStageFailure(
     val path: String,
     val stage: FileIndexStage,
     val status: FileStageOutcomeStatus,
+    val contentHash: FileContentHash,
+    val failure: FileStageFailure,
 )

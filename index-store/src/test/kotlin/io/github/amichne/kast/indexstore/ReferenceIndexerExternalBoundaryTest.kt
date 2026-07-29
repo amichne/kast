@@ -245,11 +245,7 @@ class ReferenceIndexerExternalBoundaryTest {
             assertEquals(sourcePath, store.referencesToSymbol("demo.Failed").single().sourcePath)
             assertTrue(store.searchDeclarations(NonBlankString("Failed"), PositiveInt(10)).isEmpty())
 
-            val semanticOutcome = requireNotNull(
-                store.fileStageOutcome(failedPath, FileIndexStage.SEMANTIC_GRAPH),
-            )
-            assertEquals(FileStageOutcomeStatus.EXTERNAL_BOUNDARY, semanticOutcome.status)
-            assertEquals(failure.id, requireNotNull(semanticOutcome.failure).id)
+            assertNull(store.fileStageOutcome(failedPath, FileIndexStage.SEMANTIC_GRAPH))
             assertTrue(
                 store.pendingFileStages(FileIndexStage.SEMANTIC_GRAPH).none { work -> work.path == failedPath },
             )

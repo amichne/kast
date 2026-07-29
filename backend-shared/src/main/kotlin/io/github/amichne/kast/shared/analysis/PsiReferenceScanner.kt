@@ -31,12 +31,16 @@ import org.jetbrains.kotlin.psi.KtTypeAlias
 import org.jetbrains.kotlin.psi.KtTypeReference
 import java.util.concurrent.CancellationException
 
-data class PsiRelationshipScanResult(
-    val contentHash: FileContentHash,
-    val references: List<SymbolReferenceRow>,
-    val declarations: List<DeclarationRow>,
-    val limitations: List<FileStageLimitation>,
-)
+sealed interface PsiRelationshipScanResult {
+    data class Indexed(
+        val contentHash: FileContentHash,
+        val references: List<SymbolReferenceRow>,
+        val declarations: List<DeclarationRow>,
+        val limitations: List<FileStageLimitation>,
+    ) : PsiRelationshipScanResult
+
+    data object PsiUnavailable : PsiRelationshipScanResult
+}
 
 class PsiReferenceScanner(
     private val environment: ReferenceIndexEnvironment,
@@ -44,12 +48,13 @@ class PsiReferenceScanner(
 ) {
     fun scanFileRelationships(filePath: String): PsiRelationshipScanResult =
         // One epoch binds every persisted relationship fact to one immutable PSI revision.
-        environment.withExclusiveAccess {
-            val psiFile = requirePsiFile(filePath)
+        environment.withExclusiveAccess scan@{
+            val psiFile = environment.findPsiFile(filePath)
+                ?: return@scan PsiRelationshipScanResult.PsiUnavailable
             val sourceFilePath = psiFile.sourceFilePath(filePath)
             val referenceResult = scanFileReferenceCoverage(psiFile, sourceFilePath)
             val declarationResult = scanFileDeclarationCoverage(psiFile, sourceFilePath)
-            PsiRelationshipScanResult(
+            PsiRelationshipScanResult.Indexed(
                 contentHash = psiFile.contentHash(),
                 references = referenceResult.rows,
                 declarations = declarationResult.rows,

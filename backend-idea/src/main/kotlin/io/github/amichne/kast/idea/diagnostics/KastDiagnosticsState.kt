@@ -149,13 +149,24 @@ internal class KastDiagnosticsState(
         title = "Kast source index complete",
         detail = summary.displayText(),
     ) {
+        require(
+            summary.state == KastIndexState.READY ||
+                summary.state == KastIndexState.DEGRADED ||
+                summary.state == KastIndexState.FAILED,
+        ) {
+            "Completed index summary must be ready, degraded, or failed"
+        }
         it.copy(
             backendState = if (it.backendState == KastBackendUiState.INDEXING) {
-                KastBackendUiState.READY
+                if (summary.state == KastIndexState.READY) {
+                    KastBackendUiState.READY
+                } else {
+                    KastBackendUiState.DEGRADED
+                }
             } else {
                 it.backendState
             },
-            indexSummary = summary.copy(state = KastIndexState.READY),
+            indexSummary = summary,
         )
     }
 
@@ -302,6 +313,7 @@ internal data class KastSourceIndexSummary(
                 moduleCount?.let { "$it modules" },
                 importCount?.let { "$it imports" },
             ).ifEmpty { listOf("Ready") }.joinToString(", ")
+            KastIndexState.DEGRADED -> "Degraded"
             KastIndexState.FAILED -> "Failed"
             KastIndexState.CANCELLED -> "Cancelled"
         }
@@ -325,6 +337,7 @@ internal enum class KastIndexState {
     HYDRATING,
     INDEXING,
     READY,
+    DEGRADED,
     FAILED,
     CANCELLED,
 }

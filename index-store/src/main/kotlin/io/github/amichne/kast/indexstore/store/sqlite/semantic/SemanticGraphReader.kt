@@ -25,7 +25,7 @@ internal class SemanticGraphReader(
                          ON symbols.file_id = requested.id
                        JOIN semantic_files files ON files.id = symbols.file_id
                        LEFT JOIN semantic_symbols owner ON owner.id = symbols.owner_id""",
-                    "ORDER BY symbols.id",
+                    "WHERE files.refresh_status != 'UNKNOWN' ORDER BY symbols.id",
                 ),
             ).use { statement ->
                 val rows = statement.executeQuery()
@@ -41,7 +41,10 @@ internal class SemanticGraphReader(
                            FROM semantic_edge_occurrences edges INDEXED BY idx_semantic_edges_source_file_id_id
                            WHERE edges.source_file_id IN (SELECT id FROM requested_semantic_file_ids)
                        )
-                       AND symbols.file_id NOT IN (SELECT id FROM requested_semantic_file_ids)
+                       AND (
+                           symbols.file_id NOT IN (SELECT id FROM requested_semantic_file_ids)
+                           OR files.refresh_status = 'UNKNOWN'
+                       )
                        ORDER BY symbols.id""",
                 ),
             ).use { statement ->
@@ -90,14 +93,15 @@ internal class SemanticGraphReader(
             SemanticGraphIndexSummary(
                 generation = state.readGenerationInTransaction(conn),
                 files = readSemanticGraphFiles(conn),
-                symbolCount = countRequestedRows(conn, "semantic_symbols", "file_id"),
+                symbolCount = countRequestedSemanticSymbols(conn),
                 edgeOccurrenceCount = countRequestedRows(conn, "semantic_edge_occurrences", "source_file_id"),
             )
         }
 
     private fun readSemanticGraphFiles(conn: Connection): List<SemanticGraphFileCoverage> =
         conn.prepareStatement(
-            """SELECT files.path, files.content_hash, files.refresh_status, files.diagnostics_json
+            """SELECT files.path, files.content_hash, files.refresh_status, files.diagnostics_json,
+                      files.boundary_failure_id, files.boundary_failure_code
                FROM requested_semantic_file_ids requested
                JOIN semantic_files files ON files.id = requested.id
                ORDER BY files.path""",
@@ -111,10 +115,29 @@ internal class SemanticGraphReader(
                             contentHash = rows.getString(2)?.let(SemanticGraphSha256::parse),
                             status = SemanticGraphFileStatus.valueOf(rows.getString(3)),
                             diagnostics = Json.decodeFromString(rows.getString(4)),
+                            externalBoundary = rows.getString(5)?.let { failureId ->
+                                SemanticGraphExternalBoundary(
+                                    failureId = SemanticGraphExternalBoundaryFailureId.parse(failureId),
+                                    reason = SemanticGraphExternalBoundaryReason.valueOf(checkNotNull(rows.getString(6))),
+                                )
+                            },
                         ),
                     )
                 }
             }
+        }
+
+    private fun countRequestedSemanticSymbols(conn: Connection): Int =
+        conn.prepareStatement(
+            """SELECT COUNT(*)
+               FROM semantic_symbols symbols
+               JOIN semantic_files files ON files.id = symbols.file_id
+               WHERE symbols.file_id IN (SELECT id FROM requested_semantic_file_ids)
+                 AND files.refresh_status != 'UNKNOWN'""",
+        ).use { statement ->
+            val rows = statement.executeQuery()
+            check(rows.next())
+            rows.getInt(1)
         }
 
     private fun countRequestedRows(conn: Connection, table: String, fileColumn: String): Int =

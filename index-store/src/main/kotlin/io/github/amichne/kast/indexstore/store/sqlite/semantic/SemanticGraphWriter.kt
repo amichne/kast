@@ -3,9 +3,12 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.result.*
 import io.github.amichne.kast.indexstore.api.graph.*
+import io.github.amichne.kast.indexstore.api.index.FileContentHash
+import io.github.amichne.kast.indexstore.api.index.FileStageFailure
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.nio.file.Path
 import java.sql.Connection
 
 internal class SemanticGraphWriter(
@@ -30,6 +33,65 @@ internal class SemanticGraphWriter(
         commitStageState: (Connection) -> Unit = {},
     ): SemanticGraphCommitResult =
         replaceSemanticGraphFiles(updates, removedPaths, expectedGeneration, commitStageState)
+
+    internal fun markExternalBoundaryInTransaction(
+        conn: Connection,
+        path: String,
+        contentHash: FileContentHash,
+        failure: FileStageFailure,
+    ) {
+        val sourcePath = workspaceRelativeSourcePath(path)
+        clearRepositoryOverlayTombstone(conn, sourcePath.value)
+        val fileId = optionalSemanticId(
+            conn,
+            "SELECT id FROM semantic_files WHERE path = ?",
+            sourcePath.value,
+        )
+        if (fileId != null) {
+            conn.prepareStatement("DELETE FROM semantic_edge_occurrences WHERE source_file_id = ?").use { statement ->
+                statement.setLong(1, fileId)
+                statement.executeUpdate()
+            }
+            conn.prepareStatement("UPDATE semantic_symbols SET owner_id = NULL WHERE file_id = ?").use { statement ->
+                statement.setLong(1, fileId)
+                statement.executeUpdate()
+            }
+            conn.prepareStatement(
+                """DELETE FROM semantic_symbols
+                   WHERE file_id = ?
+                     AND id NOT IN (
+                         SELECT target_id FROM semantic_edge_occurrences
+                         UNION
+                         SELECT resolved_target_id
+                         FROM semantic_edge_occurrences
+                         WHERE resolved_target_id IS NOT NULL
+                     )""",
+            ).use { statement ->
+                statement.setLong(1, fileId)
+                statement.executeUpdate()
+            }
+        }
+        conn.prepareStatement(
+            """INSERT INTO semantic_files(
+                   path, package_name, module_name, content_hash, refresh_status, diagnostics_json,
+                   boundary_failure_id, boundary_failure_code
+               ) VALUES (?, NULL, NULL, ?, 'UNKNOWN', '[]', ?, ?)
+               ON CONFLICT(path) DO UPDATE SET
+                   package_name = NULL,
+                   module_name = NULL,
+                   content_hash = excluded.content_hash,
+                   refresh_status = excluded.refresh_status,
+                   diagnostics_json = excluded.diagnostics_json,
+                   boundary_failure_id = excluded.boundary_failure_id,
+                   boundary_failure_code = excluded.boundary_failure_code""",
+        ).use { statement ->
+            statement.setString(1, sourcePath.value)
+            statement.setString(2, contentHash.value)
+            statement.setString(3, failure.id.value)
+            statement.setString(4, failure.code.name)
+            statement.executeUpdate()
+        }
+    }
 
     private fun replaceSemanticGraphFiles(
         updates: List<SemanticGraphFileIndexUpdate>,
@@ -168,14 +230,17 @@ internal class SemanticGraphWriter(
         clearRepositoryOverlayTombstone(conn, update.path.value)
         conn.prepareStatement(
             """INSERT INTO semantic_files(
-                   path, package_name, module_name, content_hash, refresh_status, diagnostics_json
-               ) VALUES (?, ?, ?, ?, ?, ?)
+                   path, package_name, module_name, content_hash, refresh_status, diagnostics_json,
+                   boundary_failure_id, boundary_failure_code
+               ) VALUES (?, ?, ?, ?, ?, ?, NULL, NULL)
                ON CONFLICT(path) DO UPDATE SET
                    package_name = excluded.package_name,
                    module_name = excluded.module_name,
                    content_hash = excluded.content_hash,
                    refresh_status = excluded.refresh_status,
-                   diagnostics_json = excluded.diagnostics_json""",
+                   diagnostics_json = excluded.diagnostics_json,
+                   boundary_failure_id = NULL,
+                   boundary_failure_code = NULL""",
         ).use { statement ->
             statement.setString(1, update.path.value)
             statement.setString(2, update.packageName)
@@ -185,6 +250,16 @@ internal class SemanticGraphWriter(
             statement.setString(6, Json.encodeToString(update.diagnostics))
             statement.executeUpdate()
         }
+    }
+
+    private fun workspaceRelativeSourcePath(path: String): SemanticGraphSourcePath {
+        val absolute = Path.of(path).toAbsolutePath().normalize()
+        check(absolute.startsWith(state.workspaceRoot)) {
+            "External graph boundary path is outside the workspace: $path"
+        }
+        return SemanticGraphSourcePath.parse(
+            state.workspaceRoot.relativize(absolute).joinToString("/") { segment -> segment.toString() },
+        )
     }
     private fun insertSemanticType(
         conn: Connection,

@@ -165,7 +165,7 @@ internal class FileStageStateReader(
             FileStageOutcomeStatus.COMPLETE -> ClassifiedFile.Complete
             FileStageOutcomeStatus.LIMITED -> ClassifiedFile.Limited(outcome.limitations)
             FileStageOutcomeStatus.FAILED -> ClassifiedFile.Failed
-            FileStageOutcomeStatus.EXTERNAL_BOUNDARY -> ClassifiedFile.Failed
+            FileStageOutcomeStatus.EXTERNAL_BOUNDARY -> ClassifiedFile.External
         }
     }
 
@@ -174,7 +174,7 @@ internal class FileStageStateReader(
         FileStageOutcomeStatus.COMPLETE -> ClassifiedFile.Complete
         FileStageOutcomeStatus.LIMITED -> ClassifiedFile.Limited(outcome.limitations)
         FileStageOutcomeStatus.FAILED -> ClassifiedFile.Failed
-        FileStageOutcomeStatus.EXTERNAL_BOUNDARY -> ClassifiedFile.Failed
+        FileStageOutcomeStatus.EXTERNAL_BOUNDARY -> ClassifiedFile.External
     }
 
     private fun coverage(files: List<ClassifiedFile>): FileStageScopeCoverage {
@@ -187,6 +187,7 @@ internal class FileStageStateReader(
             staleFiles = files.count { it == ClassifiedFile.Stale },
             limitedFiles = files.count { it is ClassifiedFile.Limited },
             failedFiles = files.count { it == ClassifiedFile.Failed },
+            externalFiles = files.count { it == ClassifiedFile.External },
             limitations = files.filterIsInstance<ClassifiedFile.Limited>()
                 .flatMap(ClassifiedFile.Limited::limitations)
                 .distinct()
@@ -200,6 +201,7 @@ internal class FileStageStateReader(
         data object Stale : ClassifiedFile
         data class Limited(val limitations: List<FileStageLimitation>) : ClassifiedFile
         data object Failed : ClassifiedFile
+        data object External : ClassifiedFile
     }
 }
 

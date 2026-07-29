@@ -17,6 +17,7 @@ import io.github.amichne.kast.indexstore.api.index.GradleProjectPath
 import io.github.amichne.kast.indexstore.api.index.GradleSourceSetName
 import io.github.amichne.kast.indexstore.api.index.IndexedPackageEvidence
 import io.github.amichne.kast.indexstore.api.index.IndexedPackageUnprovenReason
+import io.github.amichne.kast.indexstore.api.index.RelationshipIndexStatus
 import io.github.amichne.kast.indexstore.api.index.WorkspaceRelativeGradleBuildRoot
 import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import io.github.amichne.kast.indexstore.store.SourceIndexPageReadObserver
@@ -164,7 +165,7 @@ class SqliteSourceIndexInventoryTest {
                 FileStageVersions.CURRENT,
             )
 
-            assertEquals("PENDING", store.moduleIndexStatus(":app[main]"))
+            assertEquals(RelationshipIndexStatus.PENDING, store.moduleIndexStatus(":app[main]"))
             assertEquals(emptySet<String>(), store.completedModules())
 
             val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).associateBy { pending -> pending.path }
@@ -178,7 +179,7 @@ class SqliteSourceIndexInventoryTest {
                     ),
                 ),
             )
-            assertEquals("INDEXING", store.moduleIndexStatus(":app[main]"))
+            assertEquals(RelationshipIndexStatus.INDEXING, store.moduleIndexStatus(":app[main]"))
 
             store.commitRelationshipBatch(
                 listOf(
@@ -190,7 +191,7 @@ class SqliteSourceIndexInventoryTest {
                     ),
                 ),
             )
-            assertEquals("COMPLETE", store.moduleIndexStatus(":app[main]"))
+            assertEquals(RelationshipIndexStatus.COMPLETE, store.moduleIndexStatus(":app[main]"))
             assertEquals(setOf(":app[main]"), store.completedModules())
 
             store.commitRelationshipBatch(
@@ -271,7 +272,7 @@ class SqliteSourceIndexInventoryTest {
             )
             assertNull(store.fileStageOutcome(caller, FileIndexStage.RELATIONSHIPS))
             assertEquals("demo.Missing", store.referencesFromFile(caller).single().targetFqName)
-            assertEquals("PENDING", store.moduleIndexStatus(":app[main]"))
+            assertEquals(RelationshipIndexStatus.PENDING, store.moduleIndexStatus(":app[main]"))
         }
     }
 

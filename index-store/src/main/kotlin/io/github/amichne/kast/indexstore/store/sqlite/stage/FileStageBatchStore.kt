@@ -19,6 +19,7 @@ internal class FileStageBatchStore(
     private val references: SourceIndexReferenceStore,
     private val declarations: SourceIndexDeclarationStore,
     private val stages: FileStageInventoryStore,
+    private val semanticGraph: SemanticGraphWriter,
 ) {
     fun commitSourceBatch(updates: List<SourceFileStageUpdate>) {
         if (updates.isEmpty()) return
@@ -121,6 +122,12 @@ internal class FileStageBatchStore(
                     }
                     references.clearReferencesFromFileInTransaction(conn, current.path)
                     declarations.clearDeclarationsFromFileInTransaction(conn, current.path)
+                    semanticGraph.markExternalBoundaryInTransaction(
+                        conn = conn,
+                        path = current.path,
+                        contentHash = current.contentHash,
+                        failure = current.failure,
+                    )
                     stages.markFailureExternalInTransaction(conn, failureId)
                     stages.recomputeModuleProgressInTransaction(conn)
                     state.incrementGenerationInTransaction(conn)

@@ -60,6 +60,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.SemanticGraphCoverage
 import io.github.amichne.kast.api.contract.result.SemanticGraphDiagnosticEvidence
+import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundary
 import io.github.amichne.kast.api.contract.result.SemanticGraphFileCoverage
 import io.github.amichne.kast.api.contract.result.SemanticGraphGeneration
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
@@ -194,6 +195,7 @@ class DocFieldCoverageTest {
         "SemanticGraphSymbol" to SemanticGraphSymbol.serializer(),
         "SemanticGraphRelation" to SemanticGraphRelation.serializer(),
         "SemanticGraphDiagnosticEvidence" to SemanticGraphDiagnosticEvidence.serializer(),
+        "SemanticGraphExternalBoundary" to SemanticGraphExternalBoundary.serializer(),
         "SemanticGraphFileCoverage" to SemanticGraphFileCoverage.serializer(),
         "SemanticGraphCoverage" to SemanticGraphCoverage.serializer(),
         "SemanticGraphResult" to SemanticGraphResult.serializer(),
