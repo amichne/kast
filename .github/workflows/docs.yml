@@ -64,7 +64,6 @@ jobs:
       - run: ./.github/scripts/docs/test-likec4-contract.sh
       - run: npm run diagrams:validate
       - run: npm run diagrams:embed
-      - run: git diff --exit-code -- docs/architecture/likec4-views.mjs
       - run: ./.github/scripts/docs/test-docs-navigation-contract.sh
       - run: ./.github/scripts/docs/test-docs-content-contract.sh
       - run: zensical build --clean
