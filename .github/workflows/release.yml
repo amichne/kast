@@ -1087,6 +1087,12 @@ jobs:
           (cd dist && sha256sum -c kast-headless-linux-x64.sha256)
           (cd dist && sha256sum -c gradle-ro-dep-cache.sha256)
           tar --zstd -tf dist/kast-headless-linux-x64.tar.zst | grep -F './bin/kast'
+          tar --zstd -tf dist/kast-headless-linux-x64.tar.zst | grep -F './bin/_kastctl'
+          runtime_check="$RUNNER_TEMP/kast-headless-entrypoints"
+          rm -rf "$runtime_check"
+          mkdir -p "$runtime_check"
+          tar --zstd -xf dist/kast-headless-linux-x64.tar.zst -C "$runtime_check"
+          cmp -s "$runtime_check/bin/_kastctl" "$runtime_check/bin/kast"
           rm -rf "$RUNNER_TEMP/gradle-ro-release-check"
           mkdir -p "$RUNNER_TEMP/gradle-ro-release-check"
           tar --zstd -xf dist/gradle-ro-dep-cache.tar.zst -C "$RUNNER_TEMP/gradle-ro-release-check"
