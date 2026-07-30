@@ -247,31 +247,26 @@ class AnalysisDispatcherRawReadTest : AnalysisDispatcherTestSupport() {
     }
 
     @Test
-    fun `semantic graph rejects an oversized selected file batch before backend extraction`() {
-        val delegate = FakeAnalysisBackend.sample(tempDir)
-        val backend = object : AnalysisBackend by delegate {
-            override suspend fun semanticGraph(query: ParsedSemanticGraphQuery): SemanticGraphResult =
-                error("semantic graph backend extraction must not run")
-        }
+    fun `semantic graph scope is not capped by the result limit`() {
+        val backend = FakeAnalysisBackend.sample(tempDir)
         val params = json.encodeToJsonElement(
             SemanticGraphQuery.serializer(),
             SemanticGraphQuery(
                 filePaths = listOf(
-                    SemanticGraphPath.parse(tempDir.resolve("One.kt").toAbsolutePath().toString()),
-                    SemanticGraphPath.parse(tempDir.resolve("One.kt").toAbsolutePath().toString()),
+                    SemanticGraphPath.parse(sampleFile().toAbsolutePath().toString()),
+                    SemanticGraphPath.parse(sampleTypeFile().toAbsolutePath().toString()),
                 ),
             ),
         )
 
-        val raw = runBlocking {
-            RpcAnalysisDispatcher(
-                backend = backend,
-                config = AnalysisServerConfig(maxResults = 1),
-            ).dispatch(JsonRpcRequest(id = JsonPrimitive(1), method = "raw/semantic-graph", params = params))
-        }
-        val error = json.decodeFromString(JsonRpcErrorResponse.serializer(), raw)
+        val result = dispatchSuccessWithBackend<SemanticGraphResult>(
+            backend = backend,
+            config = AnalysisServerConfig(maxResults = 1),
+            method = "raw/semantic-graph",
+            params = params,
+        )
 
-        assertEquals("VALIDATION_ERROR", error.error.data?.code)
-        assertTrue(error.error.message.contains("selected file count"))
+        assertEquals(2, result.coverage.files.size)
+        assertEquals(2, result.symbolCount.value)
     }
 }
