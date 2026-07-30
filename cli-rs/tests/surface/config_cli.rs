@@ -15,6 +15,17 @@ fn run(home: &Path, config_home: &Path, workspace: &Path, args: &[&str]) -> std:
         .expect("config command")
 }
 
+fn workspace_override(listed: &serde_json::Value, key: &str) -> bool {
+    listed["mutableFields"]
+        .as_array()
+        .expect("mutable fields")
+        .iter()
+        .find(|field| field["key"] == key)
+        .unwrap_or_else(|| panic!("missing mutable field {key}"))["workspaceOverride"]
+        .as_bool()
+        .expect("workspace override flag")
+}
+
 #[test]
 fn explicit_config_home_owns_the_global_config_file() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -80,6 +91,10 @@ fn workspace_config_lists_sets_and_unsets_effective_values() {
             .any(|field| field["key"] == "indexing.relationships.parallelism"),
         "{listed:#}",
     );
+    assert!(
+        !workspace_override(&listed, "indexing.relationships.parallelism"),
+        "{listed:#}",
+    );
 
     let set = run(
         &home,
@@ -96,6 +111,12 @@ fn workspace_config_lists_sets_and_unsets_effective_values() {
     let set: serde_json::Value = serde_json::from_slice(&set.stdout).expect("set JSON");
     assert_eq!(set["status"], "updated");
     assert_eq!(set["effectiveValue"], 2);
+    let listed = run(&home, &config_home, &workspace, &["list"]);
+    let listed: serde_json::Value = serde_json::from_slice(&listed.stdout).expect("list JSON");
+    assert!(
+        workspace_override(&listed, "indexing.relationships.parallelism"),
+        "{listed:#}",
+    );
 
     let config_path = PathBuf::from(set["configPath"].as_str().expect("config path"));
     let first_contents = std::fs::read_to_string(&config_path).expect("workspace config");
@@ -134,6 +155,12 @@ fn workspace_config_lists_sets_and_unsets_effective_values() {
     let unset: serde_json::Value = serde_json::from_slice(&unset.stdout).expect("unset JSON");
     assert_eq!(unset["status"], "updated");
     assert_eq!(unset["effectiveValue"], 4);
+    let listed = run(&home, &config_home, &workspace, &["list"]);
+    let listed: serde_json::Value = serde_json::from_slice(&listed.stdout).expect("list JSON");
+    assert!(
+        !workspace_override(&listed, "indexing.relationships.parallelism"),
+        "{listed:#}",
+    );
 
     let repeated = run(
         &home,
