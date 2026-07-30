@@ -76,11 +76,16 @@ internal class IdeaProjectIndexer(
         }
     }
 
-    fun refreshSymbolRelationships(filePaths: Collection<String>): List<FileStageOutcome> {
-        require(filePaths.all(SourceIndexFilePolicy::isEligible)) {
+    fun refreshSymbolRelationships(
+        filePaths: Collection<String>,
+        removedFilePaths: Collection<String> = emptyList(),
+    ): List<FileStageOutcome> {
+        require((filePaths + removedFilePaths).all(SourceIndexFilePolicy::isEligible)) {
             "Focused relationship refresh accepts Kotlin source files only"
         }
         store.ensureSchema()
+        requireActive()
+        store.reconcileRemovedFileInventory(removedFilePaths)
         requireActive()
         val requestedPaths = currentSourcePaths(filePaths) ?: run {
             val currentFilePaths = indexSourceIdentifiers().toSet()

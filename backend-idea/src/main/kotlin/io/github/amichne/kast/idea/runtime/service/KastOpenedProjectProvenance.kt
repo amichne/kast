@@ -18,6 +18,7 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.PosixFilePermission
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicReference
 
 internal object KastOpenedProjectProvenance {
     private val marker = Key.create<Boolean>("kast.agent.opened.project")
@@ -133,10 +134,12 @@ internal enum class OpenProjectRequestAudience {
 }
 
 internal class KastOpenProjectRequestObserver(
-    private val requests: KastOpenProjectRequestStore,
+    requests: KastOpenProjectRequestStore,
     private val canonicalRoot: RuntimeOpenProjectRoot,
     private val onSignal: () -> Unit,
 ) {
+    private val requests = AtomicReference(requests)
+
     suspend fun run() {
         while (true) {
             delay(POLL_INTERVAL_MILLIS)
@@ -144,8 +147,12 @@ internal class KastOpenProjectRequestObserver(
         }
     }
 
+    internal fun replaceRequests(requests: KastOpenProjectRequestStore) {
+        this.requests.set(requests)
+    }
+
     internal fun poll() {
-        if (requests.consumeUntargetedForProject(canonicalRoot)) onSignal()
+        if (requests.get().consumeUntargetedForProject(canonicalRoot)) onSignal()
     }
 
     private companion object {

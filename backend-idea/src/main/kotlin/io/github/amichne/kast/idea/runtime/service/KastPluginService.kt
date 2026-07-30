@@ -27,6 +27,8 @@ internal class KastPluginService(
     private val project: Project,
 ) : Disposable {
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile
+    private var projectOpenRequestObserver: KastOpenProjectRequestObserver? = null
     private val backendLifecycle = KastPluginBackendLifecycle(
         startBackend = ::createBackend,
         onStopping = ::recordBackendStopping,
@@ -77,6 +79,7 @@ internal class KastPluginService(
                 startServer()
             },
         )
+        projectOpenRequestObserver = observer
         coroutineScope.launch { observer.run() }
     }
 
@@ -247,7 +250,9 @@ internal class KastPluginService(
             LOG.warn("Failed to load Kast config for workspace $path; starting IDEA backend with defaults.", error)
             KastDiagnosticsService.getInstance(project).recordConfigFallback(path, error)
         },
-    )
+    ).also { config ->
+        projectOpenRequestObserver?.replaceRequests(KastOpenProjectRequestStore(config))
+    }
 
     private fun workspaceRoot(): Path? = project.basePath?.let { Path.of(it).toAbsolutePath().normalize() }
 

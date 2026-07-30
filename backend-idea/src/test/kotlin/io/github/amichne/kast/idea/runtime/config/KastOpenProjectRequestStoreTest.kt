@@ -135,6 +135,14 @@ class KastOpenProjectRequestStoreTest {
         observer.poll()
         observer.replaceRequests(store(now = 1_000, pid = 41, runtimeDir = reloadedRuntimeDir))
         observer.poll()
+        writeRequest(
+            projectRoot,
+            targetPid = null,
+            targetProductCode = "IU",
+            expiresAt = 2_000,
+            runtimeDir = initialRuntimeDir,
+        )
+        observer.poll()
 
         assertEquals(1, starts)
     }

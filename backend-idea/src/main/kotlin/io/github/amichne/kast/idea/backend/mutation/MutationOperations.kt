@@ -197,8 +197,11 @@ internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuer
             val admittedPaths = admission.fileStatuses
                 .filter(SemanticAdmissionStatus::isAdmitted)
                 .map(SemanticAdmissionStatus::filePath)
+            val removedPaths = admission.fileStatuses
+                .filter(SemanticAdmissionStatus::isRemoved)
+                .map(SemanticAdmissionStatus::filePath)
             val relationshipFailures = semanticGraphStore?.takeIf {
-                admittedPaths.isNotEmpty() || admission.fileStatuses.any(SemanticAdmissionStatus::isRemoved)
+                admittedPaths.isNotEmpty() || removedPaths.isNotEmpty()
             }?.let { store ->
                 val requestContext = currentCoroutineContext()
                 requestContext.ensureActive()
@@ -211,7 +214,7 @@ internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuer
                     },
                     workspaceIdentity = sharedWorkspaceIdentity,
                     readGradleWorkspaceModel = workspaceModelReader,
-                ).refreshSymbolRelationships(admittedPaths)
+                ).refreshSymbolRelationships(admittedPaths, removedPaths)
                 requestContext.ensureActive()
                 outcomes.map { outcome ->
                     val failure = requireNotNull(outcome.failure) {

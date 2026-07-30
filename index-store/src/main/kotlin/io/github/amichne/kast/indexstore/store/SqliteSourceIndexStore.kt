@@ -120,6 +120,9 @@ class SqliteSourceIndexStore private constructor(
     fun reconcileFileInventory(entries: Collection<FileInventoryEntry>, versions: FileStageVersions) =
         fileStages.reconcileFileInventory(entries, versions)
 
+    fun reconcileRemovedFileInventory(paths: Collection<String>) =
+        fileStages.reconcileRemovedFileInventory(paths)
+
     fun pendingFileStages(stage: FileIndexStage): List<PendingFileStage> =
         fileStages.pendingFileStages(stage)
 

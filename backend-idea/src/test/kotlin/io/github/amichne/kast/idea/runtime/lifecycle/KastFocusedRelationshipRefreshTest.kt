@@ -13,6 +13,7 @@ import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -133,7 +134,15 @@ class KastFocusedRelationshipRefreshTest {
             )
 
             assertFalse(store.loadManifest().orEmpty().containsKey(targetPath))
-            assertTrue(store.referencesFromFile(callerPath).single().targetPath == null)
+            assertFalse(
+                store.loadSourceIndexSnapshot().candidatePathsByIdentifier["target"].orEmpty().contains(targetPath),
+            )
+            assertNull(store.fileStageOutcome(targetPath, FileIndexStage.RELATIONSHIPS))
+            assertTrue(
+                store.referencesFromFile(callerPath).any { reference ->
+                    reference.targetFqName == "demo.target" && reference.targetPath == null
+                },
+            )
             assertTrue(
                 store.pendingFileStages(FileIndexStage.RELATIONSHIPS).any { work -> work.path == callerPath },
             )
