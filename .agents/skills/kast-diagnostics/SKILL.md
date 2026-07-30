@@ -48,7 +48,7 @@ allowlist_json() {
       then listed(["basic", "verbose"]; $value)
       elif $field == "scopes"
       then ($value | split(",") | all(.[];
-        listed(["all", "references", "call-hierarchy", "type-hierarchy",
+        listed(["all", "rename", "references", "call-hierarchy", "type-hierarchy",
           "implementations", "completions", "semantic-insertion-point",
           "diagnostics", "optimize-imports", "resolve", "workspace-files",
           "workspace-symbol-search", "workspace-search", "read-action",
