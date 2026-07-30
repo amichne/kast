@@ -47,7 +47,7 @@ flags=(
   CI_AUX_IDEA_PERFORMANCE
 )
 
-criticality_owners=(1 1 1 7 1 1)
+criticality_owners=(1 1 1 6 1 1)
 
 require "$controls" "set-one" "workflow must expose the set-one operation"
 require "$controls" "apply-profile" "workflow must expose the apply-profile operation"

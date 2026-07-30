@@ -29,8 +29,8 @@ reject() {
 
 require "$ci" '.github/scripts/install/test-setup-contract.sh' 'CI must execute the sole setup transaction contract'
 require "$ci" '--plugin-archive "$plugin_asset"' 'CI setup bundles must include the verified IDEA plugin'
-require "$ci" 'scripts/verify-setup-bundle.sh' 'hosted-agent CI must enter through kast setup'
-require "$build" '"setup",' 'local development refresh must invoke kast setup'
+require "$ci" 'scripts/verify-setup-bundle.sh' 'CI bundle validation must enter through _kastctl setup'
+require "$build" '"setup",' 'local development refresh must invoke _kastctl setup'
 require "$build" '"--idea-plugin",' 'local development refresh must pass the IDEA plugin'
 
 require "$release" 'for platform in linux-x64 linux-arm64 macos-x64 macos-arm64' 'release must package every supported setup platform'
@@ -51,13 +51,13 @@ for platform in linux-x64 linux-arm64 macos-x64 macos-arm64; do
   require "$verify_assets" "kast-$platform-{tag}.tar.gz" "release verifier must require $platform setup bundle"
 done
 require "$release" '--plugin-archive "$work/kast-idea-${tag}.zip"' 'release bundles must include the release-matched IDEA plugin'
-require "$release" 'scripts/verify-setup-bundle.sh' 'release validation must enter through kast setup'
+require "$release" 'scripts/verify-setup-bundle.sh' 'release validation must enter through _kastctl setup'
 require "$release" './scripts/ci-gradle-retry.sh ./gradlew \' 'headless release must invoke Gradle directly through the CI retry helper'
 require "$release" 'stageHeadlessDist \' 'headless release must stage the portable distribution'
 require "$release" ':backend-headless:verifyHeadlessPortableDistLayout \' 'headless release must verify the portable distribution layout'
 require "$release" 'buildHeadlessPortableZip \' 'headless release must build the portable zip'
 require "$release" 'cp "${headless_zips[0]}" dist/headless.zip' 'headless release must publish the artifact consumed by later jobs'
-require "$verify_state" 'verify-setup-bundle.sh' 'published release verification must enter through kast setup'
+require "$verify_state" 'verify-setup-bundle.sh' 'published release verification must enter through _kastctl setup'
 require "$verify_setup" '"status"[[:space:]]*:[[:space:]]*"ACTIVATED"' 'setup verification must accept pretty-printed activation JSON'
 require "$verify_setup" '"status"[[:space:]]*:[[:space:]]*"CURRENT"' 'setup verification must accept pretty-printed current JSON'
 reject "$release" './kast.sh' 'release workflow still depends on the deleted build wrapper'

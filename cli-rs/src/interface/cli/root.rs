@@ -55,7 +55,7 @@ pub enum Command {
     Rpc(RpcArgs),
     /// Developer and release-engineering commands.
     Developer(DeveloperArgs),
-    /// Backward-compatible alias for `ready`. Used by kast-action v2.
+    /// Backward-compatible alias for `ready`.
     #[command(hide = true)]
     Doctor(DoctorArgs),
     /// Agent setup, readiness, and pipe-friendly semantic requests.

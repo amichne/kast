@@ -13,22 +13,22 @@ change:
 - `.github/ci/*.json`
 - `.github/dependabot.yml`
 
-Do not add provider-specific assistant trigger workflows. The V1 hosted-agent
-path is the headless runtime plus the published `kast-action` contract smoke.
+Do not add provider-specific assistant trigger workflows. Hosted agents install
+the same verified release bundles through `install.sh`.
 
 Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
 For release workflow changes, run `.github/scripts/release/test-release-workflow-contract.sh`.
 The release workflow owns the IDEA ZIP and the four platform setup bundles.
 Every bundle carries the verified plugin and enters validation through
-`kast setup`.
+`_kastctl setup`.
 For CLI terminal command or executable example changes, run
 `.github/scripts/docs/test-terminal-command-contract.sh`.
 The local transactional setup gate lives in
 `.github/scripts/install/test-local-development-refresh-contract.sh`. Keep it wired in
 the independent `local-authority-contracts` CI job whenever refresh
 orchestration or bundle activation changes. Its Gradle graph packages one
-complete development bundle and invokes `kast setup --source`.
+complete development bundle and invokes `_kastctl setup --source`.
 Umbrella source contracts must not rerun focused owners. The setup contract
 owns source presence, activation, rollback, and retired-path assertions; the runtime compatibility contract owns
 deterministic source and manifest rendering only. Rust unit and integration tests run in `rust-cli`, Kotlin and
@@ -86,8 +86,8 @@ the publisher consume an existing one. Pull-request Linux packaging is owned
 by explicit release layers. `source-bound-cli` and
 `source-bound-headless-backend` build the single release CLI and backend while
 their required Rust and Kotlin validation jobs run independently.
-Downstream Ubuntu/Debian and `kast-action` packaging consumes the verified
-release components without creating a developer-machine generation.
+Downstream Ubuntu/Debian packaging consumes the verified release components
+without creating a developer-machine generation.
 Raw CLI archives contain the revision-matched `kast` binary.
 
 ## Verify
