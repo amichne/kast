@@ -16,6 +16,21 @@ command -v jq >/dev/null || exit 1
 allowlist_json() {
   jq '
     def listed($values; $value): ($values | index($value)) != null;
+    def config_keys: [
+      "server.requestTimeoutMillis", "server.maxConcurrentRequests", "server.maxResults",
+      "gradle.toolingApiTimeoutMillis", "indexing.identifierIndexWaitMillis",
+      "indexing.relationships.enabled", "indexing.relationships.batchSize",
+      "indexing.relationships.parallelism", "indexing.relationships.modulePriorityDepth",
+      "projectOpen.gradleLoadEnabled", "backends.idea.enabled", "watcher.debounceMillis",
+      "telemetry.enabled", "telemetry.scopes", "telemetry.detail", "profiling.enabled",
+      "profiling.modes", "profiling.durationSeconds", "profiling.emitManifest"
+    ];
+    def config_path($path):
+      ($path | map(tostring) | join(".")) as $dotted
+      | if ($dotted | startswith("effective."))
+        then ($dotted | ltrimstr("effective.")) as $key
+          | if listed(config_keys; $key) then $key else null end
+        else null end;
     def safe_string($field; $value):
       if $field == "state"
       then listed(["STARTING", "INDEXING", "READY", "DEGRADED", "INCOMPLETE",
@@ -38,14 +53,18 @@ allowlist_json() {
           "file-outline", "apply-edits", "refresh"]; .)))
       elif $field == "modes"
       then ($value | split(",") | all(.[]; listed(["cpu", "alloc", "lock", "wall"]; .)))
+      elif $field == "key"
+      then listed(config_keys; $value)
       else false end;
-    [paths(scalars) as $path
+    [paths((type == "string") or (type == "number") or (type == "boolean")) as $path
       | ($path[-1] | tostring) as $field
       | getpath($path) as $value
+      | config_path($path) as $config_path
       | select(
           (($value | type) == "boolean"
             and listed(["ok", "ready", "healthy", "active", "indexing", "reachable",
-              "referenceIndexReady", "installed", "enabled", "truncated"]; $field))
+              "referenceIndexReady", "installed", "enabled", "truncated",
+              "gradleLoadEnabled", "emitManifest"]; $field))
           or (($value | type) == "number"
             and (listed(["generation", "total", "indexed", "excluded", "pending",
               "limited", "failed", "stale", "parallelism", "batchSize",
@@ -62,7 +81,8 @@ allowlist_json() {
               "returnedCount", "nextOffset", "limit", "offset"]; $field)))
           or (($value | type) == "string" and safe_string($field; $value))
         )
-      | {field: $field, value: $value}]
+      | {field: (if $field == "key" then "mutableKey"
+          elif $config_path != null then $config_path else $field end), value: $value}]
   ' 2>/dev/null
 }
 KASTCTL="${KAST_HOME:-$HOME/.local/share/kast}/current/libexec/kastctl"
