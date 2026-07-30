@@ -35,9 +35,6 @@ internal class KastStartupActivity : ProjectActivity {
             startReferenceIndex = { startupProject ->
                 startupProject.service<KastPluginService>().startIndexing()
             },
-            failReadiness = { startupProject, error ->
-                startupProject.service<KastPluginService>().failIndexing(error)
-            },
         )
     }
 }
