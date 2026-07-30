@@ -246,7 +246,12 @@ object KastIdeaBackendRuntime {
         val server = try {
             AnalysisServer(
                 backend = backend,
-                config = ideaAnalysisServerConfig(transport, limits, config),
+                config = ideaAnalysisServerConfig(
+                    transport = transport,
+                    limits = limits,
+                    config = config,
+                    workspaceFileCount = sourceIndexStore.loadManifest()?.size ?: 0,
+                ),
                 lifecycleController = lifecycleController,
                 projectOpenController = projectOpenController,
             ).start()

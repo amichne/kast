@@ -11,6 +11,7 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.socketPathForWorkspaceRoot
 import io.github.amichne.kast.api.contract.AnalysisTransport
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectRoot
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RuntimeLifecycleController
@@ -66,6 +67,18 @@ internal class KastPluginService(
     fun startIndexing() = backendLifecycle.markIndexReady()
 
     fun failIndexing(error: Throwable) = backendLifecycle.markIndexFailed(error)
+
+    fun observeProjectOpenSignals(canonicalRoot: RuntimeOpenProjectRoot, config: KastConfig) {
+        val observer = KastOpenProjectRequestObserver(
+            requests = KastOpenProjectRequestStore(config),
+            canonicalRoot = canonicalRoot,
+            onSignal = {
+                KastOpenedProjectProvenance.mark(project)
+                startServer()
+            },
+        )
+        coroutineScope.launch { observer.run() }
+    }
 
     fun exploreAsync(
         request: KastExplorerRequest,
@@ -315,6 +328,13 @@ internal fun ideaAnalysisServerConfig(
     transport: AnalysisTransport,
     limits: ServerLimits,
     config: KastConfig,
+): AnalysisServerConfig = ideaAnalysisServerConfig(transport, limits, config, workspaceFileCount = 0)
+
+internal fun ideaAnalysisServerConfig(
+    transport: AnalysisTransport,
+    limits: ServerLimits,
+    config: KastConfig,
+    workspaceFileCount: Int,
 ): AnalysisServerConfig = AnalysisServerConfig(
     transport = transport,
     requestTimeoutMillis = limits.requestTimeoutMillis,
@@ -323,14 +343,23 @@ internal fun ideaAnalysisServerConfig(
     continuationTtlMillis = limits.continuationTtlMillis,
     continuationCapacity = limits.continuationCapacity,
     descriptorDirectory = config.paths.descriptorDir.toPath(),
+    workspaceFileCount = workspaceFileCount,
 )
 
 internal fun ideaAnalysisServerConfig(
     socketPath: Path,
     limits: ServerLimits,
     config: KastConfig,
+): AnalysisServerConfig = ideaAnalysisServerConfig(socketPath, limits, config, workspaceFileCount = 0)
+
+internal fun ideaAnalysisServerConfig(
+    socketPath: Path,
+    limits: ServerLimits,
+    config: KastConfig,
+    workspaceFileCount: Int,
 ): AnalysisServerConfig = ideaAnalysisServerConfig(
     transport = AnalysisTransport.UnixDomainSocket(socketPath),
     limits = limits,
     config = config,
+    workspaceFileCount = workspaceFileCount,
 )

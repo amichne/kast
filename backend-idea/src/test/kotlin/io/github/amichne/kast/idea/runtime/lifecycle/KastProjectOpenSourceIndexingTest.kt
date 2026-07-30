@@ -290,7 +290,7 @@ class KastProjectOpenSourceIndexingTest {
                 onRelationshipFileScan = relationshipScans::add,
             ).refreshSymbolRelationships(listOf(callerPath))
 
-            assertEquals(listOf(callerPath), relationshipScans)
+            assertTrue(relationshipScans.isEmpty(), "unchanged relationships must remain cached")
         }
     }
 

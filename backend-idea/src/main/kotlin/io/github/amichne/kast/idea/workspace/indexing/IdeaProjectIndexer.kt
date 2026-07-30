@@ -80,10 +80,13 @@ internal class IdeaProjectIndexer(
         require(filePaths.all(SourceIndexFilePolicy::isEligible)) {
             "Focused relationship refresh accepts Kotlin source files only"
         }
+        store.ensureSchema()
         requireActive()
-        val currentFilePaths = indexSourceIdentifiers().toSet()
+        val requestedPaths = currentSourcePaths(filePaths) ?: run {
+            val currentFilePaths = indexSourceIdentifiers().toSet()
+            filePaths.distinct().filter(currentFilePaths::contains)
+        }
         requireActive()
-        val requestedPaths = filePaths.distinct().filter(currentFilePaths::contains)
         val previousFailureIds = requestedPaths.associateWith { path ->
             store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS)?.failure?.id
         }
@@ -109,6 +112,31 @@ internal class IdeaProjectIndexer(
             "Focused relationship refresh did not commit current facts for: ${unfinishedPaths.sorted().joinToString()}"
         }
         return failures
+    }
+
+    private fun currentSourcePaths(filePaths: Collection<String>): List<String>? {
+        val scanner = PsiSourceIndexScanner(
+            environment = environment,
+            moduleNameForFile = ::moduleNameForFile,
+        )
+        return buildList {
+            for (path in filePaths.distinct()) {
+                requireActive()
+                onSourceFileScan(path)
+                val result = scanner.scanFile(path) ?: return null
+                if (
+                    store.pendingFileStage(
+                        path = result.update.path,
+                        contentHash = result.contentHash,
+                        stage = FileIndexStage.SOURCE,
+                        version = FileStageVersions.CURRENT.source,
+                    ) != null
+                ) {
+                    return null
+                }
+                add(result.update.path)
+            }
+        }
     }
 
     fun indexSourceIdentifiers(): Collection<String> {

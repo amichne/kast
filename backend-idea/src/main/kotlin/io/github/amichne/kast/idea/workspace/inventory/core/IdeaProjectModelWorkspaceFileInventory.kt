@@ -8,8 +8,10 @@ import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
+import com.intellij.openapi.roots.ProjectRootModificationTracker
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.api.client.WorkspaceIdentity
@@ -24,6 +26,8 @@ internal class IdeaProjectModelWorkspaceFileInventory private constructor(
     private val projectModelAccess: IdeaWorkspaceFileProjectModelAccess,
     private val readProjectModelSnapshot: () -> ProjectModelSnapshot,
 ) : IdeaWorkspaceFileInventory {
+    private val snapshotsByKind = mutableMapOf<WorkspaceFileKindDomain, CachedSnapshot>()
+
     internal constructor(
         workspaceIdentity: WorkspaceIdentity,
         projectModelAccess: IdeaWorkspaceFileProjectModelAccess,
@@ -57,8 +61,24 @@ internal class IdeaProjectModelWorkspaceFileInventory private constructor(
         val inventory: IdeaWorkspaceFileInventorySnapshot,
     )
 
-    override fun snapshot(kindDomain: WorkspaceFileKindDomain): IdeaWorkspaceFileInventorySnapshot {
-        return snapshot(kindDomain, projectModelAccess::read)
+    override fun snapshot(
+        kindDomain: WorkspaceFileKindDomain,
+    ): IdeaWorkspaceFileInventorySnapshot = synchronized(snapshotsByKind) {
+        if (projectModelAccess.isIndexing) {
+            return@synchronized snapshot(kindDomain, projectModelAccess::read)
+        }
+        val revision = projectModelAccess.revision
+        snapshotsByKind[kindDomain]
+            ?.takeIf { cached -> cached.revision == revision }
+            ?.let { cached -> return@synchronized cached.snapshot }
+
+        val current = snapshot(kindDomain, projectModelAccess::read)
+        if (projectModelAccess.revision == revision) {
+            snapshotsByKind[kindDomain] = CachedSnapshot(revision, current)
+        } else {
+            snapshotsByKind.remove(kindDomain)
+        }
+        current
     }
 
     internal fun snapshotWithGradleModel(
@@ -226,8 +246,16 @@ internal class IdeaProjectModelWorkspaceFileInventory private constructor(
         private val project: Project,
         private val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
     ) : IdeaWorkspaceFileProjectModelAccess {
+        private val projectRootModificationTracker = ProjectRootModificationTracker.getInstance(project)
+
         override val isIndexing: Boolean
             get() = DumbService.isDumb(project)
+
+        override val revision: IdeaWorkspaceFileInventoryRevision
+            get() = IdeaWorkspaceFileInventoryRevision(
+                projectRoots = projectRootModificationTracker.modificationCount,
+                vfsStructure = VirtualFileManager.VFS_STRUCTURE_MODIFICATIONS.modificationCount,
+            )
 
         override fun read(): IdeaWorkspaceFileProjectModel = readSnapshot().projectModel
 
@@ -324,5 +352,10 @@ internal class IdeaProjectModelWorkspaceFileInventory private constructor(
     private data class ProjectModelSnapshot(
         val gradleModel: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
         val projectModel: IdeaWorkspaceFileProjectModel,
+    )
+
+    private data class CachedSnapshot(
+        val revision: IdeaWorkspaceFileInventoryRevision,
+        val snapshot: IdeaWorkspaceFileInventorySnapshot,
     )
 }

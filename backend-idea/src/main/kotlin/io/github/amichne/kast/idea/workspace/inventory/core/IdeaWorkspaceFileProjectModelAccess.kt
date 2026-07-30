@@ -2,6 +2,7 @@ package io.github.amichne.kast.idea
 
 internal interface IdeaWorkspaceFileProjectModelAccess {
     val isIndexing: Boolean
+    val revision: IdeaWorkspaceFileInventoryRevision
 
     fun read(): IdeaWorkspaceFileProjectModel
 

@@ -56,7 +56,16 @@ internal class RpcMethodRouter(
             decodeParams(RuntimeOpenProjectRequest.serializer(), params),
         )
         method == "capabilities" -> RpcMethodResult(
-            encode(BackendCapabilities.serializer(), backend.capabilities()),
+            encode(
+                BackendCapabilities.serializer(),
+                backend.capabilities().let { capabilities ->
+                    capabilities.copy(
+                        limits = capabilities.limits.copy(
+                            requestTimeoutMillis = config.effectiveRequestTimeoutMillis,
+                        ),
+                    )
+                },
+            ),
         )
         else -> RpcMethodResult(
             dispatchRawMethod(method, params)

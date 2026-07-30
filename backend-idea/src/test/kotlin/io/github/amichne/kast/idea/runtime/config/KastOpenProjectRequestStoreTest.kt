@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.fields.PathsRuntimeDir
 import io.github.amichne.kast.api.contract.RuntimeOpenProjectRequestId
 import io.github.amichne.kast.api.contract.RuntimeOpenProjectRoot
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -25,16 +26,16 @@ class KastOpenProjectRequestStoreTest {
         val selectedProcess = store(now = 1_000, pid = 41)
 
         assertFalse(
-            wrongProcess.consume(root(firstRoot), requestId, allowUntargeted = false),
+            wrongProcess.consume(root(firstRoot), requestId, OpenProjectRequestAudience.TARGET_PROCESS),
         )
         assertFalse(
-            selectedProcess.consume(root(otherRoot), requestId, allowUntargeted = false),
+            selectedProcess.consume(root(otherRoot), requestId, OpenProjectRequestAudience.TARGET_PROCESS),
         )
         assertTrue(
-            selectedProcess.consume(root(firstRoot), requestId, allowUntargeted = false),
+            selectedProcess.consume(root(firstRoot), requestId, OpenProjectRequestAudience.TARGET_PROCESS),
         )
         assertFalse(
-            selectedProcess.consume(root(firstRoot), requestId, allowUntargeted = false),
+            selectedProcess.consume(root(firstRoot), requestId, OpenProjectRequestAudience.TARGET_PROCESS),
         )
     }
 
@@ -57,10 +58,10 @@ class KastOpenProjectRequestStoreTest {
         val store = store(now = 1_000, pid = 41)
 
         val canonicalRoot = root(root)
-        assertFalse(store.consume(canonicalRoot, stale, allowUntargeted = false))
-        assertFalse(store.consume(canonicalRoot, untargeted, allowUntargeted = false))
-        assertFalse(store.consume(canonicalRoot, wrongProduct, allowUntargeted = true))
-        assertTrue(store.consume(canonicalRoot, untargeted, allowUntargeted = true))
+        assertFalse(store.consume(canonicalRoot, stale, OpenProjectRequestAudience.TARGET_PROCESS))
+        assertFalse(store.consume(canonicalRoot, untargeted, OpenProjectRequestAudience.TARGET_PROCESS))
+        assertFalse(store.consume(canonicalRoot, wrongProduct, OpenProjectRequestAudience.TARGET_PRODUCT))
+        assertTrue(store.consume(canonicalRoot, untargeted, OpenProjectRequestAudience.TARGET_PRODUCT))
     }
 
     @Test
@@ -83,9 +84,32 @@ class KastOpenProjectRequestStoreTest {
         val canonicalRoot = root(root)
 
         assertTrue(store.consumeUntargetedForProject(canonicalRoot))
-        assertTrue(store.consume(canonicalRoot, targeted, allowUntargeted = false))
-        assertFalse(store.consume(canonicalRoot, firstUntargeted, allowUntargeted = true))
-        assertFalse(store.consume(canonicalRoot, secondUntargeted, allowUntargeted = true))
+        assertTrue(store.consume(canonicalRoot, targeted, OpenProjectRequestAudience.TARGET_PROCESS))
+        assertFalse(store.consume(canonicalRoot, firstUntargeted, OpenProjectRequestAudience.TARGET_PRODUCT))
+        assertFalse(store.consume(canonicalRoot, secondUntargeted, OpenProjectRequestAudience.TARGET_PRODUCT))
+    }
+
+    @Test
+    fun `project observer starts an already-open project for a future product signal`() {
+        val projectRoot = Files.createDirectory(tempDir.resolve("observed"))
+        val canonicalRoot = root(projectRoot)
+        var starts = 0
+        val observer = KastOpenProjectRequestObserver(
+            requests = store(now = 1_000, pid = 41),
+            canonicalRoot = canonicalRoot,
+            onSignal = { starts += 1 },
+        )
+
+        observer.poll()
+        writeRequest(
+            projectRoot,
+            targetPid = null,
+            targetProductCode = "IU",
+            expiresAt = 2_000,
+        )
+        observer.poll()
+
+        assertEquals(1, starts)
     }
 
     private fun store(now: Long, pid: Long): KastOpenProjectRequestStore {

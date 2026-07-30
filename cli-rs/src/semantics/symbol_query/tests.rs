@@ -36,6 +36,14 @@ mod tests {
         let baseline = query_identifier_and_import_evidence(0);
         let with_decoys = query_identifier_and_import_evidence(256);
 
+        assert_eq!(
+            baseline.0,
+            vec![
+                "sample.IdentifierOnly".to_string(),
+                "sample.DirectImportOnly".to_string(),
+                "sample.WildcardImportOnly".to_string(),
+            ],
+        );
         assert_eq!(baseline.0, with_decoys.0);
         assert_eq!(
             baseline.1, with_decoys.1,

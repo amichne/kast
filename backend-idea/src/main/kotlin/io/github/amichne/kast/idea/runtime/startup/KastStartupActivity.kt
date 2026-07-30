@@ -23,6 +23,9 @@ internal class KastStartupActivity : ProjectActivity {
         ) {
             KastOpenedProjectProvenance.mark(project)
         }
+        if (canonicalRoot != null) {
+            project.service<KastPluginService>().observeProjectOpenSignals(canonicalRoot, config)
+        }
         KastProjectOpenAutoIndexing.execute(
             project = project,
             config = config,

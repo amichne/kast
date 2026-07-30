@@ -6,7 +6,7 @@ use crate::symbol_query_filters::{
     CompiledSymbolQueryFilters, DeclarationFilterInput, SymbolQueryFilterCriteria, UsageFacet,
     is_build_logic_location,
 };
-use rusqlite::{Connection, OpenFlags, OptionalExtension, Row, params};
+use rusqlite::{Connection, OpenFlags, OptionalExtension, Row, params, params_from_iter};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::cmp::Ordering;
