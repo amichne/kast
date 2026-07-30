@@ -7,7 +7,11 @@ use std::process::Command;
 
 use rusqlite::params;
 use sha2::{Digest, Sha256};
-use support::workspace_database_path_for_test;
+use support::{
+    default_bin_dir, workspace_database_path_for_test,
+    write_current_cli_install_manifest_for_test,
+    write_macos_plugin_workspace_metadata_for_cli,
+};
 use support::workspace_files::WorkspaceIndexFixture;
 
 fn named(name: &str) -> Command {
@@ -114,6 +118,42 @@ fn home_reports_live_workspace_state_without_protocol_cruft() {
     for cruft in ["state: UNKNOWN", "schemaVersion", "ok:", "method:"] {
         assert!(!stdout.contains(cruft), "leaked {cruft}: {stdout}");
     }
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn installed_public_entrypoint_accepts_control_binary_authority() {
+    let fixture = tempfile::tempdir().expect("temporary install");
+    let home = fixture.path().join("home");
+    let config_home = fixture.path().join("config");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    write_current_cli_install_manifest_for_test(&home, &config_home);
+    let control_binary = default_bin_dir(&home).join("_kastctl");
+    let public_binary = default_bin_dir(&home).join("kast");
+    write_macos_plugin_workspace_metadata_for_cli(
+        &workspace,
+        &control_binary,
+        env!("CARGO_PKG_VERSION"),
+    );
+
+    let output = Command::new(public_binary)
+        .arg0("kast")
+        .current_dir(&workspace)
+        .env("HOME", &home)
+        .env("KAST_HOME", home.join(".local/share/kast"))
+        .env("KAST_CONFIG_HOME", &config_home)
+        .output()
+        .expect("run installed public kast");
+
+    assert!(output.status.success(), "{output:?}");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        !stdout.contains("does not match the running Kast executable"),
+        "{stdout}"
+    );
 }
 
 #[test]
