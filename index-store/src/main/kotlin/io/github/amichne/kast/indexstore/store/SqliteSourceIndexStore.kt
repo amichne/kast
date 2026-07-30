@@ -101,6 +101,11 @@ class SqliteSourceIndexStore private constructor(
 
     fun manifestFileCount(): Int? = inventory.manifestFileCount()
 
+    fun prepareManifestFileCountProvider(): () -> Int {
+        state.prepareManifestFileCount()
+        return { state.committedManifestFileCount().value }
+    }
+
     fun knownSourcePaths(): List<Path> = inventory.knownSourcePaths()
 
     fun fileCountBySourceRoot(sourceRoots: Collection<Path>): Map<Path, Int> =

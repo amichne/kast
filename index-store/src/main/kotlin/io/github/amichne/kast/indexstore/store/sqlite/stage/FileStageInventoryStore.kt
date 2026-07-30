@@ -68,7 +68,7 @@ internal class FileStageInventoryStore(
                 }
                 recomputeModuleProgressInTransaction(conn)
                 state.incrementGenerationInTransaction(conn)
-                conn.commit()
+                state.commitManifestMutation(conn)
             } catch (failure: Exception) {
                 state.rollbackAndReloadPrefixes(conn)
                 throw failure
@@ -95,7 +95,7 @@ internal class FileStageInventoryStore(
                 current.forEach { (path, row) -> removeInventoryInTransaction(conn, path, row) }
                 recomputeModuleProgressInTransaction(conn)
                 state.incrementGenerationInTransaction(conn)
-                conn.commit()
+                state.commitManifestMutation(conn)
             } catch (failure: Exception) {
                 state.rollbackAndReloadPrefixes(conn)
                 throw failure

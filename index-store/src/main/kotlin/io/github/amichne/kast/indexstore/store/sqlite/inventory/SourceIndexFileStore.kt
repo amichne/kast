@@ -44,7 +44,7 @@ internal class SourceIndexFileStore(
                 state.removeIneligibleSourceIndexRows(conn)
                 conn.createStatement().use { stmt -> stmt.execute("DELETE FROM pending_updates") }
                 state.incrementGenerationInTransaction(conn)
-                conn.commit()
+                state.commitManifestMutation(conn)
             } catch (e: Exception) {
                 state.rollbackAndReloadPrefixes(conn)
                 throw e
@@ -86,7 +86,7 @@ internal class SourceIndexFileStore(
             try {
                 mutations.deleteFileRowsInTransaction(conn, encodedPath.first, encodedPath.second)
                 state.incrementGenerationInTransaction(conn)
-                conn.commit()
+                state.commitManifestMutation(conn)
             } catch (e: Exception) {
                 conn.rollback()
                 throw e

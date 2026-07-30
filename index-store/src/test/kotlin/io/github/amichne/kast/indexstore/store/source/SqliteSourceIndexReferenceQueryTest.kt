@@ -225,6 +225,7 @@ class SqliteSourceIndexReferenceQueryTest {
     @Test
     fun `manifest count remains available while an index read owns the store lock`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val firstPath = normalized.resolve("src/Manifest.kt").toString()
         val generationRead = CountDownLatch(1)
         val releaseRead = CountDownLatch(1)
         val count = AtomicReference<Int?>()
@@ -236,7 +237,8 @@ class SqliteSourceIndexReferenceQueryTest {
             },
         ).use { store ->
             store.ensureSchema()
-            store.saveManifest(mapOf(normalized.resolve("src/Manifest.kt").toString() to 1L))
+            store.saveManifest(mapOf(firstPath to 1L))
+            val manifestFileCount = store.prepareManifestFileCountProvider()
             val readThread = thread(name = "source-index-lock-owner") {
                 store.generatedReferencePageToSymbol(
                     targetFqName = "demo.Target",
@@ -246,7 +248,7 @@ class SqliteSourceIndexReferenceQueryTest {
             }
             assertTrue(generationRead.await(10, TimeUnit.SECONDS))
             val countThread = thread(name = "source-index-manifest-count") {
-                count.set(store.manifestFileCount())
+                count.set(manifestFileCount())
             }
             try {
                 countThread.join(1_000)
@@ -257,6 +259,13 @@ class SqliteSourceIndexReferenceQueryTest {
                 countThread.join(10_000)
                 readThread.join(10_000)
             }
+            store.saveManifest(
+                mapOf(
+                    firstPath to 1L,
+                    normalized.resolve("src/Second.kt").toString() to 2L,
+                ),
+            )
+            assertEquals(2, manifestFileCount())
         }
     }
 

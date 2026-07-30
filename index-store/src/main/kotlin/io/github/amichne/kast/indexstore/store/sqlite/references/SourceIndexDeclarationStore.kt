@@ -44,7 +44,7 @@ internal class SourceIndexDeclarationStore(
                 }
                 state.removeIneligibleSourceIndexRows(conn)
                 state.incrementGenerationInTransaction(conn)
-                conn.commit()
+                state.commitManifestMutation(conn)
             } catch (e: Exception) {
                 state.rollbackAndReloadPrefixes(conn)
                 throw e

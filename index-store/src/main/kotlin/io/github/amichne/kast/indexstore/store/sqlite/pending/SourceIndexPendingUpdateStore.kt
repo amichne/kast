@@ -53,7 +53,7 @@ internal class SourceIndexPendingUpdateStore(
                 markPendingUpdatesApplied(conn, pending)
                 cleanupAppliedPendingUpdates(conn)
                 if (pending.isNotEmpty()) state.incrementGenerationInTransaction(conn)
-                conn.commit()
+                state.commitManifestMutation(conn)
                 pending.size
             } catch (e: Exception) {
                 state.rollbackAndReloadPrefixes(conn)

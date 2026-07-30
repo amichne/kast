@@ -22,7 +22,7 @@ internal class SourceIndexInventoryStore(
                 mutations.insertManifestInTransaction(conn, eligibleEntries)
                 state.removeIneligibleSourceIndexRows(conn)
                 state.incrementGenerationInTransaction(conn)
-                conn.commit()
+                state.commitManifestMutation(conn)
             } catch (e: Exception) {
                 state.rollbackAndReloadPrefixes(conn)
                 throw e
@@ -56,7 +56,7 @@ internal class SourceIndexInventoryStore(
                     stmt.executeUpdate()
                 }
                 state.incrementGenerationInTransaction(conn)
-                conn.commit()
+                state.commitManifestMutation(conn)
             } catch (e: Exception) {
                 state.rollbackAndReloadPrefixes(conn)
                 throw e
