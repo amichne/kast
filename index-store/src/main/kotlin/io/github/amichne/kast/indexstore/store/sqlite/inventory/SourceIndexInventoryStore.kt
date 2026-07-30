@@ -84,6 +84,21 @@ internal class SourceIndexInventoryStore(
         }
     }
 
+    fun manifestFileCount(): Int? {
+        if (!state.dbExists()) return null
+        return synchronized(state.writeLock) {
+            try {
+                state.connection().createStatement().use { stmt ->
+                    stmt.executeQuery("SELECT COUNT(*) FROM file_manifest").use { rows ->
+                        if (rows.next()) rows.getInt(1) else 0
+                    }
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
     fun knownSourcePaths(): List<Path> {
         if (!state.dbExists()) return emptyList()
         return synchronized(state.writeLock) {

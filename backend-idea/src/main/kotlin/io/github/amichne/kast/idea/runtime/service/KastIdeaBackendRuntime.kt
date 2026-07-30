@@ -244,9 +244,18 @@ object KastIdeaBackendRuntime {
             throw failure
         }
         val server = try {
+            val initialWorkspaceFileCount = sourceIndexStore.manifestFileCount() ?: 0
             AnalysisServer(
                 backend = backend,
-                config = ideaAnalysisServerConfig(transport, limits, config, sourceIndexStore.loadManifest()?.size ?: 0),
+                config = ideaAnalysisServerConfig(
+                    transport = transport,
+                    limits = limits,
+                    config = config,
+                    workspaceFileCount = initialWorkspaceFileCount,
+                    workspaceFileCountProvider = {
+                        sourceIndexStore.manifestFileCount() ?: initialWorkspaceFileCount
+                    },
+                ),
                 lifecycleController = lifecycleController,
                 projectOpenController = projectOpenController,
             ).start()

@@ -99,6 +99,8 @@ class SqliteSourceIndexStore private constructor(
 
     fun loadManifest(): Map<String, Long>? = inventory.loadManifest()
 
+    fun manifestFileCount(): Int? = inventory.manifestFileCount()
+
     fun knownSourcePaths(): List<Path> = inventory.knownSourcePaths()
 
     fun fileCountBySourceRoot(sourceRoots: Collection<Path>): Map<Path, Int> =

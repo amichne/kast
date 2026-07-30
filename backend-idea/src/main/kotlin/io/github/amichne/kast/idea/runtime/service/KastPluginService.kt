@@ -335,6 +335,7 @@ internal fun ideaAnalysisServerConfig(
     limits: ServerLimits,
     config: KastConfig,
     workspaceFileCount: Int,
+    workspaceFileCountProvider: (() -> Int)? = null,
 ): AnalysisServerConfig = AnalysisServerConfig(
     transport = transport,
     requestTimeoutMillis = limits.requestTimeoutMillis,
@@ -344,6 +345,7 @@ internal fun ideaAnalysisServerConfig(
     continuationCapacity = limits.continuationCapacity,
     descriptorDirectory = config.paths.descriptorDir.toPath(),
     workspaceFileCount = workspaceFileCount,
+    workspaceFileCountProvider = workspaceFileCountProvider,
 )
 
 internal fun ideaAnalysisServerConfig(
