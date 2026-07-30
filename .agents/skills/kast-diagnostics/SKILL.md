@@ -115,7 +115,9 @@ Prefer one narrow telemetry scope such as `references`, `type-hierarchy`, `works
 Use the repository-mandated Rust graph command for generation-checked, SQLite read-only, query-only projections. Read its scoped help first.
 
 ```shell
+AGENT_HELP="$("$KASTCTL" agent --help 2>/dev/null)"
 GRAPH_HELP="$("$KASTCTL" agent graph --help 2>/dev/null)"
+test -n "$AGENT_HELP" || exit 1
 test -n "$GRAPH_HELP" || exit 1
 GRAPH_SUMMARY="$("$KASTCTL" --output json agent graph --workspace-root "$PWD" \
   --scope symbol --operation summary 2>/dev/null)"
