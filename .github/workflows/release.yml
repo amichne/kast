@@ -953,7 +953,7 @@ jobs:
           rm -rf "$packager_dir"
           mkdir -p "$packager_dir"
           python3 -m zipfile -e "$cli_asset" "$packager_dir"
-          packager_bin="${packager_dir}/kast"
+          packager_bin="${packager_dir}/_kastctl"
           [[ -f "$packager_bin" ]] || { echo "Missing extracted Rust CLI binary: ${packager_bin}" >&2; exit 1; }
           chmod 755 "$packager_bin"
 

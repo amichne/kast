@@ -39,6 +39,7 @@ require "$ci" 'cmp -s cli-rs/target/package/kast-v0.0.0-ci-linux-x64/_kastctl cl
 require "$release" 'cp "cli-rs/target/${{ matrix.target }}/release/kast" "$staging_dir/_kastctl"' 'raw CLI assets must include the administrative entrypoint'
 require "$release" 'cmp -s "$staging_dir/_kastctl" "$staging_dir/kast"' 'release must prove its multicall entrypoints are byte-identical'
 require "$release" 'zip -9 -q "$GITHUB_WORKSPACE/dist/${asset_name}" _kastctl kast' 'raw CLI archives must publish only the two multicall names'
+require "$release" 'packager_bin="${packager_dir}/_kastctl"' 'Linux headless packaging must invoke the administrative entrypoint'
 require "$release" '.github/scripts/release/agent-resource-assets.py build' 'release must build agent resources with the deterministic packager'
 require "$release" '--source cli-rs/resources/kast' 'release resources must come from the embedded source'
 require "$release" 'kast-codex-${tag}.tar' 'release must publish the embedded Codex marketplace'
