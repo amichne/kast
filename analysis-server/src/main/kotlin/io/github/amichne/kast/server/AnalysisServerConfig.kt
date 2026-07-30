@@ -34,8 +34,10 @@ data class AnalysisServerConfig(
      * (300 000 ms) without reducing the configured base.
      *
      * Formula (for workspaceFileCount > 1 000):
-     *   effectiveTimeout = requestTimeoutMillis * log2(workspaceFileCount / 1_000)
-     *   capped at 300_000 ms
+     *   effectiveTimeout = max(
+     *       requestTimeoutMillis,
+     *       min(requestTimeoutMillis * log2(workspaceFileCount / 1_000), 300_000),
+     *   )
      */
     val effectiveRequestTimeoutMillis: Long
         get() {
