@@ -112,12 +112,43 @@ class KastOpenProjectRequestStoreTest {
         assertEquals(1, starts)
     }
 
-    private fun store(now: Long, pid: Long): KastOpenProjectRequestStore {
+    @Test
+    fun `project observer follows a reloaded runtime directory`() {
+        val projectRoot = Files.createDirectory(tempDir.resolve("observed"))
+        val initialRuntimeDir = Files.createDirectory(tempDir.resolve("initial-runtime"))
+        val reloadedRuntimeDir = Files.createDirectory(tempDir.resolve("reloaded-runtime"))
+        val canonicalRoot = root(projectRoot)
+        var starts = 0
+        val observer = KastOpenProjectRequestObserver(
+            requests = store(now = 1_000, pid = 41, runtimeDir = initialRuntimeDir),
+            canonicalRoot = canonicalRoot,
+            onSignal = { starts += 1 },
+        )
+        writeRequest(
+            projectRoot,
+            targetPid = null,
+            targetProductCode = "IU",
+            expiresAt = 2_000,
+            runtimeDir = reloadedRuntimeDir,
+        )
+
+        observer.poll()
+        observer.replaceRequests(store(now = 1_000, pid = 41, runtimeDir = reloadedRuntimeDir))
+        observer.poll()
+
+        assertEquals(1, starts)
+    }
+
+    private fun store(
+        now: Long,
+        pid: Long,
+        runtimeDir: Path = tempDir,
+    ): KastOpenProjectRequestStore {
         val defaults = KastConfig.defaults()
         return KastOpenProjectRequestStore(
             config = defaults.copy(
                 paths = defaults.paths.copy(
-                    runtimeDir = PathsRuntimeDir(tempDir.toString()),
+                    runtimeDir = PathsRuntimeDir(runtimeDir.toString()),
                 ),
             ),
             timeProvider = OpenProjectRequestTimeProvider {
@@ -133,9 +164,10 @@ class KastOpenProjectRequestStoreTest {
         targetPid: Long?,
         targetProductCode: String? = null,
         expiresAt: Long,
+        runtimeDir: Path = tempDir,
     ): RuntimeOpenProjectRequestId {
         val requestId = RuntimeOpenProjectRequestId.random()
-        val directory = Files.createDirectories(tempDir.resolve("idea-open-requests"))
+        val directory = Files.createDirectories(runtimeDir.resolve("idea-open-requests"))
         val path = directory.resolve("$requestId.json")
         Files.writeString(
             path,
