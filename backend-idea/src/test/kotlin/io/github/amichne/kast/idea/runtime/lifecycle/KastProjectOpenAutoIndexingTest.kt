@@ -33,7 +33,7 @@ class KastProjectOpenAutoIndexingTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `project open starts reference indexing before waiting for Gradle`() {
+    fun `project open keeps reference indexing independent from Gradle load completion`() {
         val project = projectFixture.get()
         var loadedGradleWorkspaceRoot: Path? = null
         var startedProject: Project? = null
@@ -63,7 +63,7 @@ class KastProjectOpenAutoIndexingTest {
         assertTrue(started)
         assertSame(project, startedProject)
         assertEquals(listOf("backend", "index", "gradle"), events)
-        gradleCompletion?.invoke(null)
+        gradleCompletion?.invoke(IllegalStateException("Another 'Sync project' task is currently running"))
         assertEquals(listOf("backend", "index", "gradle"), events)
         assertNotNull(loadedGradleWorkspaceRoot)
         assertEquals(loadedGradleWorkspaceRoot, loadedGradleWorkspaceRoot?.toAbsolutePath()?.normalize())
