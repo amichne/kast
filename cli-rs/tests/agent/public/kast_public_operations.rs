@@ -308,3 +308,4 @@ fn refresh_keeps_relationship_failure_actionable_without_graph_extraction() {
 }
 
 include!("operations/refresh.rs");
+include!("operations/focused_refresh.rs");

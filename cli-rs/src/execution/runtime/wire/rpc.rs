@@ -110,12 +110,19 @@ fn raw_rpc_session_for_candidate(
     config: &KastConfig,
     selected: &RuntimeCandidateStatus,
 ) -> RawRpcSession {
+    let advertised_timeout_millis = selected
+        .capabilities
+        .as_ref()
+        .and_then(|capabilities| capabilities.pointer("/limits/requestTimeoutMillis"))
+        .and_then(Value::as_u64)
+        .unwrap_or(0);
     RawRpcSession {
         socket_path: PathBuf::from(&selected.descriptor.socket_path),
         response_timeout: Duration::from_millis(
             config
                 .server
                 .request_timeout_millis
+                .max(advertised_timeout_millis)
                 .saturating_add(5_000)
                 .max(1),
         ),

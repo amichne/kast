@@ -27,7 +27,7 @@ internal class KastRuntimeProjectOpenController(
     override fun openProject(request: RuntimeOpenProjectRequest): RuntimeProjectOpenPlan {
         requireSupportedIdeaHost()
         val canonicalRoot = request.canonicalRoot
-        if (!requests.consume(canonicalRoot, request.requestId, allowUntargeted = false)) {
+        if (!requests.consume(canonicalRoot, request.requestId, OpenProjectRequestAudience.TARGET_PROCESS)) {
             throw openProjectError(
                 "IDEA_OPEN_REQUEST_REJECTED",
                 "The local project-open request is missing, expired, already consumed, or belongs to another IDEA process.",

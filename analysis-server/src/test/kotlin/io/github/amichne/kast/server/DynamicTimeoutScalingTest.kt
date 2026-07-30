@@ -56,6 +56,21 @@ class DynamicTimeoutScalingTest {
     }
 
     @Test
+    fun effectiveTimeoutObservesFilesIndexedAfterServerStartup() {
+        var workspaceFileCount = 0
+        val config = AnalysisServerConfig(
+            requestTimeoutMillis = 30_000,
+            workspaceFileCountProvider = { workspaceFileCount },
+        )
+
+        assertEquals(30_000L, config.effectiveRequestTimeoutMillis)
+
+        workspaceFileCount = 16_813
+
+        assertEquals(122_145L, config.effectiveRequestTimeoutMillis)
+    }
+
+    @Test
     fun effectiveTimeoutIsCappedAt300Seconds() {
         val config = AnalysisServerConfig(requestTimeoutMillis = 300_000L, workspaceFileCount = 1_000_000)
         assertEquals(300_000L, config.effectiveRequestTimeoutMillis)

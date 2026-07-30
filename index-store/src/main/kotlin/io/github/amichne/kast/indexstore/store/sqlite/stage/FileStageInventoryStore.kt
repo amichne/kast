@@ -48,11 +48,7 @@ internal class FileStageInventoryStore(
                 mutations.internPathsInTransaction(conn, desired.keys)
                 if (resolutionInputsChanged) invalidateLimitedRelationshipOutcomesInTransaction(conn)
                 current.keys.minus(desired.keys).forEach { removedPath ->
-                    deleteOutcomeRowsInTransaction(conn, removedPath)
-                    current.getValue(removedPath).let { row ->
-                        inboundReferences.detachAndInvalidateInTransaction(conn, row.prefixId, row.filename)
-                        mutations.deleteFileRowsInTransaction(conn, row.prefixId, row.filename)
-                    }
+                    removeInventoryInTransaction(conn, removedPath, current.getValue(removedPath))
                 }
                 desired.toSortedMap().forEach { (path, entry) ->
                     current[path]?.let { previous ->
@@ -72,7 +68,34 @@ internal class FileStageInventoryStore(
                 }
                 recomputeModuleProgressInTransaction(conn)
                 state.incrementGenerationInTransaction(conn)
-                conn.commit()
+                state.commitManifestMutation(conn)
+            } catch (failure: Exception) {
+                state.rollbackAndReloadPrefixes(conn)
+                throw failure
+            } finally {
+                conn.autoCommit = true
+            }
+        }
+    }
+
+    fun reconcileRemovedFileInventory(paths: Collection<String>) {
+        require(paths.all(SourceIndexFilePolicy::isEligible)) {
+            "Removed file-stage inventory accepts Kotlin source files only"
+        }
+        val removedPaths = paths.distinct()
+        if (removedPaths.isEmpty()) return
+        synchronized(state.writeLock) {
+            val conn = state.connection()
+            val current = removedPaths.mapNotNull { path ->
+                reader.inventoryScopeInTransaction(conn, path)?.let { row -> path to row }
+            }
+            if (current.isEmpty()) return@synchronized
+            conn.autoCommit = false
+            try {
+                current.forEach { (path, row) -> removeInventoryInTransaction(conn, path, row) }
+                recomputeModuleProgressInTransaction(conn)
+                state.incrementGenerationInTransaction(conn)
+                state.commitManifestMutation(conn)
             } catch (failure: Exception) {
                 state.rollbackAndReloadPrefixes(conn)
                 throw failure
@@ -246,6 +269,16 @@ internal class FileStageInventoryStore(
             statement.setString(2, encoded.second)
             statement.executeUpdate()
         }
+    }
+
+    private fun removeInventoryInTransaction(
+        conn: Connection,
+        path: String,
+        row: PersistedFileInventory,
+    ) {
+        deleteOutcomeRowsInTransaction(conn, path)
+        inboundReferences.detachAndInvalidateInTransaction(conn, row.prefixId, row.filename)
+        mutations.deleteFileRowsInTransaction(conn, row.prefixId, row.filename)
     }
 
     internal fun deleteOutcomeInTransaction(conn: Connection, path: String, stage: FileIndexStage) {

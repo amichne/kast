@@ -11,6 +11,7 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.socketPathForWorkspaceRoot
 import io.github.amichne.kast.api.contract.AnalysisTransport
+import io.github.amichne.kast.api.contract.RuntimeOpenProjectRoot
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RuntimeLifecycleController
@@ -26,6 +27,8 @@ internal class KastPluginService(
     private val project: Project,
 ) : Disposable {
     private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    @Volatile
+    private var projectOpenRequestObserver: KastOpenProjectRequestObserver? = null
     private val backendLifecycle = KastPluginBackendLifecycle(
         startBackend = ::createBackend,
         onStopping = ::recordBackendStopping,
@@ -66,6 +69,19 @@ internal class KastPluginService(
     fun startIndexing() = backendLifecycle.markIndexReady()
 
     fun failIndexing(error: Throwable) = backendLifecycle.markIndexFailed(error)
+
+    fun observeProjectOpenSignals(canonicalRoot: RuntimeOpenProjectRoot, config: KastConfig) {
+        val observer = KastOpenProjectRequestObserver(
+            requests = KastOpenProjectRequestStore(config),
+            canonicalRoot = canonicalRoot,
+            onSignal = {
+                KastOpenedProjectProvenance.mark(project)
+                startServer()
+            },
+        )
+        projectOpenRequestObserver = observer
+        coroutineScope.launch { observer.run() }
+    }
 
     fun exploreAsync(
         request: KastExplorerRequest,
@@ -234,7 +250,9 @@ internal class KastPluginService(
             LOG.warn("Failed to load Kast config for workspace $path; starting IDEA backend with defaults.", error)
             KastDiagnosticsService.getInstance(project).recordConfigFallback(path, error)
         },
-    )
+    ).also { config ->
+        projectOpenRequestObserver?.replaceRequests(KastOpenProjectRequestStore(config))
+    }
 
     private fun workspaceRoot(): Path? = project.basePath?.let { Path.of(it).toAbsolutePath().normalize() }
 
@@ -315,6 +333,27 @@ internal fun ideaAnalysisServerConfig(
     transport: AnalysisTransport,
     limits: ServerLimits,
     config: KastConfig,
+): AnalysisServerConfig = ideaAnalysisServerConfig(transport, limits, config, workspaceFileCount = 0)
+
+internal fun ideaAnalysisServerConfig(
+    transport: AnalysisTransport,
+    limits: ServerLimits,
+    config: KastConfig,
+    workspaceFileCountProvider: () -> Int,
+): AnalysisServerConfig = ideaAnalysisServerConfig(
+    transport = transport,
+    limits = limits,
+    config = config,
+    workspaceFileCount = workspaceFileCountProvider(),
+    workspaceFileCountProvider = workspaceFileCountProvider,
+)
+
+internal fun ideaAnalysisServerConfig(
+    transport: AnalysisTransport,
+    limits: ServerLimits,
+    config: KastConfig,
+    workspaceFileCount: Int,
+    workspaceFileCountProvider: (() -> Int)? = null,
 ): AnalysisServerConfig = AnalysisServerConfig(
     transport = transport,
     requestTimeoutMillis = limits.requestTimeoutMillis,
@@ -323,14 +362,24 @@ internal fun ideaAnalysisServerConfig(
     continuationTtlMillis = limits.continuationTtlMillis,
     continuationCapacity = limits.continuationCapacity,
     descriptorDirectory = config.paths.descriptorDir.toPath(),
+    workspaceFileCount = workspaceFileCount,
+    workspaceFileCountProvider = workspaceFileCountProvider,
 )
 
 internal fun ideaAnalysisServerConfig(
     socketPath: Path,
     limits: ServerLimits,
     config: KastConfig,
+): AnalysisServerConfig = ideaAnalysisServerConfig(socketPath, limits, config, workspaceFileCount = 0)
+
+internal fun ideaAnalysisServerConfig(
+    socketPath: Path,
+    limits: ServerLimits,
+    config: KastConfig,
+    workspaceFileCount: Int,
 ): AnalysisServerConfig = ideaAnalysisServerConfig(
     transport = AnalysisTransport.UnixDomainSocket(socketPath),
     limits = limits,
     config = config,
+    workspaceFileCount = workspaceFileCount,
 )

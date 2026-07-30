@@ -23,6 +23,9 @@ internal class KastStartupActivity : ProjectActivity {
         ) {
             KastOpenedProjectProvenance.mark(project)
         }
+        if (canonicalRoot != null) {
+            project.service<KastPluginService>().observeProjectOpenSignals(canonicalRoot, config)
+        }
         KastProjectOpenAutoIndexing.execute(
             project = project,
             config = config,
@@ -35,8 +38,8 @@ internal class KastStartupActivity : ProjectActivity {
             startReferenceIndex = { startupProject ->
                 startupProject.service<KastPluginService>().startIndexing()
             },
-            failReadiness = { startupProject, error ->
-                startupProject.service<KastPluginService>().failIndexing(error)
+            restartBackend = { startupProject ->
+                startupProject.service<KastPluginService>().restartServer()
             },
         )
     }

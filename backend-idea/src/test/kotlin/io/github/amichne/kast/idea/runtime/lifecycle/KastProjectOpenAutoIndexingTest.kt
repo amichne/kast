@@ -33,7 +33,7 @@ class KastProjectOpenAutoIndexingTest {
     lateinit var tempDir: Path
 
     @Test
-    fun `project open reports indexing then waits for Gradle before starting reference index`() {
+    fun `project open keeps reference indexing independent from Gradle load completion`() {
         val project = projectFixture.get()
         var loadedGradleWorkspaceRoot: Path? = null
         var startedProject: Project? = null
@@ -57,16 +57,43 @@ class KastProjectOpenAutoIndexingTest {
                 startedProject = project
             },
             startReferenceIndex = { events.add("index") },
-            failReadiness = { _, error -> events.add("failed:${error.message}") },
+            restartBackend = { events.add("restart") },
         )
 
         assertTrue(started)
         assertSame(project, startedProject)
-        assertEquals(listOf("backend", "gradle"), events)
-        gradleCompletion?.invoke(null)
-        assertEquals(listOf("backend", "gradle", "index"), events)
+        assertEquals(listOf("backend", "index", "gradle"), events)
+        gradleCompletion?.invoke(IllegalStateException("Another 'Sync project' task is currently running"))
+        assertEquals(listOf("backend", "index", "gradle"), events)
         assertNotNull(loadedGradleWorkspaceRoot)
         assertEquals(loadedGradleWorkspaceRoot, loadedGradleWorkspaceRoot?.toAbsolutePath()?.normalize())
+    }
+
+    @Test
+    fun `successful Gradle completion retries indexing through the existing backend lifecycle`() {
+        val project = projectFixture.get()
+        var gradleCompletion: ((Throwable?) -> Unit)? = null
+        val events = mutableListOf<String>()
+
+        val started = KastProjectOpenAutoIndexing.execute(
+            project = project,
+            config = KastConfig.defaults(),
+            loadGradleProject = { workspaceRoot, _, onComplete ->
+                events.add("gradle")
+                gradleCompletion = onComplete
+                ProjectOpenGradleLoadResult.Requested(GradleProjectLoadRequest.Refresh(workspaceRoot))
+            },
+            startBackend = { _, _ -> events.add("backend") },
+            startReferenceIndex = { events.add("index") },
+            restartBackend = { events.add("restart") },
+        )
+
+        assertTrue(started)
+        assertEquals(listOf("backend", "index", "gradle"), events)
+
+        gradleCompletion?.invoke(null)
+
+        assertEquals(listOf("backend", "index", "gradle", "restart"), events)
     }
 
     @Test
@@ -198,7 +225,7 @@ class KastProjectOpenAutoIndexingTest {
             },
             startBackend = { startupProject, _ -> startedProject = startupProject },
             startReferenceIndex = { startedProject = it },
-            failReadiness = { _, _ -> },
+            restartBackend = {},
         )
 
         assertTrue(started)
@@ -223,7 +250,7 @@ class KastProjectOpenAutoIndexingTest {
             config = disabledConfig,
             startBackend = { _, _ -> started = true },
             startReferenceIndex = { started = true },
-            failReadiness = { _, _ -> },
+            restartBackend = {},
         )
 
         assertFalse(requestedStart)
@@ -251,7 +278,7 @@ class KastProjectOpenAutoIndexingTest {
                 backendStarted = true
             },
             startReferenceIndex = { indexStarted = true },
-            failReadiness = { _, _ -> },
+            restartBackend = {},
         )
 
         assertTrue(requestedStart)
@@ -274,7 +301,7 @@ class KastProjectOpenAutoIndexingTest {
             },
             startBackend = { _, _ -> error("compatibility metadata failed") },
             startReferenceIndex = { requestedIndex = true },
-            failReadiness = { _, _ -> requestedIndex = true },
+            restartBackend = {},
         )
 
         assertFalse(requestedStart)

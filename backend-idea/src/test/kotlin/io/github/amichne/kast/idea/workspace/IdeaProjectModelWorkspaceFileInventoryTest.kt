@@ -109,6 +109,29 @@ class IdeaProjectModelWorkspaceFileInventoryTest {
     }
 
     @Test
+    fun `unchanged project revision reuses one complete inventory snapshot`() {
+        val access = FakeProjectModelAccess(model = emptyModel())
+        val inventory = inventory(access)
+
+        inventory.snapshot(WorkspaceFileKindDomain.SOURCE_ONLY)
+        inventory.snapshot(WorkspaceFileKindDomain.SOURCE_ONLY)
+
+        assertEquals(1, access.readCount)
+    }
+
+    @Test
+    fun `changed project revision rebuilds the complete inventory snapshot`() {
+        val access = FakeProjectModelAccess(model = emptyModel())
+        val inventory = inventory(access)
+        inventory.snapshot(WorkspaceFileKindDomain.SOURCE_ONLY)
+
+        access.revision = access.revision.copy(vfsStructure = 1)
+        inventory.snapshot(WorkspaceFileKindDomain.SOURCE_ONLY)
+
+        assertEquals(2, access.readCount)
+    }
+
+    @Test
     fun `incomplete supplied Gradle model is typed before project model read`() {
         val access = FakeProjectModelAccess(model = emptyModel())
         val gradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
@@ -247,6 +270,10 @@ class IdeaProjectModelWorkspaceFileInventoryTest {
         override val isIndexing: Boolean = false,
         private val failure: RuntimeException? = null,
     ) : IdeaWorkspaceFileProjectModelAccess {
+        override var revision = IdeaWorkspaceFileInventoryRevision(
+            projectRoots = 0,
+            vfsStructure = 0,
+        )
         var readCount: Int = 0
             private set
         var suppliedGradleModelReadCount: Int = 0

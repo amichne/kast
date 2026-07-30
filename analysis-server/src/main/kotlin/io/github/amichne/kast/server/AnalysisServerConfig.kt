@@ -19,6 +19,7 @@ data class AnalysisServerConfig(
     val continuationCapacity: Int = 256,
     val descriptorDirectory: Path? = null,
     val workspaceFileCount: Int = 0,
+    val workspaceFileCountProvider: (() -> Int)? = null,
 ) {
     val typedContinuationTtl: ContinuationTtl
         get() = ContinuationTtl.of(Duration.ofMillis(continuationTtlMillis))
@@ -37,8 +38,9 @@ data class AnalysisServerConfig(
      */
     val effectiveRequestTimeoutMillis: Long
         get() {
-            if (workspaceFileCount <= 1_000) return requestTimeoutMillis
-            val scaleFactor = (ln(workspaceFileCount.toDouble() / 1_000.0) / ln(2.0)).coerceAtLeast(1.0)
+            val currentWorkspaceFileCount = workspaceFileCountProvider?.invoke() ?: workspaceFileCount
+            if (currentWorkspaceFileCount <= 1_000) return requestTimeoutMillis
+            val scaleFactor = (ln(currentWorkspaceFileCount.toDouble() / 1_000.0) / ln(2.0)).coerceAtLeast(1.0)
             return (requestTimeoutMillis * scaleFactor).toLong().coerceAtMost(300_000L)
         }
 

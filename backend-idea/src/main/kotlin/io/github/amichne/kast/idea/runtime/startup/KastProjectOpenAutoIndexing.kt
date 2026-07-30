@@ -11,16 +11,16 @@ internal object KastProjectOpenAutoIndexing {
         config: KastConfig,
         loadGradleProject: (Path, KastConfig, (Throwable?) -> Unit) -> ProjectOpenGradleLoadResult =
             { workspaceRoot, config, onComplete ->
-            KastProjectOpenGradleLoad.execute(
-                project = project,
-                workspaceRoot = workspaceRoot,
-                enabled = config.projectOpen.gradleLoadEnabled,
-                onComplete = onComplete,
-            )
-        },
+                KastProjectOpenGradleLoad.execute(
+                    project = project,
+                    workspaceRoot = workspaceRoot,
+                    enabled = config.projectOpen.gradleLoadEnabled,
+                    onComplete = onComplete,
+                )
+            },
         startBackend: (Project, KastConfig) -> Unit,
         startReferenceIndex: (Project) -> Unit,
-        failReadiness: (Project, Throwable) -> Unit,
+        restartBackend: (Project) -> Unit,
     ): Boolean {
         val workspaceRoot = project.basePath?.let { Path.of(it).toAbsolutePath().normalize() }
         if (workspaceRoot == null) {
@@ -45,25 +45,15 @@ internal object KastProjectOpenAutoIndexing {
             LOG.warn("Kast IDEA backend startup failed for $workspaceRoot", backendStartFailure)
             return false
         }
+        startReferenceIndex(project)
 
         if (config.projectOpen.gradleLoadEnabled.value) {
             val gradleLoadResult = loadGradleProject(workspaceRoot, config) { failure ->
-                if (failure == null) {
-                    startReferenceIndex(project)
-                } else {
-                    failReadiness(project, failure)
-                }
+                if (failure == null) restartBackend(project)
             }
             KastProjectOpenGradleLoad.log(gradleLoadResult)
-            when (gradleLoadResult) {
-                is ProjectOpenGradleLoadResult.Requested -> {}
-                is ProjectOpenGradleLoadResult.Skipped -> startReferenceIndex(project)
-                is ProjectOpenGradleLoadResult.Failed ->
-                    failReadiness(project, IllegalStateException(gradleLoadResult.message))
-            }
         } else {
             LOG.info("Kast Gradle project load skipped because projectOpen.gradleLoadEnabled is disabled")
-            startReferenceIndex(project)
         }
         return true
     }

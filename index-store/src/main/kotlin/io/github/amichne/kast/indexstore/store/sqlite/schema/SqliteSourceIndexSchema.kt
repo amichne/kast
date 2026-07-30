@@ -20,6 +20,7 @@ internal class SqliteSourceIndexSchema(
                 } else {
                     state.loadInterningTables(conn)
                 }
+                state.refreshManifestFileCount(conn)
                 state.markSchemaValidated(conn)
                 return true
             }
@@ -29,7 +30,7 @@ internal class SqliteSourceIndexSchema(
                 dropAllTables(conn)
                 createAllTables(conn)
                 state.writeGenerationInTransaction(conn, SourceIndexGeneration(Math.addExact(previousGeneration.value, 1L)))
-                conn.commit()
+                state.commitManifestMutation(conn)
             } catch (e: Exception) {
                 conn.rollback()
                 throw e

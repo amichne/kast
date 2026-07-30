@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.fields.PathsRuntimeDir
 import io.github.amichne.kast.api.contract.RuntimeOpenProjectRequestId
 import io.github.amichne.kast.api.contract.RuntimeOpenProjectRoot
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -25,16 +26,16 @@ class KastOpenProjectRequestStoreTest {
         val selectedProcess = store(now = 1_000, pid = 41)
 
         assertFalse(
-            wrongProcess.consume(root(firstRoot), requestId, allowUntargeted = false),
+            wrongProcess.consume(root(firstRoot), requestId, OpenProjectRequestAudience.TARGET_PROCESS),
         )
         assertFalse(
-            selectedProcess.consume(root(otherRoot), requestId, allowUntargeted = false),
+            selectedProcess.consume(root(otherRoot), requestId, OpenProjectRequestAudience.TARGET_PROCESS),
         )
         assertTrue(
-            selectedProcess.consume(root(firstRoot), requestId, allowUntargeted = false),
+            selectedProcess.consume(root(firstRoot), requestId, OpenProjectRequestAudience.TARGET_PROCESS),
         )
         assertFalse(
-            selectedProcess.consume(root(firstRoot), requestId, allowUntargeted = false),
+            selectedProcess.consume(root(firstRoot), requestId, OpenProjectRequestAudience.TARGET_PROCESS),
         )
     }
 
@@ -57,18 +58,105 @@ class KastOpenProjectRequestStoreTest {
         val store = store(now = 1_000, pid = 41)
 
         val canonicalRoot = root(root)
-        assertFalse(store.consume(canonicalRoot, stale, allowUntargeted = false))
-        assertFalse(store.consume(canonicalRoot, untargeted, allowUntargeted = false))
-        assertFalse(store.consume(canonicalRoot, wrongProduct, allowUntargeted = true))
-        assertTrue(store.consume(canonicalRoot, untargeted, allowUntargeted = true))
+        assertFalse(store.consume(canonicalRoot, stale, OpenProjectRequestAudience.TARGET_PROCESS))
+        assertFalse(store.consume(canonicalRoot, untargeted, OpenProjectRequestAudience.TARGET_PROCESS))
+        assertFalse(store.consume(canonicalRoot, wrongProduct, OpenProjectRequestAudience.TARGET_PRODUCT))
+        assertTrue(store.consume(canonicalRoot, untargeted, OpenProjectRequestAudience.TARGET_PRODUCT))
     }
 
-    private fun store(now: Long, pid: Long): KastOpenProjectRequestStore {
+    @Test
+    fun `project signal drains duplicate untargeted requests without stealing process request`() {
+        val root = Files.createDirectory(tempDir.resolve("root"))
+        val targeted = writeRequest(root, targetPid = 41, expiresAt = 2_000)
+        val firstUntargeted = writeRequest(
+            root,
+            targetPid = null,
+            targetProductCode = "IU",
+            expiresAt = 2_000,
+        )
+        val secondUntargeted = writeRequest(
+            root,
+            targetPid = null,
+            targetProductCode = "IU",
+            expiresAt = 2_000,
+        )
+        val store = store(now = 1_000, pid = 41)
+        val canonicalRoot = root(root)
+
+        assertTrue(store.consumeUntargetedForProject(canonicalRoot))
+        assertTrue(store.consume(canonicalRoot, targeted, OpenProjectRequestAudience.TARGET_PROCESS))
+        assertFalse(store.consume(canonicalRoot, firstUntargeted, OpenProjectRequestAudience.TARGET_PRODUCT))
+        assertFalse(store.consume(canonicalRoot, secondUntargeted, OpenProjectRequestAudience.TARGET_PRODUCT))
+    }
+
+    @Test
+    fun `project observer starts an already-open project for a future product signal`() {
+        val projectRoot = Files.createDirectory(tempDir.resolve("observed"))
+        val canonicalRoot = root(projectRoot)
+        var starts = 0
+        val observer = KastOpenProjectRequestObserver(
+            requests = store(now = 1_000, pid = 41),
+            canonicalRoot = canonicalRoot,
+            onSignal = { starts += 1 },
+        )
+
+        observer.poll()
+        writeRequest(
+            projectRoot,
+            targetPid = null,
+            targetProductCode = "IU",
+            expiresAt = 2_000,
+        )
+        observer.poll()
+
+        assertEquals(1, starts)
+    }
+
+    @Test
+    fun `project observer follows a reloaded runtime directory`() {
+        val projectRoot = Files.createDirectory(tempDir.resolve("observed"))
+        val initialRuntimeDir = Files.createDirectory(tempDir.resolve("initial-runtime"))
+        val reloadedRuntimeDir = Files.createDirectory(tempDir.resolve("reloaded-runtime"))
+        val canonicalRoot = root(projectRoot)
+        var starts = 0
+        val observer = KastOpenProjectRequestObserver(
+            requests = store(now = 1_000, pid = 41, runtimeDir = initialRuntimeDir),
+            canonicalRoot = canonicalRoot,
+            onSignal = { starts += 1 },
+        )
+        writeRequest(
+            projectRoot,
+            targetPid = null,
+            targetProductCode = "IU",
+            expiresAt = 2_000,
+            runtimeDir = reloadedRuntimeDir,
+        )
+
+        observer.poll()
+        observer.replaceRequests(store(now = 1_000, pid = 41, runtimeDir = reloadedRuntimeDir))
+        observer.poll()
+        writeRequest(
+            projectRoot,
+            targetPid = null,
+            targetProductCode = "IU",
+            expiresAt = 2_000,
+            runtimeDir = initialRuntimeDir,
+        )
+        observer.poll()
+
+        assertEquals(1, starts)
+    }
+
+    private fun store(
+        now: Long,
+        pid: Long,
+        runtimeDir: Path = tempDir,
+    ): KastOpenProjectRequestStore {
         val defaults = KastConfig.defaults()
         return KastOpenProjectRequestStore(
             config = defaults.copy(
                 paths = defaults.paths.copy(
-                    runtimeDir = PathsRuntimeDir(tempDir.toString()),
+                    runtimeDir = PathsRuntimeDir(runtimeDir.toString()),
                 ),
             ),
             timeProvider = OpenProjectRequestTimeProvider {
@@ -84,9 +172,10 @@ class KastOpenProjectRequestStoreTest {
         targetPid: Long?,
         targetProductCode: String? = null,
         expiresAt: Long,
+        runtimeDir: Path = tempDir,
     ): RuntimeOpenProjectRequestId {
         val requestId = RuntimeOpenProjectRequestId.random()
-        val directory = Files.createDirectories(tempDir.resolve("idea-open-requests"))
+        val directory = Files.createDirectories(runtimeDir.resolve("idea-open-requests"))
         val path = directory.resolve("$requestId.json")
         Files.writeString(
             path,

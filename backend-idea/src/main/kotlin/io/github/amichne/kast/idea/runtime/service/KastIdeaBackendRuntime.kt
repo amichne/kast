@@ -208,6 +208,7 @@ object KastIdeaBackendRuntime {
                 sourceIndexStore.removeFile(workspaceIdentity.workspaceRootPath.resolve(relativePath).toString())
             }
         }
+        val manifestFileCountProvider = sourceIndexStore.prepareManifestFileCountProvider()
         val semanticAdmission = IdeaIndexSemanticAdmission(project)
         if (indexAdmission is KastGradleIndexAdmission.Failed) {
             semanticAdmission.fail(indexAdmission.error.indexAdmissionFailureDetail())
@@ -246,7 +247,7 @@ object KastIdeaBackendRuntime {
         val server = try {
             AnalysisServer(
                 backend = backend,
-                config = ideaAnalysisServerConfig(transport, limits, config),
+                config = ideaAnalysisServerConfig(transport, limits, config, manifestFileCountProvider),
                 lifecycleController = lifecycleController,
                 projectOpenController = projectOpenController,
             ).start()

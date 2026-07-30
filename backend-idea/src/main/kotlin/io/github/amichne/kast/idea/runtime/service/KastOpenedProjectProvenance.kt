@@ -9,6 +9,7 @@ import com.intellij.openapi.wm.WindowManager
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.contract.RuntimeOpenProjectRequestId
 import io.github.amichne.kast.api.contract.RuntimeOpenProjectRoot
+import kotlinx.coroutines.delay
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -17,6 +18,7 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.nio.file.attribute.PosixFilePermission
 import java.time.Instant
+import java.util.concurrent.atomic.AtomicReference
 
 internal object KastOpenedProjectProvenance {
     private val marker = Key.create<Boolean>("kast.agent.opened.project")
@@ -54,7 +56,7 @@ internal class KastOpenProjectRequestStore(
     fun consume(
         canonicalRoot: RuntimeOpenProjectRoot,
         requestId: RuntimeOpenProjectRequestId,
-        allowUntargeted: Boolean,
+        audience: OpenProjectRequestAudience,
     ): Boolean {
         val requestPath = directory.resolve("$requestId.json")
         if (!isPrivateRegularFile(requestPath)) return false
@@ -67,12 +69,7 @@ internal class KastOpenProjectRequestStore(
             request.requestId != requestId ||
             request.canonicalRoot != canonicalRoot ||
             request.expiresAt < timeProvider.now() ||
-            (request.targetPid == null && !allowUntargeted) ||
-            (request.targetPid != null && request.targetPid != processId) ||
-            (
-                request.targetPid == null &&
-                    (request.targetProductCode == null || request.targetProductCode != productCode)
-            )
+            !request.matches(audience)
         ) {
             return false
         }
@@ -90,17 +87,27 @@ internal class KastOpenProjectRequestStore(
 
     fun consumeUntargetedForProject(canonicalRoot: RuntimeOpenProjectRoot): Boolean {
         if (!Files.isDirectory(directory)) return false
-        return Files.list(directory).use { paths ->
+        var consumed = false
+        Files.list(directory).use { paths ->
             paths
                 .filter { path -> path.fileName.toString().endsWith(".json") }
                 .map { path -> path.fileName.toString().removeSuffix(".json") }
                 .map { raw -> runCatching { RuntimeOpenProjectRequestId.parse(raw) }.getOrNull() }
                 .filter { requestId -> requestId != null }
-                .anyMatch { requestId ->
-                    consume(canonicalRoot, requireNotNull(requestId), allowUntargeted = true)
+                .forEach { requestId ->
+                    if (consume(canonicalRoot, requireNotNull(requestId), OpenProjectRequestAudience.TARGET_PRODUCT)) {
+                        consumed = true
+                    }
                 }
         }
+        return consumed
     }
+
+    private fun StoredOpenProjectRequest.matches(audience: OpenProjectRequestAudience): Boolean =
+        when (audience) {
+            OpenProjectRequestAudience.TARGET_PROCESS -> targetPid == processId
+            OpenProjectRequestAudience.TARGET_PRODUCT -> targetPid == null && targetProductCode == productCode
+        }
 
     private fun isPrivateRegularFile(path: Path): Boolean {
         if (!Files.isRegularFile(path)) return false
@@ -118,6 +125,38 @@ internal class KastOpenProjectRequestStore(
             PosixFilePermission.OTHERS_WRITE,
             PosixFilePermission.OTHERS_EXECUTE,
         )
+    }
+}
+
+internal enum class OpenProjectRequestAudience {
+    TARGET_PROCESS,
+    TARGET_PRODUCT,
+}
+
+internal class KastOpenProjectRequestObserver(
+    requests: KastOpenProjectRequestStore,
+    private val canonicalRoot: RuntimeOpenProjectRoot,
+    private val onSignal: () -> Unit,
+) {
+    private val requests = AtomicReference(requests)
+
+    suspend fun run() {
+        while (true) {
+            delay(POLL_INTERVAL_MILLIS)
+            poll()
+        }
+    }
+
+    internal fun replaceRequests(requests: KastOpenProjectRequestStore) {
+        this.requests.set(requests)
+    }
+
+    internal fun poll() {
+        if (requests.get().consumeUntargetedForProject(canonicalRoot)) onSignal()
+    }
+
+    private companion object {
+        const val POLL_INTERVAL_MILLIS = 250L
     }
 }
 

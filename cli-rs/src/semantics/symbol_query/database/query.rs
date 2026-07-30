@@ -35,6 +35,22 @@ impl<'a> SymbolQueryDatabase<'a> {
             .collect();
         let mut candidates = BTreeMap::<DeclarationKey, Candidate>::new();
         let terms = query_terms(&request.query);
+        let eligible_lexical_files =
+            declarations
+                .iter()
+                .filter(|declaration| compiled_filters.matches(declaration.filter_input()))
+                .fold(EligibleLexicalFiles::new(), |mut files, declaration| {
+                    files
+                        .entry(declaration.prefix_id)
+                        .or_default()
+                        .insert(declaration.filename.clone());
+                    files
+                });
+        let lexical_matches_by_file = if modes.lexical {
+            self.lexical_matches_by_file(&terms, &eligible_lexical_files)?
+        } else {
+            HashMap::new()
+        };
 
         for declaration in declarations {
             if !compiled_filters.matches(declaration.filter_input()) {
@@ -46,16 +62,16 @@ impl<'a> SymbolQueryDatabase<'a> {
                 Vec::new()
             };
             let lexical_matches = if modes.lexical {
-                self.lexical_matches(&terms, &declaration)?
+                self.lexical_matches(&terms, &declaration, &lexical_matches_by_file)
             } else {
                 Vec::new()
             };
-            let usage_facets = self.usage_facets(&declaration)?;
-            if !compiled_filters.usage_facets_match(&usage_facets) {
-                continue;
-            }
             let anchored = anchor_matches(&request.anchor, &declaration);
             if !anchored && exact_matches.is_empty() && lexical_matches.is_empty() {
+                continue;
+            }
+            let usage_facets = self.usage_facets(&declaration)?;
+            if !compiled_filters.usage_facets_match(&usage_facets) {
                 continue;
             }
             let structural_constraints = structural_constraints(&request.filters);
@@ -232,111 +248,6 @@ impl<'a> SymbolQueryDatabase<'a> {
         })
     }
 
-    fn lexical_matches(
-        &self,
-        terms: &[String],
-        declaration: &DeclarationRow,
-    ) -> Result<Vec<LexicalMatch>> {
-        let mut matches = Vec::new();
-        matches.extend(lexical_field_matches(
-            terms,
-            "fq_names.fq_name",
-            &declaration.fq_name,
-        ));
-        matches.extend(lexical_field_matches(terms, "file_path", &declaration.path));
-        matches.extend(self.identifier_matches(terms, declaration)?);
-        matches.extend(self.import_matches(terms, declaration)?);
-        Ok(matches)
-    }
-
-    fn identifier_matches(
-        &self,
-        terms: &[String],
-        declaration: &DeclarationRow,
-    ) -> Result<Vec<LexicalMatch>> {
-        let mut stmt = self
-            .conn
-            .prepare(
-                r#"
-                SELECT identifier
-                FROM identifier_paths
-                WHERE prefix_id = ? AND filename = ?
-                ORDER BY identifier ASC
-                "#,
-            )
-            .map_err(sql_error)?;
-        let rows = stmt
-            .query_map(
-                params![declaration.prefix_id, declaration.filename],
-                |row| row.get::<_, String>(0),
-            )
-            .map_err(sql_error)?;
-        let mut identifiers = Vec::new();
-        for row in rows {
-            identifiers.push(row.map_err(sql_error)?);
-        }
-        let mut matches = Vec::new();
-        for identifier in &identifiers {
-            matches.extend(lexical_field_matches(
-                terms,
-                "identifier_paths.identifier",
-                identifier,
-            ));
-        }
-        Ok(matches)
-    }
-
-    fn import_matches(
-        &self,
-        terms: &[String],
-        declaration: &DeclarationRow,
-    ) -> Result<Vec<LexicalMatch>> {
-        let mut matches = Vec::new();
-        if table_exists(&self.conn, "file_imports")? {
-            matches.extend(self.import_table_matches(terms, declaration, "file_imports")?);
-        }
-        if table_exists(&self.conn, "file_wildcard_imports")? {
-            matches.extend(self.import_table_matches(
-                terms,
-                declaration,
-                "file_wildcard_imports",
-            )?);
-        }
-        Ok(matches)
-    }
-
-    fn import_table_matches(
-        &self,
-        terms: &[String],
-        declaration: &DeclarationRow,
-        table_name: &str,
-    ) -> Result<Vec<LexicalMatch>> {
-        let sql = format!(
-            r#"
-            SELECT names.fq_name
-            FROM {table_name} imports
-            JOIN fq_names names ON names.fq_id = imports.fq_id
-            WHERE imports.prefix_id = ? AND imports.filename = ?
-            ORDER BY names.fq_name ASC
-            "#
-        );
-        let mut stmt = self.conn.prepare(&sql).map_err(sql_error)?;
-        let rows = stmt
-            .query_map(
-                params![declaration.prefix_id, declaration.filename],
-                |row| row.get::<_, String>(0),
-            )
-            .map_err(sql_error)?;
-        let mut imports = Vec::new();
-        for row in rows {
-            imports.push(row.map_err(sql_error)?);
-        }
-        let mut matches = Vec::new();
-        for import in &imports {
-            matches.extend(lexical_field_matches(terms, "import_fq_name", import));
-        }
-        Ok(matches)
-    }
 }
 
 fn next_requests(declaration: &DeclarationRow) -> NextRequests {

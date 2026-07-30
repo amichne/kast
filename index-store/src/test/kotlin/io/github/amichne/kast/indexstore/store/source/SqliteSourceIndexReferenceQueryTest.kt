@@ -223,6 +223,53 @@ class SqliteSourceIndexReferenceQueryTest {
     }
 
     @Test
+    fun `manifest count remains available while an index read owns the store lock`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val firstPath = normalized.resolve("src/Manifest.kt").toString()
+        val generationRead = CountDownLatch(1)
+        val releaseRead = CountDownLatch(1)
+        val count = AtomicReference<Int?>()
+        SqliteSourceIndexStore(
+            workspaceRoot = normalized,
+            pageReadObserver = SourceIndexPageReadObserver {
+                generationRead.countDown()
+                assertTrue(releaseRead.await(10, TimeUnit.SECONDS))
+            },
+        ).use { store ->
+            store.ensureSchema()
+            store.saveManifest(mapOf(firstPath to 1L))
+            val manifestFileCount = store.prepareManifestFileCountProvider()
+            val readThread = thread(name = "source-index-lock-owner") {
+                store.generatedReferencePageToSymbol(
+                    targetFqName = "demo.Target",
+                    offset = NonNegativeInt(0),
+                    maxResults = PositiveInt(10),
+                )
+            }
+            assertTrue(generationRead.await(10, TimeUnit.SECONDS))
+            val countThread = thread(name = "source-index-manifest-count") {
+                count.set(manifestFileCount())
+            }
+            try {
+                countThread.join(1_000)
+                assertFalse(countThread.isAlive, "manifest count waited for the store lock")
+                assertEquals(1, count.get())
+            } finally {
+                releaseRead.countDown()
+                countThread.join(10_000)
+                readThread.join(10_000)
+            }
+            store.saveManifest(
+                mapOf(
+                    firstPath to 1L,
+                    normalized.resolve("src/Second.kt").toString() to 2L,
+                ),
+            )
+            assertEquals(2, manifestFileCount())
+        }
+    }
+
+    @Test
     fun `generation advances for every committed reference content transition`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         SqliteSourceIndexStore(normalized).use { store ->

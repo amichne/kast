@@ -99,6 +99,13 @@ class SqliteSourceIndexStore private constructor(
 
     fun loadManifest(): Map<String, Long>? = inventory.loadManifest()
 
+    fun manifestFileCount(): Int? = inventory.manifestFileCount()
+
+    fun prepareManifestFileCountProvider(): () -> Int {
+        state.prepareManifestFileCount()
+        return { state.committedManifestFileCount().value }
+    }
+
     fun knownSourcePaths(): List<Path> = inventory.knownSourcePaths()
 
     fun fileCountBySourceRoot(sourceRoots: Collection<Path>): Map<Path, Int> =
@@ -117,6 +124,9 @@ class SqliteSourceIndexStore private constructor(
 
     fun reconcileFileInventory(entries: Collection<FileInventoryEntry>, versions: FileStageVersions) =
         fileStages.reconcileFileInventory(entries, versions)
+
+    fun reconcileRemovedFileInventory(paths: Collection<String>) =
+        fileStages.reconcileRemovedFileInventory(paths)
 
     fun pendingFileStages(stage: FileIndexStage): List<PendingFileStage> =
         fileStages.pendingFileStages(stage)

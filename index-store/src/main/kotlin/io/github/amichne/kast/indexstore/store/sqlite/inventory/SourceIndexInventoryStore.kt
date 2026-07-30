@@ -22,7 +22,7 @@ internal class SourceIndexInventoryStore(
                 mutations.insertManifestInTransaction(conn, eligibleEntries)
                 state.removeIneligibleSourceIndexRows(conn)
                 state.incrementGenerationInTransaction(conn)
-                conn.commit()
+                state.commitManifestMutation(conn)
             } catch (e: Exception) {
                 state.rollbackAndReloadPrefixes(conn)
                 throw e
@@ -56,7 +56,7 @@ internal class SourceIndexInventoryStore(
                     stmt.executeUpdate()
                 }
                 state.incrementGenerationInTransaction(conn)
-                conn.commit()
+                state.commitManifestMutation(conn)
             } catch (e: Exception) {
                 state.rollbackAndReloadPrefixes(conn)
                 throw e
@@ -76,6 +76,21 @@ internal class SourceIndexInventoryStore(
                     conn.createStatement().use { stmt ->
                         val rs = stmt.executeQuery("SELECT prefix_id, filename, last_modified_millis FROM file_manifest")
                         while (rs.next()) put(pathCodec.decode(rs.getInt(1), rs.getString(2)), rs.getLong(3))
+                    }
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }
+    }
+
+    fun manifestFileCount(): Int? {
+        if (!state.dbExists()) return null
+        return synchronized(state.writeLock) {
+            try {
+                state.connection().createStatement().use { stmt ->
+                    stmt.executeQuery("SELECT COUNT(*) FROM file_manifest").use { rows ->
+                        if (rows.next()) rows.getInt(1) else 0
                     }
                 }
             } catch (_: Exception) {

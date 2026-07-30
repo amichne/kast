@@ -34,6 +34,28 @@ class AnalysisDispatcherRuntimeTest : AnalysisDispatcherTestSupport() {
     }
 
     @Test
+    fun `capabilities advertise the effective server request deadline`() {
+        val config = AnalysisServerConfig(
+            requestTimeoutMillis = 30_000,
+            workspaceFileCount = 16_813,
+        )
+        val dispatcher = RpcAnalysisDispatcher(
+            backend = FakeAnalysisBackend.sample(tempDir),
+            config = config,
+        )
+
+        val response = runBlocking {
+            dispatcher.dispatch(JsonRpcRequest(id = JsonPrimitive(1), method = "capabilities"))
+        }
+        val result = json.decodeFromJsonElement(
+            BackendCapabilities.serializer(),
+            json.decodeFromString(JsonRpcSuccessResponse.serializer(), response).result,
+        )
+
+        assertEquals(config.effectiveRequestTimeoutMillis, result.limits.requestTimeoutMillis)
+    }
+
+    @Test
     fun `runtime restart schedules lifecycle action after response`() {
         val actions = mutableListOf<RuntimeLifecycleAction>()
         val dispatcher = RpcAnalysisDispatcher(

@@ -28,6 +28,7 @@ import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
@@ -212,17 +213,39 @@ class KastSemanticAdmissionRefreshTest {
         ensureProjectReady()
         val deletedFile = productionRoot.resolve("Deleted.kt")
         Files.writeString(deletedFile, newSource)
-        backend().refresh(RefreshQuery(filePaths = listOf(deletedFile.toString())))
-        Files.delete(deletedFile)
+        val completeGradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            emptyList(),
+            true,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+        )
 
-        val refresh = backend().refresh(RefreshQuery(filePaths = listOf(deletedFile.toString())))
-        val diagnostics = backend().diagnostics(DiagnosticsQuery(filePaths = listOf(deletedFile.toString())))
+        try {
+            SqliteSourceIndexStore(workspaceRoot).use { store ->
+                val backend = backend(
+                    semanticGraphStore = store,
+                    workspaceModelReader = { completeGradleModel },
+                )
+                backend.refresh(RefreshQuery(filePaths = listOf(deletedFile.toString())))
+                assertTrue(store.loadManifest().orEmpty().containsKey(deletedFile.toString()))
+                Files.delete(deletedFile)
 
-        assertEquals(SemanticAnalysisOutcome.COMPLETE, refresh.semanticOutcome)
-        assertEquals(listOf(deletedFile.toString()), refresh.removedFiles)
-        assertEquals(0, refresh.requestedFileCount)
-        assertEquals(SemanticAnalysisOutcome.INCOMPLETE, diagnostics.semanticOutcome)
-        assertEquals(FileAnalysisState.MISSING_ON_DISK, diagnostics.fileStatuses.single().state)
+                val refresh = backend.refresh(RefreshQuery(filePaths = listOf(deletedFile.toString())))
+                val diagnostics = backend.diagnostics(DiagnosticsQuery(filePaths = listOf(deletedFile.toString())))
+
+                assertEquals(SemanticAnalysisOutcome.COMPLETE, refresh.semanticOutcome)
+                assertEquals(listOf(deletedFile.toString()), refresh.removedFiles)
+                assertEquals(0, refresh.requestedFileCount)
+                assertEquals(SemanticAnalysisOutcome.INCOMPLETE, diagnostics.semanticOutcome)
+                assertEquals(FileAnalysisState.MISSING_ON_DISK, diagnostics.fileStatuses.single().state)
+                assertFalse(store.loadManifest().orEmpty().containsKey(deletedFile.toString()))
+                assertTrue(store.referencesFromFile(deletedFile.toString()).isEmpty())
+            }
+        } finally {
+            Files.deleteIfExists(deletedFile)
+        }
     }
 
     @Test

@@ -74,6 +74,7 @@ class SqliteSourceIndexSnapshotTest {
             assertEquals(listOf("lib.Foo"), snapshot.importsByPath.getValue(callerPath))
             assertEquals(listOf("lib.internal"), snapshot.wildcardImportPackagesByPath.getValue(callerPath))
             assertEquals(mapOf(callerPath to 123L), store.loadManifest())
+            assertEquals(1, store.manifestFileCount())
         }
     }
 

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.indexstore.store
 
 import io.github.amichne.kast.api.client.WorkspaceIdentity
+import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import io.github.amichne.kast.indexstore.snapshot.OverlayManifest
 import io.github.amichne.kast.indexstore.store.codec.PathInterningCodec
@@ -13,6 +14,7 @@ import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 import java.sql.ResultSet
+import java.util.concurrent.atomic.AtomicReference
 
 internal class SqliteSourceIndexStoreState(
     workspaceIdentity: WorkspaceIdentity,
@@ -46,7 +48,18 @@ internal class SqliteSourceIndexStoreState(
     @Volatile
     private var loadedInterningDataVersion: Long? = null
 
+    private val committedManifestFileCount = AtomicReference(NonNegativeInt(0))
+
     internal fun dbExists(): Boolean = Files.isRegularFile(dbPath)
+
+    internal fun prepareManifestFileCount() {
+        if (!dbExists()) return
+        synchronized(writeLock) {
+            if (dbExists()) runCatching { connection() }
+        }
+    }
+
+    internal fun committedManifestFileCount(): NonNegativeInt = committedManifestFileCount.get()
 
     internal fun connection(requireCurrentSchema: Boolean = true): Connection {
         cachedConnection?.let { conn ->
@@ -59,6 +72,7 @@ internal class SqliteSourceIndexStoreState(
                 if (!conn.isClosed && Files.isRegularFile(dbPath)) {
                     if (requireCurrentSchema && validatedSchemaConnection !== conn) {
                         schema.validateCurrentSchema(conn)
+                        refreshManifestFileCount(conn)
                         validatedSchemaConnection = conn
                     }
                     return conn
@@ -70,6 +84,7 @@ internal class SqliteSourceIndexStoreState(
                 cachedConnection = null
                 validatedSchemaConnection = null
                 loadedInterningDataVersion = null
+                committedManifestFileCount.set(NonNegativeInt(0))
             }
             Files.createDirectories(dbPath.parent)
             SqliteJdbcDriverBootstrap.ensureRegistered()
@@ -96,6 +111,7 @@ internal class SqliteSourceIndexStoreState(
                     schema.validateCurrentSchema(conn)
                     initializeRepositoryOverlay(conn)
                     reloadInterningTables(conn)
+                    refreshManifestFileCount(conn)
                 }
                 cachedConnection = conn
                 validatedSchemaConnection = conn.takeIf { requireCurrentSchema }
@@ -210,6 +226,24 @@ internal class SqliteSourceIndexStoreState(
             stmt.executeUpdate("UPDATE schema_version SET generation = generation + 1")
         }
     }
+
+    internal fun commitManifestMutation(conn: Connection) {
+        val committedCount = readManifestFileCount(conn)
+        conn.commit()
+        committedManifestFileCount.set(committedCount)
+    }
+
+    internal fun refreshManifestFileCount(conn: Connection) {
+        committedManifestFileCount.set(readManifestFileCount(conn))
+    }
+
+    private fun readManifestFileCount(conn: Connection): NonNegativeInt =
+        conn.createStatement().use { stmt ->
+            stmt.executeQuery("SELECT COUNT(*) FROM file_manifest").use { rows ->
+                check(rows.next()) { "SQLite did not return a manifest file count" }
+                NonNegativeInt(rows.getInt(1))
+            }
+        }
 
     internal fun loadInterningTables(conn: Connection) {
         val dataVersion = readDataVersion(conn)
