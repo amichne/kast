@@ -77,6 +77,12 @@ class DynamicTimeoutScalingTest {
     }
 
     @Test
+    fun effectiveTimeoutNeverReducesConfiguredBase() {
+        val config = AnalysisServerConfig(requestTimeoutMillis = 600_000L, workspaceFileCount = 1_000_000)
+        assertEquals(600_000L, config.effectiveRequestTimeoutMillis)
+    }
+
+    @Test
     fun effectiveTimeoutCapEnforcedEvenWhenScalingExceedsIt() {
         // With 100_000 files and 200_000ms base: scale ≈ log2(100) ≈ 6.64 → 1_328_000ms >> 300_000ms cap
         val config = AnalysisServerConfig(requestTimeoutMillis = 200_000L, workspaceFileCount = 100_000)

@@ -30,18 +30,23 @@ data class AnalysisServerConfig(
     /**
      * Returns the effective request timeout in milliseconds, scaling up [requestTimeoutMillis]
      * logarithmically for large workspaces (> 1 000 files) to avoid spurious timeouts on slow
-     * machines or during first-run indexing. The result is capped at 300 seconds (300 000 ms).
+     * machines or during first-run indexing. Automatic scaling is capped at 300 seconds
+     * (300 000 ms) without reducing the configured base.
      *
      * Formula (for workspaceFileCount > 1 000):
-     *   effectiveTimeout = requestTimeoutMillis * log2(workspaceFileCount / 1_000)
-     *   capped at 300_000 ms
+     *   effectiveTimeout = max(
+     *       requestTimeoutMillis,
+     *       min(requestTimeoutMillis * log2(workspaceFileCount / 1_000), 300_000),
+     *   )
      */
     val effectiveRequestTimeoutMillis: Long
         get() {
             val currentWorkspaceFileCount = workspaceFileCountProvider?.invoke() ?: workspaceFileCount
             if (currentWorkspaceFileCount <= 1_000) return requestTimeoutMillis
             val scaleFactor = (ln(currentWorkspaceFileCount.toDouble() / 1_000.0) / ln(2.0)).coerceAtLeast(1.0)
-            return (requestTimeoutMillis * scaleFactor).toLong().coerceAtMost(300_000L)
+            return (requestTimeoutMillis * scaleFactor).toLong()
+                .coerceAtMost(300_000L)
+                .coerceAtLeast(requestTimeoutMillis)
         }
 
     init {
