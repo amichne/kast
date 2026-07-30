@@ -20,6 +20,7 @@ internal object KastProjectOpenAutoIndexing {
             },
         startBackend: (Project, KastConfig) -> Unit,
         startReferenceIndex: (Project) -> Unit,
+        restartBackend: (Project) -> Unit,
     ): Boolean {
         val workspaceRoot = project.basePath?.let { Path.of(it).toAbsolutePath().normalize() }
         if (workspaceRoot == null) {
@@ -47,7 +48,9 @@ internal object KastProjectOpenAutoIndexing {
         startReferenceIndex(project)
 
         if (config.projectOpen.gradleLoadEnabled.value) {
-            val gradleLoadResult = loadGradleProject(workspaceRoot, config) {}
+            val gradleLoadResult = loadGradleProject(workspaceRoot, config) { failure ->
+                if (failure == null) restartBackend(project)
+            }
             KastProjectOpenGradleLoad.log(gradleLoadResult)
         } else {
             LOG.info("Kast Gradle project load skipped because projectOpen.gradleLoadEnabled is disabled")

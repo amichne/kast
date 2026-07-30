@@ -38,6 +38,9 @@ internal class KastStartupActivity : ProjectActivity {
             startReferenceIndex = { startupProject ->
                 startupProject.service<KastPluginService>().startIndexing()
             },
+            restartBackend = { startupProject ->
+                startupProject.service<KastPluginService>().restartServer()
+            },
         )
     }
 }

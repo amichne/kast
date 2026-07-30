@@ -57,6 +57,7 @@ class KastProjectOpenAutoIndexingTest {
                 startedProject = project
             },
             startReferenceIndex = { events.add("index") },
+            restartBackend = { events.add("restart") },
         )
 
         assertTrue(started)
@@ -224,6 +225,7 @@ class KastProjectOpenAutoIndexingTest {
             },
             startBackend = { startupProject, _ -> startedProject = startupProject },
             startReferenceIndex = { startedProject = it },
+            restartBackend = {},
         )
 
         assertTrue(started)
@@ -248,6 +250,7 @@ class KastProjectOpenAutoIndexingTest {
             config = disabledConfig,
             startBackend = { _, _ -> started = true },
             startReferenceIndex = { started = true },
+            restartBackend = {},
         )
 
         assertFalse(requestedStart)
@@ -275,6 +278,7 @@ class KastProjectOpenAutoIndexingTest {
                 backendStarted = true
             },
             startReferenceIndex = { indexStarted = true },
+            restartBackend = {},
         )
 
         assertTrue(requestedStart)
@@ -297,6 +301,7 @@ class KastProjectOpenAutoIndexingTest {
             },
             startBackend = { _, _ -> error("compatibility metadata failed") },
             startReferenceIndex = { requestedIndex = true },
+            restartBackend = {},
         )
 
         assertFalse(requestedStart)
