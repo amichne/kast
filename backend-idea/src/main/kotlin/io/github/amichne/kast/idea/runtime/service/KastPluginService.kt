@@ -334,6 +334,19 @@ internal fun ideaAnalysisServerConfig(
     transport: AnalysisTransport,
     limits: ServerLimits,
     config: KastConfig,
+    workspaceFileCountProvider: () -> Int,
+): AnalysisServerConfig = ideaAnalysisServerConfig(
+    transport = transport,
+    limits = limits,
+    config = config,
+    workspaceFileCount = workspaceFileCountProvider(),
+    workspaceFileCountProvider = workspaceFileCountProvider,
+)
+
+internal fun ideaAnalysisServerConfig(
+    transport: AnalysisTransport,
+    limits: ServerLimits,
+    config: KastConfig,
     workspaceFileCount: Int,
     workspaceFileCountProvider: (() -> Int)? = null,
 ): AnalysisServerConfig = AnalysisServerConfig(

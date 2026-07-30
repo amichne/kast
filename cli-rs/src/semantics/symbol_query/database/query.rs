@@ -35,8 +35,19 @@ impl<'a> SymbolQueryDatabase<'a> {
             .collect();
         let mut candidates = BTreeMap::<DeclarationKey, Candidate>::new();
         let terms = query_terms(&request.query);
+        let eligible_lexical_files =
+            declarations
+                .iter()
+                .filter(|declaration| compiled_filters.matches(declaration.filter_input()))
+                .fold(EligibleLexicalFiles::new(), |mut files, declaration| {
+                    files
+                        .entry(declaration.prefix_id)
+                        .or_default()
+                        .insert(declaration.filename.clone());
+                    files
+                });
         let lexical_matches_by_file = if modes.lexical {
-            self.lexical_matches_by_file(&terms)?
+            self.lexical_matches_by_file(&terms, &eligible_lexical_files)?
         } else {
             HashMap::new()
         };

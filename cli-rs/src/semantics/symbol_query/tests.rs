@@ -54,15 +54,18 @@ mod tests {
 
     #[test]
     fn repeated_identifier_rows_do_not_expand_candidate_evidence() {
-        let result = query_identifier_and_import_evidence(0, 1_024);
+        let baseline = query_identifier_and_import_evidence(0, 0);
+        let repeated = query_identifier_and_import_evidence(0, 1_024);
 
-        assert_eq!(result.2, 1, "one bounded identifier signal per query term");
+        assert_eq!(baseline.0, repeated.0, "candidate order");
+        assert_eq!(baseline.3, repeated.3, "candidate rank");
+        assert_eq!(repeated.2, 1, "one bounded identifier signal per query term");
     }
 
     fn query_identifier_and_import_evidence(
         decoy_count: usize,
         repeated_identifier_count: usize,
-    ) -> (Vec<String>, usize, usize) {
+    ) -> (Vec<String>, usize, usize, f64) {
         let temp = tempfile::tempdir().expect("symbol query tempdir");
         let workspace = temp.path().join("workspace");
         std::fs::create_dir_all(&workspace).expect("symbol query workspace");
@@ -196,6 +199,14 @@ mod tests {
             .lexical
             .matches
             .len();
+        let identifier_rank = result
+            .results
+            .iter()
+            .find(|candidate| candidate.declaration.fq_name == "sample.IdentifierOnly")
+            .expect("identifier candidate")
+            .rank
+            .components
+            .lexical;
         (
             result
                 .results
@@ -204,6 +215,7 @@ mod tests {
                 .collect(),
             select_count.load(AtomicOrdering::Relaxed),
             identifier_signal_count,
+            identifier_rank,
         )
     }
 }

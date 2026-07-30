@@ -1,9 +1,13 @@
+type EligibleLexicalFiles = BTreeMap<i64, BTreeSet<String>>;
+type LexicalMatchesByFile =
+    HashMap<i64, HashMap<String, BTreeMap<(&'static str, String), LexicalMatch>>>;
+
 impl<'a> SymbolQueryDatabase<'a> {
     fn lexical_matches(
         &self,
         terms: &[String],
         declaration: &DeclarationRow,
-        matches_by_file: &HashMap<i64, HashMap<String, Vec<LexicalMatch>>>,
+        matches_by_file: &LexicalMatchesByFile,
     ) -> Vec<LexicalMatch> {
         let mut matches = Vec::new();
         matches.extend(lexical_field_matches(
@@ -16,7 +20,7 @@ impl<'a> SymbolQueryDatabase<'a> {
             .get(&declaration.prefix_id)
             .and_then(|files| files.get(&declaration.filename))
         {
-            matches.extend(file_matches.iter().cloned());
+            matches.extend(file_matches.values().cloned());
         }
         matches
     }
@@ -24,18 +28,29 @@ impl<'a> SymbolQueryDatabase<'a> {
     fn lexical_matches_by_file(
         &self,
         terms: &[String],
-    ) -> Result<HashMap<i64, HashMap<String, Vec<LexicalMatch>>>> {
+        eligible_files: &EligibleLexicalFiles,
+    ) -> Result<LexicalMatchesByFile> {
         let mut matches_by_file = HashMap::new();
         if terms.is_empty() {
             return Ok(matches_by_file);
         }
 
-        self.identifier_matches(terms, &mut matches_by_file)?;
+        self.identifier_matches(terms, eligible_files, &mut matches_by_file)?;
         if table_exists(&self.conn, "file_imports")? {
-            self.import_table_matches(terms, "file_imports", &mut matches_by_file)?;
+            self.import_table_matches(
+                terms,
+                "file_imports",
+                eligible_files,
+                &mut matches_by_file,
+            )?;
         }
         if table_exists(&self.conn, "file_wildcard_imports")? {
-            self.import_table_matches(terms, "file_wildcard_imports", &mut matches_by_file)?;
+            self.import_table_matches(
+                terms,
+                "file_wildcard_imports",
+                eligible_files,
+                &mut matches_by_file,
+            )?;
         }
         Ok(matches_by_file)
     }
@@ -43,7 +58,8 @@ impl<'a> SymbolQueryDatabase<'a> {
     fn identifier_matches(
         &self,
         terms: &[String],
-        matches_by_file: &mut HashMap<i64, HashMap<String, Vec<LexicalMatch>>>,
+        eligible_files: &EligibleLexicalFiles,
+        matches_by_file: &mut LexicalMatchesByFile,
     ) -> Result<()> {
         let predicate = matching_terms_sql("identifier", terms.len());
         let sql = format!(
@@ -66,6 +82,12 @@ impl<'a> SymbolQueryDatabase<'a> {
             .map_err(sql_error)?;
         for row in rows {
             let (prefix_id, filename, identifier) = row.map_err(sql_error)?;
+            if !eligible_files
+                .get(&prefix_id)
+                .is_some_and(|files| files.contains(&filename))
+            {
+                continue;
+            }
             let matches =
                 lexical_field_matches(terms, "identifier_paths.identifier", &identifier);
             extend_file_matches(matches_by_file, prefix_id, filename, matches);
@@ -77,7 +99,8 @@ impl<'a> SymbolQueryDatabase<'a> {
         &self,
         terms: &[String],
         table_name: &str,
-        matches_by_file: &mut HashMap<i64, HashMap<String, Vec<LexicalMatch>>>,
+        eligible_files: &EligibleLexicalFiles,
+        matches_by_file: &mut LexicalMatchesByFile,
     ) -> Result<()> {
         let predicate = matching_terms_sql("names.fq_name", terms.len());
         let sql = format!(
@@ -101,6 +124,12 @@ impl<'a> SymbolQueryDatabase<'a> {
             .map_err(sql_error)?;
         for row in rows {
             let (prefix_id, filename, import) = row.map_err(sql_error)?;
+            if !eligible_files
+                .get(&prefix_id)
+                .is_some_and(|files| files.contains(&filename))
+            {
+                continue;
+            }
             let matches = lexical_field_matches(terms, "import_fq_name", &import);
             extend_file_matches(matches_by_file, prefix_id, filename, matches);
         }
@@ -116,7 +145,7 @@ fn matching_terms_sql(field: &str, term_count: usize) -> String {
 }
 
 fn extend_file_matches(
-    matches_by_file: &mut HashMap<i64, HashMap<String, Vec<LexicalMatch>>>,
+    matches_by_file: &mut LexicalMatchesByFile,
     prefix_id: i64,
     filename: String,
     matches: Vec<LexicalMatch>,
@@ -124,10 +153,21 @@ fn extend_file_matches(
     if matches.is_empty() {
         return;
     }
-    matches_by_file
+    let file_matches = matches_by_file
         .entry(prefix_id)
         .or_default()
         .entry(filename)
-        .or_default()
-        .extend(matches);
+        .or_default();
+    for candidate in matches {
+        let key = (candidate.field, candidate.term.clone());
+        if let Some(current) = file_matches.get_mut(&key) {
+            if (candidate.match_type != "TOKEN", candidate.evidence.as_str())
+                < (current.match_type != "TOKEN", current.evidence.as_str())
+            {
+                *current = candidate;
+            }
+        } else {
+            file_matches.insert(key, candidate);
+        }
+    }
 }
