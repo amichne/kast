@@ -69,6 +69,33 @@ class KastProjectOpenAutoIndexingTest {
     }
 
     @Test
+    fun `successful Gradle completion retries indexing through the existing backend lifecycle`() {
+        val project = projectFixture.get()
+        var gradleCompletion: ((Throwable?) -> Unit)? = null
+        val events = mutableListOf<String>()
+
+        val started = KastProjectOpenAutoIndexing.execute(
+            project = project,
+            config = KastConfig.defaults(),
+            loadGradleProject = { workspaceRoot, _, onComplete ->
+                events.add("gradle")
+                gradleCompletion = onComplete
+                ProjectOpenGradleLoadResult.Requested(GradleProjectLoadRequest.Refresh(workspaceRoot))
+            },
+            startBackend = { _, _ -> events.add("backend") },
+            startReferenceIndex = { events.add("index") },
+            restartBackend = { events.add("restart") },
+        )
+
+        assertTrue(started)
+        assertEquals(listOf("backend", "index", "gradle"), events)
+
+        gradleCompletion?.invoke(null)
+
+        assertEquals(listOf("backend", "index", "gradle", "restart"), events)
+    }
+
+    @Test
     fun `Gradle project load request schedules background work`() {
         val project = projectFixture.get()
         Files.writeString(tempDir.resolve("settings.gradle.kts"), "pluginManagement {}\n")
