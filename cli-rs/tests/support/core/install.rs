@@ -25,16 +25,21 @@ pub(crate) fn default_bin_dir(home: &Path) -> PathBuf {
     default_install_root(home).join("current/bin")
 }
 
+pub(crate) fn default_libexec_dir(home: &Path) -> PathBuf {
+    default_install_root(home).join("current/libexec")
+}
+
 pub(crate) fn install_manifest_path(home: &Path) -> PathBuf {
     default_install_root(home).join("current/receipt.json")
 }
 
 pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_home: &Path) {
     let install_root = default_install_root(home);
-    let control_binary = default_bin_dir(home).join("_kastctl");
+    let control_binary = default_libexec_dir(home).join("kastctl");
     let agent_binary = default_bin_dir(home).join("kast");
     let config_root = install_root.join("current/config");
     std::fs::create_dir_all(default_bin_dir(home)).expect("bin directory");
+    std::fs::create_dir_all(default_libexec_dir(home)).expect("libexec directory");
     std::fs::create_dir_all(&install_root).expect("install root");
     std::fs::create_dir_all(&config_root).expect("config root");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &control_binary).expect("active Kast control binary");
@@ -76,7 +81,7 @@ pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_h
 
 pub(crate) fn write_active_kast_for_test(home: &Path, config_home: &Path) -> PathBuf {
     write_current_cli_install_manifest_for_test(home, config_home);
-    default_bin_dir(home).join("_kastctl")
+    default_libexec_dir(home).join("kastctl")
 }
 
 pub(crate) fn write_legacy_local_install_for_test(home: &Path, config_home: &Path) -> PathBuf {

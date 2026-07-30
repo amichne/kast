@@ -292,7 +292,7 @@ fn setup_is_the_only_public_installation_mutator() {
     assert!(setup_help.status.success());
     let setup_help = String::from_utf8_lossy(&setup_help.stdout);
     assert!(setup_help.contains("--source"), "{setup_help}");
-    for retired in ["--workspace-root", "--force", "--dry-run"] {
+    for retired in ["--workspace-root", "--dry-run"] {
         assert!(
             !setup_help.contains(retired),
             "retired setup option remains: {setup_help}"

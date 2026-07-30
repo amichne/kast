@@ -11,8 +11,8 @@ use support::workspace_database_path_for_test;
 use support::workspace_files::WorkspaceIndexFixture;
 #[cfg(target_os = "macos")]
 use support::{
-    default_bin_dir, write_current_cli_install_manifest_for_test,
-    write_macos_plugin_workspace_metadata_for_cli,
+    default_bin_dir, default_libexec_dir, write_current_cli_install_manifest_for_test,
+    write_macos_plugin_workspace_metadata_for_cli as write_workspace_metadata,
 };
 
 fn named(name: &str) -> Command {
@@ -122,8 +122,7 @@ fn home_reports_live_workspace_state_without_protocol_cruft() {
 }
 
 #[cfg(target_os = "macos")]
-#[test]
-fn installed_public_entrypoint_accepts_control_binary_authority() {
+fn installed_public_home(unrelated_authority: bool) -> String {
     let fixture = tempfile::tempdir().expect("temporary install");
     let home = fixture.path().join("home");
     let config_home = fixture.path().join("config");
@@ -132,13 +131,17 @@ fn installed_public_entrypoint_accepts_control_binary_authority() {
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     write_current_cli_install_manifest_for_test(&home, &config_home);
-    let control_binary = default_bin_dir(&home).join("_kastctl");
     let public_binary = default_bin_dir(&home).join("kast");
-    write_macos_plugin_workspace_metadata_for_cli(
-        &workspace,
-        &control_binary,
-        env!("CARGO_PKG_VERSION"),
-    );
+    let control_binary = if unrelated_authority {
+        let binary = fixture.path().join("unrelated/kastctl");
+        std::fs::create_dir_all(binary.parent().expect("unrelated parent"))
+            .expect("unrelated directory");
+        std::fs::copy(&public_binary, &binary).expect("unrelated control binary");
+        binary
+    } else {
+        default_libexec_dir(&home).join("kastctl")
+    };
+    write_workspace_metadata(&workspace, &control_binary, env!("CARGO_PKG_VERSION"));
 
     let output = Command::new(public_binary)
         .arg0("kast")
@@ -150,50 +153,19 @@ fn installed_public_entrypoint_accepts_control_binary_authority() {
         .expect("run installed public kast");
 
     assert!(output.status.success(), "{output:?}");
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        !stdout.contains("does not match the running Kast executable"),
-        "{stdout}"
-    );
+    String::from_utf8(output.stdout).expect("UTF-8 home output")
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn installed_public_entrypoint_uses_private_kastctl_libexec() {
+    assert!(!installed_public_home(false).contains("does not match the running Kast executable"));
 }
 
 #[cfg(target_os = "macos")]
 #[test]
 fn installed_public_entrypoint_rejects_unrelated_control_binary_authority() {
-    let fixture = tempfile::tempdir().expect("temporary install");
-    let home = fixture.path().join("home");
-    let config_home = fixture.path().join("config");
-    let workspace = fixture.path().join("workspace");
-    std::fs::create_dir_all(&workspace).expect("workspace");
-    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
-    let workspace = workspace.canonicalize().expect("canonical workspace");
-    write_current_cli_install_manifest_for_test(&home, &config_home);
-    let public_binary = default_bin_dir(&home).join("kast");
-    let unrelated_control = fixture.path().join("unrelated/_kastctl");
-    std::fs::create_dir_all(unrelated_control.parent().expect("unrelated parent"))
-        .expect("unrelated directory");
-    std::fs::copy(&public_binary, &unrelated_control).expect("unrelated control binary");
-    write_macos_plugin_workspace_metadata_for_cli(
-        &workspace,
-        &unrelated_control,
-        env!("CARGO_PKG_VERSION"),
-    );
-
-    let output = Command::new(public_binary)
-        .arg0("kast")
-        .current_dir(&workspace)
-        .env("HOME", &home)
-        .env("KAST_HOME", home.join(".local/share/kast"))
-        .env("KAST_CONFIG_HOME", &config_home)
-        .output()
-        .expect("run installed public kast");
-
-    assert!(output.status.success(), "{output:?}");
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(
-        stdout.contains("does not match the running Kast executable"),
-        "{stdout}"
-    );
+    assert!(installed_public_home(true).contains("does not match the running Kast executable"));
 }
 
 #[test]
