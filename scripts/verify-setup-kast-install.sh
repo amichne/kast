@@ -10,8 +10,8 @@ Verify a setup-kast installation in a CI runner, hosted-agent image, or local sm
 Options:
   --install-dir <path>              Installed current runtime directory. Defaults to $KAST_INSTALL_ROOT/current.
   --workspace-root <path>           Workspace root to start. Defaults to a temporary Kotlin workspace.
-  --source-root <path>              Kotlin source root for _kastctl developer runtime up. Defaults with temporary workspace.
-  --module-name <name>              Module name for _kastctl developer runtime up. Defaults to setup-kast-verify.
+  --source-root <path>              Kotlin source root for kastctl developer runtime up. Defaults with temporary workspace.
+  --module-name <name>              Module name for kastctl developer runtime up. Defaults to setup-kast-verify.
   --workspace-id <id>               KAST_WORKSPACE_ID for daemon state. Defaults to setup-kast-verify.
   --wait-timeout-ms <millis>        Startup wait timeout. Defaults to 120000.
   --gradle-root <path>              Run repo-level Gradle warm checks from this root.
@@ -117,23 +117,22 @@ done
 [[ -n "$workspace_id" ]] || die "--workspace-id must not be empty"
 [[ "$wait_timeout_ms" =~ ^[0-9]+$ ]] || die "--wait-timeout-ms must be an integer"
 
-kastctl_bin="$(command -v _kastctl || true)"
+kastctl_bin="${install_dir}/libexec/kastctl"
 kast_bin="$(command -v kast || true)"
-[[ -n "$kastctl_bin" ]] || die "_kastctl is not on PATH"
 [[ -n "$kast_bin" ]] || die "kast is not on PATH"
 need_dir "$install_dir" "Kast install directory"
-need_file "${install_dir}/bin/_kastctl" "installed Kast control binary"
+need_file "$kastctl_bin" "installed Kast control binary"
 need_file "${install_dir}/bin/kast" "installed kast binary"
 need_file "${install_dir}/receipt.json" "setup receipt"
 install_root="$(cd -- "$(dirname -- "$install_dir")" && pwd)"
-expected_kastctl_bin="$(absolute_path "${install_dir}/bin/_kastctl")"
 expected_kast_bin="$(absolute_path "${install_dir}/bin/kast")"
-actual_kastctl_bin="$(absolute_path "$kastctl_bin")"
 actual_kast_bin="$(absolute_path "$kast_bin")"
-[[ "$actual_kastctl_bin" == "$expected_kastctl_bin" ]] \
-  || die "_kastctl on PATH does not match install-dir: expected ${expected_kastctl_bin}, got ${actual_kastctl_bin}"
 [[ "$actual_kast_bin" == "$expected_kast_bin" ]] \
   || die "kast on PATH does not match install-dir: expected ${expected_kast_bin}, got ${actual_kast_bin}"
+for private_command in "${HOME}/.local/bin/kastctl" "${HOME}/.local/bin/_kastctl"; do
+  [[ ! -e "$private_command" && ! -L "$private_command" ]] \
+    || die "private Kast control command must not be on the user path: ${private_command}"
+done
 cmp -s "$kastctl_bin" "$kast_bin" || die "installed Kast entrypoints are not byte-identical"
 
 "$kastctl_bin" --version

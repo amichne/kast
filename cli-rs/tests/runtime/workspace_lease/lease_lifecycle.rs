@@ -4,7 +4,7 @@ use std::os::unix::process::CommandExt;
 fn agent_exposes_the_typed_workspace_lease_lifecycle() {
     for command in ["acquire", "status", "release"] {
         let output = Command::new(env!("CARGO_BIN_EXE_kast"))
-            .arg0("_kastctl")
+            .arg0("kastctl")
             .args(["agent", "lease", command, "--help"])
             .output()
             .expect("workspace lease help");

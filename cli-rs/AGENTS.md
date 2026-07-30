@@ -9,7 +9,7 @@ orchestration, source-index CLI reads, and release packaging.
 
 - `src/interface/cli/agent/agent_surface.rs` and `src/main.rs` define the public
   agent-facing `kast` CLI. `src/interface/cli/root.rs` retains administrative
-  operations behind the `_kastctl` multicall name.
+  operations behind the private `kastctl` multicall name.
 - `src/interface/cli/agent.rs` and `src/agent/` own typed compiler-backed agent commands:
   the cross-provider `task begin|status|finish|abort` proof lifecycle plus
   `lease`, `verify`, `workspace-files`, `symbol`, `diagnostics`, `impact`,
@@ -66,7 +66,8 @@ The retained cross-module boundaries are:
   but must not duplicate changed-file, diagnostics-hash, Gradle-outcome, or
   test-report policy.
 - Agent-facing semantic workflows use the public `kast` surface. Administrative
-  lifecycle and compatibility operations use `_kastctl`.
+  lifecycle and compatibility operations use the release-local
+  `libexec/kastctl`.
 - Keep raw workspace paging handles and public workspace-file continuation
   handles distinct and opaque. Public continuations bind every result-affecting
   query field and the coherent multi-source composition stamp, including each

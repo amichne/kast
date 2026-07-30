@@ -68,8 +68,8 @@ limitations, and next action.
 
 ## Internal control plane
 
-The installed `_kastctl` multicall entrypoint retains setup, developer,
-release, raw RPC, and legacy command families for Kast-owned automation. It is
-not an agent interface and is intentionally omitted from installed skills.
-Maintainer documentation names `_kastctl` explicitly when one of those
-operations is required.
+The private release-local `libexec/kastctl` multicall entrypoint retains setup,
+developer, release, raw RPC, and legacy command families for Kast-owned
+automation. It is not placed on `PATH`, is not an agent interface, and is
+intentionally omitted from installed skills. Maintainer documentation uses its
+release-local path when one of those operations is required.

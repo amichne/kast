@@ -47,10 +47,10 @@ pub(crate) fn write_cli_archive(root: &Path) -> PathBuf {
     let staging = root.join("cli-staging");
     let archive = root.join("kast-cli.zip");
     std::fs::create_dir_all(&staging).expect("cli staging");
-    let control_cli = staging.join("_kastctl");
+    let control_cli = staging.join("kastctl");
     let agent_cli = staging.join("kast");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &control_cli)
-        .expect("copy test _kastctl binary");
+        .expect("copy test kastctl binary");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &agent_cli).expect("copy test kast binary");
     set_executable_for_test(&control_cli);
     set_executable_for_test(&agent_cli);
@@ -58,7 +58,7 @@ pub(crate) fn write_cli_archive(root: &Path) -> PathBuf {
         .args([
             "-qr",
             archive.to_str().expect("archive path"),
-            "_kastctl",
+            "kastctl",
             "kast",
         ])
         .current_dir(&staging)
@@ -74,6 +74,7 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
     let bundle = root.join(format!("kast-{platform}-{version}"));
     let backend_dir = bundle.join(format!("lib/backends/headless-{version}"));
     std::fs::create_dir_all(bundle.join("bin")).expect("bundle bin");
+    std::fs::create_dir_all(bundle.join("libexec")).expect("bundle libexec");
     std::fs::create_dir_all(bundle.join("plugins")).expect("bundle plugins");
     std::fs::create_dir_all(backend_dir.join("runtime-libs")).expect("runtime libs");
     std::fs::create_dir_all(backend_dir.join("idea-home/lib")).expect("idea lib");
@@ -81,10 +82,10 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
     std::fs::create_dir_all(backend_dir.join("idea-home/plugins/kast-headless"))
         .expect("kast-headless plugin");
 
-    let bundled_control = bundle.join("bin/_kastctl");
+    let bundled_control = bundle.join("libexec/kastctl");
     let bundled_kast = bundle.join("bin/kast");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &bundled_control)
-        .expect("copy test _kastctl binary");
+        .expect("copy test kastctl binary");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &bundled_kast).expect("copy test kast binary");
     std::fs::write(backend_dir.join("kast-headless"), "#!/bin/sh\n").expect("launcher");
     std::fs::write(
@@ -119,7 +120,7 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
             "javaRequirement": "Java 21 or newer available on PATH, or KAST_JAVA_CMD set",
             "buildCommit": "test",
             "activation": {
-                "cli": {"path": "bin/_kastctl"},
+                "cli": {"path": "libexec/kastctl"},
                 "backend": {
                     "kind": "headless",
                     "name": "headless",
@@ -139,7 +140,7 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
             "artifacts": [
                 {
                     "role": "cli",
-                    "path": "bin/_kastctl",
+                    "path": "libexec/kastctl",
                     "sha256": test_path_sha256(&bundled_control)
                 },
                 {

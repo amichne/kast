@@ -177,10 +177,10 @@ for platform_id, asset_name in supported.items():
         if extraction.returncode != 0:
             detail = extraction.stderr.strip() or extraction.stdout.strip()
             fail(f"invalid CLI archive {asset_name}: {detail}")
-        control = Path(output) / "_kastctl"
+        control = Path(output) / "kastctl"
         agent = Path(output) / "kast"
         if not control.is_file():
-            fail(f"CLI archive {asset_name} must contain regular _kastctl at its root")
+            fail(f"CLI archive {asset_name} must contain regular kastctl at its root")
         if not agent.is_file():
             fail(f"CLI archive {asset_name} must contain regular kast at its root")
         if not os.access(control, os.X_OK) or not os.access(agent, os.X_OK):

@@ -80,7 +80,7 @@ committed graph intact.
 ```mermaid
 sequenceDiagram
     autonumber
-    participant CLI as _kastctl agent graph refresh
+    participant CLI as libexec/kastctl agent graph refresh
     participant Scope as Persisted source scope
     participant Runtime as Exact-root runtime
     participant RPC as raw/semantic-graph

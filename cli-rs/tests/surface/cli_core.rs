@@ -42,14 +42,14 @@ fn control_context_suggests_only_control_entrypoint() {
     assert!(context.status.success());
     let stdout = String::from_utf8_lossy(&context.stdout);
     for command in [
-        "_kastctl start --workspace-root <repo>",
-        "_kastctl status --workspace-root <repo>",
-        "_kastctl stop --workspace-root <repo>",
-        "_kastctl config list --workspace-root <repo>",
-        "_kastctl agent verify --workspace-root <repo>",
-        "_kastctl agent symbol --query <name> --workspace-root <repo>",
-        "_kastctl --help",
-        "_kastctl setup --source <bundle>",
+        "kastctl start --workspace-root <repo>",
+        "kastctl status --workspace-root <repo>",
+        "kastctl stop --workspace-root <repo>",
+        "kastctl config list --workspace-root <repo>",
+        "kastctl agent verify --workspace-root <repo>",
+        "kastctl agent symbol --query <name> --workspace-root <repo>",
+        "kastctl --help",
+        "kastctl setup --source <bundle>",
     ] {
         assert!(stdout.contains(command), "missing {command}: {stdout}");
     }

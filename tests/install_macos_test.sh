@@ -21,18 +21,18 @@ printf '%s\n' \
   'printf "%s\n" "$*" > "$KAST_TEST_SETUP_ARGS"' \
   'while [ "$#" -gt 0 ]; do case "$1" in --config-defaults) cp "$2" "$KAST_TEST_CONFIG_DEFAULTS"; shift 2 ;; *) shift ;; esac; done' \
   'if [ "${KAST_TEST_IDEA_RUNNING:-0}" = 1 ] && [ "${KAST_TEST_PLUGIN_CURRENT:-0}" != 1 ] && [ ! -f "$KAST_TEST_IDEA_CLOSED" ]; then printf "%s\n" "code: IDE_RESTART_REQUIRED" >&2; exit 1; fi' \
-  'install_root="${KAST_HOME:-$HOME/.local/share/kast}/current/bin"' \
+  'install_root="${KAST_HOME:-$HOME/.local/share/kast}/current"' \
   'user_bin="$HOME/.local/bin"' \
-  'mkdir -p "$install_root" "$user_bin"' \
-  'cp "$0" "$install_root/_kastctl"; cp "$0" "$install_root/kast"' \
-  'cp "$0" "$user_bin/_kastctl"; cp "$0" "$user_bin/kast"' \
-  'chmod 755 "$install_root/_kastctl" "$install_root/kast" "$user_bin/_kastctl" "$user_bin/kast"' \
+  'mkdir -p "$install_root/libexec" "$install_root/bin" "$user_bin"' \
+  'cp "$0" "$install_root/libexec/kastctl"; cp "$0" "$install_root/bin/kast"' \
+  'cp "$0" "$user_bin/kast"' \
+  'chmod 755 "$install_root/libexec/kastctl" "$install_root/bin/kast" "$user_bin/kast"' \
   'printf "%s\n" "type: KAST_SETUP" "status: CURRENT"' \
   >"$scratch/fake-kast"
 printf '%s\n' '#!/bin/sh' 'if [ "$1" = "-s" ]; then printf "%s\\n" "${KAST_TEST_OS:-Darwin}"; else printf "%s\\n" "${KAST_TEST_ARCH:-arm64}"; fi' > "$scratch/bin/uname"
 printf '%s\n' '#!/bin/sh' 'output=""' 'url=""' 'while [ "$#" -gt 0 ]; do case "$1" in --output) output="$2"; shift 2 ;; *) url="$1"; shift ;; esac; done' 'printf "%s\\n" "$url" >> "$KAST_TEST_CURL_LOG"' ': > "$output"' > "$scratch/bin/curl"
-printf '%s\n' '#!/bin/sh' 'destination=""' 'while [ "$#" -gt 0 ]; do case "$1" in -d) destination="$2"; shift 2 ;; *) shift ;; esac; done' 'mkdir -p "$destination"' 'cp "$KAST_TEST_FAKE_CLI" "$destination/_kastctl"' 'cp "$KAST_TEST_FAKE_CLI" "$destination/kast"' 'chmod 755 "$destination/_kastctl" "$destination/kast"' > "$scratch/bin/unzip"
-printf '%s\n' '#!/bin/sh' 'destination=""' 'while [ "$#" -gt 0 ]; do case "$1" in -C) destination="$2"; shift 2 ;; *) shift ;; esac; done' 'mkdir -p "$destination/bundle/bin"' 'cp "$KAST_TEST_FAKE_CLI" "$destination/bundle/bin/_kastctl"' 'cp "$KAST_TEST_FAKE_CLI" "$destination/bundle/bin/kast"' 'chmod 755 "$destination/bundle/bin/_kastctl" "$destination/bundle/bin/kast"' > "$scratch/bin/tar"
+printf '%s\n' '#!/bin/sh' 'destination=""' 'while [ "$#" -gt 0 ]; do case "$1" in -d) destination="$2"; shift 2 ;; *) shift ;; esac; done' 'mkdir -p "$destination"' 'cp "$KAST_TEST_FAKE_CLI" "$destination/kastctl"' 'cp "$KAST_TEST_FAKE_CLI" "$destination/kast"' 'chmod 755 "$destination/kastctl" "$destination/kast"' > "$scratch/bin/unzip"
+printf '%s\n' '#!/bin/sh' 'destination=""' 'while [ "$#" -gt 0 ]; do case "$1" in -C) destination="$2"; shift 2 ;; *) shift ;; esac; done' 'mkdir -p "$destination/bundle/bin" "$destination/bundle/libexec"' 'cp "$KAST_TEST_FAKE_CLI" "$destination/bundle/libexec/kastctl"' 'cp "$KAST_TEST_FAKE_CLI" "$destination/bundle/bin/kast"' 'chmod 755 "$destination/bundle/libexec/kastctl" "$destination/bundle/bin/kast"' > "$scratch/bin/tar"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_CODEX_LOG"' > "$scratch/bin/codex"
 printf '%s\n' '#!/bin/sh' 'if [ "${KAST_TEST_IDEA_RUNNING:-0}" = 1 ] && [ ! -f "$KAST_TEST_IDEA_CLOSED" ]; then printf "%s\n" "4312 /Applications/IntelliJ IDEA.app/Contents/MacOS/idea"; else printf "%s\n" "4311 /bin/bash"; fi' > "$scratch/bin/ps"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_KILL_LOG"' ': > "$KAST_TEST_IDEA_CLOSED"' > "$scratch/bin/kill"
@@ -81,6 +81,9 @@ if grep -Fq 'kast-macos-arm64-v1.2.3.tar.gz' "$scratch/curl.log"; then
   printf '%s\n' 'macOS installer selected the headless bundle' >&2
   exit 1
 fi
+
+bash "$repo_root/install.sh" --version v1.2.3 --force >"$scratch/stdout" 2>"$scratch/stderr"
+grep -Eq '^setup --idea-plugin .*/kast-idea-v1\.2\.3\.zip --force$' "$scratch/setup.args"
 
 : > "$KAST_TEST_KILL_LOG"
 KAST_TEST_IDEA_RUNNING=1 KAST_TEST_PLUGIN_CURRENT=1 \

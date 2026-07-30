@@ -4,7 +4,7 @@ fn invoked_entrypoint() -> Option<Entrypoint> {
         .and_then(|name| name.to_str())
     {
         Some("kast") => Some(Entrypoint::Agent),
-        Some("_kastctl") => Some(Entrypoint::Control),
+        Some("kastctl") => Some(Entrypoint::Control),
         _ => None,
     }
 }
@@ -17,9 +17,7 @@ fn unrecognized_entrypoint_main() -> i32 {
         .to_string();
     let error = CliError::new(
         "CLI_USAGE",
-        format!(
-            "This executable must be invoked as `kast` or `_kastctl`; `{invoked}` is not supported."
-        ),
+        format!("This executable name is not supported: `{invoked}`. Run `kast --help`."),
     );
     let _ = print_agent_error(&error);
     2

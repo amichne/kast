@@ -42,7 +42,7 @@ fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
     if manifest::sha256_file(&cli_path)? != manifest::sha256_file(&agent_cli_path)? {
         return Err(CliError::new(
             "BUNDLE_SHAPE_INVALID",
-            "Bundle _kastctl and kast entrypoints must be byte-identical.",
+            "Bundle kastctl and kast entrypoints must be byte-identical.",
         ));
     }
     require_directory(&backend_install_dir, "headless backend install directory")?;

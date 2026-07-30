@@ -61,13 +61,14 @@ require_absent "${docs_root}/assets/demo"
 installer='/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"'
 require_contains "$readme" "$installer"
 require_contains "$readme" 'After installation, `kast` is the agent interface'
-require_contains "$readme" "_kastctl"
+require_contains "$readme" "libexec/kastctl"
 require_contains "$readme" "prior active release usable"
 require_contains "$readme" "--harness none"
 require_contains "${docs_root}/how-to/install-or-update.md" "$installer"
 require_contains "${docs_root}/how-to/install-or-update.md" "./gradlew refreshDevelopmentMachine"
 require_contains "${docs_root}/how-to/install-or-update.md" "current/bin/kast"
-require_contains "${docs_root}/how-to/install-or-update.md" "current/bin/_kastctl"
+require_contains "${docs_root}/how-to/install-or-update.md" "current/libexec/kastctl"
+require_contains "${docs_root}/how-to/install-or-update.md" "./install.sh --force"
 require_contains "${docs_root}/how-to/install-or-update.md" "--harness codex"
 require_contains "${docs_root}/how-to/install-or-update.md" "No remote marketplace checkout is required"
 require_contains "${docs_root}/tutorials/first-compiler-backed-task.md" "IdeaIndexSemanticAdmission"
@@ -78,7 +79,7 @@ for command in up refresh files symbol graph check change apply; do
 done
 require_contains "${docs_root}/reference/cli.md" '`kast` is the only public interface'
 require_contains "${docs_root}/reference/cli.md" "compact TOON"
-require_contains "${docs_root}/reference/cli.md" '`_kastctl` multicall entrypoint'
+require_contains "${docs_root}/reference/cli.md" '`libexec/kastctl` multicall entrypoint'
 require_contains "${docs_root}/reference/cli.md" '`UNKNOWN` graph boundary'
 require_contains "${docs_root}/reference/codex-plugin.md" "Codex, Claude,"
 require_contains "${docs_root}/reference/codex-plugin.md" "installer never"
@@ -134,9 +135,9 @@ done
 require_contains "$hidden_system_map" "## Durable system invariants"
 require_contains "$hidden_system_map" '## Answering "How does this part work?"'
 require_contains "$hidden_system_map" "Open Knowledge Format"
-require_contains "$hidden_system_map" '`_kastctl` preserves the full administrative CLI'
-require_contains "$hidden_system_map" '`_kastctl setup`'
-require_contains "$hidden_system_map" 'byte-identical `kast` and `_kastctl`'
+require_contains "$hidden_system_map" '`libexec/kastctl` preserves the full administrative CLI'
+require_contains "$hidden_system_map" '`libexec/kastctl setup`'
+require_contains "$hidden_system_map" 'byte-identical `bin/kast` and'
 require_contains "$hidden_system_map" '`kast refresh external <FAILURE_ID>...`'
 require_contains "$hidden_system_map" 'io.github.amichne.kast.api.contract.backend.AnalysisBackend'
 for command in up refresh files symbol graph check change apply; do

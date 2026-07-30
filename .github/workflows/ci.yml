@@ -322,19 +322,19 @@ jobs:
 
       - name: Validate generated CLI contracts
         run: |
-          cp cli-rs/target/release/kast cli-rs/target/release/_kastctl
-          cli-rs/target/release/_kastctl developer release generate contract --check
+          cp cli-rs/target/release/kast cli-rs/target/release/kastctl
+          cli-rs/target/release/kastctl developer release generate contract --check
 
       - name: Package Rust CLI CI asset
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist cli-rs/target/package/kast-v0.0.0-ci-linux-x64
-          cp cli-rs/target/release/kast cli-rs/target/package/kast-v0.0.0-ci-linux-x64/_kastctl
+          cp cli-rs/target/release/kast cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kastctl
           cp cli-rs/target/release/kast cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
-          chmod 755 cli-rs/target/package/kast-v0.0.0-ci-linux-x64/_kastctl cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
-          cmp -s cli-rs/target/package/kast-v0.0.0-ci-linux-x64/_kastctl cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
-          (cd cli-rs/target/package/kast-v0.0.0-ci-linux-x64 && zip -9 -q "$GITHUB_WORKSPACE/dist/kast-v0.0.0-ci-linux-x64.zip" _kastctl kast)
+          chmod 755 cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kastctl cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
+          cmp -s cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kastctl cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
+          (cd cli-rs/target/package/kast-v0.0.0-ci-linux-x64 && zip -9 -q "$GITHUB_WORKSPACE/dist/kast-v0.0.0-ci-linux-x64.zip" kastctl kast)
           scripts/verify-ci-artifact-ledger.py record \
             --output dist/ci-ledgers/rust-cli-linux-x64.json \
             --git-sha "$GITHUB_SHA" \

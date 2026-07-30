@@ -56,9 +56,24 @@ fn configured_binary_matches_running(
     running_binary: &Path,
     active_binary: Option<&Path>,
 ) -> bool {
-    same_binary_path(configured_binary, running_binary)
+    cli_binary_matches_running(configured_binary, running_binary)
         || active_binary
-            .is_some_and(|active_binary| same_binary_path(active_binary, running_binary))
+            .is_some_and(|active_binary| cli_binary_matches_running(active_binary, running_binary))
+}
+
+fn cli_binary_matches_running(authority_binary: &Path, running_binary: &Path) -> bool {
+    same_binary_path(authority_binary, running_binary)
+        || private_control_public_entrypoint(authority_binary)
+            .is_some_and(|public| same_binary_path(&public, running_binary))
+}
+
+fn private_control_public_entrypoint(authority_binary: &Path) -> Option<PathBuf> {
+    if authority_binary.file_name()?.to_str()? != "kastctl"
+        || authority_binary.parent()?.file_name()?.to_str()? != "libexec"
+    {
+        return None;
+    }
+    Some(authority_binary.parent()?.parent()?.join("bin/kast"))
 }
 
 fn same_binary_path(left: &Path, right: &Path) -> bool {

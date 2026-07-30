@@ -1,10 +1,12 @@
 pub fn setup(args: SetupArgs) -> Result<SetupResult> {
+    let mode = SetupMode::from_force_flag(args.force);
     match (args.source, args.idea_plugin) {
-        (Some(source), None) => setup_bundle(source),
+        (Some(source), None) => setup_bundle(source, mode),
         (None, Some(idea_plugin)) => setup_idea_plugin(
             idea_plugin,
             args.idea_plugins_dir,
             args.config_defaults,
+            mode,
         ),
         _ => Err(CliError::new(
             "CLI_USAGE",
@@ -13,7 +15,7 @@ pub fn setup(args: SetupArgs) -> Result<SetupResult> {
     }
 }
 
-fn setup_bundle(source: PathBuf) -> Result<SetupResult> {
+fn setup_bundle(source: PathBuf, mode: SetupMode) -> Result<SetupResult> {
     let kast_home = env_path("KAST_HOME")
         .unwrap_or_else(|| manifest::home_dir().join(".local/share/kast"));
     let source = config::normalize(source);
@@ -21,8 +23,16 @@ fn setup_bundle(source: PathBuf) -> Result<SetupResult> {
     let bundle_root = bundle_source_root(&source, scratch.path())?;
     let bundle = validate_bundle(&bundle_root)?;
     let targets = activation_target_paths(kast_home, &bundle)?;
+    require_force_source_outside_install_root(
+        mode,
+        &bundle.root,
+        &targets.resolved.install_root,
+    )?;
 
     manifest::with_install_lock(&targets.resolved, || {
+        if mode.is_force() {
+            ForceResetPlan::build(&targets, None)?.execute()?;
+        }
         let legacy_backup = archive_legacy_installations(&targets)?;
         manifest::remove_path(&targets.resolved.install_root.join("staging"))?;
         fs::create_dir_all(targets.resolved.install_root.join("staging"))?;
@@ -47,7 +57,7 @@ fn setup_bundle(source: PathBuf) -> Result<SetupResult> {
             failure.details.insert("phase".to_string(), "VERIFY".to_string());
             failure.details.insert(
                 "rerun".to_string(),
-                format!("kast setup --source {}", source.display()),
+                format!("kastctl setup --source {}", source.display()),
             );
             return Err(failure);
         }
@@ -69,8 +79,8 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
     fs::create_dir_all(&backups)?;
     let home = manifest::home_dir();
     let user_command = home.join(".local/bin/_kastctl");
-    let user_command_is_managed = fs::read_link(&user_command)
-        .is_ok_and(|target| target.starts_with(&targets.current_link));
+    let user_command_is_managed =
+        managed_user_command(&user_command, &targets.resolved.install_root, &[]);
     let mut legacy = vec![
         (
             targets.resolved.install_root.join("install.json"),
@@ -110,33 +120,32 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
 
 fn install_user_command(targets: &ActivationTargetPaths) -> Result<()> {
     let local_bin = manifest::home_dir().join(".local/bin");
-    let commands = [
-        (
-            local_bin.join("_kastctl"),
-            targets.resolved.active_binary.clone(),
-        ),
-        (
-            local_bin.join("kast"),
-            targets.current_link.join(AGENT_CLI_BUNDLE_PATH),
-        ),
-    ];
+    let obsolete_control = local_bin.join("_kastctl");
+    if managed_user_command(
+        &obsolete_control,
+        &targets.resolved.install_root,
+        &[],
+    ) {
+        manifest::remove_path(&obsolete_control)?;
+    }
+    let user_command = local_bin.join("kast");
+    let agent_binary = targets.current_link.join(AGENT_CLI_BUNDLE_PATH);
     let receipt_path = targets
         .current_link
         .join(manifest::INSTALL_MANIFEST_FILE);
     let mut receipt = manifest_from_file(&receipt_path)?;
-    for (user_command, _) in &commands {
-        let user_command_state = user_command.display().to_string();
-        if !receipt.owned_paths.contains(&user_command_state) {
-            receipt.owned_paths.push(user_command_state);
-        }
+    receipt
+        .owned_paths
+        .retain(|path| Path::new(path) != obsolete_control);
+    let user_command_state = user_command.display().to_string();
+    if !receipt.owned_paths.contains(&user_command_state) {
+        receipt.owned_paths.push(user_command_state);
     }
     manifest::write_manifest_atomic(&receipt_path, &receipt)?;
-    for (user_command, target) in commands {
-        #[cfg(unix)]
-        manifest::replace_symlink_or_copy(&target, &user_command)?;
-        #[cfg(not(unix))]
-        let _ = (user_command, target);
-    }
+    #[cfg(unix)]
+    manifest::replace_symlink_or_copy(&agent_binary, &user_command)?;
+    #[cfg(not(unix))]
+    let _ = (user_command, agent_binary);
     Ok(())
 }
 

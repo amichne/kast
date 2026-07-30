@@ -84,6 +84,7 @@ pub fn package_ubuntu_debian_bundle(
     fs::create_dir_all(&cli_extract)?;
     fs::create_dir_all(&backend_extract)?;
     fs::create_dir_all(staging_root.join("bin"))?;
+    fs::create_dir_all(staging_root.join("libexec"))?;
     fs::create_dir_all(staging_root.join("lib/backends"))?;
     fs::create_dir_all(staging_root.join("plugins"))?;
     if let Some(parent) = output.parent() {
@@ -93,14 +94,14 @@ pub fn package_ubuntu_debian_bundle(
     extract_zip_archive(&cli_archive, &cli_extract)?;
     extract_zip_archive(&backend_archive, &backend_extract)?;
 
-    let cli_bin = cli_extract.join("_kastctl");
+    let cli_bin = cli_extract.join("kastctl");
     let agent_cli_bin = cli_extract.join("kast");
-    require_file(&cli_bin, "CLI archive root _kastctl binary")?;
+    require_file(&cli_bin, "CLI archive root kastctl binary")?;
     require_file(&agent_cli_bin, "CLI archive root kast binary")?;
     if file_sha256(&cli_bin)? != file_sha256(&agent_cli_bin)? {
         return Err(CliError::new(
             "CLI_ARCHIVE_INVALID",
-            "CLI archive root _kastctl and kast binaries must be byte-identical.",
+            "CLI archive root kastctl and kast binaries must be byte-identical.",
         ));
     }
     let backend_root = backend_extract.join(HEADLESS_BACKEND_ARCHIVE_ROOT);

@@ -68,19 +68,16 @@ fn setup_installs_native_cli_and_idea_plugin() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),
     );
-    assert!(kast_home.join("current/bin/_kastctl").is_file());
+    assert!(kast_home.join("current/libexec/kastctl").is_file());
     assert_eq!(
-        std::fs::read(kast_home.join("current/bin/_kastctl")).expect("_kastctl bytes"),
+        std::fs::read(kast_home.join("current/libexec/kastctl")).expect("kastctl bytes"),
         std::fs::read(kast_home.join("current/bin/kast")).expect("kast bytes"),
     );
     assert_eq!(
         std::fs::read_link(home.join(".local/bin/kast")).expect("user command"),
         kast_home.join("current/bin/kast"),
     );
-    assert_eq!(
-        std::fs::read_link(home.join(".local/bin/_kastctl")).expect("control user command"),
-        kast_home.join("current/bin/_kastctl"),
-    );
+    assert!(!home.join(".local/bin/_kastctl").exists());
     assert!(plugins.join("kast/lib/plugin.jar").is_file());
     let receipt: serde_json::Value = serde_json::from_slice(
         &std::fs::read(kast_home.join("current/receipt.json")).expect("setup receipt"),
@@ -181,7 +178,6 @@ fn failed_current_idea_setup_preserves_unrelated_legacy_state() {
     assert!(run().status.success(), "initial setup should succeed");
     let local_bin = home.join(".local/bin");
     std::fs::remove_file(local_bin.join("kast")).expect("managed user command");
-    std::fs::remove_file(local_bin.join("_kastctl")).expect("managed control command");
     std::fs::remove_dir(&local_bin).expect("empty command directory");
     std::fs::write(&local_bin, "blocks command projection").expect("blocking command path");
     let legacy_config = home.join(".config/kast/config.toml");
