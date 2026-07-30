@@ -110,15 +110,72 @@ There is no typed log-reader command. Run searches only over the relevant time w
 
 ## Change one supported knob at a time
 
-Select only keys listed as mutable by `config list`. Record the inherited value locally, set one override, restart once, reproduce once, then unset the override and restart to restore inheritance.
+Select one key below that `config list` reports as mutable. Capture its effective scalar and `workspaceOverride` flag from the unprinted `CONFIG_JSON`, then run the mutation in one guarded subshell. Restore the original value when an override existed; otherwise remove the temporary override. Always restart after restoration.
 
 Configuration and runtime mutations require explicit user authorization. For diagnose, explain, or inspect requests, stop after recommending the single evidence-backed key.
 
 ```shell
-"$KASTCTL" config set <KEY> <VALUE> --workspace-root "$PWD"
-"$KASTCTL" developer runtime restart \
-  --workspace-root "$PWD" --backend idea --accept-indexing
-"$KASTCTL" config unset <KEY> --workspace-root "$PWD"
+(
+  set -eu
+  KEY="<KEY>"
+  TEMPORARY_VALUE="<VALUE>"
+  case "$KEY" in
+    server.requestTimeoutMillis|server.maxConcurrentRequests|server.maxResults|\
+    gradle.toolingApiTimeoutMillis|indexing.identifierIndexWaitMillis|\
+    indexing.relationships.enabled|indexing.relationships.batchSize|\
+    indexing.relationships.parallelism|indexing.relationships.modulePriorityDepth|\
+    projectOpen.gradleLoadEnabled|backends.idea.enabled|watcher.debounceMillis|\
+    telemetry.enabled|telemetry.scopes|telemetry.detail|profiling.enabled|\
+    profiling.modes|profiling.durationSeconds|profiling.emitManifest) ;;
+    *) exit 1 ;;
+  esac
+  EXPECTED_SCHEMA_VERSION="$(printf '%s\n' "$READY_JSON" |
+    jq -ser 'select(length == 1) | .[0].schemaVersion |
+      select((type == "number") and (. > 0) and (floor == .))' 2>/dev/null)"
+  ORIGINAL_STATE="$(printf '%s\n' "$CONFIG_JSON" |
+    jq -cse --arg key "$KEY" --argjson schema "$EXPECTED_SCHEMA_VERSION" '
+    select(length == 1)
+    | .[0]
+    | select((.ok == true) and (.schemaVersion == $schema))
+    | select((.mutableFields | type) == "array")
+    | . as $config
+    | [.mutableFields[] | select(.key == $key)] as $fields
+    | select(($fields | length) == 1)
+    | $fields[0] as $field
+    | ($config.effective | getpath($key | split("."))) as $value
+    | select(($field.workspaceOverride | type) == "boolean")
+    | select((($field.valueType == "boolean") and (($value | type) == "boolean"))
+        or (($field.valueType == "integer") and (($value | type) == "number")
+          and ($value == ($value | floor)) and ($value >= 0)
+          and ($value <= 9007199254740991))
+        or (($field.valueType == "string") and (($value | type) == "string")))
+    | {hadOverride: $field.workspaceOverride, value: $value}
+  ' 2>/dev/null)" || exit 1
+  ORIGINAL_HAD_OVERRIDE="$(printf '%s' "$ORIGINAL_STATE" |
+    jq -er '.hadOverride | tostring' 2>/dev/null)"
+  ORIGINAL_VALUE="$(printf '%s' "$ORIGINAL_STATE" |
+    jq -er '.value | tostring' 2>/dev/null)"
+  restore_config() {
+    original_status=$?
+    trap - HUP INT TERM
+    if [ "$ORIGINAL_HAD_OVERRIDE" = true ]; then
+      "$KASTCTL" config set "$KEY" "$ORIGINAL_VALUE" \
+        --workspace-root "$PWD" >/dev/null 2>&1
+    else
+      "$KASTCTL" config unset "$KEY" --workspace-root "$PWD" >/dev/null 2>&1
+    fi
+    "$KASTCTL" developer runtime restart \
+      --workspace-root "$PWD" --backend idea --accept-indexing >/dev/null 2>&1
+    return "$original_status"
+  }
+  trap restore_config EXIT
+  trap 'exit 130' HUP INT TERM
+  "$KASTCTL" config set "$KEY" "$TEMPORARY_VALUE" \
+    --workspace-root "$PWD" >/dev/null 2>&1
+  "$KASTCTL" developer runtime restart \
+    --workspace-root "$PWD" --backend idea --accept-indexing >/dev/null 2>&1
+  # Run one reproduction here and sanitize its captured output.
+)
 ```
 
 Route symptoms to these current mutable keys:
