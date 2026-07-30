@@ -63,6 +63,31 @@ class KastOpenProjectRequestStoreTest {
         assertTrue(store.consume(canonicalRoot, untargeted, allowUntargeted = true))
     }
 
+    @Test
+    fun `project signal drains duplicate untargeted requests without stealing process request`() {
+        val root = Files.createDirectory(tempDir.resolve("root"))
+        val targeted = writeRequest(root, targetPid = 41, expiresAt = 2_000)
+        val firstUntargeted = writeRequest(
+            root,
+            targetPid = null,
+            targetProductCode = "IU",
+            expiresAt = 2_000,
+        )
+        val secondUntargeted = writeRequest(
+            root,
+            targetPid = null,
+            targetProductCode = "IU",
+            expiresAt = 2_000,
+        )
+        val store = store(now = 1_000, pid = 41)
+        val canonicalRoot = root(root)
+
+        assertTrue(store.consumeUntargetedForProject(canonicalRoot))
+        assertTrue(store.consume(canonicalRoot, targeted, allowUntargeted = false))
+        assertFalse(store.consume(canonicalRoot, firstUntargeted, allowUntargeted = true))
+        assertFalse(store.consume(canonicalRoot, secondUntargeted, allowUntargeted = true))
+    }
+
     private fun store(now: Long, pid: Long): KastOpenProjectRequestStore {
         val defaults = KastConfig.defaults()
         return KastOpenProjectRequestStore(

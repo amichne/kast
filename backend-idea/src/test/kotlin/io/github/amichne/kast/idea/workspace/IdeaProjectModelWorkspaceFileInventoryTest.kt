@@ -109,6 +109,17 @@ class IdeaProjectModelWorkspaceFileInventoryTest {
     }
 
     @Test
+    fun `unchanged project revision reuses one complete inventory snapshot`() {
+        val access = FakeProjectModelAccess(model = emptyModel())
+        val inventory = inventory(access)
+
+        inventory.snapshot(WorkspaceFileKindDomain.SOURCE_ONLY)
+        inventory.snapshot(WorkspaceFileKindDomain.SOURCE_ONLY)
+
+        assertEquals(1, access.readCount)
+    }
+
+    @Test
     fun `incomplete supplied Gradle model is typed before project model read`() {
         val access = FakeProjectModelAccess(model = emptyModel())
         val gradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(

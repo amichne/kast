@@ -250,6 +250,51 @@ class KastProjectOpenSourceIndexingTest {
     }
 
     @Test
+    fun `unchanged focused refresh does not recapture the complete workspace inventory`() {
+        val project = projectFixture.get()
+        val callerFile = callerFileFixture.get()
+        targetFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(callerFile.virtualFile.path).parent.toAbsolutePath().normalize()
+        val callerPath = callerFile.virtualFile.path
+        val workspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).copy(
+            sourceIndexDatabasePath = NormalizedPath.ofAbsolute(tempDir.resolve("focused-current.db")),
+        )
+        val completeGradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            emptyList(),
+            true,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+        )
+
+        SqliteSourceIndexStore(workspaceIdentity).use { store ->
+            IdeaProjectIndexer(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                store = store,
+                cancelled = { false },
+                workspaceIdentity = workspaceIdentity,
+                readGradleWorkspaceModel = { completeGradleModel },
+            ).indexProject(KastConfig.defaults())
+
+            val relationshipScans = mutableListOf<String>()
+            IdeaProjectIndexer(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                store = store,
+                cancelled = { false },
+                workspaceIdentity = workspaceIdentity,
+                readGradleWorkspaceModel = { error("focused refresh recaptured complete inventory") },
+                onRelationshipFileScan = relationshipScans::add,
+            ).refreshSymbolRelationships(listOf(callerPath))
+
+            assertEquals(listOf(callerPath), relationshipScans)
+        }
+    }
+
+    @Test
     fun `remote source index hydration copies configured snapshot before local indexing opens the store`() {
         val remoteWorkspaceRoot = tempDir.resolve("remote-workspace")
         val localWorkspaceRoot = tempDir.resolve("local-workspace")

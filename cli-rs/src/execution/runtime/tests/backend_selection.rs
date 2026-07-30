@@ -55,6 +55,20 @@
     }
 
     #[test]
+    fn raw_rpc_session_waits_for_the_server_advertised_deadline() {
+        let mut selected = candidate("idea", RuntimeState::Ready, false);
+        selected.capabilities = Some(serde_json::json!({
+            "limits": {
+                "requestTimeoutMillis": 122_145
+            }
+        }));
+
+        let session = raw_rpc_session_for_candidate(&KastConfig::defaults(), &selected);
+
+        assert_eq!(session.response_timeout, Duration::from_millis(127_145));
+    }
+
+    #[test]
     fn automatic_servable_selection_rejects_backend_ambiguity() {
         let candidates = vec![
             candidate("headless", RuntimeState::Ready, false),
