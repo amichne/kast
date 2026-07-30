@@ -62,6 +62,86 @@ mod tests {
         assert_eq!(repeated.2, 1, "one bounded identifier signal per query term");
     }
 
+    #[test]
+    fn filtered_lexical_evidence_does_not_scan_ineligible_files() {
+        let baseline_steps = filtered_identifier_vm_steps(0);
+        let noisy_steps = filtered_identifier_vm_steps(4_096);
+
+        assert!(
+            noisy_steps <= baseline_steps.saturating_mul(2),
+            "ineligible files expanded lexical work from {baseline_steps} to {noisy_steps} VM steps",
+        );
+    }
+
+    fn filtered_identifier_vm_steps(ineligible_file_count: usize) -> usize {
+        let temp = tempfile::tempdir().expect("filtered symbol query tempdir");
+        let workspace = temp.path().join("workspace");
+        std::fs::create_dir_all(&workspace).expect("filtered symbol query workspace");
+        let database = temp.path().join("source-index.db");
+        let mut conn = Connection::open(&database).expect("filtered symbol query database");
+        conn.execute_batch(&format!(
+            r#"
+            CREATE TABLE schema_version(version INTEGER NOT NULL);
+            INSERT INTO schema_version VALUES ({SOURCE_INDEX_SCHEMA_VERSION});
+            CREATE TABLE path_prefixes(prefix_id INTEGER, dir_path TEXT);
+            CREATE TABLE fq_names(fq_id INTEGER, fq_name TEXT);
+            CREATE TABLE symbol_references(source_fq_id INTEGER, target_fq_id INTEGER);
+            CREATE TABLE file_metadata(prefix_id INTEGER, filename TEXT);
+            CREATE TABLE file_manifest(prefix_id INTEGER, filename TEXT);
+            CREATE TABLE declarations(fq_id INTEGER, prefix_id INTEGER, filename TEXT);
+            CREATE TABLE identifier_paths(
+                identifier TEXT NOT NULL,
+                prefix_id INTEGER NOT NULL,
+                filename TEXT NOT NULL
+            );
+            CREATE INDEX idx_ip_prefix_file ON identifier_paths(prefix_id, filename);
+            INSERT INTO identifier_paths VALUES ('TargetIdentifier', 1, 'Eligible.kt');
+            "#,
+        ))
+        .expect("filtered symbol query schema");
+        let tx = conn.transaction().expect("filtered decoy transaction");
+        for index in 0..ineligible_file_count {
+            tx.execute(
+                "INSERT INTO identifier_paths VALUES (?, 2, ?)",
+                params![
+                    format!("Identifier{index:04}"),
+                    format!("Ineligible{index:04}.kt"),
+                ],
+            )
+            .expect("filtered decoy identifier");
+        }
+        tx.commit().expect("filtered decoy commit");
+        drop(conn);
+
+        let db = SymbolQueryDatabase::open(&workspace, &database).expect("open filtered query");
+        let vm_steps = Arc::new(AtomicUsize::new(0));
+        let observed_steps = Arc::clone(&vm_steps);
+        db.conn
+            .progress_handler(
+                1,
+                Some(move || {
+                    observed_steps.fetch_add(1, AtomicOrdering::Relaxed);
+                    false
+                }),
+            )
+            .expect("install VM step observer");
+        let eligible_files = BTreeMap::from([(
+            1,
+            BTreeSet::from(["Eligible.kt".to_string()]),
+        )]);
+        let matches = db
+            .lexical_matches_by_file(&["identifier".to_string()], &eligible_files)
+            .expect("filtered lexical query");
+        assert_eq!(
+            matches
+                .get(&1)
+                .and_then(|files| files.get("Eligible.kt"))
+                .map(BTreeMap::len),
+            Some(1),
+        );
+        vm_steps.load(AtomicOrdering::Relaxed)
+    }
+
     fn query_identifier_and_import_evidence(
         decoy_count: usize,
         repeated_identifier_count: usize,
