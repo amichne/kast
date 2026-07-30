@@ -21,7 +21,8 @@ allowlist_json() {
       "gradle.toolingApiTimeoutMillis", "indexing.identifierIndexWaitMillis",
       "indexing.relationships.enabled", "indexing.relationships.batchSize",
       "indexing.relationships.parallelism", "indexing.relationships.modulePriorityDepth",
-      "projectOpen.gradleLoadEnabled", "backends.idea.enabled", "watcher.debounceMillis",
+      "projectOpen.gradleLoadEnabled", "backends.idea.enabled", "backends.headless.enabled",
+      "watcher.debounceMillis",
       "telemetry.enabled", "telemetry.scopes", "telemetry.detail", "profiling.enabled",
       "profiling.modes", "profiling.durationSeconds", "profiling.emitManifest"
     ];
@@ -90,7 +91,15 @@ allowlist_json() {
 KASTCTL="${KAST_HOME:-$HOME/.local/share/kast}/current/libexec/kastctl"
 test -x "$KASTCTL" || exit 1
 READY_JSON="$("$KASTCTL" --output json ready --workspace-root "$PWD" --for agent 2>/dev/null)"
-STATUS_JSON="$("$KASTCTL" --output json status --workspace-root "$PWD" --backend idea 2>/dev/null)"
+BACKEND="$(printf '%s\n' "$READY_JSON" | jq -er '
+  select((.ok == true) and (.agentEnvironment.ok == true))
+  | .agentEnvironment.backend
+  | select(.state == "managed")
+  | .kind
+  | select(. == "idea" or . == "headless")
+' 2>/dev/null)" || exit 1
+STATUS_JSON="$("$KASTCTL" --output json status --workspace-root "$PWD" \
+  --backend "$BACKEND" 2>/dev/null)"
 printf '%s\n' "$READY_JSON" "$STATUS_JSON" | allowlist_json
 ```
 
@@ -100,11 +109,16 @@ Inspect before starting or restarting anything. Distinguish runtime reachability
 
 ```shell
 CONFIG_JSON="$("$KASTCTL" --output json config list --workspace-root "$PWD" 2>/dev/null)"
-PATHS_JSON="$("$KASTCTL" --output json developer inspect paths --workspace-root "$PWD" --idea 2>/dev/null)"
+case "$BACKEND" in
+  idea) PATHS_JSON="$("$KASTCTL" --output json developer inspect paths \
+    --workspace-root "$PWD" --idea 2>/dev/null)" ;;
+  headless) PATHS_JSON="$("$KASTCTL" --output json developer inspect paths \
+    --workspace-root "$PWD" 2>/dev/null)" ;;
+esac
 printf '%s\n' "$CONFIG_JSON" | allowlist_json
 ```
 
-Use the first result to identify effective values and mutable fields. Use the second only to locate the current IDEA and Kast logs. Never echo either variable. Report only closed status names, booleans, allowlisted counts and durations, and the exact configuration keys named in this skill.
+Use the first result to identify effective values and mutable fields. Use the second only to locate the active backend's Kast logs. Never echo either variable. Report only closed status names, booleans, allowlisted counts and durations, and the exact configuration keys named in this skill.
 
 There is no typed log-reader command. Run searches only over the relevant time window, capture stdout into a variable, and discard stderr with `2>/dev/null`. Never echo the capture or report log-derived strings, including error codes; reduce it locally to counts and timings. Never return raw log lines, paths, project names, symbols, endpoints, tokens, process descriptors, sockets, or PIDs. Do not enable `KAST_IDEA_TRACE`; it records extensive host and workspace metadata.
 
@@ -115,9 +129,9 @@ Configuration and runtime mutations require explicit user authorization. For dia
 For an authorized one-key experiment:
 
 1. Select exactly one key from the `config_keys` allowlist that `config list` reports as mutable. Re-run `config list` immediately before mutation. Require one successful response at the same schema version, one matching mutable field, a scalar effective value matching its declared `valueType`, and a boolean `workspaceOverride`. Keep the value and flag only in memory.
-2. Register cleanup for normal exit, command failure, and HUP/INT/TERM before `config set`. Cleanup must restore with `config set` when `workspaceOverride` was true, otherwise `config unset`, and then run `developer runtime restart --backend idea --accept-indexing`.
-3. Set the temporary value, restart, and reproduce once.
-4. After cleanup, independently capture `config list` and `status`. Require the original effective value, `valueType`, and `workspaceOverride`, plus a reachable, healthy, active IDEA runtime in `INDEXING` or `READY` at the same schema version.
+2. Register cleanup for normal exit, command failure, and HUP/INT/TERM before `config set`. Cleanup must restore with `config set` when `workspaceOverride` was true, otherwise `config unset`, and then run `developer runtime restart --backend "$BACKEND" --accept-indexing`.
+3. Set the temporary value, restart the same `$BACKEND`, and reproduce once.
+4. After cleanup, independently capture `config list` and `status --backend "$BACKEND"`. Require the original effective value, `valueType`, and `workspaceOverride`, plus a reachable, healthy, active runtime for that backend in `INDEXING` or `READY` at the same schema version.
 5. Treat any cleanup command or verification failure as `RESTORE_FAILED`, overriding the reproduction result. Report `RESTORED` separately only after both checks pass. Never suppress cleanup status or print the captured payloads.
 
 Route symptoms to these current mutable keys:
@@ -125,7 +139,7 @@ Route symptoms to these current mutable keys:
 - request saturation: `server.requestTimeoutMillis`, `server.maxConcurrentRequests`, `server.maxResults`
 - Gradle or identifier waits: `gradle.toolingApiTimeoutMillis`, `indexing.identifierIndexWaitMillis`
 - relationship indexing: `indexing.relationships.enabled`, `.batchSize`, `.parallelism`, `.modulePriorityDepth`
-- project lifecycle: `projectOpen.gradleLoadEnabled`, `backends.idea.enabled`, `watcher.debounceMillis`
+- project lifecycle: `projectOpen.gradleLoadEnabled`, `backends.idea.enabled`, `backends.headless.enabled`, `watcher.debounceMillis`
 - telemetry: `telemetry.enabled`, `.scopes`, `.detail`
 - profiling: `profiling.enabled`, `.modes`, `.durationSeconds`, `.emitManifest`
 
