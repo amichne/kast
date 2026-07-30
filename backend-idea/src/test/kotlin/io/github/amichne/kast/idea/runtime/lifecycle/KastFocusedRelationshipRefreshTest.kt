@@ -10,7 +10,9 @@ import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -32,7 +34,15 @@ class KastFocusedRelationshipRefreshTest {
         """
         package demo
 
-        fun caller(): String = "ok"
+        fun caller(): String = target()
+        """.trimIndent(),
+    )
+    private val targetFileFixture = sourceRootFixture.psiFileFixture(
+        "Target.kt",
+        """
+        package demo
+
+        fun target(): String = "ok"
         """.trimIndent(),
     )
 
@@ -76,6 +86,57 @@ class KastFocusedRelationshipRefreshTest {
             ).refreshSymbolRelationships(listOf(callerFile.virtualFile.path))
 
             assertTrue(relationshipScans.isEmpty(), "unchanged relationships must remain cached")
+        }
+    }
+
+    @Test
+    fun `deleted focused refresh reconciles only removed inventory`() {
+        val project = projectFixture.get()
+        val callerFile = callerFileFixture.get()
+        val targetFile = targetFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(callerFile.virtualFile.path).parent.toAbsolutePath().normalize()
+        val workspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).copy(
+            sourceIndexDatabasePath = NormalizedPath.ofAbsolute(tempDir.resolve("focused-deleted.db")),
+        )
+        val completeGradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            emptyList(),
+            true,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+        )
+
+        SqliteSourceIndexStore(workspaceIdentity).use { store ->
+            IdeaProjectIndexer(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                store = store,
+                cancelled = { false },
+                workspaceIdentity = workspaceIdentity,
+                readGradleWorkspaceModel = { completeGradleModel },
+            ).indexProject(KastConfig.defaults())
+
+            val callerPath = callerFile.virtualFile.path
+            val targetPath = targetFile.virtualFile.path
+            IdeaProjectIndexer(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                store = store,
+                cancelled = { false },
+                workspaceIdentity = workspaceIdentity,
+                readGradleWorkspaceModel = { error("deleted refresh recaptured complete inventory") },
+            ).refreshSymbolRelationships(
+                filePaths = emptyList(),
+                removedFilePaths = listOf(targetPath),
+            )
+
+            assertFalse(store.loadManifest().orEmpty().containsKey(targetPath))
+            assertTrue(store.referencesFromFile(callerPath).single().targetPath == null)
+            assertTrue(
+                store.pendingFileStages(FileIndexStage.RELATIONSHIPS).any { work -> work.path == callerPath },
+            )
         }
     }
 }
