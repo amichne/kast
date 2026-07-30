@@ -42,6 +42,8 @@ allowlist_json() {
       then listed(["active-release", "missing"]; $value)
       elif $field == "backendName"
       then listed(["idea", "headless"]; $value)
+      elif $field == "scope"
+      then listed(["SYMBOL", "PACKAGE", "MODULE"]; $value)
       elif $field == "detail"
       then listed(["basic", "verbose"]; $value)
       elif $field == "scopes"
@@ -139,13 +141,13 @@ AGENT_HELP="$("$KASTCTL" agent --help 2>/dev/null)"
 GRAPH_HELP="$("$KASTCTL" agent graph --help 2>/dev/null)"
 test -n "$AGENT_HELP" || exit 1
 test -n "$GRAPH_HELP" || exit 1
-GRAPH_SUMMARY="$("$KASTCTL" --output json agent graph --workspace-root "$PWD" \
+SYMBOL_SUMMARY="$("$KASTCTL" --output json agent graph --workspace-root "$PWD" \
   --scope symbol --operation summary 2>/dev/null)"
-MODULE_TOPOLOGY="$("$KASTCTL" --output json agent graph --workspace-root "$PWD" \
-  --scope module --operation topology 2>/dev/null)"
-PACKAGE_COMMUNITIES="$("$KASTCTL" --output json agent graph --workspace-root "$PWD" \
-  --scope package --operation communities 2>/dev/null)"
-printf '%s\n' "$GRAPH_SUMMARY" "$MODULE_TOPOLOGY" "$PACKAGE_COMMUNITIES" |
+MODULE_SUMMARY="$("$KASTCTL" --output json agent graph --workspace-root "$PWD" \
+  --scope module --operation summary 2>/dev/null)"
+PACKAGE_SUMMARY="$("$KASTCTL" --output json agent graph --workspace-root "$PWD" \
+  --scope package --operation summary 2>/dev/null)"
+printf '%s\n' "$SYMBOL_SUMMARY" "$MODULE_SUMMARY" "$PACKAGE_SUMMARY" |
   allowlist_json
 ```
 
