@@ -56,9 +56,20 @@ fn configured_binary_matches_running(
     running_binary: &Path,
     active_binary: Option<&Path>,
 ) -> bool {
-    same_binary_path(configured_binary, running_binary)
+    cli_binary_matches_running(configured_binary, running_binary)
         || active_binary
-            .is_some_and(|active_binary| same_binary_path(active_binary, running_binary))
+            .is_some_and(|active_binary| cli_binary_matches_running(active_binary, running_binary))
+}
+
+fn cli_binary_matches_running(authority_binary: &Path, running_binary: &Path) -> bool {
+    same_binary_path(authority_binary, running_binary)
+        || (authority_binary
+            .file_name()
+            .is_some_and(|name| name == "_kastctl")
+            && same_binary_path(
+                &authority_binary.with_file_name("kast"),
+                running_binary,
+            ))
 }
 
 fn same_binary_path(left: &Path, right: &Path) -> bool {

@@ -282,7 +282,7 @@ fn validate_macos_plugin_cli_binary(cli_binary: &Path) -> Result<()> {
                 ))
             })
         })?;
-    if configured != running {
+    if !cli_binary_matches_running(&configured, &running) {
         return Err(macos_plugin_workspace_error(format!(
             "macOS Kast workspace metadata cliBinary {} does not match the running Kast executable {}",
             configured.display(),
