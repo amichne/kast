@@ -84,7 +84,7 @@ mod tests {
             CREATE TABLE schema_version(version INTEGER NOT NULL);
             INSERT INTO schema_version VALUES ({SOURCE_INDEX_SCHEMA_VERSION});
             CREATE TABLE path_prefixes(prefix_id INTEGER, dir_path TEXT);
-            CREATE TABLE fq_names(fq_id INTEGER, fq_name TEXT);
+            CREATE TABLE fq_names(fq_id INTEGER PRIMARY KEY, fq_name TEXT);
             CREATE TABLE symbol_references(source_fq_id INTEGER, target_fq_id INTEGER);
             CREATE TABLE file_metadata(prefix_id INTEGER, filename TEXT);
             CREATE TABLE file_manifest(prefix_id INTEGER, filename TEXT);
@@ -95,20 +95,51 @@ mod tests {
                 filename TEXT NOT NULL
             );
             CREATE INDEX idx_ip_prefix_file ON identifier_paths(prefix_id, filename);
+            CREATE TABLE file_imports(
+                prefix_id INTEGER NOT NULL,
+                filename TEXT NOT NULL,
+                fq_id INTEGER NOT NULL,
+                PRIMARY KEY(prefix_id, filename, fq_id)
+            );
+            CREATE TABLE file_wildcard_imports(
+                prefix_id INTEGER NOT NULL,
+                filename TEXT NOT NULL,
+                fq_id INTEGER NOT NULL,
+                PRIMARY KEY(prefix_id, filename, fq_id)
+            );
             INSERT INTO identifier_paths VALUES ('TargetIdentifier', 1, 'Eligible.kt');
+            INSERT INTO fq_names VALUES
+                (1, 'support.DirectIdentifier'),
+                (2, 'support.WildcardIdentifier');
+            INSERT INTO file_imports VALUES (1, 'Eligible.kt', 1);
+            INSERT INTO file_wildcard_imports VALUES (1, 'Eligible.kt', 2);
             "#,
         ))
         .expect("filtered symbol query schema");
         let tx = conn.transaction().expect("filtered decoy transaction");
         for index in 0..ineligible_file_count {
+            let fq_id = 1_000 + i64::try_from(index).expect("filtered decoy fq id");
+            let filename = format!("Ineligible{index:04}.kt");
             tx.execute(
                 "INSERT INTO identifier_paths VALUES (?, 2, ?)",
-                params![
-                    format!("Identifier{index:04}"),
-                    format!("Ineligible{index:04}.kt"),
-                ],
+                params![format!("Identifier{index:04}"), filename],
             )
             .expect("filtered decoy identifier");
+            tx.execute(
+                "INSERT INTO fq_names VALUES (?, ?)",
+                params![fq_id, format!("noise.Identifier{index:04}")],
+            )
+            .expect("filtered decoy FQ name");
+            tx.execute(
+                "INSERT INTO file_imports VALUES (2, ?, ?)",
+                params![filename, fq_id],
+            )
+            .expect("filtered decoy import");
+            tx.execute(
+                "INSERT INTO file_wildcard_imports VALUES (2, ?, ?)",
+                params![filename, fq_id],
+            )
+            .expect("filtered decoy wildcard import");
         }
         tx.commit().expect("filtered decoy commit");
         drop(conn);
@@ -137,7 +168,7 @@ mod tests {
                 .get(&1)
                 .and_then(|files| files.get("Eligible.kt"))
                 .map(BTreeMap::len),
-            Some(1),
+            Some(2),
         );
         vm_steps.load(AtomicOrdering::Relaxed)
     }

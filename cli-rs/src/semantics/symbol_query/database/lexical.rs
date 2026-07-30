@@ -31,16 +31,27 @@ impl<'a> SymbolQueryDatabase<'a> {
         eligible_files: &EligibleLexicalFiles,
     ) -> Result<LexicalMatchesByFile> {
         let mut matches_by_file = HashMap::new();
-        if terms.is_empty() {
+        if terms.is_empty() || eligible_files.is_empty() {
             return Ok(matches_by_file);
         }
+        let eligible_files_json = Value::Array(
+            eligible_files
+                .iter()
+                .flat_map(|(prefix_id, filenames)| {
+                    filenames
+                        .iter()
+                        .map(move |filename| json!([prefix_id, filename]))
+                })
+                .collect(),
+        )
+        .to_string();
 
-        self.identifier_matches(terms, eligible_files, &mut matches_by_file)?;
+        self.identifier_matches(terms, &eligible_files_json, &mut matches_by_file)?;
         if table_exists(&self.conn, "file_imports")? {
             self.import_table_matches(
                 terms,
                 "file_imports",
-                eligible_files,
+                &eligible_files_json,
                 &mut matches_by_file,
             )?;
         }
@@ -48,7 +59,7 @@ impl<'a> SymbolQueryDatabase<'a> {
             self.import_table_matches(
                 terms,
                 "file_wildcard_imports",
-                eligible_files,
+                &eligible_files_json,
                 &mut matches_by_file,
             )?;
         }
@@ -58,21 +69,26 @@ impl<'a> SymbolQueryDatabase<'a> {
     fn identifier_matches(
         &self,
         terms: &[String],
-        eligible_files: &EligibleLexicalFiles,
+        eligible_files_json: &str,
         matches_by_file: &mut LexicalMatchesByFile,
     ) -> Result<()> {
-        let predicate = matching_terms_sql("identifier", terms.len());
+        let predicate = matching_terms_sql("paths.identifier", terms.len());
         let sql = format!(
             r#"
-            SELECT prefix_id, filename, identifier
-            FROM identifier_paths
-            WHERE {predicate}
-            ORDER BY prefix_id ASC, filename ASC, identifier ASC
+            SELECT paths.prefix_id, paths.filename, paths.identifier
+            FROM json_each(?) eligible
+            CROSS JOIN identifier_paths paths
+            WHERE paths.prefix_id = json_extract(eligible.value, '$[0]')
+              AND paths.filename = json_extract(eligible.value, '$[1]')
+              AND ({predicate})
+            ORDER BY paths.prefix_id ASC, paths.filename ASC, paths.identifier ASC
             "#
         );
         let mut stmt = self.conn.prepare(&sql).map_err(sql_error)?;
+        let params = std::iter::once(eligible_files_json)
+            .chain(terms.iter().map(String::as_str));
         let rows = stmt
-            .query_map(params_from_iter(terms.iter()), |row| {
+            .query_map(params_from_iter(params), |row| {
                 Ok((
                     row.get::<_, i64>(0)?,
                     row.get::<_, String>(1)?,
@@ -82,12 +98,6 @@ impl<'a> SymbolQueryDatabase<'a> {
             .map_err(sql_error)?;
         for row in rows {
             let (prefix_id, filename, identifier) = row.map_err(sql_error)?;
-            if !eligible_files
-                .get(&prefix_id)
-                .is_some_and(|files| files.contains(&filename))
-            {
-                continue;
-            }
             let matches =
                 lexical_field_matches(terms, "identifier_paths.identifier", &identifier);
             extend_file_matches(matches_by_file, prefix_id, filename, matches);
@@ -99,22 +109,27 @@ impl<'a> SymbolQueryDatabase<'a> {
         &self,
         terms: &[String],
         table_name: &str,
-        eligible_files: &EligibleLexicalFiles,
+        eligible_files_json: &str,
         matches_by_file: &mut LexicalMatchesByFile,
     ) -> Result<()> {
         let predicate = matching_terms_sql("names.fq_name", terms.len());
         let sql = format!(
             r#"
             SELECT imports.prefix_id, imports.filename, names.fq_name
-            FROM {table_name} imports
+            FROM json_each(?) eligible
+            CROSS JOIN {table_name} imports
             JOIN fq_names names ON names.fq_id = imports.fq_id
-            WHERE {predicate}
+            WHERE imports.prefix_id = json_extract(eligible.value, '$[0]')
+              AND imports.filename = json_extract(eligible.value, '$[1]')
+              AND ({predicate})
             ORDER BY imports.prefix_id ASC, imports.filename ASC, names.fq_name ASC
             "#
         );
         let mut stmt = self.conn.prepare(&sql).map_err(sql_error)?;
+        let params = std::iter::once(eligible_files_json)
+            .chain(terms.iter().map(String::as_str));
         let rows = stmt
-            .query_map(params_from_iter(terms.iter()), |row| {
+            .query_map(params_from_iter(params), |row| {
                 Ok((
                     row.get::<_, i64>(0)?,
                     row.get::<_, String>(1)?,
@@ -124,12 +139,6 @@ impl<'a> SymbolQueryDatabase<'a> {
             .map_err(sql_error)?;
         for row in rows {
             let (prefix_id, filename, import) = row.map_err(sql_error)?;
-            if !eligible_files
-                .get(&prefix_id)
-                .is_some_and(|files| files.contains(&filename))
-            {
-                continue;
-            }
             let matches = lexical_field_matches(terms, "import_fq_name", &import);
             extend_file_matches(matches_by_file, prefix_id, filename, matches);
         }
