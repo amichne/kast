@@ -236,6 +236,10 @@ fn classify_file(
                         Some("SEMANTIC_GRAPH_NOT_PLANNED"),
                     )
                 }
+                Some(row) if row.has_current_external_boundary() => (
+                    GraphFileState::Limited,
+                    Some("SEMANTIC_GRAPH_EXTERNAL_BOUNDARY"),
+                ),
                 Some(row) if row.outcome.is_none() => {
                     (GraphFileState::Pending, Some("SEMANTIC_GRAPH_MISSING"))
                 }
@@ -296,10 +300,14 @@ fn classify_file(
         Vec::new()
     };
     let limitations = if state == GraphFileState::Limited {
-        semantic
-            .and_then(|row| row.outcome.as_ref())
-            .map(|outcome| outcome.limitations.clone())
-            .unwrap_or_default()
+        if reason_code == Some("SEMANTIC_GRAPH_EXTERNAL_BOUNDARY") {
+            vec!["PSI_UNAVAILABLE".to_string()]
+        } else {
+            semantic
+                .and_then(|row| row.outcome.as_ref())
+                .map(|outcome| outcome.limitations.clone())
+                .unwrap_or_default()
+        }
     } else {
         Vec::new()
     };

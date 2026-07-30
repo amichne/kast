@@ -73,4 +73,73 @@ mod tests {
         transaction.commit().expect("read transaction commit");
         assert_eq!(repository_generation(&reader).expect("new generation"), 42);
     }
+
+    #[test]
+    fn graph_refresh_plan_rebinds_scope_without_selecting_external_boundaries() {
+        let indexed = graph_file("src/Indexed.kt", GraphFileState::Indexed, None);
+        let pending = graph_file(
+            "src/Pending.kt",
+            GraphFileState::Pending,
+            Some("SEMANTIC_GRAPH_MISSING"),
+        );
+        let (selected, removed) = plan_semantic_graph_refresh_files(
+            &[indexed.clone(), pending],
+            &BTreeSet::from(["src/Indexed.kt".to_string()]),
+            &[],
+        );
+        assert_eq!(
+            selected,
+            ["src/Indexed.kt".to_string(), "src/Pending.kt".to_string()]
+        );
+        assert!(removed.is_empty());
+
+        let external = graph_file(
+            "src/External.kt",
+            GraphFileState::Limited,
+            Some("SEMANTIC_GRAPH_EXTERNAL_BOUNDARY"),
+        );
+        let (selected, removed) = plan_semantic_graph_refresh_files(
+            &[external, indexed.clone()],
+            &BTreeSet::from([
+                "src/External.kt".to_string(),
+                "src/Indexed.kt".to_string(),
+            ]),
+            &[],
+        );
+        assert_eq!(selected, ["src/Indexed.kt".to_string()]);
+        assert_eq!(removed, ["src/External.kt".to_string()]);
+
+        let (selected, removed) = plan_semantic_graph_refresh_files(
+            &[indexed],
+            &BTreeSet::from([
+                "src/Gone.kt".to_string(),
+                "src/Indexed.kt".to_string(),
+            ]),
+            &["src/Gone.kt".to_string()],
+        );
+        assert_eq!(selected, ["src/Indexed.kt".to_string()]);
+        assert_eq!(removed, ["src/Gone.kt".to_string()]);
+    }
+
+    fn graph_file(
+        path: &str,
+        state: GraphFileState,
+        reason_code: Option<&'static str>,
+    ) -> GraphFileCoverage {
+        GraphFileCoverage {
+            path: path.to_string(),
+            state,
+            reason_code,
+            indexed_content_hash: None,
+            current_content_hash: None,
+            diagnostics: Vec::new(),
+            limitations: Vec::new(),
+            gradle_projects: Vec::new(),
+            source_sets: Vec::new(),
+            ownership: RepositoryFileOwnership {
+                gradle_projects: BTreeSet::new(),
+                source_sets: BTreeSet::new(),
+            },
+        }
+    }
 }

@@ -29,7 +29,7 @@ fn verify_package_checks(transaction: &Transaction<'_>) -> Result<(), ReadDataba
 fn verify_progress_checks(transaction: &Transaction<'_>) -> Result<(), ReadDatabaseError> {
     let normalized = normalized_table_sql(transaction, "module_index_progress")?;
     if !normalized.contains(
-        "RELATIONSHIP_INDEX_STATUSIN('PENDING','INDEXING','COMPLETE','FAILED')",
+        "RELATIONSHIP_INDEX_STATUSIN('PENDING','INDEXING','COMPLETE','DEGRADED','FAILED')",
     ) {
         return Err(ReadDatabaseError::Incompatible(
             "module_index_progress status CHECK contract is incomplete".to_string(),
@@ -44,7 +44,12 @@ fn verify_file_stage_outcome_checks(
     let normalized = normalized_table_sql(transaction, "file_stage_outcomes")?;
     let required_tokens = [
         "STAGEIN('SOURCE','RELATIONSHIPS','SEMANTIC_GRAPH')",
-        "OUTCOME_STATUSIN('COMPLETE','LIMITED','FAILED')",
+        "OUTCOME_STATUSIN('COMPLETE','LIMITED','FAILED','EXTERNAL_BOUNDARY')",
+        "FAILURE_CODEIN('PSI_UNAVAILABLE')",
+        "OUTCOME_STATUSIN('COMPLETE','LIMITED')",
+        "FAILURE_IDISNULL",
+        "OUTCOME_STATUSIN('FAILED','EXTERNAL_BOUNDARY')",
+        "FAILURE_IDISNOTNULL",
     ];
     if required_tokens
         .iter()

@@ -10,6 +10,7 @@ import io.github.amichne.kast.indexstore.api.index.FileStageVersion
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.api.index.IndexedPackageEvidence
+import io.github.amichne.kast.indexstore.api.index.RelationshipIndexStatus
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
@@ -134,7 +135,7 @@ class DurableFileStageIndexingTest {
     }
 
     @Test
-    fun `limited file keeps valid facts and cannot complete its persisted scope`() {
+    fun `limited file keeps valid facts and completes a usable degraded scope`() {
         val path = file("src/App.kt")
         val entries = listOf(inventory(path, hash('a'), ":app[main]"))
 
@@ -162,7 +163,8 @@ class DurableFileStageIndexingTest {
                 store.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, path) is
                     FileStageScopeCoverage.Limited,
             )
-            assertTrue(store.completedModules().isEmpty())
+            assertEquals(RelationshipIndexStatus.DEGRADED, store.moduleIndexStatus(":app[main]"))
+            assertEquals(setOf(":app[main]"), store.completedModules())
         }
 
         SqliteSourceIndexStore(workspaceRoot).use { reopened ->
@@ -172,7 +174,8 @@ class DurableFileStageIndexingTest {
                 reopened.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, path) is
                     FileStageScopeCoverage.Limited,
             )
-            assertTrue(reopened.completedModules().isEmpty())
+            assertEquals(RelationshipIndexStatus.DEGRADED, reopened.moduleIndexStatus(":app[main]"))
+            assertEquals(setOf(":app[main]"), reopened.completedModules())
         }
     }
 
@@ -388,9 +391,7 @@ class DurableFileStageIndexingTest {
         )
 
     private fun version(value: String): FileStageVersion = FileStageVersion.parse("test-$value")
-
     private fun hash(character: Char): FileContentHash = FileContentHash.parse(character.toString().repeat(64))
-
     private data class PersistedFacts(
         val references: Map<String, List<SymbolReferenceRow>>,
         val completedModules: Set<String>,

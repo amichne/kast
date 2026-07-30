@@ -10,7 +10,7 @@ fn help_lists_command(stdout: &str, command: &str) -> bool {
 }
 
 #[test]
-fn public_cli_exposes_start_status_and_stop() {
+fn control_context_suggests_only_control_entrypoint() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -42,11 +42,29 @@ fn public_cli_exposes_start_status_and_stop() {
     assert!(context.status.success());
     let stdout = String::from_utf8_lossy(&context.stdout);
     for command in [
-        "kast start --workspace-root <repo>",
-        "kast status --workspace-root <repo>",
-        "kast stop --workspace-root <repo>",
+        "_kastctl start --workspace-root <repo>",
+        "_kastctl status --workspace-root <repo>",
+        "_kastctl stop --workspace-root <repo>",
+        "_kastctl config list --workspace-root <repo>",
+        "_kastctl agent verify --workspace-root <repo>",
+        "_kastctl agent symbol --query <name> --workspace-root <repo>",
+        "_kastctl --help",
+        "_kastctl setup --source <bundle>",
     ] {
         assert!(stdout.contains(command), "missing {command}: {stdout}");
+    }
+    for invalid in [
+        "kast start ",
+        "kast status ",
+        "kast stop ",
+        "kast config ",
+        "kast agent ",
+        "kast setup ",
+    ] {
+        assert!(
+            !stdout.contains(invalid),
+            "public entrypoint suggested control grammar `{invalid}`: {stdout}"
+        );
     }
 }
 

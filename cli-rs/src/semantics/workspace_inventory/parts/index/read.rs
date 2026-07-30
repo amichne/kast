@@ -249,6 +249,7 @@ fn read_transaction(
             matches!(
                 progress.status(),
                 super::model::SourceIndexProgressStatus::Complete
+                    | super::model::SourceIndexProgressStatus::Degraded
                     | super::model::SourceIndexProgressStatus::Failed
             ) && progress.indexed_file_count() == progress.total_file_count()
         });

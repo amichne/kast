@@ -76,7 +76,12 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
         "bundle root must use the canonical hyphenated/underscored platform id"
     );
     let bundle_root = extract_dir.join("kast-ubuntu-debian-headless-x86_64-v9.8.7");
-    assert!(bundle_root.join("bin/kast").is_file());
+    assert!(bundle_root.join("bin/_kastctl").is_file());
+    assert_eq!(
+        std::fs::read(bundle_root.join("bin/_kastctl")).expect("_kastctl bytes"),
+        std::fs::read(bundle_root.join("bin/kast")).expect("kast bytes"),
+        "_kastctl and kast must be byte-identical multicall entrypoints",
+    );
     assert!(
         bundle_root
             .join("lib/backends/headless-v9.8.7/kast-headless")
@@ -94,7 +99,7 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     assert_eq!(manifest["version"], "v9.8.7");
     assert_eq!(manifest["platform"], "ubuntu-debian-headless-x86_64");
     assert_eq!(manifest["entrypoint"], "install.sh");
-    assert_eq!(manifest["activation"]["cli"]["path"], "bin/kast");
+    assert_eq!(manifest["activation"]["cli"]["path"], "bin/_kastctl");
     assert_eq!(manifest["activation"]["backend"]["kind"], "headless");
     assert_eq!(manifest["activation"]["backend"]["name"], "headless");
     assert_eq!(manifest["activation"]["backend"]["version"], "9.8.7");
@@ -111,10 +116,11 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
         "-Didea.force.use.core.classloader=true"
     );
     assert_eq!(manifest["artifacts"][0]["role"], "cli");
-    assert_eq!(manifest["artifacts"][1]["role"], "headless-backend");
-    assert_eq!(manifest["artifacts"][2]["role"], "plugin");
+    assert_eq!(manifest["artifacts"][1]["role"], "agent-cli");
+    assert_eq!(manifest["artifacts"][2]["role"], "headless-backend");
+    assert_eq!(manifest["artifacts"][3]["role"], "plugin");
     assert_eq!(
         manifest["artifacts"].as_array().expect("artifacts").len(),
-        3
+        4
     );
 }

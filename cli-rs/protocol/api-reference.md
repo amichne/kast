@@ -1974,7 +1974,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
     ??? example "raw/workspace-refresh — Force a targeted or full workspace state refresh"
 
-        Refreshes the daemon after external file modifications. A successful focused refresh proves each existing requested Kotlin path is immediately available for semantic analysis.
+        Refreshes the daemon after external file modifications. A successful focused refresh admits each requested Kotlin path and refreshes its durable relationships. The result returns current file-local relationship failures that the caller can externalize.
 
         **Capability** &nbsp;·&nbsp; `REFRESH_WORKSPACE`
 
@@ -1982,7 +1982,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin filePaths: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files to refresh. Empty for a full workspace refresh. |
+            | `#!kotlin filePaths: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files to refresh. Empty with no external failure IDs for a full workspace refresh. |
+            | `#!kotlin externalFailureIds: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Failure IDs to accept as unknown external graph boundaries. Mutually exclusive with filePaths. |
         === "Output: RefreshResult"
 
             | Signature | Description |
@@ -1991,6 +1992,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin removedFiles: List<String>` | Absolute paths confirmed removed from the workspace. |
             | `#!kotlin fullRefresh: Boolean` | True when an unbounded full workspace refresh was performed. |
             | `#!kotlin fileStatuses: List<SemanticAdmissionStatus>` | Ordered semantic-admission state for every focused refresh path. |
+            | `#!kotlin externalFailureOutcomes: List<RefreshExternalFailureOutcome>?` | Ordered outcomes for requested external graph-boundary failures. |
+            | `#!kotlin relationshipFailures: List<RefreshRelationshipFailure>?` | Current file-local relationship failures eligible for externalization. |
             | `#!kotlin semanticOutcome: SemanticAnalysisOutcome` | Whether every existing focused path reached semantic admission. |
             | `#!kotlin requestedFileCount: Int` | Number of existing paths that required semantic admission. |
             | `#!kotlin analyzedFileCount: Int` | Number of existing paths that reached semantic admission. |
@@ -2013,7 +2016,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
                 "params": {
                     "filePaths": [
                         "/workspace/src/Sample.kt"
-                    ]
+                    ],
+                    "externalFailureIds": []
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2042,6 +2046,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             }
                         }
                     ],
+                    "externalFailureOutcomes": [],
+                    "relationshipFailures": [],
                     "semanticOutcome": "COMPLETE",
                     "requestedFileCount": 1,
                     "analyzedFileCount": 1,
@@ -2059,6 +2065,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
             - Pass specific file paths for a targeted refresh, or omit for a full workspace refresh.
             - Each focused path separately reports filesystem discovery, source-module ownership, index admission, and analysis availability.
+            - Compiler diagnostics remain data and do not block relationship indexing.
+            - Eligible file-local relationship failures carry an ID, path, and code for externalization.
             - Pending admission is retried for a bounded interval. The result reports attempt and elapsed-time progress and fails closed if admission remains incomplete.
             - Removed paths are terminal refresh results and do not count as skipped analysis.
 

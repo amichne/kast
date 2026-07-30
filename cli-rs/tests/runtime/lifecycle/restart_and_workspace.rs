@@ -1,3 +1,5 @@
+use std::os::unix::process::CommandExt;
+
 #[test]
 fn restart_requests_reachable_idea_backend_restart() {
     let temp = tempfile::tempdir().expect("tempdir");
@@ -183,6 +185,7 @@ fn lifecycle_commands_walk_up_to_workspace_marker_when_root_is_omitted() {
     write_macos_plugin_workspace_metadata(&expected_workspace);
 
     let status = Command::new(env!("CARGO_BIN_EXE_kast"))
+        .arg0("_kastctl")
         .current_dir(&nested)
         .env("HOME", &home)
         .env("KAST_CONFIG_HOME", &config_home)

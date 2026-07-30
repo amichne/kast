@@ -1,3 +1,4 @@
+use crate::bundle::CONTROL_CLI_BUNDLE_PATH;
 use crate::error::{CliError, Result};
 use crate::protocol_schema_versions::INSTALL_RECEIPT_SCHEMA_VERSION;
 use serde::{Deserialize, Serialize};

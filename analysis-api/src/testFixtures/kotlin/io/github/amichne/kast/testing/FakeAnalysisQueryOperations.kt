@@ -48,6 +48,16 @@ internal suspend fun FakeAnalysisBackend.healthResult(): HealthResponse {
 }
 
 internal suspend fun FakeAnalysisBackend.refreshResult(query: ParsedRefreshQuery): RefreshResult {
+    if (query.externalFailureIds.isNotEmpty()) {
+        return RefreshResult.externalFailures(
+            query.externalFailureIds.map { failureId ->
+                RefreshExternalFailureOutcome(
+                    failureId = failureId,
+                    status = RefreshExternalFailureStatus.NOT_FOUND,
+                )
+            },
+        )
+    }
     if (query.filePaths.isEmpty()) return RefreshResult.full()
     val fileStatuses = query.filePaths.map { filePath ->
         if (filePath.value in availableFiles && Files.exists(filePath.toJavaPath())) {

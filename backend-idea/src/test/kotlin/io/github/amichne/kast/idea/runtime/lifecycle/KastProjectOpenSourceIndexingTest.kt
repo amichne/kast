@@ -24,8 +24,10 @@ import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.idea.backend.KastPluginBackend
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.api.reference.ExactReferenceTarget
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
@@ -58,6 +60,12 @@ class KastProjectOpenSourceIndexingTest {
 
             fun caller(): String = target()
         """
+
+        private const val failingSource = """
+            package demo
+
+            fun unavailable(): String = "unavailable"
+        """
     }
 
     @TempDir
@@ -67,6 +75,7 @@ class KastProjectOpenSourceIndexingTest {
     private val sourceRootFixture = moduleFixture.sourceRootFixture()
     private val targetFileFixture = sourceRootFixture.psiFileFixture("Target.kt", targetSource)
     private val callerFileFixture = sourceRootFixture.psiFileFixture("Caller.kt", callerSource)
+    private val failingFileFixture = sourceRootFixture.psiFileFixture("Unavailable.kt", failingSource)
 
     @Test
     fun `project indexer prepopulates SQLite source identifiers and references from IDEA PSI files`() {
@@ -188,6 +197,56 @@ class KastProjectOpenSourceIndexingTest {
     @Test
     fun `relationship scan rejects facts from a newer PSI revision`() {
         assertChangedPsiDoesNotCommit(FileIndexStage.RELATIONSHIPS)
+    }
+
+    @Test
+    fun `focused relationship refresh returns a durable eligible failure`() {
+        val project = projectFixture.get()
+        val failingFile = failingFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(failingFile.virtualFile.path).parent.toAbsolutePath().normalize()
+        val failingPath = failingFile.virtualFile.path
+        val workspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).copy(
+            sourceIndexDatabasePath = NormalizedPath.ofAbsolute(tempDir.resolve("focused-failure.db")),
+        )
+        val completeGradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            emptyList(),
+            true,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+        )
+
+        SqliteSourceIndexStore(workspaceIdentity).use { store ->
+            val outcomes = IdeaProjectIndexer(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                store = store,
+                cancelled = { false },
+                workspaceIdentity = workspaceIdentity,
+                readGradleWorkspaceModel = { completeGradleModel },
+                onRelationshipFileScan = { path ->
+                    if (path == failingPath) {
+                        val application = ApplicationManager.getApplication()
+                        application.invokeAndWait {
+                            application.runWriteAction {
+                                if (failingFile.virtualFile.isValid) failingFile.virtualFile.delete(this)
+                            }
+                        }
+                    }
+                },
+            ).refreshSymbolRelationships(listOf(failingPath))
+
+            val outcome = outcomes.single()
+            assertEquals(failingPath, outcome.path)
+            assertEquals(FileStageOutcomeStatus.FAILED, outcome.status)
+            assertEquals(FileStageFailureCode.PSI_UNAVAILABLE, requireNotNull(outcome.failure).code)
+            assertEquals(
+                outcome,
+                store.fileStageOutcome(failingPath, FileIndexStage.RELATIONSHIPS),
+            )
+        }
     }
 
     @Test

@@ -68,6 +68,9 @@ jobs:
         shell: bash
         run: ./.github/scripts/release/test-release-workflow-contract.sh
 
+      - name: Test deterministic agent resource assets
+        run: python3 .github/scripts/release/test-agent-resource-assets.py
+
       - name: Test release indexing benchmark contract
         shell: bash
         run: ./.github/scripts/test-release-indexing-benchmark-contract.sh
@@ -318,16 +321,20 @@ jobs:
           cargo build --release --locked
 
       - name: Validate generated CLI contracts
-        run: cli-rs/target/release/kast developer release generate contract --check
+        run: |
+          cp cli-rs/target/release/kast cli-rs/target/release/_kastctl
+          cli-rs/target/release/_kastctl developer release generate contract --check
 
       - name: Package Rust CLI CI asset
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p dist cli-rs/target/package/kast-v0.0.0-ci-linux-x64
+          cp cli-rs/target/release/kast cli-rs/target/package/kast-v0.0.0-ci-linux-x64/_kastctl
           cp cli-rs/target/release/kast cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
-          chmod 755 cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
-          (cd cli-rs/target/package/kast-v0.0.0-ci-linux-x64 && zip -9 -q "$GITHUB_WORKSPACE/dist/kast-v0.0.0-ci-linux-x64.zip" kast)
+          chmod 755 cli-rs/target/package/kast-v0.0.0-ci-linux-x64/_kastctl cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
+          cmp -s cli-rs/target/package/kast-v0.0.0-ci-linux-x64/_kastctl cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast
+          (cd cli-rs/target/package/kast-v0.0.0-ci-linux-x64 && zip -9 -q "$GITHUB_WORKSPACE/dist/kast-v0.0.0-ci-linux-x64.zip" _kastctl kast)
           scripts/verify-ci-artifact-ledger.py record \
             --output dist/ci-ledgers/rust-cli-linux-x64.json \
             --git-sha "$GITHUB_SHA" \
@@ -744,154 +751,6 @@ jobs:
       - name: Validate setup bundle
         shell: bash
         run: ./scripts/verify-setup-bundle.sh "$KAST_UBUNTU_DEBIAN_BUNDLE"
-
-  kast-action-runtime-contract:
-    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
-    name: kast-action runtime contract
-    runs-on: ubuntu-latest
-    needs:
-      - prepared-generation
-      - prepared-ubuntu-debian-bundle
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Download setup bundle
-        uses: actions/download-artifact@v7
-        with:
-          name: kast-ubuntu-debian-ci-bundle
-          path: ${{ runner.temp }}/kast-action-bundle
-
-      - name: Verify setup bundle input
-        id: verify-setup-bundle
-        shell: bash
-        run: |
-          set -euo pipefail
-          bundle="$RUNNER_TEMP/kast-action-bundle/kast-ubuntu-debian-headless-x86_64-v0.7.11-ci.tar.gz"
-          test -f "$bundle"
-          printf 'bundle=%s\n' "$bundle" >> "$GITHUB_OUTPUT"
-          printf 'bundle_sha=%s\n' "$(sha256sum "$bundle" | awk '{ print $1 }')" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Ensure zstd is available
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! command -v zstd >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends zstd
-          fi
-
-      - name: Download prepared local generation
-        uses: actions/download-artifact@v7
-        with:
-          name: kast-prepared-local-generation
-          path: ${{ runner.temp }}/kast-prepared-generation
-
-      - name: Download prepared generation ledger
-        uses: actions/download-artifact@v7
-        with:
-          name: ci-artifact-ledger-prepared-generation
-          path: ${{ runner.temp }}/kast-prepared-generation-ledger
-
-      - name: Verify prepared generation input
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger "$RUNNER_TEMP/kast-prepared-generation-ledger/ci-prepared-local-generation.json" \
-            --git-sha "$GITHUB_SHA" \
-            --require-kind ci-prepared-local-generation \
-            --artifact "ci-prepared-local-generation=$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst"
-          (cd "$RUNNER_TEMP/kast-prepared-generation" && sha256sum -c kast-local-prepared-generation.sha256)
-
-      - name: Package prepared kast-action runtime inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          runtime_version="0.0.0-ci"
-          scripts/packaging/package-prepared-local-generation-derivatives.sh \
-            --kind kast-action-runtime \
-            --source-root "$GITHUB_WORKSPACE" \
-            --prepared-generation-archive "$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst" \
-            --dist-directory dist \
-            --runtime-version "$runtime_version"
-
-      - name: Record prepared kast-action runtime ledgers
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist/ci-ledgers/kast-action-runtime
-          record_output() {
-            local kind="$1"
-            local path="$2"
-            local command_id="$3"
-            scripts/verify-ci-artifact-ledger.py record \
-              --output "dist/ci-ledgers/kast-action-runtime/${kind}.json" \
-              --git-sha "$GITHUB_SHA" \
-              --source-ref "$GITHUB_REF" \
-              --workflow-run-id "$GITHUB_RUN_ID" \
-              --artifact-kind "$kind" \
-              --artifact-name kast-action-runtime-inputs \
-              --artifact-path "$path" \
-              --producer-job kast-action-runtime-contract \
-              --build-command-id "$command_id"
-          }
-          record_output ci-headless-runtime \
-            dist/kast-headless-linux-x64.tar.zst ci-package-headless-runtime
-          record_output ci-headless-runtime-manifest \
-            dist/kast-runtime-manifest.json ci-package-headless-runtime
-          record_output ci-gradle-ro-cache \
-            dist/gradle-ro-dep-cache.tar.zst ci-package-gradle-ro-cache
-
-      - name: Verify prepared kast-action runtime inputs
-        id: verify-runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          runtime_version="0.0.0-ci"
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger dist/ci-ledgers/kast-action-runtime/ci-headless-runtime.json \
-            --ledger dist/ci-ledgers/kast-action-runtime/ci-headless-runtime-manifest.json \
-            --ledger dist/ci-ledgers/kast-action-runtime/ci-gradle-ro-cache.json \
-            --git-sha "$GITHUB_SHA" \
-            --require-kind ci-headless-runtime \
-            --require-kind ci-headless-runtime-manifest \
-            --require-kind ci-gradle-ro-cache \
-            --artifact ci-headless-runtime=dist/kast-headless-linux-x64.tar.zst \
-            --artifact ci-headless-runtime-manifest=dist/kast-runtime-manifest.json \
-            --artifact ci-gradle-ro-cache=dist/gradle-ro-dep-cache.tar.zst
-          (cd dist && sha256sum -c kast-headless-linux-x64.sha256)
-          (cd dist && sha256sum -c gradle-ro-dep-cache.sha256)
-          printf 'runtime_version=%s\n' "$runtime_version" >> "$GITHUB_OUTPUT"
-          printf 'runtime_sha=%s\n' "$(awk '{ print $1 }' dist/kast-headless-linux-x64.sha256)" >> "$GITHUB_OUTPUT"
-          printf 'gradle_cache_sha=%s\n' "$(awk '{ print $1 }' dist/gradle-ro-dep-cache.sha256)" >> "$GITHUB_OUTPUT"
-
-      - name: Install packaged runtime with kast-action
-        uses: amichne/kast-action@v2
-        with:
-          version: v0.7.11-ci
-          artifact-url: file://${{ steps.verify-setup-bundle.outputs.bundle }}
-          artifact-sha256: ${{ steps.verify-setup-bundle.outputs.bundle_sha }}
-          gradle-ro-cache-url: file://${{ github.workspace }}/dist/gradle-ro-dep-cache.tar.zst
-          gradle-ro-cache-sha256: ${{ steps.verify-runtime.outputs.gradle_cache_sha }}
-          install-dir: ${{ runner.temp }}/kast-install
-          fail-on-cache-miss: "true"
-          strict: "true"
-
-      - name: Validate kast-action installed runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -L "${RUNNER_TEMP}/kast-install/current"
-          scripts/verify-setup-kast-install.sh \
-            --install-dir "${RUNNER_TEMP}/kast-install/current" \
-            --workspace-id kast-action-ci-smoke \
-            --module-name kast-action-smoke \
-            --gradle-root "$GITHUB_WORKSPACE"
 
   analysis-server-transport:
     continue-on-error: ${{ vars.CI_AUX_ANALYSIS_TRANSPORT == 'optional' }}

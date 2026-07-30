@@ -1,0 +1,20 @@
+{
+  "interface": {
+    "displayName": "Kast"
+  },
+  "name": "kast",
+  "plugins": [
+    {
+      "category": "Coding",
+      "name": "kast",
+      "policy": {
+        "authentication": "ON_INSTALL",
+        "installation": "AVAILABLE"
+      },
+      "source": {
+        "path": "./plugins/kast",
+        "source": "local"
+      }
+    }
+  ]
+}

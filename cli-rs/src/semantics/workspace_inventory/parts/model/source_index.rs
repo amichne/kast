@@ -51,6 +51,7 @@ pub(crate) enum SourceIndexProgressStatus {
     Pending,
     Indexing,
     Complete,
+    Degraded,
     Failed,
 }
 
@@ -60,6 +61,7 @@ impl SourceIndexProgressStatus {
             "PENDING" => Some(Self::Pending),
             "INDEXING" => Some(Self::Indexing),
             "COMPLETE" => Some(Self::Complete),
+            "DEGRADED" => Some(Self::Degraded),
             "FAILED" => Some(Self::Failed),
             _ => None,
         }
@@ -70,6 +72,7 @@ impl SourceIndexProgressStatus {
             Self::Pending => "PENDING",
             Self::Indexing => "INDEXING",
             Self::Complete => "COMPLETE",
+            Self::Degraded => "DEGRADED",
             Self::Failed => "FAILED",
         }
     }

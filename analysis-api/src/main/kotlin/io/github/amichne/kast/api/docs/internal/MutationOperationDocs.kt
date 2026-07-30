@@ -64,13 +64,16 @@ internal fun mutationOperationDocs(): List<OperationDoc> = listOf(
             requestSchema = "RefreshQuery",
             responseSchema = "RefreshResult",
             description = "Refreshes the daemon after external file modifications. " +
-                "A successful focused refresh proves each existing requested Kotlin " +
-                "path is immediately available for semantic analysis.",
+                "A successful focused refresh admits each requested Kotlin path and " +
+                "refreshes its durable relationships. The result returns current file-local " +
+                "relationship failures that the caller can externalize.",
             behavioralNotes = listOf(
                 "Pass specific file paths for a targeted refresh, or omit for a " +
                     "full workspace refresh.",
                 "Each focused path separately reports filesystem discovery, source-module " +
                     "ownership, index admission, and analysis availability.",
+                "Compiler diagnostics remain data and do not block relationship indexing.",
+                "Eligible file-local relationship failures carry an ID, path, and code for externalization.",
                 "Pending admission is retried for a bounded interval. The result reports " +
                     "attempt and elapsed-time progress and fails closed if admission remains incomplete.",
                 "Removed paths are terminal refresh results and do not count as skipped analysis.",

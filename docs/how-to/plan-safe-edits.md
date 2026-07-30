@@ -16,7 +16,7 @@ not enough to identify the target.
 
 ## Resolve the target
 
-Ask Codex to establish one exact compiler identity before editing:
+Ask the coding agent to establish one exact compiler identity before editing:
 
 ```text
 Resolve the Kotlin declaration BillingPolicy.evaluate, including its owner,
@@ -55,7 +55,7 @@ text rewrite.
 ## Review the result
 
 Inspect the diff and run the narrow project check for the changed module. If
-Codex reports diagnostics, resolve them before broadening the change. A safe
+the agent reports diagnostics, resolve them before broadening the change. A safe
 handoff includes:
 
 - the exact declaration that was changed;

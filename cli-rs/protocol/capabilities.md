@@ -503,7 +503,8 @@ category. Expand any operation to see its input and output schemas.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin filePaths: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files to refresh. Empty for a full workspace refresh. |
+            | `#!kotlin filePaths: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Absolute paths of files to refresh. Empty with no external failure IDs for a full workspace refresh. |
+            | `#!kotlin externalFailureIds: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Failure IDs to accept as unknown external graph boundaries. Mutually exclusive with filePaths. |
         === "Output: RefreshResult"
 
             | Signature | Description |
@@ -512,6 +513,8 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin removedFiles: List<String>` | Absolute paths confirmed removed from the workspace. |
             | `#!kotlin fullRefresh: Boolean` | True when an unbounded full workspace refresh was performed. |
             | `#!kotlin fileStatuses: List<SemanticAdmissionStatus>` | Ordered semantic-admission state for every focused refresh path. |
+            | `#!kotlin externalFailureOutcomes: List<RefreshExternalFailureOutcome>?` | Ordered outcomes for requested external graph-boundary failures. |
+            | `#!kotlin relationshipFailures: List<RefreshRelationshipFailure>?` | Current file-local relationship failures eligible for externalization. |
             | `#!kotlin semanticOutcome: SemanticAnalysisOutcome` | Whether every existing focused path reached semantic admission. |
             | `#!kotlin requestedFileCount: Int` | Number of existing paths that required semantic admission. |
             | `#!kotlin analyzedFileCount: Int` | Number of existing paths that reached semantic admission. |

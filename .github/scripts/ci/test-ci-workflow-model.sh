@@ -51,6 +51,18 @@ if "test-idea-plugin" in report["candidate"]["criticalPathTaskIds"]:
     raise SystemExit("independent IDEA tests must not delay the artifact consumer path")
 
 candidate_tasks = {task["id"]: task for task in model["candidate"]["tasks"]}
+for graph_name in ("baseline", "candidate"):
+    action_tasks = [
+        task["id"]
+        for task in model[graph_name]["tasks"]
+        if task["id"] == "kast-action"
+        or "kast-action-v2-installed-runtime-contract" in task["outputs"]
+    ]
+    if action_tasks:
+        raise SystemExit(
+            f"{graph_name} must not retain the deprecated kast-action proof: "
+            f"{action_tasks}"
+        )
 if report["candidate"]["provisionalTaskIds"] != sorted(candidate_tasks):
     raise SystemExit(
         "candidate projected timings must remain provisional without declared runs"

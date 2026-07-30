@@ -8,6 +8,7 @@ import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.docs.DocField
 import kotlinx.serialization.Serializable
+import java.util.UUID
 
 @Serializable
 @JvmInline
@@ -232,7 +233,36 @@ enum class SemanticGraphFileStatus {
     REFRESHED,
     CACHED,
     REMOVED,
+    UNKNOWN,
 }
+
+@Serializable
+@JvmInline
+value class SemanticGraphExternalBoundaryFailureId private constructor(
+    @DocField(description = "Content-bound failure identity accepted as an external graph boundary.")
+    val value: String,
+) {
+    companion object {
+        fun parse(raw: String): SemanticGraphExternalBoundaryFailureId {
+            val parsed = UUID.fromString(raw)
+            require(parsed.toString() == raw) { "Semantic graph boundary failure ID must be a canonical UUID" }
+            return SemanticGraphExternalBoundaryFailureId(raw)
+        }
+    }
+}
+
+@Serializable
+enum class SemanticGraphExternalBoundaryReason {
+    PSI_UNAVAILABLE,
+}
+
+@Serializable
+data class SemanticGraphExternalBoundary(
+    @DocField(description = "Durable identity of the explicitly externalized file-local failure.")
+    val failureId: SemanticGraphExternalBoundaryFailureId,
+    @DocField(description = "Closed reason the file is represented as an unknown boundary.")
+    val reason: SemanticGraphExternalBoundaryReason,
+)
 
 @Serializable
 data class SemanticGraphSymbol(
@@ -332,7 +362,18 @@ data class SemanticGraphFileCoverage(
     val status: SemanticGraphFileStatus,
     @DocField(description = "Compiler diagnostics observed while refreshing the file.")
     val diagnostics: List<SemanticGraphDiagnosticEvidence> = emptyList(),
-)
+    @DocField(description = "Explicit file-local failure represented as an unknown graph boundary.")
+    val externalBoundary: SemanticGraphExternalBoundary? = null,
+) {
+    init {
+        require((status == SemanticGraphFileStatus.UNKNOWN) == (externalBoundary != null)) {
+            "Only unknown semantic graph files carry external-boundary evidence"
+        }
+        require(status != SemanticGraphFileStatus.UNKNOWN || contentHash != null) {
+            "Unknown semantic graph files require the content hash bound to their failure"
+        }
+    }
+}
 
 @Serializable
 data class SemanticGraphCoverage(

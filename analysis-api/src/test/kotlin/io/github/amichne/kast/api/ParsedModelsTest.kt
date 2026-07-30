@@ -2,6 +2,7 @@ package io.github.amichne.kast.api.validation
 
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.*
+import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryFailureId
 import io.github.amichne.kast.api.protocol.*
 
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -314,6 +315,28 @@ class ParsedModelsTest {
         assertThrows<ValidationException> { ImportOptimizeQuery(emptyList()).parsed() }
         assertThrows<ValidationException> { ImportOptimizeQuery(listOf("relative.kt")).parsed() }
         assertThrows<ValidationException> { RefreshQuery(listOf("relative.kt")).parsed() }
+    }
+
+    @Test
+    fun `refresh query parses external failure IDs and rejects ambiguous requests`() {
+        val failureId = "00000000-0000-0000-0000-000000000451"
+
+        assertEquals(
+            listOf(SemanticGraphExternalBoundaryFailureId.parse(failureId)),
+            RefreshQuery(externalFailureIds = listOf(failureId)).parsed().externalFailureIds,
+        )
+        assertThrows<ValidationException> {
+            RefreshQuery(
+                filePaths = listOf("/workspace/src/Main.kt"),
+                externalFailureIds = listOf(failureId),
+            ).parsed()
+        }
+        assertThrows<ValidationException> {
+            RefreshQuery(externalFailureIds = listOf("not-a-failure-id")).parsed()
+        }
+        assertThrows<ValidationException> {
+            RefreshQuery(externalFailureIds = listOf(failureId, failureId)).parsed()
+        }
     }
 
     @Test

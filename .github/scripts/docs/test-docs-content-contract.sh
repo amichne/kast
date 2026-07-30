@@ -22,6 +22,14 @@ require_not_contains() {
   ! grep -R -Fq --exclude-dir=internal --include='*.md' -- "$2" "$1" || die "found '$2' under $1"
 }
 
+require_not_contains_file() {
+  ! grep -Fq -- "$2" "$1" || die "found '$2' in $1"
+}
+
+require_not_contains_any_docs() {
+  ! grep -R -Fq --include='*.md' -- "$2" "$1" || die "found '$2' under $1"
+}
+
 expected_pages=(
   "explanation/architecture.md"
   "explanation/compiler-evidence.md"
@@ -52,23 +60,30 @@ require_absent "${docs_root}/assets/demo"
 
 installer='/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"'
 require_contains "$readme" "$installer"
-require_contains "$readme" "kast setup"
+require_contains "$readme" 'After installation, `kast` is the agent interface'
+require_contains "$readme" "_kastctl"
 require_contains "$readme" "prior active release usable"
-require_contains "$readme" "amichne/kast-marketplace"
+require_contains "$readme" "--harness none"
 require_contains "${docs_root}/how-to/install-or-update.md" "$installer"
 require_contains "${docs_root}/how-to/install-or-update.md" "./gradlew refreshDevelopmentMachine"
 require_contains "${docs_root}/how-to/install-or-update.md" "current/bin/kast"
+require_contains "${docs_root}/how-to/install-or-update.md" "current/bin/_kastctl"
+require_contains "${docs_root}/how-to/install-or-update.md" "--harness codex"
+require_contains "${docs_root}/how-to/install-or-update.md" "No remote marketplace checkout is required"
 require_contains "${docs_root}/tutorials/first-compiler-backed-task.md" "IdeaIndexSemanticAdmission"
-require_contains "${docs_root}/how-to/explore-kotlin-code.md" "coverage is complete or limited"
+require_contains "${docs_root}/how-to/explore-kotlin-code.md" "complete reported coverage"
 require_contains "${docs_root}/how-to/plan-safe-edits.md" "one exact compiler identity"
-for command in help version context config setup ready start status stop demo rpc developer agent; do
+for command in up refresh files symbol graph check change apply; do
   require_contains "${docs_root}/reference/cli.md" "\`kast ${command}"
 done
-require_contains "${docs_root}/reference/cli.md" '`toon`'
-require_contains "${docs_root}/reference/codex-plugin.md" 'tracks its `main` branch independently'
-require_contains "${docs_root}/reference/codex-plugin.md" '`kast-query` skill'
-require_contains "${docs_root}/reference/codex-plugin.md" '`kast-change` skill'
-require_contains "${docs_root}/reference/codex-plugin.md" '`kast-codex` hook'
+require_contains "${docs_root}/reference/cli.md" '`kast` is the only public interface'
+require_contains "${docs_root}/reference/cli.md" "compact TOON"
+require_contains "${docs_root}/reference/cli.md" '`_kastctl` multicall entrypoint'
+require_contains "${docs_root}/reference/cli.md" '`UNKNOWN` graph boundary'
+require_contains "${docs_root}/reference/codex-plugin.md" "Codex, Claude,"
+require_contains "${docs_root}/reference/codex-plugin.md" "installer never"
+require_contains "${docs_root}/reference/codex-plugin.md" '`kast@kast`'
+require_contains "${docs_root}/reference/codex-plugin.md" "kast-codex-<tag>.tar"
 require_contains "${docs_root}/explanation/architecture.md" "exact workspace"
 require_contains "${docs_root}/explanation/compiler-evidence.md" "scope fingerprint"
 require_contains "${docs_root}/explanation/repository-intelligence.md" "Incomplete positive answers fail closed"
@@ -91,15 +106,10 @@ done
 for page in "${docs_root}"/how-to/*.md; do
   require_contains "$page" "# How to "
 done
-require_contains "${docs_root}/reference/cli.md" "cli-rs/protocol/source/commands.json"
-require_contains "${docs_root}/reference/cli.md" '`selected.ready`'
 require_contains "${docs_root}/reference/cli.md" \
-  '`kast agent graph --operation summary`'
+  '`kast graph [summary]`'
 require_contains "${docs_root}/reference/cli.md" \
-  "Runtime status does not report graph coverage"
-require_contains "${docs_root}/reference/codex-plugin.md" "### Intents"
-require_contains "${docs_root}/reference/codex-plugin.md" "### Result status"
-require_contains "${docs_root}/reference/codex-plugin.md" "### Bounds and resumption"
+  "Diagnostics do not block reference indexing"
 require_contains "${docs_root}/explanation/architecture.md" \
   '<kast-view view-id="system-landscape"'
 require_contains "${docs_root}/explanation/compiler-evidence.md" \
@@ -124,27 +134,28 @@ done
 require_contains "$hidden_system_map" "## Durable system invariants"
 require_contains "$hidden_system_map" '## Answering "How does this part work?"'
 require_contains "$hidden_system_map" "Open Knowledge Format"
-require_contains "$hidden_system_map" 'kast agent verify'
-require_contains "$hidden_system_map" 'kast agent repository'
-require_contains "$hidden_system_map" 'kast agent symbol'
+require_contains "$hidden_system_map" '`_kastctl` preserves the full administrative CLI'
+require_contains "$hidden_system_map" '`_kastctl setup`'
+require_contains "$hidden_system_map" 'byte-identical `kast` and `_kastctl`'
+require_contains "$hidden_system_map" '`kast refresh external <FAILURE_ID>...`'
 require_contains "$hidden_system_map" 'io.github.amichne.kast.api.contract.backend.AnalysisBackend'
-for command in help version context config setup ready start status stop demo rpc developer agent; do
+for command in up refresh files symbol graph check change apply; do
   require_contains "$hidden_system_map" "\`kast ${command}\`"
 done
-for command in \
-  lease verify workspace-files graph repository symbol references callers callees \
-  implementations hierarchy impact diagnostics rename add-file add-declaration \
-  add-implementation add-statement replace-declaration; do
-  require_contains "$hidden_system_map" "\`kast agent ${command}\`"
-done
 for source in \
+  cli-rs/src/main.rs \
+  cli-rs/src/interface/cli/agent/agent_surface.rs \
+  cli-rs/src/agent/adapter/mod.rs \
   cli-rs/src/interface/cli/root.rs \
   cli-rs/src/interface/entrypoint/dispatch.rs \
   cli-rs/src/operations/install/bundle_entrypoint.rs \
+  cli-rs/src/operations/install/agent_resources.rs \
+  cli-rs/resources/kast/codex/hooks.json \
+  cli-rs/resources/kast/claude/hooks.json \
+  cli-rs/resources/kast/copilot/hooks.json \
   cli-rs/src/execution/runtime/backend/workspace.rs \
   cli-rs/src/agent/core/dispatch/commands.rs \
   cli-rs/src/agent/core/request.rs \
-  cli-rs/src/interface/codex/hook/runtime.rs \
   cli-rs/protocol/source/commands.json \
   analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt \
   analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcAnalysisDispatcher.kt \
@@ -160,12 +171,24 @@ for record in "${repo_root}"/.agents/adr/[0-9]*.md; do
 done
 
 require_not_contains "$docs_root" "codex plugin marketplace add"
+require_not_contains "$docs_root" "amichne/kast-marketplace"
+require_not_contains "$docs_root" "kagent"
 require_not_contains "$docs_root" "Homebrew"
 require_not_contains "$docs_root" "kast repair"
 require_not_contains "$docs_root" "kast machine"
 require_not_contains "$docs_root" "raw/semantic-graph"
 require_not_contains "$docs_root" "kast ready --for kotlin"
 require_not_contains "$docs_root" "semanticGraph.state"
+for retired_public_command in \
+  "kast agent" "kast developer" "kast setup" "kast status" "kast start" \
+  "kast ready" "kast rpc" "kast demo"; do
+  require_not_contains_any_docs "$docs_root" "$retired_public_command"
+  require_not_contains_file "$readme" "$retired_public_command"
+done
+for retired_resource in \
+  "amichne/kast-marketplace" "codex plugin marketplace add" "kagent"; do
+  require_not_contains_file "$readme" "$retired_resource"
+done
 
 python3 - "$docs_root" "${expected_pages[@]}" <<'PY'
 import sys

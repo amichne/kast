@@ -180,45 +180,34 @@ class ParallelReferenceIndexerTest {
         }
     }
 
-    /**
-     * A scanner exception on one file must not corrupt the results from other files
-     * running in parallel. The failed file should be silently skipped and all other
-     * files' references should be correctly indexed.
-     */
     @Test
-    fun `scanner exception on one file does not corrupt results from other parallel files`() {
+    fun `unexpected parallel scanner failure aborts batch without writes`() {
         val filePaths = (0 until 8).map { i -> "/src/File$i.kt" }
         val failingPath = filePaths[3]
 
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store, batchSize = filePaths.size, parallelism = 4).indexSymbolRelationships(
-                filePaths = filePaths,
-                referenceScanner = { path ->
-                    if (path == failingPath) {
-                        throw RuntimeException("Simulated parallel scanner failure")
-                    }
-                    listOf(
-                        SymbolReferenceRow(
-                            sourcePath = path,
-                            sourceOffset = 0,
-                            targetFqName = "sample.Target",
-                            targetPath = null,
-                            targetOffset = null,
-                        ),
-                    )
-                },
-            )
+            val failure = assertThrows(RuntimeException::class.java) {
+                ReferenceIndexer(store, batchSize = filePaths.size, parallelism = 4).indexSymbolRelationships(
+                    filePaths = filePaths,
+                    referenceScanner = { path ->
+                        if (path == failingPath) {
+                            throw RuntimeException("Simulated parallel scanner failure")
+                        }
+                        listOf(
+                            SymbolReferenceRow(
+                                sourcePath = path,
+                                sourceOffset = 0,
+                                targetFqName = "sample.Target",
+                                targetPath = null,
+                                targetOffset = null,
+                            ),
+                        )
+                    },
+                )
+            }
 
-            val refs = store.referencesToSymbol("sample.Target")
-            assertEquals(
-                filePaths.size - 1,
-                refs.size,
-                "Expected ${filePaths.size - 1} refs (all except failing file), got ${refs.size}",
-            )
-            assertTrue(
-                refs.none { it.sourcePath == failingPath },
-                "Failing file $failingPath should not appear in results",
-            )
+            assertEquals("Simulated parallel scanner failure", failure.message)
+            assertTrue(store.referencesToSymbol("sample.Target").isEmpty())
         }
     }
 

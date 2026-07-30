@@ -1,9 +1,13 @@
 package io.github.amichne.kast.indexstore.store
 
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureExternalizationResult
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureId
+import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
+import io.github.amichne.kast.indexstore.api.stage.FileStageFailureUpdate
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageRemoval
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageUpdate
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
@@ -15,7 +19,10 @@ internal class FileStageBatchStore(
     private val references: SourceIndexReferenceStore,
     private val declarations: SourceIndexDeclarationStore,
     private val stages: FileStageInventoryStore,
+    private val semanticGraph: SemanticGraphWriter,
 ) {
+    private val failureStore = FileStageFailureStore(state)
+
     fun commitSourceBatch(updates: List<SourceFileStageUpdate>) {
         if (updates.isEmpty()) return
         requireUniquePaths(updates.map { update -> update.work.path })
@@ -36,13 +43,21 @@ internal class FileStageBatchStore(
         }
     }
 
-    fun commitRelationshipBatch(updates: List<RelationshipFileStageUpdate>) {
-        if (updates.isEmpty()) return
-        requireUniquePaths(updates.map { update -> update.work.path })
+    fun commitRelationshipBatch(
+        updates: List<RelationshipFileStageUpdate>,
+        failures: List<FileStageFailureUpdate> = emptyList(),
+    ) {
+        if (updates.isEmpty() && failures.isEmpty()) return
+        requireUniquePaths(
+            updates.map { update -> update.work.path } + failures.map { failure -> failure.work.path },
+        )
         val normalized = updates.map(::normalize)
         transaction { conn ->
             normalized.forEach { update ->
                 stages.requireCurrentWorkInTransaction(conn, update.work, inventoryRequired = true)
+            }
+            failures.forEach { failure ->
+                stages.requireCurrentWorkInTransaction(conn, failure.work, inventoryRequired = true)
             }
             mutations.internPathsInTransaction(
                 conn,
@@ -51,7 +66,7 @@ internal class FileStageBatchStore(
                         add(update.work.path)
                         update.references.mapNotNullTo(this) { reference -> reference.targetPath }
                     }
-                },
+                } + failures.map { failure -> failure.work.path },
             )
             mutations.internFqNamesInTransaction(
                 conn,
@@ -77,7 +92,64 @@ internal class FileStageBatchStore(
                 }
                 stages.writeOutcomeInTransaction(conn, update.work, update.limitations)
             }
+            failures.forEach { failure ->
+                references.clearReferencesFromFileInTransaction(conn, failure.work.path)
+                declarations.clearDeclarationsFromFileInTransaction(conn, failure.work.path)
+                failureStore.writeFailureOutcomeInTransaction(
+                    conn = conn,
+                    work = failure.work,
+                    code = failure.code,
+                    message = failure.message,
+                )
+            }
             stages.recomputeModuleProgressInTransaction(conn)
+        }
+    }
+
+    fun externalizeFileStageFailure(
+        failureId: FileStageFailureId,
+    ): FileStageFailureExternalizationResult = synchronized(state.writeLock) {
+        val conn = state.connection()
+        state.loadInterningTables(conn)
+        conn.autoCommit = false
+        try {
+            val current = failureStore.currentFailureByIdInTransaction(conn, failureId)
+            val result = when (current?.status) {
+                null -> FileStageFailureExternalizationResult.NOT_FOUND
+                FileStageOutcomeStatus.EXTERNAL_BOUNDARY ->
+                    FileStageFailureExternalizationResult.ALREADY_EXTERNAL
+                FileStageOutcomeStatus.FAILED -> {
+                    check(current.stage == FileIndexStage.RELATIONSHIPS) {
+                        "Only relationship-stage failures are currently externalizable"
+                    }
+                    references.clearReferencesFromFileInTransaction(conn, current.path)
+                    declarations.clearDeclarationsFromFileInTransaction(conn, current.path)
+                    semanticGraph.markExternalBoundaryInTransaction(
+                        conn = conn,
+                        path = current.path,
+                        contentHash = current.contentHash,
+                        failure = current.failure,
+                    )
+                    failureStore.markFailureExternalInTransaction(conn, failureId)
+                    stages.recomputeModuleProgressInTransaction(conn)
+                    state.incrementGenerationInTransaction(conn)
+                    FileStageFailureExternalizationResult.EXTERNALIZED
+                }
+                FileStageOutcomeStatus.COMPLETE,
+                FileStageOutcomeStatus.LIMITED,
+                -> error("Failure identity points to a non-failure outcome")
+            }
+            if (result == FileStageFailureExternalizationResult.EXTERNALIZED) {
+                conn.commit()
+            } else {
+                conn.rollback()
+            }
+            result
+        } catch (failure: Exception) {
+            state.rollbackAndReloadPrefixes(conn)
+            throw failure
+        } finally {
+            conn.autoCommit = true
         }
     }
 

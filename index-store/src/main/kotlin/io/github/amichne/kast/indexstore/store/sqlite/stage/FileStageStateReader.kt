@@ -4,6 +4,9 @@ import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageInputFingerprint
+import io.github.amichne.kast.indexstore.api.index.FileStageFailure
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureId
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcome
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
@@ -90,7 +93,8 @@ internal class FileStageStateReader(
         state.loadInterningTables(conn)
         val encoded = pathCodec.encodeIfInterned(path) ?: return null
         return conn.prepareStatement(
-            """SELECT content_hash, stage_version, stage_input_fingerprint, outcome_status, limitations_json
+            """SELECT content_hash, stage_version, stage_input_fingerprint, outcome_status, limitations_json,
+                      failure_id, failure_code, failure_message
                FROM file_stage_outcomes
                WHERE prefix_id = ? AND filename = ? AND stage = ?""",
         ).use { statement ->
@@ -108,6 +112,13 @@ internal class FileStageStateReader(
                 status = FileStageOutcomeStatus.valueOf(rows.getString(4)),
                 limitations = defaultCacheJson.decodeFromString<List<String>>(rows.getString(5))
                     .map(FileStageLimitation::valueOf),
+                failure = rows.getString(6)?.let { failureId ->
+                    FileStageFailure(
+                        id = FileStageFailureId.parse(failureId),
+                        code = FileStageFailureCode.valueOf(checkNotNull(rows.getString(7))),
+                        message = checkNotNull(rows.getString(8)),
+                    )
+                },
             )
         }
     }
@@ -154,6 +165,7 @@ internal class FileStageStateReader(
             FileStageOutcomeStatus.COMPLETE -> ClassifiedFile.Complete
             FileStageOutcomeStatus.LIMITED -> ClassifiedFile.Limited(outcome.limitations)
             FileStageOutcomeStatus.FAILED -> ClassifiedFile.Failed
+            FileStageOutcomeStatus.EXTERNAL_BOUNDARY -> ClassifiedFile.External
         }
     }
 
@@ -162,6 +174,7 @@ internal class FileStageStateReader(
         FileStageOutcomeStatus.COMPLETE -> ClassifiedFile.Complete
         FileStageOutcomeStatus.LIMITED -> ClassifiedFile.Limited(outcome.limitations)
         FileStageOutcomeStatus.FAILED -> ClassifiedFile.Failed
+        FileStageOutcomeStatus.EXTERNAL_BOUNDARY -> ClassifiedFile.External
     }
 
     private fun coverage(files: List<ClassifiedFile>): FileStageScopeCoverage {
@@ -174,6 +187,7 @@ internal class FileStageStateReader(
             staleFiles = files.count { it == ClassifiedFile.Stale },
             limitedFiles = files.count { it is ClassifiedFile.Limited },
             failedFiles = files.count { it == ClassifiedFile.Failed },
+            externalFiles = files.count { it == ClassifiedFile.External },
             limitations = files.filterIsInstance<ClassifiedFile.Limited>()
                 .flatMap(ClassifiedFile.Limited::limitations)
                 .distinct()
@@ -187,6 +201,7 @@ internal class FileStageStateReader(
         data object Stale : ClassifiedFile
         data class Limited(val limitations: List<FileStageLimitation>) : ClassifiedFile
         data object Failed : ClassifiedFile
+        data object External : ClassifiedFile
     }
 }
 

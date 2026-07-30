@@ -60,7 +60,9 @@ internal class SourceIndexSnapshotStore(
         val (moduleProgressCount, incompleteModuleCount) = conn.createStatement().use { statement ->
             val result = statement.executeQuery(
                 """SELECT COUNT(*) AS total,
-                          SUM(CASE WHEN relationship_index_status != 'COMPLETE' OR indexed_file_count != total_file_count
+                          SUM(CASE
+                              WHEN relationship_index_status NOT IN ('COMPLETE','DEGRADED')
+                               OR indexed_file_count != total_file_count
                                    THEN 1 ELSE 0 END) AS incomplete
                    FROM module_index_progress""",
             )

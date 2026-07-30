@@ -1,3 +1,5 @@
+use std::os::unix::process::CommandExt;
+
 pub(crate) fn kast(home: &std::path::Path, config_home: &std::path::Path) -> Command {
     kast_at(Path::new(env!("CARGO_BIN_EXE_kast")), home, config_home)
 }
@@ -5,6 +7,7 @@ pub(crate) fn kast(home: &std::path::Path, config_home: &std::path::Path) -> Com
 pub(crate) fn kast_at(binary: &Path, home: &Path, config_home: &Path) -> Command {
     let mut command = Command::new(binary);
     command
+        .arg0("_kastctl")
         .env("HOME", home)
         .env("KAST_CONFIG_HOME", config_home);
     command
@@ -28,12 +31,14 @@ pub(crate) fn install_manifest_path(home: &Path) -> PathBuf {
 
 pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_home: &Path) {
     let install_root = default_install_root(home);
-    let binary = default_bin_dir(home).join("kast");
+    let control_binary = default_bin_dir(home).join("_kastctl");
+    let agent_binary = default_bin_dir(home).join("kast");
     let config_root = install_root.join("current/config");
     std::fs::create_dir_all(default_bin_dir(home)).expect("bin directory");
     std::fs::create_dir_all(&install_root).expect("install root");
     std::fs::create_dir_all(&config_root).expect("config root");
-    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &binary).expect("active Kast binary");
+    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &control_binary).expect("active Kast control binary");
+    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &agent_binary).expect("active Kast agent binary");
     std::fs::write(
         install_manifest_path(home),
         serde_json::to_vec_pretty(&serde_json::json!({
@@ -56,8 +61,8 @@ pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_h
                 "locks": install_root.display().to_string()
             },
             "entrypoints": {
-                "shim": binary.display().to_string(),
-                "activeBinary": binary.display().to_string()
+                "shim": control_binary.display().to_string(),
+                "activeBinary": control_binary.display().to_string()
             },
             "schemas": {"manifest": 1, "workspaceRegistry": 1, "symbolIndex": 3},
             "version": env!("CARGO_PKG_VERSION"),
@@ -71,7 +76,7 @@ pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_h
 
 pub(crate) fn write_active_kast_for_test(home: &Path, config_home: &Path) -> PathBuf {
     write_current_cli_install_manifest_for_test(home, config_home);
-    default_bin_dir(home).join("kast")
+    default_bin_dir(home).join("_kastctl")
 }
 
 pub(crate) fn write_legacy_local_install_for_test(home: &Path, config_home: &Path) -> PathBuf {

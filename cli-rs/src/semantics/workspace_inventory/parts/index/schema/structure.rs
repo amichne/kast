@@ -75,7 +75,12 @@ fn verify_required_structure(transaction: &Transaction<'_>) -> Result<(), ReadDa
     verify_nullable(
         transaction,
         "file_stage_outcomes",
-        &["stage_input_fingerprint"],
+        &[
+            "stage_input_fingerprint",
+            "failure_id",
+            "failure_code",
+            "failure_message",
+        ],
     )?;
     verify_not_null(
         transaction,

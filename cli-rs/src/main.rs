@@ -1,4 +1,8 @@
 mod agent;
+#[path = "agent/adapter/mod.rs"]
+mod agent_adapter;
+#[path = "agent/plan/mod.rs"]
+mod agent_plan;
 #[path = "configuration/bundle.rs"]
 mod bundle;
 #[path = "configuration/catalog_schema.rs"]
@@ -53,7 +57,7 @@ mod validate;
 mod workspace_inventory;
 
 use clap::{CommandFactory, Parser};
-use cli::{Cli, Command, GenerateCommand, OutputFormat};
+use cli::{Cli, Command, GenerateCommand, KastCli, KastCommand, OutputFormat};
 use error::{CliError, Result};
 use serde::Serialize;
 use std::env;
@@ -65,7 +69,24 @@ const AGENT_JSON_DEPRECATION_WARNING: &str =
     "warning: JSON output for `kast agent` is deprecated; omit `--output json` to use TOON.";
 
 fn main() {
-    let exit_code = match parse_cli() {
+    let exit_code = match invoked_entrypoint() {
+        Some(Entrypoint::Agent) => agent_main(),
+        Some(Entrypoint::Control) => control_main(),
+        None => unrecognized_entrypoint_main(),
+    };
+    std::process::exit(exit_code);
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Entrypoint {
+    Agent,
+    Control,
+}
+
+include!("interface/entrypoint/invocation.rs");
+
+fn control_main() -> i32 {
+    match parse_cli() {
         Ok(Some(cli)) => {
             warn_for_deprecated_agent_json(&cli);
             let output_format = effective_output_format(cli.output, cli.command.as_ref());
@@ -82,8 +103,134 @@ fn main() {
             let _ = output::print_error(&error, requested_output_format());
             error_exit_code(&error)
         }
+    }
+}
+
+fn agent_main() -> i32 {
+    match KastCli::try_parse() {
+        Ok(cli) => match run_kast_agent(cli) {
+            Ok(code) => code,
+            Err(error) => {
+                let _ = print_agent_error(&error);
+                error_exit_code(&error)
+            }
+        },
+        Err(error) if !error.use_stderr() => {
+            let _ = error.print();
+            0
+        }
+        Err(error) => {
+            let error = CliError::from_clap(error);
+            let _ = print_agent_error(&error);
+            error_exit_code(&error)
+        }
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct KastHome {
+    bin: String,
+    description: &'static str,
+    root: String,
+    ready: bool,
+    runtime: String,
+    reference_index_ready: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    limitation: Option<String>,
+    next: Vec<String>,
+}
+
+fn run_kast_agent(cli: KastCli) -> Result<i32> {
+    let Some(command) = cli.command else {
+        let root = config::resolve_workspace_root(None)?;
+        let home = kast_home(root)?;
+        output::print_structured(&home, OutputFormat::Toon)?;
+        return Ok(0);
     };
-    std::process::exit(exit_code);
+    match command {
+        KastCommand::Internal(cli::KastInternalArgs {
+            command:
+                cli::KastInternalCommand::Resources(cli::KastResourcesArgs {
+                    command: cli::KastResourcesCommand::Install { harnesses },
+                }),
+        }) => {
+            install::install_agent_resources(&harnesses)?;
+            Ok(0)
+        }
+        KastCommand::Up => agent_adapter::run_up(),
+        KastCommand::Files { pattern, page } => agent_adapter::run_files(pattern, page),
+        KastCommand::Symbol(args) => agent_adapter::run_symbol(args),
+        KastCommand::Graph(args) => agent_adapter::run_graph(args),
+        KastCommand::Check(args) => agent_adapter::run_check(args),
+        KastCommand::Refresh(args) => agent_adapter::run_refresh(args),
+        KastCommand::Change(args) => agent_plan::run_change(args),
+        KastCommand::Apply { plan_id } => agent_plan::run_apply(plan_id),
+    }
+}
+
+fn kast_home(root: PathBuf) -> Result<KastHome> {
+    let readiness = self_mgmt::doctor(cli::ReadyTarget::Agent, Some(&root))?;
+    let mut runtime_state = "DOWN".to_string();
+    let mut reference_index_ready = false;
+    let mut limitation = readiness.issues.first().cloned();
+    if readiness.ok {
+        match runtime::workspace_status(cli::RuntimeArgs {
+            workspace_root: Some(root.clone()),
+            ..default_runtime_args()
+        }) {
+            Ok(status) => {
+                if let Some(selected) = status.selected {
+                    reference_index_ready = selected
+                        .runtime_status
+                        .as_ref()
+                        .is_some_and(|runtime| runtime.reference_index_ready);
+                    runtime_state = selected
+                        .runtime_status
+                        .as_ref()
+                        .map(|runtime| format!("{:?}", runtime.state).to_uppercase())
+                        .unwrap_or_else(|| "UNREACHABLE".to_string());
+                    limitation = selected.error_message;
+                }
+            }
+            Err(error) => {
+                runtime_state = "BLOCKED".to_string();
+                limitation = Some(error.message);
+            }
+        }
+    }
+    let ready = runtime_state == "READY" && reference_index_ready;
+    let next = if ready {
+        vec![
+            "kast refresh".to_string(),
+            "kast symbol find <query>".to_string(),
+        ]
+    } else {
+        vec!["kast up".to_string()]
+    };
+    Ok(KastHome {
+        bin: display_invoked_executable(),
+        description: "Compiler-backed Kotlin knowledge and changes for coding agents.",
+        root: root.display().to_string(),
+        ready,
+        runtime: runtime_state,
+        reference_index_ready,
+        limitation,
+        next,
+    })
+}
+
+fn display_invoked_executable() -> String {
+    let raw = current_executable_argument();
+    let home = env::var_os("HOME")
+        .map(PathBuf::from)
+        .map(|path| path.display().to_string());
+    if let Some(home) = home
+        && let Some(stripped) = raw.strip_prefix(&home)
+    {
+        return format!("~{stripped}");
+    }
+    raw
 }
 
 fn parse_cli() -> Result<Option<Cli>> {

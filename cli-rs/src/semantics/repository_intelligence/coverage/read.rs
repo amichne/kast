@@ -1,48 +1,132 @@
-pub fn semantic_graph_readiness(workspace_root: &Path) -> SemanticGraphReadiness {
-    match read_coverage(
+include!("read/readiness.rs");
+
+pub(crate) fn semantic_graph_refresh_plan(
+    workspace_root: &Path,
+) -> Result<SemanticGraphRefreshPlan> {
+    let snapshot = read_coverage_with_orphans(
         workspace_root,
         RepositoryScope {
             language: Some("kotlin".to_string()),
             ..RepositoryScope::default()
         },
-    ) {
-        Ok(snapshot) => {
-            let coverage = snapshot.coverage;
-            SemanticGraphReadiness {
-                state: if coverage.complete {
-                    SemanticGraphReadinessState::Ready
-                } else {
-                    SemanticGraphReadinessState::Incomplete
-                },
-                generation: Some(snapshot.generation),
-                total: coverage.counts.total,
-                indexed: coverage.counts.indexed,
-                excluded: coverage.counts.excluded,
-                pending: coverage.counts.pending,
-                limited: coverage.counts.limited,
-                failed: coverage.counts.failed,
-                stale: coverage.counts.stale,
-                limitations: coverage.limitations,
-                error: None,
-            }
-        }
-        Err(error) => SemanticGraphReadiness {
-            state: SemanticGraphReadinessState::Unavailable,
-            generation: None,
-            total: 0,
-            indexed: 0,
-            excluded: 0,
-            pending: 0,
-            limited: 0,
-            failed: 0,
-            stale: 0,
-            limitations: vec![error.code.to_string()],
-            error: Some(SemanticGraphReadinessError {
-                code: error.code.to_string(),
-                message: error.message,
-            }),
+        true,
+    )?;
+    let (file_paths, removed_file_paths) = plan_semantic_graph_refresh_files(
+        &snapshot.files,
+        &snapshot.semantic_scope,
+        &snapshot.orphaned_semantic_paths,
+    );
+    Ok(SemanticGraphRefreshPlan {
+        file_paths,
+        removed_file_paths,
+    })
+}
+
+fn plan_semantic_graph_refresh_files(
+    files: &[GraphFileCoverage],
+    semantic_scope: &BTreeSet<String>,
+    orphaned_semantic_paths: &[String],
+) -> (Vec<String>, Vec<String>) {
+    let mut removed_file_paths = orphaned_semantic_paths
+        .iter()
+        .cloned()
+        .collect::<BTreeSet<_>>();
+    removed_file_paths.extend(
+        files
+            .iter()
+            .filter(|file| {
+                file.reason_code == Some("SEMANTIC_GRAPH_EXTERNAL_BOUNDARY")
+                    && semantic_scope.contains(&file.path)
+            })
+            .map(|file| file.path.clone()),
+    );
+    let required = files
+        .iter()
+        .filter(|file| {
+            matches!(
+                file.state,
+                GraphFileState::Pending | GraphFileState::Failed | GraphFileState::Stale
+            )
+        })
+        .map(|file| file.path.clone())
+        .collect::<BTreeSet<_>>();
+    let scope_changes = !removed_file_paths.is_empty()
+        || required
+            .iter()
+            .any(|path| !semantic_scope.contains(path));
+    let file_paths = if scope_changes {
+        files
+            .iter()
+            .filter(|file| {
+                matches!(
+                    file.state,
+                    GraphFileState::Indexed
+                        | GraphFileState::Pending
+                        | GraphFileState::Failed
+                        | GraphFileState::Stale
+                ) && !removed_file_paths.contains(&file.path)
+            })
+            .map(|file| file.path.clone())
+            .collect()
+    } else {
+        required.into_iter().collect()
+    };
+    (
+        file_paths,
+        removed_file_paths.into_iter().collect(),
+    )
+}
+
+pub(crate) fn semantic_graph_read_admission(
+    workspace_root: &Path,
+) -> Result<SemanticGraphReadAdmission> {
+    let snapshot = read_coverage(
+        workspace_root,
+        RepositoryScope {
+            language: Some("kotlin".to_string()),
+            ..RepositoryScope::default()
         },
+    )?;
+    let evidence = SemanticGraphEvidenceCoverage {
+        total: snapshot.coverage.counts.total,
+        indexed: snapshot.coverage.counts.indexed,
+        excluded: snapshot.coverage.counts.excluded,
+        pending: snapshot.coverage.counts.pending,
+        limited: snapshot.coverage.counts.limited,
+        failed: snapshot.coverage.counts.failed,
+        stale: snapshot.coverage.counts.stale,
+        limitations: snapshot.coverage.limitations.clone(),
+    };
+    if snapshot.coverage.complete {
+        return Ok(SemanticGraphReadAdmission::Current {
+            generation: snapshot.generation,
+            coverage: evidence,
+        });
     }
+    let source_inventory_complete = !snapshot
+        .coverage
+        .limitations
+        .iter()
+        .any(|limitation| limitation == "SOURCE_INVENTORY_INCOMPLETE");
+    let qualified = source_inventory_complete
+        && snapshot.coverage.eligibility_proven
+        && snapshot.coverage.pending_update_count == 0
+        && snapshot.coverage.counts.indexed + snapshot.coverage.counts.limited > 0
+        && snapshot.coverage.counts.pending == 0
+        && snapshot.coverage.counts.failed == 0
+        && snapshot.coverage.counts.stale == 0
+        && snapshot.coverage.counts.limited > 0;
+    Ok(if qualified {
+        SemanticGraphReadAdmission::Qualified {
+            generation: snapshot.generation,
+            coverage: evidence,
+        }
+    } else {
+        SemanticGraphReadAdmission::Rejected {
+            generation: snapshot.generation,
+            coverage: evidence,
+        }
+    })
 }
 
 fn validate_scope(scope: &RepositoryScope) -> Result<()> {
@@ -85,6 +169,14 @@ fn open_repository_connection(workspace_root: &Path) -> Result<Connection> {
 }
 
 fn read_coverage(workspace_root: &Path, scope: RepositoryScope) -> Result<CoverageSnapshot> {
+    read_coverage_with_orphans(workspace_root, scope, false)
+}
+
+fn read_coverage_with_orphans(
+    workspace_root: &Path,
+    scope: RepositoryScope,
+    allow_orphans: bool,
+) -> Result<CoverageSnapshot> {
     for _ in 0..2 {
         let root = workspace_inventory::model::WorkspaceRoot::try_from(workspace_root)
             .map_err(|error| CliError::new("INVALID_REPOSITORY_SCOPE", error.to_string()))?;
@@ -105,9 +197,21 @@ fn read_coverage(workspace_root: &Path, scope: RepositoryScope) -> Result<Covera
             scope_fingerprint,
             semantic_files,
             pending_updates,
+            semantic_scope,
+            orphaned_semantic_paths,
         } = read_semantic_files(workspace_root)?;
         if generation != semantic_generation {
             continue;
+        }
+        if !allow_orphans
+            && let Some(unaccounted) = orphaned_semantic_paths.first()
+        {
+            return Err(CliError::new(
+                "GRAPH_COVERAGE_UNAVAILABLE",
+                format!(
+                    "semantic graph source path `{unaccounted}` has no persisted manifest authority"
+                ),
+            ));
         }
         return Ok(classify_coverage(
             index,
@@ -115,6 +219,8 @@ fn read_coverage(workspace_root: &Path, scope: RepositoryScope) -> Result<Covera
             &scope_fingerprint,
             &pending_updates,
             resolved_scope,
+            semantic_scope,
+            orphaned_semantic_paths,
         ));
     }
     Err(CliError::new(
@@ -129,6 +235,8 @@ fn classify_coverage(
     scope_fingerprint: &SemanticGraphStageInputFingerprint,
     pending_updates: &[PersistedPendingUpdateTarget],
     scope: ResolvedRepositoryScope,
+    semantic_scope: BTreeSet<String>,
+    orphaned_semantic_paths: Vec<String>,
 ) -> CoverageSnapshot {
     let mut files = Vec::new();
     let mut eligibility_proven = true;
@@ -189,7 +297,7 @@ fn classify_coverage(
                 | WorkspaceInventoryLimitationCode::OutOfRootExcluded
         )
     });
-    let semantic_scope_proven = counts.indexed > 0;
+    let semantic_scope_proven = counts.indexed + counts.limited > 0;
     let persisted_updates_complete = pending_update_count == 0;
     let complete = inventory_complete
         && eligibility_proven
@@ -252,5 +360,7 @@ fn classify_coverage(
             limitations,
         },
         files,
+        semantic_scope,
+        orphaned_semantic_paths,
     }
 }

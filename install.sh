@@ -16,16 +16,19 @@ usage() {
   cat >&2 <<'USAGE'
 Usage: install.sh [--source <bundle-directory-or-tar.gz>] [--version <vX.Y.Z>]
                   [--configure | --autostart | --config-defaults <path>]
+                  [--harness <codex|claude|copilot|none>]...
 
 Downloads one platform bundle when --source is omitted, then delegates every
 installation write to:
 
-  kast setup --source <bundle>
+  _kastctl setup --source <bundle>
 
 Options:
   --configure             Select IDEA and Codex defaults interactively.
   --autostart             Open each Codex worktree in a background IDEA instance.
   --config-defaults PATH  Install defaults from an existing TOML file.
+  --harness HARNESS       Install resources for one agent harness. Repeatable.
+                          Defaults to every detected harness; none disables it.
   --source PATH           Install a local bundle directory or tar.gz archive.
   --version VERSION       Install an exact release instead of the latest release.
   -h, --help              Show this help.
@@ -160,12 +163,18 @@ download_artifact() {
   ui_success "${label} downloaded"
 }
 
-reconcile_codex() {
-  command -v codex >/dev/null 2>&1 || return 0
-  codex plugin remove kast@kast --json >/dev/null 2>&1 || true
-  codex plugin marketplace remove kast --json >/dev/null 2>&1 || true
-  codex plugin marketplace add amichne/kast-marketplace --ref main --json >/dev/null
-  codex plugin add kast@kast --json >/dev/null
+install_agent_harnesses() {
+  (($# > 0)) || return 0
+  local agent_path="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin/kast"
+  local harness
+  local -a args=(__internal resources install)
+  [[ -x "$agent_path" ]] || die "installed Kast agent CLI is missing: $agent_path"
+  for harness in "$@"; do
+    args+=(--harness "$harness")
+  done
+  ui_step "Connecting agent harnesses"
+  "$agent_path" "${args[@]}" || die "agent harness installation failed"
+  ui_success "Agent harnesses connected"
 }
 
 JETBRAINS_PROCESS_PIDS=()
@@ -411,9 +420,10 @@ run_setup() {
 
 finish_install() {
   local bin_dir="${HOME}/.local/bin"
-  local path="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin/kast"
+  local install_root="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin"
   ui_success "Kast is ready"
-  ui_detail "${bin_dir}/kast -> ${path}"
+  ui_detail "${bin_dir}/kast -> ${install_root}/kast"
+  ui_detail "${bin_dir}/_kastctl -> ${install_root}/_kastctl"
   if [[ ":${PATH:-}:" != *":${bin_dir}:"* ]]; then
     ui_warning "${bin_dir} is not on PATH"
     ui_detail 'export PATH="$HOME/.local/bin:$PATH"'
@@ -424,7 +434,8 @@ main() {
   local source="" version="" bundle_root="" bundle_archive="" platform_id=""
   local cli_archive="" cli_url="" plugin_archive="" plugin_url=""
   local configure=0 autostart=0 config_defaults=""
-  local -a setup_args=()
+  local harness requested none_selected=0 already_selected
+  local -a setup_args=() requested_harnesses=() selected_harnesses=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --source) [[ $# -ge 2 ]] || die '--source requires a value'; source="$2"; shift 2 ;;
@@ -432,10 +443,39 @@ main() {
       --configure) configure=1; shift ;;
       --autostart) autostart=1; shift ;;
       --config-defaults) [[ $# -ge 2 ]] || die '--config-defaults requires a value'; config_defaults="$2"; shift 2 ;;
+      --harness)
+        [[ $# -ge 2 ]] || die '--harness requires a value'
+        case "$2" in
+          codex|claude|copilot|none) requested_harnesses+=("$2") ;;
+          *) die "unknown harness: $2" ;;
+        esac
+        shift 2
+        ;;
       -h|--help|help) usage; return 0 ;;
       *) die "unknown argument: $1" ;;
     esac
   done
+
+  if ((${#requested_harnesses[@]} == 0)); then
+    for harness in codex claude copilot; do
+      command -v "$harness" >/dev/null 2>&1 && selected_harnesses+=("$harness")
+    done
+  else
+    for harness in "${requested_harnesses[@]}"; do
+      if [[ "$harness" == "none" ]]; then
+        none_selected=1
+        continue
+      fi
+      already_selected=0
+      for requested in "${selected_harnesses[@]}"; do
+        [[ "$requested" == "$harness" ]] && already_selected=1
+      done
+      ((already_selected == 1)) || selected_harnesses+=("$harness")
+    done
+    if ((none_selected == 1 && ${#selected_harnesses[@]} > 0)); then
+      die 'none cannot be combined with another harness'
+    fi
+  fi
 
   ((configure + autostart + (${#config_defaults} > 0) <= 1)) || \
     die 'pass only one of --configure, --autostart, or --config-defaults'
@@ -466,8 +506,11 @@ main() {
       ui_step "Preparing installer"
       mkdir -p "${setup_scratch}/cli"
       unzip -q "$cli_archive" -d "${setup_scratch}/cli"
+      [[ -f "${setup_scratch}/cli/_kastctl" ]] || die "native CLI bundle is missing _kastctl"
       [[ -f "${setup_scratch}/cli/kast" ]] || die "native CLI bundle is missing kast"
-      chmod 755 "${setup_scratch}/cli/kast"
+      cmp -s "${setup_scratch}/cli/_kastctl" "${setup_scratch}/cli/kast" \
+        || die "native CLI entrypoints are not byte-identical"
+      chmod 755 "${setup_scratch}/cli/_kastctl" "${setup_scratch}/cli/kast"
       ui_success "Installer prepared"
       if ((configure == 1)); then
         config_defaults="${setup_scratch}/config.toml"
@@ -479,7 +522,7 @@ main() {
         [[ -f "$config_defaults" ]] || die "config defaults do not exist: $config_defaults"
       fi
       ui_step "Installing Kast and the IDEA plugin"
-      setup_args=("${setup_scratch}/cli/kast" setup --idea-plugin "$plugin_archive")
+      setup_args=("${setup_scratch}/cli/_kastctl" setup --idea-plugin "$plugin_archive")
       if [[ -n "$config_defaults" ]]; then
         setup_args+=(--config-defaults "$config_defaults")
       fi
@@ -494,11 +537,7 @@ main() {
         fi
       fi
       ui_success "Kast and the IDEA plugin installed"
-      if command -v codex >/dev/null 2>&1; then
-        ui_step "Connecting Codex"
-        reconcile_codex
-        ui_success "Codex connected"
-      fi
+      install_agent_harnesses "${selected_harnesses[@]}"
       finish_install
       return 0
     fi
@@ -520,15 +559,15 @@ main() {
     [[ -n "$bundle_root" ]] || die "bundle archive has no root directory: $source"
   fi
 
-  [[ -x "${bundle_root}/bin/kast" ]] || die "bundle CLI is missing: ${bundle_root}/bin/kast"
+  [[ -x "${bundle_root}/bin/_kastctl" ]] \
+    || die "bundle control CLI is missing: ${bundle_root}/bin/_kastctl"
+  [[ -x "${bundle_root}/bin/kast" ]] \
+    || die "bundle agent CLI is missing: ${bundle_root}/bin/kast"
   ui_step "Installing Kast"
-  run_setup "${bundle_root}/bin/kast" setup --source "$bundle_root" || die "Kast setup failed"
+  run_setup "${bundle_root}/bin/_kastctl" setup --source "$bundle_root" \
+    || die "Kast setup failed"
   ui_success "Kast installed"
-  if command -v codex >/dev/null 2>&1; then
-    ui_step "Connecting Codex"
-    reconcile_codex
-    ui_success "Codex connected"
-  fi
+  install_agent_harnesses "${selected_harnesses[@]}"
   finish_install
 }
 

@@ -76,6 +76,28 @@ fn exactness_requires_complete_equal_progress_and_zero_unapplied_pending_updates
 }
 
 #[test]
+fn degraded_progress_is_terminal_but_limited() {
+    let (_temp, root, fixture) = fixture();
+    fixture.insert_manifest_file(1, "src/app", "External.kt", true);
+    insert_named_metadata(&fixture, 1, "External.kt", 2, "sample.external", None);
+    fixture.insert_project_evidence(1, "External.kt", ".", ":app", "main");
+    fixture.seed_progress("app", "DEGRADED", 1, 1);
+
+    let snapshot = snapshot(&root);
+
+    assert_eq!(snapshot.files().len(), 1);
+    assert!(!snapshot.stamp().is_exact());
+    assert_eq!(
+        snapshot.coverage().candidate_inventory(),
+        WorkspaceCoverageDimension::Complete
+    );
+    assert_eq!(
+        snapshot.limitation_count(WorkspaceInventoryLimitationCode::SourceIndexProgressIncomplete),
+        1
+    );
+}
+
+#[test]
 fn empty_progress_never_claims_an_exact_source_inventory() {
     let (_temp, root, fixture) = fixture();
     fixture.insert_manifest_file(1, "src/app", "Uninitialized.kt", true);

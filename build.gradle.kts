@@ -86,7 +86,8 @@ fun resolveCargoExecutable(): String {
     return "cargo"
 }
 
-val cliDevelopmentBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/kast")
+val cliCompiledBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/kast")
+val cliDevelopmentBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/_kastctl")
 val resolvedCargoExecutable = resolveCargoExecutable()
 val developmentIdeaPluginArchive: RegularFile = layout.projectDirectory.file(
     "backend-idea/build/distributions/backend-idea-${version}.zip",
@@ -94,7 +95,7 @@ val developmentIdeaPluginArchive: RegularFile = layout.projectDirectory.file(
 
 val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
     group = "build"
-    description = "Builds the repo-local Rust kast CLI in debug mode."
+    description = "Builds the repo-local Rust Kast multicall CLI in debug mode."
     environment("KAST_VERSION", project.version.toString())
     commandLine(
         resolvedCargoExecutable,
@@ -105,10 +106,20 @@ val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
     )
 }
 
+val stageDevelopmentControlCli: TaskProvider<Copy> by tasks.registering(Copy::class) {
+    dependsOn(buildDevelopmentCli)
+    from(cliCompiledBinary)
+    into(cliDevelopmentBinary.asFile.parentFile)
+    rename { "_kastctl" }
+    filePermissions {
+        unix("755")
+    }
+}
+
 tasks.register<Exec>("refreshDevelopmentMachine") {
     group = "distribution"
     description = "Replaces the active installation through the sole setup transaction."
-    dependsOn(buildDevelopmentCli, ":backend-idea:buildPlugin")
+    dependsOn(stageDevelopmentControlCli, ":backend-idea:buildPlugin")
     commandLine(
         cliDevelopmentBinary.asFile.absolutePath,
         "--output",

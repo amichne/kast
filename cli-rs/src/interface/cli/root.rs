@@ -1,6 +1,6 @@
 #[derive(Debug, Parser)]
 #[command(
-    name = "kast",
+    name = "_kastctl",
     version = version(),
     about = "Repo-local control plane for workspace daemons and Kotlin analysis requests.",
     disable_help_subcommand = true
@@ -55,7 +55,7 @@ pub enum Command {
     Rpc(RpcArgs),
     /// Developer and release-engineering commands.
     Developer(DeveloperArgs),
-    /// Backward-compatible alias for `ready`. Used by kast-action v2.
+    /// Backward-compatible alias for `ready`.
     #[command(hide = true)]
     Doctor(DoctorArgs),
     /// Agent setup, readiness, and pipe-friendly semantic requests.

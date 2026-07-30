@@ -38,14 +38,18 @@ impl WorkspaceIndexFixture {
         std::fs::create_dir_all(&source_root).expect("Kotlin source root");
         let mut connection = self.connection();
         let transaction = connection.transaction().expect("source seed transaction");
-        let semantic_graph_scope_fingerprint = semantic_graph_scope_fingerprint(
-            (0..count).map(|index| format!("src/main/kotlin/sample/Source{index:04}.kt")),
-        );
+        let content = b"package sample\n";
+        let content_hash = hex::encode(Sha256::digest(content));
+        let semantic_graph_scope_fingerprint =
+            semantic_graph_scope_fingerprint((0..count).map(|index| {
+                (
+                    format!("src/main/kotlin/sample/Source{index:04}.kt"),
+                    content_hash.clone(),
+                )
+            }));
         for index in 0..count {
             let filename = format!("Source{index:04}.kt");
-            let content = b"package sample\n";
             std::fs::write(source_root.join(&filename), content).expect("Kotlin source");
-            let content_hash = hex::encode(Sha256::digest(content));
             transaction
                 .execute(
                     "INSERT INTO file_manifest(
@@ -106,14 +110,16 @@ impl WorkspaceIndexFixture {
         let paths = {
             let mut statement = connection
                 .prepare(
-                    "SELECT path
+                    "SELECT path, content_hash
                      FROM semantic_files
                      WHERE refresh_status != 'CACHED'
                      ORDER BY path",
                 )
                 .expect("semantic scope query");
             statement
-                .query_map([], |row| row.get::<_, String>(0))
+                .query_map([], |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                })
                 .expect("semantic scope rows")
                 .collect::<rusqlite::Result<Vec<_>>>()
                 .expect("semantic scope paths")
@@ -212,8 +218,10 @@ impl WorkspaceIndexFixture {
             )
             .expect("manifest file");
         if let Some(content_hash) = content_hash {
-            let semantic_graph_scope_fingerprint =
-                semantic_graph_scope_fingerprint([format!("{dir_path}/{filename}")]);
+            let semantic_graph_scope_fingerprint = semantic_graph_scope_fingerprint([(
+                format!("{dir_path}/{filename}"),
+                content_hash.clone(),
+            )]);
             for (stage, version) in [
                 ("SOURCE", "source-1"),
                 ("RELATIONSHIPS", "relationships-1"),
@@ -329,11 +337,15 @@ impl WorkspaceIndexFixture {
 
 include!("workspace_files/schema.rs");
 
-fn semantic_graph_scope_fingerprint(paths: impl IntoIterator<Item = String>) -> String {
+fn semantic_graph_scope_fingerprint(inputs: impl IntoIterator<Item = (String, String)>) -> String {
+    let mut inputs = inputs.into_iter().collect::<Vec<_>>();
+    inputs.sort_by(|left, right| left.0.encode_utf16().cmp(right.0.encode_utf16()));
     let mut digest = Sha256::new();
-    for path in paths {
-        digest.update(b"selected:");
+    for (path, content_hash) in inputs {
+        digest.update(b"source:");
         digest.update(path.as_bytes());
+        digest.update(b":");
+        digest.update(content_hash.as_bytes());
         digest.update(b"\n");
     }
     hex::encode(digest.finalize())

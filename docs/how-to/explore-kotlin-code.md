@@ -16,29 +16,22 @@ files you need to read.
 
 ## Prepare the exact workspace
 
-Start Codex at the exact Gradle workspace root. On macOS, start or resume the
-IDEA backend:
+Start your coding agent at the exact Gradle workspace root, then start or resume its
+semantic runtime:
 
 ```console
-kast start \
-  --workspace-root "$PWD" \
-  --backend idea \
-  --accept-indexing
+kast up
 ```
 
-On Linux or a hosted agent, use `--backend headless` instead. Then inspect the
-selected runtime:
+Inspect the selected runtime and next action:
 
 ```console
-kast --output json status \
-  --workspace-root "$PWD" \
-  --backend idea
+kast
 ```
 
-Replace `idea` with `headless` on Linux. Continue when `selected.ready` is
-`true`. Kast does not silently attach a different checkout. For native graph
-queries, also require complete reported coverage or retain the returned
-limitation in the answer.
+Continue when `ready` is true. Kast does not silently attach a different
+checkout. For graph queries, also require complete reported coverage or retain
+the returned limitation in the answer.
 
 ## Ask for the declaration first
 
@@ -51,7 +44,7 @@ qualified name, signature, owner, and source location before explaining it.
 
 For overloaded or repeated names, add the package, containing type, parameter
 types, or file. If resolution remains ambiguous, choose from the candidates
-instead of asking Codex to guess.
+instead of asking the agent to guess.
 
 ## Navigate relationships from that identity
 
@@ -72,20 +65,21 @@ Other useful relationship questions include:
 Ask for source locations in the answer. A useful result identifies both ends
 of each relationship and the occurrence that connects them.
 
-## Use the repository demo when evaluating Kast
+## Query the same evidence directly
 
-For a guided, read-only view of semantic evidence in the current repository:
-
-```console
-kast demo
-```
-
-To open the story around a particular symbol query:
+Find the symbol and follow its exact identity:
 
 ```console
-kast demo --symbol IdeaIndexSemanticAdmission
+kast symbol find IdeaIndexSemanticAdmission
+kast symbol show <symbol>
 ```
 
-The demo reports when evidence is degraded or incomplete. Treat limited or
-resumable coverage as a boundary to investigate, not as proof that no other
-relationship exists.
+Then choose the relationship you need:
+
+```console
+kast symbol refs <symbol>
+kast symbol callers <symbol>
+```
+
+Treat limited or resumable coverage as a boundary to investigate, not as proof
+that no other relationship exists.

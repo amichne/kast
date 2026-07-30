@@ -55,6 +55,13 @@ include!("agent/core/input.rs");
 include!("agent/core/response.rs");
 include!("agent/core/symbol_lookup/mod.rs");
 
+pub(crate) fn normalize_public_file_paths(
+    runtime: &AgentRuntimeArgs,
+    file_paths: &[String],
+) -> std::result::Result<Vec<String>, AgentError> {
+    AgentFilePathNormalizer::from_runtime(runtime)?.normalize_all(file_paths)
+}
+
 #[cfg(test)]
 mod semantic_analysis_evidence_tests {
     use super::*;

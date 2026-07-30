@@ -47,6 +47,7 @@ done
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 
 python3 - "$release_dir" "$tag" "$repo_root" <<'PY'
+import filecmp
 import hashlib
 import json
 import os
@@ -176,11 +177,16 @@ for platform_id, asset_name in supported.items():
         if extraction.returncode != 0:
             detail = extraction.stderr.strip() or extraction.stdout.strip()
             fail(f"invalid CLI archive {asset_name}: {detail}")
-        entry = Path(output) / "kast"
-        if not entry.is_file():
+        control = Path(output) / "_kastctl"
+        agent = Path(output) / "kast"
+        if not control.is_file():
+            fail(f"CLI archive {asset_name} must contain regular _kastctl at its root")
+        if not agent.is_file():
             fail(f"CLI archive {asset_name} must contain regular kast at its root")
-        if not os.access(entry, os.X_OK):
-            fail(f"CLI archive {asset_name} must contain executable kast at its root")
+        if not os.access(control, os.X_OK) or not os.access(agent, os.X_OK):
+            fail(f"CLI archive {asset_name} entrypoints must be executable")
+        if not filecmp.cmp(control, agent, shallow=False):
+            fail(f"CLI archive {asset_name} entrypoints must be byte-identical")
 
 actual_sidecars = {path.name for path in release_dir.glob("*.sha256")}
 expected_sidecars = {}

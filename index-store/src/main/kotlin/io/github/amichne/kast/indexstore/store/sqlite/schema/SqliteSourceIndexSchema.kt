@@ -100,6 +100,9 @@ internal class SqliteSourceIndexSchema(
                 "stage_input_fingerprint" to false,
                 "outcome_status" to true,
                 "limitations_json" to true,
+                "failure_id" to false,
+                "failure_code" to false,
+                "failure_message" to false,
             ),
             "module_index_progress" to mapOf(
                 "relationship_index_status" to true,
@@ -110,6 +113,8 @@ internal class SqliteSourceIndexSchema(
                 "content_hash" to false,
                 "refresh_status" to true,
                 "diagnostics_json" to true,
+                "boundary_failure_id" to false,
+                "boundary_failure_code" to false,
             ),
             "semantic_types" to mapOf(
                 "id" to false,
@@ -167,10 +172,17 @@ internal class SqliteSourceIndexSchema(
                 check(!mustBeNonNull || actualNonNull) {
                     "Source index schema $SOURCE_INDEX_SCHEMA_VERSION requires $tableName.$columnName to be non-null"
                 }
-                if (tableName == "file_stage_outcomes" && columnName == "stage_input_fingerprint") {
+                if (tableName == "file_stage_outcomes" &&
+                    columnName in setOf(
+                        "stage_input_fingerprint",
+                        "failure_id",
+                        "failure_code",
+                        "failure_message",
+                    )
+                ) {
                     check(!actualNonNull) {
                         "Source index schema $SOURCE_INDEX_SCHEMA_VERSION requires " +
-                            "file_stage_outcomes.stage_input_fingerprint to be nullable"
+                            "file_stage_outcomes.$columnName to be nullable"
                     }
                 }
             }
@@ -241,29 +253,6 @@ internal class SqliteSourceIndexSchema(
             check(actual.containsAll(required)) {
                 "Source index schema $SOURCE_INDEX_SCHEMA_VERSION has invalid foreign keys for $tableName"
             }
-        }
-    }
-
-    private fun foreignKeySignatures(conn: Connection, tableName: String): Set<String> {
-        val columnsById = mutableMapOf<Int, MutableList<Triple<Int, String, String>>>()
-        val targetTableById = mutableMapOf<Int, String>()
-        val onDeleteById = mutableMapOf<Int, String>()
-        conn.createStatement().use { stmt ->
-            val rs = stmt.executeQuery("PRAGMA foreign_key_list('$tableName')")
-            while (rs.next()) {
-                val id = rs.getInt("id")
-                columnsById.getOrPut(id) { mutableListOf() }.add(
-                    Triple(rs.getInt("seq"), rs.getString("from"), rs.getString("to")),
-                )
-                targetTableById[id] = rs.getString("table")
-                onDeleteById[id] = rs.getString("on_delete")
-            }
-        }
-        return columnsById.mapTo(mutableSetOf()) { (id, columns) ->
-            val mappings = columns.sortedBy { (position, _, _) -> position }.joinToString(",") { (_, from, to) ->
-                "$from->$to"
-            }
-            "${targetTableById.getValue(id)}|${onDeleteById.getValue(id)}|$mappings"
         }
     }
 
@@ -369,6 +358,10 @@ internal class SqliteSourceIndexSchema(
         stmt.execute(
             "CREATE INDEX IF NOT EXISTS idx_file_stage_outcomes_stage " +
                 "ON file_stage_outcomes(stage, prefix_id, filename)",
+        )
+        stmt.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_file_stage_outcomes_failure_id " +
+                "ON file_stage_outcomes(failure_id) WHERE failure_id IS NOT NULL",
         )
         stmt.execute(
             "CREATE INDEX IF NOT EXISTS idx_semantic_files_package_status_id " +

@@ -201,11 +201,14 @@ fn interactive_demo_renders_in_a_real_pty_without_changing_sources() {
     seed_source_index(&workspace);
     let source = workspace.join("app/A.kt");
     let before = std::fs::read(&source).expect("source before demo");
+    let control_binary = temp.path().join("_kastctl");
+    std::os::unix::fs::symlink(env!("CARGO_BIN_EXE_kast"), &control_binary)
+        .expect("control binary symlink");
 
     let mut child = Command::new("script")
         .env("HOME", &home)
         .env("KAST_CONFIG_HOME", &config_home)
-        .env("KAST_TEST_BIN", env!("CARGO_BIN_EXE_kast"))
+        .env("KAST_TEST_BIN", &control_binary)
         .env("KAST_TEST_WORKSPACE", &workspace)
         .env("TERM", "xterm-256color")
         .args([

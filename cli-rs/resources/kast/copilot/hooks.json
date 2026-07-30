@@ -1,0 +1,13 @@
+{
+  "hooks": {
+    "sessionStart": [
+      {
+        "bash": "\"${HOME}/.local/bin/kast\"",
+        "powershell": "& \"$HOME\\.local\\bin\\kast\"",
+        "timeoutSec": 30,
+        "type": "command"
+      }
+    ]
+  },
+  "version": 1
+}

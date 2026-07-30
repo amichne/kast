@@ -14,6 +14,7 @@ import io.github.amichne.kast.indexstore.api.graph.SemanticGraphWriteResult
 import io.github.amichne.kast.indexstore.api.index.*
 import io.github.amichne.kast.indexstore.api.reference.*
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
+import io.github.amichne.kast.indexstore.api.stage.FileStageFailureUpdate
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageRemoval
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageUpdate
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
@@ -50,15 +51,16 @@ class SqliteSourceIndexStore private constructor(
     private val references = SourceIndexReferenceStore(state, fileMutations, files)
     private val declarationStore = SourceIndexDeclarationStore(state, fileMutations)
     private val fileStages = FileStageInventoryStore(state, fileMutations)
+    private val semanticGraphWriter = SemanticGraphWriter(state)
     private val fileStageBatches = FileStageBatchStore(
         state = state,
         mutations = fileMutations,
         references = references,
         declarations = declarationStore,
         stages = fileStages,
+        semanticGraph = semanticGraphWriter,
     )
     private val pendingUpdates = SourceIndexPendingUpdateStore(state, fileMutations, references)
-    private val semanticGraphWriter = SemanticGraphWriter(state)
     private val semanticGraphReader = SemanticGraphReader(state)
     private val snapshots = SourceIndexSnapshotStore(state)
 
@@ -107,7 +109,9 @@ class SqliteSourceIndexStore private constructor(
         limitPerRoot: Int? = null,
     ): Map<Path, List<Path>> = inventory.filesBySourceRoot(sourceRoots, limitPerRoot)
 
-    fun moduleIndexStatus(moduleName: String): String? = inventory.moduleIndexStatus(moduleName)
+    fun moduleIndexStatus(moduleName: String): RelationshipIndexStatus? = inventory.moduleIndexStatus(moduleName)
+
+    fun moduleIndexStatuses(): Map<String, RelationshipIndexStatus> = inventory.moduleIndexStatuses()
 
     fun completedModules(): Set<String> = inventory.completedModules()
 
@@ -137,8 +141,15 @@ class SqliteSourceIndexStore private constructor(
     fun commitSourceBatch(updates: List<SourceFileStageUpdate>) =
         fileStageBatches.commitSourceBatch(updates)
 
-    fun commitRelationshipBatch(updates: List<RelationshipFileStageUpdate>) =
-        fileStageBatches.commitRelationshipBatch(updates)
+    fun commitRelationshipBatch(
+        updates: List<RelationshipFileStageUpdate>,
+        failures: List<FileStageFailureUpdate> = emptyList(),
+    ) = fileStageBatches.commitRelationshipBatch(updates, failures)
+
+    fun externalizeFileStageFailure(
+        failureId: FileStageFailureId,
+    ): FileStageFailureExternalizationResult =
+        fileStageBatches.externalizeFileStageFailure(failureId)
 
     fun upsertSymbolReference(
         sourcePath: String,

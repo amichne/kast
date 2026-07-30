@@ -13,6 +13,7 @@ import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
+import io.github.amichne.kast.shared.analysis.PsiRelationshipScanResult
 import io.github.amichne.kast.shared.analysis.PsiSourceIndexScanner
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
@@ -147,6 +148,7 @@ class IdeaReferenceIndexEnvironmentTest {
         )
 
         val result = PsiReferenceScanner(environment).scanFileRelationships(unresolvedFile.virtualFile.path)
+            as PsiRelationshipScanResult.Indexed
 
         assertTrue(
             result.references.any { row ->

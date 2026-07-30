@@ -45,8 +45,10 @@ fn verify_idea_plugin_setup(
     release_digest: &str,
     manifest_digest: &str,
 ) -> Result<()> {
-    let active_cli = targets.current_link.join("bin/kast");
+    let active_cli = targets.current_link.join(CONTROL_CLI_BUNDLE_PATH);
+    let active_agent_cli = targets.current_link.join(AGENT_CLI_BUNDLE_PATH);
     require_executable(&active_cli, "installed Kast CLI")?;
+    require_executable(&active_agent_cli, "installed Kast agent CLI")?;
     let receipt_path = targets.current_link.join(manifest::INSTALL_MANIFEST_FILE);
     require_file(&receipt_path, "install receipt")?;
     let receipt = manifest_from_file(&receipt_path)?;
@@ -61,10 +63,12 @@ fn verify_idea_plugin_setup(
             "Installed Kast manifest does not match the setup source.",
         ));
     }
-    if manifest::sha256_file(&active_cli)? != cli_sha256 {
+    if manifest::sha256_file(&active_cli)? != cli_sha256
+        || manifest::sha256_file(&active_agent_cli)? != cli_sha256
+    {
         return Err(CliError::new(
             "SETUP_VERIFY_FAILED",
-            "Installed Kast CLI does not match the setup source.",
+            "Installed _kastctl and kast CLIs do not match the setup source.",
         ));
     }
     if directory_sha256(installed_plugin)? != plugin_digest {
@@ -99,6 +103,16 @@ fn idea_setup_result(
             SetupArtifact {
                 role: "cli".to_string(),
                 path: targets.resolved.active_binary.display().to_string(),
+                sha256: cli_sha256.to_string(),
+                verified: true,
+            },
+            SetupArtifact {
+                role: "agent-cli".to_string(),
+                path: targets
+                    .current_link
+                    .join(AGENT_CLI_BUNDLE_PATH)
+                    .display()
+                    .to_string(),
                 sha256: cli_sha256.to_string(),
                 verified: true,
             },

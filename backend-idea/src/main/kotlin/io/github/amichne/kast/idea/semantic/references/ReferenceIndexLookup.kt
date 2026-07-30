@@ -46,7 +46,8 @@ internal class DiagnosticsReferenceIndexLookup(
         offset: NonNegativeInt,
         maxResults: PositiveInt,
     ): IndexedReferenceLookupResult {
-        if (diagnostics.snapshot().indexSummary.state != KastIndexState.READY) {
+        val indexState = diagnostics.snapshot().indexSummary.state
+        if (indexState != KastIndexState.READY && indexState != KastIndexState.DEGRADED) {
             return IndexedReferenceLookupResult.NotReady
         }
         val generatedPage = store.generatedReferencePageToExactSymbol(target, offset, maxResults)

@@ -44,6 +44,8 @@ import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.contract.result.DiagnosticSeverityCounts
 import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.RefreshExternalFailureOutcome
+import io.github.amichne.kast.api.contract.result.RefreshRelationshipFailure
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.RenameResult
 import io.github.amichne.kast.api.contract.result.SymbolResult
@@ -60,6 +62,7 @@ import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.SearchMatch
 import io.github.amichne.kast.api.contract.result.SemanticGraphCoverage
 import io.github.amichne.kast.api.contract.result.SemanticGraphDiagnosticEvidence
+import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundary
 import io.github.amichne.kast.api.contract.result.SemanticGraphFileCoverage
 import io.github.amichne.kast.api.contract.result.SemanticGraphGeneration
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
@@ -194,6 +197,7 @@ class DocFieldCoverageTest {
         "SemanticGraphSymbol" to SemanticGraphSymbol.serializer(),
         "SemanticGraphRelation" to SemanticGraphRelation.serializer(),
         "SemanticGraphDiagnosticEvidence" to SemanticGraphDiagnosticEvidence.serializer(),
+        "SemanticGraphExternalBoundary" to SemanticGraphExternalBoundary.serializer(),
         "SemanticGraphFileCoverage" to SemanticGraphFileCoverage.serializer(),
         "SemanticGraphCoverage" to SemanticGraphCoverage.serializer(),
         "SemanticGraphResult" to SemanticGraphResult.serializer(),
@@ -232,6 +236,8 @@ class DocFieldCoverageTest {
         "ApplyEditsResult" to ApplyEditsResult.serializer(),
         "RefreshQuery" to RefreshQuery.serializer(),
         "RefreshResult" to RefreshResult.serializer(),
+        "RefreshExternalFailureOutcome" to RefreshExternalFailureOutcome.serializer(),
+        "RefreshRelationshipFailure" to RefreshRelationshipFailure.serializer(),
         "SemanticAdmissionStatus" to SemanticAdmissionStatus.serializer(),
 
         // FileOperation sealed hierarchy subtypes

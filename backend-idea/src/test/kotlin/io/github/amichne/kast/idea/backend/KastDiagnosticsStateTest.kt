@@ -89,6 +89,12 @@ class KastDiagnosticsStateTest {
         val ready = readyBackend.withReferenceIndex(
             KastSourceIndexSummary(state = KastIndexState.READY),
         )
+        val readyWithBoundaries = readyBackend.withReferenceIndex(
+            KastSourceIndexSummary(
+                state = KastIndexState.DEGRADED,
+                message = "1 external boundary",
+            ),
+        )
         val degraded = readyBackend.withReferenceIndex(
             KastSourceIndexSummary(
                 state = KastIndexState.FAILED,
@@ -100,8 +106,30 @@ class KastDiagnosticsStateTest {
         assertFalse(indexing.referenceIndexReady)
         assertEquals(RuntimeState.READY, ready.state)
         assertTrue(ready.referenceIndexReady)
+        assertEquals(RuntimeState.READY, readyWithBoundaries.state)
+        assertTrue(readyWithBoundaries.healthy)
+        assertTrue(readyWithBoundaries.referenceIndexReady)
         assertEquals(RuntimeState.DEGRADED, degraded.state)
         assertFalse(degraded.healthy)
+    }
+
+    @Test
+    fun `completed degraded index state remains degraded and queryable`() {
+        val state = KastDiagnosticsState(
+            now = { Instant.parse("2026-06-17T12:00:00Z") },
+        )
+        state.recordBackendStarted(AnalysisTransport.Tcp("127.0.0.1", 4123))
+        state.recordIndexingStarted()
+
+        state.recordIndexCompleted(
+            KastSourceIndexSummary(
+                state = KastIndexState.DEGRADED,
+                message = "1 external boundary",
+            ),
+        )
+
+        assertEquals(KastBackendUiState.DEGRADED, state.snapshot().backendState)
+        assertEquals(KastIndexState.DEGRADED, state.snapshot().indexSummary.state)
     }
 
     @Test

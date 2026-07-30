@@ -96,15 +96,15 @@ fn setup_user_command_tracks_manifest_active_binary() {
     let kast_home = home.join(".local/share/kast");
     let source = write_install_bundle_source(temp.path(), "v9.8.7");
     let manifest_path = source.join("manifest.json");
-    let active_binary = source.join("commands/kast");
+    let active_binary = source.join("commands/_kastctl");
     std::fs::create_dir_all(active_binary.parent().expect("active binary parent"))
         .expect("active binary directory");
-    std::fs::rename(source.join("bin/kast"), &active_binary).expect("custom active binary");
+    std::fs::rename(source.join("bin/_kastctl"), &active_binary).expect("custom active binary");
     let mut manifest: serde_json::Value =
         serde_json::from_slice(&std::fs::read(&manifest_path).expect("bundle manifest"))
             .expect("manifest JSON");
-    manifest["activation"]["cli"]["path"] = serde_json::json!("commands/kast");
-    manifest["artifacts"][0]["path"] = serde_json::json!("commands/kast");
+    manifest["activation"]["cli"]["path"] = serde_json::json!("commands/_kastctl");
+    manifest["artifacts"][0]["path"] = serde_json::json!("commands/_kastctl");
     std::fs::write(
         &manifest_path,
         serde_json::to_vec_pretty(&manifest).expect("manifest JSON"),
@@ -120,8 +120,12 @@ fn setup_user_command_tracks_manifest_active_binary() {
         String::from_utf8_lossy(&output.stderr),
     );
     assert_eq!(
-        std::fs::read_link(home.join(".local/bin/kast")).expect("user command"),
-        kast_home.join("current/commands/kast"),
+        std::fs::read_link(home.join(".local/bin/_kastctl")).expect("control user command"),
+        kast_home.join("current/commands/_kastctl"),
+    );
+    assert_eq!(
+        std::fs::read_link(home.join(".local/bin/kast")).expect("agent user command"),
+        kast_home.join("current/bin/kast"),
     );
 }
 

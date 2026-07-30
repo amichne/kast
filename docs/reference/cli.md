@@ -1,86 +1,75 @@
 ---
 type: Reference
 title: CLI Reference
-description: Public Kast command families, shared options, and intended audiences.
-tags: [cli, reference, commands, output]
+description: The public Kast command surface for coding agents.
+tags: [cli, reference, commands, agents]
 code_sources:
-  - path: cli-rs/src/interface/cli/root.rs
+  - path: cli-rs/src/interface/cli/agent/agent_surface.rs
+  - path: cli-rs/src/agent/adapter/mod.rs
   - path: cli-rs/src/main.rs
-  - path: cli-rs/protocol/source/commands.json
 ---
 
 # CLI Reference
 
-`kast` is the installed control plane for setup, workspace readiness, guided
-inspection, and agent-facing semantic operations.
+`kast` is the only public interface. It discovers the nearest Gradle workspace
+from the current directory and emits compact TOON without output-format or
+schema controls.
 
-## Command families
+Run `kast` with no command to inspect the selected root, runtime readiness,
+reference-index readiness, limitations, and suggested next commands.
 
-| Command | Purpose | Primary audience |
-| --- | --- | --- |
-| `kast help [topic...]` | Browse the command tree and scoped help. | Everyone |
-| `kast version` | Print the packaged CLI version. | Everyone |
-| `kast context` | Print compact context for the current workspace. | Agents and diagnostics |
-| `kast config` | Inspect or update workspace-scoped configuration. | Users and diagnostics |
-| `kast setup` | Install or refresh one verified release from a bundle. | Installer and release tooling |
-| `kast ready` | Verify readiness for an agent, Kotlin, release, or machine task. | Users and agents |
-| `kast start` | Start or resume the workspace backend and indexing. | Users and agents |
-| `kast status` | Report current workspace runtime status. | Users and diagnostics |
-| `kast stop` | Stop indexing and the workspace backend. | Users and agents |
-| `kast demo` | Explore a guided semantic story in a Kotlin repository. | Evaluators and developers |
-| `kast rpc` | Send one JSON-RPC request through the canonical machine surface. | Integrations and diagnostics |
-| `kast agent` | Run typed, pipe-friendly semantic operations. | Codex and other agent tooling |
-| `kast developer` | Run development and release-engineering commands. | Kast contributors |
+## Commands
 
-Use scoped help as the option authority:
-
-```console
-kast help setup
-kast ready --help
-kast demo --help
-```
-
-## Shared workspace options
-
-Commands that operate on a workspace can accept:
-
-| Option | Meaning |
+| Command | Result |
 | --- | --- |
-| `--workspace-root <path>` | Absolute root whose runtime and compiler evidence are requested. |
-| `--backend idea\|headless` | Select a backend instead of automatic routing. |
+| `kast up` | Start or reuse the exact-root semantic runtime and wait for usable compiler evidence. |
+| `kast refresh [PATH...]` | Refresh changed or selected Kotlin files, reference evidence, and their persisted graph facts. |
+| `kast refresh external <FAILURE_ID>...` | Accept eligible file-local indexing failures as explicit external `UNKNOWN` graph boundaries. |
+| `kast files [PATTERN]` | List Kotlin source and script files. |
+| `kast symbol find <QUERY>` | Find compiler-backed symbol identities. |
+| `kast symbol show <SYMBOL>` | Show one symbol. |
+| `kast symbol refs <SYMBOL>` | Find references. |
+| `kast symbol callers <SYMBOL>` | Find incoming callers. |
+| `kast symbol callees <SYMBOL>` | Find outgoing callees. |
+| `kast symbol implementations <SYMBOL>` | Find implementations. |
+| `kast symbol supertypes <SYMBOL>` | Traverse supertypes. |
+| `kast symbol subtypes <SYMBOL>` | Traverse subtypes. |
+| `kast graph [summary]` | Report persisted graph generation and cardinality. |
+| `kast graph nodes` | Enumerate generation-pinned graph nodes. |
+| `kast graph neighbors <SYMBOL>` | Report adjacent nodes. |
+| `kast graph topology` | Report topology statistics. |
+| `kast graph communities` | Report deterministic graph communities. |
+| `kast graph impact <SYMBOL>` | Report bounded source impact. |
+| `kast check [PATH...]` | Refresh and report compiler diagnostics for changed or selected files. |
+| `kast change rename <SYMBOL> <NEW_NAME>` | Validate a compiler-resolved rename. |
+| `kast change add-file <PATH>` | Validate a Kotlin file whose content comes from standard input. |
+| `kast change add-declaration <PATH>` | Validate a declaration appended to one file; content comes from standard input. |
+| `kast change add-implementation <SCOPE>` | Validate implementation content appended to one named scope from standard input. |
+| `kast change add-statement <SCOPE>` | Validate a statement appended to one named executable scope from standard input. |
+| `kast change replace <SYMBOL>` | Validate replacement content from standard input. |
+| `kast apply <PLAN_ID>` | Apply the validated plan with retry-safe authority. |
 
-Some agent operations also accept an opaque exact-root lease. Leases are
-backend-bound capabilities; they are not portable workspace identifiers.
+Use `kast <command> --help` for the small operation-specific grammar.
 
-## Output modes
+When `files`, a symbol relationship, `graph nodes`, or `graph impact` returns
+`nextPage`, repeat the same command with `--page <nextPage>`. The continuation
+binds its workspace and query without exposing backend paging controls.
 
-Commands with `--output` expose these values:
+## Boundary semantics
 
-| Value | Contract |
-| --- | --- |
-| `human` | Readable terminal output. |
-| `toon` | Compact typed output used by current agent workflows. |
-| `json` | Deprecated compatibility projection for existing consumers. |
+Diagnostics do not block reference indexing. An eligible file-local failure is
+reported with a content-bound identifier. Externalizing that identifier keeps
+the failure visible, removes unsupported outgoing facts, and records the file
+as an `UNKNOWN` graph boundary. Cancellation, storage corruption, protocol
+failure, and workspace failure remain terminal.
 
-The default depends on the command surface. Do not parse human output as a
-stable machine protocol.
+An empty result is not evidence of completeness. Read the returned coverage,
+limitations, and next action.
 
-## Setup
+## Internal control plane
 
-`kast setup` accepts a complete extracted bundle or bundle archive through
-`--source`. The public installer selects that source and invokes setup. There
-are no separate public update, repair, or uninstall command families.
-
-## Readiness targets
-
-`kast ready --for <target>` accepts `agent`, `kotlin`, `release`, or `machine`.
-The default is `agent`. These targets validate task and installation
-prerequisites; they do not prove persisted graph completeness. Use
-`kast --output json status --workspace-root <path> --backend <name>` to inspect
-`selected.ready` and its typed runtime limitations.
-
-Runtime status does not report graph coverage.
-`kast agent graph --operation summary` reports the retained generation and
-graph cardinality, while repository and relationship operations carry
-scope-specific coverage. Use `--fields coverage` or `--explain` on the relevant
-operation before making a completeness claim.
+The installed `_kastctl` multicall entrypoint retains setup, developer,
+release, raw RPC, and legacy command families for Kast-owned automation. It is
+not an agent interface and is intentionally omitted from installed skills.
+Maintainer documentation names `_kastctl` explicitly when one of those
+operations is required.

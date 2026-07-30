@@ -2,7 +2,7 @@
   "$schema": "./workflow-graph-model.schema.json",
   "schemaVersion": 3,
   "provenance": {
-    "description": "The baseline records five comparable successful pull-request runs of the current CI graph. The candidate splits the consumed IDEA plugin artifact from independent tests, removes unused kast-action setup, and derives provisional task durations from the baseline job step timestamps.",
+    "description": "The normalized baseline records five comparable successful pull-request runs after the accepted installation-authority scope contraction. The candidate splits the consumed IDEA plugin artifact from independent tests and derives provisional task durations from the baseline job step timestamps.",
     "observedAt": "2026-07-27",
     "source": "https://github.com/amichne/kast/actions/workflows/ci.yml",
     "baselineRunIds": [
@@ -170,13 +170,6 @@
         "outputs": ["ubuntu-24.04-java-21-install-contract"],
         "durationSamplesSeconds": [52, 34, 48, 38, 41],
         "executionClass": "oci"
-      },
-      {
-        "id": "kast-action",
-        "needs": ["prepared-generation", "prepared-ubuntu-debian-bundle"],
-        "outputs": ["kast-action-v2-installed-runtime-contract"],
-        "durationSamplesSeconds": [237, 226, 213, 225, 225],
-        "executionClass": "artifact-consumer"
       }
     ],
     "canaryTaskIds": [],
@@ -347,13 +340,6 @@
         "outputs": ["ubuntu-24.04-java-21-install-contract"],
         "durationSamplesSeconds": [52, 34, 48, 38, 41],
         "executionClass": "oci"
-      },
-      {
-        "id": "kast-action",
-        "needs": ["prepared-generation", "prepared-ubuntu-debian-bundle"],
-        "outputs": ["kast-action-v2-installed-runtime-contract"],
-        "durationSamplesSeconds": [217, 143, 186, 158, 153],
-        "executionClass": "artifact-consumer"
       }
     ],
     "canaryTaskIds": [],

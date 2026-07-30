@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.Project
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
@@ -61,6 +62,25 @@ class IdeaProjectIndexerCancellationTest {
             databaseName = "cancelled-during.db",
             cancelled = { cancellationChecks++ > 0 },
         )
+    }
+
+    @Test
+    fun `focused relationship refresh keeps cancellation terminal`() {
+        val project = projectFixture.get()
+        val firstFile = firstFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = Path.of(firstFile.virtualFile.path).parent.toAbsolutePath().normalize()
+
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            assertThrows(ProcessCanceledException::class.java) {
+                IdeaProjectIndexer(
+                    project = project,
+                    workspaceRoot = workspaceRoot,
+                    store = store,
+                    cancelled = { true },
+                ).refreshSymbolRelationships(listOf(firstFile.virtualFile.path))
+            }
+        }
     }
 
     @Test

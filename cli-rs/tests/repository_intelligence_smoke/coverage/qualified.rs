@@ -40,10 +40,12 @@ fn repository_incomplete_coverage_returns_qualified_positive_answer() {
     fixture
         .connection()
         .execute(
-            "UPDATE file_manifest SET content_hash = ? WHERE filename = 'Source0001.kt'",
-            params!["e".repeat(64)],
+            "UPDATE file_stage_outcomes
+             SET stage_version = 'semantic-graph-old'
+             WHERE stage = 'SEMANTIC_GRAPH' AND filename = 'Source0001.kt'",
+            [],
         )
-        .expect("advance unrelated persisted source hash");
+        .expect("stale unrelated semantic graph version");
 
     let (status, response) = rpc(
         &home,
@@ -191,4 +193,41 @@ fn limited_semantic_outcome_cannot_produce_exact_empty() {
 
     assert!(status.success(), "{response:#}");
     assert_eq!(response["result"]["status"], "QUALIFIED_EMPTY", "{response:#}");
+}
+
+#[test]
+fn external_relationship_boundary_is_qualified_instead_of_pending() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    let failure_id = uuid::Uuid::new_v4().hyphenated().to_string();
+    fixture
+        .connection()
+        .execute_batch(&format!(
+            "DELETE FROM file_stage_outcomes
+             WHERE stage = 'SEMANTIC_GRAPH' AND filename = 'Source0000.kt';
+             UPDATE file_stage_outcomes
+             SET outcome_status = 'EXTERNAL_BOUNDARY',
+                 limitations_json = '[]',
+                 failure_id = '{failure_id}',
+                 failure_code = 'PSI_UNAVAILABLE',
+                 failure_message = 'PSI is unavailable'
+             WHERE stage = 'RELATIONSHIPS' AND filename = 'Source0000.kt';"
+        ))
+        .expect("external relationship boundary");
+
+    let (status, response) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        graph_coverage_page_request("external-boundary", None, 100),
+    );
+
+    assert!(status.success(), "{response:#}");
+    assert_eq!(response["result"]["coverage"]["pending"], 0, "{response:#}");
+    assert_eq!(response["result"]["coverage"]["limited"], 1, "{response:#}");
+    assert_eq!(response["result"]["files"][0]["state"], "LIMITED", "{response:#}");
+    assert_eq!(
+        response["result"]["files"][0]["reasonCode"],
+        "SEMANTIC_GRAPH_EXTERNAL_BOUNDARY",
+        "{response:#}"
+    );
 }

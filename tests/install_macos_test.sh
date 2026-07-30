@@ -15,16 +15,30 @@ cleanup() {
 trap cleanup EXIT
 
 mkdir -p "$scratch/bin" "$scratch/home"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'if [ "${1:-}" = "__internal" ]; then printf "%s\n" "$*" > "$KAST_TEST_RESOURCE_ARGS"; exit 0; fi' \
+  'printf "%s\n" "$*" > "$KAST_TEST_SETUP_ARGS"' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --config-defaults) cp "$2" "$KAST_TEST_CONFIG_DEFAULTS"; shift 2 ;; *) shift ;; esac; done' \
+  'if [ "${KAST_TEST_IDEA_RUNNING:-0}" = 1 ] && [ "${KAST_TEST_PLUGIN_CURRENT:-0}" != 1 ] && [ ! -f "$KAST_TEST_IDEA_CLOSED" ]; then printf "%s\n" "code: IDE_RESTART_REQUIRED" >&2; exit 1; fi' \
+  'install_root="${KAST_HOME:-$HOME/.local/share/kast}/current/bin"' \
+  'user_bin="$HOME/.local/bin"' \
+  'mkdir -p "$install_root" "$user_bin"' \
+  'cp "$0" "$install_root/_kastctl"; cp "$0" "$install_root/kast"' \
+  'cp "$0" "$user_bin/_kastctl"; cp "$0" "$user_bin/kast"' \
+  'chmod 755 "$install_root/_kastctl" "$install_root/kast" "$user_bin/_kastctl" "$user_bin/kast"' \
+  'printf "%s\n" "type: KAST_SETUP" "status: CURRENT"' \
+  >"$scratch/fake-kast"
 printf '%s\n' '#!/bin/sh' 'if [ "$1" = "-s" ]; then printf "%s\\n" "${KAST_TEST_OS:-Darwin}"; else printf "%s\\n" "${KAST_TEST_ARCH:-arm64}"; fi' > "$scratch/bin/uname"
 printf '%s\n' '#!/bin/sh' 'output=""' 'url=""' 'while [ "$#" -gt 0 ]; do case "$1" in --output) output="$2"; shift 2 ;; *) url="$1"; shift ;; esac; done' 'printf "%s\\n" "$url" >> "$KAST_TEST_CURL_LOG"' ': > "$output"' > "$scratch/bin/curl"
-printf '%s\n' '#!/bin/sh' 'destination=""' 'while [ "$#" -gt 0 ]; do case "$1" in -d) destination="$2"; shift 2 ;; *) shift ;; esac; done' 'mkdir -p "$destination"' 'printf "%s\n" "#!/bin/sh" "printf \"%s\\n\" \"\$*\" > \"\$KAST_TEST_SETUP_ARGS\"" "while [ \"\$#\" -gt 0 ]; do case \"\$1\" in --config-defaults) cp \"\$2\" \"\$KAST_TEST_CONFIG_DEFAULTS\"; shift 2 ;; *) shift ;; esac; done" "if [ \"\${KAST_TEST_IDEA_RUNNING:-0}\" = 1 ] && [ \"\${KAST_TEST_PLUGIN_CURRENT:-0}\" != 1 ] && [ ! -f \"\$KAST_TEST_IDEA_CLOSED\" ]; then printf \"%s\\n\" \"code: IDE_RESTART_REQUIRED\" >&2; exit 1; fi" "printf \"%s\\n\" \"type: KAST_SETUP\" \"status: CURRENT\"" > "$destination/kast"' 'chmod 755 "$destination/kast"' > "$scratch/bin/unzip"
-printf '%s\n' '#!/bin/sh' 'destination=""' 'while [ "$#" -gt 0 ]; do case "$1" in -C) destination="$2"; shift 2 ;; *) shift ;; esac; done' 'mkdir -p "$destination/bundle/bin"' 'printf "%s\n" "#!/bin/sh" "printf \"%s\\n\" \"\$*\" > \"\$KAST_TEST_SETUP_ARGS\"" > "$destination/bundle/bin/kast"' 'chmod 755 "$destination/bundle/bin/kast"' > "$scratch/bin/tar"
+printf '%s\n' '#!/bin/sh' 'destination=""' 'while [ "$#" -gt 0 ]; do case "$1" in -d) destination="$2"; shift 2 ;; *) shift ;; esac; done' 'mkdir -p "$destination"' 'cp "$KAST_TEST_FAKE_CLI" "$destination/_kastctl"' 'cp "$KAST_TEST_FAKE_CLI" "$destination/kast"' 'chmod 755 "$destination/_kastctl" "$destination/kast"' > "$scratch/bin/unzip"
+printf '%s\n' '#!/bin/sh' 'destination=""' 'while [ "$#" -gt 0 ]; do case "$1" in -C) destination="$2"; shift 2 ;; *) shift ;; esac; done' 'mkdir -p "$destination/bundle/bin"' 'cp "$KAST_TEST_FAKE_CLI" "$destination/bundle/bin/_kastctl"' 'cp "$KAST_TEST_FAKE_CLI" "$destination/bundle/bin/kast"' 'chmod 755 "$destination/bundle/bin/_kastctl" "$destination/bundle/bin/kast"' > "$scratch/bin/tar"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_CODEX_LOG"' > "$scratch/bin/codex"
 printf '%s\n' '#!/bin/sh' 'if [ "${KAST_TEST_IDEA_RUNNING:-0}" = 1 ] && [ ! -f "$KAST_TEST_IDEA_CLOSED" ]; then printf "%s\n" "4312 /Applications/IntelliJ IDEA.app/Contents/MacOS/idea"; else printf "%s\n" "4311 /bin/bash"; fi' > "$scratch/bin/ps"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_KILL_LOG"' ': > "$KAST_TEST_IDEA_CLOSED"' > "$scratch/bin/kill"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_OPEN_LOG"' > "$scratch/bin/open"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_BREW_LOG"' > "$scratch/bin/brew"
-chmod 755 "$scratch/bin/uname" "$scratch/bin/curl" "$scratch/bin/unzip" "$scratch/bin/tar" "$scratch/bin/codex" "$scratch/bin/ps" "$scratch/bin/kill" "$scratch/bin/open" "$scratch/bin/brew"
+chmod 755 "$scratch/fake-kast" "$scratch/bin/uname" "$scratch/bin/curl" "$scratch/bin/unzip" "$scratch/bin/tar" "$scratch/bin/codex" "$scratch/bin/ps" "$scratch/bin/kill" "$scratch/bin/open" "$scratch/bin/brew"
 
 export PATH="$scratch/bin:$PATH"
 export HOME="$scratch/home"
@@ -32,6 +46,8 @@ export KAST_RELEASES_URL="https://releases.test"
 export KAST_TEST_CURL_LOG="$scratch/curl.log"
 export KAST_TEST_SETUP_ARGS="$scratch/setup.args"
 export KAST_TEST_CODEX_LOG="$scratch/codex.log"
+export KAST_TEST_RESOURCE_ARGS="$scratch/resources.args"
+export KAST_TEST_FAKE_CLI="$scratch/fake-kast"
 export KAST_TEST_CONFIG_DEFAULTS="$scratch/config.toml"
 export KAST_TEST_IDEA_CLOSED="$scratch/idea.closed"
 export KAST_TEST_KILL_LOG="$scratch/kill.log"
@@ -47,8 +63,7 @@ bash "$repo_root/install.sh" --version v1.2.3 >"$scratch/stdout" 2>"$scratch/std
 grep -Fqx 'https://releases.test/download/v1.2.3/kast-v1.2.3-macos-arm64.zip' "$scratch/curl.log"
 grep -Fqx 'https://releases.test/download/v1.2.3/kast-idea-v1.2.3.zip' "$scratch/curl.log"
 grep -Eq '^setup --idea-plugin .*/kast-idea-v1\.2\.3\.zip$' "$scratch/setup.args"
-grep -Fqx 'plugin marketplace add amichne/kast-marketplace --ref main --json' "$scratch/codex.log"
-grep -Fqx 'plugin add kast@kast --json' "$scratch/codex.log"
+grep -Fq '__internal resources install --harness codex' "$scratch/resources.args"
 grep -Fq $'\033[1;36m◆ KAST INSTALLER\033[0m' "$scratch/stderr"
 grep -Fq $'\033[36m◆\033[0m Downloading Kast CLI' "$scratch/stderr"
 grep -Fq $'\033[32m✓\033[0m Kast is ready' "$scratch/stderr"

@@ -29,22 +29,35 @@ reject() {
 
 require "$ci" '.github/scripts/install/test-setup-contract.sh' 'CI must execute the sole setup transaction contract'
 require "$ci" '--plugin-archive "$plugin_asset"' 'CI setup bundles must include the verified IDEA plugin'
-require "$ci" 'scripts/verify-setup-bundle.sh' 'hosted-agent CI must enter through kast setup'
-require "$build" '"setup",' 'local development refresh must invoke kast setup'
+require "$ci" 'scripts/verify-setup-bundle.sh' 'CI bundle validation must enter through _kastctl setup'
+require "$build" '"setup",' 'local development refresh must invoke _kastctl setup'
 require "$build" '"--idea-plugin",' 'local development refresh must pass the IDEA plugin'
 
 require "$release" 'for platform in linux-x64 linux-arm64 macos-x64 macos-arm64' 'release must package every supported setup platform'
+require "$ci" 'cp cli-rs/target/release/kast cli-rs/target/package/kast-v0.0.0-ci-linux-x64/_kastctl' 'CI raw CLI asset must include the administrative entrypoint'
+require "$ci" 'cmp -s cli-rs/target/package/kast-v0.0.0-ci-linux-x64/_kastctl cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kast' 'CI must prove its multicall entrypoints are byte-identical'
+require "$release" 'cp "cli-rs/target/${{ matrix.target }}/release/kast" "$staging_dir/_kastctl"' 'raw CLI assets must include the administrative entrypoint'
+require "$release" 'cmp -s "$staging_dir/_kastctl" "$staging_dir/kast"' 'release must prove its multicall entrypoints are byte-identical'
+require "$release" 'zip -9 -q "$GITHUB_WORKSPACE/dist/${asset_name}" _kastctl kast' 'raw CLI archives must publish only the two multicall names'
+require "$release" '.github/scripts/release/agent-resource-assets.py build' 'release must build agent resources with the deterministic packager'
+require "$release" '--source cli-rs/resources/kast' 'release resources must come from the embedded source'
+require "$release" 'kast-codex-${tag}.tar' 'release must publish the embedded Codex marketplace'
+require "$release" 'kast-claude-${tag}.tar' 'release must publish the embedded Claude marketplace'
+require "$release" 'kast-copilot-${tag}.tar' 'release must publish the embedded Copilot marketplace'
+require "$release" 'kast-agent-resources-provenance.json' 'release must publish embedded resource provenance'
+require "$release" 'agent-resource-assets.py verify' 'release must verify resources before publication'
+reject "$release" 'kagent' 'release workflow must not publish the retired kagent name'
 for platform in linux-x64 linux-arm64 macos-x64 macos-arm64; do
   require "$verify_assets" "kast-$platform-{tag}.tar.gz" "release verifier must require $platform setup bundle"
 done
 require "$release" '--plugin-archive "$work/kast-idea-${tag}.zip"' 'release bundles must include the release-matched IDEA plugin'
-require "$release" 'scripts/verify-setup-bundle.sh' 'release validation must enter through kast setup'
+require "$release" 'scripts/verify-setup-bundle.sh' 'release validation must enter through _kastctl setup'
 require "$release" './scripts/ci-gradle-retry.sh ./gradlew \' 'headless release must invoke Gradle directly through the CI retry helper'
 require "$release" 'stageHeadlessDist \' 'headless release must stage the portable distribution'
 require "$release" ':backend-headless:verifyHeadlessPortableDistLayout \' 'headless release must verify the portable distribution layout'
 require "$release" 'buildHeadlessPortableZip \' 'headless release must build the portable zip'
 require "$release" 'cp "${headless_zips[0]}" dist/headless.zip' 'headless release must publish the artifact consumed by later jobs'
-require "$verify_state" 'verify-setup-bundle.sh' 'published release verification must enter through kast setup'
+require "$verify_state" 'verify-setup-bundle.sh' 'published release verification must enter through _kastctl setup'
 require "$verify_setup" '"status"[[:space:]]*:[[:space:]]*"ACTIVATED"' 'setup verification must accept pretty-printed activation JSON'
 require "$verify_setup" '"status"[[:space:]]*:[[:space:]]*"CURRENT"' 'setup verification must accept pretty-printed current JSON'
 reject "$release" './kast.sh' 'release workflow still depends on the deleted build wrapper'
@@ -77,7 +90,7 @@ grep -Fq "vars.CI_AUX_IDEA_PERFORMANCE == 'optional'" <<<"$publish_release" \
   || { printf '%s\n' 'error: release publication must recognize the lean profile' >&2; exit 1; }
 grep -Fq "needs.real-repository-indexing.result == 'skipped'" <<<"$publish_release" \
   || { printf '%s\n' 'error: publication must accept an intentionally skipped performance gate' >&2; exit 1; }
-for artifact_job in build-cli build-idea-plugin build-headless-backend; do
+for artifact_job in build-cli build-agent-resources build-idea-plugin build-headless-backend; do
   grep -Fq -- "- $artifact_job" <<<"$publish_release" \
     || { printf 'error: %s release artifacts must remain mandatory\n' "$artifact_job" >&2; exit 1; }
 done

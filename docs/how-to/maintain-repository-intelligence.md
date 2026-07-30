@@ -45,7 +45,7 @@ git worktree list --porcelain
 On macOS, admit the current root through the supported IDEA pathway:
 
 ```console
-kast developer runtime up \
+_kastctl developer runtime up \
   --workspace-root "$PWD" \
   --backend idea \
   --accept-indexing
@@ -223,7 +223,7 @@ Use the complete validated view when diagnosing coverage or certainty. Compact
 and count views intentionally omit details:
 
 ```console
-kast --output json agent repository \
+_kastctl --output json agent repository \
   --workspace-root "$PWD" \
   --question "Resolve SemanticGraphSha256.parse exactly." \
   --intent resolve \
@@ -239,10 +239,9 @@ Inspect these fields together:
 - `bounds`, `ordering`, and both continuation fields
 - selected canonical identities and their occurrence evidence
 
-Use the [Codex plugin reference](../reference/codex-plugin.md) to check exact
-result bounds and status meanings. The
+Use the
 [certainty explanation](../explanation/repository-intelligence.md#certainty-is-a-result-property)
-shows how coverage and truncation constrain an answer.
+to check how coverage and truncation constrain an internal result.
 
 ## Diagnose by failed authority
 
@@ -276,7 +275,7 @@ Recovery must reestablish each authority in order. First bring up the exact
 workspace runtime:
 
 ```console
-kast developer runtime up \
+_kastctl developer runtime up \
   --workspace-root "$PWD" \
   --backend idea \
   --accept-indexing
@@ -285,7 +284,7 @@ kast developer runtime up \
 Then inspect runtime and graph state:
 
 ```console
-kast --output json status \
+_kastctl --output json status \
   --workspace-root "$PWD" \
   --backend idea
 ```
@@ -296,7 +295,7 @@ choose targeted refreshes. Refresh the affected Kotlin file through the
 compiler-backed graph operation:
 
 ```console
-kast agent graph \
+_kastctl agent graph \
   --workspace-root "$PWD" \
   --operation refresh \
   --file-path path/to/AffectedFile.kt

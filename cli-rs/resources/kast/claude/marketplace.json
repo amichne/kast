@@ -1,0 +1,15 @@
+{
+  "description": "Compiler-backed Kotlin and Gradle semantics for coding agents.",
+  "name": "kast",
+  "owner": {
+    "name": "Kast"
+  },
+  "plugins": [
+    {
+      "category": "development",
+      "description": "Compiler-backed Kotlin and Gradle semantics for coding agents.",
+      "name": "kast",
+      "source": "./plugins/kast"
+    }
+  ]
+}

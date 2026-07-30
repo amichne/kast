@@ -2,8 +2,8 @@
 
 # Kast
 
-Kast gives Codex compiler-backed Kotlin and Gradle evidence through IntelliJ
-IDEA, Android Studio, or the packaged headless backend. It resolves exact
+Kast gives coding agents compiler-backed Kotlin and Gradle evidence through
+IntelliJ IDEA, Android Studio, or the packaged headless backend. It resolves exact
 symbols, navigates relationships, plans semantic edits, and keeps evidence
 limits visible.
 
@@ -17,11 +17,24 @@ complete headless release:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The bootstrap delegates to `kast setup`. A successful invocation activates the
-platform release and receipt under `KAST_HOME` (default
-`~/.local/share/kast`). A failed invocation leaves the prior active release usable.
-When Codex is installed, the bootstrap independently fast-forwards the public
-`amichne/kast-marketplace` and installs `kast@kast`.
+The bootstrap delegates administrative setup to `_kastctl`, activates the
+release under `KAST_HOME` (default `~/.local/share/kast`), and installs the
+release-matched Kast resources for each detected Codex, Claude, or Copilot
+harness. A failed invocation leaves the prior active release usable.
+
+After installation, `kast` is the agent interface:
+
+```console
+kast
+kast up
+kast refresh
+kast symbol find <query>
+kast graph summary
+```
+
+Pass `--harness codex`, `--harness claude`, or `--harness copilot` to select
+harnesses explicitly. Repeat the option for more than one, or pass
+`--harness none` to skip agent resources.
 
 For a local bundle:
 

@@ -74,10 +74,9 @@ not proof that no relationship exists.
 ## The native graph preserves compiler provenance
 
 The active backend writes compiler-derived symbols and relations into the
-workspace source index selected by the CLI. `kast agent graph` reads that
-database directly and exposes generation-pinned symbol pages, neighbors,
-topology, communities, and summaries at symbol, file, package, or module
-scope.
+workspace source index selected by the CLI. `kast graph` reads that database
+directly and exposes generation-pinned nodes, symbol neighborhoods, topology,
+communities, impact, and workspace summaries.
 
 Every query verifies the source-index schema and generation. Worktree overlays
 retain their base-database identity, and a generation change during a graph

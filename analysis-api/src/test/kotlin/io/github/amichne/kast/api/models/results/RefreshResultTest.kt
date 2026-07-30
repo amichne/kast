@@ -7,8 +7,13 @@ import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
 import io.github.amichne.kast.api.contract.result.FileSystemDiscoveryState
 import io.github.amichne.kast.api.contract.result.IndexAdmissionState
 import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.RefreshExternalFailureOutcome
+import io.github.amichne.kast.api.contract.result.RefreshExternalFailureStatus
+import io.github.amichne.kast.api.contract.result.RefreshRelationshipFailure
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
+import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryFailureId
+import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryReason
 import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -81,6 +86,26 @@ class RefreshResultTest {
     }
 
     @Test
+    fun `focused refresh exposes current actionable relationship failures`() {
+        val failure = RefreshRelationshipFailure(
+            failureId = SemanticGraphExternalBoundaryFailureId.parse(
+                "00000000-0000-0000-0000-000000000453",
+            ),
+            filePath = admittedPath.value,
+            code = SemanticGraphExternalBoundaryReason.PSI_UNAVAILABLE,
+        )
+
+        val result = RefreshResult.focused(
+            fileStatuses = listOf(SemanticAdmissionStatus.admitted(admittedPath)),
+            attemptCount = 1,
+            elapsedMillis = 0,
+            relationshipFailures = listOf(failure),
+        )
+
+        assertEquals(listOf(failure), result.relationshipFailures)
+    }
+
+    @Test
     fun `full refresh makes no per file semantic admission claim`() {
         val result = RefreshResult.full()
 
@@ -91,6 +116,26 @@ class RefreshResultTest {
         assertEquals(0, result.analyzedFileCount)
         assertEquals(0, result.skippedFileCount)
         assertEquals(0, result.removedFileCount)
+        assertEquals(1, result.attemptCount)
+    }
+
+    @Test
+    fun `external failure refresh returns only typed actionable outcomes`() {
+        val failureId = SemanticGraphExternalBoundaryFailureId.parse(
+            "00000000-0000-0000-0000-000000000451",
+        )
+        val outcome = RefreshExternalFailureOutcome(
+            failureId = failureId,
+            status = RefreshExternalFailureStatus.EXTERNALIZED,
+        )
+
+        val result = RefreshResult.externalFailures(listOf(outcome))
+
+        assertEquals(listOf(outcome), result.externalFailureOutcomes)
+        assertEquals(false, result.fullRefresh)
+        assertEquals(emptyList<SemanticAdmissionStatus>(), result.fileStatuses)
+        assertEquals(emptyList<String>(), result.refreshedFiles)
+        assertEquals(0, result.requestedFileCount)
         assertEquals(1, result.attemptCount)
     }
 }

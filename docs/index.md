@@ -1,12 +1,13 @@
 # Kast
 
-Kast gives Codex compiler-backed Kotlin evidence from the project you already
-have open in IntelliJ IDEA or Android Studio. On Linux and hosted agents, the
-packaged headless backend provides the same typed analysis boundary.
+Kast gives coding agents compiler-backed Kotlin evidence from the project you
+already have open in IntelliJ IDEA or Android Studio. On Linux and hosted
+agents, the packaged headless backend provides the same typed analysis
+boundary.
 
 ```mermaid
 flowchart LR
-    task["Kotlin task in Codex"] --> route["Exact workspace route"]
+    task["Kotlin task in an agent"] --> route["Exact workspace route"]
     route --> compiler["IDEA or headless compiler"]
     compiler --> result["Typed, source-located evidence"]
     result --> task
@@ -40,7 +41,7 @@ Choose the page that matches what you need now.
 
     ---
 
-    Check the supported CLI and the boundary between the Codex plugin and the
+    Check the supported CLI and the boundary between harness resources and the
     installed release.
 
     [:octicons-arrow-right-24: CLI reference](reference/cli.md)

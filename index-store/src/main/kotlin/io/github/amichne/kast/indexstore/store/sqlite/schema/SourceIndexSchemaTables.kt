@@ -148,8 +148,18 @@ internal class SourceIndexSchemaTables {
                 content_hash TEXT NOT NULL,
                 stage_version TEXT NOT NULL,
                 stage_input_fingerprint TEXT,
-                outcome_status TEXT NOT NULL CHECK(outcome_status IN ('COMPLETE','LIMITED','FAILED')),
+                outcome_status TEXT NOT NULL CHECK(outcome_status IN ('COMPLETE','LIMITED','FAILED','EXTERNAL_BOUNDARY')),
                 limitations_json TEXT NOT NULL,
+                failure_id TEXT,
+                failure_code TEXT CHECK(failure_code IS NULL OR failure_code IN ('PSI_UNAVAILABLE')),
+                failure_message TEXT,
+                CHECK(
+                    (outcome_status IN ('COMPLETE','LIMITED')
+                        AND failure_id IS NULL AND failure_code IS NULL AND failure_message IS NULL)
+                    OR
+                    (outcome_status IN ('FAILED','EXTERNAL_BOUNDARY')
+                        AND failure_id IS NOT NULL AND failure_code IS NOT NULL AND failure_message IS NOT NULL)
+                ),
                 PRIMARY KEY (prefix_id, filename, stage)
             )""",
         )
@@ -208,7 +218,7 @@ internal class SourceIndexSchemaTables {
             """CREATE TABLE IF NOT EXISTS module_index_progress (
                 module_name TEXT PRIMARY KEY,
                 relationship_index_status TEXT NOT NULL DEFAULT 'PENDING'
-                    CHECK(relationship_index_status IN ('PENDING','INDEXING','COMPLETE','FAILED')),
+                    CHECK(relationship_index_status IN ('PENDING','INDEXING','COMPLETE','DEGRADED','FAILED')),
                 indexed_file_count INTEGER NOT NULL DEFAULT 0,
                 total_file_count INTEGER NOT NULL DEFAULT 0,
                 last_indexed_epoch_ms INTEGER
@@ -222,8 +232,21 @@ internal class SourceIndexSchemaTables {
                 package_name TEXT,
                 module_name TEXT,
                 content_hash TEXT,
-                refresh_status TEXT NOT NULL CHECK(refresh_status IN ('REFRESHED','CACHED','REMOVED')),
-                diagnostics_json TEXT NOT NULL
+                refresh_status TEXT NOT NULL CHECK(refresh_status IN ('REFRESHED','CACHED','REMOVED','UNKNOWN')),
+                diagnostics_json TEXT NOT NULL,
+                boundary_failure_id TEXT,
+                boundary_failure_code TEXT
+                    CHECK(boundary_failure_code IS NULL OR boundary_failure_code IN ('PSI_UNAVAILABLE')),
+                CHECK(
+                    (refresh_status = 'UNKNOWN'
+                        AND content_hash IS NOT NULL
+                        AND boundary_failure_id IS NOT NULL
+                        AND boundary_failure_code IS NOT NULL)
+                    OR
+                    (refresh_status != 'UNKNOWN'
+                        AND boundary_failure_id IS NULL
+                        AND boundary_failure_code IS NULL)
+                )
             )""",
         )
 

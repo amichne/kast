@@ -2,6 +2,8 @@ package io.github.amichne.kast.idea
 
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
+import com.intellij.openapi.progress.ProcessCanceledException
+import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.roots.ModuleRootManager
@@ -14,12 +16,16 @@ import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
+import io.github.amichne.kast.indexstore.api.index.FileStageOutcome
+import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
 import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
 import io.github.amichne.kast.indexstore.indexing.RelationshipScanResult
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
+import io.github.amichne.kast.shared.analysis.PsiRelationshipScanResult
 import io.github.amichne.kast.shared.analysis.PsiSourceIndexScanner
 import java.nio.file.Path
 
@@ -70,6 +76,41 @@ internal class IdeaProjectIndexer(
         }
     }
 
+    fun refreshSymbolRelationships(filePaths: Collection<String>): List<FileStageOutcome> {
+        require(filePaths.all(SourceIndexFilePolicy::isEligible)) {
+            "Focused relationship refresh accepts Kotlin source files only"
+        }
+        requireActive()
+        val currentFilePaths = indexSourceIdentifiers().toSet()
+        requireActive()
+        val requestedPaths = filePaths.distinct().filter(currentFilePaths::contains)
+        val previousFailureIds = requestedPaths.associateWith { path ->
+            store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS)?.failure?.id
+        }
+        indexSymbolRelationships(
+            currentFilePaths = requestedPaths,
+            moduleOrder = emptyList(),
+            batchSize = SOURCE_INDEX_BATCH_SIZE,
+            parallelism = 1,
+        )
+        requireActive()
+
+        val failures = requestedPaths.mapNotNull { path ->
+            store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS)
+                ?.takeIf { outcome -> outcome.status == FileStageOutcomeStatus.FAILED }
+                ?.takeIf { outcome -> outcome.failure?.id != previousFailureIds[path] }
+        }
+        val failedPaths = failures.mapTo(mutableSetOf(), FileStageOutcome::path)
+        val unfinishedPaths = store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
+            .mapTo(mutableSetOf()) { work -> work.path }
+            .intersect(requestedPaths.toSet())
+            .minus(failedPaths)
+        check(unfinishedPaths.isEmpty()) {
+            "Focused relationship refresh did not commit current facts for: ${unfinishedPaths.sorted().joinToString()}"
+        }
+        return failures
+    }
+
     fun indexSourceIdentifiers(): Collection<String> {
         store.ensureSchema()
         val captured = inventory.snapshotWithGradleModel(WorkspaceFileKindDomain.MIXED)
@@ -114,6 +155,11 @@ internal class IdeaProjectIndexer(
         return inventoryEntries.map(FileInventoryEntry::path)
     }
 
+    private fun requireActive() {
+        ProgressManager.checkCanceled()
+        if (environment.isCancelled()) throw ProcessCanceledException()
+    }
+
     private fun indexSymbolRelationships(
         currentFilePaths: Collection<String>,
         moduleOrder: List<String>,
@@ -150,13 +196,19 @@ internal class IdeaProjectIndexer(
             work = orderedFilePaths.map(workByPath::getValue),
             scanner = { path ->
                 onRelationshipFileScan(path)
-                val result = scanner.scanFileRelationships(path)
-                RelationshipScanResult(
-                    contentHash = result.contentHash,
-                    references = result.references,
-                    declarations = result.declarations,
-                    limitations = result.limitations,
-                )
+                when (val result = scanner.scanFileRelationships(path)) {
+                    is PsiRelationshipScanResult.Indexed -> RelationshipScanResult.Indexed(
+                        contentHash = result.contentHash,
+                        references = result.references,
+                        declarations = result.declarations,
+                        limitations = result.limitations,
+                    )
+                    PsiRelationshipScanResult.PsiUnavailable -> RelationshipScanResult.Failed(
+                        contentHash = workByPath.getValue(path).contentHash,
+                        code = FileStageFailureCode.PSI_UNAVAILABLE,
+                        message = "Kotlin PSI is unavailable for this file",
+                    )
+                }
             },
             isCancelled = environment::isCancelled,
         )
@@ -296,98 +348,4 @@ private fun legacyGradleProjectPathForFile(
         separator = ":",
         prefix = ":",
     )
-}
-
-internal data class IdeaModuleSpec(
-    val name: String,
-    val dependencyModuleNames: List<String>,
-)
-
-internal fun mergeModuleSpecsByName(moduleSpecs: List<IdeaModuleSpec>): List<IdeaModuleSpec> =
-    moduleSpecs
-        .groupBy(IdeaModuleSpec::name)
-        .map { (name, specs) ->
-            IdeaModuleSpec(
-                name = name,
-                dependencyModuleNames = specs
-                    .flatMap(IdeaModuleSpec::dependencyModuleNames)
-                    .filterNot { dependencyName -> dependencyName == name }
-                    .toSortedSet()
-                    .toList(),
-            )
-        }
-        .sortedBy(IdeaModuleSpec::name)
-
-internal fun computeModulePriorityOrder(
-    activeModule: String?,
-    moduleSpecs: List<IdeaModuleSpec>,
-    dependentModuleGraph: Map<String, Set<String>>,
-    depth: Int,
-): List<String> {
-    if (depth < 0) return emptyList()
-
-    val mergedModuleSpecs = mergeModuleSpecsByName(moduleSpecs)
-    val moduleNames = mergedModuleSpecs.mapTo(mutableSetOf()) { it.name }.sorted()
-    if (activeModule == null || activeModule !in moduleNames) {
-        return topologicallySortModules(mergedModuleSpecs)
-    }
-
-    val priorityModules = linkedSetOf<String>()
-    val queue: ArrayDeque<Pair<String, Int>> = ArrayDeque()
-    queue += activeModule to 0
-    while (queue.isNotEmpty()) {
-        val (moduleName, moduleDepth) = queue.removeFirst()
-        if (!priorityModules.add(moduleName) || moduleDepth >= depth) {
-            continue
-        }
-        dependentModuleGraph[moduleName]
-            .orEmpty()
-            .sorted()
-            .forEach { dependencyModuleName ->
-                queue += dependencyModuleName to moduleDepth + 1
-            }
-    }
-
-    return (priorityModules + topologicallySortModules(mergedModuleSpecs).filterNot { it in priorityModules }).toList()
-}
-
-private fun topologicallySortModules(moduleSpecs: List<IdeaModuleSpec>): List<String> {
-    val mergedModuleSpecs = mergeModuleSpecsByName(moduleSpecs)
-    val modulesByName = mergedModuleSpecs.associateBy(IdeaModuleSpec::name)
-    val incomingEdges = mergedModuleSpecs
-        .associate { spec -> spec.name to spec.dependencyModuleNames.toMutableSet() }
-        .toMutableMap()
-
-    val outgoingEdges = linkedMapOf<String, MutableSet<String>>()
-    for (spec in mergedModuleSpecs) {
-        for (dependencyName in spec.dependencyModuleNames) {
-            if (!modulesByName.containsKey(dependencyName)) {
-                continue
-            }
-            outgoingEdges
-                .getOrPut(dependencyName) { linkedSetOf() }
-                .add(spec.name)
-        }
-    }
-
-    val readyNames = ArrayDeque(
-        mergedModuleSpecs
-            .filter { spec -> incomingEdges.getValue(spec.name).isEmpty() }
-            .map(IdeaModuleSpec::name)
-            .sorted(),
-    )
-    val ordered = mutableListOf<String>()
-    while (readyNames.isNotEmpty()) {
-        val moduleName = readyNames.removeFirst()
-        ordered += moduleName
-        for (dependentName in outgoingEdges[moduleName].orEmpty().sorted()) {
-            val dependencies = incomingEdges.getValue(dependentName)
-            dependencies.remove(moduleName)
-            if (dependencies.isEmpty()) {
-                readyNames.addLast(dependentName)
-            }
-        }
-    }
-
-    return ordered
 }

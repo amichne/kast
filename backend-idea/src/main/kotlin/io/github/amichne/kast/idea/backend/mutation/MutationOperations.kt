@@ -28,8 +28,14 @@ import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.IndexAdmissionState
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.result.RefreshResult
+import io.github.amichne.kast.api.contract.result.RefreshExternalFailureOutcome
+import io.github.amichne.kast.api.contract.result.RefreshExternalFailureStatus
+import io.github.amichne.kast.api.contract.result.RefreshRelationshipFailure
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
+import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryFailureId
+import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryReason
 import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
@@ -39,6 +45,9 @@ import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.analysis.resolvedFilePath
 import io.github.amichne.kast.shared.analysis.visibility
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.isActive
 import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Files
 import java.util.concurrent.CancellationException
@@ -50,6 +59,9 @@ import io.github.amichne.kast.idea.backend.diagnostics.*
 import io.github.amichne.kast.idea.backend.mutation.*
 import io.github.amichne.kast.idea.backend.workspace.*
 import io.github.amichne.kast.idea.backend.*
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureExternalizationResult
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureId
 
 internal suspend fun KastPluginBackend.renameOperation(query: ParsedRenameQuery): RenameResult = withContext(readDispatcher) {
         telemetry.inSpan(IdeaTelemetryScope.RENAME, "kast.idea.rename") {
@@ -148,6 +160,32 @@ internal suspend fun KastPluginBackend.optimizeImportsOperation(query: ParsedImp
 
 internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuery): RefreshResult {
         return telemetry.inSpan(IdeaTelemetryScope.REFRESH, "kast.idea.refresh") {
+            if (query.externalFailureIds.isNotEmpty()) {
+                val store = semanticGraphStore ?: throw CapabilityNotSupportedException(
+                    capability = "SEMANTIC_GRAPH",
+                    message = "External graph boundaries require the IDEA source index",
+                )
+                store.ensureSchema()
+                return@inSpan RefreshResult.externalFailures(
+                    query.externalFailureIds.map { failureId ->
+                        RefreshExternalFailureOutcome(
+                            failureId = failureId,
+                            status = when (
+                                store.externalizeFileStageFailure(
+                                    FileStageFailureId.parse(failureId.value),
+                                )
+                            ) {
+                                FileStageFailureExternalizationResult.EXTERNALIZED ->
+                                    RefreshExternalFailureStatus.EXTERNALIZED
+                                FileStageFailureExternalizationResult.ALREADY_EXTERNAL ->
+                                    RefreshExternalFailureStatus.ALREADY_EXTERNAL
+                                FileStageFailureExternalizationResult.NOT_FOUND ->
+                                    RefreshExternalFailureStatus.NOT_FOUND
+                            },
+                        )
+                    },
+                )
+            }
             if (query.filePaths.isEmpty()) {
                 ApplicationManager.getApplication().invokeLater {
                     VirtualFileManager.getInstance().asyncRefresh(null)
@@ -156,10 +194,44 @@ internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuer
             }
 
             val admission = semanticAdmissionAwaiter.await(query.filePaths, ::probeSemanticAdmission)
+            val admittedPaths = admission.fileStatuses
+                .filter(SemanticAdmissionStatus::isAdmitted)
+                .map(SemanticAdmissionStatus::filePath)
+            val relationshipFailures = semanticGraphStore?.takeIf {
+                admittedPaths.isNotEmpty() || admission.fileStatuses.any(SemanticAdmissionStatus::isRemoved)
+            }?.let { store ->
+                val requestContext = currentCoroutineContext()
+                requestContext.ensureActive()
+                val outcomes = IdeaProjectIndexer(
+                    project = project,
+                    workspaceRoot = workspaceRoot,
+                    store = store,
+                    cancelled = {
+                        !requestContext.isActive || Thread.currentThread().isInterrupted || project.isDisposed
+                    },
+                    workspaceIdentity = sharedWorkspaceIdentity,
+                    readGradleWorkspaceModel = workspaceModelReader,
+                ).refreshSymbolRelationships(admittedPaths)
+                requestContext.ensureActive()
+                outcomes.map { outcome ->
+                    val failure = requireNotNull(outcome.failure) {
+                        "Failed relationship outcome is missing failure evidence"
+                    }
+                    RefreshRelationshipFailure(
+                        failureId = SemanticGraphExternalBoundaryFailureId.parse(failure.id.value),
+                        filePath = outcome.path,
+                        code = when (failure.code) {
+                            FileStageFailureCode.PSI_UNAVAILABLE ->
+                                SemanticGraphExternalBoundaryReason.PSI_UNAVAILABLE
+                        },
+                    )
+                }
+            }.orEmpty()
             RefreshResult.focused(
                 fileStatuses = admission.fileStatuses,
                 attemptCount = admission.attemptCount,
                 elapsedMillis = admission.elapsedMillis,
+                relationshipFailures = relationshipFailures,
             )
         }
     }

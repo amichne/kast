@@ -57,6 +57,7 @@ internal class FileStageInventoryStore(
                 desired.toSortedMap().forEach { (path, entry) ->
                     current[path]?.let { previous ->
                         if (previous.contentHash != entry.contentHash.value) {
+                            deleteOutcomeRowsInTransaction(conn, path)
                             inboundReferences.detachAndInvalidateInTransaction(
                                 conn,
                                 previous.prefixId,
@@ -100,9 +101,23 @@ internal class FileStageInventoryStore(
                          OR outcomes.content_hash != manifest.content_hash
                          OR outcomes.stage_version != manifest.$versionColumn
                          OR outcomes.outcome_status = 'FAILED'
+                     )
+                     AND NOT (
+                         ? = 'SEMANTIC_GRAPH'
+                         AND EXISTS (
+                             SELECT 1
+                             FROM file_stage_outcomes boundary
+                             WHERE boundary.prefix_id = manifest.prefix_id
+                               AND boundary.filename = manifest.filename
+                               AND boundary.stage = 'RELATIONSHIPS'
+                               AND boundary.content_hash = manifest.content_hash
+                               AND boundary.stage_version = manifest.desired_relationships_version
+                               AND boundary.outcome_status = 'EXTERNAL_BOUNDARY'
+                         )
                      )""",
             ).use { statement ->
                 statement.setString(1, stage.name)
+                statement.setString(2, stage.name)
                 val rows = statement.executeQuery()
                 buildList {
                     while (rows.next()) {
@@ -126,12 +141,25 @@ internal class FileStageInventoryStore(
         version: FileStageVersion,
         inputFingerprint: FileStageInputFingerprint? = null,
     ): PendingFileStage? = synchronized(state.writeLock) {
-        val outcome = reader.readOutcomeInTransaction(state.connection(), path, stage)
-        if (outcome != null &&
+        val conn = state.connection()
+        val outcome = reader.readOutcomeInTransaction(conn, path, stage)
+        val inventory = reader.inventoryScopeInTransaction(conn, path)
+        val externalRelationshipBoundary = if (stage == FileIndexStage.SEMANTIC_GRAPH) {
+            reader.readOutcomeInTransaction(conn, path, FileIndexStage.RELATIONSHIPS)
+                ?.takeIf { relationship ->
+                    relationship.status == FileStageOutcomeStatus.EXTERNAL_BOUNDARY &&
+                        relationship.contentHash == contentHash &&
+                        relationship.version.value == inventory?.relationshipsVersion
+                }
+        } else {
+            null
+        }
+        if (externalRelationshipBoundary != null ||
+            (outcome != null &&
             outcome.contentHash == contentHash &&
             outcome.version == version &&
             outcome.inputFingerprint == inputFingerprint &&
-            outcome.status != FileStageOutcomeStatus.FAILED
+            outcome.status != FileStageOutcomeStatus.FAILED)
         ) {
             null
         } else {
@@ -179,14 +207,17 @@ internal class FileStageInventoryStore(
         conn.prepareStatement(
             """INSERT INTO file_stage_outcomes(
                    prefix_id, filename, stage, content_hash, stage_version, stage_input_fingerprint,
-                   outcome_status, limitations_json
-               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                   outcome_status, limitations_json, failure_id, failure_code, failure_message
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)
                ON CONFLICT(prefix_id, filename, stage) DO UPDATE SET
                    content_hash = excluded.content_hash,
                    stage_version = excluded.stage_version,
                    stage_input_fingerprint = excluded.stage_input_fingerprint,
                    outcome_status = excluded.outcome_status,
-                   limitations_json = excluded.limitations_json""",
+                   limitations_json = excluded.limitations_json,
+                   failure_id = NULL,
+                   failure_code = NULL,
+                   failure_message = NULL""",
         ).use { statement ->
             statement.setInt(1, prefixId)
             statement.setString(2, filename)
@@ -247,8 +278,17 @@ internal class FileStageInventoryStore(
                               WHEN SUM(CASE
                                   WHEN outcomes.content_hash = manifest.content_hash
                                    AND outcomes.stage_version = manifest.desired_relationships_version
-                                   AND outcomes.outcome_status IN ('LIMITED','FAILED') THEN 1 ELSE 0 END) > 0
+                                   AND outcomes.outcome_status = 'FAILED' THEN 1 ELSE 0 END) > 0
                                   THEN 'FAILED'
+                              WHEN COUNT(*) = SUM(CASE
+                                  WHEN outcomes.content_hash = manifest.content_hash
+                                   AND outcomes.stage_version = manifest.desired_relationships_version
+                                   AND outcomes.outcome_status IN ('COMPLETE','LIMITED','EXTERNAL_BOUNDARY') THEN 1 ELSE 0 END)
+                               AND SUM(CASE
+                                  WHEN outcomes.content_hash = manifest.content_hash
+                                   AND outcomes.stage_version = manifest.desired_relationships_version
+                                   AND outcomes.outcome_status IN ('LIMITED','EXTERNAL_BOUNDARY') THEN 1 ELSE 0 END) > 0
+                                  THEN 'DEGRADED'
                               WHEN SUM(CASE
                                   WHEN outcomes.content_hash = manifest.content_hash
                                    AND outcomes.stage_version = manifest.desired_relationships_version
@@ -259,7 +299,7 @@ internal class FileStageInventoryStore(
                           SUM(CASE
                               WHEN outcomes.content_hash = manifest.content_hash
                                AND outcomes.stage_version = manifest.desired_relationships_version
-                               AND outcomes.outcome_status IN ('COMPLETE','LIMITED') THEN 1 ELSE 0 END),
+                               AND outcomes.outcome_status IN ('COMPLETE','LIMITED','EXTERNAL_BOUNDARY') THEN 1 ELSE 0 END),
                           COUNT(*),
                           NULL
                    FROM file_manifest manifest
@@ -322,5 +362,4 @@ internal class FileStageInventoryStore(
         FileIndexStage.RELATIONSHIPS -> "desired_relationships_version"
         FileIndexStage.SEMANTIC_GRAPH -> "desired_semantic_graph_version"
     }
-
 }

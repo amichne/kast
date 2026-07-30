@@ -68,7 +68,7 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
     let backups = targets.resolved.install_root.join("backups");
     fs::create_dir_all(&backups)?;
     let home = manifest::home_dir();
-    let user_command = home.join(".local/bin/kast");
+    let user_command = home.join(".local/bin/_kastctl");
     let user_command_is_managed = fs::read_link(&user_command)
         .is_ok_and(|target| target.starts_with(&targets.current_link));
     let mut legacy = vec![
@@ -87,7 +87,13 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
         ),
     ];
     if !user_command_is_managed {
-        legacy.push((user_command, "legacy-local-bin-kast"));
+        legacy.push((user_command, "legacy-local-bin-kastctl"));
+    }
+    let agent_user_command = home.join(".local/bin/kast");
+    let agent_user_command_is_managed = fs::read_link(&agent_user_command)
+        .is_ok_and(|target| target.starts_with(&targets.current_link));
+    if !agent_user_command_is_managed {
+        legacy.push((agent_user_command, "legacy-local-bin-kast"));
     }
     let mut archived = None;
     for (source, name) in legacy {
@@ -103,18 +109,34 @@ fn archive_legacy_installations(targets: &ActivationTargetPaths) -> Result<Optio
 }
 
 fn install_user_command(targets: &ActivationTargetPaths) -> Result<()> {
-    let user_command = manifest::home_dir().join(".local/bin/kast");
+    let local_bin = manifest::home_dir().join(".local/bin");
+    let commands = [
+        (
+            local_bin.join("_kastctl"),
+            targets.resolved.active_binary.clone(),
+        ),
+        (
+            local_bin.join("kast"),
+            targets.current_link.join(AGENT_CLI_BUNDLE_PATH),
+        ),
+    ];
     let receipt_path = targets
         .current_link
         .join(manifest::INSTALL_MANIFEST_FILE);
     let mut receipt = manifest_from_file(&receipt_path)?;
-    let user_command_state = user_command.display().to_string();
-    if !receipt.owned_paths.contains(&user_command_state) {
-        receipt.owned_paths.push(user_command_state);
-        manifest::write_manifest_atomic(&receipt_path, &receipt)?;
+    for (user_command, _) in &commands {
+        let user_command_state = user_command.display().to_string();
+        if !receipt.owned_paths.contains(&user_command_state) {
+            receipt.owned_paths.push(user_command_state);
+        }
     }
-    #[cfg(unix)]
-    manifest::replace_symlink_or_copy(&targets.resolved.active_binary, &user_command)?;
+    manifest::write_manifest_atomic(&receipt_path, &receipt)?;
+    for (user_command, target) in commands {
+        #[cfg(unix)]
+        manifest::replace_symlink_or_copy(&target, &user_command)?;
+        #[cfg(not(unix))]
+        let _ = (user_command, target);
+    }
     Ok(())
 }
 
