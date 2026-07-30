@@ -12,7 +12,7 @@ Diagnose the exact workspace from typed local evidence. Treat reported enterpris
 Run from the canonical workspace root. Resolve the active release-local control CLI only into a shell variable; never print or persist its absolute path.
 
 ```shell
-command -v jq >/dev/null
+command -v jq >/dev/null || exit 1
 allowlist_json() {
   jq '
     def listed($values; $value): ($values | index($value)) != null;
@@ -66,7 +66,7 @@ allowlist_json() {
   ' 2>/dev/null
 }
 KASTCTL="${KAST_HOME:-$HOME/.local/share/kast}/current/libexec/kastctl"
-test -x "$KASTCTL"
+test -x "$KASTCTL" || exit 1
 READY_JSON="$("$KASTCTL" --output json ready --workspace-root "$PWD" --for agent 2>/dev/null)"
 STATUS_JSON="$("$KASTCTL" --output json status --workspace-root "$PWD" --backend idea 2>/dev/null)"
 printf '%s\n' "$READY_JSON" "$STATUS_JSON" | allowlist_json
@@ -112,12 +112,19 @@ Prefer one narrow telemetry scope such as `references`, `type-hierarchy`, `works
 
 ## Read the source index through typed commands
 
-Use the public Rust graph surface for generation-checked, SQLite read-only, query-only projections:
+Use the repository-mandated Rust graph command for generation-checked, SQLite read-only, query-only projections. Read its scoped help first.
 
 ```shell
-GRAPH_SUMMARY="$(kast graph summary --scope symbol 2>/dev/null)"
-MODULE_TOPOLOGY="$(kast graph topology --scope module 2>/dev/null)"
-PACKAGE_COMMUNITIES="$(kast graph communities --scope package 2>/dev/null)"
+GRAPH_HELP="$("$KASTCTL" agent graph --help 2>/dev/null)"
+test -n "$GRAPH_HELP" || exit 1
+GRAPH_SUMMARY="$("$KASTCTL" --output json agent graph --workspace-root "$PWD" \
+  --scope symbol --operation summary 2>/dev/null)"
+MODULE_TOPOLOGY="$("$KASTCTL" --output json agent graph --workspace-root "$PWD" \
+  --scope module --operation topology 2>/dev/null)"
+PACKAGE_COMMUNITIES="$("$KASTCTL" --output json agent graph --workspace-root "$PWD" \
+  --scope package --operation communities 2>/dev/null)"
+printf '%s\n' "$GRAPH_SUMMARY" "$MODULE_TOPOLOGY" "$PACKAGE_COMMUNITIES" |
+  allowlist_json
 ```
 
 Use bounded typed metrics when a focused query answers the diagnostic:
