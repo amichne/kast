@@ -33,6 +33,18 @@ fn seed_public_graph(workspace: &Path, stale: bool) -> WorkspaceIndexFixture {
                  kind TEXT NOT NULL,
                  context TEXT NOT NULL
              );
+             CREATE VIEW semantic_module_quotient AS
+                 SELECT source_file.module_name AS source_container,
+                        target_file.module_name AS target_container,
+                        edges.kind, edges.context, COUNT(*) AS weight
+                 FROM semantic_edge_occurrences edges
+                 JOIN semantic_symbols source ON source.id = edges.source_id
+                 JOIN semantic_symbols target ON target.id = edges.target_id
+                 JOIN semantic_files source_file ON source_file.id = source.file_id
+                 JOIN semantic_files target_file ON target_file.id = target.file_id
+                 WHERE source_file.module_name IS NOT NULL
+                   AND target_file.module_name IS NOT NULL
+                 GROUP BY 1, 2, edges.kind, edges.context;
              INSERT INTO semantic_symbols VALUES
                  (1, 'class:sample.Source', 'CLASS', 'Source', 1),
                  (2, 'class:sample.Target', 'CLASS', 'Target', 1);

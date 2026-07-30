@@ -161,10 +161,34 @@ pub struct KastGraphArgs {
     pub command: Option<KastGraphCommand>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum KastGraphScope {
+    Symbol,
+    Package,
+    Module,
+}
+
+impl From<KastGraphScope> for NativeGraphScope {
+    fn from(scope: KastGraphScope) -> Self {
+        match scope {
+            KastGraphScope::Symbol => Self::Symbol,
+            KastGraphScope::Package => Self::Package,
+            KastGraphScope::Module => Self::Module,
+        }
+    }
+}
+
+#[derive(Debug, Args)]
+pub struct KastGraphProjectionArgs {
+    /// Read-only topology projection.
+    #[arg(long, value_enum, default_value_t = KastGraphScope::Symbol)]
+    pub scope: KastGraphScope,
+}
+
 #[derive(Debug, Subcommand)]
 pub enum KastGraphCommand {
     /// Summarize graph coverage and size.
-    Summary,
+    Summary(KastGraphProjectionArgs),
     /// Enumerate graph nodes.
     Nodes {
         /// Opaque continuation returned as `nextPage`.
@@ -174,9 +198,9 @@ pub enum KastGraphCommand {
     /// Show adjacent nodes for one symbol.
     Neighbors { symbol: String },
     /// Report topology statistics.
-    Topology,
+    Topology(KastGraphProjectionArgs),
     /// Report deterministic graph communities.
-    Communities,
+    Communities(KastGraphProjectionArgs),
     /// Report the bounded impact of one symbol.
     Impact {
         symbol: String,
