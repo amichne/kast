@@ -8,12 +8,22 @@ use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use support::{
-    ScriptedCliAuthority, spawn_scripted_idea_backend, spawn_scripted_idea_backend_for_invocations,
-    workspace_database_path_for_test, workspace_files::WorkspaceIndexFixture,
+    ScriptedCliAuthority, default_bin_dir, spawn_scripted_idea_backend,
+    spawn_scripted_idea_backend_for_invocations, workspace_database_path_for_test,
+    workspace_files::WorkspaceIndexFixture, write_active_kast_for_test,
 };
 
 fn kast(home: &Path, config_home: &Path, workspace: &Path) -> Command {
-    let mut command = Command::new(env!("CARGO_BIN_EXE_kast"));
+    kast_at(
+        Path::new(env!("CARGO_BIN_EXE_kast")),
+        home,
+        config_home,
+        workspace,
+    )
+}
+
+fn kast_at(binary: &Path, home: &Path, config_home: &Path, workspace: &Path) -> Command {
+    let mut command = Command::new(binary);
     command
         .arg0("kast")
         .current_dir(workspace)
@@ -229,6 +239,8 @@ fn refresh_keeps_relationship_failure_actionable_without_graph_extraction() {
     std::fs::write(&source, "fun app() = missing\n").expect("source");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let workspace = workspace.canonicalize().expect("canonical workspace");
+    let control_binary = write_active_kast_for_test(&home, &config_home);
+    let public_binary = default_bin_dir(&home).join("kast");
     let _index = seed_empty_graph_scope(&workspace);
     let source = source.canonicalize().expect("canonical source");
     let failure_id = uuid::Uuid::new_v4().hyphenated().to_string();
@@ -239,7 +251,7 @@ fn refresh_keeps_relationship_failure_actionable_without_graph_extraction() {
         &workspace,
         &socket,
         ScriptedCliAuthority::new(
-            Path::new(env!("CARGO_BIN_EXE_kast")),
+            &control_binary,
             env!("CARGO_PKG_VERSION"),
         ),
         2,
@@ -252,7 +264,7 @@ fn refresh_keeps_relationship_failure_actionable_without_graph_extraction() {
         ],
     );
 
-    let refresh = kast(&home, &config_home, &workspace)
+    let refresh = kast_at(&public_binary, &home, &config_home, &workspace)
         .args(["refresh", source.to_str().expect("source")])
         .output()
         .expect("refresh");
