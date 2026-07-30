@@ -84,23 +84,24 @@ pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
         }
     };
 
-    let post_plan = crate::repository_intelligence::semantic_graph_refresh_plan(&workspace_root);
     let mut graph_paths = refreshed_paths.clone();
     let mut graph_removed_paths = removed_paths.clone();
-    match post_plan {
-        Ok(plan) => {
-            graph_paths.extend(normalize_planned_paths(&runtime_args, &plan.file_paths)?);
-            graph_removed_paths.extend(normalize_planned_paths(
-                &runtime_args,
-                &plan.removed_file_paths,
-            )?);
-        }
-        Err(error) => {
-            return print_actionable_failure(
-                "GRAPH_EVIDENCE_UNAVAILABLE",
-                &error.message,
-                "kast refresh",
-            );
+    if inferred_scope {
+        match crate::repository_intelligence::semantic_graph_refresh_plan(&workspace_root) {
+            Ok(plan) => {
+                graph_paths.extend(normalize_planned_paths(&runtime_args, &plan.file_paths)?);
+                graph_removed_paths.extend(normalize_planned_paths(
+                    &runtime_args,
+                    &plan.removed_file_paths,
+                )?);
+            }
+            Err(error) => {
+                return print_actionable_failure(
+                    "GRAPH_EVIDENCE_UNAVAILABLE",
+                    &error.message,
+                    "kast refresh",
+                );
+            }
         }
     }
     let failed_paths = externalizable_failures
