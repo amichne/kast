@@ -119,8 +119,8 @@ workspace="$(gradle_workspace_for "$graph_path" "$repository_worktree")" \
   || { printf 'error: graph file is not inside a Gradle build: %s\n' "$graph_file" >&2; exit 1; }
 scoped_graph_file="${graph_path#"$workspace"/}"
 tar -xzf "$bundle" -C "$bundle_dir"
-bundle_bin="$(find "$bundle_dir" -maxdepth 3 -type f -path '*/bin/_kastctl' -print -quit)"
-[[ -n "$bundle_bin" ]] || { printf 'error: bundle does not contain bin/_kastctl\n' >&2; exit 1; }
+bundle_bin="$(find "$bundle_dir" -maxdepth 3 -type f -path '*/libexec/kastctl' -print -quit)"
+[[ -n "$bundle_bin" ]] || { printf 'error: bundle does not contain libexec/kastctl\n' >&2; exit 1; }
 bundle_root="$(cd "$(dirname "$bundle_bin")/.." && pwd)"
 chmod 755 "$bundle_bin"
 
@@ -130,7 +130,7 @@ env \
   KAST_CACHE_HOME="$kast_cache_dir" \
   GRADLE_USER_HOME="$gradle_user_dir" \
   "$bundle_bin" --output json setup --source "$bundle_root" >/dev/null
-kastctl_bin="$kast_home_dir/current/bin/_kastctl"
+kastctl_bin="$kast_home_dir/current/libexec/kastctl"
 
 kastctl() {
   env \

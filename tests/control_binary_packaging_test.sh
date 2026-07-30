@@ -14,14 +14,14 @@ mkdir -p \
   "$scratch/output" \
   "$scratch/extracted"
 
-printf '%s\n' '#!/bin/sh' 'exit 0' >"$scratch/cli/_kastctl"
-cp "$scratch/cli/_kastctl" "$scratch/cli/kast"
-chmod 755 "$scratch/cli/_kastctl" "$scratch/cli/kast"
+printf '%s\n' '#!/bin/sh' 'exit 0' >"$scratch/cli/kastctl"
+cp "$scratch/cli/kastctl" "$scratch/cli/kast"
+chmod 755 "$scratch/cli/kastctl" "$scratch/cli/kast"
 printf '%s\n' 'fixture' >"$scratch/backend/backend-headless/runtime-libs/classpath.txt"
 : >"$scratch/backend/backend-headless/idea-home/lib/nio-fs.jar"
 : >"$scratch/backend/backend-headless/idea-home/modules/module-descriptors.dat"
 
-(cd "$scratch/cli" && zip -X -q "$scratch/cli.zip" _kastctl kast)
+(cd "$scratch/cli" && zip -X -q "$scratch/cli.zip" kastctl kast)
 (cd "$scratch/backend" && zip -X -q -r "$scratch/backend.zip" backend-headless)
 
 "$repo_root/scripts/packaging/package-headless-runtime.sh" \
@@ -32,15 +32,15 @@ printf '%s\n' 'fixture' >"$scratch/backend/backend-headless/runtime-libs/classpa
   --manifest-output "$scratch/output/manifest.json"
 
 tar --zstd -xf "$scratch/output/runtime.tar.zst" -C "$scratch/extracted"
-[[ -x "$scratch/extracted/bin/_kastctl" ]] || {
-  printf '%s\n' 'runtime is missing executable bin/_kastctl' >&2
+[[ -x "$scratch/extracted/libexec/kastctl" ]] || {
+  printf '%s\n' 'runtime is missing executable libexec/kastctl' >&2
   exit 1
 }
 [[ -x "$scratch/extracted/bin/kast" ]] || {
   printf '%s\n' 'runtime is missing executable bin/kast' >&2
   exit 1
 }
-cmp -s "$scratch/extracted/bin/_kastctl" "$scratch/extracted/bin/kast" || {
+cmp -s "$scratch/extracted/libexec/kastctl" "$scratch/extracted/bin/kast" || {
   printf '%s\n' 'runtime control and agent entrypoints are not byte-identical' >&2
   exit 1
 }

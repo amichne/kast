@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+hook_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+exec "$hook_dir"/quality-gate.sh pre-push "$@"

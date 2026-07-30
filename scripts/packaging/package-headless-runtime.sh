@@ -114,9 +114,9 @@ mkdir -p "$cli_extract" "$backend_extract" "$staging_root" \
 "${repo_root}/scripts/extract-safe-zip.py" "$backend_archive" "$backend_extract"
 
 backend_root="${backend_extract}/backend-headless"
-[[ -f "${cli_extract}/_kastctl" ]] || die "CLI archive must contain _kastctl at its root"
+[[ -f "${cli_extract}/kastctl" ]] || die "CLI archive must contain kastctl at its root"
 [[ -f "${cli_extract}/kast" ]] || die "CLI archive must contain kast at its root"
-cmp -s "${cli_extract}/_kastctl" "${cli_extract}/kast" \
+cmp -s "${cli_extract}/kastctl" "${cli_extract}/kast" \
   || die "CLI archive entrypoints must be byte-identical"
 [[ -d "$backend_root" ]] || die "Backend archive must contain backend-headless/"
 [[ -f "${backend_root}/runtime-libs/classpath.txt" ]] || die "Backend archive missing runtime-libs/classpath.txt"
@@ -124,10 +124,10 @@ cmp -s "${cli_extract}/_kastctl" "${cli_extract}/kast" \
 [[ -f "${backend_root}/idea-home/modules/module-descriptors.dat" ]] || die "Backend archive missing idea-home/modules/module-descriptors.dat"
 [[ -d "${backend_root}/idea-home/plugins/kast-headless" ]] || die "Backend archive missing idea-home/plugins/kast-headless"
 
-mkdir -p "${staging_root}/bin" "${staging_root}/lib" "${staging_root}/plugins"
-cp "${cli_extract}/_kastctl" "${staging_root}/bin/_kastctl"
+mkdir -p "${staging_root}/bin" "${staging_root}/libexec" "${staging_root}/lib" "${staging_root}/plugins"
+cp "${cli_extract}/kastctl" "${staging_root}/libexec/kastctl"
 cp "${cli_extract}/kast" "${staging_root}/bin/kast"
-chmod 755 "${staging_root}/bin/_kastctl" "${staging_root}/bin/kast"
+chmod 755 "${staging_root}/libexec/kastctl" "${staging_root}/bin/kast"
 cp -R "${backend_root}/runtime-libs" "${staging_root}/lib/runtime-libs"
 cp -R "${backend_root}/idea-home" "${staging_root}/idea"
 cp -R "${backend_root}/idea-home/plugins/." "${staging_root}/plugins/"

@@ -68,7 +68,7 @@ fn verify_idea_plugin_setup(
     {
         return Err(CliError::new(
             "SETUP_VERIFY_FAILED",
-            "Installed _kastctl and kast CLIs do not match the setup source.",
+            "Installed kastctl and kast CLIs do not match the setup source.",
         ));
     }
     if directory_sha256(installed_plugin)? != plugin_digest {
@@ -219,6 +219,21 @@ pub(crate) fn idea_plugin_directory_matches_archive(
 }
 
 fn default_idea_plugins_dir() -> Result<PathBuf> {
+    let candidates = supported_idea_plugins_dirs()?;
+    match candidates.as_slice() {
+        [plugins] => Ok(plugins.clone()),
+        [] => Err(CliError::new(
+            "IDE_PROFILE_NOT_FOUND",
+            "No supported IntelliJ IDEA 2026.2 or Android Studio 2026.1 profile was found; pass --idea-plugins-dir.",
+        )),
+        _ => Err(CliError::new(
+            "IDE_PROFILE_AMBIGUOUS",
+            "Multiple supported JetBrains profiles were found; pass --idea-plugins-dir for the selected IntelliJ IDEA or Android Studio host.",
+        )),
+    }
+}
+
+fn supported_idea_plugins_dirs() -> Result<Vec<PathBuf>> {
     let application_support = manifest::home_dir().join("Library/Application Support");
     let mut candidates = Vec::new();
     for (root, prefixes) in [
@@ -255,17 +270,7 @@ fn default_idea_plugins_dir() -> Result<PathBuf> {
     }
     candidates.sort();
     candidates.dedup();
-    match candidates.as_slice() {
-        [plugins] => Ok(plugins.clone()),
-        [] => Err(CliError::new(
-            "IDE_PROFILE_NOT_FOUND",
-            "No supported IntelliJ IDEA 2026.2 or Android Studio 2026.1 profile was found; pass --idea-plugins-dir.",
-        )),
-        _ => Err(CliError::new(
-            "IDE_PROFILE_AMBIGUOUS",
-            "Multiple supported JetBrains profiles were found; pass --idea-plugins-dir for the selected IntelliJ IDEA or Android Studio host.",
-        )),
-    }
+    Ok(candidates)
 }
 
 fn require_jetbrains_ides_closed() -> Result<()> {

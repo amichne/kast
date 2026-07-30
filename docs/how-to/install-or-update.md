@@ -39,12 +39,23 @@ The default installation root is `~/.local/share/kast`.
 | Path | Purpose |
 | --- | --- |
 | `~/.local/bin/kast` | Public agent interface. |
-| `~/.local/bin/_kastctl` | Internal setup and maintenance control plane. |
 | `~/.local/share/kast/current/bin/kast` | Release-bound public entrypoint. |
-| `~/.local/share/kast/current/bin/_kastctl` | Release-bound internal entrypoint. |
+| `~/.local/share/kast/current/libexec/kastctl` | Private release-bound setup and maintenance control plane; not on `PATH`. |
 
 Both entrypoints contain identical bytes; the invoked name selects the command
 surface.
+
+## Force a clean reinstall
+
+```console
+./install.sh --force
+```
+
+Forced setup removes the prior Kast installation, databases, registered
+workspace `.kast` metadata, current-directory ancestor `.kast` metadata
+through the user home, and Kast IDEA plugins before reinstalling. It does not
+search the user home, remove workspace source checkouts, or remove unrelated
+plugins.
 
 ## Install a local or pinned bundle
 

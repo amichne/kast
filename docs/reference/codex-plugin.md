@@ -38,8 +38,8 @@ Use `--harness none` to install no agent resources.
 | Session-start hook | Runs `~/.local/bin/kast` to report exact-root readiness and the next action. |
 | Local marketplace manifest | Lets the harness install the embedded `kast@kast` plugin without a network marketplace. |
 
-The resources do not contain a compiler backend and do not expose `_kastctl`.
-They always invoke the active public `kast` entrypoint.
+The resources do not contain a compiler backend and do not expose the private
+KastCTL entrypoint. They always invoke the active public `kast` entrypoint.
 
 ## Release assets
 

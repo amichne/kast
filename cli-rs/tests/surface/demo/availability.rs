@@ -201,7 +201,7 @@ fn interactive_demo_renders_in_a_real_pty_without_changing_sources() {
     seed_source_index(&workspace);
     let source = workspace.join("app/A.kt");
     let before = std::fs::read(&source).expect("source before demo");
-    let control_binary = temp.path().join("_kastctl");
+    let control_binary = temp.path().join("kastctl");
     std::os::unix::fs::symlink(env!("CARGO_BIN_EXE_kast"), &control_binary)
         .expect("control binary symlink");
 

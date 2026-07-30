@@ -26,10 +26,11 @@ related views.
 
 ## Setup chooses one release
 
-`install.sh` invokes `_kastctl setup` to stage a manifest-bound release
-containing the multicall executable and matched backend artifacts. The same
-bytes are installed as `_kastctl` for administrative automation and `kast` for
-agents; the invoked name selects the grammar. Setup verifies the complete
+`install.sh` invokes the private release-local `libexec/kastctl setup` to stage
+a manifest-bound release containing the multicall executable and matched
+backend artifacts. The same bytes are installed as `libexec/kastctl` for
+administrative automation and `bin/kast` for agents; the invoked name selects
+the grammar. Only `kast` is linked onto `PATH`. Setup verifies the complete
 release before switching the active `current` link.
 
 Release-matched Codex, Claude, and Copilot resources are embedded in that

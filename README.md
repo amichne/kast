@@ -17,10 +17,11 @@ complete headless release:
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
 ```
 
-The bootstrap delegates administrative setup to `_kastctl`, activates the
-release under `KAST_HOME` (default `~/.local/share/kast`), and installs the
-release-matched Kast resources for each detected Codex, Claude, or Copilot
-harness. A failed invocation leaves the prior active release usable.
+The bootstrap delegates administrative setup to the private release-local
+`libexec/kastctl`, activates the release under `KAST_HOME` (default
+`~/.local/share/kast`), and installs the release-matched Kast resources for
+each detected Codex, Claude, or Copilot harness. KastCTL is not placed on
+`PATH`. A failed invocation leaves the prior active release usable.
 
 After installation, `kast` is the agent interface:
 
@@ -41,6 +42,9 @@ For a local bundle:
 ```console
 ./install.sh --source /path/to/kast-platform-vX.Y.Z.tar.gz
 ```
+
+Use `./install.sh --force` to remove validated Kast-owned installation,
+workspace, database, and plugin state before reinstalling.
 
 Start with the [first compiler-backed task](https://kast.michne.com/tutorials/first-compiler-backed-task/),
 follow the [installation guide](https://kast.michne.com/how-to/install-or-update/),

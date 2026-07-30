@@ -33,7 +33,8 @@ fn force_setup_removes_only_validated_kast_state() {
     std::fs::write(
         kast_home.join("state/data/workspaces/local-workspaces.json"),
         serde_json::to_vec(&serde_json::json!({
-            registered.display().to_string(): "registered-id"
+            registered.display().to_string(): "registered-id",
+            "../../../unrelated": "invalid-relative-root"
         }))
         .expect("registry JSON"),
     )

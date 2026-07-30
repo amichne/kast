@@ -37,6 +37,8 @@ cat >"$formatter" <<'SH'
 set -euo pipefail
 [[ "${1:-}" == "-dry" ]]
 shift
+[[ "${1:-}" == "-allowDefaults" ]]
+shift
 printf '%s\n' "$@" >>"${KAST_FORMATTER_LOG:?}"
 for path in "$@"; do
   if grep -Fq 'BAD_FORMAT' "$path"; then
@@ -91,6 +93,9 @@ if "$fixture/.githooks/quality-gate.sh" pre-commit >"$missing_failure" 2>&1; the
   printf 'missing IDEA formatter did not block pre-commit\n' >&2
   exit 1
 fi
-grep -Fq 'git config kast.ideaFormatter' "$missing_failure"
+grep -Fq 'git config kast.ideaFormatter' "$missing_failure" || {
+  cat "$missing_failure" >&2
+  exit 1
+}
 
 printf '%s\n' 'Git quality gate contract passed'

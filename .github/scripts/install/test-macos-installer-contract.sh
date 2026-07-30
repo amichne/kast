@@ -11,21 +11,20 @@ trap cleanup EXIT
 bundle="$scratch/bundle"
 log="$scratch/setup.log"
 agent_log="$scratch/agent.log"
-mkdir -p "$bundle/bin" "$scratch/bin"
+mkdir -p "$bundle/bin" "$bundle/libexec" "$scratch/bin"
 bundle="$(cd -- "$bundle" && pwd -P)"
-cat >"$bundle/bin/_kastctl" <<'SH'
+cat >"$bundle/libexec/kastctl" <<'SH'
 #!/usr/bin/env bash
 set -euo pipefail
 printf '%s\n' "$*" >>"${KAST_INSTALL_TEST_LOG:?}"
-mkdir -p "${KAST_HOME:?}/current/bin" "${HOME:?}/.local/bin"
-cp "$0" "${KAST_HOME}/current/bin/_kastctl"
-cp "$0" "${HOME}/.local/bin/_kastctl"
+mkdir -p "${KAST_HOME:?}/current/bin" "${KAST_HOME}/current/libexec" "${HOME:?}/.local/bin"
+cp "$0" "${KAST_HOME}/current/libexec/kastctl"
 cp "${KAST_INSTALL_TEST_AGENT_SOURCE:?}" "${KAST_HOME}/current/bin/kast"
 cp "${KAST_INSTALL_TEST_AGENT_SOURCE}" "${HOME}/.local/bin/kast"
-chmod 755 "${KAST_HOME}/current/bin/_kastctl" "${HOME}/.local/bin/_kastctl"
+chmod 755 "${KAST_HOME}/current/libexec/kastctl"
 chmod 755 "${KAST_HOME}/current/bin/kast" "${HOME}/.local/bin/kast"
 SH
-chmod +x "$bundle/bin/_kastctl"
+chmod +x "$bundle/libexec/kastctl"
 
 cat >"$bundle/bin/kast" <<'SH'
 #!/usr/bin/env bash
@@ -79,6 +78,9 @@ run_installer
 grep -Fqx -- "setup --source $bundle" "$log"
 assert_selected_harnesses codex claude copilot
 
+run_installer --force
+grep -Fqx -- "setup --source $bundle --force" "$log"
+
 for harness in codex claude copilot; do
   run_installer --harness "$harness"
   assert_selected_harnesses "$harness"
@@ -96,7 +98,7 @@ assert_selected_harnesses codex claude copilot
 ! grep -Fq -- 'amichne/kast-marketplace' "$repo_root/install.sh"
 ! grep -Fq -- '--ref main' "$repo_root/install.sh"
 ! grep -Fq -- 'kast@kast' "$repo_root/install.sh"
-grep -Fq -- '_kastctl setup --source <bundle>' "$repo_root/install.sh"
+grep -Fq -- 'libexec/kastctl setup --source <bundle>' "$repo_root/install.sh"
 grep -Fq -- 'local bin_dir="${HOME}/.local/bin"' "$repo_root/install.sh"
 grep -Fq -- 'export PATH="$HOME/.local/bin:$PATH"' "$repo_root/install.sh"
 ! grep -Eiq -- 'homebrew|\bbrew\b|kast machine|kast repair' "$repo_root/install.sh"

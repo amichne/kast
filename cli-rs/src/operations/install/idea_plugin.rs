@@ -2,6 +2,7 @@ fn setup_idea_plugin(
     idea_plugin: PathBuf,
     idea_plugins_dir: Option<PathBuf>,
     config_defaults: Option<PathBuf>,
+    mode: SetupMode,
 ) -> Result<SetupResult> {
     let idea_plugin = config::normalize(idea_plugin);
     require_regular_file(&idea_plugin, "Kast IDEA plugin ZIP")?;
@@ -31,6 +32,16 @@ fn setup_idea_plugin(
     let manifest_digest = manifest::sha256_bytes(&bundle_manifest);
     let resolved = manifest::default_resolved_paths();
     let targets = idea_activation_target_paths(resolved, &release_digest);
+    require_force_source_outside_install_root(
+        mode,
+        &current_exe,
+        &targets.resolved.install_root,
+    )?;
+    require_force_source_outside_install_root(
+        mode,
+        &idea_plugin,
+        &targets.resolved.install_root,
+    )?;
     let plugins_dir = idea_plugins_dir
         .map(config::normalize)
         .map(Ok)
@@ -41,6 +52,9 @@ fn setup_idea_plugin(
     let extracted_plugin_digest = directory_sha256(&extracted_plugin)?;
 
     manifest::with_install_lock(&targets.resolved, || {
+        if mode.is_force() {
+            ForceResetPlan::build(&targets, Some(&plugins_dir))?.execute()?;
+        }
         let installed_plugin = plugins_dir.join("kast");
         if current_release_matches(&targets)
             && verify_idea_plugin_setup(
@@ -74,7 +88,13 @@ fn setup_idea_plugin(
         let plugin_is_current = directory_sha256(&installed_plugin).ok().as_deref()
             == Some(extracted_plugin_digest.as_str());
         require_jetbrains_ides_closed()?;
-        let config_defaults = idea_config_defaults(&targets, config_defaults.as_deref())?;
+        let config_defaults = if mode.is_force() {
+            config_defaults
+                .clone()
+                .unwrap_or_else(|| DEFAULT_IDEA_CONFIG.to_string())
+        } else {
+            idea_config_defaults(&targets, config_defaults.as_deref())?
+        };
         let legacy_backup = archive_legacy_installations(&targets)?;
         let (previous, release_backup) = install_idea_release(
             &targets,
@@ -192,6 +212,7 @@ fn install_idea_release(
     fs::create_dir_all(targets.resolved.install_root.join("backups"))?;
     let staged = staging_root.join(format!("{release_digest}-{}", std::process::id()));
     fs::create_dir_all(staged.join("bin"))?;
+    fs::create_dir_all(staged.join("libexec"))?;
     fs::create_dir_all(staged.join("idea"))?;
     fs::create_dir_all(staged.join("config"))?;
     fs::copy(current_exe, staged.join(CONTROL_CLI_BUNDLE_PATH))?;

@@ -45,7 +45,7 @@ git worktree list --porcelain
 On macOS, admit the current root through the supported IDEA pathway:
 
 ```console
-_kastctl developer runtime up \
+~/.local/share/kast/current/libexec/kastctl developer runtime up \
   --workspace-root "$PWD" \
   --backend idea \
   --accept-indexing
@@ -223,7 +223,7 @@ Use the complete validated view when diagnosing coverage or certainty. Compact
 and count views intentionally omit details:
 
 ```console
-_kastctl --output json agent repository \
+~/.local/share/kast/current/libexec/kastctl --output json agent repository \
   --workspace-root "$PWD" \
   --question "Resolve SemanticGraphSha256.parse exactly." \
   --intent resolve \
@@ -275,7 +275,7 @@ Recovery must reestablish each authority in order. First bring up the exact
 workspace runtime:
 
 ```console
-_kastctl developer runtime up \
+~/.local/share/kast/current/libexec/kastctl developer runtime up \
   --workspace-root "$PWD" \
   --backend idea \
   --accept-indexing
@@ -284,7 +284,7 @@ _kastctl developer runtime up \
 Then inspect runtime and graph state:
 
 ```console
-_kastctl --output json status \
+~/.local/share/kast/current/libexec/kastctl --output json status \
   --workspace-root "$PWD" \
   --backend idea
 ```
@@ -295,7 +295,7 @@ choose targeted refreshes. Refresh the affected Kotlin file through the
 compiler-backed graph operation:
 
 ```console
-_kastctl agent graph \
+~/.local/share/kast/current/libexec/kastctl agent graph \
   --workspace-root "$PWD" \
   --operation refresh \
   --file-path path/to/AffectedFile.kt

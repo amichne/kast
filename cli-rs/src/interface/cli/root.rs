@@ -1,6 +1,6 @@
 #[derive(Debug, Parser)]
 #[command(
-    name = "_kastctl",
+    name = "kastctl",
     version = version(),
     about = "Repo-local control plane for workspace daemons and Kotlin analysis requests.",
     disable_help_subcommand = true
@@ -77,6 +77,9 @@ pub struct RpcArgs {
 
 #[derive(Debug, Args, Clone)]
 pub struct SetupArgs {
+    /// Remove prior Kast-owned state before installing the supplied release.
+    #[arg(long)]
+    pub force: bool,
     /// Extracted bundle directory or bundle .tar.gz archive.
     #[arg(
         long,

@@ -56,9 +56,9 @@ case "${1:-}" in
   *) printf '%s\n' "fixture kast $*" ;;
 esac
 SH
-  cp "${root}/kast" "${root}/_kastctl"
-  chmod 755 "${root}/_kastctl" "${root}/kast"
-  (cd "$root" && zip -9 -q "$output" _kastctl kast)
+  cp "${root}/kast" "${root}/kastctl"
+  chmod 755 "${root}/kastctl" "${root}/kast"
+  (cd "$root" && zip -9 -q "$output" kastctl kast)
 }
 
 write_fixture_backend_zip() {
@@ -159,9 +159,9 @@ fi
   "${scratch_dir}/safe-cli-extract"
 [[ -x "${scratch_dir}/safe-cli-extract/kast" ]] \
   || die "safe ZIP extractor must preserve the CLI executable bit"
-[[ -x "${scratch_dir}/safe-cli-extract/_kastctl" ]] \
+[[ -x "${scratch_dir}/safe-cli-extract/kastctl" ]] \
   || die "safe ZIP extractor must preserve the control executable bit"
-cmp -s "${scratch_dir}/safe-cli-extract/_kastctl" "${scratch_dir}/safe-cli-extract/kast" \
+cmp -s "${scratch_dir}/safe-cli-extract/kastctl" "${scratch_dir}/safe-cli-extract/kast" \
   || die "safe ZIP extractor changed the byte-identical entrypoints"
 grep -Fq "unsafe zip member type" "${scratch_dir}/unsafe-symlink.err" || die "unsafe symlink zip failure did not mention unsafe type"
 
@@ -179,11 +179,11 @@ runtime_manifest="${scratch_dir}/kast-runtime-manifest.json"
 [[ -f "$runtime_manifest" ]] || die "runtime manifest was not written"
 verify_sidecar "${scratch_dir}/kast-headless-linux-x64.sha256"
 tar --zstd -tf "$runtime_artifact" | grep -Fq './bin/kast' || die "runtime artifact missing bin/kast"
-tar --zstd -tf "$runtime_artifact" | grep -Fq './bin/_kastctl' || die "runtime artifact missing bin/_kastctl"
+tar --zstd -tf "$runtime_artifact" | grep -Fq './libexec/kastctl' || die "runtime artifact missing libexec/kastctl"
 runtime_extract="${scratch_dir}/runtime-extract"
 mkdir -p "$runtime_extract"
 tar --zstd -xf "$runtime_artifact" -C "$runtime_extract"
-cmp -s "$runtime_extract/bin/_kastctl" "$runtime_extract/bin/kast" \
+cmp -s "$runtime_extract/libexec/kastctl" "$runtime_extract/bin/kast" \
   || die "runtime entrypoints are not byte-identical"
 tar --zstd -tf "$runtime_artifact" | grep -Fq './lib/runtime-libs/classpath.txt' || die "runtime artifact missing runtime libs"
 python3 - "$runtime_manifest" "$runtime_artifact" <<'PY'

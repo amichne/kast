@@ -8,7 +8,7 @@ binary="$repo_root/cli-rs/target/debug/kast"
 cargo build --quiet --manifest-path "$manifest" --bin kast
 
 run_kast() {
-  (exec -a _kastctl "$binary" "$@")
+  (exec -a kastctl "$binary" "$@")
 }
 
 setup_help="$(run_kast setup --help)"

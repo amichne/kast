@@ -14,14 +14,14 @@ trap cleanup EXIT
 
 usage() {
   cat >&2 <<'USAGE'
-Usage: install.sh [--source <bundle-directory-or-tar.gz>] [--version <vX.Y.Z>]
+Usage: install.sh [--source <bundle-directory-or-tar.gz>] [--version <vX.Y.Z>] [--force]
                   [--configure | --autostart | --config-defaults <path>]
                   [--harness <codex|claude|copilot|none>]...
 
 Downloads one platform bundle when --source is omitted, then delegates every
 installation write to:
 
-  _kastctl setup --source <bundle>
+  libexec/kastctl setup --source <bundle>
 
 Options:
   --configure             Select IDEA and Codex defaults interactively.
@@ -31,6 +31,7 @@ Options:
                           Defaults to every detected harness; none disables it.
   --source PATH           Install a local bundle directory or tar.gz archive.
   --version VERSION       Install an exact release instead of the latest release.
+  --force                 Remove prior Kast-owned state before reinstalling.
   -h, --help              Show this help.
 
 Environment:
@@ -418,12 +419,22 @@ run_setup() {
   return 1
 }
 
+run_setup_with_idea_restart() {
+  if run_setup "$@"; then
+    return 0
+  fi
+  grep -Fq 'IDE_RESTART_REQUIRED' "${setup_scratch}/setup-output" || return 1
+  require ps
+  require_jetbrains_ides_closed
+  run_setup "$@" || return 1
+  relaunch_closed_idea
+}
+
 finish_install() {
   local bin_dir="${HOME}/.local/bin"
   local install_root="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin"
   ui_success "Kast is ready"
   ui_detail "${bin_dir}/kast -> ${install_root}/kast"
-  ui_detail "${bin_dir}/_kastctl -> ${install_root}/_kastctl"
   if [[ ":${PATH:-}:" != *":${bin_dir}:"* ]]; then
     ui_warning "${bin_dir} is not on PATH"
     ui_detail 'export PATH="$HOME/.local/bin:$PATH"'
@@ -433,13 +444,14 @@ finish_install() {
 main() {
   local source="" version="" bundle_root="" bundle_archive="" platform_id=""
   local cli_archive="" cli_url="" plugin_archive="" plugin_url=""
-  local configure=0 autostart=0 config_defaults=""
+  local configure=0 autostart=0 config_defaults="" force=0
   local harness requested none_selected=0 already_selected
   local -a setup_args=() requested_harnesses=() selected_harnesses=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --source) [[ $# -ge 2 ]] || die '--source requires a value'; source="$2"; shift 2 ;;
       --version) [[ $# -ge 2 ]] || die '--version requires a value'; version="$2"; shift 2 ;;
+      --force) force=1; shift ;;
       --configure) configure=1; shift ;;
       --autostart) autostart=1; shift ;;
       --config-defaults) [[ $# -ge 2 ]] || die '--config-defaults requires a value'; config_defaults="$2"; shift 2 ;;
@@ -506,11 +518,11 @@ main() {
       ui_step "Preparing installer"
       mkdir -p "${setup_scratch}/cli"
       unzip -q "$cli_archive" -d "${setup_scratch}/cli"
-      [[ -f "${setup_scratch}/cli/_kastctl" ]] || die "native CLI bundle is missing _kastctl"
+      [[ -f "${setup_scratch}/cli/kastctl" ]] || die "native CLI bundle is missing kastctl"
       [[ -f "${setup_scratch}/cli/kast" ]] || die "native CLI bundle is missing kast"
-      cmp -s "${setup_scratch}/cli/_kastctl" "${setup_scratch}/cli/kast" \
+      cmp -s "${setup_scratch}/cli/kastctl" "${setup_scratch}/cli/kast" \
         || die "native CLI entrypoints are not byte-identical"
-      chmod 755 "${setup_scratch}/cli/_kastctl" "${setup_scratch}/cli/kast"
+      chmod 755 "${setup_scratch}/cli/kastctl" "${setup_scratch}/cli/kast"
       ui_success "Installer prepared"
       if ((configure == 1)); then
         config_defaults="${setup_scratch}/config.toml"
@@ -522,20 +534,12 @@ main() {
         [[ -f "$config_defaults" ]] || die "config defaults do not exist: $config_defaults"
       fi
       ui_step "Installing Kast and the IDEA plugin"
-      setup_args=("${setup_scratch}/cli/_kastctl" setup --idea-plugin "$plugin_archive")
+      setup_args=("${setup_scratch}/cli/kastctl" setup --idea-plugin "$plugin_archive")
       if [[ -n "$config_defaults" ]]; then
         setup_args+=(--config-defaults "$config_defaults")
       fi
-      if ! run_setup "${setup_args[@]}"; then
-        if grep -Fq 'IDE_RESTART_REQUIRED' "${setup_scratch}/setup-output"; then
-          require ps
-          require_jetbrains_ides_closed
-          run_setup "${setup_args[@]}" || die "Kast setup failed after the IDE closed"
-          relaunch_closed_idea
-        else
-          die "Kast setup failed"
-        fi
-      fi
+      ((force == 0)) || setup_args+=(--force)
+      run_setup_with_idea_restart "${setup_args[@]}" || die "Kast setup failed"
       ui_success "Kast and the IDEA plugin installed"
       install_agent_harnesses "${selected_harnesses[@]}"
       finish_install
@@ -559,13 +563,14 @@ main() {
     [[ -n "$bundle_root" ]] || die "bundle archive has no root directory: $source"
   fi
 
-  [[ -x "${bundle_root}/bin/_kastctl" ]] \
-    || die "bundle control CLI is missing: ${bundle_root}/bin/_kastctl"
+  [[ -x "${bundle_root}/libexec/kastctl" ]] \
+    || die "bundle control CLI is missing: ${bundle_root}/libexec/kastctl"
   [[ -x "${bundle_root}/bin/kast" ]] \
     || die "bundle agent CLI is missing: ${bundle_root}/bin/kast"
   ui_step "Installing Kast"
-  run_setup "${bundle_root}/bin/_kastctl" setup --source "$bundle_root" \
-    || die "Kast setup failed"
+  setup_args=("${bundle_root}/libexec/kastctl" setup --source "$bundle_root")
+  ((force == 0)) || setup_args+=(--force)
+  run_setup_with_idea_restart "${setup_args[@]}" || die "Kast setup failed"
   ui_success "Kast installed"
   install_agent_harnesses "${selected_harnesses[@]}"
   finish_install

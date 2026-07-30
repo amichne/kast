@@ -114,15 +114,15 @@ fn public_read_commands_delegate_to_typed_operations() {
 
 #[test]
 fn internal_control_surface_preserves_the_existing_cli() {
-    let output = named("_kastctl")
+    let output = named("kastctl")
         .arg("--help")
         .output()
-        .expect("run _kastctl help");
+        .expect("run kastctl help");
     assert!(output.status.success(), "{output:?}");
     let stdout = String::from_utf8_lossy(&output.stdout);
 
     assert!(
-        stdout.contains("Usage: _kastctl [OPTIONS] [COMMAND]"),
+        stdout.contains("Usage: kastctl [OPTIONS] [COMMAND]"),
         "{stdout}"
     );
     for command in ["setup", "developer", "rpc", "agent"] {

@@ -1,4 +1,3 @@
-
 plugins {
     base
     alias(libs.plugins.kotlin.jvm) apply false
@@ -39,7 +38,8 @@ tasks.register("buildIdeaPlugin") {
 
 tasks.register("stageHeadlessDist") {
     group = "distribution"
-    description = "Builds a clean staged backend-headless tree under backend-headless/build/portable-dist/backend-headless."
+    description =
+        "Builds a clean staged backend-headless tree under backend-headless/build/portable-dist/backend-headless."
     dependsOn(":backend-headless:syncPortableDist")
 }
 
@@ -63,11 +63,11 @@ val kastHomeDirectory: File = providers.environmentVariable("HOME")
     ?: file(".")
 
 val cargoHomeDirectory: File = providers.environmentVariable("CARGO_HOME")
-                                   .orNull
-                                   ?.trim()
-                                   ?.takeIf(String::isNotEmpty)
-                                   ?.let(::file)
-                               ?: kastHomeDirectory.resolve(".cargo")
+    .orNull
+    ?.trim()
+    ?.takeIf(String::isNotEmpty)
+    ?.let(::file)
+    ?: kastHomeDirectory.resolve(".cargo")
 
 fun resolveCargoExecutable(): String {
     providers.environmentVariable("CARGO")
@@ -87,7 +87,7 @@ fun resolveCargoExecutable(): String {
 }
 
 val cliCompiledBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/kast")
-val cliDevelopmentBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/_kastctl")
+val cliDevelopmentBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/kastctl")
 val resolvedCargoExecutable = resolveCargoExecutable()
 val developmentIdeaPluginArchive: RegularFile = layout.projectDirectory.file(
     "backend-idea/build/distributions/backend-idea-${version}.zip",
@@ -110,7 +110,7 @@ val stageDevelopmentControlCli: TaskProvider<Copy> by tasks.registering(Copy::cl
     dependsOn(buildDevelopmentCli)
     from(cliCompiledBinary)
     into(cliDevelopmentBinary.asFile.parentFile)
-    rename { "_kastctl" }
+    rename { "kastctl" }
     filePermissions {
         unix("755")
     }

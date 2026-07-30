@@ -59,10 +59,10 @@ code_sources:
 # How Kast works
 
 Kast has one public API: the agent-focused `kast` command-line interface (CLI).
-The same executable bytes run the internal `_kastctl` control plane when
-invoked under that name. The shell installer and harness hooks adapt external
-events into these named entrypoints. IntelliJ IDEA and the headless host
-implement the compiler boundary.
+The same executable bytes run the internal KastCTL control plane when invoked
+as the release-local `libexec/kastctl`. The shell installer and harness hooks
+adapt external events into these named entrypoints. IntelliJ IDEA and the
+headless host implement the compiler boundary.
 
 This page is an Open Knowledge Format (OKF) `Runtime Flow` concept. Its
 `code_sources` point to the current owners of each claim. Use the map to start
@@ -82,16 +82,16 @@ The visible `kast --help` surface contains only agent-actionable operations.
 | Diagnostics | `kast check` | Report compiler diagnostics for changed or selected files. |
 | Mutations | `kast change`, `kast apply` | Validate a semantic plan, then apply its opaque identifier. |
 
-`_kastctl` preserves the full administrative CLI for setup, runtime control,
-raw RPC, release, and developer automation. It is not exposed to agents.
-`install.sh` downloads or opens a bundle, delegates activation to
-`_kastctl setup`, then invokes the hidden public-resource installer for each
-selected harness.
+`libexec/kastctl` preserves the full administrative CLI for setup, runtime
+control, raw RPC, release, and developer automation. It is private, is not
+placed on `PATH`, and is not exposed to agents. `install.sh` downloads or opens
+a bundle, delegates activation to `libexec/kastctl setup`, then invokes the
+hidden public-resource installer for each selected harness.
 
 ## End-to-end system flow
 
 Process startup selects the grammar from the invoked basename. `kast` enters
-the compact public parser. `_kastctl` enters the preserved administrative
+the compact public parser. `kastctl` enters the preserved administrative
 parser. An unsupported basename fails before command dispatch.
 
 <kast-view view-id="system-landscape" browser="true"></kast-view>
@@ -103,13 +103,14 @@ the explicit runtime map:
 
 ### Installation and control flow
 
-`_kastctl setup` is the persistent installation operation. It validates an
-untrusted bundle, stages a complete release, atomically switches `current`,
+`libexec/kastctl setup` is the persistent installation operation. It validates
+an untrusted bundle, stages a complete release, atomically switches `current`,
 verifies both entrypoints, and restores the prior release on failure.
 
-The activated bundle contains byte-identical `kast` and `_kastctl`
-entrypoints. The installer materializes release-matched Codex, Claude, and
-Copilot resources locally. No remote marketplace becomes runtime authority.
+The activated bundle contains byte-identical `bin/kast` and
+`libexec/kastctl` entrypoints. Only `kast` is linked onto `PATH`. The installer
+materializes release-matched Codex, Claude, and Copilot resources locally. No
+remote marketplace becomes runtime authority.
 
 ### Runtime and readiness flow
 

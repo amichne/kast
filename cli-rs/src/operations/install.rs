@@ -20,6 +20,7 @@ use std::process::{Command as ProcessCommand, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 include!("install/types.rs");
+include!("install/force_reset.rs");
 include!("install/bundle_entrypoint.rs");
 include!("install/bundle_source.rs");
 include!("install/bundle_validation.rs");

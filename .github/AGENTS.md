@@ -20,15 +20,15 @@ Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
 For release workflow changes, run `.github/scripts/release/test-release-workflow-contract.sh`.
 The release workflow owns the IDEA ZIP and the four platform setup bundles.
-Every bundle carries the verified plugin and enters validation through
-`_kastctl setup`.
+Every bundle carries the verified plugin and enters validation through its
+private `libexec/kastctl setup`.
 For CLI terminal command or executable example changes, run
 `.github/scripts/docs/test-terminal-command-contract.sh`.
 The local transactional setup gate lives in
 `.github/scripts/install/test-local-development-refresh-contract.sh`. Keep it wired in
 the independent `local-authority-contracts` CI job whenever refresh
 orchestration or bundle activation changes. Its Gradle graph packages one
-complete development bundle and invokes `_kastctl setup --source`.
+complete development bundle and invokes `libexec/kastctl setup --source`.
 Umbrella source contracts must not rerun focused owners. The setup contract
 owns source presence, activation, rollback, and retired-path assertions; the runtime compatibility contract owns
 deterministic source and manifest rendering only. Rust unit and integration tests run in `rust-cli`, Kotlin and

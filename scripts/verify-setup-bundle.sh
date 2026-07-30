@@ -18,13 +18,13 @@ else
   bundle_root="$(find "${scratch}/bundle" -mindepth 1 -maxdepth 1 -type d -print -quit)"
 fi
 
-[[ -x "${bundle_root}/bin/_kastctl" ]] || { printf 'bundle control CLI is missing\n' >&2; exit 1; }
+[[ -x "${bundle_root}/libexec/kastctl" ]] || { printf 'bundle control CLI is missing\n' >&2; exit 1; }
 [[ -x "${bundle_root}/bin/kast" ]] || { printf 'bundle agent CLI is missing\n' >&2; exit 1; }
-cmp -s "${bundle_root}/bin/_kastctl" "${bundle_root}/bin/kast" \
+cmp -s "${bundle_root}/libexec/kastctl" "${bundle_root}/bin/kast" \
   || { printf 'bundle entrypoints are not byte-identical\n' >&2; exit 1; }
-first="$(${bundle_root}/bin/_kastctl --output json setup --source "$bundle_root")"
+first="$(${bundle_root}/libexec/kastctl --output json setup --source "$bundle_root")"
 grep -Eq '"status"[[:space:]]*:[[:space:]]*"ACTIVATED"' <<<"$first"
-second="$(${KAST_HOME}/current/bin/_kastctl --output json setup --source "$bundle_root")"
+second="$(${KAST_HOME}/current/libexec/kastctl --output json setup --source "$bundle_root")"
 grep -Eq '"status"[[:space:]]*:[[:space:]]*"CURRENT"' <<<"$second"
-"${KAST_HOME}/current/bin/_kastctl" ready --for machine >/dev/null
+"${KAST_HOME}/current/libexec/kastctl" ready --for machine >/dev/null
 printf 'setup bundle verification passed\n'

@@ -52,7 +52,7 @@ if kind in {
 }:
     with zipfile.ZipFile(asset_path, "w") as archive:
         if kind != "cli-missing-kastctl":
-            write_entry(archive, "_kastctl", b"cli", 0o755)
+            write_entry(archive, "kastctl", b"cli", 0o755)
         if kind != "cli-missing-kast":
             mode = 0o644 if kind == "cli-non-executable-kast" else 0o755
             data = b"agent" if kind == "cli-mismatched-entrypoints" else b"cli"
@@ -234,7 +234,7 @@ write_provenance
 
 "$verifier" --release-dir "$release_dir" --tag "$tag"
 
-assert_cli_archive_rejected cli-missing-kastctl "regular _kastctl" "CLI archive without _kastctl"
+assert_cli_archive_rejected cli-missing-kastctl "regular kastctl" "CLI archive without kastctl"
 assert_cli_archive_rejected cli-missing-kast "regular kast" "CLI archive without kast"
 assert_cli_archive_rejected cli-non-executable-kast "entrypoints must be executable" "CLI archive with non-executable kast"
 assert_cli_archive_rejected cli-mismatched-entrypoints "byte-identical" "CLI archive with mismatched entrypoints"

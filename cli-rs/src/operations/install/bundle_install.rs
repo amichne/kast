@@ -168,7 +168,7 @@ fn verify_activated_bundle(
     if manifest::sha256_file(&active_binary)? != manifest::sha256_file(&agent_binary)? {
         return Err(CliError::new(
             "BUNDLE_INSTALL_MISMATCH",
-            "Installed _kastctl and kast entrypoints are not byte-identical.",
+            "Installed kastctl and kast entrypoints are not byte-identical.",
         ));
     }
     require_directory(&targets.version_dir, "installed bundle version")?;

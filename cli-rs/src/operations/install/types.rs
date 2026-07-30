@@ -5,6 +5,22 @@ pub enum SetupStatus {
     Current,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SetupMode {
+    Reconcile,
+    Force,
+}
+
+impl SetupMode {
+    fn from_force_flag(force: bool) -> Self {
+        if force { Self::Force } else { Self::Reconcile }
+    }
+
+    fn is_force(self) -> bool {
+        self == Self::Force
+    }
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SetupResult {

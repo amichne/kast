@@ -7,7 +7,7 @@ pub(crate) fn kast(home: &std::path::Path, config_home: &std::path::Path) -> Com
 pub(crate) fn kast_at(binary: &Path, home: &Path, config_home: &Path) -> Command {
     let mut command = Command::new(binary);
     command
-        .arg0("_kastctl")
+        .arg0("kastctl")
         .env("HOME", home)
         .env("KAST_CONFIG_HOME", config_home);
     command

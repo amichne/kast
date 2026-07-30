@@ -529,12 +529,12 @@ jobs:
           bin="target/${{ matrix.target }}/release/kast"
           smoke_dir="$RUNNER_TEMP/kast-cli-smoke"
           mkdir -p "$smoke_dir"
-          cp "$bin" "$smoke_dir/_kastctl"
+          cp "$bin" "$smoke_dir/kastctl"
           cp "$bin" "$smoke_dir/kast"
-          "$smoke_dir/_kastctl" --help >/dev/null
-          "$smoke_dir/_kastctl" version | grep -F "Kast CLI" >/dev/null
+          "$smoke_dir/kastctl" --help >/dev/null
+          "$smoke_dir/kastctl" version | grep -F "Kast CLI" >/dev/null
           "$smoke_dir/kast" --help >/dev/null
-          cmp -s "$smoke_dir/_kastctl" "$smoke_dir/kast"
+          cmp -s "$smoke_dir/kastctl" "$smoke_dir/kast"
 
       - name: Package CLI asset
         shell: bash
@@ -545,11 +545,11 @@ jobs:
           staging_dir="$RUNNER_TEMP/kast-${{ matrix.asset_id }}"
           rm -rf "$staging_dir" dist
           mkdir -p "$staging_dir" dist
-          cp "cli-rs/target/${{ matrix.target }}/release/kast" "$staging_dir/_kastctl"
+          cp "cli-rs/target/${{ matrix.target }}/release/kast" "$staging_dir/kastctl"
           cp "cli-rs/target/${{ matrix.target }}/release/kast" "$staging_dir/kast"
-          chmod 755 "$staging_dir/_kastctl" "$staging_dir/kast"
-          cmp -s "$staging_dir/_kastctl" "$staging_dir/kast"
-          (cd "$staging_dir" && zip -9 -q "$GITHUB_WORKSPACE/dist/${asset_name}" _kastctl kast)
+          chmod 755 "$staging_dir/kastctl" "$staging_dir/kast"
+          cmp -s "$staging_dir/kastctl" "$staging_dir/kast"
+          (cd "$staging_dir" && zip -9 -q "$GITHUB_WORKSPACE/dist/${asset_name}" kastctl kast)
           python3 - "$GITHUB_WORKSPACE/dist/${asset_name}" "dist/build-provenance-cli-${{ matrix.asset_id }}.json" <<'PY'
           import hashlib
           import json
@@ -953,7 +953,7 @@ jobs:
           rm -rf "$packager_dir"
           mkdir -p "$packager_dir"
           python3 -m zipfile -e "$cli_asset" "$packager_dir"
-          packager_bin="${packager_dir}/_kastctl"
+          packager_bin="${packager_dir}/kastctl"
           [[ -f "$packager_bin" ]] || { echo "Missing extracted Rust CLI binary: ${packager_bin}" >&2; exit 1; }
           chmod 755 "$packager_bin"
 
@@ -1086,12 +1086,12 @@ jobs:
           (cd dist && sha256sum -c kast-headless-linux-x64.sha256)
           (cd dist && sha256sum -c gradle-ro-dep-cache.sha256)
           tar --zstd -tf dist/kast-headless-linux-x64.tar.zst | grep -F './bin/kast'
-          tar --zstd -tf dist/kast-headless-linux-x64.tar.zst | grep -F './bin/_kastctl'
+          tar --zstd -tf dist/kast-headless-linux-x64.tar.zst | grep -F './libexec/kastctl'
           runtime_check="$RUNNER_TEMP/kast-headless-entrypoints"
           rm -rf "$runtime_check"
           mkdir -p "$runtime_check"
           tar --zstd -xf dist/kast-headless-linux-x64.tar.zst -C "$runtime_check"
-          cmp -s "$runtime_check/bin/_kastctl" "$runtime_check/bin/kast"
+          cmp -s "$runtime_check/libexec/kastctl" "$runtime_check/bin/kast"
           rm -rf "$RUNNER_TEMP/gradle-ro-release-check"
           mkdir -p "$RUNNER_TEMP/gradle-ro-release-check"
           tar --zstd -xf dist/gradle-ro-dep-cache.tar.zst -C "$RUNNER_TEMP/gradle-ro-release-check"
@@ -1358,11 +1358,11 @@ jobs:
           (cd "$work/backend" && zip -X -0 -q -r "$work/backend.zip" backend-headless)
           gh release download "$tag" --pattern "kast-idea-${tag}.zip" --dir "$work"
           python3 -m zipfile -e "provenance-cli/kast-${tag}-linux-x64.zip" "$work/packager"
-          chmod 755 "$work/packager/_kastctl"
+          chmod 755 "$work/packager/kastctl"
           mkdir -p dist/provenance
           for platform in linux-x64 linux-arm64 macos-x64 macos-arm64; do
             asset="dist/kast-${platform}-${tag}.tar.gz"
-            "$work/packager/_kastctl" developer release package ubuntu-debian-bundle \
+            "$work/packager/kastctl" developer release package ubuntu-debian-bundle \
               --repo-root "$PWD" \
               --cli-archive "provenance-cli/kast-${tag}-${platform}.zip" \
               --backend-archive "$work/backend.zip" \

@@ -104,7 +104,7 @@ def parse_args(argv):
     parser.add_argument(
         "--kastctl",
         dest="kast",
-        default="~/.local/share/kast/current/bin/_kastctl",
+        default="~/.local/share/kast/current/libexec/kastctl",
         help="Current Kast control CLI path",
     )
     parser.add_argument(

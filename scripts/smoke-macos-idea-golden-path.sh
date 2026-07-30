@@ -7,7 +7,7 @@ if [[ "$(uname -s)" != "Darwin" ]]; then
 fi
 
 workspace="${1:-$PWD}"
-kastctl_binary="${KAST_SMOKE_KASTCTL:-${KAST_HOME:-$HOME/.local/share/kast}/current/bin/_kastctl}"
+kastctl_binary="${KAST_SMOKE_KASTCTL:-${KAST_HOME:-$HOME/.local/share/kast}/current/libexec/kastctl}"
 scenario="${KAST_SMOKE_SCENARIO:-unspecified}"
 expected_disposition="${KAST_SMOKE_EXPECT_DISPOSITION:-}"
 timeout_seconds="${KAST_SMOKE_READY_TIMEOUT_SECONDS:-300}"

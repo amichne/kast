@@ -11,18 +11,18 @@ require() {
   }
 }
 
-require build.gradle.kts 'target/debug/_kastctl' \
-  'Gradle development setup must invoke _kastctl'
-require scripts/verify-setup-bundle.sh 'bin/_kastctl.*setup' \
-  'bundle verification must enter setup through _kastctl'
-require scripts/verify-setup-kast-install.sh 'command -v _kastctl' \
-  'installed-runtime verification must select _kastctl'
-require scripts/smoke-macos-idea-golden-path.sh 'current/bin/_kastctl' \
-  'the macOS runtime smoke must select _kastctl'
-require scripts/benchmark-native-graph.py 'current/bin/_kastctl' \
-  'the legacy JSON graph benchmark must select _kastctl'
-require scripts/release/benchmark-real-repositories.sh 'current/bin/_kastctl' \
-  'the release benchmark must select _kastctl'
+require build.gradle.kts 'target/debug/kastctl' \
+  'Gradle development setup must invoke kastctl'
+require scripts/verify-setup-bundle.sh 'libexec/kastctl.*setup' \
+  'bundle verification must enter setup through private kastctl'
+require scripts/verify-setup-kast-install.sh 'install_dir}/libexec/kastctl' \
+  'installed-runtime verification must select private kastctl'
+require scripts/smoke-macos-idea-golden-path.sh 'current/libexec/kastctl' \
+  'the macOS runtime smoke must select private kastctl'
+require scripts/benchmark-native-graph.py 'current/libexec/kastctl' \
+  'the legacy JSON graph benchmark must select private kastctl'
+require scripts/release/benchmark-real-repositories.sh 'current/libexec/kastctl' \
+  'the release benchmark must select private kastctl'
 
 for file in \
   scripts/packaging/assemble-prepared-local-generation.sh \
@@ -31,10 +31,15 @@ for file in \
   scripts/packaging/package-headless-runtime.sh \
   scripts/release/verify-release-assets.sh
 do
-  require "$file" '_kastctl' "$file must preserve the control entrypoint"
+  require "$file" 'kastctl' "$file must preserve the private control entrypoint"
   require "$file" 'kast' "$file must preserve the agent entrypoint"
   require "$file" 'cmp' "$file must verify byte-identical multicall entrypoints"
 done
+
+if grep -Eq 'local/bin/(kastctl|_kastctl)' "$repo_root/install.sh"; then
+  printf '%s\n' 'error: installer exposes a private control command on the user path' >&2
+  exit 1
+fi
 
 if rg -n '\bkagent\b' \
   --glob '!control_binary_paths_test.sh' \
