@@ -75,6 +75,62 @@ fn seed_public_graph(workspace: &Path, stale: bool) -> WorkspaceIndexFixture {
 }
 
 #[test]
+fn public_graph_exposes_read_only_topology() {
+    let fixture = tempfile::tempdir().expect("temporary graph fixture");
+    let home = fixture.path().join("home");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let _index = seed_public_graph(&workspace, false);
+
+    for (operation, scope, expected) in [
+        ("summary", "symbol", "SYMBOL"),
+        ("topology", "package", "PACKAGE"),
+        ("communities", "module", "MODULE"),
+    ] {
+        let output = named("kast")
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("KAST_CONFIG_HOME", fixture.path().join("config"))
+            .args(["graph", operation, "--scope", scope])
+            .output()
+            .unwrap_or_else(|error| panic!("run graph {operation} at {scope} scope: {error}"));
+        assert!(
+            output.status.success(),
+            "stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let decoded: serde_json::Value = toon_format::decode_default(
+            std::str::from_utf8(&output.stdout)
+                .expect("UTF-8 graph projection")
+                .trim(),
+        )
+        .expect("graph projection is valid TOON");
+        assert_eq!(decoded["scope"], expected, "{decoded:#}");
+    }
+
+    let help = named("kast")
+        .args(["graph", "topology", "--help"])
+        .output()
+        .expect("run topology help");
+    assert!(help.status.success(), "{help:?}");
+    let help = String::from_utf8(help.stdout).expect("UTF-8 topology help");
+    assert!(help.contains("--scope <SCOPE>"), "{help}");
+    assert!(
+        help.contains("possible values: symbol, package, module"),
+        "{help}"
+    );
+    for unsafe_surface in ["file", "database", "sql"] {
+        assert!(
+            !help.to_ascii_lowercase().contains(unsafe_surface),
+            "public graph help leaked {unsafe_surface}: {help}"
+        );
+    }
+}
+
+#[test]
 fn public_read_commands_delegate_to_typed_operations() {
     let fixture = tempfile::tempdir().expect("temporary workspace");
     let workspace = fixture.path().join("workspace");
