@@ -36,12 +36,12 @@ allowlist_json() {
       if $field == "state"
       then listed(["STARTING", "INDEXING", "READY", "DEGRADED", "INCOMPLETE",
         "UNAVAILABLE", "CURRENT", "QUALIFIED", "COMPLETE", "LIMITED", "FAILED",
-        "EXTERNAL_BOUNDARY"]; $value)
+        "EXTERNAL_BOUNDARY", "managed", "missing"]; $value)
       elif $field == "qualification"
       then listed(["CURRENT", "QUALIFIED"]; $value)
       elif $field == "installAuthority"
       then listed(["active-release", "missing"]; $value)
-      elif $field == "backendName"
+      elif ($field == "backendName" or $field == "kind")
       then listed(["idea", "headless"]; $value)
       elif $field == "scope"
       then listed(["SYMBOL", "PACKAGE", "MODULE"]; $value)
@@ -90,41 +90,49 @@ allowlist_json() {
 }
 KASTCTL="${KAST_HOME:-$HOME/.local/share/kast}/current/libexec/kastctl"
 test -x "$KASTCTL" || exit 1
-READY_JSON="$("$KASTCTL" --output json ready --workspace-root "$PWD" --for agent 2>/dev/null)"
+READY_JSON="$("$KASTCTL" --output json ready --workspace-root "$PWD" --for agent 2>/dev/null)" || :
+test -n "$READY_JSON" || exit 1
+printf '%s\n' "$READY_JSON" | allowlist_json || exit 1
 BACKEND="$(printf '%s\n' "$READY_JSON" | jq -er '
-  select((.ok == true) and (.agentEnvironment.ok == true))
+  select(.agentEnvironment.ok == true)
   | .agentEnvironment.backend
   | select(.state == "managed")
   | .kind
   | select(. == "idea" or . == "headless")
-' 2>/dev/null)" || exit 1
-STATUS_JSON="$("$KASTCTL" --output json status --workspace-root "$PWD" \
-  --backend "$BACKEND" 2>/dev/null)"
-printf '%s\n' "$READY_JSON" "$STATUS_JSON" | allowlist_json
+' 2>/dev/null)" || BACKEND=
+if [ -n "$BACKEND" ]; then
+  STATUS_JSON="$("$KASTCTL" --output json status --workspace-root "$PWD" \
+    --backend "$BACKEND" 2>/dev/null)" || :
+  test -n "$STATUS_JSON" || exit 1
+  printf '%s\n' "$STATUS_JSON" | allowlist_json || exit 1
+fi
 ```
 
-Inspect before starting or restarting anything. Distinguish runtime reachability, Gradle readiness, reference-index readiness, and persisted graph coverage. Never echo the captured JSON. Use `allowlist_json` in the same local shell invocation before producing user-visible output; if `jq` or safe filtering is unavailable, do not run the diagnostic.
+Inspect before starting or restarting anything. Distinguish runtime reachability, Gradle readiness, reference-index readiness, and persisted graph coverage. If readiness cannot select one managed backend, report its sanitized evidence and skip only the backend-dependent status and path steps. Never echo the captured JSON. Use `allowlist_json` in the same local shell invocation before producing user-visible output; if `jq` or safe filtering is unavailable, do not run the diagnostic.
 
 ## Inspect configuration and paths locally
 
 ```shell
-CONFIG_JSON="$("$KASTCTL" --output json config list --workspace-root "$PWD" 2>/dev/null)"
-case "$BACKEND" in
-  idea) PATHS_JSON="$("$KASTCTL" --output json developer inspect paths \
-    --workspace-root "$PWD" --idea 2>/dev/null)" ;;
-  headless) PATHS_JSON="$("$KASTCTL" --output json developer inspect paths \
-    --workspace-root "$PWD" 2>/dev/null)" ;;
-esac
-printf '%s\n' "$CONFIG_JSON" | allowlist_json
+CONFIG_JSON="$("$KASTCTL" --output json config list --workspace-root "$PWD" 2>/dev/null)" || :
+test -n "$CONFIG_JSON" || exit 1
+printf '%s\n' "$CONFIG_JSON" | allowlist_json || exit 1
+if [ -n "$BACKEND" ]; then
+  case "$BACKEND" in
+    idea) PATHS_JSON="$("$KASTCTL" --output json developer inspect paths \
+      --workspace-root "$PWD" --idea 2>/dev/null)" ;;
+    headless) PATHS_JSON="$("$KASTCTL" --output json developer inspect paths \
+      --workspace-root "$PWD" 2>/dev/null)" ;;
+  esac
+fi
 ```
 
-Use the first result to identify effective values and mutable fields. Use the second only to locate the active backend's Kast logs. Never echo either variable. Report only closed status names, booleans, allowlisted counts and durations, and the exact configuration keys named in this skill.
+Use the first result to identify effective values and mutable fields. When present, use the second only to locate the active backend's Kast logs. Never echo either variable. Report only closed status names, booleans, allowlisted counts and durations, and the exact configuration keys named in this skill.
 
 There is no typed log-reader command. Run searches only over the relevant time window, capture stdout into a variable, and discard stderr with `2>/dev/null`. Never echo the capture or report log-derived strings, including error codes; reduce it locally to counts and timings. Never return raw log lines, paths, project names, symbols, endpoints, tokens, process descriptors, sockets, or PIDs. Do not enable `KAST_IDEA_TRACE`; it records extensive host and workspace metadata.
 
 ## Change one supported knob at a time
 
-Configuration and runtime mutations require explicit user authorization. For diagnose, explain, or inspect requests, stop after recommending the single evidence-backed key.
+Configuration and runtime mutations require explicit user authorization and an initially selected `$BACKEND`. For diagnose, explain, or inspect requests, stop after recommending the single evidence-backed key.
 
 For an authorized one-key experiment:
 
