@@ -29,6 +29,13 @@ for unwanted in \
   ! grep -Fq "$unwanted" <<<"$dry_run" || { printf 'error: unwanted development setup task remains: %s\n' "$unwanted" >&2; exit 1; }
 done
 
+"$repo_root/gradlew" -q packageDevelopmentCli --no-daemon --console=plain
+cli_archive_entries="$(unzip -Z1 "$repo_root/build/setup/kast-cli.zip")"
+[[ "$cli_archive_entries" == $'kast\nkastctl' ]] || {
+  printf 'error: development CLI archive must contain root kast and kastctl, found: %s\n' "$cli_archive_entries" >&2
+  exit 1
+}
+
 refresh_task="$(sed -n '/tasks.register<Exec>("refreshDevelopmentMachine")/,/^}/p' "$repo_root/build.gradle.kts")"
 grep -Fq '"setup",' <<<"$refresh_task"
 grep -Fq '"--source",' <<<"$refresh_task"

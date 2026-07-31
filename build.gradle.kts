@@ -127,7 +127,7 @@ val packageDevelopmentCli: TaskProvider<Zip> by tasks.registering(Zip::class) {
     group = "distribution"
     description = "Packages the development CLI for the setup bundle."
     dependsOn(stageDevelopmentControlCli)
-    from(cliCompiledBinary)
+    from(cliCompiledBinary, cliDevelopmentBinary)
     archiveFileName.set("kast-cli.zip")
     destinationDirectory.set(layout.buildDirectory.dir("setup"))
 }
