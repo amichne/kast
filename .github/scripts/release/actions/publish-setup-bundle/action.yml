@@ -1,0 +1,44 @@
+name: Publish release setup bundle
+description: Verify and publish one retained release setup bundle
+
+inputs:
+  platform:
+    description: Setup bundle platform identifier
+    required: true
+  tag:
+    description: Release tag
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Download retained setup bundle
+      uses: actions/download-artifact@v7
+      with:
+        name: setup-bundle-${{ inputs.platform }}-${{ github.run_id }}
+        path: dist
+
+    - name: Verify and publish retained setup bundle
+      shell: bash
+      run: |
+        set -euo pipefail
+        tag="${{ inputs.tag }}"
+        platform="${{ inputs.platform }}"
+        asset="dist/kast-${platform}-${tag}.tar.gz"
+        scripts/verify-ci-artifact-ledger.py verify \
+          --ledger "dist/provenance/build-ledger-setup-${platform}.json" \
+          --git-sha "$GITHUB_SHA" \
+          --require-kind "release-setup-${platform}" \
+          --artifact "release-setup-${platform}=${asset}"
+        (cd dist && sha256sum -c "$(basename -- "$asset").sha256")
+        .github/scripts/release/upload-immutable-release-asset.sh --tag "$tag" --asset "$asset"
+        .github/scripts/release/upload-immutable-release-asset.sh --tag "$tag" --asset "${asset}.sha256"
+
+    - name: Retain setup bundle provenance
+      uses: actions/upload-artifact@v6
+      with:
+        name: setup-bundle-provenance-${{ inputs.platform }}-${{ github.run_id }}
+        path: dist/provenance/
+        if-no-files-found: error
+        overwrite: true
+        retention-days: 30
