@@ -9,40 +9,50 @@ fn load_reference_topology_snapshot(workspace_root: &Path) -> Result<ReferenceTo
     .map_err(derived_topology_database_error)?;
     crate::source_index_db::configure_read_connection(&connection)
         .map_err(derived_topology_database_error)?;
+    let has_repository_base =
+        crate::agent::native_graph_attach_repository_base(&connection, &database)
+            .map_err(|error| {
+                CliError::new(
+                    "DERIVED_TOPOLOGY_OVERLAY_UNAVAILABLE",
+                    format!("{}: {}", error.code, error.message),
+                )
+            })?;
     crate::source_index_db::enable_query_only(&connection)
         .map_err(derived_topology_database_error)?;
-    let data_version = derived_topology_data_version(&connection)?;
+    let data_versions = derived_topology_data_versions(&connection, has_repository_base)?;
     connection
         .execute_batch("BEGIN")
         .map_err(derived_topology_query_error)?;
     let result = (|| {
         let generation = derived_topology_generation(&connection)?;
-        let (mut qualification, mut coverage) = reference_coverage(&connection)?;
-        let nodes = reference_nodes(&connection)?;
-        let edges = reference_edges(&connection)?;
+        let (mut qualification, mut coverage) =
+            reference_coverage(&connection, has_repository_base)?;
+        let nodes = reference_nodes(&connection, has_repository_base)?;
+        let edge_read = reference_edges(&connection, has_repository_base)?;
+        let edges = edge_read.edges;
         coverage.external_targets = nodes.iter().filter(|node| node.kind == "EXTERNAL").count();
-        let unattributed_source_edges: i64 = connection
-            .query_row(
-                "SELECT COUNT(*) FROM symbol_references WHERE source_fq_id IS NULL",
-                [],
-                |row| row.get(0),
-            )
-            .map_err(derived_topology_query_error)?;
-        coverage.unattributed_source_edges =
-            usize::try_from(unattributed_source_edges).map_err(|_| {
-                CliError::new(
-                    "DERIVED_TOPOLOGY_QUERY_FAILED",
-                    "The unattributed reference count is negative.",
-                )
-            })?;
+        coverage.unattributed_source_edges = edge_read.unattributed_source_edges;
+        coverage.invalidated_target_edges = edge_read.invalidated_target_edges;
         if coverage.unattributed_source_edges > 0 {
             qualification = ReferenceQualification::Qualified;
             coverage
                 .limitations
                 .push("UNATTRIBUTED_REFERENCE_SOURCE".to_string());
-            coverage.limitations.sort();
-            coverage.limitations.dedup();
         }
+        if coverage.invalidated_target_edges > 0 {
+            qualification = ReferenceQualification::Qualified;
+            coverage
+                .limitations
+                .push("OVERLAY_TARGET_REFERENCE_INVALIDATED".to_string());
+        }
+        if has_repository_base {
+            qualification = ReferenceQualification::Qualified;
+            coverage
+                .limitations
+                .push("REPOSITORY_OVERLAY_REFERENCE_COMPOSITION".to_string());
+        }
+        coverage.limitations.sort();
+        coverage.limitations.dedup();
         if derived_topology_generation(&connection)? != generation {
             return Err(CliError::new(
                 "DERIVED_TOPOLOGY_GENERATION_CHANGED",
@@ -72,7 +82,9 @@ fn load_reference_topology_snapshot(workspace_root: &Path) -> Result<ReferenceTo
     connection
         .execute_batch(if result.is_ok() { "COMMIT" } else { "ROLLBACK" })
         .map_err(derived_topology_query_error)?;
-    if result.is_ok() && derived_topology_data_version(&connection)? != data_version {
+    if result.is_ok()
+        && derived_topology_data_versions(&connection, has_repository_base)? != data_versions
+    {
         return Err(CliError::new(
             "DERIVED_TOPOLOGY_GENERATION_CHANGED",
             "The source index changed while the artifact input was read.",
@@ -81,40 +93,27 @@ fn load_reference_topology_snapshot(workspace_root: &Path) -> Result<ReferenceTo
     result
 }
 
-fn derived_topology_data_version(connection: &rusqlite::Connection) -> Result<i64> {
-    connection
-        .query_row("PRAGMA main.data_version", [], |row| row.get(0))
-        .map_err(derived_topology_query_error)
-}
-
-fn derived_topology_generation(connection: &rusqlite::Connection) -> Result<u64> {
-    let (version, generation): (i64, i64) = connection
-        .query_row(
-            "SELECT version, generation FROM schema_version LIMIT 1",
-            [],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .map_err(derived_topology_query_error)?;
-    if version != crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION {
-        return Err(CliError::new(
-            "DERIVED_TOPOLOGY_SCHEMA_MISMATCH",
-            format!(
-                "source-index.db uses schema {version}; this Kast build requires {}.",
-                crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION
-            ),
-        ));
-    }
-    u64::try_from(generation).map_err(|_| {
-        CliError::new(
-            "DERIVED_TOPOLOGY_SCHEMA_INVALID",
-            "The source-index generation is negative.",
-        )
-    })
-}
-
 fn reference_coverage(
     connection: &rusqlite::Connection,
+    has_repository_base: bool,
 ) -> Result<(ReferenceQualification, ReferenceCoverage)> {
+    let orphan_reference_sources: i64 = connection
+        .query_row(
+            if has_repository_base {
+                DERIVED_TOPOLOGY_REPOSITORY_ORPHAN_SQL
+            } else {
+                DERIVED_TOPOLOGY_ORPHAN_SQL
+            },
+            [],
+            |row| row.get(0),
+        )
+        .map_err(derived_topology_query_error)?;
+    if orphan_reference_sources != 0 {
+        return Err(CliError::new(
+            "DERIVED_TOPOLOGY_REFERENCE_INCOMPLETE",
+            "The reference index contains reference facts without a source manifest.",
+        ));
+    }
     let unknown_pending_updates: i64 = connection
         .query_row(
             "SELECT COUNT(*)
@@ -135,26 +134,13 @@ fn reference_coverage(
             "The reference index has unapplied Kotlin updates without persisted coverage.",
         ));
     }
+    let coverage_sql = if has_repository_base {
+        DERIVED_TOPOLOGY_REPOSITORY_COVERAGE_SQL
+    } else {
+        DERIVED_TOPOLOGY_COVERAGE_SQL
+    };
     let mut statement = connection
-        .prepare(
-            "SELECT manifest.content_hash, manifest.desired_relationships_version,
-                    outcomes.content_hash, outcomes.stage_version,
-                    outcomes.outcome_status, outcomes.limitations_json,
-                    outcomes.failure_code,
-                    EXISTS (
-                        SELECT 1 FROM pending_updates pending
-                        WHERE pending.prefix_id = manifest.prefix_id
-                          AND pending.filename = manifest.filename
-                          AND pending.applied = 0
-                    )
-             FROM file_manifest manifest
-             LEFT JOIN file_stage_outcomes outcomes
-               ON outcomes.prefix_id = manifest.prefix_id
-              AND outcomes.filename = manifest.filename
-              AND outcomes.stage = 'RELATIONSHIPS'
-             WHERE manifest.filename LIKE '%.kt'
-             ORDER BY manifest.prefix_id, manifest.filename",
-        )
+        .prepare(coverage_sql)
         .map_err(derived_topology_query_error)?;
     let rows = statement
         .query_map([], |row| {
@@ -183,6 +169,7 @@ fn reference_coverage(
         pending_updates: 0,
         external_targets: 0,
         unattributed_source_edges: 0,
+        invalidated_target_edges: 0,
         limitations: Vec::new(),
     };
     let mut limitations = BTreeSet::new();
@@ -238,7 +225,7 @@ fn reference_coverage(
     coverage.limitations = limitations.into_iter().collect();
     let qualification = if coverage.total > 0 && coverage.complete == coverage.total {
         ReferenceQualification::Current
-    } else if coverage.complete > 0
+    } else if coverage.complete + coverage.limited > 0
         && coverage.complete + coverage.limited == coverage.total
         && coverage.pending == 0
         && coverage.failed == 0
@@ -261,22 +248,17 @@ fn reference_coverage(
     Ok((qualification, coverage))
 }
 
-fn reference_nodes(connection: &rusqlite::Connection) -> Result<Vec<ReferenceNodeInput>> {
+fn reference_nodes(
+    connection: &rusqlite::Connection,
+    has_repository_base: bool,
+) -> Result<Vec<ReferenceNodeInput>> {
+    let node_sql = if has_repository_base {
+        DERIVED_TOPOLOGY_REPOSITORY_NODE_SQL
+    } else {
+        DERIVED_TOPOLOGY_NODE_SQL
+    };
     let mut statement = connection
-        .prepare(
-            "WITH node_ids(fq_id) AS (
-                 SELECT fq_id FROM declarations
-                 UNION SELECT source_fq_id FROM symbol_references WHERE source_fq_id IS NOT NULL
-                 UNION SELECT target_fq_id FROM symbol_references
-             )
-             SELECT names.fq_name, declarations.kind, prefixes.dir_path,
-                    declarations.filename, declarations.module_path, declarations.source_set
-             FROM node_ids
-             JOIN fq_names names ON names.fq_id = node_ids.fq_id
-             LEFT JOIN declarations ON declarations.fq_id = node_ids.fq_id
-             LEFT JOIN path_prefixes prefixes ON prefixes.prefix_id = declarations.prefix_id
-             ORDER BY names.fq_name, declarations.prefix_id, declarations.filename",
-        )
+        .prepare(node_sql)
         .map_err(derived_topology_query_error)?;
     let rows = statement
         .query_map([], |row| {
@@ -328,55 +310,60 @@ fn reference_nodes(connection: &rusqlite::Connection) -> Result<Vec<ReferenceNod
     Ok(nodes.into_values().collect())
 }
 
-fn reference_edges(connection: &rusqlite::Connection) -> Result<Vec<ReferenceEdgeInput>> {
+fn reference_edges(
+    connection: &rusqlite::Connection,
+    has_repository_base: bool,
+) -> Result<ReferenceEdgeRead> {
+    let edge_sql = if has_repository_base {
+        DERIVED_TOPOLOGY_REPOSITORY_EDGE_SQL
+    } else {
+        DERIVED_TOPOLOGY_EDGE_SQL
+    };
     let mut statement = connection
-        .prepare(
-            "SELECT source.fq_name, target.fq_name, edge.edge_kind, COUNT(*)
-             FROM symbol_references edge
-             JOIN fq_names source ON source.fq_id = edge.source_fq_id
-             JOIN fq_names target ON target.fq_id = edge.target_fq_id
-             WHERE edge.source_fq_id IS NOT NULL
-             GROUP BY source.fq_name, target.fq_name, edge.edge_kind
-             ORDER BY source.fq_name, target.fq_name, edge.edge_kind",
-        )
+        .prepare(edge_sql)
         .map_err(derived_topology_query_error)?;
-    statement
+    let rows = statement
         .query_map([], |row| {
             Ok((
-                row.get::<_, String>(0)?,
+                row.get::<_, Option<String>>(0)?,
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
                 row.get::<_, i64>(3)?,
+                row.get::<_, bool>(4)?,
             ))
         })
         .map_err(derived_topology_query_error)?
         .collect::<rusqlite::Result<Vec<_>>>()
-        .map_err(derived_topology_query_error)?
-        .into_iter()
-        .map(|(source, target, raw_kind, occurrence_count)| {
-            let kind = DerivedRelationshipKind::try_from(raw_kind.as_str())?;
-            let occurrence_count = usize::try_from(occurrence_count).map_err(|_| {
-                CliError::new(
-                    "DERIVED_TOPOLOGY_QUERY_FAILED",
-                    "A reference occurrence count is negative.",
-                )
-            })?;
-            Ok(ReferenceEdgeInput {
+        .map_err(derived_topology_query_error)?;
+    let mut edges = Vec::new();
+    let mut unattributed_source_edges = 0;
+    let mut invalidated_target_edges = 0;
+    for (source, target, raw_kind, occurrence_count, invalidated_target) in rows {
+        let kind = DerivedRelationshipKind::try_from(raw_kind.as_str())?;
+        let occurrence_count = usize::try_from(occurrence_count).map_err(|_| {
+            CliError::new(
+                "DERIVED_TOPOLOGY_QUERY_FAILED",
+                "A reference occurrence count is negative.",
+            )
+        })?;
+        if invalidated_target {
+            invalidated_target_edges += occurrence_count;
+        } else if let Some(source) = source {
+            edges.push(ReferenceEdgeInput {
                 source,
                 target,
                 kind,
                 relationship_class: kind.into(),
                 occurrence_count,
                 normalized_weight: (occurrence_count as f64).ln_1p(),
-            })
-        })
-        .collect()
-}
-
-fn derived_topology_database_error(error: rusqlite::Error) -> CliError {
-    CliError::new("DERIVED_TOPOLOGY_INDEX_UNAVAILABLE", error.to_string())
-}
-
-fn derived_topology_query_error(error: rusqlite::Error) -> CliError {
-    CliError::new("DERIVED_TOPOLOGY_QUERY_FAILED", error.to_string())
+            });
+        } else {
+            unattributed_source_edges += occurrence_count;
+        }
+    }
+    Ok(ReferenceEdgeRead {
+        edges,
+        unattributed_source_edges,
+        invalidated_target_edges,
+    })
 }

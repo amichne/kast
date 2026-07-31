@@ -127,6 +127,9 @@ fn assert_success(output: &Output) {
     );
 }
 
+#[path = "derived_topology_cli/coverage.rs"]
+mod coverage;
+
 #[test]
 fn derive_requires_the_explicit_experimental_gate_before_writing() {
     let fixture = ReferenceFixture::new();
@@ -269,60 +272,6 @@ fn derive_writes_a_deterministic_qualified_reference_artifact() {
                     .is_some_and(|terms| labels.iter().all(|label| terms.contains(label)))
             })
     })));
-}
-
-#[test]
-fn derive_qualifies_unattributed_reference_sources() {
-    let fixture = ReferenceFixture::new();
-    fixture
-        .index
-        .connection()
-        .execute(
-            "INSERT INTO symbol_references VALUES
-             (1, 'Source0000.kt', 30, NULL, 5, NULL, NULL, NULL, 'CALL')",
-            [],
-        )
-        .expect("unattributed reference source");
-
-    assert_success(&fixture.derive("topology.json", None));
-    let artifact: serde_json::Value = serde_json::from_slice(&fixture.artifact("topology.json"))
-        .expect("qualified artifact JSON");
-
-    assert_eq!(artifact["source"]["qualification"], "QUALIFIED");
-    assert_eq!(artifact["source"]["coverage"]["unattributedSourceEdges"], 1);
-    assert!(
-        artifact["source"]["coverage"]["limitations"]
-            .as_array()
-            .is_some_and(|limitations| {
-                limitations
-                    .iter()
-                    .any(|limitation| limitation == "UNATTRIBUTED_REFERENCE_SOURCE")
-            }),
-        "{artifact:#}"
-    );
-}
-
-#[test]
-fn derive_rejects_unattributed_pending_kotlin_updates() {
-    let fixture = ReferenceFixture::new();
-    fixture
-        .index
-        .connection()
-        .execute(
-            "INSERT INTO pending_updates(op, prefix_id, filename, epoch_ms, applied)
-             VALUES ('upsert_file', 9, 'Pending.kt', 1, 0)",
-            [],
-        )
-        .expect("unknown pending update");
-
-    let output = fixture.derive("topology.json", None);
-
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
-    assert!(!fixture.workspace.join("topology.json").exists());
-    assert!(
-        String::from_utf8_lossy(&output.stdout).contains("DERIVED_TOPOLOGY_REFERENCE_INCOMPLETE"),
-        "{output:?}"
-    );
 }
 
 #[test]

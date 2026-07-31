@@ -9,6 +9,8 @@ include!("native_graph/graph_algorithms.rs");
 include!("native_graph/partitions.rs");
 include!("native_graph/measurements.rs");
 include!("native_graph/graph/derived_topology/model.rs");
+include!("native_graph/graph/derived_topology/database.rs");
+include!("native_graph/graph/derived_topology/overlay_queries.rs");
 include!("native_graph/graph/derived_topology/load.rs");
 include!("native_graph/graph/derived_topology/derive.rs");
 include!("native_graph/graph/derived_topology/write.rs");

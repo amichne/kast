@@ -91,6 +91,12 @@ impl From<DerivedRelationshipKind> for DerivedRelationshipClass {
     }
 }
 
+#[derive(PartialEq, Eq)]
+struct DerivedTopologyDataVersions {
+    main: i64,
+    repository_base: Option<i64>,
+}
+
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum DerivedStructuralRole {
@@ -123,6 +129,8 @@ struct ReferenceCoverage {
     pending_updates: usize,
     external_targets: usize,
     unattributed_source_edges: usize,
+    #[serde(default)]
+    invalidated_target_edges: usize,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     limitations: Vec<String>,
 }
@@ -169,6 +177,12 @@ struct ReferenceEdgeInput {
     relationship_class: DerivedRelationshipClass,
     occurrence_count: usize,
     normalized_weight: f64,
+}
+
+struct ReferenceEdgeRead {
+    edges: Vec<ReferenceEdgeInput>,
+    unattributed_source_edges: usize,
+    invalidated_target_edges: usize,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
