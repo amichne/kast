@@ -79,7 +79,10 @@ pub enum KastHarness {
 }
 
 #[derive(Debug, Args)]
-#[command(args_conflicts_with_subcommands = true, subcommand_precedence_over_arg = true)]
+#[command(
+    args_conflicts_with_subcommands = true,
+    subcommand_precedence_over_arg = true
+)]
 pub struct KastRefreshArgs {
     #[command(subcommand)]
     pub command: Option<KastRefreshCommand>,
@@ -185,6 +188,22 @@ pub struct KastGraphProjectionArgs {
     pub scope: KastGraphScope,
 }
 
+#[derive(Debug, Args)]
+#[command(
+    after_help = "Examples:\n  kast graph derive --experimental-derived-topology --out .kast/topology.json\n  kast graph derive --experimental-derived-topology --out .kast/current.json --prior .kast/previous.json"
+)]
+pub struct KastDerivedTopologyArgs {
+    /// Acknowledge that this artifact contains experimental statistical facts.
+    #[arg(long, required = true, action = clap::ArgAction::SetTrue)]
+    pub experimental_derived_topology: bool,
+    /// New workspace-relative JSON artifact path.
+    #[arg(long, value_name = "PATH")]
+    pub out: PathBuf,
+    /// Optional earlier workspace-relative artifact used for lineage.
+    #[arg(long, value_name = "PATH")]
+    pub prior: Option<PathBuf>,
+}
+
 #[derive(Debug, Subcommand)]
 pub enum KastGraphCommand {
     /// Summarize graph coverage and size.
@@ -201,6 +220,8 @@ pub enum KastGraphCommand {
     Topology(KastGraphProjectionArgs),
     /// Report deterministic graph communities.
     Communities(KastGraphProjectionArgs),
+    /// Write an experimental reference-derived topology artifact.
+    Derive(KastDerivedTopologyArgs),
     /// Report the bounded impact of one symbol.
     Impact {
         symbol: String,
