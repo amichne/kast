@@ -109,8 +109,16 @@ KAST_HOME="$development_home" \
   KAST_TEST_GRADLE_ARGS="$scratch/gradle.args" \
   KAST_TEST_DEVELOPMENT_CTL="$scratch/fake-development-kastctl" \
   bash "$development_repo/install.sh" --development --harness none >"$scratch/stdout" 2>"$scratch/stderr"
-grep -Fqx 'refreshDevelopmentMachine --no-daemon --console=plain' "$scratch/gradle.args"
-grep -Fqx "developer runtime up --workspace-root $development_repo --backend idea" "$KAST_TEST_RUNTIME_ARGS"
+grep -Fqx -- "--project-dir $development_repo refreshDevelopmentMachine --no-daemon --console=plain" \
+  "$scratch/gradle.args" || {
+  printf '%s\n' 'development Gradle invocation is not pinned to the repository root' >&2
+  exit 1
+}
+grep -Fqx "developer runtime up --workspace-root $development_repo --backend idea --accept-indexing" \
+  "$KAST_TEST_RUNTIME_ARGS" || {
+  printf '%s\n' 'development runtime bootstrap does not accept INDEXING' >&2
+  exit 1
+}
 grep -Fq 'Local development installation refreshed' "$scratch/stderr"
 grep -Fq 'Repository database ready' "$scratch/stderr"
 
@@ -120,7 +128,11 @@ KAST_HOME="$development_home" \
   KAST_TEST_GRADLE_ARGS="$scratch/gradle.args" \
   KAST_TEST_DEVELOPMENT_CTL="$scratch/fake-development-kastctl" \
   bash "$development_repo/install.sh" --development --clean --harness none >"$scratch/stdout" 2>"$scratch/stderr"
-grep -Fqx -- '-PkastDevelopmentClean=true refreshDevelopmentMachine --no-daemon --console=plain' "$scratch/gradle.args"
+grep -Fqx -- "--project-dir $development_repo -PkastDevelopmentClean=true refreshDevelopmentMachine --no-daemon --console=plain" \
+  "$scratch/gradle.args" || {
+  printf '%s\n' 'clean development Gradle invocation is not pinned to the repository root' >&2
+  exit 1
+}
 if grep -Eq -- '(^| )(clean|--rerun-tasks)( |$)' "$scratch/gradle.args"; then
   printf '%s\n' 'development clean deleted or bypassed build-time caches' >&2
   exit 1

@@ -538,7 +538,7 @@ main() {
   setup_scratch="$(mktemp -d "${TMPDIR:-/tmp}/kast-setup.XXXXXX")"
 
   if ((development == 1)); then
-    gradle_args=("$repository_root/gradlew")
+    gradle_args=("$repository_root/gradlew" "--project-dir" "$repository_root")
     ((development_clean == 0)) || gradle_args+=("-PkastDevelopmentClean=true")
     gradle_args+=(refreshDevelopmentMachine --no-daemon --console=plain)
     ui_step "Refreshing the local development installation"
@@ -549,7 +549,7 @@ main() {
     [[ -x "$control_cli" ]] || die "installed Kast control CLI is missing: $control_cli"
     ui_step "Building the repository database"
     run_setup "$control_cli" developer runtime up \
-      --workspace-root "$repository_root" --backend idea \
+      --workspace-root "$repository_root" --backend idea --accept-indexing \
       || die "repository database did not become ready"
     ui_success "Repository database ready"
     finish_install
