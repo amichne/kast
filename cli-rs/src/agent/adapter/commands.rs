@@ -188,9 +188,13 @@ pub(crate) fn run_graph(args: KastGraphArgs) -> Result<i32> {
             None,
             None,
         ),
-        KastGraphCommand::Nodes { page } => {
-            print_native_graph(workspace_root, NativeGraphOperation::Nodes, None, None, page)
-        }
+        KastGraphCommand::Nodes { page } => print_native_graph(
+            workspace_root,
+            NativeGraphOperation::Nodes,
+            None,
+            None,
+            page,
+        ),
         KastGraphCommand::Neighbors { symbol } => print_native_graph(
             workspace_root,
             NativeGraphOperation::Neighbors,
@@ -212,6 +216,7 @@ pub(crate) fn run_graph(args: KastGraphArgs) -> Result<i32> {
             None,
             None,
         ),
+        KastGraphCommand::Derive(args) => print_derived_topology(workspace_root, args),
         KastGraphCommand::Impact { symbol, page } => {
             run_symbol_relation(workspace_root, symbol, |runtime, selector| {
                 AgentCommand::Impact(AgentImpactArgs {

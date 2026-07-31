@@ -73,6 +73,10 @@ name = "kast_resources"
 path = "tests/agent/public/kast_resources.rs"
 
 [[test]]
+name = "derived_topology_cli"
+path = "tests/agent/public/derived_topology_cli.rs"
+
+[[test]]
 name = "agent_result_projection_smoke"
 path = "tests/agent/result_projection/main.rs"
 

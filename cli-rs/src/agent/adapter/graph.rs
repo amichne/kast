@@ -2,6 +2,21 @@ pub(crate) fn print_projected(command: AgentCommand) -> Result<i32> {
     print_projected_value(projected_value(command)?)
 }
 
+fn print_derived_topology(
+    workspace_root: PathBuf,
+    args: crate::cli::KastDerivedTopologyArgs,
+) -> Result<i32> {
+    if !args.experimental_derived_topology {
+        return Err(CliError::new(
+            "CLI_USAGE",
+            "`kast graph derive` requires --experimental-derived-topology.",
+        ));
+    }
+    let receipt =
+        agent::write_reference_derived_topology(&workspace_root, &args.out, args.prior.as_deref())?;
+    print_direct(&receipt)
+}
+
 fn print_native_graph(
     workspace_root: PathBuf,
     operation: NativeGraphOperation,
