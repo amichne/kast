@@ -199,6 +199,10 @@ grep -Fq '.github/scripts/release/metadata/render-release-checksums.py' <<<"$bui
   || { printf '%s\n' 'error: publication must render checksums from verified provenance metadata' >&2; exit 1; }
 grep -Fq "timeout 60s gh release download" <<<"$build_release_metadata" \
   || { printf '%s\n' 'error: required sidecar downloads must have a bounded timeout' >&2; exit 1; }
+grep -Fq 'contents: write' <<<"$build_release_metadata" \
+  || { printf '%s\n' 'error: release metadata must be allowed to read the draft release' >&2; exit 1; }
+grep -Fq 'GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}' <<<"$build_release_metadata" \
+  || { printf '%s\n' 'error: release metadata must use the draft release owner token' >&2; exit 1; }
 grep -Fq 'sleep "$attempt"' <<<"$build_release_metadata" \
   || { printf '%s\n' 'error: sidecar download retries must back off' >&2; exit 1; }
 grep -Fq 'name: Generate SHA256SUMS' <<<"$build_release_metadata" \

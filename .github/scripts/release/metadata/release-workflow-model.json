@@ -5,7 +5,7 @@
     "description": "Expanded release retry-isolation topology. Performance claims require a completed candidate release.",
     "observedAt": "2026-07-30",
     "source": ".github/workflows/release.yml",
-    "sourceSha256": "4a1cc18b9cf9a429c2c55814376fb5cf1912b5a30b7ab0bffe824a5de9b294e3"
+    "sourceSha256": "4e1fb887dd7a23d8f7d480858d05ebbb88ef3fe7f555fab99a13f5676bf01d59"
   },
   "tasks": [
     {
