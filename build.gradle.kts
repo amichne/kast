@@ -92,6 +92,13 @@ val resolvedCargoExecutable = resolveCargoExecutable()
 val developmentIdeaPluginArchive: RegularFile = layout.projectDirectory.file(
     "backend-idea/build/distributions/backend-idea-${version}.zip",
 )
+val developmentCliArchive = layout.buildDirectory.file("setup/kast-cli.zip")
+val developmentBundle = layout.buildDirectory.file(
+    "setup/kast-ubuntu-debian-headless-x86_64-${version}.tar.gz",
+)
+val cleanDevelopmentMachine: Provider<Boolean> = providers.gradleProperty("kastDevelopmentClean")
+    .map { value -> value.toBooleanStrict() }
+    .orElse(false)
 
 val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
     group = "build"
@@ -116,16 +123,47 @@ val stageDevelopmentControlCli: TaskProvider<Copy> by tasks.registering(Copy::cl
     }
 }
 
+val packageDevelopmentCli: TaskProvider<Zip> by tasks.registering(Zip::class) {
+    group = "distribution"
+    description = "Packages the development CLI for the setup bundle."
+    dependsOn(stageDevelopmentControlCli)
+    from(cliCompiledBinary)
+    archiveFileName.set("kast-cli.zip")
+    destinationDirectory.set(layout.buildDirectory.dir("setup"))
+}
+
+val packageDevelopmentSetupBundle: TaskProvider<Exec> by tasks.registering(Exec::class) {
+    group = "distribution"
+    description = "Builds one complete development setup bundle."
+    dependsOn(packageDevelopmentCli, ":backend-headless:portableDistZip", ":backend-idea:buildPlugin")
+    val backendArchive = project(":backend-headless").tasks.named<Zip>("portableDistZip")
+        .flatMap { task -> task.archiveFile }
+    commandLine(
+        cliDevelopmentBinary.asFile.absolutePath,
+        "developer", "release", "package", "ubuntu-debian-bundle",
+        "--repo-root", layout.projectDirectory.asFile.absolutePath,
+        "--cli-archive", developmentCliArchive.get().asFile.absolutePath,
+        "--backend-archive", backendArchive.get().asFile.absolutePath,
+        "--plugin-archive",
+        developmentIdeaPluginArchive.asFile.absolutePath,
+        "--version", project.version.toString(),
+        "--bundle-output", developmentBundle.get().asFile.absolutePath,
+    )
+}
+
 tasks.register<Exec>("refreshDevelopmentMachine") {
     group = "distribution"
     description = "Replaces the active installation through the sole setup transaction."
-    dependsOn(stageDevelopmentControlCli, ":backend-idea:buildPlugin")
+    dependsOn(packageDevelopmentSetupBundle)
     commandLine(
         cliDevelopmentBinary.asFile.absolutePath,
         "--output",
         "json",
         "setup",
-        "--idea-plugin",
-        developmentIdeaPluginArchive.asFile.absolutePath,
+        "--source",
+        developmentBundle.get().asFile.absolutePath,
     )
+    if (cleanDevelopmentMachine.get()) {
+        args("--force")
+    }
 }

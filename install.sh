@@ -12,6 +12,20 @@ cleanup() {
 
 trap cleanup EXIT
 
+kast_repository_root() {
+  local script_directory repository_root
+  command -v git >/dev/null 2>&1 || return 1
+  script_directory="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" 2>/dev/null && pwd -P)" || return 1
+  repository_root="$(git -C "$script_directory" rev-parse --show-toplevel 2>/dev/null)" || return 1
+  [[ "$repository_root" == "$script_directory" ]] || return 1
+  [[ -x "$repository_root/gradlew" && -f "$repository_root/settings.gradle.kts" ]] || return 1
+  git -C "$repository_root" ls-files --error-unmatch \
+    install.sh gradlew settings.gradle.kts >/dev/null 2>&1 || return 1
+  grep -Eq '^[[:space:]]*rootProject\.name[[:space:]]*=[[:space:]]*"kast"[[:space:]]*$' \
+    "$repository_root/settings.gradle.kts" || return 1
+  printf '%s\n' "$repository_root"
+}
+
 usage() {
   cat >&2 <<'USAGE'
 Usage: install.sh [--source <bundle-directory-or-tar.gz>] [--version <vX.Y.Z>] [--force]
@@ -40,6 +54,16 @@ Environment:
   KAST_RELEASES_URL   Release base URL. Defaults to the Kast GitHub releases.
   NONINTERACTIVE=1    Never close a detected JetBrains IDE.
 USAGE
+  if kast_repository_root >/dev/null; then
+    cat >&2 <<'USAGE'
+
+Repository development:
+  ./install.sh --development [--clean] [--harness <codex|claude|copilot|none>]...
+
+  --development           Build, install, and ready this Kast Git worktree.
+  --clean                 Reinstall Kast-owned state; preserve build caches.
+USAGE
+  fi
 }
 
 supports_color() {
@@ -445,13 +469,16 @@ main() {
   local source="" version="" bundle_root="" bundle_archive="" platform_id=""
   local cli_archive="" cli_url="" plugin_archive="" plugin_url=""
   local configure=0 autostart=0 config_defaults="" force=0
+  local development=0 development_clean=0 repository_root="" control_cli=""
   local harness requested none_selected=0 already_selected
-  local -a setup_args=() requested_harnesses=() selected_harnesses=()
+  local -a setup_args=() gradle_args=() requested_harnesses=() selected_harnesses=()
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --source) [[ $# -ge 2 ]] || die '--source requires a value'; source="$2"; shift 2 ;;
       --version) [[ $# -ge 2 ]] || die '--version requires a value'; version="$2"; shift 2 ;;
       --force) force=1; shift ;;
+      --development) development=1; shift ;;
+      --clean) development_clean=1; shift ;;
       --configure) configure=1; shift ;;
       --autostart) autostart=1; shift ;;
       --config-defaults) [[ $# -ge 2 ]] || die '--config-defaults requires a value'; config_defaults="$2"; shift 2 ;;
@@ -467,6 +494,12 @@ main() {
       *) die "unknown argument: $1" ;;
     esac
   done
+
+  if ((development == 1 || development_clean == 1)); then
+    repository_root="$(kast_repository_root)" \
+      || die 'development options are available only from the Kast Git repository'
+  fi
+  ((development_clean == 0 || development == 1)) || die '--clean requires --development'
 
   if ((${#requested_harnesses[@]} == 0)); then
     for harness in codex claude copilot; do
@@ -494,9 +527,34 @@ main() {
   if [[ -n "$source" && ($configure == 1 || $autostart == 1 || -n "$config_defaults") ]]; then
     die 'IDEA defaults require the downloaded macOS installer'
   fi
+  if ((development == 1)) && {
+    [[ -n "$source" || -n "$version" || -n "$config_defaults" ]] ||
+      ((force == 1 || configure == 1 || autostart == 1))
+  }; then
+    die '--development cannot be combined with release installer options'
+  fi
 
   print_banner
   setup_scratch="$(mktemp -d "${TMPDIR:-/tmp}/kast-setup.XXXXXX")"
+
+  if ((development == 1)); then
+    gradle_args=("$repository_root/gradlew" "--project-dir" "$repository_root")
+    ((development_clean == 0)) || gradle_args+=("-PkastDevelopmentClean=true")
+    gradle_args+=(refreshDevelopmentMachine --no-daemon --console=plain)
+    ui_step "Refreshing the local development installation"
+    run_setup_with_idea_restart "${gradle_args[@]}" || die "local development setup failed"
+    ui_success "Local development installation refreshed"
+    install_agent_harnesses "${selected_harnesses[@]}"
+    control_cli="${KAST_HOME:-${HOME}/.local/share/kast}/current/libexec/kastctl"
+    [[ -x "$control_cli" ]] || die "installed Kast control CLI is missing: $control_cli"
+    ui_step "Building the repository database"
+    run_setup "$control_cli" developer runtime up \
+      --workspace-root "$repository_root" --backend idea --accept-indexing \
+      || die "repository database did not become ready"
+    ui_success "Repository database ready"
+    finish_install
+    return 0
+  fi
 
   if [[ -z "$source" ]]; then
     require curl

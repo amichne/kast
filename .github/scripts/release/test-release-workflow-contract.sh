@@ -31,7 +31,7 @@ require "$ci" '.github/scripts/install/test-setup-contract.sh' 'CI must execute 
 require "$ci" '--plugin-archive "$plugin_asset"' 'CI setup bundles must include the verified IDEA plugin'
 require "$ci" 'scripts/verify-setup-bundle.sh' 'CI bundle validation must enter through KastCTL setup'
 require "$build" '"setup",' 'local development refresh must invoke KastCTL setup'
-require "$build" '"--idea-plugin",' 'local development refresh must pass the IDEA plugin'
+require "$build" '"--source",' 'local development refresh must activate one complete setup bundle'
 
 require "$release" 'for platform in linux-x64 linux-arm64 macos-x64 macos-arm64' 'release must package every supported setup platform'
 require "$ci" 'cp cli-rs/target/release/kast cli-rs/target/package/kast-v0.0.0-ci-linux-x64/kastctl' 'CI raw CLI asset must include the administrative entrypoint'

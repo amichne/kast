@@ -38,7 +38,8 @@ printf '%s\n' '#!/bin/sh' 'if [ "${KAST_TEST_IDEA_RUNNING:-0}" = 1 ] && [ ! -f "
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_KILL_LOG"' ': > "$KAST_TEST_IDEA_CLOSED"' > "$scratch/bin/kill"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_OPEN_LOG"' > "$scratch/bin/open"
 printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" >> "$KAST_TEST_BREW_LOG"' > "$scratch/bin/brew"
-chmod 755 "$scratch/fake-kast" "$scratch/bin/uname" "$scratch/bin/curl" "$scratch/bin/unzip" "$scratch/bin/tar" "$scratch/bin/codex" "$scratch/bin/ps" "$scratch/bin/kill" "$scratch/bin/open" "$scratch/bin/brew"
+printf '%s\n' '#!/bin/sh' 'printf "%s\n" "$*" > "$KAST_TEST_RUNTIME_ARGS"' > "$scratch/fake-development-kastctl"
+chmod 755 "$scratch/fake-kast" "$scratch/fake-development-kastctl" "$scratch/bin/uname" "$scratch/bin/curl" "$scratch/bin/unzip" "$scratch/bin/tar" "$scratch/bin/codex" "$scratch/bin/ps" "$scratch/bin/kill" "$scratch/bin/open" "$scratch/bin/brew"
 
 export PATH="$scratch/bin:$PATH"
 export HOME="$scratch/home"
@@ -55,8 +56,98 @@ export KAST_TEST_OPEN_LOG="$scratch/open.log"
 export KAST_TEST_BREW_LOG="$scratch/brew.log"
 export KAST_TEST_FZF_LOG="$scratch/fzf.log"
 export KAST_TEST_FAKE_BIN="$scratch/bin"
+export KAST_TEST_RUNTIME_ARGS="$scratch/runtime.args"
 unset NO_COLOR
 export CLICOLOR_FORCE=1
+
+development_repo="$scratch/kast-repository"
+development_home="$scratch/development-home"
+mkdir -p "$development_repo" "$development_home"
+development_repo="$(cd -- "$development_repo" && pwd -P)"
+development_home="$(cd -- "$development_home" && pwd -P)"
+cp "$repo_root/install.sh" "$development_repo/install.sh"
+printf '%s\n' 'rootProject.name = "kast"' > "$development_repo/settings.gradle.kts"
+printf '%s\n' \
+  '#!/bin/sh' \
+  'set -eu' \
+  'printf "%s\n" "$*" > "$KAST_TEST_GRADLE_ARGS"' \
+  'mkdir -p "$KAST_HOME/current/bin" "$KAST_HOME/current/libexec"' \
+  'cp "$KAST_TEST_DEVELOPMENT_CTL" "$KAST_HOME/current/bin/kast"' \
+  'cp "$KAST_TEST_DEVELOPMENT_CTL" "$KAST_HOME/current/libexec/kastctl"' \
+  'chmod 755 "$KAST_HOME/current/bin/kast" "$KAST_HOME/current/libexec/kastctl"' \
+  > "$development_repo/gradlew"
+chmod 755 "$development_repo/install.sh" "$development_repo/gradlew"
+git init -q "$development_repo"
+git -C "$development_repo" add install.sh gradlew settings.gradle.kts
+
+bash "$development_repo/install.sh" --help >"$scratch/development-help.stdout" 2>"$scratch/development-help.stderr"
+grep -Fq -- '--development' "$scratch/development-help.stderr" || {
+  printf '%s\n' 'repository installer help is missing --development' >&2
+  exit 1
+}
+grep -Fq -- '--clean' "$scratch/development-help.stderr" || {
+  printf '%s\n' 'repository installer help is missing --clean' >&2
+  exit 1
+}
+
+mkdir -p "$scratch/outside-repository"
+cp "$repo_root/install.sh" "$scratch/outside-repository/install.sh"
+bash "$scratch/outside-repository/install.sh" --help >"$scratch/outside-help.stdout" 2>"$scratch/outside-help.stderr"
+if grep -Eq -- '--development|--clean' "$scratch/outside-help.stderr"; then
+  printf '%s\n' 'development-only options leaked outside the Kast Git repository' >&2
+  exit 1
+fi
+if bash "$scratch/outside-repository/install.sh" --development >"$scratch/stdout" 2>"$scratch/stderr"; then
+  printf '%s\n' 'development install ran outside the Kast Git repository' >&2
+  exit 1
+fi
+grep -Fq 'development options are available only from the Kast Git repository' "$scratch/stderr"
+
+: > "$scratch/gradle.args"
+: > "$KAST_TEST_RUNTIME_ARGS"
+KAST_HOME="$development_home" \
+  KAST_TEST_GRADLE_ARGS="$scratch/gradle.args" \
+  KAST_TEST_DEVELOPMENT_CTL="$scratch/fake-development-kastctl" \
+  bash "$development_repo/install.sh" --development --harness none >"$scratch/stdout" 2>"$scratch/stderr"
+grep -Fqx -- "--project-dir $development_repo refreshDevelopmentMachine --no-daemon --console=plain" \
+  "$scratch/gradle.args" || {
+  printf '%s\n' 'development Gradle invocation is not pinned to the repository root' >&2
+  exit 1
+}
+grep -Fqx "developer runtime up --workspace-root $development_repo --backend idea --accept-indexing" \
+  "$KAST_TEST_RUNTIME_ARGS" || {
+  printf '%s\n' 'development runtime bootstrap does not accept INDEXING' >&2
+  exit 1
+}
+grep -Fq 'Local development installation refreshed' "$scratch/stderr"
+grep -Fq 'Repository database ready' "$scratch/stderr"
+
+: > "$scratch/gradle.args"
+: > "$KAST_TEST_RUNTIME_ARGS"
+KAST_HOME="$development_home" \
+  KAST_TEST_GRADLE_ARGS="$scratch/gradle.args" \
+  KAST_TEST_DEVELOPMENT_CTL="$scratch/fake-development-kastctl" \
+  bash "$development_repo/install.sh" --development --clean --harness none >"$scratch/stdout" 2>"$scratch/stderr"
+grep -Fqx -- "--project-dir $development_repo -PkastDevelopmentClean=true refreshDevelopmentMachine --no-daemon --console=plain" \
+  "$scratch/gradle.args" || {
+  printf '%s\n' 'clean development Gradle invocation is not pinned to the repository root' >&2
+  exit 1
+}
+if grep -Eq -- '(^| )(clean|--rerun-tasks)( |$)' "$scratch/gradle.args"; then
+  printf '%s\n' 'development clean deleted or bypassed build-time caches' >&2
+  exit 1
+fi
+
+: > "$scratch/gradle.args"
+if KAST_HOME="$development_home" \
+  KAST_TEST_GRADLE_ARGS="$scratch/gradle.args" \
+  KAST_TEST_DEVELOPMENT_CTL="$scratch/fake-development-kastctl" \
+  bash "$development_repo/install.sh" --clean --harness none >"$scratch/stdout" 2>"$scratch/stderr"; then
+  printf '%s\n' '--clean ran without --development' >&2
+  exit 1
+fi
+grep -Fq -- '--clean requires --development' "$scratch/stderr"
+[[ ! -s "$scratch/gradle.args" ]]
 
 bash "$repo_root/install.sh" --version v1.2.3 >"$scratch/stdout" 2>"$scratch/stderr"
 
