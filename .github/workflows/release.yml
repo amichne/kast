@@ -78,6 +78,17 @@ jobs:
             | .id
           ' <<<"$ci_runs")" \
             || { printf 'error: exact source CI is not green for %s\n' "$GITHUB_SHA" >&2; exit 1; }
+          ci_jobs="$(gh api --method GET \
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run_id}/jobs" \
+            -f filter=latest \
+            -f per_page=100)"
+          jq -e '
+            any(.jobs[];
+              .name == "Runtime command and bundle contracts"
+              and .status == "completed"
+              and .conclusion == "success")
+          ' <<<"$ci_jobs" >/dev/null \
+            || { printf 'error: exact-source CI setup contract did not pass for %s\n' "$GITHUB_SHA" >&2; exit 1; }
           ci_artifacts="$(gh api --method GET \
             "repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run_id}/artifacts" \
             -f name=ci-artifact-ledger-maven-publication \

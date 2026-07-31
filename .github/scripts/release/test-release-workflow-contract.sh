@@ -281,6 +281,23 @@ do
 done
 grep -Fq '.expired == false' <<<"$release_preflight" \
   || { printf '%s\n' 'error: release preflight must reject expired exact-source CI evidence' >&2; exit 1; }
+for jvm_suite in \
+  ':backend-shared:test' \
+  ':index-store:test'
+do
+  require "$ci_build" "$jvm_suite" "exact-source CI must run $jvm_suite before release"
+done
+setup_job_gate="$(sed -n '/ci_jobs=/,/ci_artifacts=/p' <<<"$release_preflight")"
+for setup_job_evidence in \
+  'actions/runs/${ci_run_id}/jobs' \
+  '.name == "Runtime command and bundle contracts"' \
+  '.status == "completed"' \
+  '.conclusion == "success"' \
+  'error: exact-source CI setup contract did not pass'
+do
+  grep -Fq -- "$setup_job_evidence" <<<"$setup_job_gate" \
+    || { printf 'error: release preflight must require setup-contract job evidence: %s\n' "$setup_job_evidence" >&2; exit 1; }
+done
 for duplicate_ci_work in \
   './gradlew test' \
   'actions/setup-java' \
