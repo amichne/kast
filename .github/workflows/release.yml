@@ -41,38 +41,54 @@ jobs:
   release-preflight:
     name: Preflight release automation
     runs-on: ubuntu-22.04
+    outputs:
+      run_id: ${{ steps.exact-source-ci.outputs.run_id }}
+    permissions:
+      actions: read
+      contents: read
     steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-java@v5
-        if: github.event_name == 'workflow_dispatch'
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - uses: gradle/actions/setup-gradle@v5
-        if: github.event_name == 'workflow_dispatch'
-        with:
-          cache-cleanup: always
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - name: Restore Rust validation build
-        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
-        with:
-          workspaces: cli-rs -> target
-          shared-key: rust-cli-validation
-          cache-bin: "false"
-
-      - name: Verify the sole setup contract
-        run: .github/scripts/install/test-setup-contract.sh
-
-      - name: Validate JVM source before creating a tag
-        if: github.event_name == 'workflow_dispatch'
-        run: >
-          ./scripts/ci-gradle-retry.sh ./gradlew test
-          --no-daemon
-          --stacktrace
+      - name: Require green exact-source CI
+        id: exact-source-ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$GITHUB_REF" != "refs/heads/main" ]]; then
+            printf 'error: stable release dispatch must target refs/heads/main\n' >&2
+            exit 1
+          fi
+          ci_runs="$(gh api --method GET \
+            "repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs" \
+            -f branch=main \
+            -f event=push \
+            -f head_sha="$GITHUB_SHA" \
+            -f status=success \
+            -f per_page=100)"
+          ci_run_id="$(jq -er --arg sha "$GITHUB_SHA" '
+            [.workflow_runs[] | select(
+              .head_sha == $sha
+              and .head_branch == "main"
+              and .path == ".github/workflows/ci.yml"
+              and .event == "push"
+              and .status == "completed"
+              and .conclusion == "success")]
+            | sort_by(.run_attempt)
+            | last
+            | .id
+          ' <<<"$ci_runs")" \
+            || { printf 'error: exact source CI is not green for %s\n' "$GITHUB_SHA" >&2; exit 1; }
+          ci_artifacts="$(gh api --method GET \
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run_id}/artifacts" \
+            -f name=ci-artifact-ledger-maven-publication \
+            -f per_page=100)"
+          jq -e '
+            any(.artifacts[];
+              .name == "ci-artifact-ledger-maven-publication"
+              and .expired == false)
+          ' <<<"$ci_artifacts" >/dev/null \
+            || { printf 'error: exact-source CI Maven evidence is unavailable for %s\n' "$GITHUB_SHA" >&2; exit 1; }
+          printf 'run_id=%s\n' "$ci_run_id" >>"$GITHUB_OUTPUT"
 
   bump-version:
     name: Bump version (${{ inputs.release_type }})
@@ -149,6 +165,7 @@ jobs:
     outputs:
       release_tag: ${{ steps.release-tag.outputs.value }}
       release_version: ${{ steps.release-tag.outputs.version }}
+      source_ci_run_id: ${{ needs.release-preflight.outputs.run_id }}
     steps:
       - uses: actions/checkout@v5
       - name: Resolve release tag
@@ -183,63 +200,49 @@ jobs:
           fi
 
   validate-jvm:
-    name: Validate JVM and Maven publications
+    name: Reuse JVM and Maven validation
     needs: [prepare-release]
     if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
 
-      - uses: actions/setup-java@v5
+      - name: Download exact-source CI Maven validation ledger
+        uses: actions/download-artifact@v7
         with:
-          distribution: temurin
-          java-version: "21"
+          name: ci-artifact-ledger-maven-publication
+          path: ci-ledgers
+          run-id: ${{ needs.prepare-release.outputs.source_ci_run_id }}
+          github-token: ${{ github.token }}
 
-      - uses: gradle/actions/setup-gradle@v5
-
-      - name: Run JVM tests and local publication checks
-        run: >
-          ./scripts/ci-gradle-retry.sh
-          ./gradlew
-          test
-          :analysis-api:publishToMavenLocal
-          :analysis-server:publishToMavenLocal
-          :index-store:publishToMavenLocal
-          -Pkast.publish.target=local
-          -Pversion="${{ needs.prepare-release.outputs.release_version }}"
-          --no-daemon
-          --stacktrace
-
-      - name: Record release Maven validation ledger
+      - name: Verify exact-source CI Maven validation ledger
+        env:
+          SOURCE_CI_RUN_ID: ${{ needs.prepare-release.outputs.source_ci_run_id }}
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p dist/ci-ledgers
-          printf 'gitSha=%s\nreleaseTag=%s\nworkflowRunId=%s\n' \
-            "$GITHUB_SHA" \
-            "${{ needs.prepare-release.outputs.release_tag }}" \
-            "$GITHUB_RUN_ID" \
-            > dist/ci-ledgers/release-maven-publication-validation.txt
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/ci-ledgers/release-maven-publication.json \
+          jq -e --arg run_id "$SOURCE_CI_RUN_ID" '
+            .workflowRunId == $run_id
+            and .sourceRef == "refs/heads/main"
+          ' ci-ledgers/maven-publication.json >/dev/null \
+            || { printf 'error: Maven ledger provenance does not match exact-source CI\n' >&2; exit 1; }
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger ci-ledgers/maven-publication.json \
             --git-sha "$GITHUB_SHA" \
-            --source-ref "refs/tags/${{ needs.prepare-release.outputs.release_tag }}" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-maven-publication-validation \
-            --artifact-name release-maven-publication-validation \
-            --artifact-path dist/ci-ledgers/release-maven-publication-validation.txt \
-            --producer-job validate-jvm \
-            --build-command-id release-maven-publish-to-local
+            --require-kind ci-maven-publication-validation
 
-      - name: Upload release Maven validation ledger
+      - name: Retain exact-source CI Maven validation ledger
         uses: actions/upload-artifact@v6
         with:
           name: release-artifact-ledger-maven-publication
-          path: dist/ci-ledgers/release-maven-publication.json
+          path: ci-ledgers/maven-publication.json
           if-no-files-found: error
-          retention-days: 7
+          retention-days: 30
 
   build-openapi-spec:
     name: Build OpenAPI spec
@@ -389,9 +392,9 @@ jobs:
         shell: bash
         run: >
           scripts/verify-ci-artifact-ledger.py verify
-          --ledger ci-ledgers/release-maven-publication.json
+          --ledger ci-ledgers/maven-publication.json
           --git-sha "$GITHUB_SHA"
-          --require-kind release-maven-publication-validation
+          --require-kind ci-maven-publication-validation
 
       - name: Check Maven Central publication state
         id: maven-state
@@ -841,9 +844,10 @@ jobs:
           path: |
             ~/.gradle/kast/shared-idea-distributions
             ~/.gradle/kast/backend-idea-distributions
-          key: release-idea-plugin-inputs-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+            ~/.cache/pluginVerifier/ides
+          key: idea-plugin-inputs-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
           restore-keys: |
-            release-idea-plugin-inputs-${{ runner.os }}-
+            idea-plugin-inputs-${{ runner.os }}-
 
       - name: Build unsigned IDEA plugin
         run: >
@@ -984,11 +988,12 @@ jobs:
         uses: actions/cache@v5
         with:
           path: |
-            ~/.gradle/kast/shared-idea-distributions
             ~/.gradle/kast/headless-idea-distributions
-          key: release-headless-runtime-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
+            ~/.gradle/kast/shared-idea-distributions
+            ~/.gradle/kast/backend-idea-distributions
+          key: intellij-runtime-all-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
           restore-keys: |
-            release-headless-runtime-${{ runner.os }}-
+            intellij-runtime-all-${{ runner.os }}-
 
       - name: Build headless backend
         shell: bash

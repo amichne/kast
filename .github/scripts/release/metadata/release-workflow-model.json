@@ -5,7 +5,7 @@
     "description": "Expanded release retry-isolation topology. Performance claims require a completed candidate release.",
     "observedAt": "2026-07-30",
     "source": ".github/workflows/release.yml",
-    "sourceSha256": "4a1cc18b9cf9a429c2c55814376fb5cf1912b5a30b7ab0bffe824a5de9b294e3"
+    "sourceSha256": "6dbb79f0ab73e899c5784d639cb9df2174d64176717acedafbf9cb6bbbfe544b"
   },
   "tasks": [
     {
@@ -19,7 +19,7 @@
         "prepare-release"
       ],
       "outputs": [
-        "release-jvm-validation"
+        "exact-source-ci-maven-validation"
       ]
     },
     {
@@ -404,7 +404,7 @@
     }
   ],
   "requiredOutputs": [
-    "release-jvm-validation",
+    "exact-source-ci-maven-validation",
     "release-maven-publication",
     "release-openapi-asset",
     "release-cli-linux-x64-asset",
