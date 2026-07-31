@@ -1766,7 +1766,7 @@ jobs:
       )
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v5
 
@@ -1812,7 +1812,7 @@ jobs:
 
       - name: Generate SHA256SUMS
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
         shell: bash
         run: |
           set -euo pipefail
