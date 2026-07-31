@@ -92,6 +92,9 @@ val resolvedCargoExecutable = resolveCargoExecutable()
 val developmentIdeaPluginArchive: RegularFile = layout.projectDirectory.file(
     "backend-idea/build/distributions/backend-idea-${version}.zip",
 )
+val cleanDevelopmentMachine: Provider<Boolean> = providers.gradleProperty("kastDevelopmentClean")
+    .map { value -> value.toBooleanStrict() }
+    .orElse(false)
 
 val buildDevelopmentCli: TaskProvider<Exec> by tasks.registering(Exec::class) {
     group = "build"
@@ -128,4 +131,7 @@ tasks.register<Exec>("refreshDevelopmentMachine") {
         "--idea-plugin",
         developmentIdeaPluginArchive.asFile.absolutePath,
     )
+    if (cleanDevelopmentMachine.get()) {
+        args("--force")
+    }
 }
