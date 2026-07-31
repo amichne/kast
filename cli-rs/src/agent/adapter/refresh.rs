@@ -120,8 +120,11 @@ pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
             workspace_root.clone(),
             NativeGraphOperation::Refresh,
             None,
-            graph_paths,
-            graph_removed_paths,
+            None,
+            NativeGraphFileChanges {
+                file_paths: graph_paths,
+                removed_file_paths: graph_removed_paths,
+            },
             None,
             None,
         ))?;

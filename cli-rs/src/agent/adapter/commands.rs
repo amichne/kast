@@ -176,25 +176,39 @@ pub(crate) fn run_symbol(args: KastSymbolArgs) -> Result<i32> {
 
 pub(crate) fn run_graph(args: KastGraphArgs) -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(None)?;
-    match args.command.unwrap_or(KastGraphCommand::Summary) {
-        KastGraphCommand::Summary => {
-            print_native_graph(workspace_root, NativeGraphOperation::Summary, None, None)
-        }
+    match args
+        .command
+        .unwrap_or(KastGraphCommand::Summary(KastGraphProjectionArgs {
+            scope: KastGraphScope::Symbol,
+        })) {
+        KastGraphCommand::Summary(projection) => print_native_graph(
+            workspace_root,
+            NativeGraphOperation::Summary,
+            Some(projection.scope.into()),
+            None,
+            None,
+        ),
         KastGraphCommand::Nodes { page } => {
-            print_native_graph(workspace_root, NativeGraphOperation::Nodes, None, page)
+            print_native_graph(workspace_root, NativeGraphOperation::Nodes, None, None, page)
         }
         KastGraphCommand::Neighbors { symbol } => print_native_graph(
             workspace_root,
             NativeGraphOperation::Neighbors,
+            None,
             Some(symbol),
             None,
         ),
-        KastGraphCommand::Topology => {
-            print_native_graph(workspace_root, NativeGraphOperation::Topology, None, None)
-        }
-        KastGraphCommand::Communities => print_native_graph(
+        KastGraphCommand::Topology(projection) => print_native_graph(
+            workspace_root,
+            NativeGraphOperation::Topology,
+            Some(projection.scope.into()),
+            None,
+            None,
+        ),
+        KastGraphCommand::Communities(projection) => print_native_graph(
             workspace_root,
             NativeGraphOperation::Communities,
+            Some(projection.scope.into()),
             None,
             None,
         ),

@@ -33,6 +33,18 @@ fn seed_public_graph(workspace: &Path, stale: bool) -> WorkspaceIndexFixture {
                  kind TEXT NOT NULL,
                  context TEXT NOT NULL
              );
+             CREATE VIEW semantic_module_quotient AS
+                 SELECT source_file.module_name AS source_container,
+                        target_file.module_name AS target_container,
+                        edges.kind, edges.context, COUNT(*) AS weight
+                 FROM semantic_edge_occurrences edges
+                 JOIN semantic_symbols source ON source.id = edges.source_id
+                 JOIN semantic_symbols target ON target.id = edges.target_id
+                 JOIN semantic_files source_file ON source_file.id = source.file_id
+                 JOIN semantic_files target_file ON target_file.id = target.file_id
+                 WHERE source_file.module_name IS NOT NULL
+                   AND target_file.module_name IS NOT NULL
+                 GROUP BY 1, 2, edges.kind, edges.context;
              INSERT INTO semantic_symbols VALUES
                  (1, 'class:sample.Source', 'CLASS', 'Source', 1),
                  (2, 'class:sample.Target', 'CLASS', 'Target', 1);
@@ -60,6 +72,62 @@ fn seed_public_graph(workspace: &Path, stale: bool) -> WorkspaceIndexFixture {
             .expect("stale manifest");
     }
     index
+}
+
+#[test]
+fn public_graph_exposes_read_only_topology() {
+    let fixture = tempfile::tempdir().expect("temporary graph fixture");
+    let home = fixture.path().join("home");
+    let workspace = fixture.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let _index = seed_public_graph(&workspace, false);
+
+    for (operation, scope, expected) in [
+        ("summary", "symbol", "SYMBOL"),
+        ("topology", "package", "PACKAGE"),
+        ("communities", "module", "MODULE"),
+    ] {
+        let output = named("kast")
+            .current_dir(&workspace)
+            .env("HOME", &home)
+            .env("KAST_CONFIG_HOME", fixture.path().join("config"))
+            .args(["graph", operation, "--scope", scope])
+            .output()
+            .unwrap_or_else(|error| panic!("run graph {operation} at {scope} scope: {error}"));
+        assert!(
+            output.status.success(),
+            "stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let decoded: serde_json::Value = toon_format::decode_default(
+            std::str::from_utf8(&output.stdout)
+                .expect("UTF-8 graph projection")
+                .trim(),
+        )
+        .expect("graph projection is valid TOON");
+        assert_eq!(decoded["scope"], expected, "{decoded:#}");
+    }
+
+    let help = named("kast")
+        .args(["graph", "topology", "--help"])
+        .output()
+        .expect("run topology help");
+    assert!(help.status.success(), "{help:?}");
+    let help = String::from_utf8(help.stdout).expect("UTF-8 topology help");
+    assert!(help.contains("--scope <SCOPE>"), "{help}");
+    assert!(
+        help.contains("possible values: symbol, package, module"),
+        "{help}"
+    );
+    for unsafe_surface in ["file", "database", "sql"] {
+        assert!(
+            !help.to_ascii_lowercase().contains(unsafe_surface),
+            "public graph help leaked {unsafe_surface}: {help}"
+        );
+    }
 }
 
 #[test]

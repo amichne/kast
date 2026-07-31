@@ -5,6 +5,7 @@ pub(crate) fn print_projected(command: AgentCommand) -> Result<i32> {
 fn print_native_graph(
     workspace_root: PathBuf,
     operation: NativeGraphOperation,
+    scope: Option<NativeGraphScope>,
     symbol: Option<String>,
     page: Option<KastGraphNodesPageToken>,
 ) -> Result<i32> {
@@ -51,9 +52,9 @@ fn print_native_graph(
     let envelope = projected_value(native_graph_command(
         workspace_root,
         operation,
+        scope,
         symbol,
-        Vec::new(),
-        Vec::new(),
+        NativeGraphFileChanges::default(),
         Some(admission.generation()),
         after_id,
     ))?;
@@ -113,19 +114,19 @@ fn print_native_graph(
 fn native_graph_command(
     workspace_root: PathBuf,
     operation: NativeGraphOperation,
+    scope: Option<NativeGraphScope>,
     symbol: Option<String>,
-    file_paths: Vec<String>,
-    removed_file_paths: Vec<String>,
+    file_changes: NativeGraphFileChanges,
     generation: Option<u64>,
     after_id: Option<u64>,
 ) -> AgentCommand {
     AgentCommand::Graph(AgentNativeGraphArgs {
         runtime: agent_runtime(workspace_root),
         database: None,
-        scope: None,
+        scope,
         operation,
-        file_paths,
-        removed_file_paths,
+        file_paths: file_changes.file_paths,
+        removed_file_paths: file_changes.removed_file_paths,
         modules: Vec::new(),
         source_sets: Vec::new(),
         exclusive: false,
@@ -135,6 +136,12 @@ fn native_graph_command(
         limit: (operation == NativeGraphOperation::Nodes).then_some(500),
         resolution: None,
     })
+}
+
+#[derive(Default)]
+struct NativeGraphFileChanges {
+    file_paths: Vec<String>,
+    removed_file_paths: Vec<String>,
 }
 
 fn run_symbol_relation(

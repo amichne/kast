@@ -5,6 +5,7 @@ use toml_edit::{DocumentMut, Item, Table, TableLike};
 pub struct MutableConfigField {
     pub key: &'static str,
     pub value_type: ConfigValueType,
+    pub workspace_override: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -24,7 +25,11 @@ struct ConfigFieldSpec {
 impl ConfigFieldSpec {
     const fn new(key: &'static str, value_type: ConfigValueType) -> Self {
         Self {
-            field: MutableConfigField { key, value_type },
+            field: MutableConfigField {
+                key,
+                value_type,
+                workspace_override: false,
+            },
             minimum: None,
         }
     }
@@ -34,6 +39,7 @@ impl ConfigFieldSpec {
             field: MutableConfigField {
                 key,
                 value_type: ConfigValueType::Integer,
+                workspace_override: false,
             },
             minimum: Some(1),
         }
@@ -127,6 +133,7 @@ pub struct WorkspaceConfigMutation {
 pub fn list_workspace_config(workspace_root: PathBuf) -> Result<WorkspaceConfigList> {
     let workspace_root = resolve_workspace_root(Some(workspace_root))?;
     let workspace_config = workspace_config_path(&workspace_root)?;
+    let workspace_document = read_workspace_config(&workspace_config)?;
     let global_config = global_config_path();
     Ok(WorkspaceConfigList {
         ok: true,
@@ -147,7 +154,16 @@ pub fn list_workspace_config(workspace_root: PathBuf) -> Result<WorkspaceConfigL
         effective: KastConfig::load(&workspace_root)?,
         mutable_fields: MUTABLE_CONFIG_FIELDS
             .iter()
-            .map(|spec| spec.field)
+            .map(|spec| {
+                let path = spec.field.key.split('.').collect::<Vec<_>>();
+                MutableConfigField {
+                    workspace_override: document_contains_value(
+                        workspace_document.as_table(),
+                        &path,
+                    ),
+                    ..spec.field
+                }
+            })
             .collect(),
         schema_version: SCHEMA_VERSION,
     })
@@ -357,4 +373,17 @@ fn remove_document_value(table: &mut dyn TableLike, path: &[&str]) -> bool {
         table.remove(head);
     }
     removed
+}
+
+fn document_contains_value(table: &dyn TableLike, path: &[&str]) -> bool {
+    let Some((head, tail)) = path.split_first() else {
+        return false;
+    };
+    let Some(item) = table.get(head) else {
+        return false;
+    };
+    tail.is_empty()
+        || item
+            .as_table_like()
+            .is_some_and(|child| document_contains_value(child, tail))
 }

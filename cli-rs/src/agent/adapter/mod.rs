@@ -6,8 +6,9 @@ use crate::cli::{
     AgentRelationLimit, AgentRelationViewArgs, AgentReusableSymbolSelectorArgs, AgentRuntimeArgs,
     AgentSelectorHandle, AgentSymbolArgs, AgentSymbolMode, AgentSymbolViewArgs,
     AgentWorkspaceFilesArgs, AgentWorkspaceFilesField, AgentWorkspaceFilesViewArgs, KastGraphArgs,
-    KastGraphCommand, KastGraphNodesPageToken, KastPathsArgs, KastRefreshArgs, KastRefreshCommand,
-    KastSymbolArgs, KastSymbolCommand, NativeGraphOperation, OutputFormat, WorkspaceDirtyFilter,
+    KastGraphCommand, KastGraphNodesPageToken, KastGraphProjectionArgs, KastGraphScope,
+    KastPathsArgs, KastRefreshArgs, KastRefreshCommand, KastSymbolArgs, KastSymbolCommand,
+    NativeGraphOperation, NativeGraphScope, OutputFormat, WorkspaceDirtyFilter,
     WorkspaceFilesPublicPageToken, WorkspaceRelativeGlob,
 };
 use crate::error::{CliError, Result};
