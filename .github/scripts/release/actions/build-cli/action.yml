@@ -1,0 +1,127 @@
+name: Build release CLI asset
+description: Build, verify, package, and retain one release CLI asset
+
+inputs:
+  asset_id:
+    description: Release platform identifier
+    required: true
+  target:
+    description: Rust target triple
+    required: true
+  cache_key:
+    description: Trusted Rust cache key
+    required: true
+  release_tag:
+    description: Release tag
+    required: true
+  release_version:
+    description: Release version without the v prefix
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ inputs.target }}
+
+    - name: Restore platform Rust release build
+      uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
+      with:
+        workspaces: cli-rs -> target
+        shared-key: ${{ inputs.cache_key }}
+        cache-bin: "false"
+
+    - name: Build Rust CLI
+      working-directory: cli-rs
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ "${{ inputs.asset_id }}" == 'linux-x64' ]]; then
+          KAST_VERSION="${{ inputs.release_version }}" cargo build --release --locked
+        else
+          KAST_VERSION="${{ inputs.release_version }}" \
+            cargo build --release --locked --target "${{ inputs.target }}"
+        fi
+
+    - name: Smoke Rust CLI
+      working-directory: cli-rs
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ "${{ inputs.asset_id }}" == 'linux-x64' ]]; then
+          bin="target/release/kast"
+        else
+          bin="target/${{ inputs.target }}/release/kast"
+        fi
+        smoke_dir="$RUNNER_TEMP/kast-cli-smoke"
+        mkdir -p "$smoke_dir"
+        cp "$bin" "$smoke_dir/kastctl"
+        cp "$bin" "$smoke_dir/kast"
+        "$smoke_dir/kastctl" --help >/dev/null
+        "$smoke_dir/kastctl" version | grep -Fx "Kast CLI ${{ inputs.release_version }}" >/dev/null
+        "$smoke_dir/kast" --help >/dev/null
+        cmp -s "$smoke_dir/kastctl" "$smoke_dir/kast"
+
+    - name: Package CLI asset
+      shell: bash
+      run: |
+        set -euo pipefail
+        tag="${{ inputs.release_tag }}"
+        asset_name="kast-${tag}-${{ inputs.asset_id }}.zip"
+        staging_dir="$RUNNER_TEMP/kast-${{ inputs.asset_id }}"
+        rm -rf "$staging_dir" dist
+        mkdir -p "$staging_dir" dist
+        if [[ "${{ inputs.asset_id }}" == 'linux-x64' ]]; then
+          binary="cli-rs/target/release/kast"
+        else
+          binary="cli-rs/target/${{ inputs.target }}/release/kast"
+        fi
+        cp "$binary" "$staging_dir/kastctl"
+        cp "$binary" "$staging_dir/kast"
+        chmod 755 "$staging_dir/kastctl" "$staging_dir/kast"
+        cmp -s "$staging_dir/kastctl" "$staging_dir/kast"
+        (cd "$staging_dir" && zip -9 -q "$GITHUB_WORKSPACE/dist/${asset_name}" kastctl kast)
+        python3 - "$GITHUB_WORKSPACE/dist/${asset_name}" "dist/build-provenance-cli-${{ inputs.asset_id }}.json" <<'PY'
+        import hashlib
+        import json
+        import os
+        import sys
+        from pathlib import Path
+        asset = Path(sys.argv[1])
+        output = Path(sys.argv[2])
+        digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+        payload = {
+            "runId": os.environ["GITHUB_RUN_ID"],
+            "runNumber": os.environ["GITHUB_RUN_NUMBER"],
+            "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
+            "sha": os.environ["GITHUB_SHA"],
+            "ref": os.environ["GITHUB_REF"],
+            "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
+            "actor": os.environ["GITHUB_ACTOR"],
+            "platformId": "cli-${{ inputs.asset_id }}",
+            "assetName": asset.name,
+            "assetDigest": "sha256:" + digest,
+        }
+        output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+        PY
+        scripts/verify-ci-artifact-ledger.py record \
+          --output "dist/build-ledger-cli-${{ inputs.asset_id }}.json" \
+          --git-sha "$GITHUB_SHA" \
+          --source-ref "refs/tags/${tag}" \
+          --workflow-run-id "$GITHUB_RUN_ID" \
+          --artifact-kind "release-cli-${{ inputs.asset_id }}" \
+          --artifact-name "$asset_name" \
+          --artifact-path "dist/${asset_name}" \
+          --producer-job "build-cli-${{ inputs.asset_id }}" \
+          --build-command-id "release-rust-cli-${{ inputs.asset_id }}"
+
+    - name: Retain CLI build artifact
+      uses: actions/upload-artifact@v6
+      with:
+        name: rust-cli-${{ inputs.asset_id }}-${{ github.run_id }}
+        path: dist/
+        if-no-files-found: error
+        compression-level: 0
+        retention-days: 30
