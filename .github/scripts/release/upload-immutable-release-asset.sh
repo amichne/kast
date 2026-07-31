@@ -105,9 +105,17 @@ PY
 }
 
 inspect_asset() {
-  local payload matches
-  payload="$(run_gh_with_timeout "$metadata_timeout_seconds" release view "$tag" --json assets)" \
-    || die "Unable to inspect release assets for ${tag}"
+  local payload matches inspection
+  for ((inspection = 1; inspection <= upload_attempts; inspection += 1)); do
+    if payload="$(run_gh_with_timeout "$metadata_timeout_seconds" release view "$tag" --json assets)"; then
+      break
+    fi
+    [[ "$inspection" -lt "$upload_attempts" ]] \
+      || die "Unable to inspect release assets for ${tag}"
+    printf 'Retrying release asset inspection for %s after attempt %s failed\n' \
+      "$tag" "$inspection" >&2
+    sleep "$inspection"
+  done
   matches="$(jq -c --arg name "$asset_name" \
     '[.assets[] | select(.name == $name)]' <<<"$payload")" \
     || die "Unable to parse release assets for ${tag}"

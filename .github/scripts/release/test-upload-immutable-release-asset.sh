@@ -81,6 +81,10 @@ apply_jq() {
 printf '%s\n' "$*" >>"$FAKE_GH_LOG"
 
 if [[ "${1:-} ${2:-}" == "release view" ]]; then
+  inspect_count="$(increment "$FAKE_GH_INSPECT_COUNT")"
+  if [[ "$FAKE_GH_SCENARIO" == "inspect-retry" && "$inspect_count" -eq 1 ]]; then
+    exit 88
+  fi
   if [[ "$FAKE_GH_SCENARIO" == "inspect-timeout" ]]; then
     /bin/sleep 5
     exit 1
@@ -157,6 +161,11 @@ if [[ "${1:-} ${2:-}" == "release upload" ]]; then
       printf 'starter|null|%s|0\n' "$((100 + upload_count))" >"$FAKE_GH_STATE"
       exit 1
       ;;
+    inspect-retry)
+      cp "$4" "$FAKE_GH_REMOTE_ASSET"
+      printf 'uploaded|sha256:%s|104|1\n' "$FAKE_GH_LOCAL_DIGEST" >"$FAKE_GH_STATE"
+      exit 0
+      ;;
     *)
       exit 97
       ;;
@@ -221,6 +230,7 @@ upload_count_file="$scratch/upload-count"
 download_count_file="$scratch/download-count"
 delete_count_file="$scratch/delete-count"
 api_get_count_file="$scratch/api-get-count"
+inspect_count_file="$scratch/inspect-count"
 printf '%s\n' "release bytes" >"$asset"
 local_digest="$(openssl dgst -sha256 -r "$asset" | awk '{ print $1 }')"
 asset_name="$(basename -- "$asset")"
@@ -242,7 +252,8 @@ reset_case() {
     "$upload_count_file" \
     "$download_count_file" \
     "$delete_count_file" \
-    "$api_get_count_file"
+    "$api_get_count_file" \
+    "$inspect_count_file"
   : >"$log_file"
 }
 
@@ -255,6 +266,7 @@ run_uploader() {
     FAKE_GH_API_GET_COUNT="$api_get_count_file" \
     FAKE_GH_DELETE_COUNT="$delete_count_file" \
     FAKE_GH_DOWNLOAD_COUNT="$download_count_file" \
+    FAKE_GH_INSPECT_COUNT="$inspect_count_file" \
     FAKE_GH_LOCAL_DIGEST="$local_digest" \
     FAKE_GH_LOG="$log_file" \
     FAKE_GH_REMOTE_ASSET="$remote_asset" \
@@ -338,6 +350,12 @@ run_uploader starter-becomes-uploaded "$scratch/starter-transition.out"
 expect_equal 0 "$uploader_status" "starter transition status"
 expect_equal 1 "$(counter "$upload_count_file")" "starter transition uploads"
 expect_equal 0 "$(counter "$delete_count_file")" "starter transition deletions"
+
+reset_case
+run_uploader inspect-retry "$scratch/inspect-retry.out"
+expect_equal 0 "$uploader_status" "transient release inspection status"
+expect_equal 3 "$(counter "$inspect_count_file")" "transient release inspection attempts"
+expect_equal 1 "$(counter "$upload_count_file")" "transient release inspection uploads"
 
 reset_case
 run_uploader inspect-fail "$scratch/inspect-fail.out"
