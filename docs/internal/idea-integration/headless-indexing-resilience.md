@@ -175,19 +175,21 @@ That authority resolves one immutable `<coordination-root>` from the normalized
 canonical workspace root before it resolves any physical database. It is stable
 across sidecar releases, schema versions, and active-store identities, and is
 never derived from `dirname(resolvedPhysicalDatabasePath)`. The writer lock,
-host claims, writer lease, store-preparation ledger and receipts, active-store
-locator, admission record and socket, and `stores/` directory all live below
-this owner-only root. Every contender and reader therefore discovers the same
-coordination state before it knows which database family is active.
+host claims, writer lease, configuration-root binding, store-preparation ledger
+and receipts, active-store locator, admission record and socket, and `stores/`
+directory all live below this owner-only root. Every contender and reader
+therefore discovers the same coordination state before it knows which database
+family is active.
 
 Writer acquisition atomically publishes a role-tagged provisional lease record
 before endpoint startup. It binds the canonical root, `MANAGED` or `STANDALONE`
-role, release, instance, process identity, and lease epoch. Endpoint publication
-promotes that same record to active by compare-and-set. A competing start that
-observes a live provisional record waits for bounded publication and then
-returns the typed incumbent conflict; if the process and lock are both gone, it
-can clear the expired record and retry. No start can observe an unidentified
-writer-lock owner.
+role, release, instance, process identity, lease epoch, and expected
+configuration-root identity and epoch. Endpoint publication promotes that same
+record to active by compare-and-set. A competing start that observes a live
+provisional record waits for bounded publication and then returns the typed
+incumbent conflict; if the process and lock are both gone, it can clear the
+expired record and retry. No start can observe an unidentified writer-lock
+owner.
 
 The service and sidecar both watch the authority. When a second supported host
 claims the root, the authority records ambiguity before the second service can
@@ -217,11 +219,12 @@ coordination root.
 Every persisted graph and reference reader checks this endpoint before and
 after a generation-pinned SQLite read. Its typed admission response separates
 an immutable read fence from progress at one store generation. The read fence
-binds the sidecar instance, writer-lease epoch, active-store identity, scope
-fingerprint, project-model semantic fingerprint, filesystem event epoch,
-host-claim generation, resolved-configuration fingerprint, and committed
-critical-path acceptance-ledger generation. The progress snapshot binds store
-generation, evidence-family state, counts, and limitations.
+binds the sidecar instance, writer-lease epoch, active-store identity,
+configuration-root binding identity and epoch, scope fingerprint, project-model
+semantic fingerprint, filesystem event epoch, host-claim generation,
+resolved-configuration fingerprint, and committed critical-path
+acceptance-ledger generation. The progress snapshot binds store generation,
+evidence-family state, counts, and limitations.
 
 The reader opens one SQLite read transaction and verifies that its facts and
 coverage metadata have the progress snapshot's generation. Facts, state,
@@ -335,26 +338,70 @@ admission stays unavailable after a configuration fence that the incumbent
 cannot reconcile.
 
 Rust remains the sole TOML, `.kastignore`, and configuration-precedence parsing
-authority. A configuration mutation projects and sends one complete resolved
-JSON snapshot through the control channel. For external edits, there is one
+authority. Before exact-root host launch or reuse, the release-matched Rust
+bootstrap resolves the global configuration root from the initiating
+invocation's explicit `KAST_CONFIG_HOME` or the installed resolver's default. It
+canonicalizes that root and its `config.toml` path, then atomically commits an
+owner-only exact-root `ConfigurationRootBinding` below the coordination root
+before bootstrap completes. The binding contains the exact-root, install and
+release identities, canonical root and file path, resolution source, and a
+monotonic binding epoch. It contains no secret. A direct interactive host open
+without new CLI provenance reuses a valid committed binding. Only when no
+binding exists does it invoke the release-matched Rust helper to commit the
+installed default. A present but invalid or stale-release binding fails typed
+until an explicit Rust bootstrap replaces it; the resident service never
+substitutes its environment or silently resets the root.
+
+Each writer lease captures one committed binding identity and epoch. The
+resident service reads it and forwards it in managed startup and every
+lease-bound `SUPERVISOR` message. Standalone startup publishes the same binding,
+and later resident `CLIENT` adoption must use the incumbent's binding. A crash
+restart or host reuse reloads the durable binding. No producer or sidecar
+re-evaluates `HOME`, `KAST_CONFIG_HOME`, or any host-process environment.
+
+The binding is immutable for one live writer lease. A later bootstrap that
+resolves a different root returns a typed configuration-root conflict and
+requires an explicit writer drain and new bootstrap lease before it can commit a
+higher binding epoch. It never silently moves the watcher. This restriction does
+not delay live reload of file changes or collection mutations within the bound
+root. A bootstrap that resolves the identical root, file, source, install, and
+release identity is an idempotent no-op; it retains the binding identity and
+epoch and does not fence the lease.
+
+The bootstrap request carries its expected binding identity and epoch. Rust
+holds the exact-root configuration transaction lock from the binding
+compare-and-set through host launch or reuse and the acknowledgment that the
+provisional or reused active writer lease captured that same tuple. Writer
+acquisition rejects a mismatch and never adopts a binding committed by another
+request. A competing different-root bootstrap waits for the lock and then
+observes the incumbent lease or returns the typed bootstrap conflict; it cannot
+replace the pending request's binding. Process death releases the lock, and
+recovery validates any unleased record before it retries.
+
+A configuration mutation projects and sends one complete resolved JSON
+snapshot through the control channel. For external edits, there is one
 projection producer for each writer-lease epoch. The resident service is that
 producer for a managed writer. A standalone control adapter is the producer for
 the full lifetime of a standalone lease, whether or not a resident `CLIENT` is
 connected. An adopted resident forwards event and mutation notifications; it
 does not start a competing projection helper.
 
-The active producer watches the global configuration file at
-`$KAST_CONFIG_HOME/config.toml`, the workspace TOML, and `.kastignore`, then
-invokes the release-matched Rust projection and forwards its snapshot. The
-sidecar also watches those raw inputs and their parent directories only to
-fence create, replace, save, and delete events; it does not parse them or
+The active producer watches exactly `<bound-configuration-root>/config.toml`,
+the workspace TOML, and `.kastignore`, then invokes the release-matched Rust
+projection with the explicit binding and forwards its snapshot. The sidecar
+also watches those raw inputs, the binding record, and their parent directories
+only to fence create, replace, save, and delete events; it does not parse them or
 recompute precedence. Such an event makes configuration pending and both
 evidence families `UNAVAILABLE` before the admission barrier replies. The Rust
-snapshot carries canonical input paths, content digests, and a resolved
-configuration fingerprint. The sidecar issues no token until those digests
-match its barrier view and scope and coverage reconciliation commits the new
-fingerprint. `analysis-api` owns the snapshot schema, including the new ignored
-and critical collections and the Android selected-variant map.
+snapshot carries the binding identity and epoch, canonical input paths, content
+digests, and a resolved configuration fingerprint. The sidecar rejects a
+missing, stale, wrong-root, wrong-release, or path-mismatched binding without
+falling back to its environment. It issues no token until the binding matches
+the committed bootstrap record, the input digests match its barrier view, and
+scope and coverage reconciliation persists that binding identity and epoch with
+the new configuration fingerprint and commits the generation. `analysis-api`
+owns the binding and snapshot schema, including the new ignored and critical
+collections and the Android selected-variant map.
 
 Direct mutations and watcher-triggered projections serialize under one
 Rust-owned exact-root configuration transaction lock. After it acquires the
@@ -363,9 +410,10 @@ control message binds the writer-lease epoch; a writer cutover rejects the old
 transaction and retries under the new writer. The lock covers the complete
 critical-path candidate, inventory proof, `PENDING` receipt, store
 acknowledgment, `COMMITTED` receipt, and revocation-tombstone exchanges below.
-Only a repeated tuple of resolved configuration fingerprint and ledger
-generation is an idempotent no-op. A standalone lease therefore needs no
-projection-producer handoff when a resident connects.
+Only a repeated tuple of configuration-root binding epoch, resolved
+configuration fingerprint, and ledger generation is an idempotent no-op. A
+standalone lease therefore needs no projection-producer handoff when a resident
+connects. A control message from an older binding epoch is rejected.
 
 Shutdown sends drain and waits for acknowledgment before the service closes
 shared state. Request cancellation can stop waiting for an acknowledgment, but
@@ -449,6 +497,37 @@ The hard-exclusion authority combines:
 - the `build` output root of each declared Gradle project and the `out` output
   root of each IDEA content root;
 - built plugin output below those roots.
+
+One shared hard-exclusion authority accepts a canonical exact-root path and the
+complete current product-model exclusion set. It resolves symbolic-link aliases
+and returns either `AdmittedSourcePath`, bound to the exact root, project-model
+generation, exclusion fingerprint, resolved canonical path, path-resolution
+identity, and filesystem event epoch, or the typed `SOURCE_PATH_HARD_EXCLUDED`
+result with its reason and model provenance. Source-set ownership, critical
+configuration, and ignore negation cannot override an explicit output,
+excluded, or generated root.
+
+Source inventory and every source-taking graph, reference, diagnostics, symbol,
+and mutation transport and entry point consume that decision before downstream
+filesystem, PSI, compiler, persisted-store, planning, or mutation work. No
+consumer reimplements the rules, admits a fallback path, or overrides the
+rejection. Rust consumers use the serialized decision and do not reclassify the
+path, but the receiving authority validates every serialized field against
+current state before it constructs the strong type. A model-generation,
+exclusion-fingerprint, path-resolution, or filesystem-event change invalidates
+an admitted value. Consumers use only the resolved canonical target carried by
+that value, never the caller's symbolic-link alias. Mutation commits through an
+identity-checked target and parent handle, so a retarget or replacement cannot
+redirect the write after validation.
+
+Product-model and exclusion publication requires an exclusive source-admission
+guard. Each source-taking operation acquires the compatible shared guard,
+validates its `AdmittedSourcePath` under that guard, and holds it through its PSI
+or compiler read epoch, persisted batch commit, or filesystem mutation commit.
+Publication and the operation therefore have one linear order; a symbolic-link
+retarget or newly excluded root cannot appear between validation and use.
+Rejection performs no PSI scan, store write or generation advance, or filesystem
+mutation. User ignore rules remain a separate graph-and-reference scope control.
 
 A directory name alone does not prove that a path is output. An explicit Gradle
 or IDEA output or excluded root always wins over any nested source root. If no
@@ -1040,7 +1119,19 @@ Implementation is complete only when the following checks exist and pass:
    rejection. Android configuration tests cover explicit variant selection,
    the exact `debug` and sole-variant defaults, ambiguous and unknown variants,
    composite-build project-path collisions, and live model invalidation after a
-   selection change.
+   selection change. Configuration-root tests start the CLI with an override
+   visible only to that process while a reused IDEA host has no override or a
+   conflicting one. They prove managed, restarted-managed, standalone, and
+   standalone-first adoption producers watch only the bound file. A complete
+   IDEA process restart and automatic project reopen reuse the prior explicit
+   binding with no CLI environment. Direct first host open uses the installed
+   Rust default only when no binding exists. An identical bootstrap preserves
+   the binding epoch. A different root during a live writer lease returns the
+   typed conflict, stale binding epochs and path mismatches fence admission, and
+   an interrupted binding update leaves one complete old or new record without
+   two producers. Simultaneous no-incumbent bootstraps with different roots prove
+   the provisional-lease winner captures its own expected binding and the loser
+   starts no watcher.
 2. Index-store tests cover independent graph and reference progress, the
    fact-preserving current-schema migration, unsupported-schema cold rebuild,
    legacy rows remaining non-queryable until reindex, external-boundary graph
@@ -1157,12 +1248,13 @@ Implementation is complete only when the following checks exist and pass:
    locator for its existing normalized path without copying or renaming it, and
    admits only that store identity. Local overlay state always wins over a
    configured remote seed. Invalid or corrupt canonical state fails without
-   remote or empty fallback. A canonical current-production WAL fixture disables auto-checkpoint,
-   holds a reader open, and commits inventory, outcome, fact, and generation rows
-   that remain only in the WAL. Online backup and migration retain those rows at
-   the exact committed generation, exclude an uncommitted row, and reopen without
-   the source WAL or shared-memory file. Interrupted backup or migration leaves
-   the original logical state and generation recoverable and unchanged. A
+   remote or empty fallback. A canonical current-production WAL fixture disables
+   auto-checkpoint, holds a reader open, and commits inventory, outcome, fact,
+   and generation rows that remain only in the WAL. Online backup and migration
+   retain those rows at the exact committed generation, exclude an uncommitted
+   row, and reopen without the source WAL or shared-memory file. Interrupted
+   backup or migration leaves the original logical state and generation
+   recoverable and unchanged. A
    production-schema fixture with base rows `{A, B, D}`, overlay rows `{B', C}`,
    and tombstone `{D}` materializes effective lineage `{A, B', C}` without
    mutating its base or attaching that base after the schema bump. Missing,
@@ -1182,6 +1274,21 @@ Implementation is complete only when the following checks exist and pass:
    host-claim race cannot publish during activation. Concurrent managed and
    standalone starts produce one preparer, and no path publishes admission
    before current-input reconciliation.
+10. Operation-level hard-exclusion tests register
+    `:app/build/generated/ksp/main/kotlin/Generated.kt` as model source content
+    below the declared project output root. Inventory, diagnostics, source-taking
+    symbol operations, graph and reference refresh and query selection, and
+    mutation preview and apply all return the same typed hard-excluded decision.
+    Critical configuration, ignore negation, and a symbolic-link alias cannot
+    admit it. Rejection leaves file bytes, store generation, and both evidence
+    families unchanged. A forged or stale serialized admission is rejected by
+    the receiving authority. A plan-and-apply test pauses after admission
+    validation while exclusion publication races for the exclusive guard. It
+    proves exactly one order: publication first rejects without a write;
+    mutation first commits before the new exclusion becomes authoritative. A
+    positive operation case retains `build/src/main/kotlin` for an independent
+    Gradle build when the parent model does not classify that root as output,
+    while that build's own `build/build/` output remains excluded.
 
 ## Implementation ownership
 
@@ -1198,6 +1305,9 @@ Implementation is complete only when the following checks exist and pass:
 | Workspace collections, `.kastignore`, Android selected variants, precedence, resolved JSON projection, and configuration transaction serialization | `cli-rs/src/configuration/` |
 | Resolved configuration and control-message schema | `analysis-api/` |
 | Managed and standalone external-edit watchers and snapshot transport | `backend-idea/` and `backend-headless/` |
+| Bootstrap-resolved configuration-root binding, durable epoch, startup and control transport, producer selection, and admission fencing | `cli-rs/src/execution/runtime/`, `cli-rs/src/configuration/`, `analysis-api/`, `backend-idea/`, `backend-headless/`, and `index-store/` |
+| Typed `AdmittedSourcePath` and sole hard-exclusion classifier | `analysis-api/` and `backend-shared/` |
+| Hard-exclusion operation wiring, serialized Rust consumption, and persisted scope projection | `backend-idea/`, `backend-headless/`, `cli-rs/`, and `index-store/` |
 | Critical-path receipt and ledger authority | `cli-rs/src/configuration/` |
 | Critical-path inventory proof and prepared scope-generation commit | `backend-headless/` and `index-store/` |
 | Resolved remote-seed input and hydration-result schema | `cli-rs/src/configuration/` and `analysis-api/` |
