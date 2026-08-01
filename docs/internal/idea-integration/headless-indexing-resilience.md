@@ -141,10 +141,11 @@ with bounded backoff.
 The sidecar exposes an exact-root read-admission endpoint beside the database.
 Every persisted graph and reference reader checks this endpoint before and
 after a generation-pinned SQLite read. The admission token binds the sidecar
-instance, store generation, scope fingerprint, and evidence-family state. A
-missing endpoint, a changed token, or failed revalidation makes that evidence
-family `UNAVAILABLE`; SQLite coverage alone never admits a persisted read.
-This authority is separate from IDEA runtime readiness.
+instance, store generation, scope fingerprint, project-model semantic
+fingerprint, filesystem event epoch, and evidence-family state. A missing
+endpoint, a changed token, or failed revalidation makes that evidence family
+`UNAVAILABLE`; SQLite coverage alone never admits a persisted read. This
+authority is separate from IDEA runtime readiness.
 
 The private admission record is
 `<database-parent>/sidecar/admission.json`; its default endpoint is
@@ -163,6 +164,15 @@ before it connects. Graceful exit unlinks both `admission.json` and the socket
 node. After a crash, the resident service can unlink both stale paths only after
 the endpoint is unreachable and the writer lock is free. A replacement sidecar
 then publishes a new identity.
+
+Before it issues or revalidates a token, the sidecar performs a synchronous
+filesystem event barrier on its own platform watcher. It drains pending saved
+file events, hashes affected admitted files, rescans admitted roots named by
+coalesced directory events, and commits fingerprint invalidation before it
+advances the event epoch and replies. A save before the first check is therefore
+pending before admission. A save during the SQLite read changes the post-read
+epoch and rejects that result. This barrier does not use the interactive IDEA
+virtual file system.
 
 The service establishes an exact-root, lease-bound local control channel when
 it starts the sidecar. Persistent graph and reference refresh requests enqueue
@@ -426,10 +436,17 @@ The sidecar preserves the existing exact-root SQLite database and generation
 contract. It scans outside transactions and serializes short writes. Readers
 pin one generation and reject mixed-generation results.
 
-Admitted source membership and source ownership contribute to the stage input
-fingerprint. A change to `.kastignore`, ignored paths, hard exclusions, or
-source ownership invalidates only affected stage work. A critical-path change
-updates priority and coverage metadata without invalidating current facts.
+The project-model semantic fingerprint contributes to both stage input
+fingerprints, together with source content, admitted membership, and source
+ownership. The model fingerprint represents the source's Gradle dependency
+closure, compiler arguments, classpath, language settings, and source-set
+identity. A completed model refresh compares those per-source fingerprints and,
+in one transaction, marks affected graph and reference outcomes pending before
+it advances the model generation. Unchanged modules retain their facts.
+
+A change to `.kastignore`, ignored paths, hard exclusions, or source ownership
+invalidates only affected stage work. A critical-path change updates priority
+and coverage metadata without invalidating current facts.
 
 The single-writer rule removes cross-backend write arbitration. Read-only CLI
 and IDEA consumers can continue to use SQLite generation checks while the
@@ -549,8 +566,9 @@ Implementation is complete only when the following checks exist and pass:
    priority depth, hard-exclusion precedence, and ignore-critical conflicts.
 2. Index-store tests cover independent graph and reference progress, the
    fact-preserving current-schema migration, unsupported-schema cold rebuild,
-   legacy external-boundary graph cleanup, scope reconciliation, global coverage
-   states, and retained generations.
+   legacy external-boundary graph cleanup, model-only dependency, compiler
+   argument, and classpath changes, scope reconciliation, global coverage states,
+   and retained generations.
 3. A RED worker integration test injects request cancellation and proves the
    current request-owned path stops remaining graph work. The same test then
    proves the workspace-owned worker continues. This proves isolation without
@@ -572,8 +590,10 @@ Implementation is complete only when the following checks exist and pass:
    Persisted-reader tests reject a missing or changed admission token and a
    sidecar that fails post-read revalidation. They also cover long-path fallback,
    record identity validation, graceful unlink, and stale record and socket
-   cleanup. Supervisor-crash tests prove control-channel EOF or lease expiry
-   stops the orphan, releases its lock, and permits replacement.
+   cleanup. Watcher tests prove the pre-read filesystem barrier invalidates a
+   completed fingerprint and a concurrent save fails post-read revalidation.
+   Supervisor-crash tests prove control-channel EOF or lease expiry stops the
+   orphan, releases its lock, and permits replacement.
 6. Packaging tests prove native macOS arm64 and x64 headless artifacts contain
    matching native libraries and that the normal install path installs the
    matching Java 21 runtime. A launch test unsets `JAVA_HOME`, removes system
@@ -581,8 +601,9 @@ Implementation is complete only when the following checks exist and pass:
    runtime. Transaction tests prove the bundle manifest, installation receipt,
    and rollback cover both the native sidecar and Java runtime.
 7. A macOS integration check edits a saved Kotlin file while IDEA is active,
-   observes sidecar reconciliation, and reads a generation-pinned graph without
-   using the IDEA virtual file system for persistence.
+   attempts reads both before and during sidecar reconciliation, and proves no
+   stale generation is admitted without using the IDEA virtual file system for
+   persistence.
 8. A macOS integration check opens two exact-root projects concurrently and
    proves their sidecars use distinct IntelliJ config, system, log, and
    temporary directories.
