@@ -156,10 +156,12 @@ sources from entering semantic operations.
 ### User ignore rules
 
 The repository root can contain `.kastignore`. Its path separator is `/`. A
+leading slash is an anchor token, not a filesystem-root marker. Exactly one
 leading slash anchors a pattern at the workspace root. A trailing slash matches
 directories. `**` matches across directory boundaries. `#` starts a comment,
 `!` re-includes a prior match, and the last matching pattern wins. Hard
-exclusions still win over negation. Absolute patterns and parent traversal are
+exclusions still win over negation. URI schemes, drive or volume prefixes,
+network-root prefixes with two leading slashes, and parent traversal are
 invalid.
 
 The machine-local workspace TOML can add `indexing.ignoredPaths`. Repository
@@ -212,8 +214,9 @@ kast config remove indexing.ignoredPaths 'samples/**' --workspace-root "$PWD"
 ```
 
 Adding an existing value and removing an absent value are successful no-ops.
-Malformed patterns, paths outside the root, and ignore-critical conflicts fail
-with typed configuration errors.
+Malformed patterns, URI schemes, drive or volume prefixes, network-root
+prefixes, parent traversal, and ignore-critical conflicts fail with typed
+configuration errors.
 
 ## Work order
 
