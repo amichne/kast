@@ -52,7 +52,8 @@ jobs:
           ./gradlew
           :analysis-api:test
           :analysis-server:test
-          :backend-shared:compileKotlin
+          :backend-shared:test
+          :index-store:test
           :backend-headless:test
 
       - name: Upload build-and-test test reports
