@@ -171,6 +171,15 @@ startup requires exactly one claim and binds the supervisor lease to that claim
 identity and generation. The generation advances when the live claim-identity
 set changes, not when an unchanged claim renews its heartbeat.
 
+That authority resolves one immutable `<coordination-root>` from the normalized
+canonical workspace root before it resolves any physical database. It is stable
+across sidecar releases, schema versions, and active-store identities, and is
+never derived from `dirname(resolvedPhysicalDatabasePath)`. The writer lock,
+host claims, writer lease, store-preparation ledger and receipts, active-store
+locator, admission record and socket, and `stores/` directory all live below
+this owner-only root. Every contender and reader therefore discovers the same
+coordination state before it knows which database family is active.
+
 Writer acquisition atomically publishes a role-tagged provisional lease record
 before endpoint startup. It binds the canonical root, `MANAGED` or `STANDALONE`
 role, release, instance, process identity, and lease epoch. Endpoint publication
@@ -203,15 +212,16 @@ commit. Claim publication requires the incompatible exclusive guard. A claim
 therefore publishes either before validation and rejects the batch, or after a
 completed batch; it cannot appear between validation and commit.
 
-The sidecar exposes an exact-root read-admission endpoint beside the database.
+The sidecar exposes an exact-root read-admission endpoint from the immutable
+coordination root.
 Every persisted graph and reference reader checks this endpoint before and
 after a generation-pinned SQLite read. Its typed admission response separates
 an immutable read fence from progress at one store generation. The read fence
-binds the sidecar instance, writer-lease epoch, scope fingerprint, project-model
-semantic fingerprint, filesystem event epoch, host-claim generation,
-resolved-configuration fingerprint, and committed critical-path
-acceptance-ledger generation. The progress snapshot binds store generation,
-evidence-family state, counts, and limitations.
+binds the sidecar instance, writer-lease epoch, active-store identity, scope
+fingerprint, project-model semantic fingerprint, filesystem event epoch,
+host-claim generation, resolved-configuration fingerprint, and committed
+critical-path acceptance-ledger generation. The progress snapshot binds store
+generation, evidence-family state, counts, and limitations.
 
 The reader opens one SQLite read transaction and verifies that its facts and
 coverage metadata have the progress snapshot's generation. Facts, state,
@@ -220,12 +230,30 @@ Post-read validation succeeds when the read fence is unchanged and the live
 store generation is greater than or equal to the pinned generation. A later
 same-fence batch can therefore commit without starving the read. A lower live
 generation, a missing endpoint, or any changed fence identity rejects the read.
-SQLite coverage alone never admits persisted evidence. This authority is
-separate from IDEA runtime readiness.
+The active-store identity must still equal the committed locator before and
+after the read. SQLite coverage alone never admits persisted evidence. This
+authority is separate from IDEA runtime readiness.
 
-The private admission record is
-`<database-parent>/sidecar/admission.json`; its default endpoint is
-`<database-parent>/sidecar/admission.sock`. When that Unix-domain-socket path
+This proposal supersedes only the post-read live-generation equality clause in
+the current [stable integration invariant](index.md#stable-integration-invariants)
+and accepted
+[generation decision](architecture-decisions.md#pin-every-native-graph-query-to-one-generation).
+Before target-schema sidecar admission is active, those exact-generation rules
+remain authoritative. After cutover, advancement from `g` to `g+n` is permitted
+only for one already-open SQLite transaction under an unchanged read fence, and
+the complete result remains pinned to `g`. A new page using a cursor issued at
+`g` still requires live generation `g`; refresh planning and write
+compare-and-set still reject `expectedGeneration = g` after any advance; and no
+reader can mix generations. The implementation change that enables the new
+admission protocol must update those two accepted records and the dependent
+generation descriptions in `flows/graph-queries.md` and
+`flows/indexing-and-generation.md` in the same cutover. Legacy readers and
+deployments without the target admission protocol continue to reject every
+generation change; no deployment mixes the two rules.
+
+The private admission record is `<coordination-root>/admission.json`; its
+default endpoint is `<coordination-root>/admission.sock`. When that
+Unix-domain-socket path
 exceeds Kast's existing 100-byte safe threshold, the shared workspace-path
 resolver selects its deterministic short hashed socket path. The admission
 record always contains the actual endpoint. The CLI derives these locations
@@ -234,21 +262,27 @@ discovery.
 
 The record is role-tagged and copies the canonical-root digest, release,
 instance, role, and writer-lease epoch from the coordination record. It also
-contains the socket path and admission protocol. A managed record adds its
-supervisor lease and bound host-claim identity; a standalone record has no
-supervisor lease. The standalone public descriptor publishes the same common
-identity plus its control endpoint and protocol. Adoption requires the public
-descriptor, private admission record, and live writer lease to agree exactly.
+contains the active-store identity, resolved physical database path, socket
+path, and admission protocol. A managed record adds its supervisor lease and
+bound host-claim identity; a standalone record has no supervisor lease. The
+standalone public descriptor publishes the same common identity plus its control
+endpoint and protocol. Adoption requires the public descriptor, private
+admission record, and live writer lease to agree exactly. A reader opens only
+the database path named by the validated record. Before opening it, the reader
+requires the record's normalized path and active-store identity to equal both
+the committed locator and the pre-read admission fence. The post-read check
+revalidates the same locator and fence identity.
 
 After store preparation selects or activates the canonical target, the sidecar
 opens that store and reconciles current inputs. When the reconciliation commits,
 it atomically publishes the admission record and promotes its provisional writer
 lease. The directory and private files are owner-only. A reader validates the
-owner, root digest, release, role, instance, lease epoch, and protocol before it
-connects. Graceful exit unlinks `admission.json` and the socket node. After a
-crash, the resident service or existing standalone lifecycle cleanup can unlink
-stale records only after the endpoint is unreachable and the writer lock is
-free. A replacement sidecar then publishes a new identity.
+owner, root digest, release, role, instance, lease epoch, active-store identity,
+normalized database path, and protocol before it connects. Graceful exit
+unlinks `admission.json` and the socket node. After a crash, the resident service
+or existing standalone lifecycle cleanup can unlink stale records only after the
+endpoint is unreachable and the writer lock is free. A replacement sidecar then
+publishes a new identity.
 
 Before it issues or revalidates a token, the sidecar performs a synchronous
 filesystem event barrier on its own platform watcher. It asks each native event
@@ -722,11 +756,11 @@ continue to use SQLite generation checks as the incumbent commits later
 batches.
 
 The shared `index-store` coordination authority owns the writer-lock protocol
-and lock-file path beside the exact-root database. A managed or standalone
-sidecar acquires the operating-system lock and holds its file descriptor before
-it opens the store for writes. IDEA opens persisted evidence read-only in
-sidecar mode. Startup fails the contender with a typed writer-conflict error if
-another process holds the lock.
+and `<coordination-root>/writer.lock`. A managed or standalone sidecar acquires
+the operating-system lock and holds its file descriptor before it opens the
+store for writes. IDEA opens persisted evidence read-only in sidecar mode.
+Startup fails the contender with a typed writer-conflict error if another
+process holds the lock.
 
 The release cutover first asks the old IDEA index worker to stop and drain. The
 resident service requires confirmation that the worker closed its writable
@@ -819,30 +853,67 @@ needed by the existing remote-index transport. It contains no credential secret
 or mutable configuration source. The bootstrap worker applies this fixed
 precedence before it constructs the active store:
 
-1. use a valid self-contained local database, migrating a current-production
-   candidate when required;
-2. otherwise prepare a valid legacy repository base and overlay as one local
+1. use the active store recovered from a valid committed preparation record;
+2. otherwise use a valid self-contained canonical local database, migrating a
+   current-production candidate when required;
+3. otherwise prepare a valid legacy repository base and overlay as one local
    candidate;
-3. otherwise, when configured, attempt remote snapshot hydration;
-4. otherwise create an empty target-schema candidate for normal local indexing.
+4. otherwise, when configured, attempt remote snapshot hydration;
+5. otherwise create an empty target-schema candidate for normal local indexing.
+
+Before this precedence, the bootstrap worker replays the crash-safe
+store-preparation ledger under the writer lease. The ledger assigns monotonic
+preparation identities and retains both `PREPARED` and `COMMITTED` provenance.
+The active-store locator is an atomic projection of the highest valid
+`COMMITTED` record, and both must agree before admission. A durable `PREPARED`
+record with a renamed candidate but no committed locator resumes the same
+compare-and-set commit instead of selecting a retained canonical database. A
+candidate that has not been renamed is revalidated and resumed or rebuilt from
+its unchanged source. Once a preparation record or non-empty versioned store
+directory exists, a missing, corrupt, or inconsistent locator must be recovered
+from the ledger or fail with a typed store-recovery error. It never falls
+through to a retained canonical database, overlay, remote seed, or empty store.
+After a versioned-store activation commits, its superseded canonical or overlay
+family is recovery provenance only and is never an admission target. A
+target-schema canonical database adopted in place is not superseded; its
+committed adoption record and locator make that same path the active store.
 
 Local state always wins over a remote seed. A valid canonical target-schema
-database is validated, opened, and reconciled in place; it needs no preparation
-receipt or activation. A canonical current-production database is copied to
-same-filesystem staging before migration. The presence of a canonical database
-or repository-overlay manifest claims the local-state branch. Invalid or corrupt
+database is validated and adopted in place. Under the same guard and fence
+checks as staged activation, the worker records `COMMITTED` adoption provenance
+and publishes an active-store locator that names the existing normalized path
+and store identity. Adoption performs no copy, rename, or migration, but it must
+commit the locator before reconciliation or admission. A crash before locator
+commit replays the adoption record rather than treating the database as a new
+source candidate.
+
+After old-writer drain and writer-lease acquisition, a canonical
+current-production database is snapshotted to same-filesystem staging through
+SQLite's Online Backup API from a production-schema connection. The source
+identity, schema, repository identity, and generation are read from that same
+committed snapshot. This includes committed frames visible in the source WAL
+but not checkpointed into its main file, and excludes uncommitted work. Raw
+main-file, WAL, or shared-memory copying and source checkpoint mutation are
+prohibited. The worker closes and independently reopens the staged database,
+verifies its identity, generation, and integrity without the source sidecars,
+and only then migrates it. Backup, validation, or migration failure leaves the
+source logical database and generation unchanged.
+
+The presence of a committed active-store locator, canonical database, or
+repository-overlay manifest claims the local-state branch. Invalid or corrupt
 local state returns a typed diagnostic and does not fall through to remote
 hydration or empty creation.
 
 A legacy overlay preflight uses a reader compatible with its production schema
 to validate the manifest, base and overlay identities, schema versions,
-repository identity, and recorded digests. It materializes their effective
-logical view into one same-filesystem staging database: overlay rows replace
-matching base rows and tombstones remove base rows. The candidate retains the
-resulting inventory, stage outcomes, facts, and provenance as effective lineage.
-The worker never attaches the old immutable base to a target-schema connection
-and never mutates the base or overlay. It migrates the self-contained candidate
-instead.
+repository identity, and recorded digests. One consistent SQLite read snapshot
+materializes their effective logical view into one same-filesystem staging
+database: overlay rows replace matching base rows and tombstones remove base
+rows. It includes committed overlay WAL state without copying source sidecars.
+The candidate retains the resulting inventory, stage outcomes, facts, and
+provenance as effective lineage. The worker never attaches the old immutable
+base to a target-schema connection and never mutates the base or overlay. It
+migrates the self-contained candidate instead.
 
 A readable legacy pair with a valid but unsupported schema uses a staged cold
 rebuild and makes no retained-fact claim. A missing, mismatched, or corrupt base
@@ -861,21 +932,30 @@ records a typed hydration diagnostic, then creates an empty staged candidate
 and continues normal local indexing. This is a failed best-effort seed, not
 hydration success, and it cannot produce a coverage claim.
 
-Every staged candidate carries a preparation identity. A crash-safe receipt
-records `PREPARED` after the candidate and its provenance are durable, and
-`COMMITTED` after atomic activation. Before activation, the worker acquires the
-same shared host-claim commit guard used for batch commits, revalidates the
-writer lease, host claim, repository identity and revision, resolved
-configuration, critical-path ledger, project-model fingerprint, and filesystem
-event fence under that guard, and holds it through activation, directory fsync,
-and the committed receipt. Claim publication requires the incompatible
-exclusive guard. A changed input detected before activation aborts the candidate
-without changing the active generation. Activation replaces the complete
-candidate as one unit; it can never expose a target database attached to an old
-base. A retry before activation rebuilds from the unchanged source. A retry
-after activation but before the committed receipt validates the preparation
-identity and completes the receipt. Replaying the same snapshot is idempotent,
-and an older snapshot never replaces a newer committed identity.
+Every staged candidate carries a preparation identity and contains one closed,
+self-contained SQLite database. A crash-safe receipt records `PREPARED` after
+the candidate and its provenance are durable. Before activation, the worker
+acquires the same shared host-claim commit guard used for batch commits,
+revalidates the writer lease, host claim, repository identity and revision,
+resolved configuration, critical-path ledger, project-model fingerprint, and
+filesystem event fence under that guard, and holds it through activation,
+directory fsync, and the committed receipt. Claim publication requires the
+incompatible exclusive guard. A changed input detected before activation aborts
+the candidate without changing the active generation.
+
+Activation renames the candidate directory to a never-used
+`<coordination-root>/stores/<preparation-id>/` path, records and fsyncs
+`COMMITTED` in the preparation ledger, then atomically publishes the matching
+active-store locator. The record and locator name the physical database path and
+active-store identity later published in the admission record.
+Activation never replaces a main database file at a pathname where an old hot
+journal, WAL, or shared-memory file can remain. It never copies source sidecars,
+changes the original canonical or overlay family, or deletes that family during
+cutover. A retry before activation rebuilds from the unchanged source. A retry
+after the directory rename but before the committed record validates the
+preparation identity and finishes the compare-and-set ledger update. Replaying
+the same snapshot is idempotent, and an older sequence or snapshot never
+replaces a newer committed identity.
 
 Preparation alone does not admit evidence. After selecting an existing target
 or activating a staged candidate, the worker opens the target-schema store and
@@ -1025,10 +1105,15 @@ Implementation is complete only when the following checks exist and pass:
    concurrently.
    Persisted-reader tests open the SQLite transaction at `g`, commit `g+1` under
    the same read fence, and return facts, state, counts, and limitations from
-   `g`. They reject a missing endpoint, a lower generation, or any changed
-   instance, lease, scope, model, event, host-claim, configuration, or
-   acceptance-ledger identity. They also cover long-path fallback, record
-   identity validation, graceful unlink, and stale record and socket cleanup.
+   `g`. Before target-protocol cutover, the same advance still rejects. After
+   cutover, a cursor issued at `g` cannot open a new page at `g+1`, and a refresh
+   or write with `expectedGeneration = g` cannot commit at `g+1`. Tests reject a
+   missing endpoint, a lower generation, or any changed store, instance, lease,
+   scope, model, event, host-claim, configuration, or acceptance-ledger
+   identity. They also cover long-path fallback, physical-store path and record
+   identity validation, and reject a record whose store identity or normalized
+   path differs from the committed locator or admission fence. They cover
+   graceful unlink and stale record and socket cleanup.
    Watcher tests prove the
    pre-read filesystem barrier invalidates a completed fingerprint, a delayed
    producer delivery is consumed before token issue, dropped history falls back
@@ -1067,22 +1152,36 @@ Implementation is complete only when the following checks exist and pass:
 8. A macOS integration check opens two exact-root projects concurrently and
    proves their sidecars use distinct IntelliJ config, system, log, and
    temporary directories.
-9. Store-preparation tests prove a valid target-schema database bypasses legacy
-   and remote paths, while local overlay state always wins over a configured
-   remote seed. Invalid or corrupt canonical state fails without remote or empty
-   fallback. A production-schema fixture with base rows `{A, B, D}`, overlay
-   rows `{B', C}`, and tombstone `{D}` materializes effective lineage
-   `{A, B', C}` without mutating its base or attaching that base after the schema
-   bump. Missing, mismatched, or corrupt overlay components leave the old pair
-   and generation unchanged; a valid unsupported schema uses a staged cold
-   rebuild. Remote tests prove hydration is attempted before canonical creation,
-   target and current-production schemas follow their specified paths, and
-   rejection, transport failure, or remote-candidate migration failure records
-   a typed diagnostic before empty local indexing. Crash injection after
-   download, materialization, migration, activation, and receipt writes proves
-   deterministic recovery without mixed state. A host-claim race cannot publish
-   during activation. Concurrent managed and standalone starts produce one
-   preparer, and no path publishes admission before current-input reconciliation.
+9. Store-preparation tests prove first adoption of a valid canonical
+   target-schema database bypasses legacy and remote paths, records a committed
+   locator for its existing normalized path without copying or renaming it, and
+   admits only that store identity. Local overlay state always wins over a
+   configured remote seed. Invalid or corrupt canonical state fails without
+   remote or empty fallback. A canonical current-production WAL fixture disables auto-checkpoint,
+   holds a reader open, and commits inventory, outcome, fact, and generation rows
+   that remain only in the WAL. Online backup and migration retain those rows at
+   the exact committed generation, exclude an uncommitted row, and reopen without
+   the source WAL or shared-memory file. Interrupted backup or migration leaves
+   the original logical state and generation recoverable and unchanged. A
+   production-schema fixture with base rows `{A, B, D}`, overlay rows `{B', C}`,
+   and tombstone `{D}` materializes effective lineage `{A, B', C}` without
+   mutating its base or attaching that base after the schema bump. Missing,
+   mismatched, or corrupt overlay components leave the old pair and generation
+   unchanged; a valid unsupported schema uses a staged cold rebuild. Remote
+   tests prove hydration is attempted before canonical creation, target and
+   current-production schemas follow their specified paths, and rejection,
+   transport failure, or remote-candidate migration failure records a typed
+   diagnostic before empty local indexing. Crash injection after download,
+   materialization, backup, migration, versioned-path rename, and locator writes
+   proves deterministic recovery without mixed database families. A crash after
+   the versioned-path rename with `PREPARED` durable, the locator absent, and the
+   old canonical database still valid resumes the same commit and never selects
+   that old database. Missing or corrupt locator tests recover from the ledger
+   or fail typed without legacy fallback. The coordination root and writer lock
+   path remain identical before and after the active physical path changes. A
+   host-claim race cannot publish during activation. Concurrent managed and
+   standalone starts produce one preparer, and no path publishes admission
+   before current-input reconciliation.
 
 ## Implementation ownership
 
@@ -1092,9 +1191,10 @@ Implementation is complete only when the following checks exist and pass:
 | Resident host-product claim, supervision, refresh forwarding, and writer cutover; no model or VFS sharing | `backend-idea/` |
 | Sidecar control, independent runtime and coverage status, read-fence schema, and typed result contracts | `analysis-api/`, `backend-headless/`, and `cli-rs/src/semantics/` |
 | Pre-read admission barrier and post-read same-fence comparison | `backend-headless/` |
+| Read-generation supersession, protocol cutover, legacy equality compatibility, and cursor and write-CAS exact-generation checks | `analysis-api/`, `backend-headless/`, `index-store/`, and `cli-rs/src/agent/navigation/native_graph/` |
 | Saved-file JVM and Android/AGP model, selected variants, source-provider ownership, and background worker | `backend-headless/` |
 | Focused live analysis and read-only persisted access | `backend-idea/` |
-| Exact-root coordination, host-claim CAS, writer lease, product-model fingerprints, single-generation facts and coverage snapshots, stage state, scope reconciliation, and generations | `index-store/` |
+| Immutable exact-root coordination directory, host-claim CAS, writer lease, product-model fingerprints, single-generation facts and coverage snapshots, stage state, scope reconciliation, and generations | `index-store/` |
 | Workspace collections, `.kastignore`, Android selected variants, precedence, resolved JSON projection, and configuration transaction serialization | `cli-rs/src/configuration/` |
 | Resolved configuration and control-message schema | `analysis-api/` |
 | Managed and standalone external-edit watchers and snapshot transport | `backend-idea/` and `backend-headless/` |
@@ -1102,7 +1202,7 @@ Implementation is complete only when the following checks exist and pass:
 | Critical-path inventory proof and prepared scope-generation commit | `backend-headless/` and `index-store/` |
 | Resolved remote-seed input and hydration-result schema | `cli-rs/src/configuration/` and `analysis-api/` |
 | Pre-open preparation coordinator and remote transport | `backend-headless/` |
-| Schema preflight, effective overlay materialization, migration, preparation receipts, atomic activation, and recovery | `index-store/` |
+| SQLite-consistent backup, schema preflight, effective overlay materialization, migration, preparation receipts, active-store locator, atomic activation, and recovery | `index-store/` |
 | Native macOS component, Android/AGP provider, and Java runtime manifest, packaging, installation, receipt, and rollback | `backend-headless/build.gradle.kts`, `cli-rs/src/configuration/bundle.rs`, `cli-rs/src/operations/package.rs`, `cli-rs/src/operations/install/`, `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
 
 ## Consequences
