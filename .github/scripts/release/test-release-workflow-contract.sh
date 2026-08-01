@@ -3,6 +3,7 @@ set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
 ci="$repo_root/.github/workflows/ci.yml"
+ci_build="$repo_root/.github/workflows/ci-build-and-test.yml"
 release="$repo_root/.github/workflows/release.yml"
 cli_builder="$repo_root/.github/scripts/release/actions/build-cli/action.yml"
 setup_builder="$repo_root/.github/scripts/release/actions/build-setup-bundle/action.yml"
@@ -15,6 +16,7 @@ verify_setup="$repo_root/scripts/verify-setup-bundle.sh"
 release_preflight="$(sed -n '/^  release-preflight:/,/^  bump-version:/p' "$release")"
 bump_version="$(sed -n '/^  bump-version:/,/^  prepare-release:/p' "$release")"
 prepare_release="$(sed -n '/^  prepare-release:/,/^  validate-jvm:/p' "$release")"
+validate_jvm="$(sed -n '/^  validate-jvm:/,/^  build-openapi-spec:/p' "$release")"
 build_openapi="$(sed -n '/^  build-openapi-spec:/,/^  publish-openapi-spec:/p' "$release")"
 publish_openapi="$(sed -n '/^  publish-openapi-spec:/,/^  publish-maven-central:/p' "$release")"
 publish_maven="$(sed -n '/^  publish-maven-central:/,/^  build-cli-linux-x64:/p' "$release")"
@@ -258,12 +260,108 @@ reject "$release" './kast.sh' 'release workflow still depends on the deleted bui
 [[ ! -e "$repo_root/kast.sh" ]] \
   || { printf '%s\n' 'error: retired kast.sh build wrapper still exists' >&2; exit 1; }
 
-grep -Fq './gradlew test' <<<"$release_preflight" \
-  || { printf '%s\n' 'error: release dispatch must validate JVM tests before creating a tag' >&2; exit 1; }
-grep -Fq 'uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32' <<<"$release_preflight" \
-  || { printf '%s\n' 'error: release preflight must reuse the exact-SHA Rust validation cache' >&2; exit 1; }
-grep -Fq 'shared-key: rust-cli-validation' <<<"$release_preflight" \
-  || { printf '%s\n' 'error: release preflight Rust cache must match the CI validation owner' >&2; exit 1; }
+for exact_ci_evidence in \
+  'actions: read' \
+  'GH_TOKEN: ${{ github.token }}' \
+  'GITHUB_EVENT_NAME' \
+  'refs/heads/main' \
+  'gh api --method GET' \
+  'actions/workflows/ci.yml/runs' \
+  'actions/runs/${ci_run_id}/artifacts' \
+  'ci-artifact-ledger-maven-publication' \
+  '-f branch=main' \
+  '-f event=push' \
+  '-f head_sha="$GITHUB_SHA"' \
+  '-f status=success' \
+  '.head_sha == $sha' \
+  '.head_branch == "main"' \
+  '.path == ".github/workflows/ci.yml"' \
+  '.event == "push"' \
+  '.status == "completed"' \
+  '.conclusion == "success"'
+do
+  grep -Fq -- "$exact_ci_evidence" <<<"$release_preflight" \
+    || { printf 'error: release preflight must require exact-source CI evidence: %s\n' "$exact_ci_evidence" >&2; exit 1; }
+done
+grep -Fq '.expired == false' <<<"$release_preflight" \
+  || { printf '%s\n' 'error: release preflight must reject expired exact-source CI evidence' >&2; exit 1; }
+for jvm_suite in \
+  ':backend-shared:test' \
+  ':index-store:test'
+do
+  require "$ci_build" "$jvm_suite" "exact-source CI must run $jvm_suite before release"
+done
+setup_job_gate="$(sed -n '/ci_jobs=/,/ci_artifacts=/p' <<<"$release_preflight")"
+for setup_job_evidence in \
+  'actions/runs/${ci_run_id}/jobs' \
+  '.name == "Runtime command and bundle contracts"' \
+  '.status == "completed"' \
+  '.conclusion == "success"' \
+  'error: exact-source CI setup contract did not pass'
+do
+  grep -Fq -- "$setup_job_evidence" <<<"$setup_job_gate" \
+    || { printf 'error: release preflight must require setup-contract job evidence: %s\n' "$setup_job_evidence" >&2; exit 1; }
+done
+for duplicate_ci_work in \
+  './gradlew test' \
+  'actions/setup-java' \
+  'gradle/actions/setup-gradle' \
+  'dtolnay/rust-toolchain' \
+  'Swatinem/rust-cache' \
+  'test-setup-contract.sh'
+do
+  ! grep -Fq -- "$duplicate_ci_work" <<<"$release_preflight" \
+    || { printf 'error: release preflight must reuse green CI instead of rerunning %s\n' "$duplicate_ci_work" >&2; exit 1; }
+done
+grep -Fq 'key: idea-plugin-inputs-${{ runner.os }}-${{ hashFiles('\''gradle/libs.versions.toml'\'') }}' <<<"$build_idea_plugin" \
+  || { printf '%s\n' 'error: release IDEA plugin build must reuse the exact CI input cache' >&2; exit 1; }
+require "$ci" 'key: idea-plugin-inputs-${{ runner.os }}-${{ hashFiles('\''gradle/libs.versions.toml'\'') }}' \
+  'CI must own the IDEA plugin input cache reused by release'
+grep -Fq '~/.cache/pluginVerifier/ides' <<<"$build_idea_plugin" \
+  || { printf '%s\n' 'error: release IDEA plugin cache paths must match the CI cache version' >&2; exit 1; }
+grep -Fq 'key: intellij-runtime-all-${{ runner.os }}-${{ hashFiles('\''gradle/libs.versions.toml'\'') }}' <<<"$build_headless_backend" \
+  || { printf '%s\n' 'error: release headless build must reuse the exact CI runtime cache' >&2; exit 1; }
+require "$ci_build" 'key: intellij-runtime-all-${{ runner.os }}-${{ hashFiles('\''gradle/libs.versions.toml'\'') }}' \
+  'CI must own the full IntelliJ runtime cache reused by release'
+for runtime_cache_path in \
+  '~/.gradle/kast/headless-idea-distributions' \
+  '~/.gradle/kast/shared-idea-distributions' \
+  '~/.gradle/kast/backend-idea-distributions'
+do
+  grep -Fq "$runtime_cache_path" <<<"$build_headless_backend" \
+    || { printf 'error: release headless cache must match CI path: %s\n' "$runtime_cache_path" >&2; exit 1; }
+done
+! grep -Fq 'release-idea-plugin-inputs-' <<<"$build_idea_plugin" \
+  || { printf '%s\n' 'error: release IDEA plugin build must not fork the immutable CI input cache' >&2; exit 1; }
+! grep -Fq 'release-headless-runtime-' <<<"$build_headless_backend" \
+  || { printf '%s\n' 'error: release headless build must not fork the immutable CI runtime cache' >&2; exit 1; }
+for ci_maven_evidence in \
+  'source_ci_run_id: ${{ needs.release-preflight.outputs.run_id }}' \
+  'name: ci-artifact-ledger-maven-publication' \
+  'run-id: ${{ needs.prepare-release.outputs.source_ci_run_id }}' \
+  'github-token: ${{ github.token }}' \
+  '.workflowRunId == $run_id' \
+  '.sourceRef == "refs/heads/main"' \
+  '--require-kind ci-maven-publication-validation'
+do
+  grep -Fq -- "$ci_maven_evidence" "$release" \
+    || { printf 'error: release must reuse exact-source CI Maven evidence: %s\n' "$ci_maven_evidence" >&2; exit 1; }
+done
+for duplicate_maven_validation in \
+  './gradlew' \
+  'actions/setup-java' \
+  'gradle/actions/setup-gradle' \
+  'release-maven-publication-validation.txt'
+do
+  ! grep -Fq -- "$duplicate_maven_validation" <<<"$validate_jvm" \
+    || { printf 'error: JVM validation must reuse CI instead of rebuilding %s\n' "$duplicate_maven_validation" >&2; exit 1; }
+done
+grep -Fq 'retention-days: 30' <<<"$validate_jvm" \
+  || { printf '%s\n' 'error: reused Maven evidence must survive release retries' >&2; exit 1; }
+grep -Fq '"exact-source-ci-maven-validation"' "$repo_root/.github/scripts/release/metadata/release-workflow-model.json" \
+  || { printf '%s\n' 'error: release graph must name the reused exact-source CI Maven proof honestly' >&2; exit 1; }
+! grep -Fq '"release-jvm-validation"' "$repo_root/.github/scripts/release/metadata/release-workflow-model.json" \
+  || { printf '%s\n' 'error: release graph still claims a rebuilt release JVM validation proof' >&2; exit 1; }
 grep -Fq "[[ \"\${{ inputs.asset_id }}\" == 'linux-x64' ]]" "$cli_builder" \
   || { printf '%s\n' 'error: the Linux x64 release build must select the CI-compatible cache and target layout' >&2; exit 1; }
 grep -Fq 'shared-key: ${{ inputs.cache_key }}' "$cli_builder" \
