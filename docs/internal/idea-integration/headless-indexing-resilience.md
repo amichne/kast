@@ -125,8 +125,21 @@ descriptors and a new explicit start or semantic request fails with
 `HEADLESS_BACKEND_DISABLED`. Read-only lifecycle inspection and explicit stop
 can still discover an existing standalone descriptor, so a live process is not
 stranded when the setting changes. When it is `true`, the existing standalone
-path remains available. The setting does not gate the internal sidecar role.
-The sidecar remains available until the resident project service stops.
+path remains available subject to the exact-root writer lease. The setting does
+not gate the internal sidecar role. The sidecar remains available until the
+resident project service stops.
+
+Managed and standalone headless roles use the same exact-root writer lock and
+admission-record locations. The first role to hold the writer lease remains the
+sole writer; there is no automatic lock stealing. A standalone start while the
+managed sidecar holds the lease fails with a typed writer-conflict error that
+names the managed incumbent. If a standalone runtime already holds the lease,
+the resident service does not start a second sidecar; persisted readers continue
+to use the incumbent's admission endpoint and global coverage. The service
+watches for an explicit standalone drain and stop, then rechecks host claims
+before acquiring the released lock.
+Switching in the other direction requires the resident project service to drain
+and stop its managed sidecar before standalone startup can acquire the lease.
 
 The internal sidecar does not publish a public runtime descriptor, register as
 a semantic backend, or participate in automatic backend selection. The
@@ -138,15 +151,47 @@ not stop the IDEA runtime. The service reports unavailable graph and reference
 coverage, preserves the last committed generation, and restarts the sidecar
 with bounded backoff.
 
+The `index-store` exact-root coordination authority owns the writer-lease and
+host-claim paths, schema, compare-and-set rules, and monotonic generation. IDEA
+and Android Studio project services register live claims through that authority;
+the Rust bootstrap, managed sidecar, and standalone sidecar are clients. Managed
+startup requires exactly one claim and binds the supervisor lease to that claim
+identity and generation. The generation advances when the live claim-identity
+set changes, not when an unchanged claim renews its heartbeat.
+
+The service and sidecar both watch the authority. When a second supported host
+claims the root, the authority records ambiguity before the second service can
+start a sidecar. A running managed sidecar stops admitting reads and work,
+discards its uncommitted unit, releases the writer lock, and exits; the resident
+service does not restart it. Both host runtimes report graph and reference
+coverage unavailable, and bootstrap returns `IDEA_HOST_AMBIGUOUS`. When one live
+claim remains, that service can start a new managed sidecar only after the old
+writer lock is free.
+
+The admission barrier synchronously reads the coordination authority; it does
+not rely on delivery of the watch notification. A managed sidecar treats any
+claim-identity or generation change as terminal. A standalone incumbent is not
+bound to one host claim: on a non-ambiguous zero-to-one, one-to-zero, or
+single-host replacement it rejects old tokens, discards its uncommitted unit,
+and rebinds to the new generation. It pauses admission and work while claims are
+ambiguous, then rebinds when the authority becomes non-ambiguous.
+
+Before a sidecar commits a batch, it acquires a shared host-claim commit guard,
+revalidates the permitted generation, and holds the guard through the SQLite
+commit. Claim publication requires the incompatible exclusive guard. A claim
+therefore publishes either before validation and rejects the batch, or after a
+completed batch; it cannot appear between validation and commit.
+
 The sidecar exposes an exact-root read-admission endpoint beside the database.
 Every persisted graph and reference reader checks this endpoint before and
 after a generation-pinned SQLite read. The admission token binds the sidecar
 instance, store generation, scope fingerprint, project-model semantic
-fingerprint, filesystem event epoch, resolved-configuration fingerprint, and
-committed critical-path acceptance-ledger generation, and evidence-family state. A
-missing endpoint, a changed token, or failed revalidation makes that evidence
-family `UNAVAILABLE`; SQLite coverage alone never admits a persisted read. This
-authority is separate from IDEA runtime readiness.
+fingerprint, filesystem event epoch, host-claim generation,
+resolved-configuration fingerprint, committed critical-path acceptance-ledger
+generation, and evidence-family state. A missing endpoint, a changed token, or
+failed revalidation makes that evidence family `UNAVAILABLE`; SQLite coverage
+alone never admits a persisted read. This authority is separate from IDEA
+runtime readiness.
 
 The private admission record is
 `<database-parent>/sidecar/admission.json`; its default endpoint is
@@ -167,12 +212,21 @@ the endpoint is unreachable and the writer lock is free. A replacement sidecar
 then publishes a new identity.
 
 Before it issues or revalidates a token, the sidecar performs a synchronous
-filesystem event barrier on its own platform watcher. It drains pending saved
-file events, hashes affected compiler inputs, rescans affected compiler-input
-roots, and commits fingerprint invalidation before it advances the event epoch
-and replies. A save before the first check is therefore pending before
-admission. A save during the SQLite read changes the post-read epoch and rejects
-that result. This barrier does not use the interactive IDEA virtual file system.
+filesystem event barrier on its own platform watcher. It asks each native event
+producer for a sequence fence and waits until the watcher consumes the marker
+that follows every earlier filesystem mutation; draining the current queue is
+not sufficient. It then hashes affected compiler inputs, rescans affected
+compiler-input roots, and commits fingerprint invalidation before it advances
+the event epoch and replies. A save completed before the fence request is
+therefore processed before admission. The post-read check takes a second
+producer fence; a save during the SQLite read changes the epoch and rejects that
+result.
+
+If a producer cannot prove the fence, reports dropped or coalesced history, or
+crosses a mount generation, the sidecar compares a complete deterministic
+snapshot of the watched input set with its committed Merkle root. It issues no
+token when that comparison cannot complete. This barrier does not use the
+interactive IDEA virtual file system.
 
 The watch set is independent of source admission. It covers every compiler
 input in a semantic cohort and every filesystem model input recorded by the
@@ -542,16 +596,17 @@ A change to `.kastignore`, ignored paths, hard exclusions, or source ownership
 invalidates only affected stage work. A critical-path change updates priority
 and coverage metadata without invalidating current facts.
 
-The single-writer rule removes cross-backend write arbitration. Read-only CLI
-and IDEA consumers can continue to use SQLite generation checks while the
-sidecar commits later batches.
+The exact-root writer lease centralizes cross-mode arbitration. Managed and
+standalone writers cannot overlap, while read-only CLI and IDEA consumers can
+continue to use SQLite generation checks as the incumbent commits later
+batches.
 
-The resident IDEA project service owns the writer-lock protocol and lock-file
-path beside the exact-root database. The sidecar process acquires the
-operating-system lock and holds its file descriptor before it opens the store
-for writes. IDEA opens persisted evidence read-only in sidecar mode. Startup
-fails the sidecar with a typed writer-conflict error if another process holds
-the lock.
+The shared `index-store` coordination authority owns the writer-lock protocol
+and lock-file path beside the exact-root database. A managed or standalone
+sidecar acquires the operating-system lock and holds its file descriptor before
+it opens the store for writes. IDEA opens persisted evidence read-only in
+sidecar mode. Startup fails the contender with a typed writer-conflict error if
+another process holds the lock.
 
 The release cutover first asks the old IDEA index worker to stop and drain. The
 resident service requires confirmation that the worker closed its writable
@@ -701,16 +756,26 @@ Implementation is complete only when the following checks exist and pass:
    headless disablement returns `HEADLESS_BACKEND_DISABLED` without blocking the
    internal role. Lifecycle tests prove a disabled existing standalone runtime
    remains inspectable and stoppable but is not selected for semantic work.
-   A dual-host test makes IDEA and Android Studio claim the same canonical root,
-   requires `IDEA_HOST_AMBIGUOUS`, and proves no sidecar starts or acquires the
-   writer lock.
+   Writer-arbitration tests cover managed-first and standalone-first startup,
+   typed incumbent errors, explicit standalone drain and stop, and lock handoff
+   without overlapping writers. Standalone tests cover zero-to-one, one-to-zero,
+   and single-host-replacement generation rebinding. Dual-host tests cover
+   simultaneous claims and a second host arriving after managed indexing starts.
+   They require `IDEA_HOST_AMBIGUOUS`, immediate admission refusal,
+   supervisor-lease revocation, sidecar exit, and writer-lock release before
+   either host can restart managed indexing. A commit-race test injects the
+   second claim between generation validation and SQLite commit and proves the
+   claim or batch completes first under the coordination guard, never both
+   concurrently.
    Persisted-reader tests reject a missing or changed admission token and a
    sidecar that fails post-read revalidation. They also cover long-path fallback,
    record identity validation, graceful unlink, and stale record and socket
    cleanup. Watcher tests prove the pre-read filesystem barrier invalidates a
-   completed fingerprint, a concurrent save fails post-read revalidation, and
-   raw configuration saves block admission until the matching Rust snapshot and
-   scope reconciliation commit.
+   completed fingerprint, a delayed producer delivery is consumed before token
+   issue, dropped history falls back to a complete snapshot comparison, a
+   concurrent save fails post-read revalidation, and raw configuration saves
+   block admission until the matching Rust snapshot and scope reconciliation
+   commit.
    Supervisor-crash tests prove control-channel EOF or lease expiry stops the
    orphan, releases its lock, and permits replacement.
 6. Packaging tests prove native macOS arm64 and x64 headless artifacts contain
@@ -736,11 +801,11 @@ Implementation is complete only when the following checks exist and pass:
 | Contract | Owning area |
 | --- | --- |
 | Exact-root bootstrap | `cli-rs/src/execution/runtime/` |
-| Resident supervision, refresh forwarding, and writer cutover | `backend-idea/` |
+| Resident host-claim registration, supervision, refresh forwarding, and writer cutover | `backend-idea/` |
 | Sidecar control, runtime status, and typed result contracts | `analysis-api/`, `backend-headless/`, and `cli-rs/src/semantics/` |
 | Saved-file project model and background worker | `backend-headless/` |
 | Focused live analysis and read-only persisted access | `backend-idea/` |
-| Stage state, scope reconciliation, generations, and writer safety | `index-store/` |
+| Exact-root coordination, host-claim CAS, writer lease, stage state, scope reconciliation, and generations | `index-store/` |
 | Workspace collections, `.kastignore`, precedence, and resolved JSON projection | `cli-rs/src/configuration/`, `backend-idea/`, and `analysis-api/` |
 | Critical-path receipt and ledger authority | `cli-rs/src/configuration/` |
 | Critical-path inventory proof and prepared scope-generation commit | `backend-headless/` and `index-store/` |
