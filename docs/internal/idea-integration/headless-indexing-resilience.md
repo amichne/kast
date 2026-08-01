@@ -245,9 +245,18 @@ that stage `LIMITED`. The worker retries limited work at a slower periodic
 interval. A file change or explicit refresh makes that work immediately
 eligible again.
 
-Only facts tied to the current content fingerprint and a current `COMPLETE` or
-`LIMITED` outcome are queryable. Prior facts for changed content are stale and
-cannot appear in a qualified result.
+Only facts or boundary evidence tied to the current content fingerprint and a
+current `COMPLETE`, `LIMITED`, or `EXTERNAL_BOUNDARY` outcome are queryable.
+Prior facts for changed content are stale and cannot appear in a qualified
+result.
+
+A reference `EXTERNAL_BOUNDARY` remains a distinct terminal outcome for its
+current fingerprint. It preserves the externalized failure identity and exposes
+the existing limited unknown boundary; it does not migrate to `LIMITED`. It is
+re-evaluated after a content, scope, or project-model change, or after explicit
+refresh. On a critical file it makes reference coverage `INCOMPLETE`. On a
+non-critical file it makes reference coverage `QUALIFIED`. It does not affect
+semantic graph coverage.
 
 The retry policy has one owner in the workspace worker. Request handlers do not
 implement their own retry loops.
@@ -262,7 +271,7 @@ Graph and reference pipelines each publish one global coverage state:
 | State | Meaning | Operation behavior |
 | --- | --- | --- |
 | `COMPLETE` | Every eligible file has current complete evidence, and every critical obligation is fulfilled. | Run with current evidence. |
-| `QUALIFIED` | All critical files are complete, but non-critical work is pending, stale, limited, or failed. | Run and return global coverage limitations. |
+| `QUALIFIED` | All critical files are complete, but non-critical work is pending, stale, limited, external-boundary, or failed. | Run and return global coverage limitations. |
 | `INCOMPLETE` | A critical obligation is unmatched, or at least one critical file lacks current complete evidence. | Reject operations for that evidence family. |
 | `UNAVAILABLE` | No admissible persisted generation can be served, including while the project model is unavailable. | Reject operations for that evidence family. |
 
@@ -295,8 +304,8 @@ and still counts as complete.
 `REFERENCE_EVIDENCE_INCOMPLETE` and `REFERENCE_EVIDENCE_UNAVAILABLE` typed
 errors. These errors exit non-zero. Errors and qualified results include total,
 complete, critical-file, critical-obligation, unmatched-critical-obligation,
-pending, stale, limited, and failed counts. No operation computes a different
-readiness state from its requested symbol or path.
+pending, stale, limited, external-boundary, and failed counts. No operation
+computes a different readiness state from its requested symbol or path.
 
 Graph and reference states can differ. For example, graph coverage can be
 `COMPLETE` while reference coverage is `QUALIFIED`.
@@ -371,8 +380,9 @@ path. Migration does not infer complete coverage from old module summaries.
 
 The initial scope reconciliation removes hard-excluded inventory and removes
 graph and reference facts for user-ignored files. It retains current admitted
-facts and queues missing stage work. Existing generation checks remain active
-during this transition.
+facts, including current external-boundary outcomes and their reason identity,
+and queues missing stage work. Existing generation checks remain active during
+this transition.
 
 macOS keeps the current IDEA backend as the interactive default. The change
 removes the local headless prohibition only for the managed index-sidecar path.
@@ -391,7 +401,8 @@ Implementation is complete only when the following checks exist and pass:
    proves the workspace-owned worker continues. This proves isolation without
    claiming reproduction of the reported production contention.
 4. Worker tests prove cancellation remains pending, three repeated failures
-   become retryable limited outcomes, and stale prior facts stay unqueryable.
+   become retryable limited outcomes, current external-boundary evidence keeps
+   its reason identity, and stale prior facts stay unqueryable.
 5. Runtime tests prove macOS IDEA startup owns one exact-root sidecar and one
    persistent writer. Crash and cutover cases must prove lock release,
    restart, drain, and generation preservation.
