@@ -129,15 +129,25 @@ path remains available subject to the exact-root writer lease. The setting does
 not gate the internal sidecar role. The sidecar remains available until the
 resident project service stops.
 
+If that setting becomes `false` while a standalone runtime owns the writer
+lease, the standalone fences persisted admission and rejects new semantic work.
+It remains reachable only for lifecycle inspection, configuration forwarding,
+drain, and explicit stop. The resident service does not replace it while its
+writer lease is live. A managed sidecar can start after explicit stop or
+confirmed standalone process death releases the lease.
+
 Managed and standalone headless roles use the same exact-root writer lock and
 admission-record locations. The first role to hold the writer lease remains the
 sole writer; there is no automatic lock stealing. A standalone start while the
 managed sidecar holds the lease fails with a typed writer-conflict error that
 names the managed incumbent. If a standalone runtime already holds the lease,
 the resident service does not start a second sidecar; persisted readers continue
-to use the incumbent's admission endpoint and global coverage. The service
-watches for an explicit standalone drain and stop, then rechecks host claims
-before acquiring the released lock.
+to use the incumbent's admission endpoint and global coverage only while public
+headless selection remains enabled. The service watches the standalone control
+endpoint and writer lease as well as explicit drain and stop. After a confirmed
+process death makes the endpoint unreachable and releases the lease, it uses
+the existing stale-descriptor and admission-record cleanup, rechecks host
+claims, and can acquire the released lock for a managed sidecar.
 Switching in the other direction requires the resident project service to drain
 and stop its managed sidecar before standalone startup can acquire the lease.
 
@@ -146,10 +156,12 @@ a semantic backend, or participate in automatic backend selection. The
 exact-root IDEA runtime remains the public backend candidate. Explicit
 standalone headless selection keeps its existing descriptor and discovery path.
 
-The resident IDEA project service supervises the sidecar. A sidecar crash does
-not stop the IDEA runtime. The service reports unavailable graph and reference
-coverage, preserves the last committed generation, and restarts the sidecar
-with bounded backoff.
+The resident IDEA project service supervises the sidecar when it owns the
+managed writer role. A managed sidecar crash does not stop the IDEA runtime.
+The service reports unavailable graph and reference coverage, preserves the
+last committed generation, and restarts the managed sidecar with bounded
+backoff. It does not supervise or restart a standalone process; the confirmed
+crash handoff above starts a new managed role under a new writer lease.
 
 The `index-store` exact-root coordination authority owns the writer-lease and
 host-claim paths, schema, compare-and-set rules, and monotonic generation. IDEA
@@ -158,6 +170,15 @@ the Rust bootstrap, managed sidecar, and standalone sidecar are clients. Managed
 startup requires exactly one claim and binds the supervisor lease to that claim
 identity and generation. The generation advances when the live claim-identity
 set changes, not when an unchanged claim renews its heartbeat.
+
+Writer acquisition atomically publishes a role-tagged provisional lease record
+before endpoint startup. It binds the canonical root, `MANAGED` or `STANDALONE`
+role, release, instance, process identity, and lease epoch. Endpoint publication
+promotes that same record to active by compare-and-set. A competing start that
+observes a live provisional record waits for bounded publication and then
+returns the typed incumbent conflict; if the process and lock are both gone, it
+can clear the expired record and retry. No start can observe an unidentified
+writer-lock owner.
 
 The service and sidecar both watch the authority. When a second supported host
 claims the root, the authority records ambiguity before the second service can
@@ -202,14 +223,22 @@ record always contains the actual endpoint. The CLI derives these locations
 from the same database and workspace-path authorities; it does not use backend
 discovery.
 
+The record is role-tagged and copies the canonical-root digest, release,
+instance, role, and writer-lease epoch from the coordination record. It also
+contains the socket path and admission protocol. A managed record adds its
+supervisor lease and bound host-claim identity; a standalone record has no
+supervisor lease. The standalone public descriptor publishes the same common
+identity plus its control endpoint and protocol. Adoption requires the public
+descriptor, private admission record, and live writer lease to agree exactly.
+
 After it owns the writer lock and opens the store, the sidecar atomically
-publishes the canonical-root digest, release, instance and supervisor lease
-identifiers, socket path, and protocol version. The directory and files are
-owner-only. A reader validates the owner, root digest, release, and protocol
-before it connects. Graceful exit unlinks both `admission.json` and the socket
-node. After a crash, the resident service can unlink both stale paths only after
-the endpoint is unreachable and the writer lock is free. A replacement sidecar
-then publishes a new identity.
+publishes the admission record and promotes its provisional writer lease. The
+directory and private files are owner-only. A reader validates the owner, root
+digest, release, role, instance, lease epoch, and protocol before it connects.
+Graceful exit unlinks `admission.json` and the socket node. After a crash, the
+resident service or existing standalone lifecycle cleanup can unlink stale
+records only after the endpoint is unreachable and the writer lock is free. A
+replacement sidecar then publishes a new identity.
 
 Before it issues or revalidates a token, the sidecar performs a synchronous
 filesystem event barrier on its own platform watcher. It asks each native event
@@ -245,15 +274,32 @@ issues no admission token until a completed model snapshot is reconciled and
 its fingerprint is committed. Existing facts remain stored but cannot be
 served against the old model.
 
-The service establishes an exact-root, lease-bound local control channel when
-it starts the sidecar. Persistent graph and reference refresh requests enqueue
-an evidence-family refresh through that channel; the IDEA request handler no
-longer performs the write.
+When the service starts a managed sidecar, it establishes an exact-root,
+lease-bound `SUPERVISOR` control channel. Persistent graph and reference refresh
+requests enqueue an evidence-family refresh through that channel; the IDEA
+request handler no longer performs the write.
+
+A standalone runtime exposes the same release-matched control protocol through
+its existing public runtime endpoint. When it is the writer incumbent, the
+resident service validates the public descriptor, private admission record,
+and live writer-lease identity. It then connects with a non-supervising `CLIENT` role.
+Refresh requests and configuration event or mutation notifications use that
+channel. Client disconnect does not terminate or transfer ownership of the
+standalone process. An incompatible incumbent rejects adoption with a typed
+control-protocol error and remains the writer until explicit stop; persisted
+admission stays unavailable after a configuration fence that the incumbent
+cannot reconcile.
 
 Rust remains the sole TOML, `.kastignore`, and configuration-precedence parsing
 authority. A configuration mutation projects and sends one complete resolved
-JSON snapshot through the control channel. For external edits, the resident
-service watches the global configuration file at
+JSON snapshot through the control channel. For external edits, there is one
+projection producer for each writer-lease epoch. The resident service is that
+producer for a managed writer. A standalone control adapter is the producer for
+the full lifetime of a standalone lease, whether or not a resident `CLIENT` is
+connected. An adopted resident forwards event and mutation notifications; it
+does not start a competing projection helper.
+
+The active producer watches the global configuration file at
 `$KAST_CONFIG_HOME/config.toml`, the workspace TOML, and `.kastignore`, then
 invokes the release-matched Rust projection and forwards its snapshot. The
 sidecar also watches those raw inputs and their parent directories only to
@@ -266,16 +312,27 @@ match its barrier view and scope and coverage reconciliation commits the new
 fingerprint. `analysis-api` owns the snapshot schema, including the new ignored
 and critical collections.
 
+Direct mutations and watcher-triggered projections serialize under one
+Rust-owned exact-root configuration transaction lock. After it acquires the
+lock, the helper rereads every raw input and the acceptance ledger. Every
+control message binds the writer-lease epoch; a writer cutover rejects the old
+transaction and retries under the new writer. The lock covers the complete
+critical-path candidate, inventory proof, `PENDING` receipt, store
+acknowledgment, `COMMITTED` receipt, and revocation-tombstone exchanges below.
+Only a repeated tuple of resolved configuration fingerprint and ledger
+generation is an idempotent no-op. A standalone lease therefore needs no
+projection-producer handoff when a resident connects.
+
 Shutdown sends drain and waits for acknowledgment before the service closes
 shared state. Request cancellation can stop waiting for an acknowledgment, but
 it cannot cancel work after the sidecar accepts it.
 
-The service is the sole holder of the supervisor end of the control channel.
-The sidecar treats control-channel EOF or supervisor-lease expiry as terminal.
-It stops accepting work, discards any uncommitted unit, closes the store,
-releases the writer lock, and exits. Lease expiry is the fallback when process
-death does not deliver EOF. A replacement service waits for that lock release
-before it starts a new sidecar.
+The service is the sole holder of a managed channel's supervisor end. A managed
+sidecar treats supervisor EOF or lease expiry as terminal. It stops accepting
+work, discards any uncommitted unit, closes the store, releases the writer lock,
+and exits. Lease expiry is the fallback when process death does not deliver EOF.
+A replacement service waits for that lock release before it starts a new
+sidecar. A standalone `CLIENT` channel has no supervisor semantics.
 
 ## Source admission
 
@@ -712,9 +769,17 @@ identity, and queues both stages. Only outcomes produced under the complete
 current stage input fingerprint become queryable. Existing generation checks
 remain active during this transition.
 
-macOS keeps the current IDEA backend as the interactive default. The change
-removes the local headless prohibition only for the managed index-sidecar path.
-It does not make public mutation commands select an unleased headless backend.
+macOS keeps the exact-root IDEA or Android Studio backend as the automatic
+interactive default. An explicit standalone start is permitted on macOS when
+`backends.headless.enabled` is `true`. It uses the installed
+architecture-matched native payload and bundled Java runtime, publishes its
+normal standalone descriptor and control endpoint, and must acquire the
+exact-root writer lease. It is never selected automatically. When the setting
+is `false`, an explicit start returns `HEADLESS_BACKEND_DISABLED`. Public
+mutation commands do not implicitly select an unleased headless backend. The
+implementation removes the existing `HEADLESS_LOCAL_UNSUPPORTED` guard from
+this explicit standalone route on supported macOS hosts; that error cannot mask
+the enabled or disabled outcomes above.
 
 ## Verification plan
 
@@ -728,7 +793,10 @@ Implementation is complete only when the following checks exist and pass:
    and re-enable, anchored and unanchored module priority depth, semantic
    output-root classification, hard-exclusion precedence over nested generated
    source roots, independent builds named `build`, and pre-ignore conflict
-   detection with hard-exclusion precedence.
+   detection with hard-exclusion precedence. They also prove one external-edit
+   producer per writer lease, direct-mutation and watcher-trigger serialization
+   through the full critical-path receipt protocol, and stale lease-epoch
+   rejection.
 2. Index-store tests cover independent graph and reference progress, the
    fact-preserving current-schema migration, unsupported-schema cold rebuild,
    legacy rows remaining non-queryable until reindex, external-boundary graph
@@ -754,12 +822,29 @@ Implementation is complete only when the following checks exist and pass:
    publishes no runtime descriptor and automatic backend selection still
    selects only the exact-root host runtime. Selection tests prove public
    headless disablement returns `HEADLESS_BACKEND_DISABLED` without blocking the
-   internal role. Lifecycle tests prove a disabled existing standalone runtime
-   remains inspectable and stoppable but is not selected for semantic work.
+   internal role. Explicit-start tests prove an explicit standalone start is
+   permitted on macOS only when the setting is enabled and the writer lease is
+   free, never returns `HEADLESS_LOCAL_UNSUPPORTED` on a supported host, uses
+   the bundled runtime, and returns the typed incumbent conflict when a managed
+   writer owns the lease. Lifecycle tests prove a disabled existing standalone
+   runtime remains inspectable and stoppable, fences persisted admission, and
+   rejects semantic work until explicit stop or confirmed process death.
    Writer-arbitration tests cover managed-first and standalone-first startup,
    typed incumbent errors, explicit standalone drain and stop, and lock handoff
-   without overlapping writers. Standalone tests cover zero-to-one, one-to-zero,
-   and single-host-replacement generation rebinding. Dual-host tests cover
+   without overlapping writers. A simultaneous-start test proves provisional
+   lease publication exposes the winning role and identity before either
+   endpoint exists. Standalone-first adoption tests prove the resident service
+   validates matching descriptor, admission-record, and writer-lease identities,
+   forwards refresh and configuration notifications, and leaves the standalone
+   process running when the `CLIENT` channel closes. They prove an incompatible
+   incumbent returns the typed control-protocol error and remains fenced until
+   explicit stop. A no-resident test proves a raw configuration event invokes
+   the release-matched Rust projection helper, including the complete
+   critical-path receipt exchange, and reconciles the resulting snapshot. A
+   standalone-crash test proves endpoint loss plus lock release invokes stale
+   cleanup and managed handoff without restarting the standalone role.
+   Standalone tests cover zero-to-one, one-to-zero, and single-host-replacement
+   generation rebinding. Dual-host tests cover
    simultaneous claims and a second host arriving after managed indexing starts.
    They require `IDEA_HOST_AMBIGUOUS`, immediate admission refusal,
    supervisor-lease revocation, sidecar exit, and writer-lock release before
@@ -806,7 +891,9 @@ Implementation is complete only when the following checks exist and pass:
 | Saved-file project model and background worker | `backend-headless/` |
 | Focused live analysis and read-only persisted access | `backend-idea/` |
 | Exact-root coordination, host-claim CAS, writer lease, stage state, scope reconciliation, and generations | `index-store/` |
-| Workspace collections, `.kastignore`, precedence, and resolved JSON projection | `cli-rs/src/configuration/`, `backend-idea/`, and `analysis-api/` |
+| Workspace collections, `.kastignore`, precedence, resolved JSON projection, and configuration transaction serialization | `cli-rs/src/configuration/` |
+| Resolved configuration and control-message schema | `analysis-api/` |
+| Managed and standalone external-edit watchers and snapshot transport | `backend-idea/` and `backend-headless/` |
 | Critical-path receipt and ledger authority | `cli-rs/src/configuration/` |
 | Critical-path inventory proof and prepared scope-generation commit | `backend-headless/` and `index-store/` |
 | Native macOS component and Java runtime manifest, packaging, installation, receipt, and rollback | `cli-rs/src/configuration/bundle.rs`, `cli-rs/src/operations/package.rs`, `cli-rs/src/operations/install/`, `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
