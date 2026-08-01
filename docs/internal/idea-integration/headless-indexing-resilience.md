@@ -520,6 +520,15 @@ that value, never the caller's symbolic-link alias. Mutation commits through an
 identity-checked target and parent handle, so a retarget or replacement cannot
 redirect the write after validation.
 
+A source-taking read uses an identity-bound, no-follow handle when its API can
+consume one. A PSI or compiler API that requires a path takes a synchronous
+native filesystem producer fence after its read, resolves that canonical target
+again without following the caller alias, and requires the path-resolution
+identity and filesystem event epoch to match the admitted value. It discards the
+result with a typed stale-admission error when either check changes or the
+producer cannot prove the fence. An external retarget or replacement therefore
+cannot redirect a read or return evidence for a newly hard-excluded target.
+
 Product-model and exclusion publication requires an exclusive source-admission
 guard. Each source-taking operation acquires the compatible shared guard,
 validates its `AdmittedSourcePath` under that guard, and holds it through its PSI
@@ -1286,9 +1295,14 @@ Implementation is complete only when the following checks exist and pass:
     validation while exclusion publication races for the exclusive guard. It
     proves exactly one order: publication first rejects without a write;
     mutation first commits before the new exclusion becomes authoritative. A
-    positive operation case retains `build/src/main/kotlin` for an independent
-    Gradle build when the parent model does not classify that root as output,
-    while that build's own `build/build/` output remains excluded.
+    read-side race pauses after admission, retargets the symbolic link to the
+    excluded output, and replaces the prior canonical file. Each PSI and
+    compiler path either reads the original identity-bound target or rejects its
+    post-read identity or event check; it never returns evidence for the
+    excluded target. A positive operation case retains `build/src/main/kotlin`
+    for an independent Gradle build when the parent model does not classify that
+    root as output, while that build's own `build/build/` output remains
+    excluded.
 
 ## Implementation ownership
 
