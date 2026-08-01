@@ -225,9 +225,9 @@ before it starts a new sidecar.
 
 ## Source admission
 
-An eligible file is a canonical exact-root Kotlin source file that the complete
-headless IDEA and Gradle model assigns to a source set. A symbolic link must
-resolve inside the exact root. An unowned file is not eligible.
+A model-owned candidate is a canonical exact-root Kotlin source file that the
+complete headless IDEA and Gradle model assigns to a source set. A symbolic link
+must resolve inside the exact root. An unowned file is not a candidate.
 
 If the project model is missing or stale, the worker does not reconcile the
 store. It preserves the last committed generation and reports graph and
@@ -237,9 +237,12 @@ The worker computes one effective source set in this order:
 
 1. Normalize the candidate under the exact workspace root.
 2. Reject hard-excluded output.
-3. Apply repository and workspace ignore rules.
-4. Classify the remaining path as critical or non-critical.
-5. Attach Gradle module and source-set ownership.
+3. Detect ignore-critical overlap against the remaining model-owned candidates.
+4. Apply repository and workspace ignore rules.
+5. Classify the remaining path as critical or non-critical.
+6. Attach Gradle module and source-set ownership.
+
+A candidate that completes all six steps is an eligible file.
 
 ### Hard exclusions
 
@@ -299,11 +302,12 @@ Workspace ignored and critical collections accept positive repository-relative
 patterns. They use the same anchoring, directory, and wildcard rules as
 `.kastignore`, but do not accept comments or negation.
 
-A resolved eligible file cannot be both ignored and critical. Conflict
-validation uses the current resolved source inventory, not abstract pattern
-intersection. A future file that creates a conflict makes the new inventory
-invalid and leaves the last valid physical scope active. Both graph and
-reference coverage immediately become `INCOMPLETE` with limitation
+A model-owned candidate that survives hard exclusion cannot match both ignored
+and critical rules. Conflict validation uses the post-hard-exclusion,
+pre-ignore candidate inventory, not abstract pattern intersection or the final
+filtered inventory. A future file that creates a conflict makes the new
+inventory invalid and leaves the last valid physical scope active. Both graph
+and reference coverage immediately become `INCOMPLETE` with limitation
 `IGNORE_CRITICAL_CONFLICT`; persisted-evidence operations remain rejected until
 the conflict is resolved. Existing committed facts are not deleted by this
 validation failure.
@@ -668,8 +672,8 @@ Implementation is complete only when the following checks exist and pass:
    rejection, add and removal crashes, tombstone replay, relationship disable
    and re-enable, anchored and unanchored module priority depth, semantic
    output-root classification, hard-exclusion precedence over nested generated
-   source roots, independent builds named `build`, and active ignore-critical
-   conflict coverage.
+   source roots, independent builds named `build`, and pre-ignore conflict
+   detection with hard-exclusion precedence.
 2. Index-store tests cover independent graph and reference progress, the
    fact-preserving current-schema migration, unsupported-schema cold rebuild,
    legacy rows remaining non-queryable until reindex, external-boundary graph
@@ -685,17 +689,21 @@ Implementation is complete only when the following checks exist and pass:
    one complete stage input become a retryable limited outcome, a model or peer
    change starts a new failure sequence, current external-boundary evidence
    keeps its reason identity, and stale prior facts stay unqueryable.
-5. Runtime tests prove macOS IDEA startup owns one exact-root sidecar and one
-   persistent writer even when public headless selection is disabled. Refresh
-   forwarding, scope reload, crash, and cutover cases must prove acknowledgment,
-   lock release, restart, drain, and generation preservation. Focused live
-   reference tests retain PSI fallback without persisted-reference admission.
-   Discovery tests prove the internal sidecar publishes no runtime descriptor
-   and automatic backend selection still selects only the exact-root IDEA
-   runtime. Selection tests prove public headless disablement returns
-   `HEADLESS_BACKEND_DISABLED` without blocking the internal role. Lifecycle
-   tests prove a disabled existing standalone runtime remains inspectable and
-   stoppable but is not selected for semantic work.
+5. Runtime tests under each supported macOS host—IntelliJ IDEA 2026.2/build 262
+   and Android Studio 2026.1.2/build 261—prove startup owns one exact-root
+   sidecar and one persistent writer even when public headless selection is
+   disabled. Refresh forwarding, scope reload, crash, and cutover cases must
+   prove acknowledgment, lock release, restart, drain, and generation
+   preservation. Focused live reference tests retain PSI fallback without
+   persisted-reference admission. Discovery tests prove the internal sidecar
+   publishes no runtime descriptor and automatic backend selection still
+   selects only the exact-root host runtime. Selection tests prove public
+   headless disablement returns `HEADLESS_BACKEND_DISABLED` without blocking the
+   internal role. Lifecycle tests prove a disabled existing standalone runtime
+   remains inspectable and stoppable but is not selected for semantic work.
+   A dual-host test makes IDEA and Android Studio claim the same canonical root,
+   requires `IDEA_HOST_AMBIGUOUS`, and proves no sidecar starts or acquires the
+   writer lock.
    Persisted-reader tests reject a missing or changed admission token and a
    sidecar that fails post-read revalidation. They also cover long-path fallback,
    record identity validation, graceful unlink, and stale record and socket
@@ -711,13 +719,14 @@ Implementation is complete only when the following checks exist and pass:
    `java` from `PATH`, and proves the installed sidecar selects its bundled
    runtime. Transaction tests prove the bundle manifest, installation receipt,
    and rollback cover both the native sidecar and Java runtime.
-7. A macOS integration check edits a saved Kotlin file while IDEA is active,
-   attempts reads both before and during sidecar reconciliation, and proves no
-   stale generation is admitted without using the IDEA virtual file system for
-   persistence. It also saves a model-affecting input and proves both evidence
-   families become unavailable before admission and remain unavailable until a
-   completed model refresh is reconciled. Cases cover external included-build
-   inputs, custom Gradle configuration inputs, and incomplete provenance.
+7. Under each supported host, a macOS integration check edits a saved Kotlin
+   file while the host is active, attempts reads both before and during sidecar
+   reconciliation, and proves no stale generation is admitted without using the
+   host virtual file system for persistence. It also saves a model-affecting
+   input and proves both evidence families become unavailable before admission
+   and remain unavailable until a completed model refresh is reconciled. Cases
+   cover external included-build inputs, custom Gradle configuration inputs, and
+   incomplete provenance.
 8. A macOS integration check opens two exact-root projects concurrently and
    proves their sidecars use distinct IntelliJ config, system, log, and
    temporary directories.
