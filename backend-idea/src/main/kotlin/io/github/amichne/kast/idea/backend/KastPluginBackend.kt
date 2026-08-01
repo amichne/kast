@@ -6,20 +6,16 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.ModuleManager
-import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectFileIndex
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiReference
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiModificationTracker
-import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.client.IndexingConfig
 import io.github.amichne.kast.api.client.KastConfig
@@ -41,13 +37,9 @@ import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
 import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
 import io.github.amichne.kast.api.contract.MutationCapability
-import io.github.amichne.kast.api.contract.NonNegativeInt
-import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
-import io.github.amichne.kast.api.contract.result.ContainingSymbolUnavailableReason
 import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RenameResult
@@ -68,22 +60,12 @@ import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.contract.selector.DigestSelectorHandleAuthority
 import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
-import io.github.amichne.kast.shared.analysis.compilerContainingDeclarationName
-import io.github.amichne.kast.shared.analysis.toKastLocation
-import io.github.amichne.kast.shared.analysis.toSymbolModel
-import io.github.amichne.kast.shared.analysis.usageSiteDeclarationScope
 import io.github.amichne.kast.shared.analysis.visibility
 import io.github.amichne.kast.shared.hierarchy.ReadAccessScope
 import kotlinx.coroutines.Dispatchers
-import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.lexer.KtTokens
-import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import java.nio.file.Path
 import java.util.UUID
-import java.util.concurrent.CancellationException
 import io.github.amichne.kast.idea.*
 import io.github.amichne.kast.idea.edit.*
 import io.github.amichne.kast.idea.backend.references.*
@@ -135,6 +117,7 @@ internal class KastPluginBackend(
 
     @Volatile
     private var lastValidIndexingConfig: IndexingConfig = initialIndexingConfig
+    private val psiSupport = KastPluginPsiSupport(this)
 
     internal fun updateSemanticGraphBatchSize(batchSize: Int) {
         require(batchSize > 0) { "Semantic graph batch size must be positive" }
@@ -341,66 +324,15 @@ internal class KastPluginBackend(
     override suspend fun workspaceSymbolSearch(query: ParsedWorkspaceSymbolQuery): WorkspaceSymbolResult = workspaceSymbolSearchOperation(query)
     override suspend fun workspaceSearch(query: ParsedWorkspaceSearchQuery): WorkspaceSearchResult = workspaceSearchOperation(query)
 
-    internal fun PsiReference.toReferenceOccurrence(includeUsageSiteScope: Boolean): ReferenceOccurrence? {
-        val referenceElement = element
-        if (!referenceElement.isValid) return null
-        val location = referenceElement.toKastLocation(absoluteTextRange())
-        if (!isWorkspaceFile(location.filePath)) return null
-        val enrichedLocation = if (includeUsageSiteScope) {
-            location.copy(usageSiteScope = referenceElement.usageSiteDeclarationScope())
-        } else {
-            location
-        }
-        return ReferenceOccurrence(
-            location = enrichedLocation,
-            containingSymbol = referenceElement.containingSymbolEvidence(),
-        )
-    }
+    internal fun PsiReference.toReferenceOccurrence(includeUsageSiteScope: Boolean): ReferenceOccurrence? =
+        psiSupport.toReferenceOccurrence(this, includeUsageSiteScope)
 
-    internal fun PsiElement.containingSymbolEvidence(): ContainingSymbolEvidence {
-        val owner = PsiTreeUtil.getParentOfType(this, KtNamedDeclaration::class.java, false)
-            ?: return ContainingSymbolEvidence.TopLevel
-        return try {
-            val symbol = analyze(owner.containingKtFile) {
-                owner.toSymbolModel(containingDeclaration = compilerContainingDeclarationName(owner))
-            }
-            ContainingSymbolEvidence.Known(
-                io.github.amichne.kast.api.contract.SymbolIdentity(
-                    fqName = symbol.fqName,
-                    kind = symbol.kind,
-                    declarationFile = NormalizedPath.parse(symbol.location.filePath),
-                    declarationStartOffset = NonNegativeInt(symbol.location.startOffset),
-                    containingType = symbol.containingDeclaration,
-                ),
-            )
-        } catch (failure: ProcessCanceledException) {
-            throw failure
-        } catch (failure: CancellationException) {
-            throw failure
-        } catch (_: Exception) {
-            ContainingSymbolEvidence.Unavailable(ContainingSymbolUnavailableReason.NO_SEMANTIC_OWNER)
-        }
-    }
+    internal fun PsiElement.containingSymbolEvidence(): ContainingSymbolEvidence =
+        psiSupport.containingSymbolEvidence(this)
 
-    internal fun isConcreteType(target: PsiElement): Boolean = when (target) {
-        is KtClass -> !target.isInterface() && !target.hasModifier(KtTokens.ABSTRACT_KEYWORD)
-        is KtObjectDeclaration -> !target.isCompanion()
-        is com.intellij.psi.PsiClass -> !target.isInterface && !target.hasModifierProperty(com.intellij.psi.PsiModifier.ABSTRACT)
-        else -> false
-    }
+    internal fun isConcreteType(target: PsiElement): Boolean = psiSupport.isConcreteType(target)
 
-    internal fun findKtFile(filePath: String): KtFile {
-        val normalizedPath = Path.of(filePath).toAbsolutePath().normalize().toString()
-        if (!isWorkspaceFile(normalizedPath)) {
-            throw NotFoundException("File is outside the active workspace: $filePath")
-        }
-        val virtualFile = LocalFileSystem.getInstance().findFileByPath(normalizedPath)
-            ?: throw NotFoundException("File not found: $filePath")
-        val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
-            ?: throw NotFoundException("Cannot resolve PSI for: $filePath")
-        return psiFile as? KtFile
-            ?: throw NotFoundException("Not a Kotlin file: $filePath")
-    }
+    internal fun findKtFile(filePath: String): KtFile = psiSupport.findKtFile(filePath)
 
     internal fun visibilityScopedSearch(
         target: PsiElement,

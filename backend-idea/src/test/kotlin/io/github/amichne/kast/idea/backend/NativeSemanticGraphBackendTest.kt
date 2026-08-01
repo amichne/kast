@@ -34,122 +34,30 @@ import java.nio.file.Files
 class NativeSemanticGraphBackendTest {
     companion object {
         private val projectFixture: TestFixture<Project> = projectFixture()
-
-        private const val canonicalSource = """
-            package demo
-
-            annotation class Marker
-
-            sealed class Parent<T> {
-                open fun inherited(value: T): T = value
-            }
-
-            class Box<T> @Marker constructor(val value: T) : Parent<T>() where T : Any {
-                @Marker
-                var label: String = "label"
-
-                override fun inherited(value: T): T = value
-                fun pick(value: String): String = value
-                fun pick(value: Int): Int = value
-            }
-
-            class Constructed {
-                constructor(value: String)
-                constructor(value: Int)
-            }
-
-            fun construct(): Constructed = Constructed(1)
-        """
-
-        private const val leftType = """
-            package left
-
-            class Foo
-        """
-
-        private const val rightType = """
-            package right
-
-            class Foo
-        """
-
-        private const val leftTypeConsumer = """
-            package consumer
-
-            import left.Foo
-
-            val leftFoo: Foo? = null
-        """
-
-        private const val rightTypeConsumer = """
-            package consumer
-
-            import right.Foo
-
-            val rightFoo: Foo? = null
-        """
-
-        private const val localPropertySource = """
-            package demo
-
-            fun useLocalProperty(): Int {
-                val localValue = 1
-                return localValue
-            }
-        """
-
-        private const val functionTypeParameterSource = """
-            package demo
-
-            typealias Resolver = (workspaceRoot: String) -> String
-        """
-
-        private const val genericCallableReferenceSource = """
-            package demo
-
-            import java.util.concurrent.CompletableFuture
-
-            data class Entry<Query, State>(val state: State)
-            data class List<Element>(val size: Int) { fun isNotEmpty(): Boolean = size > 0 }
-            data class Pair<First, Second>(val first: First)
-            fun <Query, State> stateReference(): (Entry<Query, State>) -> State = Entry<Query, State>::state
-            fun sizeReference(): (List<String>) -> Int = List<String>::size
-            fun nonEmptyReference(): (List<String>) -> Boolean = List<String>::isNotEmpty
-            fun firstReference(): (Pair<String, String?>) -> String = Pair<String, String?>::first
-            fun <T> generatedFluentCall(value: T): T = CompletableFuture.completedFuture(value).thenApply { it }.join()
-            fun laterTarget(): String = "ok"
-            fun resilientCall(): String = laterTarget()
-        """
-
-        private const val enumSource = """
-            package demo
-
-            enum class Mode(val value: Int) {
-                VALUE(1),
-            }
-        """
-
-        private const val unresolvedCallSource = "package demo\nfun brokenCall() = missingCall()"
-        private const val unresolvedSupertypeSource = "package demo\ninterface Broken : MissingBase"
-        private const val unresolvedTypeSource = "package demo\nval broken: MissingType? = null"
     }
 
     private val moduleFixture = projectFixture.moduleFixture("main")
     private val sourceRootFixture = moduleFixture.sourceRootFixture()
-    private val canonicalFileFixture = sourceRootFixture.psiFileFixture("Canonical.kt", canonicalSource)
-    private val leftTypeFixture = sourceRootFixture.psiFileFixture("LeftType.kt", leftType)
-    private val rightTypeFixture = sourceRootFixture.psiFileFixture("RightType.kt", rightType)
-    private val leftTypeConsumerFixture = sourceRootFixture.psiFileFixture("LeftTypeConsumer.kt", leftTypeConsumer)
-    private val rightTypeConsumerFixture = sourceRootFixture.psiFileFixture("RightTypeConsumer.kt", rightTypeConsumer)
-    private val localPropertyFixture = sourceRootFixture.psiFileFixture("LocalProperty.kt", localPropertySource)
+    private val canonicalFileFixture = sourceRootFixture.psiFileFixture("Canonical.kt", NativeSemanticGraphSources.canonical)
+    private val leftTypeFixture = sourceRootFixture.psiFileFixture("LeftType.kt", NativeSemanticGraphSources.leftType)
+    private val rightTypeFixture = sourceRootFixture.psiFileFixture("RightType.kt", NativeSemanticGraphSources.rightType)
+    private val leftTypeConsumerFixture =
+        sourceRootFixture.psiFileFixture("LeftTypeConsumer.kt", NativeSemanticGraphSources.leftTypeConsumer)
+    private val rightTypeConsumerFixture =
+        sourceRootFixture.psiFileFixture("RightTypeConsumer.kt", NativeSemanticGraphSources.rightTypeConsumer)
+    private val localPropertyFixture =
+        sourceRootFixture.psiFileFixture("LocalProperty.kt", NativeSemanticGraphSources.localProperty)
     private val functionTypeParameterFixture =
-        sourceRootFixture.psiFileFixture("FunctionTypeParameter.kt", functionTypeParameterSource)
-    private val genericCallableReferenceFixture = sourceRootFixture.psiFileFixture("GenericCallableReference.kt", genericCallableReferenceSource)
-    private val enumFixture = sourceRootFixture.psiFileFixture("Mode.kt", enumSource)
-    private val unresolvedCallFixture = sourceRootFixture.psiFileFixture("UnresolvedCall.kt", unresolvedCallSource)
+        sourceRootFixture.psiFileFixture("FunctionTypeParameter.kt", NativeSemanticGraphSources.functionTypeParameter)
+    private val genericCallableReferenceFixture =
+        sourceRootFixture.psiFileFixture("GenericCallableReference.kt", NativeSemanticGraphSources.genericCallableReference)
+    private val enumFixture = sourceRootFixture.psiFileFixture("Mode.kt", NativeSemanticGraphSources.enum)
+    private val unresolvedCallFixture =
+        sourceRootFixture.psiFileFixture("UnresolvedCall.kt", NativeSemanticGraphSources.unresolvedCall)
     private val unresolvedSupertypeFixture =
-        sourceRootFixture.psiFileFixture("UnresolvedSupertype.kt", unresolvedSupertypeSource)
-    private val unresolvedTypeFixture = sourceRootFixture.psiFileFixture("UnresolvedType.kt", unresolvedTypeSource)
+        sourceRootFixture.psiFileFixture("UnresolvedSupertype.kt", NativeSemanticGraphSources.unresolvedSupertype)
+    private val unresolvedTypeFixture =
+        sourceRootFixture.psiFileFixture("UnresolvedType.kt", NativeSemanticGraphSources.unresolvedType)
 
     @TempDir
     lateinit var storeRoot: Path

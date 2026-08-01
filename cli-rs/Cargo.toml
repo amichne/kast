@@ -89,6 +89,10 @@ name = "runtime_backend_smoke"
 path = "tests/runtime/backend.rs"
 
 [[test]]
+name = "installed_idea_sidecar_smoke"
+path = "tests/runtime/installed_idea_sidecar_smoke/main.rs"
+
+[[test]]
 name = "runtime_compatibility_metadata_smoke"
 path = "tests/runtime/compatibility_metadata.rs"
 
@@ -110,7 +114,7 @@ path = "tests/surface/cli_core.rs"
 
 [[test]]
 name = "config_cli"
-path = "tests/surface/config_cli.rs"
+path = "tests/surface/config_cli/main.rs"
 
 [[test]]
 name = "demo_smoke"

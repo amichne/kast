@@ -1,6 +1,6 @@
 #![cfg(target_os = "macos")]
 
-#[path = "support/mod.rs"]
+#[path = "../../support/mod.rs"]
 mod support;
 
 use std::os::unix::fs::PermissionsExt;
