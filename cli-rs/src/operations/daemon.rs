@@ -53,7 +53,7 @@ pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<S
     {
         let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
         let app = crate::runtime::resolve_installed_idea_sidecar_app(&workspace_root, config)?;
-        return installed_idea_sidecar_java_command(args, config, &app);
+        installed_idea_sidecar_java_command(args, config, &app)
     }
 
     #[cfg(not(target_os = "macos"))]

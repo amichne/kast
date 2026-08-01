@@ -129,6 +129,7 @@ pub(crate) fn spawn_ready_headless_backend_after_marker(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn spawn_scripted_backend(
     home: &Path,
     config_home: &Path,

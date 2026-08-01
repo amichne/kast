@@ -60,7 +60,7 @@ fn public_up_launches_an_isolated_sidecar_from_a_supported_installed_idea() {
     .expect("product info file");
     std::fs::write(
         &java,
-        &format!(
+        format!(
             "#!/bin/sh\n{{ printf '%s\\n' '{SIDECAR_LAUNCH_MARKER}'; printf '%s\\n' \"$0\"; printf '%s\\n' \"$@\"; }} >> \"$KAST_TEST_IDEA_LAUNCH_MARKER\"\n"
         ),
     )
