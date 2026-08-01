@@ -226,12 +226,22 @@ are unaffected. No configuration can re-include a hard-excluded path.
 
 The hard-exclusion authority combines:
 
-- Gradle and IDEA output or excluded roots;
-- any path with a `.gradle`, `build`, or `out` directory component;
+- Gradle and IDEA model output or excluded roots;
+- `.gradle` cache roots owned by the workspace or a declared Gradle build;
+- the `build` output root of each declared Gradle project and the `out` output
+  root of each IDEA content root;
 - built plugin output below those roots.
 
-This rule prevents generated classes, packaged plugins, sandboxes, and copied
-sources from entering semantic operations.
+A directory name alone does not prove that a path is output. An explicit Gradle
+or IDEA output or excluded root always wins over any nested source root. If no
+explicit output root covers the path, a more-specific independent Gradle build
+root is classified before the conventional name of its parent directory. For
+example, an included build rooted at `build/` can admit
+`build/src/main/kotlin` only when the parent model does not mark `build/` as
+output; that build's own `build/build/` output remains hard-excluded. This rule
+prevents generated classes, packaged plugins, sandboxes, and copied sources
+from entering semantic operations without rejecting an independent build by
+name alone.
 
 ### User ignore rules
 
@@ -269,7 +279,11 @@ patterns. They use the same anchoring, directory, and wildcard rules as
 A resolved eligible file cannot be both ignored and critical. Conflict
 validation uses the current resolved source inventory, not abstract pattern
 intersection. A future file that creates a conflict makes the new inventory
-invalid and leaves the last valid scope active.
+invalid and leaves the last valid physical scope active. Both graph and
+reference coverage immediately become `INCOMPLETE` with limitation
+`IGNORE_CRITICAL_CONFLICT`; persisted-evidence operations remain rejected until
+the conflict is resolved. Existing committed facts are not deleted by this
+validation failure.
 
 Adding a critical pattern that matches no current eligible file is a typed
 configuration error. After a pattern is accepted, deleting or renaming its
@@ -282,8 +296,10 @@ only while it matches at least one eligible file. Every file matched by a
 fulfilled obligation is critical. Deletion, hard exclusion, or loss of source
 ownership can therefore make an accepted obligation unmatched.
 
-If a live configuration is invalid, the worker keeps the last valid scope and
-reports the error. It does not apply a partial configuration and does not stop.
+If a new live configuration snapshot is syntactically invalid, the worker keeps
+the last valid scope and reports the error. It does not apply a partial
+configuration and does not stop. A resolved ignore-critical conflict follows
+the `INCOMPLETE` rule above even while the last physical scope remains active.
 
 The CLI provides idempotent collection mutations:
 
@@ -377,13 +393,13 @@ Graph and reference pipelines each publish one global coverage state:
 | --- | --- | --- |
 | `COMPLETE` | Every eligible file has current complete evidence, and every critical obligation is fulfilled. | Run with current evidence. |
 | `QUALIFIED` | Every critical obligation is fulfilled and all critical files are complete, but non-critical work is pending, stale, limited, external-boundary, or failed. | Run and return global coverage limitations. |
-| `INCOMPLETE` | A critical obligation is unmatched, or at least one critical file lacks current complete evidence. | Reject operations for that evidence family. |
+| `INCOMPLETE` | A critical obligation is unmatched, a critical file lacks current complete evidence, or an ignore-critical conflict is active. | Reject operations for that evidence family. |
 | `UNAVAILABLE` | No admissible persisted generation can be served, including while the project model is unavailable or that evidence family is explicitly disabled. | Reject operations for that evidence family. |
 
 State precedence is `UNAVAILABLE`, `INCOMPLETE`, `COMPLETE`, then `QUALIFIED`.
-After availability is established, unmatched critical obligations and
-incomplete critical files are evaluated before the empty or fully complete
-inventory cases.
+After availability is established, active ignore-critical conflicts, unmatched
+critical obligations, and incomplete critical files are evaluated before the
+empty or fully complete inventory cases.
 
 All operations that read persisted semantic graph evidence use the global graph
 state. All operations that read persisted reference evidence or
@@ -424,8 +440,8 @@ reference operations use the corresponding `REFERENCE_EVIDENCE_INCOMPLETE` and
 `REFERENCE_EVIDENCE_UNAVAILABLE` typed errors. These errors exit non-zero.
 Errors and qualified results include total, complete, critical-file,
 critical-obligation, unmatched-critical-obligation, pending, stale, limited,
-external-boundary, and failed counts. No operation computes a different global
-readiness state from its requested symbol or path.
+ignore-critical-conflict, external-boundary, and failed counts. No operation
+computes a different global readiness state from its requested symbol or path.
 
 Graph and reference states can differ. For example, graph coverage can be
 `COMPLETE` while reference coverage is `QUALIFIED`.
@@ -527,11 +543,15 @@ as separate fields.
 
 The implementation adds an explicit online migration from the current
 production schema to the sidecar schema. One transaction adds the required
-scope and coverage metadata, preserves admitted inventory, relationship rows,
-and independent graph rows, applies the legacy-boundary transformation below,
-advances the generation, and commits before the sidecar serves queries. A
-failed supported migration rolls back, preserves the old database, and reports
-coverage as `UNAVAILABLE`; it does not fall through to destructive rebuild.
+scope and coverage metadata and preserves admitted inventory and raw legacy rows
+as non-queryable lineage. Legacy model provenance is absent from the current
+schema, so the migration does not assign a new model fingerprint to those rows.
+It marks graph and reference work pending for every admitted source, applies the
+legacy-boundary transformation below, advances the generation, and commits
+before the sidecar serves queries. Reindexing under the completed current model
+makes new outcomes queryable. A failed supported migration rolls back,
+preserves the old database, and reports coverage as `UNAVAILABLE`; it does not
+fall through to destructive rebuild.
 
 Any other unsupported schema version follows the existing cold rebuild path.
 That path makes graph and reference coverage `UNAVAILABLE`, recreates the
@@ -540,17 +560,20 @@ no retained-fact claim. Migration does not infer complete coverage from old
 module summaries.
 
 For a current relationship `EXTERNAL_BOUNDARY`, the online migration preserves
-the relationship outcome and reason identity as reference evidence. It removes
-the legacy semantic-graph boundary that relationship externalization projected
-as `UNKNOWN`, marks semantic graph work pending for the current fingerprint,
-and queues graph extraction. The legacy projection does not become graph
-evidence or graph coverage.
+the relationship outcome and reason identity as non-queryable lineage and
+queues relationship re-evaluation. It removes the legacy semantic-graph boundary
+that relationship externalization projected as `UNKNOWN`, marks semantic graph
+work pending for the current fingerprint, and queues graph extraction. The
+legacy projection does not become graph evidence or graph coverage. A
+re-evaluated external boundary follows the normal current-model coverage
+contract.
 
 The initial scope reconciliation removes hard-excluded inventory and removes
 graph and reference facts for user-ignored files. It retains current admitted
-facts, including current relationship external-boundary outcomes and their
-reason identity, and queues missing stage work. Existing generation checks
-remain active during this transition.
+lineage, including relationship external-boundary outcomes and their reason
+identity, and queues both stages. Only outcomes produced under the current model
+fingerprint become queryable. Existing generation checks remain active during
+this transition.
 
 macOS keeps the current IDEA backend as the interactive default. The change
 removes the local headless prohibition only for the managed index-sidecar path.
@@ -563,12 +586,14 @@ Implementation is complete only when the following checks exist and pass:
 1. Configuration tests cover the Rust resolved JSON snapshot, `.kastignore`,
    collection mutations, global and workspace precedence, external-edit live
    reload, relationship disable and re-enable, anchored and unanchored module
-   priority depth, hard-exclusion precedence, and ignore-critical conflicts.
+   priority depth, semantic output-root classification, hard-exclusion
+   precedence over nested generated source roots, independent builds named
+   `build`, and active ignore-critical conflict coverage.
 2. Index-store tests cover independent graph and reference progress, the
    fact-preserving current-schema migration, unsupported-schema cold rebuild,
-   legacy external-boundary graph cleanup, model-only dependency, compiler
-   argument, and classpath changes, scope reconciliation, global coverage states,
-   and retained generations.
+   legacy rows remaining non-queryable until reindex, external-boundary graph
+   cleanup, model-only dependency, compiler argument, and classpath changes,
+   scope reconciliation, global coverage states, and retained generations.
 3. A RED worker integration test injects request cancellation and proves the
    current request-owned path stops remaining graph work. The same test then
    proves the workspace-owned worker continues. This proves isolation without
