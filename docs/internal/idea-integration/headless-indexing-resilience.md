@@ -128,6 +128,14 @@ not stop the IDEA runtime. The service reports unavailable graph and reference
 coverage, preserves the last committed generation, and restarts the sidecar
 with bounded backoff.
 
+The sidecar exposes an exact-root read-admission endpoint beside the database.
+Every persisted graph and reference reader checks this endpoint before and
+after a generation-pinned SQLite read. The admission token binds the sidecar
+instance, store generation, scope fingerprint, and evidence-family state. A
+missing endpoint, a changed token, or failed revalidation makes that evidence
+family `UNAVAILABLE`; SQLite coverage alone never admits a persisted read.
+This authority is separate from IDEA runtime readiness.
+
 The service establishes an exact-root, lease-bound local control channel when
 it starts the sidecar. Persistent graph and reference refresh requests enqueue
 an evidence-family refresh through that channel; the IDEA request handler no
@@ -136,6 +144,13 @@ and the sidecar also watches the workspace TOML and `.kastignore` for external
 edits. Shutdown sends drain and waits for acknowledgment before the service
 closes shared state. Request cancellation can stop waiting for an
 acknowledgment, but it cannot cancel work after the sidecar accepts it.
+
+The service is the sole holder of the supervisor end of the control channel.
+The sidecar treats control-channel EOF or supervisor-lease expiry as terminal.
+It stops accepting work, discards any uncommitted unit, closes the store,
+releases the writer lock, and exits. Lease expiry is the fallback when process
+death does not deliver EOF. A replacement service waits for that lock release
+before it starts a new sidecar.
 
 ## Source admission
 
@@ -404,6 +419,12 @@ architecture-matched Java 21 runtime. The component uses its own IntelliJ
 libraries, plugin files, and Java runtime. It does not reuse the interactive
 IDEA application files and does not download a runtime on first use.
 
+The launcher assigns workspace-keyed `idea.config.path`, `idea.system.path`,
+log, and temporary directories below machine-local Kast state. The key is a
+stable digest of the canonical exact root and sidecar release identity. Two
+concurrent roots therefore do not share IntelliJ caches or locks. One exact
+root still owns only one sidecar.
+
 The sidecar uses only its bundled Java runtime. Its launcher resolves `java`
 inside the installed sidecar and fails with a typed installation error when
 that runtime is absent or has the wrong architecture. It does not fall back to
@@ -483,6 +504,10 @@ Implementation is complete only when the following checks exist and pass:
    forwarding, scope reload, crash, and cutover cases must prove acknowledgment,
    lock release, restart, drain, and generation preservation. Focused live
    reference tests retain PSI fallback without persisted-reference admission.
+   Persisted-reader tests reject a missing or changed admission token and a
+   sidecar that fails post-read revalidation. Supervisor-crash tests prove
+   control-channel EOF or lease expiry stops the orphan, releases its lock, and
+   permits replacement.
 6. Packaging tests prove native macOS arm64 and x64 headless artifacts contain
    matching native libraries and that the normal install path installs the
    matching Java 21 runtime. A launch test unsets `JAVA_HOME`, removes system
@@ -491,6 +516,9 @@ Implementation is complete only when the following checks exist and pass:
 7. A macOS integration check edits a saved Kotlin file while IDEA is active,
    observes sidecar reconciliation, and reads a generation-pinned graph without
    using the IDEA virtual file system for persistence.
+8. A macOS integration check opens two exact-root projects concurrently and
+   proves their sidecars use distinct IntelliJ config, system, log, and
+   temporary directories.
 
 ## Implementation ownership
 
