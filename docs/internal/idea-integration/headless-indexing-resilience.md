@@ -167,12 +167,28 @@ then publishes a new identity.
 
 Before it issues or revalidates a token, the sidecar performs a synchronous
 filesystem event barrier on its own platform watcher. It drains pending saved
-file events, hashes affected admitted files, rescans admitted roots named by
-coalesced directory events, and commits fingerprint invalidation before it
-advances the event epoch and replies. A save before the first check is therefore
-pending before admission. A save during the SQLite read changes the post-read
-epoch and rejects that result. This barrier does not use the interactive IDEA
-virtual file system.
+file events, hashes affected compiler inputs, rescans affected compiler-input
+roots, and commits fingerprint invalidation before it advances the event epoch
+and replies. A save before the first check is therefore pending before
+admission. A save during the SQLite read changes the post-read epoch and rejects
+that result. This barrier does not use the interactive IDEA virtual file system.
+
+The watch set is independent of source admission. It covers every compiler
+input in a semantic cohort and every filesystem model input recorded by the
+last complete Gradle import, including inputs outside admitted roots or an
+external included build. Model-input provenance includes custom files read
+during configuration, not only known Gradle filenames. If the import cannot
+provide complete provenance or the sidecar cannot watch an input, both evidence
+families remain `UNAVAILABLE`.
+
+A model-affecting saved input includes any file in that provenance. Gradle build
+and settings scripts, `gradle.properties`, version catalogs, `buildSrc`, and
+convention-plugin sources are common examples. When the barrier observes one,
+it atomically marks the project model stale and both evidence families
+`UNAVAILABLE` before it can reply. The sidecar requests a model refresh and
+issues no admission token until a completed model snapshot is reconciled and
+its fingerprint is committed. Existing facts remain stored but cannot be
+served against the old model.
 
 The service establishes an exact-root, lease-bound local control channel when
 it starts the sidecar. Persistent graph and reference refresh requests enqueue
@@ -455,10 +471,24 @@ pin one generation and reject mixed-generation results.
 The project-model semantic fingerprint contributes to both stage input
 fingerprints, together with source content, admitted membership, and source
 ownership. The model fingerprint represents the source's Gradle dependency
-closure, compiler arguments, classpath, language settings, and source-set
-identity. A completed model refresh compares those per-source fingerprints and,
-in one transaction, marks affected graph and reference outcomes pending before
-it advances the model generation. Unchanged modules retain their facts.
+closure, compiler arguments, content-addressed classpath or ABI entries,
+language settings, and source-set identity. A completed model refresh compares
+those per-source fingerprints and, in one transaction, marks affected graph and
+reference outcomes pending before it advances the model generation. Unchanged
+modules retain their facts. If a hard-excluded dependency has no complete
+classpath or ABI fingerprint, affected evidence remains `UNAVAILABLE`; the
+sidecar does not ingest that path as source.
+
+Each stage input also contains a semantic cohort fingerprint: a normalized
+Merkle root of compiler-input source content hashes for the source's compilation
+unit and its transitive Gradle source-dependency closure. It includes model-owned
+user-ignored sources that can contribute declarations, while graph and reference
+outcomes remain restricted to admitted sources. A peer declaration change
+therefore invalidates unchanged admitted sources in the same compilation unit
+and every downstream compilation unit whose closure changed. One short
+transaction marks both stage outcomes pending before the filesystem event epoch
+and store generation advance. The shared fingerprint does not make either
+pipeline wait for the other pipeline's outcome.
 
 A change to `.kastignore`, ignored paths, hard exclusions, or source ownership
 invalidates only affected stage work. A critical-path change updates priority
@@ -593,7 +623,9 @@ Implementation is complete only when the following checks exist and pass:
    fact-preserving current-schema migration, unsupported-schema cold rebuild,
    legacy rows remaining non-queryable until reindex, external-boundary graph
    cleanup, model-only dependency, compiler argument, and classpath changes,
-   scope reconciliation, global coverage states, and retained generations.
+   admitted and user-ignored peer declaration changes invalidating unchanged
+   callers in the same and downstream compilation units, scope reconciliation,
+   global coverage states, and retained generations.
 3. A RED worker integration test injects request cancellation and proves the
    current request-owned path stops remaining graph work. The same test then
    proves the workspace-owned worker continues. This proves isolation without
@@ -628,7 +660,10 @@ Implementation is complete only when the following checks exist and pass:
 7. A macOS integration check edits a saved Kotlin file while IDEA is active,
    attempts reads both before and during sidecar reconciliation, and proves no
    stale generation is admitted without using the IDEA virtual file system for
-   persistence.
+   persistence. It also saves a model-affecting input and proves both evidence
+   families become unavailable before admission and remain unavailable until a
+   completed model refresh is reconciled. Cases cover external included-build
+   inputs, custom Gradle configuration inputs, and incomplete provenance.
 8. A macOS integration check opens two exact-root projects concurrently and
    proves their sidecars use distinct IntelliJ config, system, log, and
    temporary directories.
