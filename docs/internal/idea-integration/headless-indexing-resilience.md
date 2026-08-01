@@ -44,7 +44,7 @@ Users observe repeated incomplete graph failures when interactive IDEA virtual
 file system activity cancels or invalidates graph and reference work. This is a
 reported production symptom. This proposal does not claim a local reproduction.
 
-The current implementation has six relevant constraints:
+The current implementation has nine relevant constraints:
 
 1. macOS rejects explicit local headless runtime selection.
 2. Semantic graph refresh runs in the requesting coroutine and checks both
@@ -58,6 +58,12 @@ The current implementation has six relevant constraints:
 6. The headless backend archive has no Java runtime. Its launchers select
    `JAVA_HOME` or `java` from `PATH`, so it is not a self-contained macOS
    sidecar.
+7. Normal macOS setup disables public headless-backend selection, and the CLI
+   process that starts headless does not remain as a supervisor.
+8. Headless loads one configuration snapshot at startup, while semantic graph
+   refresh still routes to the selected IDEA runtime and writes there.
+9. The release builds one Linux headless archive with native IDEA libraries and
+   reuses that archive in macOS setup bundles.
 
 These constraints couple graph availability to interactive IDEA work and to a
 separate reference-index stage. One cancelled or failed file can therefore make
@@ -88,37 +94,48 @@ all native graph operations unavailable.
 
 ## Proposed ownership
 
-On macOS, the IDEA runtime coordinator also manages one exact-root headless
-index sidecar. The sidecar runs in a separate JVM with a separate virtual file
-system. The macOS setup bundle combines the release-matched headless component
-with an architecture-matched Java 21 runtime. The normal macOS install path
-installs that self-contained sidecar.
+On macOS, the CLI bootstraps or reuses the exact-root IDEA project and returns.
+The resident IDEA project service then manages one exact-root headless index
+sidecar. The sidecar runs in a separate JVM with a separate virtual file system.
+The macOS setup bundle combines the release-matched headless component with an
+architecture-matched Java 21 runtime. The normal macOS install path installs
+that self-contained sidecar.
 
 ```mermaid
 flowchart LR
-    coordinator["Exact-root runtime coordinator"] --> idea["Interactive IDEA backend"]
-    coordinator --> headless["Headless index sidecar"]
+    bootstrap["CLI exact-root bootstrap"] --> supervisor["Resident IDEA project service"]
+    supervisor --> live["Focused live IDEA analysis"]
+    supervisor --> headless["Headless index sidecar"]
     config["Workspace TOML and .kastignore"] --> headless
     disk["Saved workspace files"] --> headless
     headless --> store["SQLite source index"]
-    idea --> live["Focused live analysis"]
-    store --> queries["Graph and reference queries"]
-    idea -. "read persisted evidence" .-> store
+    store --> queries["Persisted graph and reference queries"]
+    supervisor -. "read persisted evidence" .-> store
 ```
 
 The headless sidecar is the sole persistent writer. It indexes saved disk state
 only. The IDEA backend keeps focused live analysis and may read persisted
 evidence. It does not perform persistent graph or reference writes.
 
-The sidecar starts automatically with the exact-root IDEA runtime. It remains
-available for that workspace until the runtime coordinator stops it. A request
-can wake or enqueue work, but request cancellation cannot cancel the
-workspace-owned worker.
+The managed sidecar starts automatically with the exact-root IDEA runtime even
+when public `backends.headless.enabled` is `false`. That setting continues to
+control explicit standalone headless-backend selection only; it does not gate
+the internal sidecar role. The sidecar remains available until the resident
+project service stops.
 
-The coordinator supervises the sidecar. A sidecar crash does not stop the IDEA
-runtime. The coordinator reports unavailable graph and reference coverage,
-preserves the last committed generation, and restarts the sidecar with bounded
-backoff.
+The resident IDEA project service supervises the sidecar. A sidecar crash does
+not stop the IDEA runtime. The service reports unavailable graph and reference
+coverage, preserves the last committed generation, and restarts the sidecar
+with bounded backoff.
+
+The service establishes an exact-root, lease-bound local control channel when
+it starts the sidecar. Persistent graph and reference refresh requests enqueue
+an evidence-family refresh through that channel; the IDEA request handler no
+longer performs the write. Configuration mutation sends a scope-reload message,
+and the sidecar also watches the workspace TOML and `.kastignore` for external
+edits. Shutdown sends drain and waits for acknowledgment before the service
+closes shared state. Request cancellation can stop waiting for an
+acknowledgment, but it cannot cancel work after the sidecar accepts it.
 
 ## Source admission
 
@@ -299,11 +316,19 @@ After availability is established, unmatched critical obligations and
 incomplete critical files are evaluated before the empty or fully complete
 inventory cases.
 
-All semantic graph operations use the global graph state. All reference
-operations use the global reference state. Reference-derived topology remains
-reference evidence even when a result presents it beside graph facts. It does
-not gate semantic graph construction or graph coverage. The design does not
-compute path-specific or operation-specific readiness.
+All operations that read persisted semantic graph evidence use the global graph
+state. All operations that read persisted reference evidence or
+reference-derived topology use the global reference state. Reference-derived
+topology remains reference evidence even when a result presents it beside
+graph facts. It does not gate semantic graph construction or graph coverage.
+The design does not compute path-specific or operation-specific readiness.
+
+Focused live IDEA reference search remains a runtime semantic operation. It can
+use the existing live PSI fallback when persisted reference evidence is
+unavailable or empty, and it retains its per-request relationship coverage. It
+does not write persisted evidence and does not derive a new global reference
+state. Runtime readiness, not persisted reference coverage, admits that live
+operation.
 
 A graph result admits its semantic graph section from the global graph state.
 It includes reference-derived topology only when the global reference state is
@@ -317,19 +342,21 @@ counts, and limitation codes that explain that boundary.
 
 Availability depends on committed inventory and stage outcomes, not on a
 non-empty fact table. A compatible store without a committed current inventory
-is `UNAVAILABLE`. After inventory commit, zero eligible files is `COMPLETE` only when there is no unmatched critical obligation.
-An accepted obligation that lost its last match keeps the state `INCOMPLETE`.
+is `UNAVAILABLE`. After inventory commit, zero eligible files is `COMPLETE` only
+when there is no unmatched critical obligation. An accepted obligation that
+lost its last match keeps the state `INCOMPLETE`.
 With eligible files and no critical obligations, non-critical pending work is
 `QUALIFIED`. A complete stage can emit zero facts and still counts as complete.
 
-`COMPLETE` and `QUALIFIED` operations exit successfully. `INCOMPLETE` and
-`UNAVAILABLE` graph operations retain `GRAPH_EVIDENCE_INCOMPLETE` and
-`GRAPH_EVIDENCE_UNAVAILABLE`. Reference operations use the corresponding
-`REFERENCE_EVIDENCE_INCOMPLETE` and `REFERENCE_EVIDENCE_UNAVAILABLE` typed
-errors. These errors exit non-zero. Errors and qualified results include total,
-complete, critical-file, critical-obligation, unmatched-critical-obligation,
-pending, stale, limited, external-boundary, and failed counts. No operation
-computes a different readiness state from its requested symbol or path.
+`COMPLETE` and `QUALIFIED` persisted-evidence operations exit successfully.
+`INCOMPLETE` and `UNAVAILABLE` graph operations retain
+`GRAPH_EVIDENCE_INCOMPLETE` and `GRAPH_EVIDENCE_UNAVAILABLE`. Persisted
+reference operations use the corresponding `REFERENCE_EVIDENCE_INCOMPLETE` and
+`REFERENCE_EVIDENCE_UNAVAILABLE` typed errors. These errors exit non-zero.
+Errors and qualified results include total, complete, critical-file,
+critical-obligation, unmatched-critical-obligation, pending, stale, limited,
+external-boundary, and failed counts. No operation computes a different global
+readiness state from its requested symbol or path.
 
 Graph and reference states can differ. For example, graph coverage can be
 `COMPLETE` while reference coverage is `QUALIFIED`.
@@ -349,20 +376,21 @@ The single-writer rule removes cross-backend write arbitration. Read-only CLI
 and IDEA consumers can continue to use SQLite generation checks while the
 sidecar commits later batches.
 
-The coordinator owns the writer-lock protocol and lock-file path beside the
-exact-root database. The sidecar process acquires the operating-system lock and
-holds its file descriptor before it opens the store for writes. IDEA opens
-persisted evidence read-only in sidecar mode. Startup fails the sidecar with a
-typed writer-conflict error if another process holds the lock.
+The resident IDEA project service owns the writer-lock protocol and lock-file
+path beside the exact-root database. The sidecar process acquires the
+operating-system lock and holds its file descriptor before it opens the store
+for writes. IDEA opens persisted evidence read-only in sidecar mode. Startup
+fails the sidecar with a typed writer-conflict error if another process holds
+the lock.
 
 The release cutover first asks the old IDEA index worker to stop and drain. The
-coordinator requires confirmation that the worker closed its writable store;
-an older writer is not assumed to honor the new lock. Without confirmation,
-the sidecar does not start or migrate and the coordinator reports
+resident service requires confirmation that the worker closed its writable
+store; an older writer is not assumed to honor the new lock. Without
+confirmation, the sidecar does not start or migrate and the service reports
 `INDEX_WRITER_CUTOVER_FAILED`. After confirmation, the sidecar can acquire the
 lock and open the store. The operating system releases the lock when the
-sidecar exits, so a matching coordinator can recover after a crash without
-guessing writer liveness.
+sidecar exits, so a matching service can recover after a crash without guessing
+writer liveness.
 
 One scope-reconciliation transaction removes excluded graph and reference
 facts, records the new scope fingerprint and coverage metadata, and advances
@@ -381,12 +409,15 @@ inside the installed sidecar and fails with a typed installation error when
 that runtime is absent or has the wrong architecture. It does not fall back to
 `JAVA_HOME`, `java` from `PATH`, or the interactive IDE Java runtime.
 
-The release pipeline already places a headless backend archive in macOS setup
-bundles, but that archive does not contain a JVM. This design extends each
-macOS setup bundle with the matching Java runtime and changes the public install
-and runtime routes to use the complete payload. Setup verification must prove:
+The release pipeline currently places one Linux-built headless backend archive
+in every setup bundle. That archive contains platform-native libraries and no
+JVM. This design builds separate macOS arm64 and x64 headless archives on
+matching macOS runners, combines each with its matching Java runtime, and
+changes the public install and runtime routes to use the complete payload.
+Setup verification must prove:
 
 - the bundled sidecar matches the installed Kast release;
+- the headless archive and native libraries match the setup-bundle platform;
 - the bundled Java runtime matches the setup-bundle architecture;
 - the sidecar starts with `JAVA_HOME` unset and no system `java` on `PATH`;
 - the sidecar starts on macOS for one exact workspace root;
@@ -394,11 +425,11 @@ and runtime routes to use the complete payload. Setup verification must prove:
 - only the sidecar opens the index for writes;
 - stopping the exact-root runtime drains the sidecar before shared state closes.
 
-The release produces macOS arm64 and x64 setup bundles that carry the headless
-component and matching Java runtime. Release checksum and provenance checks
-cover both payloads. Release review must also confirm the IntelliJ and Java
-runtime redistribution terms and report the setup-bundle and resident-memory
-increase.
+The release produces and records separate macOS arm64 and x64 headless backend
+artifacts before it assembles the setup bundles. Release checksum and provenance
+checks cover each native backend, matching Java runtime, and final setup bundle.
+Release review must also confirm the IntelliJ and Java runtime redistribution
+terms and report the setup-bundle and resident-memory increase.
 
 General runtime readiness remains independent of sidecar indexing progress.
 Status output reports runtime readiness, graph coverage, and reference coverage
@@ -406,9 +437,19 @@ as separate fields.
 
 ## Migration
 
-The first compatible sidecar reuses the existing database only after schema and
-scope validation. An incompatible database follows the existing typed rebuild
-path. Migration does not infer complete coverage from old module summaries.
+The implementation adds an explicit online migration from the current
+production schema to the sidecar schema. One transaction adds the required
+scope and coverage metadata, preserves admitted inventory, relationship and
+graph rows, advances the generation, and commits before the sidecar serves
+queries. A failed supported migration rolls back, preserves the old database,
+and reports coverage as `UNAVAILABLE`; it does not fall through to destructive
+rebuild.
+
+Any other unsupported schema version follows the existing cold rebuild path.
+That path makes graph and reference coverage `UNAVAILABLE`, recreates the
+schema, commits a new inventory, and then computes coverage normally. It makes
+no retained-fact claim. Migration does not infer complete coverage from old
+module summaries.
 
 The initial scope reconciliation removes hard-excluded inventory and removes
 graph and reference facts for user-ignored files. It retains current admitted
@@ -427,8 +468,9 @@ Implementation is complete only when the following checks exist and pass:
 1. Configuration tests cover `.kastignore`, collection mutations, live reload,
    relationship disable and re-enable, hard-exclusion precedence, and
    ignore-critical conflicts.
-2. Index-store tests cover independent graph and reference progress, scope
-   reconciliation, global coverage states, and retained generations.
+2. Index-store tests cover independent graph and reference progress, the
+   fact-preserving current-schema migration, unsupported-schema cold rebuild,
+   scope reconciliation, global coverage states, and retained generations.
 3. A RED worker integration test injects request cancellation and proves the
    current request-owned path stops remaining graph work. The same test then
    proves the workspace-owned worker continues. This proves isolation without
@@ -437,12 +479,15 @@ Implementation is complete only when the following checks exist and pass:
    become retryable limited outcomes, current external-boundary evidence keeps
    its reason identity, and stale prior facts stay unqueryable.
 5. Runtime tests prove macOS IDEA startup owns one exact-root sidecar and one
-   persistent writer. Crash and cutover cases must prove lock release,
-   restart, drain, and generation preservation.
-6. Packaging tests prove the normal macOS install path installs and verifies
-   the release-matched headless component and architecture-matched Java 21
-   runtime. A launch test unsets `JAVA_HOME`, removes system `java` from
-   `PATH`, and proves the installed sidecar selects its bundled runtime.
+   persistent writer even when public headless selection is disabled. Refresh
+   forwarding, scope reload, crash, and cutover cases must prove acknowledgment,
+   lock release, restart, drain, and generation preservation. Focused live
+   reference tests retain PSI fallback without persisted-reference admission.
+6. Packaging tests prove native macOS arm64 and x64 headless artifacts contain
+   matching native libraries and that the normal install path installs the
+   matching Java 21 runtime. A launch test unsets `JAVA_HOME`, removes system
+   `java` from `PATH`, and proves the installed sidecar selects its bundled
+   runtime.
 7. A macOS integration check edits a saved Kotlin file while IDEA is active,
    observes sidecar reconciliation, and reads a generation-pinned graph without
    using the IDEA virtual file system for persistence.
@@ -451,13 +496,14 @@ Implementation is complete only when the following checks exist and pass:
 
 | Contract | Owning area |
 | --- | --- |
-| Sidecar supervision, exact-root lifecycle, and writer lock | `cli-rs/src/execution/runtime/` |
-| Runtime status and typed result contracts | `analysis-api/` and `cli-rs/src/semantics/` |
+| Exact-root bootstrap | `cli-rs/src/execution/runtime/` |
+| Resident supervision, refresh forwarding, and writer cutover | `backend-idea/` |
+| Sidecar control, runtime status, and typed result contracts | `analysis-api/`, `backend-headless/`, and `cli-rs/src/semantics/` |
 | Saved-file project model and background worker | `backend-headless/` |
 | Focused live analysis and read-only persisted access | `backend-idea/` |
 | Stage state, scope reconciliation, generations, and writer safety | `index-store/` |
 | Workspace collections and `.kastignore` projection | `cli-rs/src/configuration/` and `analysis-api/` |
-| macOS component and Java runtime installation and verification | `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
+| Native macOS component and Java runtime production, installation, and verification | `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
 
 ## Consequences
 
