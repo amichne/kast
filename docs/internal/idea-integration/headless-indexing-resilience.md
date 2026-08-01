@@ -205,14 +205,23 @@ completed batch; it cannot appear between validation and commit.
 
 The sidecar exposes an exact-root read-admission endpoint beside the database.
 Every persisted graph and reference reader checks this endpoint before and
-after a generation-pinned SQLite read. The admission token binds the sidecar
-instance, store generation, scope fingerprint, project-model semantic
-fingerprint, filesystem event epoch, host-claim generation,
-resolved-configuration fingerprint, committed critical-path acceptance-ledger
-generation, and evidence-family state. A missing endpoint, a changed token, or
-failed revalidation makes that evidence family `UNAVAILABLE`; SQLite coverage
-alone never admits a persisted read. This authority is separate from IDEA
-runtime readiness.
+after a generation-pinned SQLite read. Its typed admission response separates
+an immutable read fence from progress at one store generation. The read fence
+binds the sidecar instance, writer-lease epoch, scope fingerprint, project-model
+semantic fingerprint, filesystem event epoch, host-claim generation,
+resolved-configuration fingerprint, and committed critical-path
+acceptance-ledger generation. The progress snapshot binds store generation,
+evidence-family state, counts, and limitations.
+
+The reader opens one SQLite read transaction and verifies that its facts and
+coverage metadata have the progress snapshot's generation. Facts, state,
+counts, and limitations in the result all come from that one pinned snapshot.
+Post-read validation succeeds when the read fence is unchanged and the live
+store generation is greater than or equal to the pinned generation. A later
+same-fence batch can therefore commit without starving the read. A lower live
+generation, a missing endpoint, or any changed fence identity rejects the read.
+SQLite coverage alone never admits persisted evidence. This authority is
+separate from IDEA runtime readiness.
 
 The private admission record is
 `<database-parent>/sidecar/admission.json`; its default endpoint is
@@ -603,14 +612,24 @@ implement their own retry loops.
 Runtime readiness, graph coverage, and reference coverage are three separate
 facts. One cannot imply another.
 
+Every existing graph or reference semantic operation that consumes persisted
+evidence first requires the exact-root public runtime to be `READY`. A runtime
+failure returns the existing typed runtime error; it does not become a coverage
+error. Only then does the operation evaluate graph or reference coverage.
+Runtime `INDEXING` remains a typed blocker even when a retained sidecar
+generation reports `COMPLETE`, and sidecar availability never synthesizes
+runtime `READY`. This is one global runtime gate followed by one global state
+per evidence family; it does not add a readiness state for each command or
+operation.
+
 Graph and reference pipelines each publish one global coverage state:
 
 | State | Meaning | Operation behavior |
 | --- | --- | --- |
-| `COMPLETE` | Every eligible file has current complete evidence, and every critical obligation is fulfilled. | Run with current evidence. |
-| `QUALIFIED` | Every critical obligation is fulfilled and all critical files are complete, but non-critical work is pending, stale, limited, external-boundary, or failed. | Run and return global coverage limitations. |
-| `INCOMPLETE` | A critical obligation is unmatched, a critical file lacks current complete evidence, or an ignore-critical conflict is active. | Reject operations for that evidence family. |
-| `UNAVAILABLE` | No admissible persisted generation can be served, including while the project model is unavailable or that evidence family is explicitly disabled. | Reject operations for that evidence family. |
+| `COMPLETE` | Every eligible file has current complete evidence, and every critical obligation is fulfilled. | After the runtime gate, run with current evidence. |
+| `QUALIFIED` | Every critical obligation is fulfilled and all critical files are complete, but non-critical work is pending, stale, limited, external-boundary, or failed. | After the runtime gate, run and return global coverage limitations. |
+| `INCOMPLETE` | A critical obligation is unmatched, a critical file lacks current complete evidence, or an ignore-critical conflict is active. | After the runtime gate, reject operations for that evidence family. |
+| `UNAVAILABLE` | No admissible persisted generation can be served, including while the project model is unavailable or that evidence family is explicitly disabled. | After the runtime gate, reject operations for that evidence family. |
 
 State precedence is `UNAVAILABLE`, `INCOMPLETE`, `COMPLETE`, then `QUALIFIED`.
 After availability is established, active ignore-critical conflicts, unmatched
@@ -875,7 +894,12 @@ Implementation is complete only when the following checks exist and pass:
    sidecar and one persistent writer even when public headless selection is
    disabled. Refresh forwarding, scope reload, crash, and cutover cases must
    prove acknowledgment, lock release, restart, drain, and generation
-   preservation. Focused live reference tests retain PSI fallback without
+   preservation. Runtime-and-coverage tests prove not-`READY` with retained
+   `COMPLETE` or `QUALIFIED` evidence returns the existing runtime error;
+   `READY` with `INCOMPLETE` or `UNAVAILABLE` returns the evidence-family error;
+   and `READY` with `COMPLETE` or `QUALIFIED` succeeds. Status reports all three
+   facts without creating command-specific readiness states.
+   Focused live reference tests retain PSI fallback without
    persisted-reference admission. Discovery tests prove the internal sidecar
    publishes no runtime descriptor and automatic backend selection still
    selects only the exact-root host runtime. Selection tests prove public
@@ -910,15 +934,18 @@ Implementation is complete only when the following checks exist and pass:
    second claim between generation validation and SQLite commit and proves the
    claim or batch completes first under the coordination guard, never both
    concurrently.
-   Persisted-reader tests reject a missing or changed admission token and a
-   sidecar that fails post-read revalidation. They also cover long-path fallback,
-   record identity validation, graceful unlink, and stale record and socket
-   cleanup. Watcher tests prove the pre-read filesystem barrier invalidates a
-   completed fingerprint, a delayed producer delivery is consumed before token
-   issue, dropped history falls back to a complete snapshot comparison, a
-   concurrent save fails post-read revalidation, and raw configuration saves
-   block admission until the matching Rust snapshot and scope reconciliation
-   commit.
+   Persisted-reader tests open the SQLite transaction at `g`, commit `g+1` under
+   the same read fence, and return facts, state, counts, and limitations from
+   `g`. They reject a missing endpoint, a lower generation, or any changed
+   instance, lease, scope, model, event, host-claim, configuration, or
+   acceptance-ledger identity. They also cover long-path fallback, record
+   identity validation, graceful unlink, and stale record and socket cleanup.
+   Watcher tests prove the
+   pre-read filesystem barrier invalidates a completed fingerprint, a delayed
+   producer delivery is consumed before token issue, dropped history falls back
+   to a complete snapshot comparison, a concurrent save fails post-read
+   revalidation, and raw configuration saves block admission until the matching
+   Rust snapshot and scope reconciliation commit.
    Supervisor-crash tests prove control-channel EOF or lease expiry stops the
    orphan, releases its lock, and permits replacement.
    The Android Studio case imports a real AGP application-and-library fixture
@@ -956,12 +983,13 @@ Implementation is complete only when the following checks exist and pass:
 
 | Contract | Owning area |
 | --- | --- |
-| Exact-root bootstrap and host-product/payload capability binding | `cli-rs/src/execution/runtime/` |
+| Exact-root bootstrap, host-product/payload capability binding, and global runtime `READY` admission gate | `cli-rs/src/execution/runtime/` |
 | Resident host-product claim, supervision, refresh forwarding, and writer cutover; no model or VFS sharing | `backend-idea/` |
-| Sidecar control, runtime status, and typed result contracts | `analysis-api/`, `backend-headless/`, and `cli-rs/src/semantics/` |
+| Sidecar control, independent runtime and coverage status, read-fence schema, and typed result contracts | `analysis-api/`, `backend-headless/`, and `cli-rs/src/semantics/` |
+| Pre-read admission barrier and post-read same-fence comparison | `backend-headless/` |
 | Saved-file JVM and Android/AGP model, selected variants, source-provider ownership, and background worker | `backend-headless/` |
 | Focused live analysis and read-only persisted access | `backend-idea/` |
-| Exact-root coordination, host-claim CAS, writer lease, product-model fingerprints, stage state, scope reconciliation, and generations | `index-store/` |
+| Exact-root coordination, host-claim CAS, writer lease, product-model fingerprints, single-generation facts and coverage snapshots, stage state, scope reconciliation, and generations | `index-store/` |
 | Workspace collections, `.kastignore`, Android selected variants, precedence, resolved JSON projection, and configuration transaction serialization | `cli-rs/src/configuration/` |
 | Resolved configuration and control-message schema | `analysis-api/` |
 | Managed and standalone external-edit watchers and snapshot transport | `backend-idea/` and `backend-headless/` |
