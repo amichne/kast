@@ -15,10 +15,13 @@ code_sources:
   - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt
   - path: analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcAnalysisDispatcher.kt
   - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/workspace/indexing/IdeaProjectIndexer.kt
+  - path: backend-headless/build.gradle.kts
+  - path: backend-headless/src/main/scripts/kast-headless
   - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/sqlite/stage/FileStageInventoryStore.kt
   - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/indexing/ReferenceIndexer.kt
   - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt
   - path: .github/scripts/release/actions/build-setup-bundle/action.yml
+  - path: cli-rs/src/operations/daemon.rs
   - path: scripts/packaging/package-headless-runtime.sh
   - path: install.sh
 ---
@@ -41,7 +44,7 @@ Users observe repeated incomplete graph failures when interactive IDEA virtual
 file system activity cancels or invalidates graph and reference work. This is a
 reported production symptom. This proposal does not claim a local reproduction.
 
-The current implementation has five relevant constraints:
+The current implementation has six relevant constraints:
 
 1. macOS rejects explicit local headless runtime selection.
 2. Semantic graph refresh runs in the requesting coroutine and checks both
@@ -52,6 +55,9 @@ The current implementation has five relevant constraints:
 5. Release setup bundles contain the headless backend, but the normal macOS
    installer downloads only the native CLI and IDEA plugin. It does not install
    or activate the bundled headless component.
+6. The headless backend archive has no Java runtime. Its launchers select
+   `JAVA_HOME` or `java` from `PATH`, so it is not a self-contained macOS
+   sidecar.
 
 These constraints couple graph availability to interactive IDEA work and to a
 separate reference-index stage. One cancelled or failed file can therefore make
@@ -68,6 +74,7 @@ all native graph operations unavailable.
 - Exclude generated output before it reaches any source-taking Kast operation.
 - Apply indexing scope and batch-size changes without a runtime restart.
 - Keep runtime readiness separate from graph and reference coverage.
+- Start the managed sidecar without system Java or the interactive IDE runtime.
 
 ## Non-goals
 
@@ -83,8 +90,9 @@ all native graph operations unavailable.
 
 On macOS, the IDEA runtime coordinator also manages one exact-root headless
 index sidecar. The sidecar runs in a separate JVM with a separate virtual file
-system. The normal macOS install path consumes the release-matched headless
-component that release setup bundles already carry.
+system. The macOS setup bundle combines the release-matched headless component
+with an architecture-matched Java 21 runtime. The normal macOS install path
+installs that self-contained sidecar.
 
 ```mermaid
 flowchart LR
@@ -352,26 +360,34 @@ therefore cannot observe removed facts with the new coverage claim.
 
 ## macOS distribution and lifecycle
 
-The macOS setup bundle includes a release-matched headless component. The
-component uses its own IntelliJ runtime and plugin files. It does not reuse the
-interactive IDEA application files and does not download a runtime on first
-use.
+The macOS setup bundle includes a release-matched headless component and an
+architecture-matched Java 21 runtime. The component uses its own IntelliJ
+libraries, plugin files, and Java runtime. It does not reuse the interactive
+IDEA application files and does not download a runtime on first use.
+
+The sidecar uses only its bundled Java runtime. Its launcher resolves `java`
+inside the installed sidecar and fails with a typed installation error when
+that runtime is absent or has the wrong architecture. It does not fall back to
+`JAVA_HOME`, `java` from `PATH`, or the interactive IDE Java runtime.
 
 The release pipeline already places a headless backend archive in macOS setup
-bundles. This design changes the public macOS install and runtime routes so
-they install and use that payload as the sidecar. Setup verification must
-prove:
+bundles, but that archive does not contain a JVM. This design extends each
+macOS setup bundle with the matching Java runtime and changes the public install
+and runtime routes to use the complete payload. Setup verification must prove:
 
 - the bundled sidecar matches the installed Kast release;
+- the bundled Java runtime matches the setup-bundle architecture;
+- the sidecar starts with `JAVA_HOME` unset and no system `java` on `PATH`;
 - the sidecar starts on macOS for one exact workspace root;
 - IDEA and the sidecar have distinct process and virtual file system state;
 - only the sidecar opens the index for writes;
 - stopping the exact-root runtime drains the sidecar before shared state closes.
 
 The release produces macOS arm64 and x64 setup bundles that carry the headless
-component. Existing release checksum and provenance checks cover that payload.
-Release review must also confirm the IntelliJ redistribution terms and report
-the setup-bundle and resident-memory increase.
+component and matching Java runtime. Release checksum and provenance checks
+cover both payloads. Release review must also confirm the IntelliJ and Java
+runtime redistribution terms and report the setup-bundle and resident-memory
+increase.
 
 General runtime readiness remains independent of sidecar indexing progress.
 Status output reports runtime readiness, graph coverage, and reference coverage
@@ -412,7 +428,9 @@ Implementation is complete only when the following checks exist and pass:
    persistent writer. Crash and cutover cases must prove lock release,
    restart, drain, and generation preservation.
 6. Packaging tests prove the normal macOS install path installs and verifies
-   the release-matched headless component from the setup bundle.
+   the release-matched headless component and architecture-matched Java 21
+   runtime. A launch test unsets `JAVA_HOME`, removes system `java` from
+   `PATH`, and proves the installed sidecar selects its bundled runtime.
 7. A macOS integration check edits a saved Kotlin file while IDEA is active,
    observes sidecar reconciliation, and reads a generation-pinned graph without
    using the IDEA virtual file system for persistence.
@@ -427,7 +445,7 @@ Implementation is complete only when the following checks exist and pass:
 | Focused live analysis and read-only persisted access | `backend-idea/` |
 | Stage state, scope reconciliation, generations, and writer safety | `index-store/` |
 | Workspace collections and `.kastignore` projection | `cli-rs/src/configuration/` and `analysis-api/` |
-| macOS component installation and verification | `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
+| macOS component and Java runtime installation and verification | `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
 
 ## Consequences
 
@@ -457,6 +475,8 @@ Implementation is complete only when the following checks exist and pass:
   sufficient until a measured use case requires finer scope.
 - **Persist unsaved document overlays.** This would mix interactive and durable
   source authority.
+- **Reuse system Java or the interactive IDE runtime.** This would make sidecar
+  startup depend on workstation or host-application state.
 - **Download the sidecar on demand.** Startup would depend on network state and
   could install a release-mismatched backend.
 
