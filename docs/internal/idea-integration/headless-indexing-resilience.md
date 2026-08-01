@@ -118,10 +118,20 @@ only. The IDEA backend keeps focused live analysis and may read persisted
 evidence. It does not perform persistent graph or reference writes.
 
 The managed sidecar starts automatically with the exact-root IDEA runtime even
-when public `backends.headless.enabled` is `false`. That setting continues to
-control explicit standalone headless-backend selection only; it does not gate
-the internal sidecar role. The sidecar remains available until the resident
-project service stops.
+when public `backends.headless.enabled` is `false`. This proposal makes that
+setting authoritative for explicit standalone headless selection. When it is
+`false`, automatic semantic backend selection excludes public headless
+descriptors and a new explicit start or semantic request fails with
+`HEADLESS_BACKEND_DISABLED`. Read-only lifecycle inspection and explicit stop
+can still discover an existing standalone descriptor, so a live process is not
+stranded when the setting changes. When it is `true`, the existing standalone
+path remains available. The setting does not gate the internal sidecar role.
+The sidecar remains available until the resident project service stops.
+
+The internal sidecar does not publish a public runtime descriptor, register as
+a semantic backend, or participate in automatic backend selection. The
+exact-root IDEA runtime remains the public backend candidate. Explicit
+standalone headless selection keeps its existing descriptor and discovery path.
 
 The resident IDEA project service supervises the sidecar. A sidecar crash does
 not stop the IDEA runtime. The service reports unavailable graph and reference
@@ -136,14 +146,42 @@ missing endpoint, a changed token, or failed revalidation makes that evidence
 family `UNAVAILABLE`; SQLite coverage alone never admits a persisted read.
 This authority is separate from IDEA runtime readiness.
 
+The private admission record is
+`<database-parent>/sidecar/admission.json`; its default endpoint is
+`<database-parent>/sidecar/admission.sock`. When that Unix-domain-socket path
+exceeds Kast's existing 100-byte safe threshold, the shared workspace-path
+resolver selects its deterministic short hashed socket path. The admission
+record always contains the actual endpoint. The CLI derives these locations
+from the same database and workspace-path authorities; it does not use backend
+discovery.
+
+After it owns the writer lock and opens the store, the sidecar atomically
+publishes the canonical-root digest, release, instance and supervisor lease
+identifiers, socket path, and protocol version. The directory and files are
+owner-only. A reader validates the owner, root digest, release, and protocol
+before it connects. Graceful exit unlinks both `admission.json` and the socket
+node. After a crash, the resident service can unlink both stale paths only after
+the endpoint is unreachable and the writer lock is free. A replacement sidecar
+then publishes a new identity.
+
 The service establishes an exact-root, lease-bound local control channel when
 it starts the sidecar. Persistent graph and reference refresh requests enqueue
 an evidence-family refresh through that channel; the IDEA request handler no
-longer performs the write. Configuration mutation sends a scope-reload message,
-and the sidecar also watches the workspace TOML and `.kastignore` for external
-edits. Shutdown sends drain and waits for acknowledgment before the service
-closes shared state. Request cancellation can stop waiting for an
-acknowledgment, but it cannot cancel work after the sidecar accepts it.
+longer performs the write.
+
+Rust remains the sole TOML, `.kastignore`, and configuration-precedence parsing
+authority. A configuration mutation projects and sends one complete resolved
+JSON snapshot through the control channel. For external edits, the resident
+service watches the global configuration file at
+`$KAST_CONFIG_HOME/config.toml`, the workspace TOML, and `.kastignore`, then
+invokes the release-matched Rust projection and forwards its snapshot. The
+sidecar consumes the typed snapshot; it does not parse TOML or recompute
+precedence. `analysis-api` owns the snapshot schema, including the new ignored
+and critical collections.
+
+Shutdown sends drain and waits for acknowledgment before the service closes
+shared state. Request cancellation can stop waiting for an acknowledgment, but
+it cannot cancel work after the sidecar accepts it.
 
 The service is the sole holder of the supervisor end of the control channel.
 The sidecar treats control-channel EOF or supervisor-lease expiry as terminal.
@@ -203,9 +241,10 @@ The effective ignore set is the union of the final `.kastignore` result and
 all matching workspace ignore patterns. A `.kastignore` negation cannot
 re-include a workspace-ignored path.
 
-Both files are watched. A valid change reconciles the persisted inventory
-without a restart. Newly ignored files lose current graph and reference facts.
-Newly admitted files become pending.
+All effective configuration inputs and `.kastignore` are watched. A valid
+change reconciles the persisted inventory without a restart. Newly ignored
+files lose current graph and reference facts. Newly admitted files become
+pending.
 
 ### Critical paths
 
@@ -271,11 +310,16 @@ Each pipeline uses this stable priority order:
 6. normalized path order.
 
 The worker uses bounded batches and short SQLite transactions. Existing
-`indexing.relationships.enabled`, `indexing.relationships.batchSize`, and
-`indexing.relationships.parallelism` settings remain authoritative for
-references. A new positive integer `indexing.graph.batchSize` replaces the
-hard-coded semantic graph batch size. The worker reloads these values with the
-other watched scope settings.
+`indexing.relationships.enabled`, `indexing.relationships.batchSize`,
+`indexing.relationships.parallelism`, and
+`indexing.relationships.modulePriorityDepth` settings remain authoritative for
+references. Module priority depth computes step 5 only for work with an
+active-module anchor. An explicit saved-path refresh uses the owning module as
+that anchor. Startup, file-watch reconciliation, and whole-workspace refresh
+have no anchor and skip step 5; they continue with normalized path order. A new
+positive integer `indexing.graph.batchSize` replaces the hard-coded semantic
+graph batch size. The worker reloads these values with the other watched scope
+settings.
 
 When `indexing.relationships.enabled` changes to `false`, the worker discards
 uncommitted reference work and schedules no new reference work. It retains
@@ -452,6 +496,12 @@ checks cover each native backend, matching Java runtime, and final setup bundle.
 Release review must also confirm the IntelliJ and Java runtime redistribution
 terms and report the setup-bundle and resident-memory increase.
 
+The Rust bundle manifest records the native sidecar and Java runtime as separate
+components with their checksums, architecture, release identity, and install
+paths. Rust packaging and install operations validate and activate the pair in
+one transaction, write both components to the installation receipt, and roll
+both back on failure. `install.sh` remains a delegate to that authority.
+
 General runtime readiness remains independent of sidecar indexing progress.
 Status output reports runtime readiness, graph coverage, and reference coverage
 as separate fields.
@@ -460,11 +510,11 @@ as separate fields.
 
 The implementation adds an explicit online migration from the current
 production schema to the sidecar schema. One transaction adds the required
-scope and coverage metadata, preserves admitted inventory, relationship and
-graph rows, advances the generation, and commits before the sidecar serves
-queries. A failed supported migration rolls back, preserves the old database,
-and reports coverage as `UNAVAILABLE`; it does not fall through to destructive
-rebuild.
+scope and coverage metadata, preserves admitted inventory, relationship rows,
+and independent graph rows, applies the legacy-boundary transformation below,
+advances the generation, and commits before the sidecar serves queries. A
+failed supported migration rolls back, preserves the old database, and reports
+coverage as `UNAVAILABLE`; it does not fall through to destructive rebuild.
 
 Any other unsupported schema version follows the existing cold rebuild path.
 That path makes graph and reference coverage `UNAVAILABLE`, recreates the
@@ -472,11 +522,18 @@ schema, commits a new inventory, and then computes coverage normally. It makes
 no retained-fact claim. Migration does not infer complete coverage from old
 module summaries.
 
+For a current relationship `EXTERNAL_BOUNDARY`, the online migration preserves
+the relationship outcome and reason identity as reference evidence. It removes
+the legacy semantic-graph boundary that relationship externalization projected
+as `UNKNOWN`, marks semantic graph work pending for the current fingerprint,
+and queues graph extraction. The legacy projection does not become graph
+evidence or graph coverage.
+
 The initial scope reconciliation removes hard-excluded inventory and removes
 graph and reference facts for user-ignored files. It retains current admitted
-facts, including current external-boundary outcomes and their reason identity,
-and queues missing stage work. Existing generation checks remain active during
-this transition.
+facts, including current relationship external-boundary outcomes and their
+reason identity, and queues missing stage work. Existing generation checks
+remain active during this transition.
 
 macOS keeps the current IDEA backend as the interactive default. The change
 removes the local headless prohibition only for the managed index-sidecar path.
@@ -486,12 +543,14 @@ It does not make public mutation commands select an unleased headless backend.
 
 Implementation is complete only when the following checks exist and pass:
 
-1. Configuration tests cover `.kastignore`, collection mutations, live reload,
-   relationship disable and re-enable, hard-exclusion precedence, and
-   ignore-critical conflicts.
+1. Configuration tests cover the Rust resolved JSON snapshot, `.kastignore`,
+   collection mutations, global and workspace precedence, external-edit live
+   reload, relationship disable and re-enable, anchored and unanchored module
+   priority depth, hard-exclusion precedence, and ignore-critical conflicts.
 2. Index-store tests cover independent graph and reference progress, the
    fact-preserving current-schema migration, unsupported-schema cold rebuild,
-   scope reconciliation, global coverage states, and retained generations.
+   legacy external-boundary graph cleanup, scope reconciliation, global coverage
+   states, and retained generations.
 3. A RED worker integration test injects request cancellation and proves the
    current request-owned path stops remaining graph work. The same test then
    proves the workspace-owned worker continues. This proves isolation without
@@ -504,15 +563,23 @@ Implementation is complete only when the following checks exist and pass:
    forwarding, scope reload, crash, and cutover cases must prove acknowledgment,
    lock release, restart, drain, and generation preservation. Focused live
    reference tests retain PSI fallback without persisted-reference admission.
+   Discovery tests prove the internal sidecar publishes no runtime descriptor
+   and automatic backend selection still selects only the exact-root IDEA
+   runtime. Selection tests prove public headless disablement returns
+   `HEADLESS_BACKEND_DISABLED` without blocking the internal role. Lifecycle
+   tests prove a disabled existing standalone runtime remains inspectable and
+   stoppable but is not selected for semantic work.
    Persisted-reader tests reject a missing or changed admission token and a
-   sidecar that fails post-read revalidation. Supervisor-crash tests prove
-   control-channel EOF or lease expiry stops the orphan, releases its lock, and
-   permits replacement.
+   sidecar that fails post-read revalidation. They also cover long-path fallback,
+   record identity validation, graceful unlink, and stale record and socket
+   cleanup. Supervisor-crash tests prove control-channel EOF or lease expiry
+   stops the orphan, releases its lock, and permits replacement.
 6. Packaging tests prove native macOS arm64 and x64 headless artifacts contain
    matching native libraries and that the normal install path installs the
    matching Java 21 runtime. A launch test unsets `JAVA_HOME`, removes system
    `java` from `PATH`, and proves the installed sidecar selects its bundled
-   runtime.
+   runtime. Transaction tests prove the bundle manifest, installation receipt,
+   and rollback cover both the native sidecar and Java runtime.
 7. A macOS integration check edits a saved Kotlin file while IDEA is active,
    observes sidecar reconciliation, and reads a generation-pinned graph without
    using the IDEA virtual file system for persistence.
@@ -530,8 +597,8 @@ Implementation is complete only when the following checks exist and pass:
 | Saved-file project model and background worker | `backend-headless/` |
 | Focused live analysis and read-only persisted access | `backend-idea/` |
 | Stage state, scope reconciliation, generations, and writer safety | `index-store/` |
-| Workspace collections and `.kastignore` projection | `cli-rs/src/configuration/` and `analysis-api/` |
-| Native macOS component and Java runtime production, installation, and verification | `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
+| Workspace collections, `.kastignore`, precedence, and resolved JSON projection | `cli-rs/src/configuration/`, `backend-idea/`, and `analysis-api/` |
+| Native macOS component and Java runtime manifest, packaging, installation, receipt, and rollback | `cli-rs/src/configuration/bundle.rs`, `cli-rs/src/operations/package.rs`, `cli-rs/src/operations/install/`, `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
 
 ## Consequences
 
