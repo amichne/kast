@@ -240,14 +240,15 @@ supervisor lease. The standalone public descriptor publishes the same common
 identity plus its control endpoint and protocol. Adoption requires the public
 descriptor, private admission record, and live writer lease to agree exactly.
 
-After it owns the writer lock and opens the store, the sidecar atomically
-publishes the admission record and promotes its provisional writer lease. The
-directory and private files are owner-only. A reader validates the owner, root
-digest, release, role, instance, lease epoch, and protocol before it connects.
-Graceful exit unlinks `admission.json` and the socket node. After a crash, the
-resident service or existing standalone lifecycle cleanup can unlink stale
-records only after the endpoint is unreachable and the writer lock is free. A
-replacement sidecar then publishes a new identity.
+After store preparation selects or activates the canonical target, the sidecar
+opens that store and reconciles current inputs. When the reconciliation commits,
+it atomically publishes the admission record and promotes its provisional writer
+lease. The directory and private files are owner-only. A reader validates the
+owner, root digest, release, role, instance, lease epoch, and protocol before it
+connects. Graceful exit unlinks `admission.json` and the socket node. After a
+crash, the resident service or existing standalone lifecycle cleanup can unlink
+stale records only after the endpoint is unreachable and the writer lock is
+free. A replacement sidecar then publishes a new identity.
 
 Before it issues or revalidates a token, the sidecar performs a synchronous
 filesystem event barrier on its own platform watcher. It asks each native event
@@ -802,28 +803,116 @@ General runtime readiness remains independent of sidecar indexing progress.
 Status output reports runtime readiness, graph coverage, and reference coverage
 as separate fields.
 
+## Store preparation
+
+After the old writer drains and the sidecar acquires the writer lock and a
+role-tagged provisional lease, one bootstrap worker enters `PREPARING`. This
+worker is the only process that can create, migrate, replace, or open the
+exact-root store for writes. The CLI and resident project service can launch the
+worker and report its result, but they never open the database for writes. The
+worker does not publish an admission endpoint or promote its lease while it is
+preparing the store.
+
+The Rust-owned startup snapshot includes the resolved
+`indexing.remote.enabled` and `sourceIndexUrl` values and any credential handle
+needed by the existing remote-index transport. It contains no credential secret
+or mutable configuration source. The bootstrap worker applies this fixed
+precedence before it constructs the active store:
+
+1. use a valid self-contained local database, migrating a current-production
+   candidate when required;
+2. otherwise prepare a valid legacy repository base and overlay as one local
+   candidate;
+3. otherwise, when configured, attempt remote snapshot hydration;
+4. otherwise create an empty target-schema candidate for normal local indexing.
+
+Local state always wins over a remote seed. A valid canonical target-schema
+database is validated, opened, and reconciled in place; it needs no preparation
+receipt or activation. A canonical current-production database is copied to
+same-filesystem staging before migration. The presence of a canonical database
+or repository-overlay manifest claims the local-state branch. Invalid or corrupt
+local state returns a typed diagnostic and does not fall through to remote
+hydration or empty creation.
+
+A legacy overlay preflight uses a reader compatible with its production schema
+to validate the manifest, base and overlay identities, schema versions,
+repository identity, and recorded digests. It materializes their effective
+logical view into one same-filesystem staging database: overlay rows replace
+matching base rows and tombstones remove base rows. The candidate retains the
+resulting inventory, stage outcomes, facts, and provenance as effective lineage.
+The worker never attaches the old immutable base to a target-schema connection
+and never mutates the base or overlay. It migrates the self-contained candidate
+instead.
+
+A readable legacy pair with a valid but unsupported schema uses a staged cold
+rebuild and makes no retained-fact claim. A missing, mismatched, or corrupt base
+or overlay is not an unsupported-schema rebuild: preparation returns a typed
+legacy-store diagnostic and leaves the active pair and generation unchanged.
+No partially materialized candidate can replace it.
+
+When no local state exists and remote indexing is configured, the sidecar
+downloads the snapshot into same-filesystem staging before it creates a
+canonical database. It verifies the existing hydration contract, including the
+checksum, provenance, repository and snapshot identities, and schema. A
+target-schema snapshot becomes a candidate directly; a current-production
+snapshot uses the online migration below. An unavailable, corrupt, mismatched,
+or unsupported snapshot, or a failed migration of that remote candidate,
+records a typed hydration diagnostic, then creates an empty staged candidate
+and continues normal local indexing. This is a failed best-effort seed, not
+hydration success, and it cannot produce a coverage claim.
+
+Every staged candidate carries a preparation identity. A crash-safe receipt
+records `PREPARED` after the candidate and its provenance are durable, and
+`COMMITTED` after atomic activation. Before activation, the worker acquires the
+same shared host-claim commit guard used for batch commits, revalidates the
+writer lease, host claim, repository identity and revision, resolved
+configuration, critical-path ledger, project-model fingerprint, and filesystem
+event fence under that guard, and holds it through activation, directory fsync,
+and the committed receipt. Claim publication requires the incompatible
+exclusive guard. A changed input detected before activation aborts the candidate
+without changing the active generation. Activation replaces the complete
+candidate as one unit; it can never expose a target database attached to an old
+base. A retry before activation rebuilds from the unchanged source. A retry
+after activation but before the committed receipt validates the preparation
+identity and completes the receipt. Replaying the same snapshot is idempotent,
+and an older snapshot never replaces a newer committed identity.
+
+Preparation alone does not admit evidence. After selecting an existing target
+or activating a staged candidate, the worker opens the target-schema store and
+reconciles the current project model, inventory, scope, configuration and
+critical-path ledger, stage fingerprints, and filesystem fence. Imported
+completeness is lineage, not current local coverage. Only after reconciliation
+commits can the worker publish admission and promote the provisional lease.
+
 ## Migration
 
 The implementation adds an explicit online migration from the current
-production schema to the sidecar schema. One transaction adds the required
-scope and coverage metadata and preserves admitted inventory and raw legacy rows
-as non-queryable lineage. Legacy model provenance is absent from the current
+production schema to the sidecar schema. It runs only on a self-contained
+staged candidate prepared from a canonical database, a materialized legacy
+overlay, or a hydrated remote snapshot. A target-schema candidate bypasses it.
+One transaction adds the required scope and coverage metadata and preserves
+admitted inventory and legacy fact and outcome rows as non-queryable lineage. A
+canonical candidate retains its raw rows; a materialized overlay retains only
+its effective logical rows. Legacy model provenance is absent from the current
 schema, so the migration does not assign a new model fingerprint to those rows.
 It marks graph and reference work pending for every admitted source, applies the
 legacy-boundary transformation below, advances the generation, and commits
 before the sidecar serves queries. Reindexing under the completed current model
-makes new outcomes queryable. A failed supported migration rolls back,
-preserves the old database, and reports coverage as `UNAVAILABLE`; it does not
-fall through to destructive rebuild.
+makes new outcomes queryable. A failed supported local or overlay migration
+rolls back, preserves the old local authority, and reports coverage as
+`UNAVAILABLE`; it does not fall through to destructive rebuild. A failed
+supported migration of a remote seed follows the typed empty-seed fallback in
+Store preparation because no local authority exists.
 
-Any other unsupported schema version follows the existing cold rebuild path.
-That path makes graph and reference coverage `UNAVAILABLE`, recreates the
-schema, commits a new inventory, and then computes coverage normally. It makes
-no retained-fact claim. The Rust-owned critical-path acceptance ledger remains
-beside the workspace TOML and is reapplied to the new inventory; the rebuilt
-store does not infer or erase committed acceptance. Pending receipts are
-reproved, not reapplied. Migration does not infer complete coverage from old
-module summaries.
+Any other valid, readable but unsupported schema version follows the existing
+cold rebuild path. Corruption and missing or mismatched overlay components use
+the preparation failure above instead. The cold path makes graph and reference
+coverage `UNAVAILABLE`, recreates the schema in staging, commits a new
+inventory, and then computes coverage normally. It makes no retained-fact
+claim. The Rust-owned critical-path acceptance ledger remains beside the
+workspace TOML and is reapplied to the new inventory; the rebuilt store does not
+infer or erase committed acceptance. Pending receipts are reproved, not
+reapplied. Migration does not infer complete coverage from old module summaries.
 
 For a current relationship `EXTERNAL_BOUNDARY`, the online migration preserves
 the relationship outcome and reason identity as non-queryable lineage and
@@ -978,6 +1067,22 @@ Implementation is complete only when the following checks exist and pass:
 8. A macOS integration check opens two exact-root projects concurrently and
    proves their sidecars use distinct IntelliJ config, system, log, and
    temporary directories.
+9. Store-preparation tests prove a valid target-schema database bypasses legacy
+   and remote paths, while local overlay state always wins over a configured
+   remote seed. Invalid or corrupt canonical state fails without remote or empty
+   fallback. A production-schema fixture with base rows `{A, B, D}`, overlay
+   rows `{B', C}`, and tombstone `{D}` materializes effective lineage
+   `{A, B', C}` without mutating its base or attaching that base after the schema
+   bump. Missing, mismatched, or corrupt overlay components leave the old pair
+   and generation unchanged; a valid unsupported schema uses a staged cold
+   rebuild. Remote tests prove hydration is attempted before canonical creation,
+   target and current-production schemas follow their specified paths, and
+   rejection, transport failure, or remote-candidate migration failure records
+   a typed diagnostic before empty local indexing. Crash injection after
+   download, materialization, migration, activation, and receipt writes proves
+   deterministic recovery without mixed state. A host-claim race cannot publish
+   during activation. Concurrent managed and standalone starts produce one
+   preparer, and no path publishes admission before current-input reconciliation.
 
 ## Implementation ownership
 
@@ -995,6 +1100,9 @@ Implementation is complete only when the following checks exist and pass:
 | Managed and standalone external-edit watchers and snapshot transport | `backend-idea/` and `backend-headless/` |
 | Critical-path receipt and ledger authority | `cli-rs/src/configuration/` |
 | Critical-path inventory proof and prepared scope-generation commit | `backend-headless/` and `index-store/` |
+| Resolved remote-seed input and hydration-result schema | `cli-rs/src/configuration/` and `analysis-api/` |
+| Pre-open preparation coordinator and remote transport | `backend-headless/` |
+| Schema preflight, effective overlay materialization, migration, preparation receipts, atomic activation, and recovery | `index-store/` |
 | Native macOS component, Android/AGP provider, and Java runtime manifest, packaging, installation, receipt, and rollback | `backend-headless/build.gradle.kts`, `cli-rs/src/configuration/bundle.rs`, `cli-rs/src/operations/package.rs`, `cli-rs/src/operations/install/`, `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
 
 ## Consequences
