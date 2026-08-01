@@ -222,12 +222,13 @@ immutable read fence from an admitted store-generation floor. The read fence
 binds the sidecar instance, writer-lease epoch, active-store identity,
 configuration-root binding identity and epoch, scope fingerprint, project-model
 semantic fingerprint, filesystem event epoch, host-claim generation,
-resolved-configuration fingerprint, and committed critical-path
-acceptance-ledger generation. The generation floor binds the current store
-generation `g` after the admission barrier. It is a lower bound, not a promise
-that a later-opened transaction will pin `g`. The sidecar issues the response
-only when the requested evidence family is admissible; result evidence never
-comes from this response.
+resolved-configuration fingerprint, and committed workspace-configuration pair
+identity. That pair combines the raw workspace-TOML digest and acceptance-ledger
+generation. The generation floor binds the current store generation `g` after
+the admission barrier. It is a lower bound, not a promise that a later-opened
+transaction will pin `g`. The sidecar issues the response only when the
+requested evidence family is admissible; result evidence never comes from this
+response.
 
 After that response, the reader opens one SQLite read transaction and pins its
 snapshot with the first metadata read; `BEGIN` alone does not pin a SQLite
@@ -398,33 +399,39 @@ connected. An adopted resident forwards event and mutation notifications; it
 does not start a competing projection helper.
 
 The active producer watches exactly `<bound-configuration-root>/config.toml`,
-the workspace TOML, and `.kastignore`, then invokes the release-matched Rust
-projection with the explicit binding and forwards its snapshot. The sidecar
-also watches those raw inputs, the binding record, and their parent directories
-only to fence create, replace, save, and delete events; it does not parse them or
-recompute precedence. Such an event makes configuration pending and both
-evidence families `UNAVAILABLE` before the admission barrier replies. The Rust
-snapshot carries the binding identity and epoch, canonical input paths, content
-digests, and a resolved configuration fingerprint. The sidecar rejects a
+the workspace TOML, `.kastignore`, and the acceptance ledger, then invokes the
+release-matched Rust projection or transaction recovery with the explicit
+binding. A ledger-only `PREPARED` write therefore triggers recovery without a
+restart or another user edit. A matching committed-pair event is an idempotent
+no-op. The sidecar also watches those inputs, the binding record, and their
+parent directories only to fence create, replace, save, and delete events; it
+does not parse them or recompute precedence. Such an event makes configuration
+pending and both evidence families `UNAVAILABLE` before the admission barrier
+replies. The Rust snapshot carries the binding identity and epoch, canonical
+input paths, content digests, committed workspace-configuration pair identity,
+and resolved configuration fingerprint. The sidecar rejects a
 missing, stale, wrong-root, wrong-release, or path-mismatched binding without
-falling back to its environment. It issues no token until the binding matches
-the committed bootstrap record, the input digests match its barrier view, and
-scope and coverage reconciliation persists that binding identity and epoch with
-the new configuration fingerprint and commits the generation. `analysis-api`
-owns the binding and snapshot schema, including the new ignored and critical
-collections and the Android selected-variant map.
+falling back to its environment. It issues no token while a prepared
+configuration transaction exists, while the current workspace-TOML digest does
+not match the committed ledger head, or until the binding and input digests
+match its barrier view and scope and coverage reconciliation persists the same
+pair identity, binding identity and epoch, and configuration fingerprint.
+`analysis-api` owns the binding, transaction, and snapshot schema, including the
+new ignored and critical collections and the Android selected-variant map.
 
 Direct mutations and watcher-triggered projections serialize under one
 Rust-owned exact-root configuration transaction lock. After it acquires the
-lock, the helper rereads every raw input and the acceptance ledger. Every
-control message binds the writer-lease epoch; a writer cutover rejects the old
-transaction and retries under the new writer. The lock covers the complete
-critical-path candidate, inventory proof, `PENDING` receipt, store
-acknowledgment, `COMMITTED` receipt, and revocation-tombstone exchanges below.
+lock, the helper recovers the workspace-configuration transaction described
+below before it rereads every raw input and the acceptance ledger. The lock
+supplies serialization; the ledger transaction supplies crash durability.
+Every control message binds the writer-lease epoch; a writer cutover rejects the
+old transaction and retries under the new writer. The lock covers the complete
+critical-path candidate, inventory proof, prepared transaction, store
+acknowledgment, committed ledger head, and revocation-tombstone exchanges below.
 Only a repeated tuple of configuration-root binding epoch, resolved
-configuration fingerprint, and ledger generation is an idempotent no-op. A
-standalone lease therefore needs no projection-producer handoff when a resident
-connects. A control message from an older binding epoch is rejected.
+configuration fingerprint, and committed pair identity is an idempotent no-op.
+A standalone lease therefore needs no projection-producer handoff when a
+resident connects. A control message from an older binding epoch is rejected.
 
 Shutdown sends drain and waits for acknowledgment before the service closes
 shared state. Request cancellation can stop waiting for an acknowledgment, but
@@ -611,36 +618,104 @@ file matches again or the pattern is removed.
 
 The Rust workspace mutation authority keeps a critical-path acceptance ledger
 beside the machine-local workspace TOML, outside both raw user configuration
-and the rebuildable index store. Each Rust-issued receipt binds a normalized
-pattern to the source-inventory fingerprint under which it first matched, the
-exact resolved-configuration fingerprint, and a ledger generation. A new CLI or
-external-edit pattern remains pending behind the configuration admission fence.
+and the rebuildable index store. The ledger is also the write-ahead journal for
+their logical pair. It has one committed head and at most one prepared
+workspace-configuration transaction. A committed head binds the complete
+receipt and tombstone set to the exact workspace-TOML digest, the resolved
+configuration fingerprint, the configuration-root binding identity and epoch,
+and a monotonic ledger generation. A receipt also binds its normalized pattern
+to the source-inventory fingerprint under which it first matched. Only a
+committed head whose TOML digest matches the current raw file is authoritative.
+Each ledger revision uses a sibling temporary file, file `fsync`, atomic rename,
+and parent-directory `fsync`.
 
-Rust first forwards a typed candidate snapshot through the control channel. The
-sidecar drains its filesystem barrier and uses its current eligible inventory to
-return either an unmatched error or an inventory proof bound to the sidecar
-instance, candidate configuration fingerprint, model fingerprint, filesystem
-event epoch, and store generation. Rust does not recompute eligibility. It
-durably records a `PENDING` receipt only from that proof, then forwards the
-prepared resolved snapshot and ledger generation. The sidecar revalidates every
-proof binding, commits the prepared ledger generation with the scope
-fingerprint, and returns that durable store commit as acknowledgment. A changed
-binding makes Rust abort the pending receipt and restart the exchange.
+A direct mutation first writes and syncs a sibling candidate TOML. Rust then
+durably records a `PREPARED` transaction that binds a unique transaction
+identity, transaction kind (`DIRECT` or `EXTERNAL`), writer-lease epoch, before
+and after raw-input versions, optional candidate path, platform file identity
+and digest, prior and next ledger generations, complete candidate receipt and
+tombstone set, resolved configuration fingerprint, and sidecar proof and store
+acknowledgment as they become available. A raw-input version contains the
+canonical path identity, content digest, durable platform change token, and
+configuration-producer event sequence, so a save-and-revert cannot masquerade
+as an unchanged input across either a live run or restart. An external edit uses
+the already written raw input as its candidate and does not stage or overwrite
+it. When that edit is outside the workspace TOML, the before and after TOML
+digests are equal.
+A prepared transaction is never receipt authority. It fences other projection
+and all persisted-evidence admission. A new CLI or external-edit pattern
+therefore remains pending behind the configuration admission fence.
 
-Rust promotes a receipt to `COMMITTED` only after that acknowledgment; this
-promotion is the acceptance linearization point. It then forwards the committed
-ledger state. The sidecar issues no admission token until its prepared scope and
-the Rust `COMMITTED` generation agree. After a crash, Rust promotes a pending
-receipt only when the store still proves its prepared commit. Otherwise it
-aborts and reproves the candidate. A cold rebuild reapplies only committed
-receipts; it reproves pending receipts instead of treating them as acceptance.
+Rust forwards the transaction-bound candidate snapshot through the control
+channel. The sidecar drains its filesystem barrier and uses its current eligible
+inventory to return either an unmatched error or an inventory proof bound to the
+transaction identity, sidecar instance, candidate configuration fingerprint,
+model fingerprint, filesystem event epoch, and store generation. Rust does not
+recompute eligibility. The sidecar revalidates every proof binding, commits a
+prepared scope bound to the transaction and next ledger generation, and returns
+that durable store commit as acknowledgment. A changed binding aborts or
+supersedes the prepared transaction; the prepared store state is never
+admissible.
 
-Removal atomically replaces the receipt with a durable revocation tombstone
-before Rust forwards the snapshot that omits the pattern. The tombstone survives
-restart and remains until a future current match produces a new receipt. After a
-crash, Rust replays the pending ledger generation, and admission stays blocked
-until the ledger, resolved configuration, and committed scope generations agree.
-Only the Rust authority can issue or revoke receipts. A missing database or cold
+Only a matching durable prepared-scope acknowledgment permits local commit.
+After that acknowledgment, a direct mutation compare-and-sets the complete raw
+input version to the staged candidate, then syncs its parent directory and
+records the resulting event version. An external edit requires the current raw
+input version to remain the observed candidate. Rust then advances the ledger
+head to `COMMITTED` in one atomic ledger replacement. That head update is the
+local acceptance or revocation linearization point. It is always after the
+raw-file replacement, so Rust cannot make a new receipt or tombstone
+authoritative while the old TOML is still current. Rust forwards the committed
+pair, and the sidecar promotes only the matching prepared scope. Admission
+remains blocked until the raw version, committed ledger generation, resolved
+fingerprint, and committed scope all bind the same transaction.
+
+Recovery acquires the same configuration lock before any mutation or
+projection. It first classifies the current raw-input version. For a `DIRECT`
+transaction, any version that is neither the exact recorded before version nor
+the recorded installed-candidate identity and digest durably supersedes the
+transaction, makes its prepared store state permanently unpromotable, and is
+reconciled as a fresh external edit without overwrite. This includes a before
+digest that reappears under a later event sequence.
+
+For every remaining state, recovery verifies or recreates the
+transaction-bound inventory proof and durable prepared-scope acknowledgment; an
+after version alone never permits a ledger commit. A `DIRECT` transaction at the
+exact before version can then install its staged candidate. If proof fails, Rust
+durably records `ABORTED`, invalidates the prepared store state, clears the
+prepared record and stage, and only then restores admission to the matching old
+pair. If the raw target has the recorded candidate file identity and digest,
+recovery classifies it as the installed direct candidate, records its current
+after event version, skips installation, and advances the ledger head only after
+it verifies or recreates the matching durable prepared-scope acknowledgment. If
+that acknowledgment cannot be established, recovery leaves the installed raw
+file unchanged, records the typed invalid state, and keeps admission fenced; it
+does not claim that the old pair was restored. The same digest under a different
+file identity or event history is an external supersession, not the installed
+candidate.
+
+An `EXTERNAL` transaction at its after version can commit only after the same
+proof and prepared-scope acknowledgment. If proof fails, Rust leaves the raw
+input unchanged, records the typed invalid state, and keeps admission fenced. If
+the external input returns to its exact before version, Rust durably supersedes
+the prepared transaction, makes its store state permanently unpromotable, and
+reconciles the current pair; it never installs the absent direct-mutation stage.
+Any other raw version also supersedes the transaction and becomes a fresh
+external edit without being overwritten. A matching committed pair replays any
+missing scope promotion. A committed head with a different current raw version
+is treated as a new external edit and stays fenced until Rust proves and commits
+a new matching pair. A corrupt record or version mismatch that cannot be
+classified returns a typed recovery error and keeps admission unavailable. All
+recovery, abort, and supersession steps are idempotent, and an aborted or
+superseded transaction identity can never promote a scope.
+
+For removal, the candidate head replaces the receipt with a revocation
+tombstone. The tombstone becomes authoritative only when the raw TOML already
+omits the pattern and the matching ledger head commits. A raw omission with the
+old receipt head is a fenced prepared state, not accepted evidence; a tombstone
+cannot authorize a TOML that still contains the pattern. The tombstone survives
+restart and remains until a future current match produces a new receipt. Only
+the Rust authority can issue or revoke receipts. A missing database or cold
 schema rebuild therefore preserves the distinction between a rejected new
 unmatched pattern and an accepted obligation that later became unmatched.
 
@@ -871,10 +946,10 @@ sidecar exits, so a matching service can recover after a crash without guessing
 writer liveness.
 
 One scope-reconciliation transaction removes excluded graph and reference
-facts, records the new scope fingerprint, acceptance-ledger generation, and
-coverage metadata, and advances the store generation. New admissions remain
-pending after that commit. A reader therefore cannot observe removed facts with
-the new coverage claim.
+facts, records the new scope fingerprint, committed workspace-configuration
+pair identity, and coverage metadata, and advances the store generation. New
+admissions remain pending after that commit. A reader therefore cannot observe
+removed facts with the new coverage claim.
 
 ## macOS distribution and lifecycle
 
@@ -1089,9 +1164,11 @@ the preparation failure above instead. The cold path makes graph and reference
 coverage `UNAVAILABLE`, recreates the schema in staging, commits a new
 inventory, and then computes coverage normally. It makes no retained-fact
 claim. The Rust-owned critical-path acceptance ledger remains beside the
-workspace TOML and is reapplied to the new inventory; the rebuilt store does not
-infer or erase committed acceptance. Pending receipts are reproved, not
-reapplied. Migration does not infer complete coverage from old module summaries.
+workspace TOML. A cold rebuild first recovers any prepared transaction, then
+reapplies only receipts from a committed head whose TOML digest matches the
+current raw file. The rebuilt store does not infer or erase committed
+acceptance. Prepared or mismatched receipts are reproved, not reapplied.
+Migration does not infer complete coverage from old module summaries.
 
 For a current relationship `EXTERNAL_BOUNDARY`, the online migration preserves
 the relationship outcome and reason identity as non-queryable lineage and
@@ -1129,8 +1206,8 @@ Implementation is complete only when the following checks exist and pass:
    collection mutations, global and workspace precedence, external-edit live
    reload and admission fencing, Rust-issued critical-path acceptance receipts
    across a cold rebuild, pending-receipt recovery, stale candidate-proof
-   rejection, add and removal crashes, tombstone replay, relationship disable
-   and re-enable, anchored and unanchored module priority depth, semantic
+   rejection, tombstone replay, relationship disable and re-enable, anchored
+   and unanchored module priority depth, semantic
    output-root classification, hard-exclusion precedence over nested generated
    source roots, independent builds named `build`, and pre-ignore conflict
    detection with hard-exclusion precedence. They also prove one external-edit
@@ -1151,7 +1228,25 @@ Implementation is complete only when the following checks exist and pass:
    an interrupted binding update leaves one complete old or new record without
    two producers. Simultaneous no-incumbent bootstraps with different roots prove
    the provisional-lease winner captures its own expected binding and the loser
-   starts no watcher.
+   starts no watcher. Critical-path transaction tests inject crashes for direct
+   add and removal after prepared-ledger sync, prepared-scope acknowledgment,
+   raw-TOML replacement, committed-head sync, scope promotion, and cleanup. They
+   prove only the matching old or new pair becomes admissible, every physical
+   mismatch stays unavailable, restart and cold rebuild never resurrect a
+   removed obligation or accept an unproved one, and replay is idempotent. An
+   external-edit race produces a third digest, supersedes the direct mutation
+   without overwriting the raw file, and reproves the observed edit. A second
+   external edit and watcher-triggered projection wait for recovery under the
+   same lock. External add and removal tests crash after prepared-ledger sync but
+   before proof or store acknowledgment; neither an unproved receipt nor a
+   tombstone commits, and admission remains unavailable. An exact
+   edit-and-revert to the before digest has a later event sequence, supersedes
+   the old transaction, and cannot promote its prepared scope. Ledger-only
+   prepare tests prove the live producer invokes recovery without restart. A
+   direct crash after raw replacement recognizes the installed candidate by
+   file identity and completes only with its matching durable scope
+   acknowledgment; a missing or invalid acknowledgment remains fenced and never
+   fabricates an old-pair rollback.
 2. Index-store tests cover independent graph and reference progress, the
    fact-preserving current-schema migration, unsupported-schema cold rebuild,
    legacy rows remaining non-queryable until reindex, external-boundary graph
@@ -1335,14 +1430,14 @@ Implementation is complete only when the following checks exist and pass:
 | Saved-file JVM and Android/AGP model, selected variants, source-provider ownership, and background worker | `backend-headless/` |
 | Focused live analysis and read-only persisted access | `backend-idea/` |
 | Immutable exact-root coordination directory, host-claim CAS, writer lease, product-model fingerprints, single-generation facts and coverage snapshots, stage state, scope reconciliation, and generations | `index-store/` |
-| Workspace collections, `.kastignore`, Android selected variants, precedence, resolved JSON projection, and configuration transaction serialization | `cli-rs/src/configuration/` |
-| Resolved configuration and control-message schema | `analysis-api/` |
+| Workspace collections, `.kastignore`, Android selected variants, precedence, resolved JSON projection, digest-paired transaction journal, and recovery | `cli-rs/src/configuration/` |
+| Resolved configuration, transaction identity, and control-message schema | `analysis-api/` |
 | Managed and standalone external-edit watchers and snapshot transport | `backend-idea/` and `backend-headless/` |
 | Bootstrap-resolved configuration-root binding, durable epoch, startup and control transport, producer selection, and admission fencing | `cli-rs/src/execution/runtime/`, `cli-rs/src/configuration/`, `analysis-api/`, `backend-idea/`, `backend-headless/`, and `index-store/` |
 | Typed `AdmittedSourcePath` and sole hard-exclusion classifier | `analysis-api/` and `backend-shared/` |
 | Hard-exclusion operation wiring, serialized Rust consumption, and persisted scope projection | `backend-idea/`, `backend-headless/`, `cli-rs/`, and `index-store/` |
-| Critical-path receipt and ledger authority | `cli-rs/src/configuration/` |
-| Critical-path inventory proof and prepared scope-generation commit | `backend-headless/` and `index-store/` |
+| Critical-path receipt, tombstone, paired-commit, and ledger authority | `cli-rs/src/configuration/` |
+| Transaction-bound critical-path inventory proof and prepared scope-generation commit | `backend-headless/` and `index-store/` |
 | Resolved remote-seed input and hydration-result schema | `cli-rs/src/configuration/` and `analysis-api/` |
 | Pre-open preparation coordinator and remote transport | `backend-headless/` |
 | SQLite-consistent backup, schema preflight, effective overlay materialization, migration, preparation receipts, active-store locator, atomic activation, and recovery | `index-store/` |
