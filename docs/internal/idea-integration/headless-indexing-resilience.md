@@ -142,9 +142,10 @@ The sidecar exposes an exact-root read-admission endpoint beside the database.
 Every persisted graph and reference reader checks this endpoint before and
 after a generation-pinned SQLite read. The admission token binds the sidecar
 instance, store generation, scope fingerprint, project-model semantic
-fingerprint, filesystem event epoch, and evidence-family state. A missing
-endpoint, a changed token, or failed revalidation makes that evidence family
-`UNAVAILABLE`; SQLite coverage alone never admits a persisted read. This
+fingerprint, filesystem event epoch, resolved-configuration fingerprint, and
+committed critical-path acceptance-ledger generation, and evidence-family state. A
+missing endpoint, a changed token, or failed revalidation makes that evidence
+family `UNAVAILABLE`; SQLite coverage alone never admits a persisted read. This
 authority is separate from IDEA runtime readiness.
 
 The private admission record is
@@ -201,8 +202,14 @@ JSON snapshot through the control channel. For external edits, the resident
 service watches the global configuration file at
 `$KAST_CONFIG_HOME/config.toml`, the workspace TOML, and `.kastignore`, then
 invokes the release-matched Rust projection and forwards its snapshot. The
-sidecar consumes the typed snapshot; it does not parse TOML or recompute
-precedence. `analysis-api` owns the snapshot schema, including the new ignored
+sidecar also watches those raw inputs and their parent directories only to
+fence create, replace, save, and delete events; it does not parse them or
+recompute precedence. Such an event makes configuration pending and both
+evidence families `UNAVAILABLE` before the admission barrier replies. The Rust
+snapshot carries canonical input paths, content digests, and a resolved
+configuration fingerprint. The sidecar issues no token until those digests
+match its barrier view and scope and coverage reconciliation commits the new
+fingerprint. `analysis-api` owns the snapshot schema, including the new ignored
 and critical collections.
 
 Shutdown sends drain and waits for acknowledgment before the service closes
@@ -307,6 +314,41 @@ last match does not invalidate the configuration. It makes graph and reference
 coverage `INCOMPLETE` with a typed unmatched-critical-path limitation until a
 file matches again or the pattern is removed.
 
+The Rust workspace mutation authority keeps a critical-path acceptance ledger
+beside the machine-local workspace TOML, outside both raw user configuration
+and the rebuildable index store. Each Rust-issued receipt binds a normalized
+pattern to the source-inventory fingerprint under which it first matched, the
+exact resolved-configuration fingerprint, and a ledger generation. A new CLI or
+external-edit pattern remains pending behind the configuration admission fence.
+
+Rust first forwards a typed candidate snapshot through the control channel. The
+sidecar drains its filesystem barrier and uses its current eligible inventory to
+return either an unmatched error or an inventory proof bound to the sidecar
+instance, candidate configuration fingerprint, model fingerprint, filesystem
+event epoch, and store generation. Rust does not recompute eligibility. It
+durably records a `PENDING` receipt only from that proof, then forwards the
+prepared resolved snapshot and ledger generation. The sidecar revalidates every
+proof binding, commits the prepared ledger generation with the scope
+fingerprint, and returns that durable store commit as acknowledgment. A changed
+binding makes Rust abort the pending receipt and restart the exchange.
+
+Rust promotes a receipt to `COMMITTED` only after that acknowledgment; this
+promotion is the acceptance linearization point. It then forwards the committed
+ledger state. The sidecar issues no admission token until its prepared scope and
+the Rust `COMMITTED` generation agree. After a crash, Rust promotes a pending
+receipt only when the store still proves its prepared commit. Otherwise it
+aborts and reproves the candidate. A cold rebuild reapplies only committed
+receipts; it reproves pending receipts instead of treating them as acceptance.
+
+Removal atomically replaces the receipt with a durable revocation tombstone
+before Rust forwards the snapshot that omits the pattern. The tombstone survives
+restart and remains until a future current match produces a new receipt. After a
+crash, Rust replays the pending ledger generation, and admission stays blocked
+until the ledger, resolved configuration, and committed scope generations agree.
+Only the Rust authority can issue or revoke receipts. A missing database or cold
+schema rebuild therefore preserves the distinction between a rejected new
+unmatched pattern and an accepted obligation that later became unmatched.
+
 Each accepted pattern is a critical obligation. The obligation is fulfilled
 only while it matches at least one eligible file. Every file matched by a
 fulfilled obligation is critical. Deletion, hard exclusion, or loss of source
@@ -377,23 +419,25 @@ Cancellation is a scheduling result, not a file failure. The worker stops the
 current uncommitted unit, keeps it pending, and retries it with bounded
 backoff. Earlier committed batches remain available.
 
-Three consecutive non-cancellation failures for one content fingerprint make
-that stage `LIMITED`. The worker retries limited work at a slower periodic
-interval. A file change or explicit refresh makes that work immediately
-eligible again.
+Three consecutive non-cancellation failures for one complete stage input
+fingerprint make that stage `LIMITED`. The fingerprint includes source content,
+admitted membership and ownership, project model, and semantic cohort. The
+worker retries limited work at a slower periodic interval. A change to any
+fingerprint component or an explicit refresh starts a new failure sequence and
+makes that work immediately eligible again.
 
-Only facts or boundary evidence tied to the current content fingerprint and a
-current `COMPLETE`, `LIMITED`, or `EXTERNAL_BOUNDARY` outcome are queryable.
-Prior facts for changed content are stale and cannot appear in a qualified
-result.
+Only facts or boundary evidence tied to the complete current stage input
+fingerprint and a current `COMPLETE`, `LIMITED`, or `EXTERNAL_BOUNDARY` outcome
+are queryable. Prior facts for any changed input are stale and cannot appear in
+a qualified result.
 
 A reference `EXTERNAL_BOUNDARY` remains a distinct terminal outcome for its
-current fingerprint. It preserves the externalized failure identity and exposes
-the existing limited unknown boundary; it does not migrate to `LIMITED`. It is
-re-evaluated after a content, scope, or project-model change, or after explicit
-refresh. On a critical file it makes reference coverage `INCOMPLETE`. On a
-non-critical file it makes reference coverage `QUALIFIED`. It does not affect
-semantic graph coverage.
+complete current stage input fingerprint. It preserves the externalized failure
+identity and exposes the existing limited unknown boundary; it does not migrate
+to `LIMITED`. It is re-evaluated after that fingerprint changes, or after
+explicit refresh. On a critical file it makes reference coverage `INCOMPLETE`.
+On a non-critical file it makes reference coverage `QUALIFIED`. It does not
+affect semantic graph coverage.
 
 The retry policy has one owner in the workspace worker. Request handlers do not
 implement their own retry loops.
@@ -515,9 +559,10 @@ sidecar exits, so a matching service can recover after a crash without guessing
 writer liveness.
 
 One scope-reconciliation transaction removes excluded graph and reference
-facts, records the new scope fingerprint and coverage metadata, and advances
-the generation. New admissions remain pending after that commit. A reader
-therefore cannot observe removed facts with the new coverage claim.
+facts, records the new scope fingerprint, acceptance-ledger generation, and
+coverage metadata, and advances the store generation. New admissions remain
+pending after that commit. A reader therefore cannot observe removed facts with
+the new coverage claim.
 
 ## macOS distribution and lifecycle
 
@@ -586,24 +631,27 @@ fall through to destructive rebuild.
 Any other unsupported schema version follows the existing cold rebuild path.
 That path makes graph and reference coverage `UNAVAILABLE`, recreates the
 schema, commits a new inventory, and then computes coverage normally. It makes
-no retained-fact claim. Migration does not infer complete coverage from old
+no retained-fact claim. The Rust-owned critical-path acceptance ledger remains
+beside the workspace TOML and is reapplied to the new inventory; the rebuilt
+store does not infer or erase committed acceptance. Pending receipts are
+reproved, not reapplied. Migration does not infer complete coverage from old
 module summaries.
 
 For a current relationship `EXTERNAL_BOUNDARY`, the online migration preserves
 the relationship outcome and reason identity as non-queryable lineage and
 queues relationship re-evaluation. It removes the legacy semantic-graph boundary
 that relationship externalization projected as `UNKNOWN`, marks semantic graph
-work pending for the current fingerprint, and queues graph extraction. The
-legacy projection does not become graph evidence or graph coverage. A
-re-evaluated external boundary follows the normal current-model coverage
-contract.
+work pending for the new complete stage input fingerprint, and queues graph
+extraction. The legacy projection does not become graph evidence or graph
+coverage. A re-evaluated external boundary follows the normal current-model
+coverage contract.
 
 The initial scope reconciliation removes hard-excluded inventory and removes
 graph and reference facts for user-ignored files. It retains current admitted
 lineage, including relationship external-boundary outcomes and their reason
-identity, and queues both stages. Only outcomes produced under the current model
-fingerprint become queryable. Existing generation checks remain active during
-this transition.
+identity, and queues both stages. Only outcomes produced under the complete
+current stage input fingerprint become queryable. Existing generation checks
+remain active during this transition.
 
 macOS keeps the current IDEA backend as the interactive default. The change
 removes the local headless prohibition only for the managed index-sidecar path.
@@ -615,10 +663,13 @@ Implementation is complete only when the following checks exist and pass:
 
 1. Configuration tests cover the Rust resolved JSON snapshot, `.kastignore`,
    collection mutations, global and workspace precedence, external-edit live
-   reload, relationship disable and re-enable, anchored and unanchored module
-   priority depth, semantic output-root classification, hard-exclusion
-   precedence over nested generated source roots, independent builds named
-   `build`, and active ignore-critical conflict coverage.
+   reload and admission fencing, Rust-issued critical-path acceptance receipts
+   across a cold rebuild, pending-receipt recovery, stale candidate-proof
+   rejection, add and removal crashes, tombstone replay, relationship disable
+   and re-enable, anchored and unanchored module priority depth, semantic
+   output-root classification, hard-exclusion precedence over nested generated
+   source roots, independent builds named `build`, and active ignore-critical
+   conflict coverage.
 2. Index-store tests cover independent graph and reference progress, the
    fact-preserving current-schema migration, unsupported-schema cold rebuild,
    legacy rows remaining non-queryable until reindex, external-boundary graph
@@ -630,9 +681,10 @@ Implementation is complete only when the following checks exist and pass:
    current request-owned path stops remaining graph work. The same test then
    proves the workspace-owned worker continues. This proves isolation without
    claiming reproduction of the reported production contention.
-4. Worker tests prove cancellation remains pending, three repeated failures
-   become retryable limited outcomes, current external-boundary evidence keeps
-   its reason identity, and stale prior facts stay unqueryable.
+4. Worker tests prove cancellation remains pending, three repeated failures for
+   one complete stage input become a retryable limited outcome, a model or peer
+   change starts a new failure sequence, current external-boundary evidence
+   keeps its reason identity, and stale prior facts stay unqueryable.
 5. Runtime tests prove macOS IDEA startup owns one exact-root sidecar and one
    persistent writer even when public headless selection is disabled. Refresh
    forwarding, scope reload, crash, and cutover cases must prove acknowledgment,
@@ -648,7 +700,9 @@ Implementation is complete only when the following checks exist and pass:
    sidecar that fails post-read revalidation. They also cover long-path fallback,
    record identity validation, graceful unlink, and stale record and socket
    cleanup. Watcher tests prove the pre-read filesystem barrier invalidates a
-   completed fingerprint and a concurrent save fails post-read revalidation.
+   completed fingerprint, a concurrent save fails post-read revalidation, and
+   raw configuration saves block admission until the matching Rust snapshot and
+   scope reconciliation commit.
    Supervisor-crash tests prove control-channel EOF or lease expiry stops the
    orphan, releases its lock, and permits replacement.
 6. Packaging tests prove native macOS arm64 and x64 headless artifacts contain
@@ -679,6 +733,8 @@ Implementation is complete only when the following checks exist and pass:
 | Focused live analysis and read-only persisted access | `backend-idea/` |
 | Stage state, scope reconciliation, generations, and writer safety | `index-store/` |
 | Workspace collections, `.kastignore`, precedence, and resolved JSON projection | `cli-rs/src/configuration/`, `backend-idea/`, and `analysis-api/` |
+| Critical-path receipt and ledger authority | `cli-rs/src/configuration/` |
+| Critical-path inventory proof and prepared scope-generation commit | `backend-headless/` and `index-store/` |
 | Native macOS component and Java runtime manifest, packaging, installation, receipt, and rollback | `cli-rs/src/configuration/bundle.rs`, `cli-rs/src/operations/package.rs`, `cli-rs/src/operations/install/`, `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
 
 ## Consequences
