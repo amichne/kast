@@ -217,39 +217,50 @@ completed batch; it cannot appear between validation and commit.
 The sidecar exposes an exact-root read-admission endpoint from the immutable
 coordination root.
 Every persisted graph and reference reader checks this endpoint before and
-after a generation-pinned SQLite read. Its typed admission response separates
-an immutable read fence from progress at one store generation. The read fence
+after a generation-pinned SQLite read. Its typed pre-read response separates an
+immutable read fence from an admitted store-generation floor. The read fence
 binds the sidecar instance, writer-lease epoch, active-store identity,
 configuration-root binding identity and epoch, scope fingerprint, project-model
 semantic fingerprint, filesystem event epoch, host-claim generation,
 resolved-configuration fingerprint, and committed critical-path
-acceptance-ledger generation. The progress snapshot binds store generation,
-evidence-family state, counts, and limitations.
+acceptance-ledger generation. The generation floor binds the current store
+generation `g` after the admission barrier. It is a lower bound, not a promise
+that a later-opened transaction will pin `g`. The sidecar issues the response
+only when the requested evidence family is admissible; result evidence never
+comes from this response.
 
-The reader opens one SQLite read transaction and verifies that its facts and
-coverage metadata have the progress snapshot's generation. Facts, state,
-counts, and limitations in the result all come from that one pinned snapshot.
-Post-read validation succeeds when the read fence is unchanged and the live
-store generation is greater than or equal to the pinned generation. A later
-same-fence batch can therefore commit without starving the read. A lower live
-generation, a missing endpoint, or any changed fence identity rejects the read.
-The active-store identity must still equal the committed locator before and
-after the read. SQLite coverage alone never admits persisted evidence. This
-authority is separate from IDEA runtime readiness.
+After that response, the reader opens one SQLite read transaction and pins its
+snapshot with the first metadata read; `BEGIN` alone does not pin a SQLite
+snapshot. Let `p` be the generation read from that snapshot. The reader requires
+`p >= g` and reads its facts, evidence-family state, counts, and limitations
+from that one snapshot at `p`. It never combines response metadata from `g`
+with facts from `p`. The reader reapplies the applicable global evidence-family
+gate from `p`: `COMPLETE` or `QUALIFIED` admits that family, while `INCOMPLETE`
+or `UNAVAILABLE` rejects it under the existing coverage rules and returns no
+facts from that family. Post-read validation succeeds when the read fence is
+unchanged and the live store generation is greater than or equal to `p`. A
+same-fence batch can therefore commit before or after snapshot pinning without
+starving the read: a pre-pin commit moves the complete result to its one newer
+snapshot, while a post-pin commit leaves the result pinned to `p`. A pinned or
+live generation below its required floor, a missing endpoint, or any changed
+fence identity rejects the read. The active-store identity must still equal the
+committed locator before and after the read. SQLite coverage alone never admits
+persisted evidence. This authority is separate from IDEA runtime readiness.
 
-This proposal supersedes only the post-read live-generation equality clause in
-the current [stable integration invariant](index.md#stable-integration-invariants)
-and accepted
+This proposal supersedes the pre-read progress-to-snapshot equality clause and
+the post-read live-generation equality clause in the current
+[stable integration invariant](index.md#stable-integration-invariants) and accepted
 [generation decision](architecture-decisions.md#pin-every-native-graph-query-to-one-generation).
 Before target-schema sidecar admission is active, those exact-generation rules
-remain authoritative. After cutover, advancement from `g` to `g+n` is permitted
-only for one already-open SQLite transaction under an unchanged read fence, and
-the complete result remains pinned to `g`. A new page using a cursor issued at
-`g` still requires live generation `g`; refresh planning and write
-compare-and-set still reject `expectedGeneration = g` after any advance; and no
-reader can mix generations. The implementation change that enables the new
-admission protocol must update those two accepted records and the dependent
-generation descriptions in `flows/graph-queries.md` and
+remain authoritative. After cutover, pre-read generation `g` is a floor and
+one SQLite transaction pins `p >= g` under an unchanged read fence. Any later
+live generation can be greater than or equal to `p`, but the complete result
+remains pinned to `p`. A new page using a cursor issued at `p` still requires
+live generation `p`; refresh planning and write compare-and-set still reject
+`expectedGeneration = p` after any advance; and no reader can mix generations.
+The implementation change that enables the new admission protocol must update
+those two accepted records and the dependent generation descriptions in
+`flows/graph-queries.md` and
 `flows/indexing-and-generation.md` in the same cutover. Legacy readers and
 deployments without the target admission protocol continue to reject every
 generation change; no deployment mixes the two rules.
@@ -1203,17 +1214,25 @@ Implementation is complete only when the following checks exist and pass:
    second claim between generation validation and SQLite commit and proves the
    claim or batch completes first under the coordination guard, never both
    concurrently.
-   Persisted-reader tests open the SQLite transaction at `g`, commit `g+1` under
-   the same read fence, and return facts, state, counts, and limitations from
-   `g`. Before target-protocol cutover, the same advance still rejects. After
-   cutover, a cursor issued at `g` cannot open a new page at `g+1`, and a refresh
-   or write with `expectedGeneration = g` cannot commit at `g+1`. Tests reject a
-   missing endpoint, a lower generation, or any changed store, instance, lease,
-   scope, model, event, host-claim, configuration, or acceptance-ledger
-   identity. They also cover long-path fallback, physical-store path and record
-   identity validation, and reject a record whose store identity or normalized
-   path differs from the committed locator or admission fence. They cover
-   graceful unlink and stale record and socket cleanup.
+   Persisted-reader tests pause after a pre-read response at `g` and SQLite
+   `BEGIN` but before the first metadata read, commit `g+1` under the same read
+   fence, and prove one attempt pins and returns only facts, state, counts, and
+   limitations from `g+1`. A control that changes any fence identity rejects.
+   A same-fence control changes the applicable global family state from
+   admissible at `g` to `INCOMPLETE` or `UNAVAILABLE` at `g+1`; the reader
+   reapplies the gate from `g+1`, rejects, and returns no facts from that family.
+   They also pin the SQLite snapshot at `g`, commit `g+1` under the same fence,
+   and return all result evidence from `g`. Before target-protocol cutover, both
+   advances still reject. After cutover, a cursor issued at `p` cannot open a
+   new page at `p+1`, and a refresh or write with `expectedGeneration = p`
+   cannot commit at `p+1`. Tests reject a missing endpoint, a pinned generation
+   below the admitted floor, a live generation below the pinned generation, or
+   any changed store, instance, lease, scope, model, event, host-claim,
+   configuration, or acceptance-ledger identity. They also cover long-path
+   fallback, physical-store path and record identity validation, and reject a
+   record whose store identity or normalized path differs from the committed
+   locator or admission fence. They cover graceful unlink and stale record and
+   socket cleanup.
    Watcher tests prove the
    pre-read filesystem barrier invalidates a completed fingerprint, a delayed
    producer delivery is consumed before token issue, dropped history falls back
@@ -1311,8 +1330,8 @@ Implementation is complete only when the following checks exist and pass:
 | Exact-root bootstrap, host-product/payload capability binding, and global runtime `READY` admission gate | `cli-rs/src/execution/runtime/` |
 | Resident host-product claim, supervision, refresh forwarding, and writer cutover; no model or VFS sharing | `backend-idea/` |
 | Sidecar control, independent runtime and coverage status, read-fence schema, and typed result contracts | `analysis-api/`, `backend-headless/`, and `cli-rs/src/semantics/` |
-| Pre-read admission barrier and post-read same-fence comparison | `backend-headless/` |
-| Read-generation supersession, protocol cutover, legacy equality compatibility, and cursor and write-CAS exact-generation checks | `analysis-api/`, `backend-headless/`, `index-store/`, and `cli-rs/src/agent/navigation/native_graph/` |
+| Pre-read admission barrier, admitted-generation floor, and post-read same-fence comparison | `backend-headless/` |
+| Pre-pin and post-pin read-generation supersession, protocol cutover, legacy equality compatibility, and cursor and write-CAS exact-generation checks | `analysis-api/`, `backend-headless/`, `index-store/`, and `cli-rs/src/agent/navigation/native_graph/` |
 | Saved-file JVM and Android/AGP model, selected variants, source-provider ownership, and background worker | `backend-headless/` |
 | Focused live analysis and read-only persisted access | `backend-idea/` |
 | Immutable exact-root coordination directory, host-claim CAS, writer lease, product-model fingerprints, single-generation facts and coverage snapshots, stage state, scope reconciliation, and generations | `index-store/` |
