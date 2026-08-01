@@ -236,11 +236,19 @@ Each pipeline uses this stable priority order:
 6. normalized path order.
 
 The worker uses bounded batches and short SQLite transactions. Existing
-`indexing.relationships.batchSize` and
+`indexing.relationships.enabled`, `indexing.relationships.batchSize`, and
 `indexing.relationships.parallelism` settings remain authoritative for
 references. A new positive integer `indexing.graph.batchSize` replaces the
-hard-coded semantic graph batch size. The worker reloads this value with the
+hard-coded semantic graph batch size. The worker reloads these values with the
 other watched scope settings.
+
+When `indexing.relationships.enabled` changes to `false`, the worker discards
+uncommitted reference work and schedules no new reference work. It retains
+committed reference facts but does not serve them. Reference coverage becomes
+`UNAVAILABLE` with limitation `REFERENCE_INDEXING_DISABLED`; graph scheduling
+and graph coverage do not change. When the setting changes to `true`, the
+worker schedules current reference work from the persisted inventory and
+normal reference coverage computation resumes.
 
 ## Cancellation and retry
 
@@ -281,7 +289,7 @@ Graph and reference pipelines each publish one global coverage state:
 | `COMPLETE` | Every eligible file has current complete evidence, and every critical obligation is fulfilled. | Run with current evidence. |
 | `QUALIFIED` | Every critical obligation is fulfilled and all critical files are complete, but non-critical work is pending, stale, limited, external-boundary, or failed. | Run and return global coverage limitations. |
 | `INCOMPLETE` | A critical obligation is unmatched, or at least one critical file lacks current complete evidence. | Reject operations for that evidence family. |
-| `UNAVAILABLE` | No admissible persisted generation can be served, including while the project model is unavailable. | Reject operations for that evidence family. |
+| `UNAVAILABLE` | No admissible persisted generation can be served, including while the project model is unavailable or that evidence family is explicitly disabled. | Reject operations for that evidence family. |
 
 State precedence is `UNAVAILABLE`, `INCOMPLETE`, `COMPLETE`, then `QUALIFIED`.
 After availability is established, unmatched critical obligations and
@@ -414,7 +422,8 @@ It does not make public mutation commands select an unleased headless backend.
 Implementation is complete only when the following checks exist and pass:
 
 1. Configuration tests cover `.kastignore`, collection mutations, live reload,
-   hard-exclusion precedence, and ignore-critical conflicts.
+   relationship disable and re-enable, hard-exclusion precedence, and
+   ignore-critical conflicts.
 2. Index-store tests cover independent graph and reference progress, scope
    reconciliation, global coverage states, and retained generations.
 3. A RED worker integration test injects request cancellation and proves the
