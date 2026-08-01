@@ -310,7 +310,7 @@ snapshot carries canonical input paths, content digests, and a resolved
 configuration fingerprint. The sidecar issues no token until those digests
 match its barrier view and scope and coverage reconciliation commits the new
 fingerprint. `analysis-api` owns the snapshot schema, including the new ignored
-and critical collections.
+and critical collections and the Android selected-variant map.
 
 Direct mutations and watcher-triggered projections serialize under one
 Rust-owned exact-root configuration transaction lock. After it acquires the
@@ -354,6 +354,43 @@ The worker computes one effective source set in this order:
 6. Attach Gradle module and source-set ownership.
 
 A candidate that completes all six steps is an eligible file.
+
+### Android project model
+
+An Android module is one for which the complete Gradle import reports the
+Android Gradle Plugin. A generic Gradle source-root list is not a complete model
+for that module. The bundled Android/AGP model provider runs inside the
+sidecar's JVM and virtual file system and imports saved disk state itself. It
+does not consume the interactive Android Studio project model or virtual file
+system.
+
+Each Android module has one selected production variant. The machine-local
+workspace TOML can set `indexing.android.selectedVariants` as a map from
+build-qualified Gradle project identity to variant name. The identity combines
+the stable canonical Gradle build identity with its project path, so repeated
+`:app` paths in composite builds do not collide. Without an entry, the provider
+selects a variant named exactly `debug`; if no such variant exists, it selects
+the sole available variant. Multiple remaining variants produce the typed
+`ANDROID_VARIANT_SELECTION_REQUIRED` limitation. A configured name that the
+AGP model does not expose produces `ANDROID_VARIANT_UNKNOWN`. A setting change
+fences admission and requires a new model import.
+
+A complete Android model records the model-provider identity, AGP version,
+selected variant, source-provider ownership, compiler inputs, and compiler
+cohort for every Android module. These values contribute to the project-model
+and stage-input fingerprints. Non-generated Kotlin roots from the selected
+variant's `main`, individual-flavor, combined-flavor, build-type, and full
+variant source providers are model-owned candidates. Its test-fixture,
+unit-test, and instrumented-test providers keep their corresponding
+non-production priority. Model-declared generated and output roots remain
+hard-excluded; their classpath and ABI inputs still contribute to the semantic
+cohort.
+
+If the Android provider is absent, stale, incompatible with the AGP model, or
+cannot produce the selected-variant ownership, both evidence families are
+`UNAVAILABLE` with limitation `PROJECT_MODEL_CAPABILITY_UNAVAILABLE`. Generic
+Gradle ownership is not a fallback, and an empty Android inventory cannot be
+classified as `COMPLETE`.
 
 ### Hard exclusions
 
@@ -508,6 +545,10 @@ Each pipeline uses this stable priority order:
 5. the existing module-priority order;
 6. normalized path order.
 
+For Android modules, selected production-variant providers occupy step 2,
+Android test fixtures occupy step 3, and unit or instrumented test providers
+occupy step 4.
+
 The worker uses bounded batches and short SQLite transactions. Existing
 `indexing.relationships.enabled`, `indexing.relationships.batchSize`,
 `indexing.relationships.parallelism`, and
@@ -574,7 +615,8 @@ Graph and reference pipelines each publish one global coverage state:
 State precedence is `UNAVAILABLE`, `INCOMPLETE`, `COMPLETE`, then `QUALIFIED`.
 After availability is established, active ignore-critical conflicts, unmatched
 critical obligations, and incomplete critical files are evaluated before the
-empty or fully complete inventory cases.
+empty or fully complete inventory cases. An empty inventory is complete only
+after every declared module has a complete product-specific model capability.
 
 All operations that read persisted semantic graph evidence use the global graph
 state. All operations that read persisted reference evidence or
@@ -603,8 +645,9 @@ counts, and limitation codes that explain that boundary.
 Availability depends on committed inventory and stage outcomes, not on a
 non-empty fact table. A compatible store without a committed current inventory
 is `UNAVAILABLE`. After inventory commit, zero eligible files is `COMPLETE` only
-when there is no unmatched critical obligation. An accepted obligation that
-lost its last match keeps the state `INCOMPLETE`.
+when every declared module has a complete product-specific model capability and
+there is no unmatched critical obligation. An accepted obligation that lost its
+last match keeps the state `INCOMPLETE`.
 With eligible files and no critical obligations, non-critical pending work is
 `QUALIFIED`. A complete stage can emit zero facts and still counts as complete.
 
@@ -687,6 +730,13 @@ architecture-matched Java 21 runtime. The component uses its own IntelliJ
 libraries, plugin files, and Java runtime. It does not reuse the interactive
 IDEA application files and does not download a runtime on first use.
 
+The headless component also contains the release-matched Android/AGP model
+provider and its dependencies. The payload manifest declares its model-provider
+protocol and host-product compatibility. Exact-root bootstrap validates that
+capability before it launches an Android Studio-owned root. Managed and
+standalone roles use the same provider; neither imports model state from the
+interactive host.
+
 The launcher assigns workspace-keyed `idea.config.path`, `idea.system.path`,
 log, and temporary directories below machine-local Kast state. The key is a
 stable digest of the canonical exact root and sidecar release identity. Two
@@ -708,6 +758,7 @@ Setup verification must prove:
 - the bundled sidecar matches the installed Kast release;
 - the headless archive and native libraries match the setup-bundle platform;
 - the bundled Java runtime matches the setup-bundle architecture;
+- the bundled Android/AGP provider matches the sidecar release and protocol;
 - the sidecar starts with `JAVA_HOME` unset and no system `java` on `PATH`;
 - the sidecar starts on macOS for one exact workspace root;
 - IDEA and the sidecar have distinct process and virtual file system state;
@@ -716,15 +767,17 @@ Setup verification must prove:
 
 The release produces and records separate macOS arm64 and x64 headless backend
 artifacts before it assembles the setup bundles. Release checksum and provenance
-checks cover each native backend, matching Java runtime, and final setup bundle.
-Release review must also confirm the IntelliJ and Java runtime redistribution
-terms and report the setup-bundle and resident-memory increase.
+checks cover each native backend, Android/AGP provider and dependency, matching
+Java runtime, and final setup bundle. Release review must also confirm the
+IntelliJ, Android/AGP provider, provider-dependency, and Java runtime
+redistribution terms and report the setup-bundle and resident-memory increase.
 
-The Rust bundle manifest records the native sidecar and Java runtime as separate
-components with their checksums, architecture, release identity, and install
-paths. Rust packaging and install operations validate and activate the pair in
-one transaction, write both components to the installation receipt, and roll
-both back on failure. `install.sh` remains a delegate to that authority.
+The Rust bundle manifest records the native sidecar, its model-provider
+capabilities, and Java runtime with their checksums, architecture, release
+identity, and install paths. Rust packaging and install operations validate and
+activate the payload in one transaction, write every component to the
+installation receipt, and roll the payload back on failure. `install.sh`
+remains a delegate to that authority.
 
 General runtime readiness remains independent of sidecar indexing progress.
 Status output reports runtime readiness, graph coverage, and reference coverage
@@ -796,14 +849,19 @@ Implementation is complete only when the following checks exist and pass:
    detection with hard-exclusion precedence. They also prove one external-edit
    producer per writer lease, direct-mutation and watcher-trigger serialization
    through the full critical-path receipt protocol, and stale lease-epoch
-   rejection.
+   rejection. Android configuration tests cover explicit variant selection,
+   the exact `debug` and sole-variant defaults, ambiguous and unknown variants,
+   composite-build project-path collisions, and live model invalidation after a
+   selection change.
 2. Index-store tests cover independent graph and reference progress, the
    fact-preserving current-schema migration, unsupported-schema cold rebuild,
    legacy rows remaining non-queryable until reindex, external-boundary graph
    cleanup, model-only dependency, compiler argument, and classpath changes,
    admitted and user-ignored peer declaration changes invalidating unchanged
    callers in the same and downstream compilation units, scope reconciliation,
-   global coverage states, and retained generations.
+   global coverage states, and retained generations. Android model tests include
+   model-provider identity, AGP version, selected variant, source-provider
+   ownership, and compiler-cohort identity in the model and stage fingerprints.
 3. A RED worker integration test injects request cancellation and proves the
    current request-owned path stops remaining graph work. The same test then
    proves the workspace-owned worker continues. This proves isolation without
@@ -863,12 +921,25 @@ Implementation is complete only when the following checks exist and pass:
    commit.
    Supervisor-crash tests prove control-channel EOF or lease expiry stops the
    orphan, releases its lock, and permits replacement.
+   The Android Studio case imports a real AGP application-and-library fixture
+   with two flavor dimensions and `:app` configured for a non-default
+   `demoFreeDebug` variant. It proves the isolated provider owns
+   `src/main/kotlin`, each individual flavor root, the combined-flavor root
+   `src/demoFree/kotlin`, and `src/demoFreeDebug/kotlin`. It excludes generated
+   output and commits generation-pinned graph edges and references across the
+   main, combined-flavor, and full-variant roots. A variant or AGP-model change
+   invalidates that evidence.
+   Missing or incompatible provider capability keeps both evidence families
+   `UNAVAILABLE`; generic Gradle discovery and zero-file `COMPLETE` are rejected.
 6. Packaging tests prove native macOS arm64 and x64 headless artifacts contain
    matching native libraries and that the normal install path installs the
    matching Java 21 runtime. A launch test unsets `JAVA_HOME`, removes system
    `java` from `PATH`, and proves the installed sidecar selects its bundled
-   runtime. Transaction tests prove the bundle manifest, installation receipt,
-   and rollback cover both the native sidecar and Java runtime.
+   runtime. Both architecture payloads contain the release-matched Android/AGP
+   provider and capability manifest. A missing or mismatched provider produces
+   the typed model-capability failure before indexing. Transaction tests prove
+   the bundle manifest, installation receipt, and rollback cover the native
+   sidecar, model provider, and Java runtime.
 7. Under each supported host, a macOS integration check edits a saved Kotlin
    file while the host is active, attempts reads both before and during sidecar
    reconciliation, and proves no stale generation is admitted without using the
@@ -885,18 +956,18 @@ Implementation is complete only when the following checks exist and pass:
 
 | Contract | Owning area |
 | --- | --- |
-| Exact-root bootstrap | `cli-rs/src/execution/runtime/` |
-| Resident host-claim registration, supervision, refresh forwarding, and writer cutover | `backend-idea/` |
+| Exact-root bootstrap and host-product/payload capability binding | `cli-rs/src/execution/runtime/` |
+| Resident host-product claim, supervision, refresh forwarding, and writer cutover; no model or VFS sharing | `backend-idea/` |
 | Sidecar control, runtime status, and typed result contracts | `analysis-api/`, `backend-headless/`, and `cli-rs/src/semantics/` |
-| Saved-file project model and background worker | `backend-headless/` |
+| Saved-file JVM and Android/AGP model, selected variants, source-provider ownership, and background worker | `backend-headless/` |
 | Focused live analysis and read-only persisted access | `backend-idea/` |
-| Exact-root coordination, host-claim CAS, writer lease, stage state, scope reconciliation, and generations | `index-store/` |
-| Workspace collections, `.kastignore`, precedence, resolved JSON projection, and configuration transaction serialization | `cli-rs/src/configuration/` |
+| Exact-root coordination, host-claim CAS, writer lease, product-model fingerprints, stage state, scope reconciliation, and generations | `index-store/` |
+| Workspace collections, `.kastignore`, Android selected variants, precedence, resolved JSON projection, and configuration transaction serialization | `cli-rs/src/configuration/` |
 | Resolved configuration and control-message schema | `analysis-api/` |
 | Managed and standalone external-edit watchers and snapshot transport | `backend-idea/` and `backend-headless/` |
 | Critical-path receipt and ledger authority | `cli-rs/src/configuration/` |
 | Critical-path inventory proof and prepared scope-generation commit | `backend-headless/` and `index-store/` |
-| Native macOS component and Java runtime manifest, packaging, installation, receipt, and rollback | `cli-rs/src/configuration/bundle.rs`, `cli-rs/src/operations/package.rs`, `cli-rs/src/operations/install/`, `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
+| Native macOS component, Android/AGP provider, and Java runtime manifest, packaging, installation, receipt, and rollback | `backend-headless/build.gradle.kts`, `cli-rs/src/configuration/bundle.rs`, `cli-rs/src/operations/package.rs`, `cli-rs/src/operations/install/`, `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
 
 ## Consequences
 
