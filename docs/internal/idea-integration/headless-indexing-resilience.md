@@ -271,9 +271,14 @@ Graph and reference pipelines each publish one global coverage state:
 | State | Meaning | Operation behavior |
 | --- | --- | --- |
 | `COMPLETE` | Every eligible file has current complete evidence, and every critical obligation is fulfilled. | Run with current evidence. |
-| `QUALIFIED` | All critical files are complete, but non-critical work is pending, stale, limited, external-boundary, or failed. | Run and return global coverage limitations. |
+| `QUALIFIED` | Every critical obligation is fulfilled and all critical files are complete, but non-critical work is pending, stale, limited, external-boundary, or failed. | Run and return global coverage limitations. |
 | `INCOMPLETE` | A critical obligation is unmatched, or at least one critical file lacks current complete evidence. | Reject operations for that evidence family. |
 | `UNAVAILABLE` | No admissible persisted generation can be served, including while the project model is unavailable. | Reject operations for that evidence family. |
+
+State precedence is `UNAVAILABLE`, `INCOMPLETE`, `COMPLETE`, then `QUALIFIED`.
+After availability is established, unmatched critical obligations and
+incomplete critical files are evaluated before the empty or fully complete
+inventory cases.
 
 All semantic graph operations use the global graph state. All reference
 operations use the global reference state. Reference-derived topology remains
@@ -293,10 +298,10 @@ counts, and limitation codes that explain that boundary.
 
 Availability depends on committed inventory and stage outcomes, not on a
 non-empty fact table. A compatible store without a committed current inventory
-is `UNAVAILABLE`. After the worker commits a current inventory, zero eligible
-files is `COMPLETE`. With eligible files and no critical obligations,
-non-critical pending work is `QUALIFIED`. A complete stage can emit zero facts
-and still counts as complete.
+is `UNAVAILABLE`. After inventory commit, zero eligible files is `COMPLETE` only when there is no unmatched critical obligation.
+An accepted obligation that lost its last match keeps the state `INCOMPLETE`.
+With eligible files and no critical obligations, non-critical pending work is
+`QUALIFIED`. A complete stage can emit zero facts and still counts as complete.
 
 `COMPLETE` and `QUALIFIED` operations exit successfully. `INCOMPLETE` and
 `UNAVAILABLE` graph operations retain `GRAPH_EVIDENCE_INCOMPLETE` and
