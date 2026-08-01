@@ -1,0 +1,452 @@
+---
+type: Design Proposal
+title: VFS-Resilient Headless Indexing
+description: Proposed isolation, scope, recovery, and coverage contracts for durable graph and reference indexing on macOS.
+tags: [internal, design, macos, headless, indexing, semantic-graph, references, vfs]
+code_sources:
+  - path: cli-rs/src/execution/runtime/backend/workspace.rs
+  - path: cli-rs/src/execution/runtime/backend/descriptors.rs
+  - path: cli-rs/src/configuration/config/model.rs
+  - path: cli-rs/src/configuration/config/workspace/mutation.rs
+  - path: cli-rs/src/agent/adapter/graph.rs
+  - path: cli-rs/src/agent/navigation/native_graph/source_scope.rs
+  - path: cli-rs/src/semantics/repository_intelligence/coverage/model.rs
+  - path: cli-rs/src/semantics/repository_intelligence/coverage/read.rs
+  - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt
+  - path: analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcAnalysisDispatcher.kt
+  - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/workspace/indexing/IdeaProjectIndexer.kt
+  - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/sqlite/stage/FileStageInventoryStore.kt
+  - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/indexing/ReferenceIndexer.kt
+  - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt
+  - path: .github/scripts/release/actions/build-setup-bundle/action.yml
+  - path: scripts/packaging/package-headless-runtime.sh
+  - path: install.sh
+---
+
+# VFS-Resilient Headless Indexing
+
+**Status:** Proposed for review. The sections from **Proposed ownership** through
+**Migration** are normative if this proposal is accepted.
+
+**Audience:** Maintainers of the Kast runtime, index store, CLI, IDEA plugin,
+headless backend, and release packages.
+
+This proposal separates durable indexing from the interactive IDEA virtual file
+system. It also makes partial graph and reference evidence useful without
+claiming complete results.
+
+## Problem
+
+Users observe repeated incomplete graph failures when interactive IDEA virtual
+file system activity cancels or invalidates graph and reference work. This is a
+reported production symptom. This proposal does not claim a local reproduction.
+
+The current implementation has five relevant constraints:
+
+1. macOS rejects explicit local headless runtime selection.
+2. Semantic graph refresh runs in the requesting coroutine and checks both
+   coroutine cancellation and IDEA progress cancellation.
+3. Native graph source selection requires complete relationship indexing even
+   though graph extraction reads PSI and Kotlin compiler facts directly.
+4. Native graph reads reject globally incomplete persisted graph evidence.
+5. Release setup bundles contain the headless backend, but the normal macOS
+   installer downloads only the native CLI and IDEA plugin. It does not install
+   or activate the bundled headless component.
+
+These constraints couple graph availability to interactive IDEA work and to a
+separate reference-index stage. One cancelled or failed file can therefore make
+all native graph operations unavailable.
+
+## Goals
+
+- Isolate durable graph and reference indexing from the interactive IDEA
+  virtual file system.
+- Preserve committed batches across cancellation, restart, and configuration
+  changes.
+- Let non-critical gaps produce qualified evidence instead of a global failure.
+- Let a workspace opt into strict coverage for configured critical paths.
+- Exclude generated output before it reaches any source-taking Kast operation.
+- Apply indexing scope and batch-size changes without a runtime restart.
+- Keep runtime readiness separate from graph and reference coverage.
+
+## Non-goals
+
+- Merge unsaved IDEA document content into the persisted index.
+- Add readiness rules for individual graph or reference operations.
+- Let IDEA and headless backends write the same index.
+- Replace generation-pinned SQLite reads.
+- Add graph parallelism controls.
+- Change the semantic implementation of focused IDEA analysis for admitted
+  source paths.
+
+## Proposed ownership
+
+On macOS, the IDEA runtime coordinator also manages one exact-root headless
+index sidecar. The sidecar runs in a separate JVM with a separate virtual file
+system. The normal macOS install path consumes the release-matched headless
+component that release setup bundles already carry.
+
+```mermaid
+flowchart LR
+    coordinator["Exact-root runtime coordinator"] --> idea["Interactive IDEA backend"]
+    coordinator --> headless["Headless index sidecar"]
+    config["Workspace TOML and .kastignore"] --> headless
+    disk["Saved workspace files"] --> headless
+    headless --> store["SQLite source index"]
+    idea --> live["Focused live analysis"]
+    store --> queries["Graph and reference queries"]
+    idea -. "read persisted evidence" .-> store
+```
+
+The headless sidecar is the sole persistent writer. It indexes saved disk state
+only. The IDEA backend keeps focused live analysis and may read persisted
+evidence. It does not perform persistent graph or reference writes.
+
+The sidecar starts automatically with the exact-root IDEA runtime. It remains
+available for that workspace until the runtime coordinator stops it. A request
+can wake or enqueue work, but request cancellation cannot cancel the
+workspace-owned worker.
+
+The coordinator supervises the sidecar. A sidecar crash does not stop the IDEA
+runtime. The coordinator reports unavailable graph and reference coverage,
+preserves the last committed generation, and restarts the sidecar with bounded
+backoff.
+
+## Source admission
+
+An eligible file is a canonical exact-root Kotlin source file that the complete
+headless IDEA and Gradle model assigns to a source set. A symbolic link must
+resolve inside the exact root. An unowned file is not eligible.
+
+If the project model is missing or stale, the worker does not reconcile the
+store. It preserves the last committed generation and reports graph and
+reference coverage as `UNAVAILABLE` until the model is complete.
+
+The worker computes one effective source set in this order:
+
+1. Normalize the candidate under the exact workspace root.
+2. Reject hard-excluded output.
+3. Apply repository and workspace ignore rules.
+4. Classify the remaining path as critical or non-critical.
+5. Attach Gradle module and source-set ownership.
+
+### Hard exclusions
+
+Hard exclusions apply to source inventory, graph, reference, diagnostics,
+symbol, and mutation path admission. Commands that do not admit a source path
+are unaffected. No configuration can re-include a hard-excluded path.
+
+The hard-exclusion authority combines:
+
+- Gradle and IDEA output or excluded roots;
+- any path with a `.gradle`, `build`, or `out` directory component;
+- built plugin output below those roots.
+
+This rule prevents generated classes, packaged plugins, sandboxes, and copied
+sources from entering semantic operations.
+
+### User ignore rules
+
+The repository root can contain `.kastignore`. Its path separator is `/`. A
+leading slash anchors a pattern at the workspace root. A trailing slash matches
+directories. `**` matches across directory boundaries. `#` starts a comment,
+`!` re-includes a prior match, and the last matching pattern wins. Hard
+exclusions still win over negation. Absolute patterns and parent traversal are
+invalid.
+
+The machine-local workspace TOML can add `indexing.ignoredPaths`. Repository
+and workspace ignore rules affect graph and reference indexing only. They do
+not change focused diagnostics, mutation, or other interactive analysis.
+The effective ignore set is the union of the final `.kastignore` result and
+all matching workspace ignore patterns. A `.kastignore` negation cannot
+re-include a workspace-ignored path.
+
+Both files are watched. A valid change reconciles the persisted inventory
+without a restart. Newly ignored files lose current graph and reference facts.
+Newly admitted files become pending.
+
+### Critical paths
+
+The machine-local workspace TOML owns one shared
+`indexing.criticalPaths` collection. It applies to graph and reference
+coverage. The default collection is empty.
+
+Workspace ignored and critical collections accept positive repository-relative
+patterns. They use the same anchoring, directory, and wildcard rules as
+`.kastignore`, but do not accept comments or negation.
+
+A resolved eligible file cannot be both ignored and critical. Conflict
+validation uses the current resolved source inventory, not abstract pattern
+intersection. A future file that creates a conflict makes the new inventory
+invalid and leaves the last valid scope active.
+
+Adding a critical pattern that matches no current eligible file is a typed
+configuration error. After a pattern is accepted, deleting or renaming its
+last match does not invalidate the configuration. It makes graph and reference
+coverage `INCOMPLETE` with a typed unmatched-critical-path limitation until a
+file matches again or the pattern is removed.
+
+Each accepted pattern is a critical obligation. The obligation is fulfilled
+only while it matches at least one eligible file. Every file matched by a
+fulfilled obligation is critical. Deletion, hard exclusion, or loss of source
+ownership can therefore make an accepted obligation unmatched.
+
+If a live configuration is invalid, the worker keeps the last valid scope and
+reports the error. It does not apply a partial configuration and does not stop.
+
+The CLI provides idempotent collection mutations:
+
+```shell
+kast config add indexing.criticalPaths 'module/src/main/**' --workspace-root "$PWD"
+kast config remove indexing.criticalPaths 'module/src/main/**' --workspace-root "$PWD"
+kast config add indexing.ignoredPaths 'samples/**' --workspace-root "$PWD"
+kast config remove indexing.ignoredPaths 'samples/**' --workspace-root "$PWD"
+```
+
+Adding an existing value and removing an absent value are successful no-ops.
+Malformed patterns, paths outside the root, and ignore-critical conflicts fail
+with typed configuration errors.
+
+## Work order
+
+Graph and reference indexing are independent pipelines. Graph work does not
+wait for relationship outcomes. Reference work does not wait for graph
+outcomes.
+
+Semantic graph pending-work selection, source progress, coverage fingerprints,
+and coverage classification must not read relationship-stage terminality.
+Reference-derived topology remains reference evidence; removing these gates
+does not make that topology independent of reference indexing.
+
+Each pipeline uses this stable priority order:
+
+1. critical paths;
+2. `main` source sets;
+3. `testFixtures` source sets;
+4. `test` source sets;
+5. the existing module-priority order;
+6. normalized path order.
+
+The worker uses bounded batches and short SQLite transactions. Existing
+`indexing.relationships.batchSize` and
+`indexing.relationships.parallelism` settings remain authoritative for
+references. A new positive integer `indexing.graph.batchSize` replaces the
+hard-coded semantic graph batch size. The worker reloads this value with the
+other watched scope settings.
+
+## Cancellation and retry
+
+Cancellation is a scheduling result, not a file failure. The worker stops the
+current uncommitted unit, keeps it pending, and retries it with bounded
+backoff. Earlier committed batches remain available.
+
+Three consecutive non-cancellation failures for one content fingerprint make
+that stage `LIMITED`. The worker retries limited work at a slower periodic
+interval. A file change or explicit refresh makes that work immediately
+eligible again.
+
+Only facts tied to the current content fingerprint and a current `COMPLETE` or
+`LIMITED` outcome are queryable. Prior facts for changed content are stale and
+cannot appear in a qualified result.
+
+The retry policy has one owner in the workspace worker. Request handlers do not
+implement their own retry loops.
+
+## Global coverage
+
+Runtime readiness, graph coverage, and reference coverage are three separate
+facts. One cannot imply another.
+
+Graph and reference pipelines each publish one global coverage state:
+
+| State | Meaning | Operation behavior |
+| --- | --- | --- |
+| `COMPLETE` | Every eligible file has current complete evidence, and every critical obligation is fulfilled. | Run with current evidence. |
+| `QUALIFIED` | All critical files are complete, but non-critical work is pending, stale, limited, or failed. | Run and return global coverage limitations. |
+| `INCOMPLETE` | A critical obligation is unmatched, or at least one critical file lacks current complete evidence. | Reject operations for that evidence family. |
+| `UNAVAILABLE` | No admissible persisted generation can be served, including while the project model is unavailable. | Reject operations for that evidence family. |
+
+All semantic graph operations use the global graph state. All reference
+operations use the global reference state. Reference-derived topology remains
+reference evidence even when a result presents it beside graph facts. It does
+not gate semantic graph construction or graph coverage. The design does not
+compute path-specific or operation-specific readiness.
+
+A graph result admits its semantic graph section from the global graph state.
+It includes reference-derived topology only when the global reference state is
+`COMPLETE` or `QUALIFIED`. If reference coverage is `INCOMPLETE` or
+`UNAVAILABLE`, the result omits that topology, attaches the corresponding
+reference error and counts, and retains the graph operation exit status.
+
+A qualified positive result is usable. A qualified empty result is not proof
+that no matching fact exists. Results must retain the generation, global state,
+counts, and limitation codes that explain that boundary.
+
+Availability depends on committed inventory and stage outcomes, not on a
+non-empty fact table. A compatible store without a committed current inventory
+is `UNAVAILABLE`. After the worker commits a current inventory, zero eligible
+files is `COMPLETE`. With eligible files and no critical obligations,
+non-critical pending work is `QUALIFIED`. A complete stage can emit zero facts
+and still counts as complete.
+
+`COMPLETE` and `QUALIFIED` operations exit successfully. `INCOMPLETE` and
+`UNAVAILABLE` graph operations retain `GRAPH_EVIDENCE_INCOMPLETE` and
+`GRAPH_EVIDENCE_UNAVAILABLE`. Reference operations use the corresponding
+`REFERENCE_EVIDENCE_INCOMPLETE` and `REFERENCE_EVIDENCE_UNAVAILABLE` typed
+errors. These errors exit non-zero. Errors and qualified results include total,
+complete, critical-file, critical-obligation, unmatched-critical-obligation,
+pending, stale, limited, and failed counts. No operation computes a different
+readiness state from its requested symbol or path.
+
+Graph and reference states can differ. For example, graph coverage can be
+`COMPLETE` while reference coverage is `QUALIFIED`.
+
+## Persistence and consistency
+
+The sidecar preserves the existing exact-root SQLite database and generation
+contract. It scans outside transactions and serializes short writes. Readers
+pin one generation and reject mixed-generation results.
+
+Admitted source membership and source ownership contribute to the stage input
+fingerprint. A change to `.kastignore`, ignored paths, hard exclusions, or
+source ownership invalidates only affected stage work. A critical-path change
+updates priority and coverage metadata without invalidating current facts.
+
+The single-writer rule removes cross-backend write arbitration. Read-only CLI
+and IDEA consumers can continue to use SQLite generation checks while the
+sidecar commits later batches.
+
+The coordinator owns the writer-lock protocol and lock-file path beside the
+exact-root database. The sidecar process acquires the operating-system lock and
+holds its file descriptor before it opens the store for writes. IDEA opens
+persisted evidence read-only in sidecar mode. Startup fails the sidecar with a
+typed writer-conflict error if another process holds the lock.
+
+The release cutover first asks the old IDEA index worker to stop and drain. The
+coordinator requires confirmation that the worker closed its writable store;
+an older writer is not assumed to honor the new lock. Without confirmation,
+the sidecar does not start or migrate and the coordinator reports
+`INDEX_WRITER_CUTOVER_FAILED`. After confirmation, the sidecar can acquire the
+lock and open the store. The operating system releases the lock when the
+sidecar exits, so a matching coordinator can recover after a crash without
+guessing writer liveness.
+
+One scope-reconciliation transaction removes excluded graph and reference
+facts, records the new scope fingerprint and coverage metadata, and advances
+the generation. New admissions remain pending after that commit. A reader
+therefore cannot observe removed facts with the new coverage claim.
+
+## macOS distribution and lifecycle
+
+The macOS setup bundle includes a release-matched headless component. The
+component uses its own IntelliJ runtime and plugin files. It does not reuse the
+interactive IDEA application files and does not download a runtime on first
+use.
+
+The release pipeline already places a headless backend archive in macOS setup
+bundles. This design changes the public macOS install and runtime routes so
+they install and use that payload as the sidecar. Setup verification must
+prove:
+
+- the bundled sidecar matches the installed Kast release;
+- the sidecar starts on macOS for one exact workspace root;
+- IDEA and the sidecar have distinct process and virtual file system state;
+- only the sidecar opens the index for writes;
+- stopping the exact-root runtime drains the sidecar before shared state closes.
+
+The release produces macOS arm64 and x64 setup bundles that carry the headless
+component. Existing release checksum and provenance checks cover that payload.
+Release review must also confirm the IntelliJ redistribution terms and report
+the setup-bundle and resident-memory increase.
+
+General runtime readiness remains independent of sidecar indexing progress.
+Status output reports runtime readiness, graph coverage, and reference coverage
+as separate fields.
+
+## Migration
+
+The first compatible sidecar reuses the existing database only after schema and
+scope validation. An incompatible database follows the existing typed rebuild
+path. Migration does not infer complete coverage from old module summaries.
+
+The initial scope reconciliation removes hard-excluded inventory and removes
+graph and reference facts for user-ignored files. It retains current admitted
+facts and queues missing stage work. Existing generation checks remain active
+during this transition.
+
+macOS keeps the current IDEA backend as the interactive default. The change
+removes the local headless prohibition only for the managed index-sidecar path.
+It does not make public mutation commands select an unleased headless backend.
+
+## Verification plan
+
+Implementation is complete only when the following checks exist and pass:
+
+1. Configuration tests cover `.kastignore`, collection mutations, live reload,
+   hard-exclusion precedence, and ignore-critical conflicts.
+2. Index-store tests cover independent graph and reference progress, scope
+   reconciliation, global coverage states, and retained generations.
+3. A RED worker integration test injects request cancellation and proves the
+   current request-owned path stops remaining graph work. The same test then
+   proves the workspace-owned worker continues. This proves isolation without
+   claiming reproduction of the reported production contention.
+4. Worker tests prove cancellation remains pending, three repeated failures
+   become retryable limited outcomes, and stale prior facts stay unqueryable.
+5. Runtime tests prove macOS IDEA startup owns one exact-root sidecar and one
+   persistent writer. Crash and cutover cases must prove lock release,
+   restart, drain, and generation preservation.
+6. Packaging tests prove the normal macOS install path installs and verifies
+   the release-matched headless component from the setup bundle.
+7. A macOS integration check edits a saved Kotlin file while IDEA is active,
+   observes sidecar reconciliation, and reads a generation-pinned graph without
+   using the IDEA virtual file system for persistence.
+
+## Implementation ownership
+
+| Contract | Owning area |
+| --- | --- |
+| Sidecar supervision, exact-root lifecycle, and writer lock | `cli-rs/src/execution/runtime/` |
+| Runtime status and typed result contracts | `analysis-api/` and `cli-rs/src/semantics/` |
+| Saved-file project model and background worker | `backend-headless/` |
+| Focused live analysis and read-only persisted access | `backend-idea/` |
+| Stage state, scope reconciliation, generations, and writer safety | `index-store/` |
+| Workspace collections and `.kastignore` projection | `cli-rs/src/configuration/` and `analysis-api/` |
+| macOS component installation and verification | `install.sh`, `.github/workflows/release.yml`, and `.github/scripts/release/actions/build-setup-bundle/` |
+
+## Consequences
+
+- Interactive IDEA virtual file system pressure cannot directly cancel durable
+  index ownership.
+- Non-critical failures no longer make all graph or reference evidence
+  unavailable.
+- Projects can opt into strict global coverage without changing default
+  usability.
+- The worker consumes memory for a second IntelliJ JVM on macOS.
+- Saved disk state, not unsaved editor state, becomes the persistent evidence
+  authority.
+- Operators must inspect three independent states instead of treating runtime
+  readiness as graph readiness.
+
+## Rejected alternatives
+
+- **Run a background job inside IDEA.** It still shares the interactive virtual
+  file system and cancellation environment.
+- **Let both backends write.** This adds writer election and recovery without a
+  second required writer.
+- **Keep graph refresh request-owned.** A cancelled client can still stop
+  durable progress.
+- **Make graph wait for references.** The graph extractor does not consume the
+  persisted relationship stage.
+- **Compute readiness per operation.** One global state per evidence family is
+  sufficient until a measured use case requires finer scope.
+- **Persist unsaved document overlays.** This would mix interactive and durable
+  source authority.
+- **Download the sidecar on demand.** Startup would depend on network state and
+  could install a release-mismatched backend.
+
+## Related current-state references
+
+- [IDEA indexing and generation](flows/indexing-and-generation.md)
+- [Native graph refresh and queries](flows/graph-queries.md)
+- [IDEA integration architecture decisions](architecture-decisions.md)
+- [IDEA shutdown](flows/shutdown.md)

@@ -44,6 +44,12 @@ The [architecture decisions](architecture-decisions.md) record the boundaries
 that make those flows deterministic. The [increment log](log.md) records
 material changes to this bundle.
 
+## Proposed design
+
+- [VFS-resilient headless indexing](headless-indexing-resilience.md) proposes a
+  macOS headless index sidecar, configurable source scope, durable retry, and
+  separate global graph and reference coverage.
+
 ## Stable integration invariants
 
 1. A normalized workspace root identifies every runtime, index, and graph
