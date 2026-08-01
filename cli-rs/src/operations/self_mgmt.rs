@@ -1,4 +1,5 @@
 use crate::SCHEMA_VERSION;
+use crate::bundle::MACOS_INSTALLED_IDEA_SIDECAR_PROFILE;
 use crate::cli;
 use crate::cli::ReadyTarget;
 use crate::config::{self, PathResolutionReport};
@@ -172,9 +173,10 @@ pub fn doctor(target: ReadyTarget, workspace_root: Option<&Path>) -> Result<Self
             } else {
                 backend.name.trim()
             };
-            if !Path::new(&backend.runtime_libs_dir)
-                .join("classpath.txt")
-                .is_file()
+            if install.profile != MACOS_INSTALLED_IDEA_SIDECAR_PROFILE
+                && !Path::new(&backend.runtime_libs_dir)
+                    .join("classpath.txt")
+                    .is_file()
             {
                 issues.push(format!(
                     "{} backend runtime-libs classpath is missing at {}",

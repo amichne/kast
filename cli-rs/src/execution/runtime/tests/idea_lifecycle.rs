@@ -79,6 +79,89 @@
 
     #[cfg(target_os = "macos")]
     #[test]
+    fn sidecar_host_selection_prefers_owner_then_configured_then_sole_install() {
+        let temp = tempfile::tempdir().unwrap();
+        let workspace = temp.path().join("workspace");
+        std::fs::create_dir(&workspace).unwrap();
+        let owner = supported_idea_test_app(temp.path(), "Owner.app");
+        let configured = supported_idea_test_app(temp.path(), "Configured.app");
+        let sole = supported_idea_test_app(temp.path(), "Sole.app");
+        let mut descriptor = candidate("idea", RuntimeState::Ready, false).descriptor;
+        descriptor.workspace_root = workspace.display().to_string();
+        descriptor.pid = 41;
+
+        let selected = select_macos_idea_app_for_workspace(
+            &workspace,
+            std::slice::from_ref(&descriptor),
+            &configured,
+            vec![sole.clone()],
+            |pid| (pid == 41).then(|| owner.clone()),
+        )
+        .unwrap();
+        assert_eq!(selected, owner);
+
+        let selected = select_macos_idea_app_for_workspace(
+            &workspace,
+            &[],
+            &configured,
+            vec![sole.clone()],
+            |_| None,
+        )
+        .unwrap();
+        assert_eq!(selected, std::fs::canonicalize(&configured).unwrap());
+
+        let selected = select_macos_idea_app_for_workspace(
+            &workspace,
+            &[],
+            Path::new("idea"),
+            vec![sole.clone()],
+            |_| None,
+        )
+        .unwrap();
+        assert_eq!(selected, sole);
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn sidecar_host_selection_reports_typed_install_ambiguity() {
+        let temp = tempfile::tempdir().unwrap();
+        let workspace = temp.path().join("workspace");
+        std::fs::create_dir(&workspace).unwrap();
+        let idea = supported_idea_test_app(temp.path(), "IntelliJ IDEA.app");
+        let android = supported_android_studio_test_app(temp.path(), "Android Studio.app");
+
+        let error = select_macos_idea_app_for_workspace(
+            &workspace,
+            &[],
+            Path::new("idea"),
+            vec![idea, android],
+            |_| None,
+        )
+        .expect_err("multiple compatible installs require an explicit host");
+
+        assert_eq!(error.code, "IDEA_HOST_AMBIGUOUS");
+    }
+
+    #[cfg(target_os = "macos")]
+    fn supported_idea_test_app(root: &Path, name: &str) -> PathBuf {
+        supported_test_app(root, name, "IU-262.1")
+    }
+
+    #[cfg(target_os = "macos")]
+    fn supported_android_studio_test_app(root: &Path, name: &str) -> PathBuf {
+        supported_test_app(root, name, "AI-261.1")
+    }
+
+    #[cfg(target_os = "macos")]
+    fn supported_test_app(root: &Path, name: &str, build: &str) -> PathBuf {
+        let app = root.join(name);
+        std::fs::create_dir_all(app.join("Contents/Resources")).unwrap();
+        std::fs::write(app.join("Contents/Resources/build.txt"), build).unwrap();
+        app
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
     fn running_idea_host_without_compatible_metadata_is_rejected() {
         let mut host = candidate("idea", RuntimeState::Ready, false).descriptor;
         host.backend_version = "stale".to_string();

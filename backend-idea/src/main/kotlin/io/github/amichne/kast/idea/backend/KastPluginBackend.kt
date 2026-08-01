@@ -21,6 +21,8 @@ import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiModificationTracker
 import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
+import io.github.amichne.kast.api.client.IndexingConfig
+import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.continuation.ContinuationStateDisposer
 import io.github.amichne.kast.api.continuation.ContinuationTokenIssuer
 import io.github.amichne.kast.api.continuation.ServerHeldContinuationStore as SharedContinuationStore
@@ -101,6 +103,10 @@ internal class KastPluginBackend(
     internal val workspaceIdentity: IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
     internal val referenceIndexLookup: ReferenceIndexLookup = ReferenceIndexLookup.Unavailable,
     internal val semanticGraphStore: SqliteSourceIndexStore? = null,
+    internal val persistedIndexAccess: PersistedIndexAccess = PersistedIndexAccess.READ_WRITE,
+    initialIndexingConfig: IndexingConfig = KastConfig.defaults().indexing,
+    internal val indexingConfigLoader: () -> IndexingConfig = { initialIndexingConfig },
+    internal val workspaceIndexingScopeCache: WorkspaceIndexingScopeCache = WorkspaceIndexingScopeCache(),
     internal val referenceSearchClock: ReferenceSearchClock = ReferenceSearchClock.System,
     internal val semanticAdmissionAwaiter: IdeaSemanticAdmissionAwaiter =
         IdeaSemanticAdmissionAwaiter.forRequestBudget(limits.requestTimeoutMillis),
@@ -109,7 +115,7 @@ internal class KastPluginBackend(
     internal val psiGeneration: () -> Long = { PsiModificationTracker.getInstance(project).modificationCount },
     internal val readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
     internal val referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
-    internal val semanticGraphBatchSize: Int = 32,
+    @Volatile internal var semanticGraphBatchSize: Int = 32,
     internal val indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
         IdeaIndexSemanticAdmission.Status.Ready
     },
@@ -126,6 +132,33 @@ internal class KastPluginBackend(
         ),
 ) : CloseableAnalysisBackend {
     init { require(semanticGraphBatchSize > 0) { "Semantic graph batch size must be positive" } }
+
+    @Volatile
+    private var lastValidIndexingConfig: IndexingConfig = initialIndexingConfig
+
+    internal fun updateSemanticGraphBatchSize(batchSize: Int) {
+        require(batchSize > 0) { "Semantic graph batch size must be positive" }
+        semanticGraphBatchSize = batchSize
+    }
+
+    internal fun currentPersistedIndexingConfig(): IndexingConfig = try {
+        indexingConfigLoader().also { lastValidIndexingConfig = it }
+    } catch (_: Exception) {
+        lastValidIndexingConfig
+    }
+
+    internal fun persistedIndexingScope(paths: Collection<String>): WorkspaceIndexingScope = try {
+        workspaceIndexingScopeCache.resolve(
+            workspaceRoot = workspaceRoot,
+            config = currentPersistedIndexingConfig(),
+            candidates = paths.map(Path::of),
+        )
+    } catch (error: IndexingScopeConfigurationException) {
+        throw io.github.amichne.kast.api.protocol.ValidationException(
+            error.message ?: "Persisted-index scope configuration is invalid",
+            details = mapOf("scopeError" to error.code),
+        )
+    }
 
     internal val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
     internal val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
@@ -229,7 +262,11 @@ internal class KastPluginBackend(
             ReadCapability.IMPLEMENTATIONS,
             ReadCapability.CODE_ACTIONS,
             ReadCapability.COMPLETIONS,
-        ) + setOfNotNull(ReadCapability.SEMANTIC_GRAPH.takeIf { semanticGraphStore != null }),
+        ) + setOfNotNull(
+            ReadCapability.SEMANTIC_GRAPH.takeIf {
+                semanticGraphStore != null && persistedIndexAccess == PersistedIndexAccess.READ_WRITE
+            },
+        ),
         mutationCapabilities = setOf(
             MutationCapability.RENAME,
             MutationCapability.APPLY_EDITS,

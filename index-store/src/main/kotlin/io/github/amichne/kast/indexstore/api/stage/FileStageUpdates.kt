@@ -84,6 +84,27 @@ data class SemanticGraphFileStageUpdate(
     }
 }
 
+data class SemanticGraphFileStageFailureUpdate(
+    val work: PendingFileStage,
+    val scannedContentHash: FileContentHash,
+    val sourcePath: SemanticGraphSourcePath,
+    val code: FileStageFailureCode,
+    val message: String,
+) {
+    init {
+        require(work.stage == FileIndexStage.SEMANTIC_GRAPH) {
+            "Semantic graph failure requires SEMANTIC_GRAPH work"
+        }
+        require(scannedContentHash == work.contentHash) {
+            "Semantic graph failure content hash must match pending work"
+        }
+        require(message.isNotBlank() && message == message.trim() && message.none(Char::isISOControl)) {
+            "Semantic graph failure message must be non-blank, trimmed, and printable"
+        }
+        require(message.length <= 512) { "Semantic graph failure message must be at most 512 characters" }
+    }
+}
+
 data class SemanticGraphFileStageRemoval(
     val outcomePath: String,
     val sourcePath: SemanticGraphSourcePath,

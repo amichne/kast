@@ -3,6 +3,7 @@ use crate::bundle::{
     AGENT_CLI_BUNDLE_PATH, BUNDLE_MANIFEST_FILE, BUNDLE_MANIFEST_KIND,
     BUNDLE_MANIFEST_SCHEMA_VERSION, BundleManifest, BundleVersion, CONTROL_CLI_BUNDLE_PATH,
     HEADLESS_BACKEND_KIND, HEADLESS_BACKEND_NAME, UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID,
+    is_macos_installed_idea_sidecar,
 };
 use crate::cli::{KastHarness, SetupArgs};
 use crate::config;

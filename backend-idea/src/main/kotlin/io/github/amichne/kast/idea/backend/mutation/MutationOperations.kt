@@ -161,6 +161,12 @@ internal suspend fun KastPluginBackend.optimizeImportsOperation(query: ParsedImp
 internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuery): RefreshResult {
         return telemetry.inSpan(IdeaTelemetryScope.REFRESH, "kast.idea.refresh") {
             if (query.externalFailureIds.isNotEmpty()) {
+                if (persistedIndexAccess != PersistedIndexAccess.READ_WRITE) {
+                    throw CapabilityNotSupportedException(
+                        capability = "REFRESH_WORKSPACE",
+                        message = "Persisted reference writes belong to the headless sidecar",
+                    )
+                }
                 val store = semanticGraphStore ?: throw CapabilityNotSupportedException(
                     capability = "SEMANTIC_GRAPH",
                     message = "External graph boundaries require the IDEA source index",
@@ -201,7 +207,8 @@ internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuer
                 .filter(SemanticAdmissionStatus::isRemoved)
                 .map(SemanticAdmissionStatus::filePath)
             val relationshipFailures = semanticGraphStore?.takeIf {
-                admittedPaths.isNotEmpty() || removedPaths.isNotEmpty()
+                persistedIndexAccess == PersistedIndexAccess.READ_WRITE &&
+                    (admittedPaths.isNotEmpty() || removedPaths.isNotEmpty())
             }?.let { store ->
                 val requestContext = currentCoroutineContext()
                 requestContext.ensureActive()
@@ -214,7 +221,12 @@ internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuer
                     },
                     workspaceIdentity = sharedWorkspaceIdentity,
                     readGradleWorkspaceModel = workspaceModelReader,
-                ).refreshSymbolRelationships(admittedPaths, removedPaths)
+                    scopeCache = workspaceIndexingScopeCache,
+                ).refreshSymbolRelationships(
+                    admittedPaths,
+                    removedPaths,
+                    currentPersistedIndexingConfig(),
+                )
                 requestContext.ensureActive()
                 outcomes.map { outcome ->
                     val failure = requireNotNull(outcome.failure) {

@@ -103,12 +103,12 @@ fn effective_backend_diagnostic(
             source_path: Some(plugin.metadata_path.display().to_string()),
         };
     }
-    if let Some(backend) = install.and_then(|install| install.backends.first()) {
+    if let Some((install, backend)) =
+        install.and_then(|install| install.backends.first().map(|backend| (install, backend)))
+    {
+        let source_path = effective_backend_source_path(install, backend);
         return DoctorAgentBackendDiagnostic {
-            state: if Path::new(&backend.runtime_libs_dir)
-                .join("classpath.txt")
-                .is_file()
-            {
+            state: if effective_backend_payload_exists(install, backend, &source_path) {
                 AgentResourceState::Managed
             } else {
                 AgentResourceState::Missing
@@ -116,7 +116,7 @@ fn effective_backend_diagnostic(
             kind: Some(backend.name.clone()),
             version: Some(backend.version.clone()),
             revision: None,
-            source_path: Some(backend.runtime_libs_dir.clone()),
+            source_path: Some(source_path.display().to_string()),
         };
     }
     DoctorAgentBackendDiagnostic {
@@ -126,6 +126,44 @@ fn effective_backend_diagnostic(
         revision: None,
         source_path: workspace_root.map(|root| root.display().to_string()),
     }
+}
+
+fn effective_backend_source_path(
+    install: &InstallState,
+    backend: &manifest::BackendComponentState,
+) -> PathBuf {
+    #[cfg(target_os = "macos")]
+    if install.profile == MACOS_INSTALLED_IDEA_SIDECAR_PROFILE
+        && let Some(idea_home) = &backend.idea_home
+    {
+        return Path::new(idea_home).join("plugins/kast-headless");
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = install;
+    PathBuf::from(&backend.runtime_libs_dir)
+}
+
+fn effective_backend_payload_exists(
+    install: &InstallState,
+    _backend: &manifest::BackendComponentState,
+    source_path: &Path,
+) -> bool {
+    #[cfg(target_os = "macos")]
+    if install.profile == MACOS_INSTALLED_IDEA_SIDECAR_PROFILE {
+        let plugin_lib = source_path.join("lib");
+        return plugin_lib.is_dir()
+            && fs::read_dir(plugin_lib).is_ok_and(|entries| {
+                entries.filter_map(std::result::Result::ok).any(|entry| {
+                    entry
+                        .path()
+                        .extension()
+                        .is_some_and(|extension| extension == "jar")
+                })
+            });
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = install;
+    source_path.join("classpath.txt").is_file()
 }
 
 fn plugin_workspace_evidence(workspace_root: &Path) -> Option<PluginWorkspaceEvidence> {
@@ -163,4 +201,74 @@ fn plugin_workspace_evidence(workspace_root: &Path) -> Option<PluginWorkspaceEvi
             .and_then(serde_json::Value::as_u64)
             .map(|revision| revision.to_string()),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn installed_idea_sidecar_plugin_is_a_managed_backend_without_runtime_classpath() {
+        let temp = tempfile::tempdir().unwrap();
+        let idea_home = temp.path().join("idea-home");
+        let plugin_lib = idea_home.join("plugins/kast-headless/lib");
+        std::fs::create_dir_all(&plugin_lib).unwrap();
+        std::fs::write(plugin_lib.join("kast-headless.jar"), "fixture").unwrap();
+        let install = install_with_backend(
+            MACOS_INSTALLED_IDEA_SIDECAR_PROFILE,
+            &temp.path().join("runtime-libs"),
+            &idea_home,
+        );
+
+        let diagnostic = effective_backend_diagnostic(None, Some(&install), None);
+
+        assert_eq!(diagnostic.state, AgentResourceState::Managed);
+    }
+
+    #[test]
+    fn non_sidecar_backend_still_requires_runtime_classpath() {
+        let temp = tempfile::tempdir().unwrap();
+        let idea_home = temp.path().join("idea-home");
+        let plugin_lib = idea_home.join("plugins/kast-headless/lib");
+        std::fs::create_dir_all(&plugin_lib).unwrap();
+        std::fs::write(plugin_lib.join("kast-headless.jar"), "fixture").unwrap();
+        let install = install_with_backend(
+            "ubuntu-debian-headless",
+            &temp.path().join("runtime-libs"),
+            &idea_home,
+        );
+
+        let diagnostic = effective_backend_diagnostic(None, Some(&install), None);
+
+        assert_eq!(diagnostic.state, AgentResourceState::Missing);
+    }
+
+    fn install_with_backend(profile: &str, runtime_libs: &Path, idea_home: &Path) -> InstallState {
+        serde_json::from_value(serde_json::json!({
+            "profile": profile,
+            "roots": {
+                "install": "/install",
+                "bin": "/install/current/bin",
+                "config": "/install/current/config",
+                "data": "/install/state/data",
+                "cache": "/install/state/cache",
+                "runtime": "/install/state/runtime",
+                "logs": "/install/state/logs",
+                "locks": "/install"
+            },
+            "entrypoints": {
+                "shim": "/install/current/libexec/kastctl",
+                "activeBinary": "/install/current/libexec/kastctl"
+            },
+            "backends": [{
+                "name": "headless",
+                "version": "test",
+                "installDir": idea_home.parent().unwrap().display().to_string(),
+                "runtimeLibsDir": runtime_libs.display().to_string(),
+                "ideaHome": idea_home.display().to_string()
+            }]
+        }))
+        .unwrap()
+    }
 }

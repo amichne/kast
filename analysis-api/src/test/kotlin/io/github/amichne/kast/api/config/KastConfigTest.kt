@@ -47,6 +47,38 @@ class KastConfigTest {
     }
 
     @Test
+    fun `indexing scope and graph batch expose typed defaults`() {
+        val indexing = KastConfig.defaults().indexing
+
+        assertEquals(emptyList<String>(), indexing.criticalPaths.value)
+        assertEquals(emptyList<String>(), indexing.ignoredPaths.value)
+        assertEquals(32, indexing.graph.batchSize.value)
+        assertEquals("indexing", indexing.criticalPaths.section)
+        assertEquals("criticalPaths", indexing.criticalPaths.key)
+        assertEquals("indexing.graph", indexing.graph.batchSize.section)
+    }
+
+    @Test
+    fun `workspace indexing scope arrays and graph batch parse from toml`() {
+        tempDir.resolve("config.toml").writeText(
+            """
+                [indexing]
+                criticalPaths = ["src/main/**", "build.gradle.kts"]
+                ignoredPaths = ["samples/**"]
+
+                [indexing.graph]
+                batchSize = 17
+            """.trimIndent(),
+        )
+
+        val indexing = KastConfig.loadGlobal(configHome = { tempDir }).indexing
+
+        assertEquals(listOf("src/main/**", "build.gradle.kts"), indexing.criticalPaths.value)
+        assertEquals(listOf("samples/**"), indexing.ignoredPaths.value)
+        assertEquals(17, indexing.graph.batchSize.value)
+    }
+
+    @Test
     fun `defaults expose paths and cli sections`() {
         val configFields = KastConfig::class.java.declaredFields.map { it.name }.toSet()
 
@@ -168,6 +200,9 @@ class KastConfigTest {
             "indexing.relationships" to "batchSize",
             "indexing.relationships" to "parallelism",
             "indexing.relationships" to "modulePriorityDepth",
+            "indexing" to "criticalPaths",
+            "indexing" to "ignoredPaths",
+            "indexing.graph" to "batchSize",
             "indexing" to "identifierIndexWaitMillis",
             "indexing.remote" to "enabled",
             "indexing.remote" to "sourceIndexUrl",

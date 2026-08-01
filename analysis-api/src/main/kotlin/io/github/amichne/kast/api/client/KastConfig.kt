@@ -74,6 +74,11 @@ data class KastConfig(
                     ),
                 ),
                 indexing = IndexingConfig(
+                    criticalPaths = IndexingCriticalPaths(emptyList()),
+                    ignoredPaths = IndexingIgnoredPaths(emptyList()),
+                    graph = GraphIndexingConfig(
+                        batchSize = GraphIndexingBatchSize(32),
+                    ),
                     relationships = RelationshipIndexingConfig(
                         enabled = RelationshipIndexingEnabled(true),
                         batchSize = RelationshipIndexingBatchSize(50),

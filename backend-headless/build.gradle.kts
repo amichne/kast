@@ -7,7 +7,7 @@ plugins {
 extra["kastIncludeShadowJar"] = "false"
 
 private val catalog = extensions.getByType<VersionCatalogsExtension>().named("libs")
-private val ideaDistributionVersion = catalog.findVersion("idea").get().requiredVersion
+private val ideaDistributionVersion = catalog.findVersion("idea-plugin").get().requiredVersion
 
 val ideaDistribution: Configuration by configurations.creating {
     isCanBeConsumed = false
@@ -52,10 +52,7 @@ val javaPluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
 }
 
 val gradlePluginLibs: ConfigurableFileCollection = extractedIdeaFiles {
-    include("plugins/gradle/lib/*.jar")
-    include("plugins/gradle/lib/**/*.jar")
-    include("plugins/gradle-java/lib/*.jar")
-    include("plugins/gradle-java/lib/**/*.jar")
+    include("plugins/gradle*/lib/**/*.jar")
 }
 
 val headlessIdeaHomeProfile = providers.gradleProperty("kastHeadlessIdeaHomeProfile")
@@ -71,8 +68,7 @@ val fullPackagedIdeaHomeEntries = listOf(
     "modules/module-descriptors.dat",
     "plugins/Groovy/**",
     "plugins/Kotlin/**",
-    "plugins/gradle/**",
-    "plugins/gradle-java/**",
+    "plugins/gradle*/**",
     "plugins/java/**",
     "plugins/java-ide-customization/**",
     "plugins/json/**",
@@ -90,15 +86,12 @@ val minimalPackagedIdeaHomeEntries = listOf(
     "lib/jna/**",
     "lib/pty4j/**",
     "modules/module-descriptors.dat",
-    "plugins/gradle/**",
-    "plugins/gradle-java/**",
+    "plugins/gradle*/**",
     "plugins/java/**",
     "plugins/Kotlin/**",
 )
 
 val agentPackagedIdeaHomeEntries = minimalPackagedIdeaHomeEntries + listOf(
-    "plugins/gradle/**",
-    "plugins/gradle-java/**",
     "plugins/java-ide-customization/**",
     "plugins/json/**",
     "plugins/maven/**",

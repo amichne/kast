@@ -11,7 +11,10 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.contract.AnalysisTransport
+import io.github.amichne.kast.api.contract.query.SemanticGraphPath
+import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStoreAccess
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.RuntimeLifecycleController
@@ -22,11 +25,12 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
+import kotlinx.coroutines.runBlocking
 
 class RunningKastIdeaBackend internal constructor(
     val backend: CloseableAnalysisBackend,
     val server: RunningAnalysisServer, private val workspaceRoot: Path,
-    private val projectIndexing: KastIdeaProjectIndexing,
+    private val projectIndexing: KastIdeaProjectIndexing?,
     private val sourceIndexStore: SqliteSourceIndexStore,
 ) : AutoCloseable, KastIdeaBackendHandle {
     private val closeCompletion = AtomicReference<CompletableFuture<Unit>?>(null)
@@ -46,7 +50,7 @@ class RunningKastIdeaBackend internal constructor(
         if (!closeCompletion.compareAndSet(null, completion)) {
             return checkNotNull(closeCompletion.get())
         }
-        val cancellationFailure = runCatching(projectIndexing::cancel).exceptionOrNull()
+        val cancellationFailure = runCatching { projectIndexing?.cancel() }.exceptionOrNull()
         completeOnBackgroundThread(
             completion = completion,
             threadName = "kast-idea-backend-closer",
@@ -55,7 +59,7 @@ class RunningKastIdeaBackend internal constructor(
             listOf<() -> Unit>(
                 server::close,
                 {
-                    projectIndexing.awaitTermination()
+                    projectIndexing?.awaitTermination()
                     sourceIndexStore.close()
                 },
             ).forEach { closePhase ->
@@ -82,9 +86,9 @@ class RunningKastIdeaBackend internal constructor(
         server.await()
     }
     override fun startIndexing() {
-        projectIndexing.start()
+        projectIndexing?.start()
     }
-    override fun failIndexing(error: Throwable) { projectIndexing.fail(error) }
+    override fun failIndexing(error: Throwable) { projectIndexing?.fail(error) }
     override fun explore(request: KastExplorerRequest): KastExplorerResult = sourceIndexStore.explore(workspaceRoot, request)
 
     private companion object {
@@ -188,7 +192,13 @@ object KastIdeaBackendRuntime {
         )
         val diagnostics = KastDiagnosticsService.getInstance(project)
         val limits = ideaServerLimits(config)
-        val snapshotCoordinator = workspaceIdentity.workspaceIdentity.repositoryDataDirectoryPath?.let { repositoryDirectory ->
+        val indexAccess = persistedIndexAccess(backendName)
+        val indexingScopeCache = WorkspaceIndexingScopeCache { error ->
+            diagnostics.recordConfigFallback(workspaceIdentity.workspaceRootPath.resolve(".kastignore"), error)
+        }
+        val snapshotCoordinator = workspaceIdentity.workspaceIdentity.repositoryDataDirectoryPath
+            ?.takeIf { indexAccess == PersistedIndexAccess.READ_WRITE }
+            ?.let { repositoryDirectory ->
             RepositorySnapshotCoordinator(
                 workspaceRoot = workspaceIdentity.workspaceRootPath,
                 repositoryDirectory = repositoryDirectory,
@@ -202,7 +212,13 @@ object KastIdeaBackendRuntime {
         val preparedOverlay = snapshotCoordinator?.prepareWorktreeDatabase(
             workspaceIdentity.workspaceIdentity.sourceIndexDatabaseFile,
         )
-        val sourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
+        val sourceIndexStore = SqliteSourceIndexStore(
+            workspaceIdentity.workspaceIdentity,
+            when (indexAccess) {
+                PersistedIndexAccess.READ_ONLY -> SqliteSourceIndexStoreAccess.READ_ONLY
+                PersistedIndexAccess.READ_WRITE -> SqliteSourceIndexStoreAccess.READ_WRITE
+            },
+        )
         preparedOverlay?.let { overlay ->
             (overlay.tombstones + overlay.shards.keys).forEach { relativePath ->
                 sourceIndexStore.removeFile(workspaceIdentity.workspaceRootPath.resolve(relativePath).toString())
@@ -224,6 +240,21 @@ object KastIdeaBackendRuntime {
                 workspaceIdentity = workspaceIdentity,
                 referenceIndexLookup = DiagnosticsReferenceIndexLookup(diagnostics, sourceIndexStore),
                 semanticGraphStore = sourceIndexStore,
+                semanticGraphBatchSize = config.indexing.graph.batchSize.value,
+                persistedIndexAccess = indexAccess,
+                initialIndexingConfig = config.indexing,
+                indexingConfigLoader = {
+                    try {
+                        KastConfig.load(workspaceIdentity.workspaceRootPath).indexing
+                    } catch (error: Exception) {
+                        diagnostics.recordConfigFallback(
+                            workspaceIdentity.workspaceIdentity.workspaceDataDirectoryPath.resolve("config.toml"),
+                            error,
+                        )
+                        throw error
+                    }
+                },
+                workspaceIndexingScopeCache = indexingScopeCache,
                 indexSemanticAdmissionStatus = semanticAdmission::status,
             )
             pluginBackend = startedPluginBackend
@@ -273,20 +304,42 @@ object KastIdeaBackendRuntime {
                 detail = mapOf("transport" to transport.toString()) + workspaceIdentity.traceDetails(),
             )
             diagnostics.recordBackendStarted(transport)
-            val startedProjectIndexing = KastIdeaProjectIndexing(
-                project = project,
-                workspaceIdentity = workspaceIdentity,
-                config = config,
-                diagnostics = diagnostics,
-                indexStore = sourceIndexStore,
-                semanticAdmission = semanticAdmission,
-                snapshotCoordinator = snapshotCoordinator,
-            )
+            val startedPluginBackend = checkNotNull(pluginBackend)
+            val startedProjectIndexing = if (persistedProjectIndexingEnabled(backendName)) {
+                KastIdeaProjectIndexing(
+                    project = project,
+                    workspaceIdentity = workspaceIdentity,
+                    config = config,
+                    diagnostics = diagnostics,
+                    indexStore = sourceIndexStore,
+                    semanticAdmission = semanticAdmission,
+                    snapshotCoordinator = snapshotCoordinator,
+                    scopeCache = indexingScopeCache,
+                    semanticGraphIndexer = { paths, batchSize ->
+                        if (paths.isNotEmpty()) {
+                            startedPluginBackend.updateSemanticGraphBatchSize(batchSize)
+                            runBlocking {
+                                startedPluginBackend.semanticGraph(
+                                    ParsedSemanticGraphQuery(
+                                        filePaths = paths.distinct().sorted().map(SemanticGraphPath::parse),
+                                        removedFilePaths = emptyList(),
+                                        expectedGeneration = null,
+                                    ),
+                                )
+                            }
+                        }
+                    },
+                )
+            } else {
+                null
+            }
             projectIndexing = startedProjectIndexing
-            when (indexAdmission) {
-                KastGradleIndexAdmission.Pending -> Unit
-                KastGradleIndexAdmission.Ready -> startedProjectIndexing.start()
-                is KastGradleIndexAdmission.Failed -> startedProjectIndexing.fail(indexAdmission.error)
+            if (startedProjectIndexing != null) {
+                when (indexAdmission) {
+                    KastGradleIndexAdmission.Pending -> Unit
+                    KastGradleIndexAdmission.Ready -> startedProjectIndexing.start()
+                    is KastGradleIndexAdmission.Failed -> startedProjectIndexing.fail(indexAdmission.error)
+                }
             }
             return RunningKastIdeaBackend(
                 backend = backend,
@@ -318,6 +371,16 @@ object KastIdeaBackendRuntime {
         }
     }
 }
+
+internal fun persistedProjectIndexingEnabled(backendName: String?): Boolean = backendName == "headless"
+
+internal enum class PersistedIndexAccess {
+    READ_ONLY,
+    READ_WRITE,
+}
+
+internal fun persistedIndexAccess(backendName: String?): PersistedIndexAccess =
+    if (persistedProjectIndexingEnabled(backendName)) PersistedIndexAccess.READ_WRITE else PersistedIndexAccess.READ_ONLY
 
 private fun closeSourceIndexStoreAfterIndexing(
     projectIndexing: KastIdeaProjectIndexing?,

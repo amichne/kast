@@ -92,4 +92,34 @@ class IdeaProjectIndexerModuleNameTest {
             order,
         )
     }
+
+    @Test
+    fun `persisted work prioritizes critical then source set then module then path`() {
+        val pathsByModule = listOf(
+            "/workspace/kast/slow/src/main/Slow.kt" to ":slow[main]",
+            "/workspace/kast/fast/src/test/FastTest.kt" to ":fast[test]",
+            "/workspace/kast/fast/src/testFixtures/Fixture.kt" to ":fast[testFixtures]",
+            "/workspace/kast/fast/src/main/Fast.kt" to ":fast[main]",
+            "/workspace/kast/misc/Other.kt" to ":misc",
+            "/workspace/kast/critical/src/test/CriticalTest.kt" to ":critical[test]",
+        )
+
+        val ordered = prioritizeIndexingPaths(
+            pathsByModule = pathsByModule,
+            moduleOrder = listOf(":fast", ":slow"),
+            criticalPaths = setOf("/workspace/kast/critical/src/test/CriticalTest.kt"),
+        )
+
+        assertEquals(
+            listOf(
+                "/workspace/kast/critical/src/test/CriticalTest.kt",
+                "/workspace/kast/fast/src/main/Fast.kt",
+                "/workspace/kast/slow/src/main/Slow.kt",
+                "/workspace/kast/fast/src/testFixtures/Fixture.kt",
+                "/workspace/kast/fast/src/test/FastTest.kt",
+                "/workspace/kast/misc/Other.kt",
+            ),
+            ordered,
+        )
+    }
 }

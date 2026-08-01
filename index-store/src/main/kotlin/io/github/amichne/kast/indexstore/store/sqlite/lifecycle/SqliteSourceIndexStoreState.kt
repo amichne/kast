@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicReference
 internal class SqliteSourceIndexStoreState(
     workspaceIdentity: WorkspaceIdentity,
     internal val pageReadObserver: SourceIndexPageReadObserver,
+    private val access: SqliteSourceIndexStoreAccess = SqliteSourceIndexStoreAccess.READ_WRITE,
 ) : AutoCloseable {
     internal val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     internal val dbPath: Path = workspaceIdentity.sourceIndexDatabaseFile
@@ -86,22 +87,38 @@ internal class SqliteSourceIndexStoreState(
                 loadedInterningDataVersion = null
                 committedManifestFileCount.set(NonNegativeInt(0))
             }
-            Files.createDirectories(dbPath.parent)
+            check(access == SqliteSourceIndexStoreAccess.READ_WRITE || Files.isRegularFile(dbPath)) {
+                "Read-only source index does not exist: $dbPath"
+            }
+            if (access == SqliteSourceIndexStoreAccess.READ_WRITE) Files.createDirectories(dbPath.parent)
             SqliteJdbcDriverBootstrap.ensureRegistered()
-            val conn = DriverManager.getConnection("jdbc:sqlite:$dbPath")
+            val connectionUrl = if (access == SqliteSourceIndexStoreAccess.READ_ONLY) {
+                "jdbc:sqlite:${dbPath.toUri().toASCIIString()}?mode=ro"
+            } else {
+                "jdbc:sqlite:$dbPath"
+            }
+            val conn = DriverManager.getConnection(connectionUrl)
             try {
                 conn.createStatement().use { stmt ->
-                    stmt.execute("PRAGMA journal_mode=WAL")
-                    stmt.execute("PRAGMA synchronous=NORMAL")
+                    if (access == SqliteSourceIndexStoreAccess.READ_WRITE) {
+                        stmt.execute("PRAGMA journal_mode=WAL")
+                        stmt.execute("PRAGMA synchronous=NORMAL")
+                        stmt.execute("PRAGMA wal_autocheckpoint=1000")
+                    }
                     stmt.execute("PRAGMA busy_timeout=5000")
                     stmt.execute("PRAGMA cache_size=-64000")
                     stmt.execute("PRAGMA mmap_size=268435456")
                     stmt.execute("PRAGMA temp_store=MEMORY")
-                    stmt.execute("PRAGMA wal_autocheckpoint=1000")
                     stmt.execute("PRAGMA foreign_keys=ON")
+                    if (access == SqliteSourceIndexStoreAccess.READ_ONLY) {
+                        stmt.execute("PRAGMA query_only=ON")
+                    }
                 }
                 attachRepositoryBase(conn)
                 if (schema.readSchemaVersion(conn) == null) {
+                    check(access == SqliteSourceIndexStoreAccess.READ_WRITE) {
+                        "Read-only source index has no schema: $dbPath"
+                    }
                     conn.autoCommit = false
                     schema.createAllTables(conn)
                     conn.commit()
@@ -109,7 +126,7 @@ internal class SqliteSourceIndexStoreState(
                 }
                 if (requireCurrentSchema) {
                     schema.validateCurrentSchema(conn)
-                    initializeRepositoryOverlay(conn)
+                    if (access == SqliteSourceIndexStoreAccess.READ_WRITE) initializeRepositoryOverlay(conn)
                     reloadInterningTables(conn)
                     refreshManifestFileCount(conn)
                 }

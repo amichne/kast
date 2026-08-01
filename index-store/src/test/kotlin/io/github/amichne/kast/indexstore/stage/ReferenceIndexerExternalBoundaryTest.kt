@@ -4,8 +4,6 @@ import io.github.amichne.kast.api.contract.ByteOffset
 import io.github.amichne.kast.api.contract.LineNumber
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.PositiveInt
-import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryReason
-import io.github.amichne.kast.api.contract.result.SemanticGraphFileStatus
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
@@ -14,6 +12,7 @@ import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureExternalizationResult
+import io.github.amichne.kast.indexstore.api.index.FileStageInputFingerprint
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.api.index.FileStageScopeCoverage
 import io.github.amichne.kast.indexstore.api.index.FileStageVersion
@@ -157,7 +156,7 @@ class ReferenceIndexerExternalBoundaryTest {
     }
 
     @Test
-    fun `externalized relationship failure becomes a usable unknown graph boundary`() {
+    fun `externalized relationship failure does not change semantic graph work or facts`() {
         val sourcePath = file("src/Source.kt")
         val failedPath = file("src/Failed.kt")
         val hashes = mapOf(sourcePath to hash('a'), failedPath to hash('b'))
@@ -228,6 +227,10 @@ class ReferenceIndexerExternalBoundaryTest {
             val failure = requireNotNull(
                 store.fileStageOutcome(failedPath, FileIndexStage.RELATIONSHIPS)?.failure,
             )
+            val graphBeforeExternalization = store.readSemanticGraph(listOf(sourceGraphPath, failedGraphPath))
+            assertTrue(
+                store.pendingFileStages(FileIndexStage.SEMANTIC_GRAPH).any { work -> work.path == failedPath },
+            )
 
             assertEquals(
                 FileStageFailureExternalizationResult.EXTERNALIZED,
@@ -247,20 +250,23 @@ class ReferenceIndexerExternalBoundaryTest {
 
             assertNull(store.fileStageOutcome(failedPath, FileIndexStage.SEMANTIC_GRAPH))
             assertTrue(
-                store.pendingFileStages(FileIndexStage.SEMANTIC_GRAPH).none { work -> work.path == failedPath },
+                store.pendingFileStages(FileIndexStage.SEMANTIC_GRAPH).any { work -> work.path == failedPath },
+            )
+            assertNotNull(
+                store.pendingFileStage(
+                    path = failedPath,
+                    contentHash = hashes.getValue(failedPath),
+                    stage = FileIndexStage.SEMANTIC_GRAPH,
+                    version = FileStageVersion.parse("external-boundary-test-2"),
+                    inputFingerprint = FileStageInputFingerprint.parse("c".repeat(64)),
+                ),
             )
 
-            val graph = store.readSemanticGraph(listOf(sourceGraphPath, failedGraphPath))
-            val failedCoverage = graph.files.single { file -> file.path == failedGraphPath }
-            assertEquals(SemanticGraphFileStatus.UNKNOWN, failedCoverage.status)
-            assertEquals(failure.id.value, requireNotNull(failedCoverage.externalBoundary).failureId.value)
-            assertEquals(
-                SemanticGraphExternalBoundaryReason.PSI_UNAVAILABLE,
-                failedCoverage.externalBoundary?.reason,
-            )
-            assertEquals(listOf(sourceSymbol), graph.symbols)
-            assertEquals(listOf(failedSymbol), graph.boundarySymbols)
-            assertEquals(listOf(inbound), graph.relations)
+            val graphAfterExternalization = store.readSemanticGraph(listOf(sourceGraphPath, failedGraphPath))
+            assertEquals(graphBeforeExternalization.files, graphAfterExternalization.files)
+            assertEquals(graphBeforeExternalization.symbols, graphAfterExternalization.symbols)
+            assertEquals(graphBeforeExternalization.boundarySymbols, graphAfterExternalization.boundarySymbols)
+            assertEquals(graphBeforeExternalization.relations, graphAfterExternalization.relations)
         }
     }
 

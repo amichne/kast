@@ -172,22 +172,24 @@ fn verify_activated_bundle(
         ));
     }
     require_directory(&targets.version_dir, "installed bundle version")?;
-    require_file(
-        &targets
-            .resolved
-            .headless_runtime_libs_dir
-            .join("classpath.txt"),
-        "installed runtime classpath",
-    )?;
-    if let Some(idea_home) = &targets.resolved.headless_idea_home {
+    if !is_macos_installed_idea_sidecar(&bundle.manifest) {
         require_file(
-            &idea_home.join("lib/nio-fs.jar"),
-            "installed IDEA nio-fs.jar",
+            &targets
+                .resolved
+                .headless_runtime_libs_dir
+                .join("classpath.txt"),
+            "installed runtime classpath",
         )?;
-        require_file(
-            &idea_home.join("modules/module-descriptors.dat"),
-            "installed IDEA module descriptors",
-        )?;
+        if let Some(idea_home) = &targets.resolved.headless_idea_home {
+            require_file(
+                &idea_home.join("lib/nio-fs.jar"),
+                "installed IDEA nio-fs.jar",
+            )?;
+            require_file(
+                &idea_home.join("modules/module-descriptors.dat"),
+                "installed IDEA module descriptors",
+            )?;
+        }
     }
     let manifest = manifest_from_file(&receipt)?;
     if manifest.active_version != bundle.version.as_str() {

@@ -16,4 +16,17 @@ class SourceIndexFilePolicyTest {
         assertFalse(SourceIndexFilePolicy.isEligible(Path.of("/workspace/settings.gradle.kts")))
         assertFalse(SourceIndexFilePolicy.isEligible(Path.of("/workspace/script.main.kts")))
     }
+
+    @Test
+    fun `rejects generated and IDE output roots`() {
+        for (path in listOf(
+            "/workspace/build/generated/Foo.kt",
+            "/workspace/plugin/build/distributions/Plugin.kt",
+            "/workspace/.gradle/caches/Foo.kt",
+            "/workspace/out/production/Foo.kt",
+            "/workspace/.idea/Foo.kt",
+        )) {
+            assertFalse(SourceIndexFilePolicy.isEligible(Path.of(path)), path)
+        }
+    }
 }

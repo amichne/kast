@@ -91,13 +91,15 @@ fn open_macos_idea_project(
         .filter(|descriptor| is_process_alive(descriptor.pid))
         .filter(|descriptor| Path::new(&descriptor.socket_path).exists())
         .collect::<Vec<_>>();
-    let explicit_app = (command != Path::new("idea"))
-        .then(|| resolve_explicit_idea_app(command))
-        .transpose()?;
-    let running_host = match explicit_app.as_deref() {
-        Some(app) => select_running_idea_host_for_app(&descriptors, app, running_idea_app)?,
-        None => select_running_idea_host(&descriptors)?,
-    };
+    let app = select_macos_idea_app_for_workspace(
+        workspace_root,
+        &descriptors,
+        command,
+        installed_idea_apps(),
+        running_idea_app,
+    )?;
+    let running_host =
+        select_running_idea_host_for_app(&descriptors, &app, running_idea_app)?;
     if let Some(host) = running_host {
         require_compatible_running_idea_plugin(&host, config)?;
         let request =
@@ -127,7 +129,6 @@ fn open_macos_idea_project(
         };
     }
 
-    let app = explicit_app.map_or_else(resolve_supported_idea_app, Ok)?;
     require_current_plugin_for_app(&app, config)?;
     let product_code = idea_app_build(&app)
         .expect("supported IDEA app must retain its parsed build")
@@ -164,7 +165,77 @@ fn open_macos_idea_project(
 }
 
 #[cfg(target_os = "macos")]
-fn resolve_supported_idea_app() -> Result<PathBuf> {
+pub(crate) fn resolve_installed_idea_sidecar_app(
+    workspace_root: &Path,
+    config: &KastConfig,
+) -> Result<PathBuf> {
+    let descriptors = read_descriptors(&config.paths.descriptor_dir)?
+        .into_iter()
+        .filter(|descriptor| is_process_alive(descriptor.pid))
+        .filter(|descriptor| Path::new(&descriptor.socket_path).exists())
+        .collect::<Vec<_>>();
+    select_macos_idea_app_for_workspace(
+        workspace_root,
+        &descriptors,
+        &config.runtime.idea_launch.command,
+        installed_idea_apps(),
+        running_idea_app,
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn select_macos_idea_app_for_workspace(
+    workspace_root: &Path,
+    descriptors: &[ServerInstanceDescriptor],
+    configured_command: &Path,
+    installed: Vec<PathBuf>,
+    app_for_pid: impl Fn(u64) -> Option<PathBuf>,
+) -> Result<PathBuf> {
+    let normalized_workspace = config::normalize(workspace_root.to_path_buf());
+    let mut owner_apps = Vec::<PathBuf>::new();
+    for app in descriptors
+        .iter()
+        .filter(|descriptor| descriptor.backend_name == BackendName::Idea.canonical())
+        .filter(|descriptor| descriptor_matches_workspace(descriptor, &normalized_workspace))
+        .filter_map(|descriptor| app_for_pid(descriptor.pid))
+    {
+        if !owner_apps
+            .iter()
+            .any(|existing| same_file_or_path(existing, &app))
+        {
+            owner_apps.push(app);
+        }
+    }
+    match owner_apps.as_slice() {
+        [owner] => {
+            ensure_supported_idea_app(owner)?;
+            return Ok(owner.clone());
+        }
+        [] => {}
+        owners => {
+            let mut error = CliError::new(
+                "IDEA_HOST_AMBIGUOUS",
+                "More than one supported IDEA application owns this exact workspace root.",
+            );
+            error
+                .details
+                .insert("candidateCount".to_string(), owners.len().to_string());
+            error.details.insert(
+                "workspaceRoot".to_string(),
+                normalized_workspace.display().to_string(),
+            );
+            return Err(error);
+        }
+    }
+
+    if configured_command != Path::new("idea") {
+        return resolve_explicit_idea_app(configured_command);
+    }
+    select_supported_idea_app(installed)
+}
+
+#[cfg(target_os = "macos")]
+fn installed_idea_apps() -> Vec<PathBuf> {
     let mut candidates = idea_apps_in(Path::new("/Applications"), 1);
     if let Some(home) = std::env::var_os("HOME") {
         let home = PathBuf::from(home);
@@ -180,7 +251,7 @@ fn resolve_supported_idea_app() -> Result<PathBuf> {
         .collect::<Vec<_>>();
     installed.sort();
     installed.dedup();
-    select_supported_idea_app(installed)
+    installed
 }
 
 #[cfg(target_os = "macos")]

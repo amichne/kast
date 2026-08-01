@@ -1,7 +1,7 @@
 #[derive(Debug, Args, Clone)]
 #[command(
     disable_help_subcommand = true,
-    after_help = "Examples:\n  kast config list --workspace-root \"$PWD\"\n  kast config set indexing.relationships.parallelism 2 --workspace-root \"$PWD\"\n  kast config unset indexing.relationships.parallelism --workspace-root \"$PWD\""
+    after_help = "Examples:\n  kast config list --workspace-root \"$PWD\"\n  kast config set indexing.relationships.parallelism 2 --workspace-root \"$PWD\"\n  kast config add indexing.criticalPaths 'src/main/**' --workspace-root \"$PWD\"\n  kast config remove indexing.criticalPaths 'src/main/**' --workspace-root \"$PWD\"\n  kast config unset indexing.relationships.parallelism --workspace-root \"$PWD\""
 )]
 pub struct ConfigArgs {
     #[command(subcommand)]
@@ -14,6 +14,10 @@ pub enum ConfigCommand {
     List(ConfigWorkspaceArgs),
     /// Set one supported workspace field.
     Set(ConfigSetArgs),
+    /// Add one member to a supported workspace string list.
+    Add(ConfigListMemberArgs),
+    /// Remove one member from a supported workspace string list.
+    Remove(ConfigListMemberArgs),
     /// Remove one workspace override and reveal its inherited value.
     Unset(ConfigUnsetArgs),
 }
@@ -31,6 +35,17 @@ pub struct ConfigSetArgs {
     pub key: String,
     /// Boolean, integer, or string value accepted by the selected field.
     pub value: String,
+    /// Absolute workspace root whose override is updated.
+    #[arg(long)]
+    pub workspace_root: PathBuf,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct ConfigListMemberArgs {
+    /// Exact dotted string-list key from `kast config list`.
+    pub key: String,
+    /// Exact path pattern to add or remove.
+    pub pattern: String,
     /// Absolute workspace root whose override is updated.
     #[arg(long)]
     pub workspace_root: PathBuf,

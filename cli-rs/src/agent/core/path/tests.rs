@@ -114,6 +114,26 @@ mod agent_file_path_tests {
     }
 
     #[test]
+    fn hard_output_directories_fail_closed() {
+        for path in [
+            "build/generated/App.kt",
+            "plugin/build/distributions/Plugin.kt",
+            ".gradle/cache/App.kt",
+            "out/production/App.kt",
+            ".idea/App.kt",
+        ] {
+            let fixture = PathFixture::with_file(path);
+
+            let error = fixture
+                .normalizer()
+                .normalize(path)
+                .expect_err("hard output target must fail");
+
+            assert_eq!(error.code, "AGENT_FILE_HARD_EXCLUDED", "{path}");
+        }
+    }
+
+    #[test]
     fn directory_with_kotlin_extension_fails_closed() {
         let fixture = PathFixture::with_workspace();
         std::fs::create_dir_all(fixture.workspace.join("src/Directory.kt"))

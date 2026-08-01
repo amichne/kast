@@ -14,12 +14,20 @@ pub enum ConfigValueType {
     Boolean,
     Integer,
     String,
+    StringList,
+}
+
+#[derive(Debug, Clone, Copy)]
+enum StringListField {
+    CriticalPaths,
+    IgnoredPaths,
 }
 
 #[derive(Debug, Clone, Copy)]
 struct ConfigFieldSpec {
     field: MutableConfigField,
     minimum: Option<i64>,
+    string_list: Option<StringListField>,
 }
 
 impl ConfigFieldSpec {
@@ -31,6 +39,7 @@ impl ConfigFieldSpec {
                 workspace_override: false,
             },
             minimum: None,
+            string_list: None,
         }
     }
 
@@ -42,6 +51,19 @@ impl ConfigFieldSpec {
                 workspace_override: false,
             },
             minimum: Some(1),
+            string_list: None,
+        }
+    }
+
+    const fn string_list(key: &'static str, string_list: StringListField) -> Self {
+        Self {
+            field: MutableConfigField {
+                key,
+                value_type: ConfigValueType::StringList,
+                workspace_override: false,
+            },
+            minimum: None,
+            string_list: Some(string_list),
         }
     }
 }
@@ -59,6 +81,9 @@ const MUTABLE_CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec::new("codex.hooks.enabled", ConfigValueType::Boolean),
     ConfigFieldSpec::new("codex.hooks.sessionStart", ConfigValueType::Boolean),
     ConfigFieldSpec::new("codex.hooks.postToolUse", ConfigValueType::Boolean),
+    ConfigFieldSpec::string_list("indexing.criticalPaths", StringListField::CriticalPaths),
+    ConfigFieldSpec::string_list("indexing.ignoredPaths", StringListField::IgnoredPaths),
+    ConfigFieldSpec::positive("indexing.graph.batchSize"),
     ConfigFieldSpec::new("indexing.relationships.enabled", ConfigValueType::Boolean),
     ConfigFieldSpec::positive("indexing.relationships.batchSize"),
     ConfigFieldSpec::positive("indexing.relationships.parallelism"),
@@ -177,6 +202,12 @@ pub fn set_workspace_config(
     let workspace_root = resolve_workspace_root(Some(workspace_root))?;
     let config_path = workspace_config_path(&workspace_root)?;
     let spec = config_field(&key)?;
+    if spec.string_list.is_some() {
+        return Err(CliError::new(
+            "CONFIG_VALUE_INVALID",
+            format!("{key} is a string-list field; use `kast config add` or `kast config remove`"),
+        ));
+    }
     let mut document = read_workspace_config(&config_path)?;
     let before = document.to_string();
     set_document_value(
@@ -198,6 +229,112 @@ pub fn set_workspace_config(
         ConfigMutationStatus::Updated
     };
     mutation_result(workspace_root, config_path, key, status)
+}
+
+pub fn add_workspace_config(
+    workspace_root: PathBuf,
+    key: String,
+    pattern: String,
+) -> Result<WorkspaceConfigMutation> {
+    mutate_workspace_string_list(workspace_root, key, pattern, StringListMutation::Add)
+}
+
+pub fn remove_workspace_config(
+    workspace_root: PathBuf,
+    key: String,
+    pattern: String,
+) -> Result<WorkspaceConfigMutation> {
+    mutate_workspace_string_list(workspace_root, key, pattern, StringListMutation::Remove)
+}
+
+#[derive(Debug, Clone, Copy)]
+enum StringListMutation {
+    Add,
+    Remove,
+}
+
+fn mutate_workspace_string_list(
+    workspace_root: PathBuf,
+    key: String,
+    pattern: String,
+    mutation: StringListMutation,
+) -> Result<WorkspaceConfigMutation> {
+    let workspace_root = resolve_workspace_root(Some(workspace_root))?;
+    let config_path = workspace_config_path(&workspace_root)?;
+    let spec = config_field(&key)?;
+    let string_list = spec.string_list.ok_or_else(|| {
+        CliError::new(
+            "CONFIG_VALUE_INVALID",
+            format!("{key} is not a string-list field; use `kast config set`"),
+        )
+    })?;
+    validate_string_list_member(spec, &pattern)?;
+
+    let config = KastConfig::load(&workspace_root)?;
+    let mut values = effective_string_list(&config, string_list).to_vec();
+    let changed = match mutation {
+        StringListMutation::Add if !values.contains(&pattern) => {
+            values.push(pattern);
+            true
+        }
+        StringListMutation::Remove if values.contains(&pattern) => {
+            values.retain(|value| value != &pattern);
+            true
+        }
+        StringListMutation::Add | StringListMutation::Remove => false,
+    };
+    if !changed {
+        return mutation_result(
+            workspace_root,
+            config_path,
+            key,
+            ConfigMutationStatus::Unchanged,
+        );
+    }
+
+    let mut document = read_workspace_config(&config_path)?;
+    set_document_value(
+        document.as_table_mut(),
+        &key.split('.').collect::<Vec<_>>(),
+        string_list_item(&values),
+    )?;
+    let contents = document.to_string();
+    validate_toml(&contents)?;
+    write_workspace_config(&config_path, &contents)?;
+    mutation_result(
+        workspace_root,
+        config_path,
+        key,
+        ConfigMutationStatus::Updated,
+    )
+}
+
+fn effective_string_list(config: &KastConfig, field: StringListField) -> &[String] {
+    match field {
+        StringListField::CriticalPaths => &config.indexing.critical_paths,
+        StringListField::IgnoredPaths => &config.indexing.ignored_paths,
+    }
+}
+
+fn validate_string_list_member(spec: &ConfigFieldSpec, value: &str) -> Result<()> {
+    if value.trim().is_empty() || value.chars().any(char::is_control) {
+        return Err(CliError::new(
+            "CONFIG_VALUE_INVALID",
+            format!(
+                "{} requires a non-empty string-list member without control characters",
+                spec.field.key,
+            ),
+        ));
+    }
+    Ok(())
+}
+
+fn string_list_item(values: &[String]) -> Item {
+    let mut array = toml_edit::Array::new();
+    for value in values {
+        array.push(value.as_str());
+    }
+    Item::Value(toml_edit::Value::Array(array))
 }
 
 pub fn unset_workspace_config(
@@ -276,6 +413,7 @@ fn parse_config_value(spec: &ConfigFieldSpec, raw: &str) -> Result<Item> {
                     ConfigValueType::Boolean => "boolean",
                     ConfigValueType::Integer => "integer",
                     ConfigValueType::String => "string",
+                    ConfigValueType::StringList => "string list",
                 },
             ),
         )
@@ -296,6 +434,7 @@ fn parse_config_value(spec: &ConfigFieldSpec, raw: &str) -> Result<Item> {
             toml_edit::Value::from(value)
         }
         ConfigValueType::String => toml_edit::Value::from(raw),
+        ConfigValueType::StringList => return Err(invalid()),
     };
     Ok(Item::Value(value))
 }

@@ -75,7 +75,7 @@ internal class KastDiagnosticsState(
         title = "Kast config fallback",
         detail = "${path.fileName}: ${error.compactMessage()}",
     ) {
-        it.copy(message = "Config load failed; using defaults")
+        it.copy(message = "Config load failed; using last valid config")
     }
 
     fun recordCapabilities(capabilities: BackendCapabilities): KastActivityEvent = append(

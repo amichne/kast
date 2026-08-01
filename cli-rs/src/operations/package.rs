@@ -115,7 +115,7 @@ pub fn package_ubuntu_debian_bundle(
     let backend_install_dir = staging_root
         .join("lib/backends")
         .join(&backend_install_name);
-    copy_dir_recursive(&backend_root, &backend_install_dir)?;
+    stage_backend_for_platform(&backend_root, &backend_install_dir, platform)?;
     make_executable(&backend_install_dir.join(HEADLESS_BACKEND_LAUNCHER))?;
 
     fs::copy(&plugin_archive, staging_root.join("plugins/kast.zip"))?;
@@ -251,6 +251,21 @@ fn validate_backend_archive_root(backend_root: &Path) -> Result<()> {
     Ok(())
 }
 
+fn stage_backend_for_platform(source: &Path, target: &Path, platform: &str) -> Result<()> {
+    if !platform.starts_with("macos-") {
+        return copy_dir_recursive(source, target);
+    }
+    fs::create_dir_all(target.join("idea-home/plugins"))?;
+    fs::copy(
+        source.join(HEADLESS_BACKEND_LAUNCHER),
+        target.join(HEADLESS_BACKEND_LAUNCHER),
+    )?;
+    copy_dir_recursive(
+        &source.join("idea-home/plugins/kast-headless"),
+        &target.join("idea-home/plugins/kast-headless"),
+    )
+}
+
 fn copy_license(repo_root: &Path, staging_root: &Path) -> Result<()> {
     let license = repo_root.join("LICENSE");
     if license.is_file() {
@@ -310,3 +325,56 @@ fn write_tar_gz(source_dir: &Path, archive_root_name: &str, output: &Path) -> Re
 }
 
 include!("parts/package/filesystem.rs");
+
+#[cfg(test)]
+mod sidecar_tests {
+    use super::*;
+
+    #[test]
+    fn macos_bundle_stages_only_the_installed_idea_sidecar_payload() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let source = temp.path().join("source");
+        let target = temp.path().join("target");
+        fs::create_dir_all(source.join("runtime-libs")).expect("runtime libs");
+        fs::create_dir_all(source.join("idea-home/lib")).expect("IDEA libs");
+        fs::create_dir_all(source.join("idea-home/plugins/kast-headless/lib"))
+            .expect("sidecar plugin");
+        fs::write(source.join(HEADLESS_BACKEND_LAUNCHER), "launcher").expect("launcher");
+        fs::write(source.join("runtime-libs/classpath.txt"), "runtime").expect("classpath");
+        fs::write(source.join("idea-home/lib/nio-fs.jar"), "platform").expect("platform");
+        fs::write(
+            source.join("idea-home/plugins/kast-headless/lib/kast-headless.jar"),
+            "payload",
+        )
+        .expect("payload");
+
+        stage_backend_for_platform(&source, &target, "macos-arm64").expect("stage sidecar");
+
+        assert!(target.join(HEADLESS_BACKEND_LAUNCHER).is_file());
+        assert!(
+            target
+                .join("idea-home/plugins/kast-headless/lib/kast-headless.jar")
+                .is_file()
+        );
+        assert!(!target.join("runtime-libs").exists());
+        assert!(!target.join("idea-home/lib").exists());
+
+        let manifest = ubuntu_debian_headless_manifest(
+            "1.2.3",
+            "macos-arm64",
+            [
+                "0".repeat(64),
+                "1".repeat(64),
+                "2".repeat(64),
+                "3".repeat(64),
+            ],
+            "commit".to_string(),
+        );
+        assert_eq!(manifest.profile, "macos-installed-idea-sidecar");
+        assert!(
+            manifest
+                .java_requirement
+                .contains("supported installed IntelliJ")
+        );
+    }
+}

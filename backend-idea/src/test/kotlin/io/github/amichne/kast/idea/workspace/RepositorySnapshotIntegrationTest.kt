@@ -19,6 +19,7 @@ import io.github.amichne.kast.indexstore.snapshot.SnapshotKey
 import io.github.amichne.kast.indexstore.snapshot.SnapshotManifest
 import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStoreAccess
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -192,6 +193,10 @@ class RepositorySnapshotIntegrationTest {
             store.ensureSchema()
             assertEquals(basePayload, store.readWorkspaceDiscovery("base-payload"))
             store.writeWorkspaceDiscovery("worktree-a", 1, "first")
+            assertEquals("first", store.readWorkspaceDiscovery("worktree-a"))
+        }
+        SqliteSourceIndexStore(identityFor(targetDatabase), SqliteSourceIndexStoreAccess.READ_ONLY).use { store ->
+            assertEquals(basePayload, store.readWorkspaceDiscovery("base-payload"))
             assertEquals("first", store.readWorkspaceDiscovery("worktree-a"))
         }
 

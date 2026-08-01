@@ -10,6 +10,7 @@ import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiFile
+import io.github.amichne.kast.api.client.IndexingConfig
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
@@ -42,6 +43,7 @@ internal class IdeaProjectIndexer(
     },
     private val onSourceFileScan: (String) -> Unit = {},
     private val onRelationshipFileScan: (String) -> Unit = {},
+    private val scopeCache: WorkspaceIndexingScopeCache = WorkspaceIndexingScopeCache(),
 ) {
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     private val environment = IdeaReferenceIndexEnvironment(
@@ -56,9 +58,13 @@ internal class IdeaProjectIndexer(
         workspaceModelReader = readGradleWorkspaceModel,
     )
 
-    fun indexProject(config: KastConfig) {
+    fun indexProject(
+        config: KastConfig,
+        onSourceScopeReady: (List<String>) -> Unit = {},
+    ): IndexedSourceIdentifiers {
         store.ensureSchema()
-        val currentFilePaths = indexSourceIdentifiers()
+        val indexedSources = indexSourceIdentifiersAndScope(config.indexing)
+        onSourceScopeReady(indexedSources.paths)
         if (config.indexing.relationships.enabled.value && !environment.isCancelled()) {
             val moduleSpecs = runIdeaReadAction { discoverModuleSpecs() }
             val modulePriorityOrder = computeModulePriorityOrder(
@@ -68,17 +74,20 @@ internal class IdeaProjectIndexer(
                 depth = config.indexing.relationships.modulePriorityDepth.value,
             )
             indexSymbolRelationships(
-                currentFilePaths = currentFilePaths,
+                currentFilePaths = indexedSources.paths,
+                criticalFilePaths = indexedSources.criticalPaths,
                 moduleOrder = modulePriorityOrder,
                 batchSize = config.indexing.relationships.batchSize.value,
                 parallelism = config.indexing.relationships.parallelism.value,
             )
         }
+        return indexedSources
     }
 
     fun refreshSymbolRelationships(
         filePaths: Collection<String>,
         removedFilePaths: Collection<String> = emptyList(),
+        indexingConfig: IndexingConfig = KastConfig.defaults().indexing,
     ): List<FileStageOutcome> {
         require((filePaths + removedFilePaths).all(SourceIndexFilePolicy::isEligible)) {
             "Focused relationship refresh accepts Kotlin source files only"
@@ -87,9 +96,14 @@ internal class IdeaProjectIndexer(
         requireActive()
         store.reconcileRemovedFileInventory(removedFilePaths)
         requireActive()
-        val requestedPaths = currentSourcePaths(filePaths) ?: run {
+        val scopedFilePaths = scopeCache.resolve(
+            workspaceRoot = workspaceRoot,
+            config = indexingConfig,
+            candidates = filePaths.map(Path::of),
+        ).includedPaths.map(Path::toString)
+        val requestedPaths = currentSourcePaths(scopedFilePaths) ?: run {
             val currentFilePaths = indexSourceIdentifiers().toSet()
-            filePaths.distinct().filter(currentFilePaths::contains)
+            scopedFilePaths.distinct().filter(currentFilePaths::contains)
         }
         requireActive()
         val previousFailureIds = requestedPaths.associateWith { path ->
@@ -97,6 +111,7 @@ internal class IdeaProjectIndexer(
         }
         indexSymbolRelationships(
             currentFilePaths = requestedPaths,
+            criticalFilePaths = emptySet(),
             moduleOrder = emptyList(),
             batchSize = SOURCE_INDEX_BATCH_SIZE,
             parallelism = 1,
@@ -145,25 +160,42 @@ internal class IdeaProjectIndexer(
     }
 
     fun indexSourceIdentifiers(): Collection<String> {
+        return indexSourceIdentifiersAndScope(KastConfig.defaults().indexing).paths
+    }
+
+    private fun indexSourceIdentifiersAndScope(config: IndexingConfig): IndexedSourceIdentifiers {
         store.ensureSchema()
         val captured = inventory.snapshotWithGradleModel(WorkspaceFileKindDomain.MIXED)
         val gradleProvenance = IdeaGradleFileProvenance.fromWorkspaceModel(captured.gradleModel, ideaWorkspaceIdentity)
         val inventorySnapshot = captured.inventory
         val ownerModuleNamesByPath = referenceIndexOwnersByPath(inventorySnapshot)
+        val scope = scopeCache.resolve(
+            workspaceRoot = workspaceRoot,
+            config = config,
+            candidates = ownerModuleNamesByPath.keys.map(Path::of),
+        )
+        val includedPaths = scope.includedPaths.mapTo(linkedSetOf(), Path::toString)
         val inventoryEntries = buildFileInventoryEntries(
-            ownerModuleNamesByPath = ownerModuleNamesByPath,
+            ownerModuleNamesByPath = ownerModuleNamesByPath.filterKeys(includedPaths::contains),
             workspaceRoot = workspaceRoot,
             isCancelled = environment::isCancelled,
             sourceSetForPath = ::legacySourceSetLabelForFile,
         )
-        if (environment.isCancelled()) return emptyList()
+        if (environment.isCancelled()) return IndexedSourceIdentifiers(emptyList(), emptySet(), emptyList())
         store.reconcileFileInventory(inventoryEntries, FileStageVersions.CURRENT)
 
+        val inventoryByPath = inventoryEntries.associateBy(FileInventoryEntry::path)
+        val workByPath = store.pendingFileStages(FileIndexStage.SOURCE).associateBy { work -> work.path }
+        val orderedPendingPaths = prioritizeIndexingPaths(
+            pathsByModule = workByPath.keys.map { path -> path to inventoryByPath[path]?.moduleName },
+            moduleOrder = emptyList(),
+            criticalPaths = scope.criticalPaths.mapTo(linkedSetOf(), Path::toString),
+        )
         val scanner = PsiSourceIndexScanner(
             environment = environment,
             moduleNameForFile = ::moduleNameForFile,
         )
-        for (batch in store.pendingFileStages(FileIndexStage.SOURCE).chunked(SOURCE_INDEX_BATCH_SIZE)) {
+        for (batch in orderedPendingPaths.map(workByPath::getValue).chunked(SOURCE_INDEX_BATCH_SIZE)) {
             if (environment.isCancelled()) break
             val updates = batch.mapNotNull { work ->
                 onSourceFileScan(work.path)
@@ -185,7 +217,16 @@ internal class IdeaProjectIndexer(
                 store.commitSourceBatch(updates)
             }
         }
-        return inventoryEntries.map(FileInventoryEntry::path)
+        val currentPaths = prioritizeIndexingPaths(
+            pathsByModule = inventoryEntries.map { entry -> entry.path to entry.moduleName },
+            moduleOrder = emptyList(),
+            criticalPaths = scope.criticalPaths.mapTo(linkedSetOf(), Path::toString),
+        )
+        return IndexedSourceIdentifiers(
+            paths = currentPaths,
+            criticalPaths = scope.criticalPaths.mapTo(linkedSetOf(), Path::toString),
+            unmatchedCriticalPatterns = scope.unmatchedCriticalPatterns,
+        )
     }
 
     private fun requireActive() {
@@ -195,11 +236,15 @@ internal class IdeaProjectIndexer(
 
     private fun indexSymbolRelationships(
         currentFilePaths: Collection<String>,
+        criticalFilePaths: Set<String>,
         moduleOrder: List<String>,
         batchSize: Int,
         parallelism: Int,
     ) {
-        val workByPath = store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
+        val workByPath = (
+            store.pendingFileStages(FileIndexStage.RELATIONSHIPS) +
+                store.retryableLimitedRelationshipStages()
+            )
             .associateBy { work -> work.path }
         val pendingFilePaths = currentFilePaths.filter(workByPath::containsKey)
         if (pendingFilePaths.isEmpty()) return
@@ -213,7 +258,11 @@ internal class IdeaProjectIndexer(
             .associateWith { filePath -> fileModuleByPath[filePath] }
             .toList()
 
-        val orderedFilePaths = prioritizeFilesByModule(pathsByModule = filesByModule, moduleOrder = moduleOrder)
+        val orderedFilePaths = prioritizeIndexingPaths(
+            pathsByModule = filesByModule,
+            moduleOrder = moduleOrder,
+            criticalPaths = criticalFilePaths,
+        )
 
         val scanner = PsiReferenceScanner(
             environment = environment,
@@ -245,31 +294,6 @@ internal class IdeaProjectIndexer(
             },
             isCancelled = environment::isCancelled,
         )
-    }
-
-    private fun prioritizeFilesByModule(
-        pathsByModule: Collection<Pair<String, String?>>,
-        moduleOrder: List<String>,
-    ): Collection<String> {
-        if (moduleOrder.isEmpty()) return pathsByModule.map(Pair<String, String?>::first)
-
-        val modulePriorityByName = moduleOrder
-            .withIndex()
-            .associate { (index, moduleName) -> moduleName to index }
-
-        fun priorityFor(moduleName: String?): Int = moduleName
-            .let(::canonicalModuleName)
-            ?.let(modulePriorityByName::get)
-            ?: Int.MAX_VALUE
-
-        return pathsByModule
-            .sortedWith(
-                compareBy<Pair<String, String?>>(
-                    { (path, moduleName) -> priorityFor(moduleName) },
-                    { (_, moduleName) -> canonicalModuleName(moduleName) ?: "" },
-                    { (path) -> path },
-                ),
-            ).map { (path, _) -> path }
     }
 
     private fun discoverModuleSpecs(): List<IdeaModuleSpec> {
@@ -352,6 +376,48 @@ internal class IdeaProjectIndexer(
         project = project,
         workspaceRoot = workspaceRoot,
     ).copy(workspaceIdentity = workspaceIdentity)
+}
+
+internal data class IndexedSourceIdentifiers(
+    val paths: List<String>,
+    val criticalPaths: Set<String>,
+    val unmatchedCriticalPatterns: List<String>,
+)
+
+internal fun prioritizeIndexingPaths(
+    pathsByModule: Collection<Pair<String, String?>>,
+    moduleOrder: List<String>,
+    criticalPaths: Set<String>,
+): List<String> {
+    val modulePriorityByName = moduleOrder
+        .withIndex()
+        .associate { (index, moduleName) -> moduleName to index }
+
+    fun canonicalModuleName(moduleName: String?): String? = moduleName?.substringBefore("[")
+    fun modulePriority(moduleName: String?): Int = canonicalModuleName(moduleName)
+        ?.let(modulePriorityByName::get)
+        ?: Int.MAX_VALUE
+
+    return pathsByModule
+        .sortedWith(
+            compareBy<Pair<String, String?>>(
+                { (path) -> if (path in criticalPaths) 0 else 1 },
+                { (path) -> sourceSetPriority(path) },
+                { (_, moduleName) -> modulePriority(moduleName) },
+                { (_, moduleName) -> canonicalModuleName(moduleName) ?: "" },
+                { (path) -> path },
+            ),
+        ).map(Pair<String, String?>::first)
+}
+
+private fun sourceSetPriority(path: String): Int {
+    val normalized = "/${path.replace('\\', '/').trim('/')}/"
+    return when {
+        "/src/main/" in normalized -> 0
+        "/src/testFixtures/" in normalized -> 1
+        "/src/test/" in normalized -> 2
+        else -> 3
+    }
 }
 
 internal fun indexedModuleNameForFilePath(

@@ -149,6 +149,20 @@ class ReferenceIndexer(
         }
     }
 
+    /** Retries durable PSI limitations without making them ordinary pending work first. */
+    fun retryLimitedSymbolRelationships(
+        scanner: (String) -> RelationshipScanResult,
+        isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
+        onFilesIndexed: (List<String>) -> Unit = {},
+    ) {
+        indexPendingSymbolRelationships(
+            work = store.retryableLimitedRelationshipStages(),
+            scanner = scanner,
+            isCancelled = isCancelled,
+            onFilesIndexed = onFilesIndexed,
+        )
+    }
+
     fun reindexFiles(
         changedPaths: Set<String>,
         referenceScanner: (String) -> List<SymbolReferenceRow>,

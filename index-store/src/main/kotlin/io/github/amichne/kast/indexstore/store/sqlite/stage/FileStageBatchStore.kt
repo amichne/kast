@@ -3,12 +3,14 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureExternalizationResult
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureId
+import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.api.stage.FileStageFailureUpdate
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageRemoval
+import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageFailureUpdate
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageUpdate
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
 import java.sql.Connection
@@ -95,12 +97,20 @@ internal class FileStageBatchStore(
             failures.forEach { failure ->
                 references.clearReferencesFromFileInTransaction(conn, failure.work.path)
                 declarations.clearDeclarationsFromFileInTransaction(conn, failure.work.path)
-                failureStore.writeFailureOutcomeInTransaction(
-                    conn = conn,
-                    work = failure.work,
-                    code = failure.code,
-                    message = failure.message,
-                )
+                if (stages.shouldLimitFailureInTransaction(conn, failure.work, failure.code)) {
+                    stages.writeOutcomeInTransaction(
+                        conn,
+                        failure.work,
+                        listOf(FileStageLimitation.PSI_UNAVAILABLE),
+                    )
+                } else {
+                    failureStore.writeFailureOutcomeInTransaction(
+                        conn = conn,
+                        work = failure.work,
+                        code = failure.code,
+                        message = failure.message,
+                    )
+                }
             }
             stages.recomputeModuleProgressInTransaction(conn)
         }
@@ -124,12 +134,6 @@ internal class FileStageBatchStore(
                     }
                     references.clearReferencesFromFileInTransaction(conn, current.path)
                     declarations.clearDeclarationsFromFileInTransaction(conn, current.path)
-                    semanticGraph.markExternalBoundaryInTransaction(
-                        conn = conn,
-                        path = current.path,
-                        contentHash = current.contentHash,
-                        failure = current.failure,
-                    )
                     failureStore.markFailureExternalInTransaction(conn, failureId)
                     stages.recomputeModuleProgressInTransaction(conn)
                     state.incrementGenerationInTransaction(conn)
@@ -156,16 +160,34 @@ internal class FileStageBatchStore(
     internal fun commitSemanticStageStateInTransaction(
         conn: Connection,
         updates: List<SemanticGraphFileStageUpdate>,
+        failures: List<SemanticGraphFileStageFailureUpdate>,
         removals: List<SemanticGraphFileStageRemoval>,
     ) {
-        requireUniquePaths(updates.map { update -> update.work.path })
-        requireUniquePaths(removals.map(SemanticGraphFileStageRemoval::outcomePath))
-        val overlap = updates.mapTo(mutableSetOf()) { update -> update.work.path }
-            .intersect(removals.mapTo(mutableSetOf(), SemanticGraphFileStageRemoval::outcomePath))
-        require(overlap.isEmpty()) { "Semantic graph paths cannot be updated and removed in one batch" }
+        requireUniquePaths(
+            updates.map { update -> update.work.path } +
+                failures.map { failure -> failure.work.path } +
+                removals.map(SemanticGraphFileStageRemoval::outcomePath),
+        )
         updates.forEach { update ->
             stages.requireCurrentWorkInTransaction(conn, update.work, inventoryRequired = false)
             stages.writeOutcomeInTransaction(conn, update.work, update.limitations)
+        }
+        failures.forEach { failure ->
+            stages.requireCurrentWorkInTransaction(conn, failure.work, inventoryRequired = false)
+            if (stages.shouldLimitFailureInTransaction(conn, failure.work, failure.code)) {
+                stages.writeOutcomeInTransaction(
+                    conn,
+                    failure.work,
+                    listOf(FileStageLimitation.PSI_UNAVAILABLE),
+                )
+            } else {
+                failureStore.writeFailureOutcomeInTransaction(
+                    conn = conn,
+                    work = failure.work,
+                    code = failure.code,
+                    message = failure.message,
+                )
+            }
         }
         removals.forEach { removal ->
             stages.deleteOutcomeInTransaction(conn, removal.outcomePath, FileIndexStage.SEMANTIC_GRAPH)

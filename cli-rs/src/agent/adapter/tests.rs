@@ -4,7 +4,7 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn readiness_requires_exact_ready_runtime_and_semantic_index_evidence() {
+    fn readiness_requires_exact_ready_runtime_only() {
         let root = Path::new("/workspace");
         let mut status = RuntimeStatusResponse {
             state: RuntimeState::Ready,
@@ -24,10 +24,10 @@ mod tests {
 
         assert!(semantic_status_ready(root, &status));
         status.reference_index_ready = false;
-        assert!(!semantic_status_ready(root, &status));
+        assert!(semantic_status_ready(root, &status));
         status.reference_index_ready = true;
         status.source_module_names.clear();
-        assert!(!semantic_status_ready(root, &status));
+        assert!(semantic_status_ready(root, &status));
         status.source_module_names.push("main".to_string());
         status.workspace_root = "/different".to_string();
         assert!(!semantic_status_ready(root, &status));

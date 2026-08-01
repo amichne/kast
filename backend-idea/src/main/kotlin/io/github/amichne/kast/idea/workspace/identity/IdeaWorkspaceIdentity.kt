@@ -2,6 +2,7 @@ package io.github.amichne.kast.idea
 
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.WorkspaceIdentity
+import io.github.amichne.kast.api.client.WorkspacePathPolicy
 import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.protocol.ValidationException
@@ -59,6 +60,16 @@ internal data class IdeaWorkspaceIdentity(
                     "ideaProjectName" to ideaProject.name,
                     "ideaProjectBasePath" to ideaProject.basePath.value,
                     "ideaProjectLocationHash" to ideaProject.locationHash.value,
+                ),
+            )
+        }
+        if (WorkspacePathPolicy.isHardExcluded(relativePath)) {
+            throw ValidationException(
+                message = "Kast IDEA edits cannot target Gradle build artifacts or IDE output directories",
+                details = mapOf(
+                    "filePath" to rawFilePath,
+                    "relativePath" to relativePath.toString(),
+                    "mutation" to mutation.wireName,
                 ),
             )
         }

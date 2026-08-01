@@ -6,11 +6,14 @@ import io.github.amichne.kast.idea.backend.KastPluginBackend
 
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.progress.ProgressManager
+import com.intellij.openapi.roots.ProjectFileIndex
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.psi.PsiElement
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.search.PsiShortNamesCache
 import io.github.amichne.kast.api.validation.*
+import io.github.amichne.kast.api.client.WorkspacePathPolicy
 import io.github.amichne.kast.api.contract.result.FileOutlineResult
 import io.github.amichne.kast.api.contract.Symbol
 import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
@@ -160,8 +163,13 @@ internal fun <T : PsiElement> KastPluginBackend.collectMatchingSymbols(
         }
     }
 
-internal fun KastPluginBackend.isWorkspaceFile(filePath: String): Boolean =
-        sharedWorkspaceIdentity.contains(filePath)
+internal fun KastPluginBackend.isWorkspaceFile(filePath: String): Boolean {
+        val path = Path.of(filePath).toAbsolutePath().normalize()
+        val relative = sharedWorkspaceIdentity.relativizeIfContained(path) ?: return false
+        if (WorkspacePathPolicy.isHardExcluded(relative)) return false
+        val virtualFile = LocalFileSystem.getInstance().findFileByNioFile(path) ?: return true
+        return !ProjectFileIndex.getInstance(project).isExcluded(virtualFile)
+    }
 
 internal fun KastPluginBackend.compileWorkspaceSearchRegex(query: ParsedWorkspaceSearchQuery): Regex? =
         if (query.regex) {

@@ -2,18 +2,28 @@ package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.idea.diagnostics.KastIndexState
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
-import io.github.amichne.kast.indexstore.api.index.RelationshipIndexStatus
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileStageScopeCoverage
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 
-internal fun SqliteSourceIndexStore.loadKastSourceIndexSummary(): KastSourceIndexSummary {
+internal fun SqliteSourceIndexStore.loadKastSourceIndexSummary(
+    criticalPaths: Set<String> = emptySet(),
+    unmatchedCriticalPatterns: List<String> = emptyList(),
+): KastSourceIndexSummary {
     val snapshot = loadSourceIndexSnapshot()
-    val moduleStatuses = moduleIndexStatuses().values
-    val failedModules = moduleStatuses.count { status -> status == RelationshipIndexStatus.FAILED }
-    val degradedModules = moduleStatuses.count { status -> status == RelationshipIndexStatus.DEGRADED }
+    val indexedPaths = knownSourcePaths().mapTo(linkedSetOf()) { path -> path.toString() }
+    val overallCoverage = indexedPaths.takeIf(Set<String>::isNotEmpty)?.let { paths ->
+        fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, paths)
+    }
+    val criticalCoverage = criticalPaths.takeIf(Set<String>::isNotEmpty)?.let { paths ->
+        fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, paths)
+    }
+    val criticalIncomplete = criticalCoverage is FileStageScopeCoverage.Limited
+    val qualified = overallCoverage is FileStageScopeCoverage.Limited
     return KastSourceIndexSummary(
         state = when {
-            failedModules > 0 -> KastIndexState.FAILED
-            degradedModules > 0 -> KastIndexState.DEGRADED
+            unmatchedCriticalPatterns.isNotEmpty() || criticalIncomplete -> KastIndexState.FAILED
+            qualified -> KastIndexState.DEGRADED
             else -> KastIndexState.READY
         },
         fileCount = snapshot.packageByPath.size,
@@ -27,8 +37,10 @@ internal fun SqliteSourceIndexStore.loadKastSourceIndexSummary(): KastSourceInde
         importCount = snapshot.importsByPath.values.sumOf(List<String>::size) +
             snapshot.wildcardImportPackagesByPath.values.sumOf(List<String>::size),
         message = when {
-            failedModules > 0 -> "$failedModules modules require a file-local failure decision"
-            degradedModules > 0 -> "$degradedModules modules contain limited or external graph boundaries"
+            unmatchedCriticalPatterns.isNotEmpty() ->
+                "Critical path patterns matched no indexed source: ${unmatchedCriticalPatterns.joinToString()}"
+            criticalIncomplete -> "Critical reference coverage is incomplete"
+            qualified -> "Reference coverage is qualified by noncritical gaps"
             else -> null
         },
     )

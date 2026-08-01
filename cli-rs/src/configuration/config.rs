@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 use std::env;
 use std::fmt;
 use std::fs;
-use std::num::NonZeroU64;
+use std::num::{NonZeroU32, NonZeroU64};
 use std::path::{Path, PathBuf};
 
 include!("config/model.rs");

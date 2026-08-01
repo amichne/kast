@@ -16,10 +16,16 @@ import io.github.amichne.kast.indexstore.api.reference.*
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.api.stage.FileStageFailureUpdate
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageRemoval
+import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageFailureUpdate
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageUpdate
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
 import io.github.amichne.kast.indexstore.snapshot.*
 import java.nio.file.Path
+
+enum class SqliteSourceIndexStoreAccess {
+    READ_ONLY,
+    READ_WRITE,
+}
 
 /**
  * SQLite-backed store for the source identifier index, file manifest,
@@ -31,17 +37,28 @@ import java.nio.file.Path
 class SqliteSourceIndexStore private constructor(
     workspaceIdentity: WorkspaceIdentity,
     private val pageReadObserver: SourceIndexPageReadObserver,
+    access: SqliteSourceIndexStoreAccess,
 ) : AutoCloseable, SourceIndexWriter {
-    constructor(workspaceIdentity: WorkspaceIdentity) : this(workspaceIdentity, SourceIndexPageReadObserver.Disabled)
+    constructor(
+        workspaceIdentity: WorkspaceIdentity,
+        access: SqliteSourceIndexStoreAccess = SqliteSourceIndexStoreAccess.READ_WRITE,
+    ) : this(workspaceIdentity, SourceIndexPageReadObserver.Disabled, access)
 
-    constructor(workspaceRoot: Path) : this(WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot))
+    constructor(
+        workspaceRoot: Path,
+        access: SqliteSourceIndexStoreAccess = SqliteSourceIndexStoreAccess.READ_WRITE,
+    ) : this(WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot), access)
 
     internal constructor(
         workspaceRoot: Path,
         pageReadObserver: SourceIndexPageReadObserver,
-    ) : this(WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot), pageReadObserver)
+    ) : this(
+        WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot),
+        pageReadObserver,
+        SqliteSourceIndexStoreAccess.READ_WRITE,
+    )
 
-    private val state = SqliteSourceIndexStoreState(workspaceIdentity, pageReadObserver)
+    private val state = SqliteSourceIndexStoreState(workspaceIdentity, pageReadObserver, access)
     private val schema = state.schema
 
     private val fileMutations = SourceIndexFileMutations(state)
@@ -130,6 +147,12 @@ class SqliteSourceIndexStore private constructor(
 
     fun pendingFileStages(stage: FileIndexStage): List<PendingFileStage> =
         fileStages.pendingFileStages(stage)
+
+    fun retryableLimitedRelationshipStages(): List<PendingFileStage> =
+        fileStages.retryableLimitedRelationshipStages()
+
+    fun retryableLimitedSemanticGraphStages(): List<PendingFileStage> =
+        fileStages.retryableLimitedSemanticGraphStages()
 
     fun pendingFileStage(
         path: String,
@@ -254,14 +277,16 @@ class SqliteSourceIndexStore private constructor(
 
     fun commitSemanticGraphBatchIfGeneration(
         expectedGeneration: SourceIndexGeneration,
-        updates: List<SemanticGraphFileStageUpdate>,
+        updates: List<SemanticGraphFileStageUpdate> = emptyList(),
         removals: List<SemanticGraphFileStageRemoval> = emptyList(),
+        failures: List<SemanticGraphFileStageFailureUpdate> = emptyList(),
     ): SemanticGraphCommitResult = semanticGraphWriter.replaceSemanticGraphFilesIfGeneration(
         expectedGeneration = expectedGeneration,
         updates = updates.map(SemanticGraphFileStageUpdate::update),
-        removedPaths = removals.map(SemanticGraphFileStageRemoval::sourcePath),
+        removedPaths = removals.map(SemanticGraphFileStageRemoval::sourcePath) +
+            failures.map(SemanticGraphFileStageFailureUpdate::sourcePath),
         commitStageState = { conn ->
-            fileStageBatches.commitSemanticStageStateInTransaction(conn, updates, removals)
+            fileStageBatches.commitSemanticStageStateInTransaction(conn, updates, failures, removals)
         },
     )
 

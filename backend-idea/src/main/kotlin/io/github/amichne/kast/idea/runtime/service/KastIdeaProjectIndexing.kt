@@ -20,6 +20,11 @@ internal class KastIdeaProjectIndexing(
     private val indexStore: SqliteSourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity),
     private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
     private val snapshotCoordinator: RepositorySnapshotCoordinator? = null,
+    private val liveConfigLoader: (Path, KastConfig) -> KastConfig = ::loadLiveIndexingConfig,
+    private val semanticGraphIndexer: (List<String>, Int) -> Unit = { _, _ -> },
+    private val runProjectIndexing: ((KastConfig, (List<String>) -> Unit) -> Unit)? = null,
+    private val waitForNextPass: (Long) -> Boolean = ::waitForIndexingRetry,
+    private val scopeCache: WorkspaceIndexingScopeCache = WorkspaceIndexingScopeCache(),
 ) {
     constructor(
         project: Project,
@@ -129,7 +134,7 @@ internal class KastIdeaProjectIndexing(
     }
 
     private fun runIndexing() {
-        runCatching {
+        val prepared = runCatching {
             KastStructuredTrace.event(
                 eventName = "idea.index.hydrating",
                 project = project,
@@ -154,57 +159,138 @@ internal class KastIdeaProjectIndexing(
                 detail = workspaceIdentity.traceDetails(),
             )
             diagnostics.recordIndexingStarted()
-            IdeaProjectIndexer(
-                project = project,
-                workspaceRoot = workspaceRoot,
-                store = indexStore,
-                cancelled = { cancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed },
-                workspaceIdentity = workspaceIdentity.workspaceIdentity,
-            ).indexProject(config)
-            indexStore.loadKastSourceIndexSummary()
-        }.onSuccess { summary ->
-            if (!cancelled.get()) {
-                snapshotCoordinator?.let { coordinator ->
-                    runCatching {
-                        coordinator.publishCompletedIndex(indexStore)
-                    }.onFailure { error ->
-                        LOG.warn("Kast repository snapshot publication failed", error)
-                    }
-                }
-                KastStructuredTrace.event(
-                    eventName = "idea.index.completed",
-                    project = project,
-                    workspaceRoot = workspaceRoot,
-                    fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
-                    outcome = "completed",
-                    detail = mapOf(
-                        "fileCount" to summary.fileCount,
-                        "identifierCount" to summary.identifierCount,
-                        "moduleCount" to summary.moduleCount,
-                        "importCount" to summary.importCount,
-                    ) + workspaceIdentity.traceDetails(),
-                )
-                diagnostics.recordIndexCompleted(summary)
-                LOG.info("Kast IDEA project index completed")
+        }
+        prepared.exceptionOrNull()?.let { error ->
+            recordIndexFailure(error)
+            return
+        }
+
+        val projectIndexer = IdeaProjectIndexer(
+            project = project,
+            workspaceRoot = workspaceRoot,
+            store = indexStore,
+            cancelled = ::isCancelled,
+            workspaceIdentity = workspaceIdentity.workspaceIdentity,
+            scopeCache = scopeCache,
+        )
+        var lastValidConfig = config
+        var consecutiveFailures = 0
+        while (!isCancelled()) {
+            val candidate = try {
+                liveConfigLoader(workspaceRoot, lastValidConfig)
+            } catch (error: Exception) {
+                diagnostics.recordConfigFallback(configPath(), error)
+                lastValidConfig
             }
-        }.onFailure { error ->
-            if (!cancelled.get()) {
-                KastStructuredTrace.event(
-                    eventName = "idea.index.failed",
-                    project = project,
-                    workspaceRoot = workspaceRoot,
-                    fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
-                    outcome = "failed",
-                    detail = mapOf(
-                        "errorClass" to error::class.qualifiedName,
-                        "message" to error.message,
-                    ) + workspaceIdentity.traceDetails(),
-                )
-                diagnostics.recordIndexFailed(error)
-                LOG.warn("Kast IDEA project index failed", error)
+            var pass = runCatching { runIndexingPass(projectIndexer, candidate) }
+            val scopeFailure = pass.exceptionOrNull() as? IndexingScopeConfigurationException
+            if (scopeFailure != null && candidate != lastValidConfig) {
+                diagnostics.recordConfigFallback(configPath(), scopeFailure)
+                pass = runCatching { runIndexingPass(projectIndexer, lastValidConfig) }
             }
+
+            pass.onSuccess { result ->
+                lastValidConfig = candidate.takeUnless { scopeFailure != null } ?: lastValidConfig
+                consecutiveFailures = if (result.graphFailure == null) 0 else consecutiveFailures + 1
+                recordIndexCompleted(result.summary)
+            }.onFailure { error ->
+                consecutiveFailures += 1
+                recordIndexFailure(error)
+            }
+            if (isCancelled()) break
+            val delay = if (pass.getOrNull()?.graphFailure == null && pass.isSuccess) {
+                PERIODIC_INDEXING_RETRY_MILLIS
+            } else {
+                indexingRetryDelayMillis(consecutiveFailures)
+            }
+            if (!waitForNextPass(delay)) break
         }
     }
+
+    private fun runIndexingPass(
+        projectIndexer: IdeaProjectIndexer,
+        liveConfig: KastConfig,
+    ): IndexingPassResult {
+        var graphFailure: Throwable? = null
+        val graph: (List<String>) -> Unit = { paths ->
+            runCatching {
+                semanticGraphIndexer(paths, liveConfig.indexing.graph.batchSize.value)
+            }.onFailure { error ->
+                graphFailure = error
+                LOG.warn("Kast semantic graph indexing pass failed", error)
+            }
+        }
+        val indexedSources = runProjectIndexing?.let { indexProject ->
+            indexProject(liveConfig, graph)
+            scopeCache.resolve(
+                workspaceRoot = workspaceRoot,
+                config = liveConfig.indexing,
+                candidates = indexStore.knownSourcePaths(),
+            ).let { scope ->
+                IndexedSourceIdentifiers(
+                    paths = scope.includedPaths.map(Path::toString),
+                    criticalPaths = scope.criticalPaths.mapTo(linkedSetOf(), Path::toString),
+                    unmatchedCriticalPatterns = scope.unmatchedCriticalPatterns,
+                )
+            }
+        } ?: projectIndexer.indexProject(liveConfig, graph)
+        return IndexingPassResult(
+            summary = indexStore.loadKastSourceIndexSummary(
+                criticalPaths = indexedSources.criticalPaths,
+                unmatchedCriticalPatterns = indexedSources.unmatchedCriticalPatterns,
+            ),
+            graphFailure = graphFailure,
+        )
+    }
+
+    private fun recordIndexCompleted(summary: KastSourceIndexSummary) {
+        if (isCancelled()) return
+        snapshotCoordinator?.let { coordinator ->
+            runCatching {
+                coordinator.publishCompletedIndex(indexStore)
+            }.onFailure { error ->
+                LOG.warn("Kast repository snapshot publication failed", error)
+            }
+        }
+        KastStructuredTrace.event(
+            eventName = "idea.index.completed",
+            project = project,
+            workspaceRoot = workspaceRoot,
+            fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+            outcome = "completed",
+            detail = mapOf(
+                "fileCount" to summary.fileCount,
+                "identifierCount" to summary.identifierCount,
+                "moduleCount" to summary.moduleCount,
+                "importCount" to summary.importCount,
+            ) + workspaceIdentity.traceDetails(),
+        )
+        diagnostics.recordIndexCompleted(summary)
+        LOG.info("Kast IDEA project index completed")
+    }
+
+    private fun recordIndexFailure(error: Throwable) {
+        if (isCancelled()) return
+        KastStructuredTrace.event(
+            eventName = "idea.index.failed",
+            project = project,
+            workspaceRoot = workspaceRoot,
+            fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
+            outcome = "failed",
+            detail = mapOf(
+                "errorClass" to error::class.qualifiedName,
+                "message" to error.message,
+            ) + workspaceIdentity.traceDetails(),
+        )
+        diagnostics.recordIndexFailed(error)
+        LOG.warn("Kast IDEA project index failed", error)
+    }
+
+    private fun isCancelled(): Boolean =
+        cancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed
+
+    private fun configPath(): Path =
+        workspaceIdentity.workspaceIdentity.workspaceDataDirectoryPath.resolve("config.toml")
 
     fun fail(error: Throwable) {
         semanticAdmission.fail(error.message?.takeIf(String::isNotBlank) ?: error::class.java.name)
@@ -214,4 +300,31 @@ internal class KastIdeaProjectIndexing(
     companion object {
         private val LOG = Logger.getInstance(KastIdeaProjectIndexing::class.java)
     }
+}
+
+private data class IndexingPassResult(
+    val summary: KastSourceIndexSummary,
+    val graphFailure: Throwable?,
+)
+
+private const val PERIODIC_INDEXING_RETRY_MILLIS = 30_000L
+
+internal fun indexingRetryDelayMillis(consecutiveFailures: Int): Long = when (consecutiveFailures) {
+    1 -> 250L
+    2 -> 500L
+    3 -> 1_000L
+    else -> PERIODIC_INDEXING_RETRY_MILLIS
+}
+
+private fun loadLiveIndexingConfig(
+    workspaceRoot: Path,
+    lastValid: KastConfig,
+): KastConfig = lastValid.copy(indexing = KastConfig.load(workspaceRoot).indexing)
+
+private fun waitForIndexingRetry(delayMillis: Long): Boolean = try {
+    Thread.sleep(delayMillis)
+    true
+} catch (_: InterruptedException) {
+    Thread.currentThread().interrupt()
+    false
 }

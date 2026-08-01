@@ -108,14 +108,16 @@ pub(crate) fn semantic_graph_read_admission(
         .limitations
         .iter()
         .any(|limitation| limitation == "SOURCE_INVENTORY_INCOMPLETE");
+    let eligible_file_count = snapshot
+        .coverage
+        .counts
+        .total
+        .saturating_sub(snapshot.coverage.counts.excluded);
     let qualified = source_inventory_complete
         && snapshot.coverage.eligibility_proven
         && snapshot.coverage.pending_update_count == 0
-        && snapshot.coverage.counts.indexed + snapshot.coverage.counts.limited > 0
-        && snapshot.coverage.counts.pending == 0
-        && snapshot.coverage.counts.failed == 0
-        && snapshot.coverage.counts.stale == 0
-        && snapshot.coverage.counts.limited > 0;
+        && !has_critical_path_gap(&snapshot.coverage)
+        && eligible_file_count > 0;
     Ok(if qualified {
         SemanticGraphReadAdmission::Qualified {
             generation: snapshot.generation,
@@ -213,7 +215,7 @@ fn read_coverage_with_orphans(
                 ),
             ));
         }
-        return Ok(classify_coverage(
+        let mut snapshot = classify_coverage(
             index,
             semantic_files,
             &scope_fingerprint,
@@ -221,12 +223,124 @@ fn read_coverage_with_orphans(
             resolved_scope,
             semantic_scope,
             orphaned_semantic_paths,
-        ));
+        );
+        if snapshot.scope.module.is_none() && snapshot.scope.source_set.is_none() {
+            apply_critical_path_coverage(workspace_root, &mut snapshot)?;
+        }
+        return Ok(snapshot);
     }
     Err(CliError::new(
         "GRAPH_COVERAGE_UNSTABLE",
         "source-index generation moved twice while reading graph coverage",
     ))
+}
+
+fn apply_critical_path_coverage(
+    workspace_root: &Path,
+    snapshot: &mut CoverageSnapshot,
+) -> Result<()> {
+    let configured = config::KastConfig::load(workspace_root)?
+        .indexing
+        .critical_paths;
+    if configured.is_empty() {
+        return Ok(());
+    }
+
+    let mut unmatched = false;
+    let mut incomplete = false;
+    for raw in configured {
+        let pattern = CriticalPathPattern::parse(raw)?;
+        let mut matched = false;
+        for file in snapshot
+            .files
+            .iter()
+            .filter(|file| pattern.matches(&file.path))
+        {
+            matched = true;
+            incomplete |= matches!(
+                file.state,
+                GraphFileState::Pending
+                    | GraphFileState::Limited
+                    | GraphFileState::Failed
+                    | GraphFileState::Stale
+            );
+        }
+        if !matched {
+            unmatched = true;
+        }
+    }
+    if unmatched {
+        snapshot
+            .coverage
+            .limitations
+            .push("SEMANTIC_GRAPH_CRITICAL_PATH_UNMATCHED".to_string());
+    }
+    if incomplete {
+        snapshot
+            .coverage
+            .limitations
+            .push("SEMANTIC_GRAPH_CRITICAL_PATH_INCOMPLETE".to_string());
+    }
+    if unmatched || incomplete {
+        snapshot.coverage.complete = false;
+        snapshot.coverage.eligible_for_complete_negative = false;
+    }
+    Ok(())
+}
+
+fn has_critical_path_gap(coverage: &CoverageSummary) -> bool {
+    coverage.limitations.iter().any(|limitation| {
+        matches!(
+            limitation.as_str(),
+            "SEMANTIC_GRAPH_CRITICAL_PATH_UNMATCHED" | "SEMANTIC_GRAPH_CRITICAL_PATH_INCOMPLETE"
+        )
+    })
+}
+
+struct CriticalPathPattern {
+    matcher: glob::Pattern,
+    basename_only: bool,
+}
+
+impl CriticalPathPattern {
+    fn parse(raw: String) -> Result<Self> {
+        let normalized = raw.trim().trim_start_matches('/').trim_end_matches('/');
+        if normalized.is_empty() || normalized.starts_with('!') {
+            return Err(CliError::new(
+                "INDEXING_SCOPE_INVALID",
+                format!("invalid indexing.criticalPaths pattern `{raw}`"),
+            ));
+        }
+        let matcher = glob::Pattern::new(normalized).map_err(|error| {
+            CliError::new(
+                "INDEXING_SCOPE_INVALID",
+                format!("invalid indexing.criticalPaths pattern `{raw}`: {error}"),
+            )
+        })?;
+        Ok(Self {
+            matcher,
+            basename_only: !normalized.contains('/'),
+        })
+    }
+
+    fn matches(&self, path: &str) -> bool {
+        let path = Path::new(path);
+        if self.basename_only {
+            return path.components().any(|component| {
+                component
+                    .as_os_str()
+                    .to_str()
+                    .is_some_and(|value| self.matcher.matches(value))
+            });
+        }
+        let options = glob::MatchOptions {
+            case_sensitive: true,
+            require_literal_separator: true,
+            require_literal_leading_dot: false,
+        };
+        path.ancestors()
+            .any(|candidate| self.matcher.matches_path_with(candidate, options))
+    }
 }
 
 fn classify_coverage(

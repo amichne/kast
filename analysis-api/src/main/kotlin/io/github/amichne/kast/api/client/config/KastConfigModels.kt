@@ -28,9 +28,16 @@ data class IdeaLaunchConfig(
 )
 
 data class IndexingConfig(
+    val criticalPaths: IndexingCriticalPaths,
+    val ignoredPaths: IndexingIgnoredPaths,
+    val graph: GraphIndexingConfig,
     val relationships: RelationshipIndexingConfig,
     val identifierIndexWaitMillis: IndexingIdentifierIndexWaitMillis,
     val remote: RemoteIndexConfig,
+)
+
+data class GraphIndexingConfig(
+    val batchSize: GraphIndexingBatchSize,
 )
 
 data class RelationshipIndexingConfig(
@@ -167,9 +174,16 @@ data class ServerConfigOverride(
 )
 
 data class IndexingConfigOverride(
+    val criticalPaths: IndexingCriticalPaths? = null,
+    val ignoredPaths: IndexingIgnoredPaths? = null,
+    val graph: GraphIndexingConfigOverride? = null,
     val relationships: RelationshipIndexingConfigOverride? = null,
     val identifierIndexWaitMillis: IndexingIdentifierIndexWaitMillis? = null,
     val remote: RemoteIndexConfigOverride? = null,
+)
+
+data class GraphIndexingConfigOverride(
+    val batchSize: GraphIndexingBatchSize? = null,
 )
 
 data class RelationshipIndexingConfigOverride(

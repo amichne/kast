@@ -75,7 +75,7 @@ fn ready_result(workspace_root: &Path, status: Option<&RuntimeStatusResponse>) -
         ready: true,
         runtime: "READY",
         backend: status.backend_name.clone(),
-        reference_index_ready: true,
+        reference_index_ready: status.reference_index_ready,
         source_module_count: status.source_module_names.len(),
         next: vec!["kast refresh", "kast files", "kast symbol find <query>"],
     })
@@ -88,8 +88,6 @@ fn semantic_status_ready(workspace_root: &Path, status: &RuntimeStatusResponse) 
         && status.healthy
         && status.active
         && !status.indexing
-        && status.reference_index_ready
-        && !status.source_module_names.is_empty()
 }
 
 fn runtime_state_name(state: &RuntimeState) -> &'static str {

@@ -77,7 +77,13 @@ data class FileInventoryEntry(
 }
 
 enum class FileStageLimitation {
+    PSI_UNAVAILABLE,
     UNRESOLVED_RELATIONSHIP,
+}
+
+enum class FileStageWorkReason {
+    PENDING,
+    LIMITED_RETRY,
 }
 
 @JvmInline
@@ -137,11 +143,15 @@ data class PendingFileStage(
     val stage: FileIndexStage,
     val version: FileStageVersion,
     val inputFingerprint: FileStageInputFingerprint? = null,
+    val reason: FileStageWorkReason = FileStageWorkReason.PENDING,
 ) {
     init {
         require(path.isNotBlank()) { "Pending file-stage path must be non-blank" }
         require(stage == FileIndexStage.SEMANTIC_GRAPH || inputFingerprint == null) {
             "Only semantic graph work accepts an input fingerprint"
+        }
+        require(reason != FileStageWorkReason.LIMITED_RETRY || stage != FileIndexStage.SOURCE) {
+            "Source work does not support limited retries"
         }
     }
 }

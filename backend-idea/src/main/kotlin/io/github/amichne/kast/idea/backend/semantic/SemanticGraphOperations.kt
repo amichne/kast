@@ -6,6 +6,7 @@ import io.github.amichne.kast.api.contract.LineNumber
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.query.SemanticGraphPath
+import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.SemanticGraphCoverage
 import io.github.amichne.kast.api.contract.result.SemanticGraphDiagnosticEvidence
 import io.github.amichne.kast.api.contract.result.SemanticGraphFileCoverage
@@ -18,31 +19,52 @@ import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
-import io.github.amichne.kast.idea.IdeaFileHashComputer
 import io.github.amichne.kast.idea.IdeaReadEpochKind
+import io.github.amichne.kast.idea.IdeaIndexSemanticAdmission
 import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.idea.backend.diagnostics.analyzeDiagnosticsFileInReadEpoch
 import io.github.amichne.kast.idea.runIdeaReadAction
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphCommitResult
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageInputFingerprint
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.PendingFileStage
+import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageFailureUpdate
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageRemoval
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageUpdate
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+import java.nio.file.Path
 import java.security.MessageDigest
 
 internal suspend fun KastPluginBackend.semanticGraphOperation(query: ParsedSemanticGraphQuery): SemanticGraphResult =
     withContext(readDispatcher) {
+        if (persistedIndexAccess != io.github.amichne.kast.idea.PersistedIndexAccess.READ_WRITE) {
+            throw CapabilityNotSupportedException(
+                capability = "SEMANTIC_GRAPH",
+                message = "Persisted semantic graph writes belong to the headless sidecar",
+            )
+        }
         val store = semanticGraphStore ?: throw CapabilityNotSupportedException(
             capability = "SEMANTIC_GRAPH",
             message = "Semantic graph extraction requires the IDEA source index",
         )
+        val selectedPaths = query.filePaths.map { path -> path.value.value }
+        val includedPaths = persistedIndexingScope(selectedPaths)
+            .includedPaths
+            .mapTo(linkedSetOf()) { path -> path.toString() }
+        val excludedPaths = selectedPaths.filterNot(includedPaths::contains)
+        if (excludedPaths.isNotEmpty()) {
+            throw ValidationException(
+                "Semantic graph path is excluded from the persisted-index scope",
+                details = mapOf("filePaths" to excludedPaths.sorted().joinToString()),
+            )
+        }
         store.ensureSchema()
         buildSemanticGraphSnapshot(query)
     }
@@ -62,6 +84,7 @@ private suspend fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSe
     val contentHashes = stageInputs.associate { input -> input.sourcePath to input.contentHash }
     val stageInputFingerprint = semanticGraphStageInputFingerprint(stageInputs)
     val coverage = mutableListOf<SemanticGraphFileCoverage>()
+    val unavailablePaths = sortedSetOf<String>()
     var omittedExternalTargetCount = 0
     val planned = query.filePaths.zip(selectedPaths).map { (absolutePath, relativePath) ->
         checkSemanticGraphCancellation()
@@ -104,7 +127,7 @@ private suspend fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSe
             checkSemanticGraphCancellation()
             val batchPsiGeneration = runIdeaReadAction { psiGeneration() }
             val refreshedBatch = batch.map { file ->
-                val refreshed = runIdeaReadAction {
+                val refresh = runIdeaReadAction {
                     readEpochObserver.entered(IdeaReadEpochKind.SEMANTIC_GRAPH)
                     val currentPsiGeneration = psiGeneration()
                     if (batchPsiGeneration != currentPsiGeneration) {
@@ -118,13 +141,25 @@ private suspend fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSe
                     )
                 }
                 checkSemanticGraphCancellation()
-                file to refreshed
+                file to refresh
             }
-            val updates = refreshedBatch.map { (file, refreshed) ->
+            val updates = refreshedBatch.mapNotNull { (file, refresh) ->
+                val refreshed = refresh as? SemanticGraphFileRefresh.Refreshed ?: return@mapNotNull null
                 SemanticGraphFileStageUpdate(
                     work = requireNotNull(file.work),
-                    update = refreshed.extracted.update,
-                    limitations = refreshed.extracted.limitations,
+                    update = refreshed.file.extracted.update,
+                    limitations = refreshed.file.extracted.limitations,
+                )
+            }
+            val failures = refreshedBatch.mapNotNull { (file, refresh) ->
+                if (refresh !is SemanticGraphFileRefresh.Unavailable) return@mapNotNull null
+                unavailablePaths += file.absolutePath.value.value
+                SemanticGraphFileStageFailureUpdate(
+                    work = requireNotNull(file.work),
+                    scannedContentHash = FileContentHash.parse(file.contentHash.value),
+                    sourcePath = file.relativePath,
+                    code = FileStageFailureCode.PSI_UNAVAILABLE,
+                    message = "Kotlin PSI or diagnostics are unavailable for this file",
                 )
             }
             val commit = runIdeaReadAction {
@@ -136,11 +171,14 @@ private suspend fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSe
                     expectedGeneration = expectedGeneration,
                     updates = updates,
                     removals = uncommittedRemovals,
+                    failures = failures,
                 )
             }
             expectedGeneration = commit.semanticGraphGenerationOrThrow()
             uncommittedRemovals = emptyList()
-            refreshedBatch.forEach { (_, refreshed) ->
+            refreshedBatch.forEach { (_, refresh) ->
+                val refreshed = (refresh as? SemanticGraphFileRefresh.Refreshed)?.file
+                    ?: return@forEach
                 coverage += refreshed.coverage
                 omittedExternalTargetCount = Math.addExact(
                     omittedExternalTargetCount,
@@ -164,6 +202,12 @@ private suspend fun KastPluginBackend.buildSemanticGraphSnapshot(query: ParsedSe
     }
     coverage += removedPaths.map { path ->
         SemanticGraphFileCoverage(path, null, SemanticGraphFileStatus.REMOVED)
+    }
+    if (unavailablePaths.isNotEmpty()) {
+        throw ValidationException(
+            "Kotlin PSI or diagnostics are unavailable for semantic graph extraction",
+            details = mapOf("filePaths" to unavailablePaths.joinToString()),
+        )
     }
     val graph = store.readSemanticGraphSummary(selectedPaths)
     if (graph.generation != expectedGeneration) {
@@ -194,22 +238,16 @@ private data class SemanticGraphStageInput(
     val contentHash: SemanticGraphSha256,
 )
 
-private suspend fun KastPluginBackend.currentSemanticGraphStageInputs(
+private fun KastPluginBackend.currentSemanticGraphStageInputs(
     sourcePaths: Set<SemanticGraphSourcePath>,
 ): List<SemanticGraphStageInput> {
     val absolutePaths = sourcePaths.associateWith { sourcePath ->
         workspaceRoot.resolve(sourcePath.value).toString()
     }
-    val contentHashes = IdeaFileHashComputer.currentHashes(absolutePaths.values)
-        .associate { fileHash ->
-            fileHash.filePath to SemanticGraphSha256.parse(fileHash.hash)
-        }
     return absolutePaths.map { (sourcePath, absolutePath) ->
         SemanticGraphStageInput(
             sourcePath = sourcePath,
-            contentHash = checkNotNull(contentHashes[absolutePath]) {
-                "IDEA did not hash semantic graph scope file $absolutePath"
-            },
+            contentHash = sha256(Files.readAllBytes(Path.of(absolutePath))),
         )
     }
 }
@@ -226,19 +264,33 @@ private fun KastPluginBackend.refreshSemanticGraphFile(
     relativePath: SemanticGraphSourcePath,
     expectedContentHash: SemanticGraphSha256,
     semanticScope: Set<SemanticGraphSourcePath>,
-): RefreshedSemanticGraphFile {
+): SemanticGraphFileRefresh {
+    when (indexSemanticAdmissionStatus()) {
+        IdeaIndexSemanticAdmission.Status.Ready -> Unit
+        is IdeaIndexSemanticAdmission.Status.Pending,
+        is IdeaIndexSemanticAdmission.Status.Failed,
+        -> return SemanticGraphFileRefresh.Unavailable
+    }
+    val diagnostics = analyzeDiagnosticsFileInReadEpoch(absolutePath.value)
+    if (diagnostics.status.state.name != "ANALYZED") {
+        return when (diagnostics.status.state) {
+            FileAnalysisState.PENDING_INDEX,
+            FileAnalysisState.BACKEND_FAILURE,
+            -> SemanticGraphFileRefresh.Unavailable
+            FileAnalysisState.MISSING_ON_DISK,
+            FileAnalysisState.OUTSIDE_SOURCE_MODULES,
+            -> throw ValidationException(
+                "Kotlin diagnostics prevent semantic graph extraction for ${absolutePath.value.value}",
+            )
+            FileAnalysisState.ANALYZED -> error("Analyzed diagnostics were classified as unavailable")
+        }
+    }
     val file = findKtFile(absolutePath.value.value)
     val contentHash = sha256(file.text)
     if (contentHash != expectedContentHash) {
         throw ConflictException(
             message = "Kotlin content changed while semantic graph work was planned; retry the refresh",
             details = mapOf("filePath" to absolutePath.value.value),
-        )
-    }
-    val diagnostics = analyzeDiagnosticsFileInReadEpoch(absolutePath.value)
-    if (diagnostics.status.state.name != "ANALYZED") {
-        throw ValidationException(
-            "Kotlin diagnostics prevent semantic graph extraction for ${absolutePath.value.value}",
         )
     }
     val evidence = diagnostics.diagnostics.map { diagnostic ->
@@ -251,15 +303,23 @@ private fun KastPluginBackend.refreshSemanticGraphFile(
         )
     }
     val extracted = extractSemanticGraphFile(file, relativePath, contentHash, evidence, semanticScope)
-    return RefreshedSemanticGraphFile(
-        extracted = extracted,
-        coverage = SemanticGraphFileCoverage(
-            path = relativePath,
-            contentHash = contentHash,
-            status = SemanticGraphFileStatus.REFRESHED,
-            diagnostics = evidence,
+    return SemanticGraphFileRefresh.Refreshed(
+        RefreshedSemanticGraphFile(
+            extracted = extracted,
+            coverage = SemanticGraphFileCoverage(
+                path = relativePath,
+                contentHash = contentHash,
+                status = SemanticGraphFileStatus.REFRESHED,
+                diagnostics = evidence,
+            ),
         ),
     )
+}
+
+private sealed interface SemanticGraphFileRefresh {
+    data class Refreshed(val file: RefreshedSemanticGraphFile) : SemanticGraphFileRefresh
+
+    data object Unavailable : SemanticGraphFileRefresh
 }
 
 private data class RefreshedSemanticGraphFile(
@@ -305,9 +365,11 @@ private fun KastPluginBackend.toRelativeSemanticGraphPath(path: SemanticGraphPat
     return SemanticGraphSourcePath.parse(workspaceRoot.relativize(absolute).toString())
 }
 
-private fun sha256(value: String): SemanticGraphSha256 = SemanticGraphSha256.parse(
+private fun sha256(value: String): SemanticGraphSha256 = sha256(value.toByteArray(StandardCharsets.UTF_8))
+
+private fun sha256(value: ByteArray): SemanticGraphSha256 = SemanticGraphSha256.parse(
     MessageDigest.getInstance("SHA-256")
-        .digest(value.toByteArray(StandardCharsets.UTF_8))
+        .digest(value)
         .joinToString("") { byte -> "%02x".format(byte) },
 )
 

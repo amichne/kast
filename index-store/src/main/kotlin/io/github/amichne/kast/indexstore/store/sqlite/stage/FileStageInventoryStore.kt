@@ -3,6 +3,7 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageInputFingerprint
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcome
@@ -10,9 +11,11 @@ import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.api.index.FileStageScopeCoverage
 import io.github.amichne.kast.indexstore.api.index.FileStageVersion
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
+import io.github.amichne.kast.indexstore.api.index.FileStageWorkReason
 import io.github.amichne.kast.indexstore.api.index.PendingFileStage
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.store.cache.defaultCacheJson
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import java.sql.Connection
 
@@ -124,23 +127,9 @@ internal class FileStageInventoryStore(
                          OR outcomes.content_hash != manifest.content_hash
                          OR outcomes.stage_version != manifest.$versionColumn
                          OR outcomes.outcome_status = 'FAILED'
-                     )
-                     AND NOT (
-                         ? = 'SEMANTIC_GRAPH'
-                         AND EXISTS (
-                             SELECT 1
-                             FROM file_stage_outcomes boundary
-                             WHERE boundary.prefix_id = manifest.prefix_id
-                               AND boundary.filename = manifest.filename
-                               AND boundary.stage = 'RELATIONSHIPS'
-                               AND boundary.content_hash = manifest.content_hash
-                               AND boundary.stage_version = manifest.desired_relationships_version
-                               AND boundary.outcome_status = 'EXTERNAL_BOUNDARY'
-                         )
                      )""",
             ).use { statement ->
                 statement.setString(1, stage.name)
-                statement.setString(2, stage.name)
                 val rows = statement.executeQuery()
                 buildList {
                     while (rows.next()) {
@@ -157,6 +146,52 @@ internal class FileStageInventoryStore(
             }
         }
 
+    fun retryableLimitedRelationshipStages(): List<PendingFileStage> =
+        retryableLimitedFileStages(FileIndexStage.RELATIONSHIPS)
+
+    fun retryableLimitedSemanticGraphStages(): List<PendingFileStage> =
+        retryableLimitedFileStages(FileIndexStage.SEMANTIC_GRAPH)
+
+    private fun retryableLimitedFileStages(stage: FileIndexStage): List<PendingFileStage> =
+        synchronized(state.writeLock) {
+            require(stage != FileIndexStage.SOURCE) { "Source work does not support limited retries" }
+            val conn = state.connection()
+            state.loadInterningTables(conn)
+            val versionColumn = desiredVersionColumn(stage)
+            conn.prepareStatement(
+                """SELECT manifest.prefix_id, manifest.filename, manifest.content_hash,
+                          manifest.$versionColumn, outcomes.stage_input_fingerprint, outcomes.limitations_json
+                   FROM file_manifest manifest
+                   JOIN file_stage_outcomes outcomes
+                     ON outcomes.prefix_id = manifest.prefix_id
+                    AND outcomes.filename = manifest.filename
+                    AND outcomes.stage = ?
+                   WHERE outcomes.content_hash = manifest.content_hash
+                     AND outcomes.stage_version = manifest.$versionColumn
+                     AND outcomes.outcome_status = 'LIMITED'""",
+            ).use { statement ->
+                statement.setString(1, stage.name)
+                val rows = statement.executeQuery()
+                buildList {
+                    while (rows.next()) {
+                        val limitations = defaultCacheJson.decodeFromString<List<String>>(rows.getString(6))
+                            .map(FileStageLimitation::valueOf)
+                        if (FileStageLimitation.PSI_UNAVAILABLE !in limitations) continue
+                        add(
+                            PendingFileStage(
+                                path = pathCodec.decode(rows.getInt(1), rows.getString(2)),
+                                contentHash = FileContentHash.parse(rows.getString(3)),
+                                stage = stage,
+                                version = FileStageVersion.parse(rows.getString(4)),
+                                inputFingerprint = rows.getString(5)?.let(FileStageInputFingerprint::parse),
+                                reason = FileStageWorkReason.LIMITED_RETRY,
+                            ),
+                        )
+                    }
+                }.sortedBy(PendingFileStage::path)
+            }
+        }
+
     fun pendingFileStage(
         path: String,
         contentHash: FileContentHash,
@@ -166,27 +201,24 @@ internal class FileStageInventoryStore(
     ): PendingFileStage? = synchronized(state.writeLock) {
         val conn = state.connection()
         val outcome = reader.readOutcomeInTransaction(conn, path, stage)
-        val inventory = reader.inventoryScopeInTransaction(conn, path)
-        val externalRelationshipBoundary = if (stage == FileIndexStage.SEMANTIC_GRAPH) {
-            reader.readOutcomeInTransaction(conn, path, FileIndexStage.RELATIONSHIPS)
-                ?.takeIf { relationship ->
-                    relationship.status == FileStageOutcomeStatus.EXTERNAL_BOUNDARY &&
-                        relationship.contentHash == contentHash &&
-                        relationship.version.value == inventory?.relationshipsVersion
-                }
-        } else {
-            null
+        val exactOutcome = outcome?.takeIf {
+            it.contentHash == contentHash &&
+                it.version == version &&
+                it.inputFingerprint == inputFingerprint
         }
-        if (externalRelationshipBoundary != null ||
-            (outcome != null &&
-            outcome.contentHash == contentHash &&
-            outcome.version == version &&
-            outcome.inputFingerprint == inputFingerprint &&
-            outcome.status != FileStageOutcomeStatus.FAILED)
-        ) {
-            null
-        } else {
-            PendingFileStage(path, contentHash, stage, version, inputFingerprint)
+        when {
+            exactOutcome?.status == FileStageOutcomeStatus.LIMITED &&
+                FileStageLimitation.PSI_UNAVAILABLE in exactOutcome.limitations ->
+                PendingFileStage(
+                    path,
+                    contentHash,
+                    stage,
+                    version,
+                    inputFingerprint,
+                    FileStageWorkReason.LIMITED_RETRY,
+                )
+            exactOutcome != null && exactOutcome.status != FileStageOutcomeStatus.FAILED -> null
+            else -> PendingFileStage(path, contentHash, stage, version, inputFingerprint)
         }
     }
 
@@ -211,13 +243,44 @@ internal class FileStageInventoryStore(
             check(row.version(work.stage) == work.version.value) { "Pending file stage version changed before commit" }
         }
         val outcome = reader.readOutcomeInTransaction(conn, work.path, work.stage)
-        check(
-            outcome == null ||
-                outcome.contentHash != work.contentHash ||
-                outcome.version != work.version ||
-                outcome.inputFingerprint != work.inputFingerprint ||
-                outcome.status == FileStageOutcomeStatus.FAILED,
-        ) { "File stage is no longer pending" }
+        val exactOutcome = outcome?.takeIf {
+            it.contentHash == work.contentHash &&
+                it.version == work.version &&
+                it.inputFingerprint == work.inputFingerprint
+        }
+        when (work.reason) {
+            FileStageWorkReason.PENDING ->
+                check(exactOutcome == null || exactOutcome.status == FileStageOutcomeStatus.FAILED) {
+                    "File stage is no longer pending"
+                }
+            FileStageWorkReason.LIMITED_RETRY ->
+                check(
+                    exactOutcome?.status == FileStageOutcomeStatus.LIMITED &&
+                        FileStageLimitation.PSI_UNAVAILABLE in exactOutcome.limitations,
+                ) { "Limited file stage is no longer retryable" }
+        }
+    }
+
+    internal fun shouldLimitFailureInTransaction(
+        conn: Connection,
+        work: PendingFileStage,
+        code: FileStageFailureCode,
+    ): Boolean {
+        if (code != FileStageFailureCode.PSI_UNAVAILABLE) return false
+        val outcome = reader.readOutcomeInTransaction(conn, work.path, work.stage) ?: return false
+        if (outcome.contentHash != work.contentHash ||
+            outcome.version != work.version ||
+            outcome.inputFingerprint != work.inputFingerprint
+        ) return false
+        return when (outcome.status) {
+            FileStageOutcomeStatus.FAILED -> outcome.failure?.code == code
+            FileStageOutcomeStatus.LIMITED ->
+                work.reason == FileStageWorkReason.LIMITED_RETRY &&
+                    FileStageLimitation.PSI_UNAVAILABLE in outcome.limitations
+            FileStageOutcomeStatus.COMPLETE,
+            FileStageOutcomeStatus.EXTERNAL_BOUNDARY,
+            -> false
+        }
     }
 
     internal fun writeOutcomeInTransaction(

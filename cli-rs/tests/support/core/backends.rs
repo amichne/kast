@@ -15,6 +15,7 @@ pub(crate) fn spawn_scripted_idea_backend(
         socket_path,
         "idea",
         1,
+        false,
         scripted_results,
     )
 }
@@ -54,6 +55,7 @@ pub(crate) fn spawn_scripted_idea_backend_for_invocations(
         socket_path,
         "idea",
         invocation_count,
+        false,
         scripted_results,
     )
 }
@@ -72,8 +74,59 @@ pub(crate) fn spawn_scripted_headless_backend(
         socket_path,
         "headless",
         1,
+        false,
         scripted_results,
     )
+}
+
+pub(crate) fn spawn_ready_headless_backend_after_marker(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    marker: &Path,
+    invocation_count: usize,
+) -> std::thread::JoinHandle<Option<Vec<serde_json::Value>>> {
+    let home = home.to_path_buf();
+    let config_home = config_home.to_path_buf();
+    let workspace = workspace.to_path_buf();
+    let socket_path = socket_path.to_path_buf();
+    let marker = marker.to_path_buf();
+    thread::spawn(move || {
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        while !marker.is_file() && std::time::Instant::now() < deadline {
+            thread::sleep(std::time::Duration::from_millis(10));
+        }
+        if !marker.is_file() {
+            return None;
+        }
+        let observation_deadline = std::time::Instant::now() + std::time::Duration::from_secs(1);
+        while std::time::Instant::now() < observation_deadline {
+            let launches = std::fs::read_to_string(&marker)
+                .unwrap_or_default()
+                .lines()
+                .filter(|line| *line == "__KAST_SIDECAR_LAUNCH__")
+                .count();
+            if launches >= invocation_count {
+                break;
+            }
+            thread::sleep(std::time::Duration::from_millis(10));
+        }
+        Some(
+            spawn_scripted_backend(
+                &home,
+                &config_home,
+                &workspace,
+                &socket_path,
+                "headless",
+                invocation_count,
+                true,
+                vec![],
+            )
+            .join()
+            .expect("ready headless backend"),
+        )
+    })
 }
 
 fn spawn_scripted_backend(
@@ -83,6 +136,7 @@ fn spawn_scripted_backend(
     socket_path: &Path,
     backend_name: &str,
     invocation_count: usize,
+    semantic_ready: bool,
     scripted_results: Vec<(&'static str, serde_json::Value)>,
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     assert!(invocation_count > 0, "scripted backend needs an invocation");
@@ -151,6 +205,8 @@ fn spawn_scripted_backend(
                     "backendName": server_backend_name.as_str(),
                     "backendVersion": "scripted-test",
                     "workspaceRoot": server_workspace.display().to_string(),
+                    "sourceModuleNames": if semantic_ready { vec![":fixture"] } else { vec![] },
+                    "referenceIndexReady": semantic_ready,
                     "schemaVersion": 5
                 }),
                 "capabilities" => serde_json::json!({

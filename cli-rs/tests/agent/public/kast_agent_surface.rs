@@ -325,7 +325,7 @@ fn public_graph_nodes_exposes_and_consumes_an_opaque_next_page() {
 }
 
 #[test]
-fn graph_summary_rejects_stale_persisted_facts() {
+fn graph_summary_qualifies_stale_noncritical_persisted_facts() {
     let fixture = tempfile::tempdir().expect("temporary graph fixture");
     let home = fixture.path().join("home");
     let workspace = fixture.path().join("workspace");
@@ -342,16 +342,16 @@ fn graph_summary_rejects_stale_persisted_facts() {
         .output()
         .expect("run stale graph summary");
 
-    assert_eq!(output.status.code(), Some(1), "{output:?}");
+    assert!(output.status.success(), "{output:?}");
     let decoded: serde_json::Value =
         toon_format::decode_default(std::str::from_utf8(&output.stdout).expect("UTF-8").trim())
-            .expect("stale graph error is valid TOON");
-    assert_eq!(decoded["error"], "GRAPH_EVIDENCE_INCOMPLETE", "{decoded:#}");
-    assert_eq!(decoded["next"], "kast refresh", "{decoded:#}");
+            .expect("qualified stale graph summary is valid TOON");
+    assert_eq!(decoded["qualification"], "QUALIFIED", "{decoded:#}");
+    assert_eq!(decoded["coverage"]["stale"], 1, "{decoded:#}");
 }
 
 #[test]
-fn graph_summary_qualifies_current_external_boundaries() {
+fn graph_summary_ignores_current_reference_external_boundaries() {
     let fixture = tempfile::tempdir().expect("temporary graph fixture");
     let home = fixture.path().join("home");
     let workspace = fixture.path().join("workspace");
@@ -363,20 +363,15 @@ fn graph_summary_qualifies_current_external_boundaries() {
     index
         .connection()
         .execute_batch(&format!(
-            "DELETE FROM file_stage_outcomes
-             WHERE stage = 'SEMANTIC_GRAPH' AND filename = 'Source0000.kt';
-             UPDATE file_stage_outcomes
+            "UPDATE file_stage_outcomes
              SET outcome_status = 'EXTERNAL_BOUNDARY',
                  limitations_json = '[]',
                  failure_id = '{failure_id}',
                  failure_code = 'PSI_UNAVAILABLE',
                  failure_message = 'PSI is unavailable'
-             WHERE stage = 'RELATIONSHIPS' AND filename = 'Source0000.kt';
-             DELETE FROM semantic_edge_occurrences;
-             DELETE FROM semantic_symbols;
-             DELETE FROM semantic_files;"
+             WHERE stage = 'RELATIONSHIPS' AND filename = 'Source0000.kt';"
         ))
-        .expect("external graph boundary");
+        .expect("external reference boundary");
 
     let output = named("kast")
         .current_dir(&workspace)
@@ -384,16 +379,16 @@ fn graph_summary_qualifies_current_external_boundaries() {
         .env("KAST_CONFIG_HOME", fixture.path().join("config"))
         .args(["graph", "summary"])
         .output()
-        .expect("run qualified graph summary");
+        .expect("run graph summary with an external reference boundary");
 
     assert!(output.status.success(), "{output:?}");
     let decoded: serde_json::Value =
         toon_format::decode_default(std::str::from_utf8(&output.stdout).expect("UTF-8").trim())
-            .expect("qualified graph summary is valid TOON");
-    assert_eq!(decoded["qualification"], "QUALIFIED", "{decoded:#}");
-    assert_eq!(decoded["coverage"]["limited"], 1, "{decoded:#}");
+            .expect("current graph summary is valid TOON");
+    assert_eq!(decoded["qualification"], "CURRENT", "{decoded:#}");
+    assert_eq!(decoded["coverage"]["limited"], 0, "{decoded:#}");
     assert_eq!(decoded["coverage"]["pending"], 0, "{decoded:#}");
-    assert_eq!(decoded["nodeCount"], 0, "{decoded:#}");
+    assert_eq!(decoded["nodeCount"], 2, "{decoded:#}");
 }
 
 include!("surface/graph_fixture_and_dispatch.rs");

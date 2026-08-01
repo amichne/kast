@@ -350,6 +350,7 @@ class NativeSemanticGraphGenerationTest {
         application.invokeAndWait {
             application.runWriteAction { document.setText(content) }
             PsiDocumentManager.getInstance(project).commitDocument(document)
+            FileDocumentManager.getInstance().saveDocument(document)
         }
     }
 }

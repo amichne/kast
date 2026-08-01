@@ -220,24 +220,6 @@ internal fun KastActivityEvent.isActionableTerminalFailure(): Boolean =
 
 internal fun RuntimeStatusResponse.withReferenceIndex(
     index: KastSourceIndexSummary,
-): RuntimeStatusResponse = when {
-    index.state == KastIndexState.FAILED -> copy(
-        state = io.github.amichne.kast.api.contract.RuntimeState.DEGRADED,
-        healthy = false,
-        indexing = false,
-        message = "Kast reference index failed: ${index.displayText()}",
-        referenceIndexReady = false,
-    )
-    index.state == KastIndexState.READY -> copy(referenceIndexReady = true)
-    index.state == KastIndexState.DEGRADED -> copy(
-        message = "Kast reference index is usable with graph boundaries: ${index.displayText()}",
-        referenceIndexReady = true,
-    )
-    state == io.github.amichne.kast.api.contract.RuntimeState.READY -> copy(
-        state = io.github.amichne.kast.api.contract.RuntimeState.INDEXING,
-        indexing = true,
-        message = "Kast reference index is ${index.displayText().lowercase()}",
-        referenceIndexReady = false,
-    )
-    else -> copy(referenceIndexReady = false)
-}
+): RuntimeStatusResponse = copy(
+    referenceIndexReady = index.state == KastIndexState.READY || index.state == KastIndexState.DEGRADED,
+)

@@ -17,7 +17,6 @@ pub fn workspace_status(args: RuntimeArgs) -> Result<WorkspaceStatusResult> {
     let semantic_graph = inspection
         .selected
         .as_ref()
-        .filter(|candidate| candidate.ready)
         .filter(|candidate| candidate_advertises_semantic_graph(candidate))
         .map(|_| crate::repository_intelligence::semantic_graph_readiness(&workspace_root));
     Ok(WorkspaceStatusResult {
@@ -44,6 +43,53 @@ fn candidate_advertises_semantic_graph(candidate: &RuntimeCandidateStatus) -> bo
         })
 }
 
+struct WorkspaceLaunchLock {
+    _file: fs::File,
+}
+
+impl WorkspaceLaunchLock {
+    fn acquire(config: &KastConfig, workspace_root: &Path) -> Result<Self> {
+        let lock_directory = config.paths.runtime_dir.join("workspace-launch-locks");
+        fs::create_dir_all(&lock_directory)?;
+        let lock_path =
+            lock_directory.join(format!("{}.lock", config::workspace_hash(workspace_root),));
+        let file = fs::OpenOptions::new()
+            .create(true)
+            .truncate(false)
+            .read(true)
+            .write(true)
+            .open(&lock_path)?;
+        workspace_launch_lock(&file).map_err(|error| {
+            CliError::new(
+                "RUNTIME_LAUNCH_LOCK_ERROR",
+                format!(
+                    "Cannot serialize runtime launch for {} with {}: {}",
+                    workspace_root.display(),
+                    lock_path.display(),
+                    error.message,
+                ),
+            )
+        })?;
+        Ok(Self { _file: file })
+    }
+}
+
+#[cfg(unix)]
+fn workspace_launch_lock(file: &fs::File) -> Result<()> {
+    use std::os::fd::AsRawFd;
+
+    if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX) } == 0 {
+        Ok(())
+    } else {
+        Err(std::io::Error::last_os_error().into())
+    }
+}
+
+#[cfg(not(unix))]
+fn workspace_launch_lock(_file: &fs::File) -> Result<()> {
+    Ok(())
+}
+
 pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     let workspace_root = workspace_root(args.workspace_root.clone())?;
     let config = KastConfig::load(&workspace_root)?;
@@ -57,7 +103,13 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     if !should_defer_macos_workspace_validation(&workspace_root, preference, &config) {
         validate_macos_workspace_for_preference(&workspace_root, preference)?;
     }
-    let stale_descriptor_policy = if args.no_auto_start.unwrap_or(false) {
+    let no_auto_start = args.no_auto_start.unwrap_or(false);
+    let _launch_lock = if no_auto_start {
+        None
+    } else {
+        Some(WorkspaceLaunchLock::acquire(&config, &workspace_root)?)
+    };
+    let stale_descriptor_policy = if no_auto_start {
         StaleDescriptorPolicy::Preserve
     } else {
         StaleDescriptorPolicy::Prune
@@ -93,7 +145,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         });
     }
 
-    if args.no_auto_start.unwrap_or(false) {
+    if no_auto_start {
         return Err(no_backend_error(
             &workspace_root,
             preference.backend_filter(),
@@ -163,6 +215,9 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         )?;
     }
 
+    #[cfg(target_os = "macos")]
+    let runtime_libs_dir = None;
+    #[cfg(not(target_os = "macos"))]
     let runtime_libs_dir = match config
         .backends
         .headless
@@ -170,14 +225,14 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
         .clone()
         .filter(|path| path.is_dir())
     {
-        Some(path) => path,
+        Some(path) => Some(path),
         None => return Err(no_backend_error(&workspace_root, Some(launch_backend))),
     };
     let log_file = daemon_log_file(&config, &workspace_root, launch_backend);
     let daemon_args = DaemonStartArgs {
         workspace_root: Some(workspace_root.clone()),
         backend_name: Some(launch_backend),
-        runtime_libs_dir: Some(runtime_libs_dir),
+        runtime_libs_dir,
         ..DaemonStartArgs::from(args.clone())
     };
     let mut child = daemon::spawn_background(daemon_args, &log_file)?;
@@ -185,8 +240,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     thread::spawn(move || {
         let _ = child.wait();
     });
-    let remaining_wait_timeout =
-        remaining_runtime_wait_timeout(spawned_at, args.wait_timeout_ms);
+    let remaining_wait_timeout = remaining_runtime_wait_timeout(spawned_at, args.wait_timeout_ms);
     let started = true;
     let note = None;
     let selected = match wait_for_servable(
@@ -230,8 +284,7 @@ fn validate_macos_idea_gradle_workspace(
         let _ = (workspace_root, preference);
     }
     #[cfg(target_os = "macos")]
-    if preference.fixed_backend() == Some(BackendName::Idea)
-        && !is_gradle_workspace(workspace_root)
+    if preference.fixed_backend() == Some(BackendName::Idea) && !is_gradle_workspace(workspace_root)
     {
         return Err(CliError::new(
             "SEMANTIC_WORKSPACE_UNSUPPORTED",
@@ -307,10 +360,7 @@ fn validate_macos_workspace_for_preference(
     }
     #[cfg(target_os = "macos")]
     if preference.fixed_backend() == Some(BackendName::Headless) {
-        return Err(CliError::new(
-            "HEADLESS_LOCAL_UNSUPPORTED",
-            "Kast does not run headless IntelliJ JVMs on macOS developer machines. Open this exact root in IntelliJ IDEA or Android Studio and use the IDEA backend.",
-        ));
+        return Ok(());
     }
     #[cfg(target_os = "macos")]
     self_mgmt::validate_macos_plugin_workspace(workspace_root).map_err(|error| {
@@ -342,8 +392,7 @@ fn should_defer_macos_workspace_validation(
     }
     #[cfg(target_os = "macos")]
     {
-        preference.fixed_backend() == Some(BackendName::Idea)
-            && config.runtime.idea_launch.enabled
+        preference.fixed_backend() == Some(BackendName::Idea) && config.runtime.idea_launch.enabled
     }
 }
 

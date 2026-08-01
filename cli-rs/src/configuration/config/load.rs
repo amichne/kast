@@ -14,6 +14,11 @@ impl KastConfig {
             project_open: ProjectOpenConfig::default(),
             codex: CodexConfig::default(),
             indexing: IndexingConfig {
+                critical_paths: Vec::new(),
+                ignored_paths: Vec::new(),
+                graph: GraphIndexingConfig {
+                    batch_size: NonZeroU32::new(32).expect("default graph batch size"),
+                },
                 relationships: RelationshipIndexingConfig {
                     enabled: true,
                     batch_size: 50,
@@ -176,6 +181,17 @@ impl KastConfig {
             }
         }
         if let Some(indexing) = partial.indexing {
+            if let Some(value) = indexing.critical_paths {
+                self.indexing.critical_paths = value;
+            }
+            if let Some(value) = indexing.ignored_paths {
+                self.indexing.ignored_paths = value;
+            }
+            if let Some(graph) = indexing.graph
+                && let Some(value) = graph.batch_size
+            {
+                self.indexing.graph.batch_size = value;
+            }
             if let Some(relationships) = indexing.relationships {
                 if let Some(value) = relationships.enabled {
                     self.indexing.relationships.enabled = value;

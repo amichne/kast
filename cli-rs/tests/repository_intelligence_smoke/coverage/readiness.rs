@@ -92,7 +92,7 @@ fn status_separates_runtime_readiness_from_incomplete_semantic_graph_coverage() 
 }
 
 #[test]
-fn status_omits_semantic_graph_coverage_while_runtime_is_indexing() {
+fn status_reports_semantic_graph_coverage_separately_while_runtime_is_indexing() {
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
     std::fs::remove_file(fixture.database_path()).expect("remove graph database");
     let socket_path = workspace.join("status-indexing.sock");
@@ -146,10 +146,7 @@ fn status_omits_semantic_graph_coverage_while_runtime_is_indexing() {
         "INDEXING",
         "{result}"
     );
-    assert!(
-        result.get("semanticGraph").is_none(),
-        "indexing status must not scan graph coverage: {result}"
-    );
+    assert_eq!(result["semanticGraph"]["state"], "UNAVAILABLE", "{result}");
 }
 
 #[test]

@@ -134,6 +134,17 @@ impl AgentFilePathNormalizer {
             };
             return Err(self.error(code, message, input, Some(&canonical_path)));
         }
+        let relative_path = canonical_path
+            .strip_prefix(&self.canonical_root)
+            .expect("contained path must have the canonical workspace prefix");
+        if has_hard_excluded_directory(relative_path) {
+            return Err(self.error(
+                "AGENT_FILE_HARD_EXCLUDED",
+                "Kast does not operate on Gradle build artifacts or IDE output directories.",
+                input,
+                Some(&canonical_path),
+            ));
+        }
         if target_exists {
             let metadata = agent_path_fs::metadata(&canonical_path).map_err(|error| {
                 self.error(
@@ -323,6 +334,15 @@ fn lexically_normalize_absolute(path: &Path) -> Option<PathBuf> {
 
 fn is_kotlin_path(path: &Path) -> bool {
     matches!(path.extension().and_then(|extension| extension.to_str()), Some("kt" | "kts"))
+}
+
+fn has_hard_excluded_directory(path: &Path) -> bool {
+    path.components().any(|component| {
+        matches!(
+            component.as_os_str().to_str(),
+            Some(".gradle" | ".idea" | ".kotlin" | "build" | "out")
+        )
+    })
 }
 
 fn agent_path_error(

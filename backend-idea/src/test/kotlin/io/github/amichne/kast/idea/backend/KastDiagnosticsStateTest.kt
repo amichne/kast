@@ -72,7 +72,7 @@ class KastDiagnosticsStateTest {
     }
 
     @Test
-    fun `runtime reaches ready only after the Kast reference index`() {
+    fun `reference index readiness does not change runtime readiness`() {
         val readyBackend = RuntimeStatusResponse(
             state = RuntimeState.READY,
             healthy = true,
@@ -102,15 +102,15 @@ class KastDiagnosticsStateTest {
             ),
         )
 
-        assertEquals(RuntimeState.INDEXING, indexing.state)
+        assertEquals(readyBackend.copy(referenceIndexReady = false), indexing)
         assertFalse(indexing.referenceIndexReady)
-        assertEquals(RuntimeState.READY, ready.state)
+        assertEquals(readyBackend.copy(referenceIndexReady = true), ready)
         assertTrue(ready.referenceIndexReady)
-        assertEquals(RuntimeState.READY, readyWithBoundaries.state)
+        assertEquals(readyBackend.copy(referenceIndexReady = true), readyWithBoundaries)
         assertTrue(readyWithBoundaries.healthy)
         assertTrue(readyWithBoundaries.referenceIndexReady)
-        assertEquals(RuntimeState.DEGRADED, degraded.state)
-        assertFalse(degraded.healthy)
+        assertEquals(readyBackend.copy(referenceIndexReady = false), degraded)
+        assertTrue(degraded.healthy)
     }
 
     @Test

@@ -139,14 +139,29 @@ private data class RuntimeServerConfig(
 
 @Serializable
 private data class RuntimeIndexingConfig(
+    val criticalPaths: List<String>? = null,
+    val ignoredPaths: List<String>? = null,
+    val graph: RuntimeGraphIndexingConfig? = null,
     val relationships: RuntimeRelationshipIndexingConfig? = null,
     val identifierIndexWaitMillis: Long? = null,
     val remote: RuntimeRemoteIndexConfig? = null,
 ) {
     fun toOverride(): IndexingConfigOverride = IndexingConfigOverride(
+        criticalPaths = criticalPaths?.let(::IndexingCriticalPaths),
+        ignoredPaths = ignoredPaths?.let(::IndexingIgnoredPaths),
+        graph = graph?.toOverride(),
         relationships = relationships?.toOverride(),
         identifierIndexWaitMillis = identifierIndexWaitMillis?.let(::IndexingIdentifierIndexWaitMillis),
         remote = remote?.toOverride(),
+    )
+}
+
+@Serializable
+private data class RuntimeGraphIndexingConfig(
+    val batchSize: Int? = null,
+) {
+    fun toOverride(): GraphIndexingConfigOverride = GraphIndexingConfigOverride(
+        batchSize = batchSize?.let(::GraphIndexingBatchSize),
     )
 }
 

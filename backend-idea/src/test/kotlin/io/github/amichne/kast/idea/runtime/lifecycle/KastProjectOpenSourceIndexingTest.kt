@@ -99,6 +99,7 @@ class KastProjectOpenSourceIndexingTest {
         )
         val sourceScans = mutableListOf<String>()
         val relationshipScans = mutableListOf<String>()
+        val pipelineEvents = mutableListOf<String>()
 
         SqliteSourceIndexStore(workspaceRoot).use { store ->
             val indexer = IdeaProjectIndexer(
@@ -108,11 +109,18 @@ class KastProjectOpenSourceIndexingTest {
                 cancelled = { false },
                 readGradleWorkspaceModel = { completeGradleModel },
                 onSourceFileScan = sourceScans::add,
-                onRelationshipFileScan = relationshipScans::add,
+                onRelationshipFileScan = { path ->
+                    relationshipScans.add(path)
+                    pipelineEvents.add("reference")
+                },
             )
-            indexer.indexProject(KastConfig.defaults())
+            indexer.indexProject(KastConfig.defaults()) { paths ->
+                assertTrue(paths.containsAll(listOf(callerPath, targetPath)))
+                pipelineEvents.add("graph")
+            }
             assertTrue(sourceScans.isNotEmpty())
             assertTrue(relationshipScans.isNotEmpty())
+            assertTrue(pipelineEvents.indexOf("graph") < pipelineEvents.indexOf("reference"))
 
             val snapshot = store.loadSourceIndexSnapshot()
             assertEquals(listOf(callerPath), snapshot.candidatePathsByIdentifier.getValue("caller"))

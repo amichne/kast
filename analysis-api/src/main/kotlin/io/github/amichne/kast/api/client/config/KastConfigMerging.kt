@@ -73,9 +73,16 @@ private fun IdeaLaunchConfig.merge(override: IdeaLaunchConfigOverride?): IdeaLau
 )
 
 private fun IndexingConfig.merge(override: IndexingConfigOverride?): IndexingConfig = copy(
+    criticalPaths = override?.criticalPaths ?: criticalPaths,
+    ignoredPaths = override?.ignoredPaths ?: ignoredPaths,
+    graph = graph.merge(override?.graph),
     relationships = relationships.merge(override?.relationships),
     identifierIndexWaitMillis = override?.identifierIndexWaitMillis ?: identifierIndexWaitMillis,
     remote = remote.merge(override?.remote),
+)
+
+private fun GraphIndexingConfig.merge(override: GraphIndexingConfigOverride?): GraphIndexingConfig = copy(
+    batchSize = override?.batchSize ?: batchSize,
 )
 
 private fun RelationshipIndexingConfig.merge(
