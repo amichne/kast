@@ -103,3 +103,23 @@ fn headless_authority_accepts_every_server_mutation_capability() {
         ]
     );
 }
+
+#[test]
+fn runtime_rejection_retains_cli_error_details() {
+    let mut error = CliError::new("NO_BACKEND_AVAILABLE", "backend unavailable");
+    error.details.insert(
+        "supportedDistribution".to_string(),
+        "linux-headless-tarball".to_string(),
+    );
+
+    let rejection = runtime_cli_rejection(
+        Path::new("/workspace"),
+        SemanticWorkspaceKind::StandaloneGradleWorkspace,
+        error,
+    );
+
+    assert_eq!(
+        rejection.details.get("supportedDistribution"),
+        Some(&"linux-headless-tarball".to_string())
+    );
+}

@@ -43,14 +43,7 @@ fn raw_rpc_session_from_route(route: SemanticWorkspaceRoute) -> Result<RawRpcSes
         SemanticWorkspaceRoute::Admitted(admission) => {
             Ok(raw_rpc_session_for_admission(*admission))
         }
-        SemanticWorkspaceRoute::Rejected(rejection) => {
-            let mut error = CliError::new(rejection.code, rejection.message);
-            error.details.insert(
-                "semanticWorkspace".to_string(),
-                serde_json::to_string(&rejection.evidence).unwrap_or_default(),
-            );
-            Err(error)
-        }
+        SemanticWorkspaceRoute::Rejected(rejection) => Err(rejection.into_cli_error()),
     }
 }
 

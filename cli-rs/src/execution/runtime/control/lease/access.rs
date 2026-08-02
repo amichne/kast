@@ -232,14 +232,7 @@ fn admitted_lease_workspace(
         wait_timeout_ms,
     ))? {
         SemanticWorkspaceRoute::Admitted(admission) => Ok(*admission),
-        SemanticWorkspaceRoute::Rejected(rejection) => {
-            let mut error = CliError::new(rejection.code, rejection.message);
-            error.details.insert(
-                "semanticWorkspace".to_string(),
-                serde_json::to_string(&rejection.evidence).unwrap_or_default(),
-            );
-            Err(error)
-        }
+        SemanticWorkspaceRoute::Rejected(rejection) => Err(rejection.into_cli_error()),
     }
 }
 

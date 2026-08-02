@@ -274,6 +274,7 @@ fn headless_conflict_rejection(
             "More than one healthy headless runtime owns the exact workspace root {}. Stop the conflicting runtime before retrying.",
             workspace_root.display()
         ),
+        details: std::collections::BTreeMap::new(),
         evidence: Box::new(evidence),
     }
 }
@@ -294,6 +295,7 @@ fn unavailable_rejection(
             if accept_indexing { "servable" } else { "READY" },
             workspace_root.display()
         ),
+        details: std::collections::BTreeMap::new(),
         evidence: Box::new(unavailable_evidence(workspace_root, workspace_kind)),
     }
 }
@@ -308,6 +310,7 @@ fn runtime_identity_rejection(
             "Headless runtime identity does not match the exact workspace root {}.",
             workspace_root.display()
         ),
+        details: std::collections::BTreeMap::new(),
         evidence: Box::new(unavailable_evidence(workspace_root, workspace_kind)),
     }
 }
@@ -317,9 +320,15 @@ fn runtime_cli_rejection(
     workspace_kind: SemanticWorkspaceKind,
     error: CliError,
 ) -> SemanticRuntimeRejection {
+    let CliError {
+        code,
+        message,
+        details,
+    } = error;
     SemanticRuntimeRejection {
-        code: error.code,
-        message: error.message,
+        code,
+        message,
+        details,
         evidence: Box::new(unavailable_evidence(workspace_root, workspace_kind)),
     }
 }

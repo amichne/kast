@@ -79,6 +79,7 @@ pub(crate) struct SemanticRuntimeRequest {
 pub(crate) struct SemanticRuntimeRejection {
     pub(crate) code: &'static str,
     pub(crate) message: String,
+    pub(crate) details: std::collections::BTreeMap<String, String>,
     pub(crate) evidence: Box<SemanticWorkspaceEvidence>,
 }
 
@@ -162,6 +163,7 @@ fn retired_idea_rejection(
     SemanticRuntimeRejection {
         code: "IDEA_SEMANTIC_BACKEND_RETIRED",
         message: "The foreground IDEA semantic backend is retired. Remove --backend=idea or select --backend=headless.".to_string(),
+        details: std::collections::BTreeMap::new(),
         evidence: Box::new(unavailable_evidence(workspace_root, workspace_kind)),
     }
 }

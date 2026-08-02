@@ -69,7 +69,20 @@ pub(crate) type SemanticWorkspaceAdmission = AdmittedHeadlessRuntime;
 pub(crate) struct SemanticWorkspaceRejection {
     pub code: &'static str,
     pub message: String,
+    pub details: std::collections::BTreeMap<String, String>,
     pub evidence: SemanticWorkspaceEvidence,
+}
+
+impl SemanticWorkspaceRejection {
+    pub(crate) fn into_cli_error(self) -> CliError {
+        let mut error = CliError::new(self.code, self.message);
+        error.details = self.details;
+        error.details.insert(
+            "semanticWorkspace".to_string(),
+            serde_json::to_string(&self.evidence).unwrap_or_default(),
+        );
+        error
+    }
 }
 
 pub(crate) enum SemanticWorkspaceRoute {
@@ -212,6 +225,7 @@ fn semantic_workspace_rejection(
     SemanticWorkspaceRejection {
         code: rejection.code,
         message: rejection.message,
+        details: rejection.details,
         evidence: *rejection.evidence,
     }
 }
@@ -276,6 +290,7 @@ fn unsupported_workspace_rejection(workspace_root: &Path) -> SemanticWorkspaceRe
             "{} is not a supported Kotlin Gradle workspace. Select a workspace containing settings.gradle(.kts) or build.gradle(.kts).",
             workspace_root.display()
         ),
+        details: std::collections::BTreeMap::new(),
         evidence: SemanticWorkspaceEvidence {
             backend_name: Some(BackendName::Headless.canonical().to_string()),
             workspace_root: workspace_root.display().to_string(),
@@ -285,5 +300,39 @@ fn unsupported_workspace_rejection(workspace_root: &Path) -> SemanticWorkspaceRe
             evidence_quality: SemanticEvidenceQuality::Unavailable,
             backend_candidates: vec![],
         },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn workspace_rejection_projects_runtime_details_and_semantic_evidence() {
+        let rejection = SemanticWorkspaceRejection {
+            code: "NO_BACKEND_AVAILABLE",
+            message: "backend unavailable".to_string(),
+            details: std::collections::BTreeMap::from([(
+                "supportedDistribution".to_string(),
+                "linux-headless-tarball".to_string(),
+            )]),
+            evidence: SemanticWorkspaceEvidence {
+                backend_name: Some("headless".to_string()),
+                workspace_root: "/workspace".to_string(),
+                workspace_kind: SemanticWorkspaceKind::StandaloneGradleWorkspace,
+                source_module_names: vec![],
+                limitations: vec![SemanticWorkspaceLimitation::SourceModulesUnavailable],
+                evidence_quality: SemanticEvidenceQuality::Unavailable,
+                backend_candidates: vec![],
+            },
+        };
+
+        let error = rejection.into_cli_error();
+
+        assert_eq!(
+            error.details.get("supportedDistribution"),
+            Some(&"linux-headless-tarball".to_string())
+        );
+        assert!(error.details.contains_key("semanticWorkspace"));
     }
 }
