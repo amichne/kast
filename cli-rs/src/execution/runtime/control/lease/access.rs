@@ -1,15 +1,19 @@
 pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceLeaseResult> {
     let requested_root = exact_lease_root(&args.workspace_root)?;
-    let admission = admitted_lease_workspace(requested_root, Some(BackendName::Idea))?;
+    let admission = admitted_lease_workspace(
+        requested_root,
+        Some(BackendName::Headless),
+        args.wait_timeout_ms,
+    )?;
     let initial_installation =
-        lease_installation_identity(&admission.workspace_root, admission.backend_name)?;
+        lease_installation_identity(admission.workspace_root(), admission.backend())?;
     let paths = WorkspaceLeasePaths::resolve()?;
 
     with_workspace_lease_lock(&paths, || {
         let secret = read_or_create_workspace_lease_secret(&paths.secret)?;
         recover_or_reject_existing_lease(&paths, &secret, &admission, &initial_installation)?;
         let locked_installation =
-            lease_installation_identity(&admission.workspace_root, admission.backend_name)?;
+            lease_installation_identity(admission.workspace_root(), admission.backend())?;
         if locked_installation != initial_installation {
             return Err(stale_environment_error(
                 "The effective agent environment changed before workspace lease acquisition began.",
@@ -28,24 +32,24 @@ pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceL
 
         let finalization = (|| {
             let final_installation =
-                lease_installation_identity(&admission.workspace_root, admission.backend_name)?;
+                lease_installation_identity(admission.workspace_root(), admission.backend())?;
             if final_installation != initial_installation {
                 return Err(stale_environment_error(
                     "The effective agent environment changed while the semantic runtime settled.",
                 ));
             }
             require_exact_ready_runtime(
-                &admission.workspace_root,
-                admission.backend_name,
+                admission.workspace_root(),
+                admission.backend(),
                 &runtime,
             )?;
             let record_id = uuid::Uuid::new_v4();
             let binding = WorkspaceLeaseBinding {
                 schema_version: WORKSPACE_LEASE_SCHEMA_VERSION,
                 record_id,
-                workspace_root: admission.workspace_root.clone(),
-                workspace_kind: admission.workspace_kind,
-                backend_name: admission.backend_name,
+                workspace_root: admission.workspace_root().to_path_buf(),
+                workspace_kind: admission.workspace_kind(),
+                backend_name: admission.backend(),
                 runtime: runtime.clone(),
                 installation: final_installation,
                 ownership,
@@ -76,7 +80,7 @@ pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceL
         })();
 
         if finalization.is_err() && ownership == WorkspaceLeaseOwnership::Started {
-            let _ = stop_exact_runtime(&admission.workspace_root, admission.backend_name, &runtime);
+            let _ = stop_exact_runtime(admission.workspace_root(), admission.backend(), &runtime);
         }
         finalization
     })
@@ -94,18 +98,15 @@ pub fn validate_workspace_lease_for_command(
     lease_id: &AgentWorkspaceLeaseId,
     workspace_root: Option<&Path>,
     backend_name: Option<BackendName>,
-) -> Result<()> {
+) -> Result<ValidatedWorkspaceLease> {
     let workspace_root = workspace_root.ok_or_else(|| {
         CliError::new(
             "WORKSPACE_LEASE_ROOT_REQUIRED",
             "Leased semantic commands require an explicit --workspace-root.",
         )
     })?;
-    if backend_name.is_some_and(|backend| backend != BackendName::Idea) {
-        return Err(CliError::new(
-            "WORKSPACE_LEASE_BACKEND_MISMATCH",
-            "Workspace leases bind IntelliJ plugin instances; leased commands cannot select a headless backend.",
-        ));
+    if let Some(backend_name) = backend_name {
+        headless_authority::require_headless_backend(backend_name)?;
     }
     let args = AgentLeaseAccessArgs {
         lease_id: lease_id.clone(),
@@ -115,7 +116,9 @@ pub fn validate_workspace_lease_for_command(
     if result.state != WorkspaceLeaseState::Ready {
         return Err(lease_state_error(result.state, result.failure_reason));
     }
-    Ok(())
+    Ok(ValidatedWorkspaceLease {
+        runtime: result.runtime,
+    })
 }
 
 #[derive(Clone, Copy)]
@@ -220,9 +223,15 @@ fn access_workspace_lease(
 fn admitted_lease_workspace(
     workspace_root: PathBuf,
     backend_name: Option<BackendName>,
+    wait_timeout_ms: u64,
 ) -> Result<SemanticWorkspaceAdmission> {
-    match semantic_workspace_route(Some(workspace_root), backend_name)? {
-        SemanticWorkspaceRoute::Admitted(admission) => Ok(admission),
+    let backend_name = backend_name.unwrap_or(BackendName::Headless);
+    match semantic_workspace_route_for_runtime(lease_runtime_args(
+        &workspace_root,
+        backend_name,
+        wait_timeout_ms,
+    ))? {
+        SemanticWorkspaceRoute::Admitted(admission) => Ok(*admission),
         SemanticWorkspaceRoute::Rejected(rejection) => {
             let mut error = CliError::new(rejection.code, rejection.message);
             error.details.insert(
@@ -253,37 +262,32 @@ fn exact_lease_root(requested: &Path) -> Result<PathBuf> {
 }
 
 fn lease_installation_identity(
-    workspace_root: &Path,
+    _workspace_root: &Path,
     backend_name: BackendName,
 ) -> Result<WorkspaceLeaseInstallationIdentity> {
-    let doctor = self_mgmt::doctor(crate::cli::ReadyTarget::Agent, Some(workspace_root))?;
-    let environment = doctor.agent_environment.as_ref().ok_or_else(|| {
-        CliError::new(
-            "WORKSPACE_LEASE_ENVIRONMENT_NOT_READY",
-            "Agent readiness did not produce effective environment evidence.",
-        )
-    })?;
-    if !doctor.ok || !environment.ok {
+    let doctor = self_mgmt::doctor(crate::cli::ReadyTarget::Machine, None)?;
+    let installed_backend = self_mgmt::installed_backend_diagnostic(doctor.install.as_ref());
+    if !doctor.ok
+        || installed_backend.state != self_mgmt::AgentResourceState::Managed
+        || installed_backend.kind.as_deref() != Some(backend_name.canonical())
+    {
         let mut error = CliError::new(
             "WORKSPACE_LEASE_ENVIRONMENT_NOT_READY",
-            "The effective agent environment is not ready for lease acquisition or use.",
+            "The effective installed headless environment is not ready for lease acquisition or use.",
         );
-        error
-            .details
-            .insert("issues".to_string(), doctor.issues.join(" | "));
+        let issues = if doctor.issues.is_empty() {
+            vec!["The active release has no managed headless backend payload.".to_string()]
+        } else {
+            doctor.issues.clone()
+        };
+        error.details.insert("issues".to_string(), issues.join(" | "));
         return Err(error);
     }
-    if environment.backend.kind.as_deref() != Some(backend_name.canonical()) {
-        return Err(CliError::new(
-            "WORKSPACE_LEASE_BACKEND_MISMATCH",
-            format!(
-                "Effective agent backend {:?} does not match requested backend {}.",
-                environment.backend.kind,
-                backend_name.canonical()
-            ),
-        ));
-    }
-    let serialized = serde_json::to_vec(environment)?;
+    let serialized = serde_json::to_vec(&(
+        doctor.install_authority,
+        &doctor.binary,
+        &installed_backend,
+    ))?;
     let environment_sha256 = crate::manifest::sha256_bytes(&serialized);
     let (authority, generation) = match doctor.install_authority {
         self_mgmt::InstallAuthority::ActiveRelease => (

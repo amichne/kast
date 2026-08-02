@@ -2,11 +2,11 @@
 type: How-to Guide
 title: How to Troubleshoot Kast
 description: Diagnose setup, exact-root runtime, indexing, and semantic evidence failures without editing Kast state by hand.
-tags: [troubleshooting, setup, idea, indexing, runtime]
+tags: [troubleshooting, setup, headless, indexing, runtime]
 code_sources:
   - path: cli-rs/src/operations/self_mgmt.rs
   - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
-  - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaIndexSemanticAdmission.kt
+  - path: cli-rs/src/execution/runtime/backend/headless_authority.rs
 ---
 
 # How to Troubleshoot Kast
@@ -19,14 +19,14 @@ action does not have to guess at all four.
 | --- | --- | --- |
 | `kast` is missing or the active release is invalid | Run `command -v kast`, then `kast` | Rerun the installer. |
 | The wrong project is reported | Run `kast` from the intended root | Open or select the exact root; do not reuse another checkout's runtime. |
-| `IDEA_PLUGIN_UPDATE_REQUIRED` | Rerun setup and read its typed result | Close only the selected IDE if setup returns `IDE_RESTART_REQUIRED`, then retry. |
-| `IDEA_VERSION_UNSUPPORTED` | Check the product build | Use IntelliJ IDEA 2026.2/build 262 or Android Studio 2026.1.2/build 261. |
-| `IDEA_HOST_AMBIGUOUS` | Check running processes and installed bundles | Set `runtime.ideaLaunch.command` to the exact supported app. |
-| `IDE_PROFILE_AMBIGUOUS` | Check supported JetBrains profiles | Rerun the installer after selecting one supported host profile. |
-| IDEA runtime is unavailable | Run `kast` from the exact root | Run `kast up`; do not start a duplicate IDE process. |
-| Runtime reports indexing | Wait for Gradle, IDEA/Kotlin, and Kast indexing | Retry `kast up`. |
+| `IDEA_SEMANTIC_BACKEND_RETIRED` | Check workspace runtime configuration | Run setup to migrate the legacy value to `headless`; do not recreate the old backend. |
+| `IDEA_VERSION_UNSUPPORTED` | Check the installed runtime-source build | Use IntelliJ IDEA 2026.2/build 262 or Android Studio 2026.1.2/build 261. |
+| `IDEA_HOST_AMBIGUOUS` | Check installed supported bundles | Configure one exact supported runtime source. Foreground state is irrelevant. |
+| `HEADLESS_RUNTIME_CONFLICT` | Compare the reported exact-root identities | Stop only the stale Kast-owned runtime named by the typed result, then retry. |
+| Headless runtime is unavailable | Run `kast` from the exact root | Run `kast up`; do not open or close a foreground IDE as a repair step. |
+| Runtime reports indexing | Wait for headless Gradle, Kotlin, and Kast indexing | Retry `kast up`. |
 | Runtime reports degraded | Read its single actionable cause | Repair the named Gradle, Kotlin admission, or reference-index failure. |
-| Kotlin source modules are unavailable | Check the IDE project model and SDK | Repair the IDE/Gradle model, then reopen the project. |
+| Kotlin source modules are unavailable | Check the headless Gradle model and SDK | Repair the build model, then rerun `kast up`. |
 | Relationships are limited | Read the result's coverage and next action | Resume or narrow the query; do not treat a partial result as exhaustive. |
 | A mutation is rejected | Check exact-root readiness and target identity | Prepare the workspace and resolve one exact declaration before retrying. |
 

@@ -119,7 +119,7 @@ fn seed_external_reference_target(workspace: &std::path::Path) {
 }
 
 #[test]
-fn unavailable_demo_reports_the_platform_setup_authority() {
+fn unavailable_demo_reports_the_headless_runtime_setup_authority() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -142,17 +142,10 @@ fn unavailable_demo_reports_the_platform_setup_authority() {
     let response: Value = serde_json::from_slice(&demo.stdout).expect("demo error json");
     assert_eq!(response["code"], "DEMO_SOURCE_INDEX_MISSING");
     let message = response["message"].as_str().expect("message");
-    if cfg!(target_os = "macos") {
-        assert!(
-            message.contains("open this repository in IntelliJ IDEA or Android Studio"),
-            "macOS remediation should name the plugin-owned setup path: {response:#}"
-        );
-    } else {
-        assert!(
-            message.contains("installed headless distribution"),
-            "headless remediation should name the distribution-owned startup path: {response:#}"
-        );
-    }
+    assert!(
+        message.contains("installed headless runtime"),
+        "remediation should name the headless runtime startup path: {response:#}"
+    );
 }
 
 #[test]
@@ -255,7 +248,7 @@ fn demo_reports_full_availability_from_an_existing_ready_backend() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("idea.sock");
+    let socket_path = temp.path().join("headless.sock");
     seed_source_index(&workspace);
     let handle = spawn_ready_demo_backend(&home, &config_home, &workspace, &socket_path, 5, None);
 
@@ -267,7 +260,7 @@ fn demo_reports_full_availability_from_an_existing_ready_backend() {
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend",
-            "idea",
+            "headless",
         ])
         .output()
         .expect("full demo");
@@ -294,7 +287,7 @@ fn demo_reports_full_availability_from_an_existing_ready_backend() {
         ]
     );
     assert_eq!(response["availability"], "full");
-    assert_eq!(response["backend"]["name"], "idea");
+    assert_eq!(response["backend"]["name"], "headless");
     assert_eq!(response["backend"]["referenceIndexReady"], true);
     assert_eq!(
         response["selectedStory"]["compilerIdentity"]["fqName"],

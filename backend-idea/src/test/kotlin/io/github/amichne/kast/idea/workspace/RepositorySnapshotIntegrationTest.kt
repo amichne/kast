@@ -8,7 +8,6 @@ import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
-import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
@@ -113,7 +112,8 @@ class RepositorySnapshotIntegrationTest {
             val path = workspace.resolve("A.kt").toAbsolutePath().normalize().toString()
             store.reconcileFileInventory(
                 listOf(
-                    FileInventoryEntry(
+                    fileInventoryEntry(
+                        workspace,
                         path,
                         1,
                         FileContentHash.parse(sha256(workspace.resolve("A.kt"))),

@@ -10,6 +10,8 @@ import com.intellij.testFramework.junit5.fixture.moduleFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
+import io.github.amichne.kast.api.client.WorkspaceIdentity
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
@@ -98,7 +100,7 @@ class NativeSemanticGraphGenerationTest {
         val sourcePath = SemanticGraphPath.parse(sourceFile.virtualFile.path)
         val targetPath = SemanticGraphPath.parse(targetFile.virtualFile.path)
         fun query(path: SemanticGraphPath) = SemanticGraphQuery(filePaths = listOf(path)).parsed()
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -138,7 +140,7 @@ class NativeSemanticGraphGenerationTest {
         val originalText = runIdeaReadAction { document.text }
 
         try {
-            SqliteSourceIndexStore(storeRoot).use { store ->
+            sourceIndexStore(workspaceRoot).use { store ->
                 store.ensureSchema()
                 KastPluginBackend(
                     project = project,
@@ -178,7 +180,7 @@ class NativeSemanticGraphGenerationTest {
         val sourcePath = SemanticGraphPath.parse(sourceFile.virtualFile.path)
         val targetPath = SemanticGraphPath.parse(targetFile.virtualFile.path)
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -248,7 +250,7 @@ class NativeSemanticGraphGenerationTest {
         val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
         val sourcePath = SemanticGraphPath.parse(sourceFile.virtualFile.path)
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -294,7 +296,7 @@ class NativeSemanticGraphGenerationTest {
         val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
         val sourcePath = SemanticGraphPath.parse(sourceFile.virtualFile.path)
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             val seededGeneration = KastPluginBackend(
                 project = project,
@@ -340,6 +342,13 @@ class NativeSemanticGraphGenerationTest {
 
     private fun limits(): ServerLimits =
         ServerLimits(maxResults = 500, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4)
+
+    private fun sourceIndexStore(workspaceRoot: Path): SqliteSourceIndexStore =
+        SqliteSourceIndexStore(
+            WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).copy(
+                sourceIndexDatabasePath = NormalizedPath.ofAbsolute(storeRoot.resolve("source-index.db")),
+            ),
+        )
 
     private fun replaceDocument(
         project: Project,

@@ -93,14 +93,6 @@ name = "installed_idea_sidecar_smoke"
 path = "tests/runtime/installed_idea_sidecar_smoke/main.rs"
 
 [[test]]
-name = "runtime_compatibility_metadata_smoke"
-path = "tests/runtime/compatibility_metadata.rs"
-
-[[test]]
-name = "runtime_lifecycle_smoke"
-path = "tests/runtime/lifecycle/main.rs"
-
-[[test]]
 name = "semantic_workspace_admission_smoke"
 path = "tests/runtime/semantic_workspace_admission/main.rs"
 

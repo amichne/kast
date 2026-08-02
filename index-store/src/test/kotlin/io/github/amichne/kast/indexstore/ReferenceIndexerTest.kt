@@ -1,5 +1,6 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.api.client.fields.RelationshipIndexingBatchSize
 import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
@@ -22,7 +23,7 @@ class ReferenceIndexerTest {
 
     @Test
     fun `populates symbol references from scanner output`() {
-        val filePath = "/src/Greeter.kt"
+        val filePath = workspacePath("src/Greeter.kt")
         storeWithManifest(filePath).use { store ->
             ReferenceIndexer(store).indexSymbolRelationships(listOf(filePath), referenceScanner = { path ->
                 listOf(
@@ -45,7 +46,7 @@ class ReferenceIndexerTest {
 
     @Test
     fun `populates declarations from declaration scanner output`() {
-        val filePath = "/src/Greeter.kt"
+        val filePath = workspacePath("src/Greeter.kt")
         val root = workspaceRoot.toAbsolutePath().normalize()
         storeWithManifest(filePath).use { store ->
             ReferenceIndexer(store).indexSymbolRelationships(
@@ -80,7 +81,7 @@ class ReferenceIndexerTest {
                 assertEquals("sample.Greeter", row.getString("fq_name"))
                 assertEquals("CLASS", row.getString("kind"))
                 assertEquals("PUBLIC", row.getString("visibility"))
-                assertTrue(row.getString("dir_path").endsWith("/src"))
+                assertEquals("src", row.getString("dir_path"))
                 assertEquals("Greeter.kt", row.getString("filename"))
                 assertEquals(":sample", row.getString("module_path"))
                 assertEquals("main", row.getString("source_set"))
@@ -90,13 +91,15 @@ class ReferenceIndexerTest {
 
     @Test
     fun `clears stale references before writing rescanned file`() {
-        val filePath = "/src/Caller.kt"
+        val filePath = workspacePath("src/Caller.kt")
+        val staleTargetPath = workspacePath("src/Stale.kt")
+        val greeterPath = workspacePath("src/Greeter.kt")
         storeWithManifest(filePath).use { store ->
             store.upsertSymbolReference(
                 sourcePath = filePath,
                 sourceOffset = 5,
                 targetFqName = "sample.staleTarget",
-                targetPath = "/src/Stale.kt",
+                targetPath = staleTargetPath,
                 targetOffset = 0,
             )
 
@@ -106,7 +109,7 @@ class ReferenceIndexerTest {
                         sourcePath = path,
                         sourceOffset = 28,
                         targetFqName = "sample.greet",
-                        targetPath = "/src/Greeter.kt",
+                        targetPath = greeterPath,
                         targetOffset = 15,
                     ),
                 )
@@ -119,7 +122,7 @@ class ReferenceIndexerTest {
 
     @Test
     fun `unexpected declaration scanner failure aborts batch without writes`() {
-        val filePaths = (0 until 5).map { i -> "/src/File$i.kt" }
+        val filePaths = (0 until 5).map { i -> workspacePath("src/File$i.kt") }
         val failingPath = filePaths[2]
         val indexedPaths = mutableListOf<String>()
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
@@ -155,10 +158,10 @@ class ReferenceIndexerTest {
 
     @Test
     fun `stops before writing scanned batch when cancelled`() {
-        val filePaths = listOf("/src/File0.kt", "/src/File1.kt")
+        val filePaths = listOf(workspacePath("src/File0.kt"), workspacePath("src/File1.kt"))
         var scans = 0
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store, batchSize = 2).indexSymbolRelationships(
+            ReferenceIndexer(store, batchSize = RelationshipIndexingBatchSize(2)).indexSymbolRelationships(
                 filePaths = filePaths,
                 referenceScanner = { path ->
                     scans += 1
@@ -181,7 +184,7 @@ class ReferenceIndexerTest {
 
     @Test
     fun `propagates cancellation from scanner`() {
-        val filePath = "/src/File.kt"
+        val filePath = workspacePath("src/File.kt")
         storeWithManifest(filePath).use { store ->
             assertThrows(CancellationException::class.java) {
                 ReferenceIndexer(store).indexSymbolRelationships(listOf(filePath), referenceScanner = {
@@ -193,7 +196,7 @@ class ReferenceIndexerTest {
 
     @Test
     fun `reindexFiles replaces references for changed paths only`() {
-        val filePaths = listOf("/src/A.kt", "/src/B.kt")
+        val filePaths = listOf(workspacePath("src/A.kt"), workspacePath("src/B.kt"))
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
             ReferenceIndexer(store).indexSymbolRelationships(filePaths, referenceScanner = { path ->
                 listOf(
@@ -209,7 +212,7 @@ class ReferenceIndexerTest {
             assertEquals(2, store.referencesToSymbol("original.Target").size)
 
             ReferenceIndexer(store).reindexFiles(
-                changedPaths = setOf("/src/A.kt"),
+                changedPaths = setOf(filePaths[0]),
                 referenceScanner = { path ->
                     listOf(
                         SymbolReferenceRow(
@@ -224,11 +227,17 @@ class ReferenceIndexerTest {
             )
 
             assertEquals(1, store.referencesToSymbol("original.Target").size)
-            assertEquals("/src/B.kt", store.referencesToSymbol("original.Target").single().sourcePath)
+            assertEquals(filePaths[1], store.referencesToSymbol("original.Target").single().sourcePath)
             assertEquals(1, store.referencesToSymbol("updated.Target").size)
-            assertEquals("/src/A.kt", store.referencesToSymbol("updated.Target").single().sourcePath)
+            assertEquals(filePaths[0], store.referencesToSymbol("updated.Target").single().sourcePath)
         }
     }
+
+    private fun workspacePath(relativePath: String): String =
+        workspaceSourceRawPath(
+            workspaceRoot,
+            workspaceRoot.toAbsolutePath().normalize().resolve(relativePath).normalize().toString(),
+        )
 
     private fun storeWithManifest(vararg filePaths: String): SqliteSourceIndexStore {
         val store = SqliteSourceIndexStore(workspaceRoot.toAbsolutePath().normalize())

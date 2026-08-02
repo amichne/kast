@@ -12,7 +12,7 @@ fn incomplete_refresh(file: &Path) -> Value {
             "analysisStatus": {
                 "filePath": file.display().to_string(),
                 "state": "PENDING_INDEX",
-                "message": "IDEA is indexing"
+                "message": "The headless runtime is indexing"
             }
         }],
         "semanticOutcome": "INCOMPLETE",

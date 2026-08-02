@@ -19,6 +19,7 @@ import io.github.amichne.kast.indexstore.store.cache.kastCacheDirectory
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
 import io.github.amichne.kast.indexstore.snapshot.GitObjectId
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
+import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -45,6 +46,7 @@ class SqliteSourceIndexReconciliationTest {
     fun `pending update reconciliation applies only latest file state and marks prior rows applied`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val path = normalized.resolve("src/Pending.kt").toString()
+        val sourcePath = workspaceSourcePath(normalized, path)
 
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
@@ -65,14 +67,14 @@ class SqliteSourceIndexReconciliationTest {
 
             val snapshot = store.loadSourceIndexSnapshot()
             assertFalse(snapshot.candidatePathsByIdentifier.containsKey("OldName"))
-            assertEquals(listOf(path), snapshot.candidatePathsByIdentifier.getValue("NewName"))
-            assertFalse(snapshot.packageByPath.containsKey(path))
+            assertEquals(listOf(sourcePath), snapshot.candidatePathsByIdentifier.getValue("NewName"))
+            assertFalse(snapshot.packageByPath.containsKey(sourcePath))
             assertEquals(
                 IndexedPackageEvidence.Unproven(IndexedPackageUnprovenReason.NOT_SCANNED),
                 store.packageEvidenceForFile(path),
             )
-            assertEquals(listOf("new.Import"), snapshot.importsByPath.getValue(path))
-            assertEquals(listOf("new.wild"), snapshot.wildcardImportPackagesByPath.getValue(path))
+            assertEquals(listOf("new.Import"), snapshot.importsByPath.getValue(sourcePath))
+            assertEquals(listOf("new.wild"), snapshot.wildcardImportPackagesByPath.getValue(sourcePath))
         }
 
         DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(normalized)}").use { conn ->
@@ -85,25 +87,85 @@ class SqliteSourceIndexReconciliationTest {
     }
 
     @Test
+    fun `pending updates parse operation path and payload before persistence`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val sourcePath = normalized.resolve("src/Pending.kt").toString()
+        val outsidePath = normalized.parent.resolve("Outside.kt").toString()
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            assertThrows(SerializationException::class.java) {
+                store.appendPendingUpdate(
+                    op = "unknown",
+                    path = sourcePath,
+                    payload = null,
+                )
+            }
+            assertThrows(IllegalArgumentException::class.java) {
+                store.appendPendingUpdate(
+                    op = "upsert_file",
+                    path = outsidePath,
+                    payload = "{}",
+                )
+            }
+            assertThrows(IllegalArgumentException::class.java) {
+                store.appendPendingUpdate(
+                    op = "upsert_file",
+                    path = sourcePath,
+                    payload = null,
+                )
+            }
+            assertThrows(IllegalArgumentException::class.java) {
+                store.appendPendingUpdate(
+                    op = "remove_file",
+                    path = sourcePath,
+                    payload = "{}",
+                )
+            }
+            assertThrows(SerializationException::class.java) {
+                store.appendPendingUpdate(
+                    op = "upsert_file",
+                    path = sourcePath,
+                    payload = "{",
+                )
+            }
+        }
+
+        DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(normalized)}").use { conn ->
+            conn.createStatement().use { stmt ->
+                listOf("pending_updates", "path_prefixes").forEach { table ->
+                    stmt.executeQuery("SELECT COUNT(*) FROM $table").use { rs ->
+                        assertTrue(rs.next())
+                        assertEquals(0, rs.getInt(1), table)
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
     fun `full source index rebuild clears stale symbol references`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val callerPath = normalized.resolve("src/Caller.kt").toString()
+        val removedPath = normalized.resolve("src/Removed.kt").toString()
+        val otherPath = normalized.resolve("src/Other.kt").toString()
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
             store.saveFullIndex(
-                updates = listOf(fileUpdate("/src/Caller.kt", "Caller")),
-                manifest = mapOf("/src/Caller.kt" to 1L),
+                updates = listOf(fileUpdate(callerPath, "Caller")),
+                manifest = mapOf(callerPath to 1L),
             )
             store.upsertSymbolReference(
-                sourcePath = "/src/Caller.kt",
+                sourcePath = callerPath,
                 sourceOffset = 1,
                 targetFqName = "lib.Removed",
-                targetPath = "/src/Removed.kt",
+                targetPath = removedPath,
                 targetOffset = 1,
             )
 
             store.saveFullIndex(
-                updates = listOf(fileUpdate("/src/Other.kt", "Other")),
-                manifest = mapOf("/src/Other.kt" to 2L),
+                updates = listOf(fileUpdate(otherPath, "Other")),
+                manifest = mapOf(otherPath to 2L),
             )
 
             assertTrue(store.referencesToSymbol("lib.Removed").isEmpty())
@@ -113,63 +175,70 @@ class SqliteSourceIndexReconciliationTest {
     @Test
     fun `removing a file clears inbound and outbound symbol references`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val callerPath = normalized.resolve("src/Caller.kt").toString()
+        val targetPath = normalized.resolve("src/Target.kt").toString()
+        val otherPath = normalized.resolve("src/Other.kt").toString()
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
             store.saveFullIndex(
-                updates = listOf(fileUpdate("/src/Caller.kt", "Caller"), fileUpdate("/src/Target.kt", "Target")),
-                manifest = mapOf("/src/Caller.kt" to 1L, "/src/Target.kt" to 1L),
+                updates = listOf(fileUpdate(callerPath, "Caller"), fileUpdate(targetPath, "Target")),
+                manifest = mapOf(callerPath to 1L, targetPath to 1L),
             )
             store.upsertSymbolReference(
-                sourcePath = "/src/Caller.kt",
+                sourcePath = callerPath,
                 sourceOffset = 1,
                 targetFqName = "demo.Target",
-                targetPath = "/src/Target.kt",
+                targetPath = targetPath,
                 targetOffset = 1,
             )
             store.upsertSymbolReference(
-                sourcePath = "/src/Target.kt",
+                sourcePath = targetPath,
                 sourceOffset = 2,
                 targetFqName = "demo.Other",
-                targetPath = "/src/Other.kt",
+                targetPath = otherPath,
                 targetOffset = 1,
             )
 
-            store.removeFile("/src/Target.kt")
+            store.removeFile(targetPath)
 
             assertTrue(store.referencesToSymbol("demo.Target").isEmpty())
-            assertTrue(store.referencesFromFile("/src/Target.kt").isEmpty())
+            assertTrue(store.referencesFromFile(targetPath).isEmpty())
         }
     }
 
     @Test
     fun `reference-only cleanup does not replace source index manifest`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val callerPath = normalized.resolve("src/Caller.kt").toString()
+        val callerSourcePath = workspaceSourcePath(normalized, callerPath)
+        val stalePath = normalized.resolve("src/Stale.kt").toString()
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
             store.saveFullIndex(
-                updates = listOf(fileUpdate("/src/Caller.kt", "Caller")),
-                manifest = mapOf("/src/Caller.kt" to 123L),
+                updates = listOf(fileUpdate(callerPath, "Caller")),
+                manifest = mapOf(callerPath to 123L),
             )
             store.upsertSymbolReference(
-                sourcePath = "/src/Stale.kt",
+                sourcePath = stalePath,
                 sourceOffset = 1,
                 targetFqName = "demo.Caller",
-                targetPath = "/src/Caller.kt",
+                targetPath = callerPath,
                 targetOffset = 1,
             )
 
-            store.removeReferencesOutsideSources(listOf("/src/Caller.kt"))
+            store.removeReferencesOutsideSources(listOf(callerPath))
 
-            assertEquals(mapOf("/src/Caller.kt" to 123L), store.loadManifest())
-            assertTrue(store.referencesFromFile("/src/Stale.kt").isEmpty())
+            assertEquals(mapOf(callerSourcePath.rawPath to 123L), store.loadManifest())
+            assertTrue(store.referencesFromFile(stalePath).isEmpty())
         }
     }
 
     @Test
     fun `source index entry points reject Kotlin script paths`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
-        val sourcePath = "/src/Caller.kt"
-        val scriptPath = "/build.gradle.kts"
+        val sourcePath = normalized.resolve("src/Caller.kt").toString()
+        val scriptPath = normalized.resolve("build.gradle.kts").toString()
+        val sourceProof = workspaceSourcePath(normalized, sourcePath)
 
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
@@ -182,9 +251,9 @@ class SqliteSourceIndexReconciliationTest {
             )
 
             val snapshot = store.loadSourceIndexSnapshot()
-            assertEquals(listOf(sourcePath), snapshot.candidatePathsByIdentifier.getValue("Caller"))
+            assertEquals(listOf(sourceProof), snapshot.candidatePathsByIdentifier.getValue("Caller"))
             assertFalse(snapshot.candidatePathsByIdentifier.containsKey("GradleScript"))
-            assertEquals(mapOf(sourcePath to 1L), store.loadManifest())
+            assertEquals(mapOf(sourceProof.rawPath to 1L), store.loadManifest())
         }
     }
 

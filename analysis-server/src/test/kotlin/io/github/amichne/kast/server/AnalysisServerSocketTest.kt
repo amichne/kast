@@ -1,9 +1,20 @@
 package io.github.amichne.kast.server
 
+import io.github.amichne.kast.api.client.DescriptorRegistryPath
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
+import io.github.amichne.kast.api.client.RuntimeInstanceId
+import io.github.amichne.kast.api.client.ProcessId
+import io.github.amichne.kast.api.client.ProcessStartEpochMillis
+import io.github.amichne.kast.api.client.SocketOwnerUid
+import io.github.amichne.kast.api.client.RuntimeProcessIdentity
+import io.github.amichne.kast.api.client.RuntimeSocketPath
+import io.github.amichne.kast.api.client.RuntimeWorkspaceRoot
+import io.github.amichne.kast.api.client.ServerInstanceOwnership
+import io.github.amichne.kast.api.client.UnixDomainSocketTransport
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.compatibility.RuntimeImplementationVersion
 import io.github.amichne.kast.api.contract.mutation.KastMutationExecutionResult
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
@@ -85,15 +96,125 @@ class AnalysisServerSocketTest {
             )
 
             assertEquals("fake", status.backendName)
-            assertEquals("uds", server.descriptor?.transport)
-            assertEquals(socketPath.toString(), server.descriptor?.socketPath)
+            val descriptor = requireNotNull(server.descriptor)
+            val ownership = descriptor.ownership as ServerInstanceOwnership.Owned
+            assertEquals(UnixDomainSocketTransport.UDS, descriptor.transport)
+            assertEquals(RuntimeSocketPath.of(socketPath), descriptor.socketPath)
+            assertTrue(ownership.processIdentity.processStartEpochMillis.value > 0)
+            assertTrue(ownership.ownerUid.value >= 0)
+            assertTrue(ownership.socketFileIdentity.device >= 0)
+            assertTrue(ownership.socketFileIdentity.inode > 0)
             assertTrue(socketPath.exists())
+            val actualSocket = readBoundSocketEvidence(socketPath)
+            assertEquals(actualSocket.socketOwnerUid, ownership.ownerUid)
+            assertTrue(
+                actualSocket.socketOwnerUid.isOwnedBy(readEffectiveProcessOwnerUid(descriptorDirectory)),
+                "The actual socket owner differs from the effective process owner",
+            )
 
             val daemonsFile = descriptorDirectory.resolve("daemons.json")
             assertTrue(daemonsFile.exists(), "daemons.json should exist while server is running")
         }
 
         assertFalse(socketPath.exists())
+    }
+
+    @Test
+    fun `second server cannot replace a reachable endpoint`() {
+        val socketPath = tempDir.resolve("run").resolve("owned.sock")
+        val first = AnalysisServer(
+            backend = FakeAnalysisBackend.sample(tempDir),
+            config = AnalysisServerConfig(
+                transport = AnalysisTransport.UnixDomainSocket(socketPath),
+                descriptorDirectory = tempDir.resolve("first-instances"),
+            ),
+        ).start()
+
+        try {
+            val secondStart = runCatching {
+                AnalysisServer(
+                    backend = FakeAnalysisBackend.sample(tempDir),
+                    config = AnalysisServerConfig(
+                        transport = AnalysisTransport.UnixDomainSocket(socketPath),
+                        descriptorDirectory = tempDir.resolve("second-instances"),
+                    ),
+                ).start()
+            }
+            secondStart.getOrNull()?.close()
+
+            assertTrue(secondStart.isFailure, "A second server replaced a reachable endpoint")
+            val response = callSocket(
+                socketPath,
+                JsonRpcRequest(id = JsonPrimitive(11), method = "runtime/status"),
+            )
+            assertTrue(response.contains("\"backendName\":\"fake\""))
+        } finally {
+            first.close()
+        }
+    }
+
+    @Test
+    fun `closing an old server does not unlink a replacement socket`() {
+        val socketPath = tempDir.resolve("run").resolve("replacement.sock")
+        val running = AnalysisServer(
+            backend = FakeAnalysisBackend.sample(tempDir),
+            config = AnalysisServerConfig(
+                transport = AnalysisTransport.UnixDomainSocket(socketPath),
+                descriptorDirectory = tempDir.resolve("instances"),
+            ),
+        ).start()
+        Files.delete(socketPath)
+        val replacement = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
+        replacement.bind(UnixDomainSocketAddress.of(socketPath))
+
+        try {
+            running.close()
+            assertTrue(socketPath.exists(), "The old server removed a replacement endpoint")
+        } finally {
+            replacement.close()
+            Files.deleteIfExists(socketPath)
+        }
+    }
+
+    @Test
+    fun `stale endpoint is removed only after complete ownership proof`() {
+        val socketPath = tempDir.resolve("run").resolve("stale.sock")
+        Files.createDirectories(socketPath.parent)
+        ServerSocketChannel.open(StandardProtocolFamily.UNIX).use { staleChannel ->
+            staleChannel.bind(UnixDomainSocketAddress.of(socketPath))
+        }
+        val descriptorDirectory = tempDir.resolve("instances")
+        Files.createDirectories(descriptorDirectory)
+        val stale = ServerInstanceDescriptor(
+            workspaceRoot = RuntimeWorkspaceRoot.canonicalize(tempDir),
+            backendVersion = RuntimeImplementationVersion("old"),
+            socketPath = RuntimeSocketPath.of(socketPath),
+            ownership = ServerInstanceOwnership.Owned(
+                runtimeInstanceId = RuntimeInstanceId.create(),
+                processIdentity = RuntimeProcessIdentity(
+                    processId = ProcessId.current(),
+                    processStartEpochMillis = ProcessStartEpochMillis.of(1),
+                ),
+                ownerUid = SocketOwnerUid.of(
+                    (Files.getAttribute(socketPath, "unix:uid") as Number).toLong(),
+                ),
+                socketFileIdentity = readSocketFileIdentity(socketPath),
+            ),
+        )
+        DescriptorStore(DescriptorRegistryPath.of(descriptorDirectory.resolve("daemons.json"))).write(stale)
+
+        AnalysisServer(
+            backend = FakeAnalysisBackend.sample(tempDir),
+            config = AnalysisServerConfig(
+                transport = AnalysisTransport.UnixDomainSocket(socketPath),
+                descriptorDirectory = descriptorDirectory,
+            ),
+        ).start().use { replacement ->
+            assertTrue(socketPath.exists())
+            val replacementOwner = requireNotNull(replacement.descriptor).ownership as ServerInstanceOwnership.Owned
+            val staleOwner = stale.ownership as ServerInstanceOwnership.Owned
+            assertTrue(replacementOwner.runtimeInstanceId != staleOwner.runtimeInstanceId)
+        }
     }
 
     @Test

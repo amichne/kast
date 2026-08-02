@@ -201,17 +201,20 @@ class SqliteSourceIndexSchemaTest {
     }
 
     @Test
-    fun `interning caches refresh after another store commits`() {
+    fun `read-only interning caches refresh after the writer commits`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val beforePath = normalized.resolve("before/Before.kt").toString()
         val afterPath = normalized.resolve("after/After.kt").toString()
         val targetPath = normalized.resolve("target/Target.kt").toString()
         val afterTargetPath = normalized.resolve("after-target/Target.kt").toString()
         val pendingPath = normalized.resolve("pending/Removed.kt").toString()
+        val beforeSourcePath = workspaceSourceRawPath(normalized, beforePath)
+        val afterSourcePath = workspaceSourceRawPath(normalized, afterPath)
+        val afterTargetSourcePath = workspaceSourceRawPath(normalized, afterTargetPath)
 
-        SqliteSourceIndexStore(normalized).use { reader ->
-            reader.ensureSchema()
-            reader.upsertSymbolReference(
+        SqliteSourceIndexStore(normalized).use { writer ->
+            writer.ensureSchema()
+            writer.upsertSymbolReference(
                 sourcePath = beforePath,
                 sourceOffset = 1,
                 targetFqName = "demo.Target",
@@ -219,10 +222,11 @@ class SqliteSourceIndexSchemaTest {
                 targetOffset = 1,
                 sourceFqName = "demo.Before",
             )
-            assertEquals(listOf(beforePath), reader.referencesToSymbol("demo.Target").map { it.sourcePath })
-
-            SqliteSourceIndexStore(normalized).use { writer ->
-                writer.ensureSchema()
+            SqliteSourceIndexStore(
+                normalized,
+                io.github.amichne.kast.indexstore.store.SqliteSourceIndexStoreAccess.READ_ONLY,
+            ).use { reader ->
+                assertEquals(listOf(beforeSourcePath), reader.referencesToSymbol("demo.Target").map { it.sourcePath })
                 writer.upsertSymbolReference(
                     sourcePath = afterPath,
                     sourceOffset = 2,
@@ -233,15 +237,15 @@ class SqliteSourceIndexSchemaTest {
                 )
 
                 val reference = reader.referencesToSymbol("demo.AfterTarget").single()
-                assertEquals(afterPath, reference.sourcePath)
+                assertEquals(afterSourcePath, reference.sourcePath)
                 assertEquals("demo.After", reference.sourceFqName)
                 assertEquals("demo.AfterTarget", reference.targetFqName)
-                assertEquals(afterTargetPath, reference.targetPath)
+                assertEquals(afterTargetSourcePath, reference.targetPath)
 
                 val generationBeforePendingUpdate = writer.readGeneration()
                 writer.appendPendingUpdate("remove_file", pendingPath, payload = null)
                 assertEquals(generationBeforePendingUpdate, writer.readGeneration())
-                assertEquals(1, reader.reconcilePendingUpdates())
+                assertEquals(1, writer.reconcilePendingUpdates())
             }
         }
     }

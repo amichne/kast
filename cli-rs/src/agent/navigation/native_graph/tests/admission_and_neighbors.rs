@@ -38,9 +38,9 @@
     fn native_graph_neighbors_reads_only_incident_symbol_edges() {
         let mut connection = rusqlite::Connection::open_in_memory().unwrap();
         connection
-            .execute_batch(
+            .execute_batch(&format!(
                 "CREATE TABLE schema_version(version INTEGER NOT NULL, generation INTEGER NOT NULL);
-                 INSERT INTO schema_version VALUES (13, 7);
+                 INSERT INTO schema_version VALUES ({}, 7);
                  CREATE TABLE semantic_files(
                      id INTEGER PRIMARY KEY, path TEXT NOT NULL UNIQUE, package_name TEXT,
                      module_name TEXT, refresh_status TEXT NOT NULL
@@ -65,7 +65,8 @@
                      VALUES (1, 1, 2, 1, 'REFERENCES', 'NONE');
                  INSERT INTO semantic_edge_occurrences
                      VALUES (2, 2, 1, 2, 'CALLS', 'BODY');",
-            )
+                crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION,
+            ))
             .unwrap();
         let transaction = connection.transaction().unwrap();
         for id in 3..=2_002 {
@@ -129,9 +130,9 @@
     fn native_graph_neighbors_preserves_container_quotient_weights() {
         let connection = rusqlite::Connection::open_in_memory().unwrap();
         connection
-            .execute_batch(
+            .execute_batch(&format!(
                 "CREATE TABLE schema_version(version INTEGER NOT NULL, generation INTEGER NOT NULL);
-                 INSERT INTO schema_version VALUES (13, 9);
+                 INSERT INTO schema_version VALUES ({}, 9);
                  CREATE TABLE semantic_files(
                      id INTEGER PRIMARY KEY, path TEXT NOT NULL UNIQUE, package_name TEXT,
                      module_name TEXT, refresh_status TEXT NOT NULL
@@ -164,7 +165,8 @@
                      (2, 2, 3, 1, 'REFERENCES', 'NONE'),
                      (3, 3, 1, 2, 'CALLS', 'BODY'),
                      (4, 4, 3, 3, 'REFERENCES', 'NONE');",
-            )
+                crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION,
+            ))
             .unwrap();
 
         for (scope, key, adjacent) in [

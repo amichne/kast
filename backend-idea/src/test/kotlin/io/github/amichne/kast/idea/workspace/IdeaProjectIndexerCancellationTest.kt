@@ -78,7 +78,7 @@ class IdeaProjectIndexerCancellationTest {
                     workspaceRoot = workspaceRoot,
                     store = store,
                     cancelled = { true },
-                ).refreshSymbolRelationships(listOf(firstFile.virtualFile.path))
+                ).refreshSymbolRelationships(workspaceSourcePaths(workspaceRoot, listOf(firstFile.virtualFile.path)))
             }
         }
     }

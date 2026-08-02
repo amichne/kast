@@ -1,10 +1,22 @@
 package io.github.amichne.kast.server
 
-import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
-import io.github.amichne.kast.api.contract.AnalysisTransport
+import io.github.amichne.kast.api.client.DescriptorRegistryPath
+import io.github.amichne.kast.api.client.HeadlessBackendName
+import io.github.amichne.kast.api.client.ProcessId
+import io.github.amichne.kast.api.client.ProcessStartEpochMillis
+import io.github.amichne.kast.api.client.RuntimeInstanceId
+import io.github.amichne.kast.api.client.RuntimeProcessIdentity
+import io.github.amichne.kast.api.client.RuntimeSocketPath
+import io.github.amichne.kast.api.client.RuntimeWorkspaceRoot
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
 import io.github.amichne.kast.api.client.defaultDescriptorDirectory
+import io.github.amichne.kast.api.contract.AnalysisTransport
+import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
+import io.github.amichne.kast.api.contract.compatibility.RuntimeImplementationVersion
 import kotlinx.coroutines.runBlocking
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermission
 
 class AnalysisServer(
     private val backend: CloseableAnalysisBackend,
@@ -29,28 +41,47 @@ class AnalysisServer(
         try {
             when (val transport = config.transport) {
                 is AnalysisTransport.UnixDomainSocket -> {
-                    val socketPath = transport.socketPath.toAbsolutePath().normalize()
-                    val provisionalServer = UnixDomainSocketRpcServer(
-                        socketPath = socketPath,
-                        dispatcher = dispatcher,
-                    )
-                    transportServer = provisionalServer
-                    provisionalServer.start()
-                    val startedDescriptor = ServerInstanceDescriptor(
-                        workspaceRoot = capabilities.workspaceRoot,
-                        backendName = capabilities.backendName,
-                        backendVersion = capabilities.backendVersion,
-                        socketPath = socketPath.toString(),
-                    )
-                    descriptor = startedDescriptor
+                    val bindSocketPath = transport.socketPath.toAbsolutePath().normalize()
+                    val socketPath = RuntimeSocketPath.of(bindSocketPath)
+                    val instanceId = RuntimeInstanceId.create()
+                    val descriptorDirectory = (config.descriptorDirectory ?: defaultDescriptorDirectory())
+                        .toAbsolutePath()
+                        .normalize()
+                    secureDescriptorDirectory(descriptorDirectory)
                     val startedDescriptorStore = DescriptorStore(
-                        (config.descriptorDirectory ?: defaultDescriptorDirectory())
-                            .resolve("daemons.json")
-                            .toAbsolutePath()
-                            .toString(),
+                        DescriptorRegistryPath.of(descriptorDirectory.resolve("daemons.json")),
                     )
                     descriptorStore = startedDescriptorStore
-                    startedDescriptorStore.write(startedDescriptor)
+                    val canonicalWorkspaceRoot = RuntimeWorkspaceRoot.canonicalize(Path.of(capabilities.workspaceRoot))
+                    val launch = startedDescriptorStore.launchEndpoint(
+                        EndpointLaunchRequest(
+                            workspaceRoot = canonicalWorkspaceRoot,
+                            backendName = HeadlessBackendName.HEADLESS,
+                            backendVersion = RuntimeImplementationVersion(capabilities.backendVersion),
+                            socketPath = socketPath,
+                            runtimeInstanceId = instanceId,
+                            processIdentity = RuntimeProcessIdentity(
+                                processId = ProcessId.current(),
+                                processStartEpochMillis = ProcessStartEpochMillis.of(
+                                    ProcessHandle.current().info().startInstant().orElseThrow {
+                                        IllegalStateException("Current process start identity is unavailable")
+                                    }.toEpochMilli(),
+                                ),
+                            ),
+                            effectiveProcessOwnerUid = readEffectiveProcessOwnerUid(descriptorDirectory),
+                        ),
+                    ) {
+                        val provisionalServer = UnixDomainSocketRpcServer(
+                            socketPath = bindSocketPath,
+                            dispatcher = dispatcher,
+                        ).start()
+                        BoundEndpoint(
+                            server = provisionalServer,
+                            evidence = provisionalServer.boundSocketEvidence,
+                        )
+                    }
+                    transportServer = launch.server
+                    descriptor = launch.descriptor
                 }
 
                 AnalysisTransport.Stdio -> {
@@ -93,5 +124,21 @@ class AnalysisServer(
             }
             throw startupFailure
         }
+    }
+}
+
+private fun secureDescriptorDirectory(directory: java.nio.file.Path) {
+    Files.createDirectories(directory)
+    runCatching {
+        Files.setPosixFilePermissions(
+            directory,
+            setOf(
+                PosixFilePermission.OWNER_READ,
+                PosixFilePermission.OWNER_WRITE,
+                PosixFilePermission.OWNER_EXECUTE,
+            ),
+        )
+    }.getOrElse { error ->
+        if (Files.getFileStore(directory).supportsFileAttributeView("posix")) throw error
     }
 }

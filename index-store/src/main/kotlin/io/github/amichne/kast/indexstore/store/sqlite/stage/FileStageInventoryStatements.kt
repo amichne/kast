@@ -64,7 +64,7 @@ internal class FileStageInventoryStatements(private val state: SqliteSourceIndex
         entry: FileInventoryEntry,
         versions: FileStageVersions,
     ) {
-        val (prefixId, filename) = state.pathCodec.encode(entry.path)
+        val (prefixId, filename) = state.pathCodec.encode(entry.path.toDatabasePath())
         conn.prepareStatement(
             """INSERT INTO file_manifest(
                    prefix_id, filename, last_modified_millis, content_hash,
@@ -87,8 +87,8 @@ internal class FileStageInventoryStatements(private val state: SqliteSourceIndex
             statement.setString(5, versions.source.value)
             statement.setString(6, versions.relationships.value)
             statement.setString(7, versions.semanticGraph.value)
-            statement.setString(8, entry.moduleName)
-            statement.setString(9, entry.sourceSet)
+            statement.setString(8, entry.module?.toDatabaseModuleName())
+            statement.setString(9, entry.module?.sourceSet?.value)
             statement.executeUpdate()
         }
     }

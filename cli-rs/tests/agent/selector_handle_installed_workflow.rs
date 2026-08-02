@@ -2,7 +2,7 @@
 mod support;
 
 use support::metrics::seed_source_index;
-use support::{ScriptedCliAuthority, kast_at, spawn_scripted_idea_backend_for_invocations};
+use support::{kast_at, spawn_scripted_headless_backend_for_invocations};
 
 fn decode_default_toon(
     operation: &str,
@@ -22,20 +22,6 @@ fn decode_default_toon(
     let decoded = toon_format::decode_default(rendered.trim())
         .unwrap_or_else(|error| panic!("{operation} emitted invalid TOON: {error}"));
     (rendered, decoded)
-}
-
-fn cli_version(binary: &std::path::Path) -> String {
-    let output = std::process::Command::new(binary)
-        .arg("--version")
-        .output()
-        .expect("read CLI version");
-    assert!(output.status.success(), "CLI version command");
-    String::from_utf8(output.stdout)
-        .expect("CLI version is UTF-8")
-        .trim()
-        .strip_prefix("kast ")
-        .expect("CLI version prefix")
-        .to_string()
 }
 
 fn complete_relationship_evidence(total_count: usize) -> serde_json::Value {
@@ -63,7 +49,6 @@ fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operation
         "Cargo-built CLI does not exist: {}",
         cli_binary.display(),
     );
-    let cli_version = cli_version(&cli_binary);
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -85,12 +70,11 @@ fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operation
         "declarationFile": declaration_file,
         "declarationStartOffset": 1
     });
-    let backend = spawn_scripted_idea_backend_for_invocations(
+    let backend = spawn_scripted_headless_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
-        &temp.path().join("idea.sock"),
-        ScriptedCliAuthority::new(&cli_binary, &cli_version),
+        &temp.path().join("headless.sock"),
         3,
         vec![
             (

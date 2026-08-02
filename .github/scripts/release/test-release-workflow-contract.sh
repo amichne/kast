@@ -23,9 +23,7 @@ publish_maven="$(sed -n '/^  publish-maven-central:/,/^  build-cli-linux-x64:/p'
 build_cli="$(sed -n '/^  build-cli-linux-x64:/,/^  publish-cli-linux-x64:/p' "$release")"
 publish_cli="$(sed -n '/^  publish-cli-linux-x64:/,/^  build-agent-resources:/p' "$release")"
 build_agent_resources="$(sed -n '/^  build-agent-resources:/,/^  publish-agent-resources:/p' "$release")"
-publish_agent_resources="$(sed -n '/^  publish-agent-resources:/,/^  build-idea-plugin:/p' "$release")"
-build_idea_plugin="$(sed -n '/^  build-idea-plugin:/,/^  publish-idea-plugin:/p' "$release")"
-publish_idea_plugin="$(sed -n '/^  publish-idea-plugin:/,/^  build-headless-backend:/p' "$release")"
+publish_agent_resources="$(sed -n '/^  publish-agent-resources:/,/^  build-headless-backend:/p' "$release")"
 build_headless_backend="$(sed -n '/^  build-headless-backend:/,/^  build-linux-headless-tarball:/p' "$release")"
 build_linux_headless="$(sed -n '/^  build-linux-headless-tarball:/,/^  publish-linux-headless-assets:/p' "$release")"
 publish_linux_headless="$(sed -n '/^  publish-linux-headless-assets:/,/^  build-setup-linux-x64:/p' "$release")"
@@ -47,7 +45,6 @@ reject() {
 }
 
 require "$ci" '.github/scripts/install/test-setup-contract.sh' 'CI must execute the sole setup transaction contract'
-require "$ci" '--plugin-archive "$plugin_asset"' 'CI setup bundles must include the verified IDEA plugin'
 require "$ci" 'scripts/verify-setup-bundle.sh' 'CI bundle validation must enter through KastCTL setup'
 require "$build" '"setup",' 'local development refresh must invoke KastCTL setup'
 require "$build" '"--source",' 'local development refresh must activate one complete setup bundle'
@@ -68,10 +65,25 @@ require "$release" 'kast-copilot-${tag}.tar' 'release must publish the embedded 
 require "$release" 'kast-agent-resources-provenance.json' 'release must publish embedded resource provenance'
 require "$release" 'agent-resource-assets.py verify' 'release must verify resources before publication'
 reject "$release" 'kagent' 'release workflow must not publish the retired kagent name'
+for retired_plugin_surface in \
+  'build-idea-plugin' \
+  'publish-idea-plugin' \
+  'kast-idea-' \
+  'updatePlugins.xml' \
+  'release-idea-plugin' \
+  '--plugin-archive'
+do
+  reject "$release" "$retired_plugin_surface" \
+    "release workflow retains retired public IDEA plugin surface: $retired_plugin_surface"
+done
+reject "$ci" 'build-idea-plugin' 'CI retains the retired public IDEA plugin producer'
+reject "$ci" '--plugin-archive' 'CI setup bundles retain the retired public IDEA plugin input'
+reject "$setup_builder" 'idea-plugin' 'setup bundle action retains the retired public IDEA plugin input'
+[[ ! -e "$repo_root/packaging/jetbrains/updatePlugins.xml" ]] \
+  || { printf '%s\n' 'error: retired JetBrains update feed remains' >&2; exit 1; }
 for platform in linux-x64 linux-arm64 macos-x64 macos-arm64; do
   require "$verify_assets" "kast-$platform-{tag}.tar.gz" "release verifier must require $platform setup bundle"
 done
-require "$setup_builder" '--plugin-archive "$plugin_asset"' 'release bundles must include the release-matched IDEA plugin'
 require "$release" 'scripts/verify-setup-bundle.sh' 'release validation must enter through KastCTL setup'
 for platform in linux-x64 linux-arm64 macos-x64 macos-arm64; do
   grep -Fq "build-cli-$platform:" <<<"$build_cli" \
@@ -120,7 +132,6 @@ grep -Fq 'setup-bundle-provenance-${{ inputs.platform }}-${{ github.run_id }}' "
 for producer in \
   "$build_openapi" \
   "$build_agent_resources" \
-  "$build_idea_plugin" \
   "$build_linux_headless"
 do
   ! grep -Fq '.github/scripts/release/upload-immutable-release-asset.sh' <<<"$producer" \
@@ -136,14 +147,11 @@ grep -Fq 'name: agent-resources-${{ github.run_id }}' <<<"$build_agent_resources
   || { printf '%s\n' 'error: agent-resource producer must retain its release bytes' >&2; exit 1; }
 grep -Fq 'verify-ci-artifact-ledger.py record' <<<"$build_agent_resources" \
   || { printf '%s\n' 'error: agent-resource producer must ledger every retained asset' >&2; exit 1; }
-grep -Fq 'name: idea-plugin-${{ github.run_id }}' <<<"$build_idea_plugin" \
-  || { printf '%s\n' 'error: IDEA plugin producer must retain its release bytes' >&2; exit 1; }
 grep -Fq 'name: linux-headless-tarball-${{ github.run_id }}' <<<"$build_linux_headless" \
   || { printf '%s\n' 'error: Linux producer must retain its release bytes' >&2; exit 1; }
 for publisher in \
   "$publish_openapi" \
   "$publish_agent_resources" \
-  "$publish_idea_plugin" \
   "$publish_linux_headless"
 do
   grep -Fq '.github/scripts/release/upload-immutable-release-asset.sh' <<<"$publisher" \
@@ -163,16 +171,10 @@ grep -Fq 'name: agent-resources-${{ github.run_id }}' <<<"$publish_agent_resourc
   || { printf '%s\n' 'error: agent-resource publisher must consume its retained artifact' >&2; exit 1; }
 grep -Fq 'verify-ci-artifact-ledger.py verify' <<<"$publish_agent_resources" \
   || { printf '%s\n' 'error: agent-resource publisher must verify retained bytes against their ledger' >&2; exit 1; }
-grep -Fq 'name: idea-plugin-${{ github.run_id }}' <<<"$publish_idea_plugin" \
-  || { printf '%s\n' 'error: IDEA plugin publisher must consume its retained artifact' >&2; exit 1; }
 grep -Fq 'name: linux-headless-tarball-${{ github.run_id }}' <<<"$publish_linux_headless" \
   || { printf '%s\n' 'error: Linux publisher must consume its retained artifact' >&2; exit 1; }
-grep -Fq 'name: idea-plugin-${{ github.run_id }}' "$setup_builder" \
-  || { printf '%s\n' 'error: setup builders must consume the retained IDEA plugin' >&2; exit 1; }
 ! grep -Fq 'gh release download' "$setup_builder" \
   || { printf '%s\n' 'error: setup builders must not use a draft release as artifact transport' >&2; exit 1; }
-grep -Fq 'name: idea-plugin-${{ github.run_id }}' <<<"$build_linux_headless" \
-  || { printf '%s\n' 'error: Linux builders must consume the retained IDEA plugin' >&2; exit 1; }
 ! grep -Fq 'gh release download' <<<"$build_linux_headless" \
   || { printf '%s\n' 'error: Linux builders must not use a draft release as artifact transport' >&2; exit 1; }
 [[ "$(grep -Fc 'uses: actions/upload-artifact@v6' <<<"$build_headless_backend")" -eq 1 ]] \
@@ -222,7 +224,6 @@ grep -Fq 'if [[ "$release_body" != *"$provenance_marker"* ]]' <<<"$publish_relea
 for retained_artifact_section in \
   "$build_openapi" \
   "$build_agent_resources" \
-  "$build_idea_plugin" \
   "$build_linux_headless" \
   "$build_release_metadata"
 do
@@ -313,12 +314,6 @@ do
   ! grep -Fq -- "$duplicate_ci_work" <<<"$release_preflight" \
     || { printf 'error: release preflight must reuse green CI instead of rerunning %s\n' "$duplicate_ci_work" >&2; exit 1; }
 done
-grep -Fq 'key: idea-plugin-inputs-${{ runner.os }}-${{ hashFiles('\''gradle/libs.versions.toml'\'') }}' <<<"$build_idea_plugin" \
-  || { printf '%s\n' 'error: release IDEA plugin build must reuse the exact CI input cache' >&2; exit 1; }
-require "$ci" 'key: idea-plugin-inputs-${{ runner.os }}-${{ hashFiles('\''gradle/libs.versions.toml'\'') }}' \
-  'CI must own the IDEA plugin input cache reused by release'
-grep -Fq '~/.cache/pluginVerifier/ides' <<<"$build_idea_plugin" \
-  || { printf '%s\n' 'error: release IDEA plugin cache paths must match the CI cache version' >&2; exit 1; }
 grep -Fq 'key: intellij-runtime-all-${{ runner.os }}-${{ hashFiles('\''gradle/libs.versions.toml'\'') }}' <<<"$build_headless_backend" \
   || { printf '%s\n' 'error: release headless build must reuse the exact CI runtime cache' >&2; exit 1; }
 require "$ci_build" 'key: intellij-runtime-all-${{ runner.os }}-${{ hashFiles('\''gradle/libs.versions.toml'\'') }}' \
@@ -331,8 +326,6 @@ do
   grep -Fq "$runtime_cache_path" <<<"$build_headless_backend" \
     || { printf 'error: release headless cache must match CI path: %s\n' "$runtime_cache_path" >&2; exit 1; }
 done
-! grep -Fq 'release-idea-plugin-inputs-' <<<"$build_idea_plugin" \
-  || { printf '%s\n' 'error: release IDEA plugin build must not fork the immutable CI input cache' >&2; exit 1; }
 ! grep -Fq 'release-headless-runtime-' <<<"$build_headless_backend" \
   || { printf '%s\n' 'error: release headless build must not fork the immutable CI runtime cache' >&2; exit 1; }
 for ci_maven_evidence in \
@@ -401,7 +394,6 @@ for artifact_job in \
   publish-cli-macos-x64 \
   publish-cli-macos-arm64 \
   publish-agent-resources \
-  publish-idea-plugin \
   publish-linux-headless-assets \
   publish-setup-linux-x64 \
   publish-setup-linux-arm64 \
@@ -490,8 +482,6 @@ expected_tasks = {
     "publish-openapi-spec",
     "build-agent-resources",
     "publish-agent-resources",
-    "build-idea-plugin",
-    "publish-idea-plugin",
     "build-headless-backend",
     "build-linux-headless-tarball",
     "publish-linux-headless-assets",
@@ -510,14 +500,11 @@ fixed_needs = {
     "publish-openapi-spec": {"prepare-release", "build-openapi-spec"},
     "build-agent-resources": {"prepare-release"},
     "publish-agent-resources": {"prepare-release", "build-agent-resources"},
-    "build-idea-plugin": {"prepare-release"},
-    "publish-idea-plugin": {"prepare-release", "build-idea-plugin"},
     "build-headless-backend": {"prepare-release"},
     "build-linux-headless-tarball": {
         "prepare-release",
         "build-cli-linux-x64",
         "build-headless-backend",
-        "build-idea-plugin",
     },
     "publish-linux-headless-assets": {
         "prepare-release",
@@ -543,7 +530,6 @@ for task_id in setup_builds:
         "prepare-release",
         "build-cli-linux-x64",
         f"build-cli-{platform}",
-        "build-idea-plugin",
         "build-headless-backend",
     }
     if set(tasks[task_id]["needs"]) != expected:
@@ -561,7 +547,6 @@ for task_id in setup_publishers:
 artifact_publishers = {
     "publish-openapi-spec",
     "publish-agent-resources",
-    "publish-idea-plugin",
     "publish-linux-headless-assets",
 } | cli_publishers | setup_publishers
 for task_id in artifact_publishers:
@@ -586,7 +571,6 @@ expected_metadata_needs = {
     "validate-jvm",
     "publish-openapi-spec",
     "publish-agent-resources",
-    "publish-idea-plugin",
     "publish-linux-headless-assets",
 } | cli_publishers | setup_publishers | repository_gates
 if set(metadata_builder["needs"]) != expected_metadata_needs:

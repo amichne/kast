@@ -92,7 +92,6 @@ actual_assets = {
         or path.name == "kast-runtime-manifest.json"
         or path.name == "openapi.yaml"
     )
-    and path.name != f"kast-idea-{tag}.zip"
     and not path.name.endswith(".tar.gz.sha256")
     and not path.name.endswith(".tar.zst.sha256")
 }

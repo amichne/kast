@@ -15,16 +15,17 @@ internal fun loadConfigOverrides(configFiles: List<Path>): KastConfigOverride {
 private fun parseConfigValues(configFile: Path): Map<String, TomlConfigValue> {
     val values = linkedMapOf<String, TomlConfigValue>()
     var section = ""
-    Files.readAllLines(configFile).forEachIndexed { index, rawLine ->
-        val line = rawLine.withoutTomlComment().trim()
-        if (line.isBlank()) return@forEachIndexed
+    parseTomlStatements(configFile).forEach { statement ->
+        val line = statement.text
         if (line.startsWith("[") && line.endsWith("]")) {
             section = normalizeConfigPath(line.removePrefix("[").removeSuffix("]"))
-            return@forEachIndexed
+            return@forEach
         }
 
         val separator = line.indexOf('=')
-        require(separator > 0) { "Invalid Kast config line ${index + 1} in $configFile: $rawLine" }
+        require(separator > 0) {
+            "Invalid Kast config line ${statement.lineNumber} in $configFile: ${statement.text}"
+        }
         val key = normalizeConfigPath(
             listOf(section, line.substring(0, separator).trim())
                 .filter(String::isNotBlank)
@@ -33,6 +34,57 @@ private fun parseConfigValues(configFile: Path): Map<String, TomlConfigValue> {
         values[key] = line.substring(separator + 1).trim().parseTomlValue()
     }
     return values
+}
+
+private data class TomlStatement(
+    val lineNumber: Int,
+    val text: String,
+)
+
+private fun parseTomlStatements(configFile: Path): List<TomlStatement> {
+    val statements = mutableListOf<TomlStatement>()
+    var statementStart = 0
+    var pending = StringBuilder()
+    Files.readAllLines(configFile).forEachIndexed { index, rawLine ->
+        val line = rawLine.withoutTomlComment().trim()
+        if (line.isBlank()) return@forEachIndexed
+        if (pending.isEmpty()) statementStart = index + 1
+        if (pending.isNotEmpty()) pending.append('\n')
+        pending.append(line)
+        if (pending.toString().isCompleteTomlStatement()) {
+            statements += TomlStatement(statementStart, pending.toString())
+            pending = StringBuilder()
+        }
+    }
+    require(pending.isEmpty()) {
+        "Incomplete Kast config statement at line $statementStart in $configFile: $pending"
+    }
+    return statements
+}
+
+private fun String.isCompleteTomlStatement(): Boolean {
+    if (startsWith("[") && !contains('=')) return endsWith("]")
+    val separator = indexOf('=')
+    if (separator < 0) return true
+    var bracketDepth = 0
+    var quoted = false
+    var quote = '\u0000'
+    var escaped = false
+    substring(separator + 1).forEach { character ->
+        when {
+            escaped -> escaped = false
+            quoted && character == '\\' -> escaped = true
+            quoted && character == quote -> quoted = false
+            !quoted && (character == '"' || character == '\'') -> {
+                quoted = true
+                quote = character
+            }
+            !quoted && character == '[' -> bracketDepth += 1
+            !quoted && character == ']' -> bracketDepth -= 1
+        }
+        require(bracketDepth >= 0) { "Kast config value has an unmatched ]" }
+    }
+    return !quoted && bracketDepth == 0
 }
 
 private sealed interface TomlConfigValue {
@@ -72,7 +124,9 @@ private fun String.parseTomlStringList(): List<String> {
         }
     }
     require(!quoted) { "Kast config string array has an unterminated quote" }
-    values += body.substring(start).parseTomlScalar()
+    body.substring(start).takeIf(String::isNotBlank)?.let { value ->
+        values += value.parseTomlScalar()
+    }
     require(values.all(String::isNotBlank)) { "Kast config string arrays must not contain blank values" }
     return values
 }
@@ -183,8 +237,8 @@ private fun Map<String, TomlConfigValue>.indexingOverride(): IndexingConfigOverr
             throw IllegalArgumentException("Configuration field $removed was removed; use $replacement")
         }
     val relationshipIndexing = relationshipIndexingOverride()
-    val criticalPaths = stringListValue("indexing.criticalpaths")?.let(::IndexingCriticalPaths)
-    val ignoredPaths = stringListValue("indexing.ignoredpaths")?.let(::IndexingIgnoredPaths)
+    val criticalPaths = stringListValue("indexing.criticalpaths")?.let(IndexingCriticalPaths::parse)
+    val ignoredPaths = stringListValue("indexing.ignoredpaths")?.let(IndexingIgnoredPaths::parse)
     val graph = graphIndexingOverride()
     val identifierIndexWaitMillis = longValue("indexing.identifierindexwaitmillis")?.let(::IndexingIdentifierIndexWaitMillis)
     val remote = remoteIndexOverride()

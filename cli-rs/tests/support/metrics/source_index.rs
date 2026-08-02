@@ -1,5 +1,4 @@
 pub(crate) fn seed_source_index(workspace: &std::path::Path) {
-    write_macos_plugin_workspace_metadata(workspace);
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
     let db_path = workspace_database_path_for_test(workspace);
@@ -49,6 +48,8 @@ pub(crate) fn seed_source_index(workspace: &std::path::Path) {
             failure_id TEXT,
             failure_code TEXT,
             failure_message TEXT,
+            failure_attempt_count INTEGER NOT NULL DEFAULT 0
+                CHECK(failure_attempt_count >= 0),
             PRIMARY KEY (prefix_id, filename, stage)
         );
         CREATE TABLE declarations (

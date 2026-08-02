@@ -68,12 +68,13 @@ views {
     include kast.server.router
     include kast.server.orchestrator
     include kast.backend.api
+    include kast.backend.headless
     include kast.backend.idea
     include kotlinCompiler
     include kast.evidence.index
     include kast.evidence.projection
     global style semantic-boundaries
-    style kast.backend.api, kast.backend.idea, kotlinCompiler {
+    style kast.backend.api, kast.backend.headless, kast.backend.idea, kotlinCompiler {
       color indigo
     }
     style kast.evidence.index, kast.evidence.projection {
@@ -97,11 +98,12 @@ views {
 
   view indexing-landscape {
     title "Indexing / Landscape"
-    description "Live IDEA and Kotlin state feeds two independently refreshed, generation-bound SQLite products."
+    description "Private headless IntelliJ and Kotlin state feeds two independently refreshed, generation-bound SQLite products."
     include developer
     include codexHooks
     include kast.cli
     include kast.control
+    include kast.backend.headless
     include kast.backend.idea
     include ideaPlatform
     include kotlinCompiler
@@ -109,7 +111,7 @@ views {
     include kast.evidence.index
     exclude kast.backend.idea -> kast.evidence.index
     global style semantic-boundaries
-    style ideaPlatform, kotlinCompiler, kast.backend.idea {
+    style ideaPlatform, kotlinCompiler, kast.backend.headless, kast.backend.idea {
       color indigo
     }
     style kast.indexing {
@@ -125,9 +127,9 @@ views {
 
   dynamic view indexing-guide {
     title "Indexing / Explore the pipelines"
-    description "Start high-level, then follow the interaction into the exact project-open, SQLite, or refresh sequence."
+    description "Start high-level, then follow the interaction into exact headless bootstrap, SQLite, or refresh sequence."
 
-    kast.control -> kast.indexing.projectOpen "opens the exact-root project" {
+    kast.control -> kast.indexing.projectOpen "starts exact-root headless indexing" {
       navigateTo reference-indexing
     }
     kast.agent -> kast.evidence.index "queries retained generation-bound evidence" {
@@ -138,10 +140,11 @@ views {
     }
   }
 
-  view idea-semantic-pipeline {
-    title "IDEA / Live semantic pipeline"
-    description "Gradle and IntelliJ admission reaches PSI, the Analysis API, K2, and FIR; consumers retain provider-neutral facts, never compiler objects."
+  view headless-semantic-pipeline {
+    title "Headless / Live semantic pipeline"
+    description "Private headless IntelliJ admission reaches PSI, the Analysis API, K2, and FIR; consumers retain provider-neutral facts, never compiler objects."
 
+    include kast.backend.headless
     include kast.backend.idea
     include kast.backend.ideaAdmission
     include kast.backend.ideaRefresh

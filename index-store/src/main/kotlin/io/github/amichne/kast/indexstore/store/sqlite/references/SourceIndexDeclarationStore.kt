@@ -2,8 +2,9 @@ package io.github.amichne.kast.indexstore.store
 
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.PositiveInt
-import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
+import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import io.github.amichne.kast.indexstore.api.reference.*
+import java.nio.file.Path
 import java.sql.Connection
 
 internal class SourceIndexDeclarationStore(
@@ -21,26 +22,26 @@ internal class SourceIndexDeclarationStore(
 
     fun replaceDeclarationsFromFiles(declarationsBySource: List<Pair<String, List<DeclarationRow>>>) {
         val eligibleDeclarationsBySource = declarationsBySource
-            .filter { (filePath, _) -> SourceIndexFilePolicy.isEligible(filePath) }
-            .map { (filePath, declarations) ->
-                filePath to declarations.filter { declaration ->
-                    declaration.filePath == filePath && SourceIndexFilePolicy.isEligible(declaration.filePath)
-                }
-            }
+            .mapNotNull(::parseDeclarationBatch)
         synchronized(state.writeLock) {
             val conn = state.connection()
             conn.autoCommit = false
             try {
-                mutations.internPathsInTransaction(conn, eligibleDeclarationsBySource.map { it.first })
+                mutations.internPathsInTransaction(
+                    conn,
+                    eligibleDeclarationsBySource.map { batch -> batch.sourcePath.toDatabasePath() },
+                )
                 mutations.internFqNamesInTransaction(
                     conn,
-                    eligibleDeclarationsBySource.flatMapTo(mutableSetOf()) { (_, declarations) ->
-                        declarations.map { it.fqName }
+                    eligibleDeclarationsBySource.flatMapTo(mutableSetOf()) { batch ->
+                        batch.declarations.map { declaration -> declaration.fqName }
                     },
                 )
-                for ((filePath, declarations) in eligibleDeclarationsBySource) {
-                    clearDeclarationsFromFileInTransaction(conn, filePath)
-                    declarations.forEach { declaration -> insertDeclarationInTransaction(conn, declaration) }
+                for (batch in eligibleDeclarationsBySource) {
+                    clearDeclarationsFromFileInTransaction(conn, batch.sourcePath)
+                    batch.declarations.forEach { declaration ->
+                        insertDeclarationInTransaction(conn, batch.sourcePath, declaration)
+                    }
                 }
                 state.removeIneligibleSourceIndexRows(conn)
                 state.incrementGenerationInTransaction(conn)
@@ -147,10 +148,11 @@ internal class SourceIndexDeclarationStore(
 
     internal fun clearDeclarationsFromFileInTransaction(
         conn: Connection,
-        filePath: String,
+        filePath: WorkspaceSourcePath,
     ) {
         state.loadInterningTables(conn)
-        val (prefixId, filename) = pathCodec.encodeIfInterned(filePath) ?: return
+        val checkedPath = state.requireWorkspaceSourcePath(filePath)
+        val (prefixId, filename) = pathCodec.encodeIfInterned(checkedPath.toDatabasePath()) ?: return
         // Delete supertypes for all declarations in this file first (FK-safe order)
         conn.prepareStatement(
             """DELETE FROM declaration_supertypes WHERE declaration_fq_id IN
@@ -169,9 +171,11 @@ internal class SourceIndexDeclarationStore(
 
     internal fun insertDeclarationInTransaction(
         conn: Connection,
+        filePath: WorkspaceSourcePath,
         declaration: DeclarationRow,
     ) {
-        val (prefixId, filename) = pathCodec.encode(declaration.filePath)
+        val checkedPath = state.requireWorkspaceSourcePath(filePath)
+        val (prefixId, filename) = pathCodec.encode(checkedPath.toDatabasePath())
         val fqId = fqCodec.getOrCreate(conn, declaration.fqName)
         conn.prepareStatement(
             """INSERT OR REPLACE INTO declarations
@@ -207,4 +211,18 @@ internal class SourceIndexDeclarationStore(
         }
     }
 
+    private fun parseDeclarationBatch(
+        batch: Pair<String, List<DeclarationRow>>,
+    ): ParsedDeclarationBatch? {
+        val sourcePath = state.sourceFilePolicy.sourcePath(Path.of(batch.first)) ?: return null
+        val declarations = batch.second.filter { declaration ->
+            state.sourceFilePolicy.sourcePath(Path.of(declaration.filePath)) == sourcePath
+        }
+        return ParsedDeclarationBatch(sourcePath, declarations)
+    }
+
+    private data class ParsedDeclarationBatch(
+        val sourcePath: WorkspaceSourcePath,
+        val declarations: List<DeclarationRow>,
+    )
 }

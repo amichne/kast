@@ -11,7 +11,6 @@ import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
 import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
-import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -44,7 +43,9 @@ internal class KastPluginBackendContractTestPersistedJavaScope : KastPluginBacke
                 internalDependentFileFixture.get().virtualFile.path,
             )
             JavaScopeInputs(
-                workspaceRoot = commonWorkspaceRoot(declaration.virtualFile.path, javaSubtype.virtualFile.path),
+                workspaceRoot = (kotlinPaths + javaSubtype.virtualFile.path)
+                    .reduce { first, second -> commonWorkspaceRoot(first, second).toString() }
+                    .let(java.nio.file.Path::of),
                 selector = KastExactSymbolSelector(
                     fqName = "demo.hierarchy.Shape",
                     declarationFile = declaration.virtualFile.path,
@@ -57,25 +58,27 @@ internal class KastPluginBackendContractTestPersistedJavaScope : KastPluginBacke
 
         SqliteSourceIndexStore(inputs.workspaceRoot).use { store ->
             store.ensureSchema()
+            val entries = inputs.kotlinPaths.mapIndexed { index, path ->
+                fileInventoryEntry(
+                    workspaceRoot = inputs.workspaceRoot,
+                    path = path,
+                    lastModifiedMillis = 1,
+                    contentHash = FileContentHash.parse(('a' + index).toString().repeat(64)),
+                    moduleName = ":main[main]",
+                    sourceSet = "main",
+                )
+            }
             store.reconcileFileInventory(
-                inputs.kotlinPaths.mapIndexed { index, path ->
-                    FileInventoryEntry(
-                        path = path,
-                        lastModifiedMillis = 1,
-                        contentHash = FileContentHash.parse(('a' + index).toString().repeat(64)),
-                        moduleName = ":main[main]",
-                        sourceSet = "main",
-                    )
-                },
+                entries,
                 FileStageVersions.CURRENT,
             )
             val pending = store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
                 .associateBy { work -> work.path }
             store.commitRelationshipBatch(
-                inputs.kotlinPaths.map { path ->
+                entries.map { entry ->
                     RelationshipFileStageUpdate(
-                        work = pending.getValue(path),
-                        scannedContentHash = pending.getValue(path).contentHash,
+                        work = pending.getValue(entry.path),
+                        scannedContentHash = pending.getValue(entry.path).contentHash,
                         references = emptyList(),
                         declarations = emptyList(),
                     )

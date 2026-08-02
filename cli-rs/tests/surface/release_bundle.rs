@@ -19,8 +19,6 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
 
     let cli_archive = write_cli_archive(temp.path());
     let backend_archive = write_backend_archive(temp.path(), "headless", "v9.8.7");
-    let plugin_archive = temp.path().join("kast-idea.zip");
-    std::fs::write(&plugin_archive, "plugin").expect("plugin");
 
     let package = kast(&home, &config_home)
         .args([
@@ -36,8 +34,6 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
             cli_archive.to_str().expect("cli archive"),
             "--backend-archive",
             backend_archive.to_str().expect("backend archive"),
-            "--plugin-archive",
-            plugin_archive.to_str().expect("plugin archive"),
             "--version",
             "v9.8.7",
             "--bundle-output",
@@ -56,6 +52,7 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     assert_eq!(stdout["version"], "v9.8.7");
     assert_eq!(stdout["platform"], "ubuntu-debian-headless-x86_64");
     assert_eq!(stdout["manifestSchemaVersion"], 3);
+    assert!(stdout.get("pluginArchive").is_none());
     assert_eq!(stdout["output"], output.display().to_string());
     assert_eq!(
         stdout["sha256Sidecar"],
@@ -88,6 +85,10 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
             .is_file()
     );
     assert!(bundle_root.join("install.sh").is_file());
+    assert!(
+        !bundle_root.join("plugins").exists(),
+        "headless-only bundle must not contain a public plugin directory",
+    );
 
     let manifest: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(bundle_root.join("manifest.json")).expect("manifest"),
@@ -118,9 +119,8 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     assert_eq!(manifest["artifacts"][0]["role"], "cli");
     assert_eq!(manifest["artifacts"][1]["role"], "agent-cli");
     assert_eq!(manifest["artifacts"][2]["role"], "headless-backend");
-    assert_eq!(manifest["artifacts"][3]["role"], "plugin");
     assert_eq!(
         manifest["artifacts"].as_array().expect("artifacts").len(),
-        4
+        3
     );
 }

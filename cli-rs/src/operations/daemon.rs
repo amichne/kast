@@ -42,12 +42,7 @@ pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<Child>
 
 pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<String>> {
     let backend_name = args.backend_name.unwrap_or(BackendName::Headless);
-    if backend_name == BackendName::Idea {
-        return Err(CliError::new(
-            "DAEMON_START_ERROR",
-            "The idea backend is hosted by IDEA and cannot be launched as a headless runtime.",
-        ));
-    }
+    crate::runtime::require_headless_backend(backend_name)?;
 
     #[cfg(target_os = "macos")]
     {

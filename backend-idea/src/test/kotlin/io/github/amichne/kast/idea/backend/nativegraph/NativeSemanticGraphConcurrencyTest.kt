@@ -8,6 +8,9 @@ import com.intellij.testFramework.junit5.fixture.moduleFixture
 import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
+import io.github.amichne.kast.api.client.WorkspaceIdentity
+import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
@@ -102,7 +105,7 @@ class NativeSemanticGraphConcurrencyTest {
             }
         }
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -165,7 +168,7 @@ class NativeSemanticGraphConcurrencyTest {
             }
         }
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -174,7 +177,7 @@ class NativeSemanticGraphConcurrencyTest {
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
                 readEpochObserver = observer,
-                semanticGraphBatchSize = 1,
+                semanticGraphBatchSize = GraphIndexingBatchSize(1),
             ).use { backend ->
                 val refresh = async(Dispatchers.Default) {
                     backend.semanticGraph(
@@ -205,4 +208,11 @@ class NativeSemanticGraphConcurrencyTest {
 
     private fun limits(): ServerLimits =
         ServerLimits(maxResults = 500, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4)
+
+    private fun sourceIndexStore(workspaceRoot: Path): SqliteSourceIndexStore =
+        SqliteSourceIndexStore(
+            WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).copy(
+                sourceIndexDatabasePath = NormalizedPath.ofAbsolute(storeRoot.resolve("source-index.db")),
+            ),
+        )
 }

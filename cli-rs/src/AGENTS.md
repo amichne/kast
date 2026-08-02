@@ -13,10 +13,13 @@ use names tied to the typed contract they expose.
 Keep visibility and ownership boundaries explicit so the compiler forces every
 caller through the modeled contract.
 
-`operations/self_mgmt.rs` owns strict deserialization and internal consistency checks for
-revisioned exact-root workspace compatibility metadata. Runtime admission uses
-the checked-in typed compatibility matrix compiled through
-`execution/runtime/compatibility.rs`; unsupported protocol, metadata, runtime, version
-pair, or required capability facts fail closed with update, reopen, and refresh
-guidance. Do not restore exact CLI/plugin version equality or infer plugin
-installation from an IDE profile, link, or other external state.
+`execution/runtime/backend/headless_authority.rs` owns the private constructor
+for `AdmittedHeadlessRuntime`. All semantic consumers must use that proof. Do
+not pass backend primitives downstream or restore a second backend selector.
+Legacy IDEA values are parseable only at this ingress so setup can migrate them
+and runtime requests can reject them before inspection or launch.
+
+`operations/self_mgmt.rs` owns install readiness. It must not infer semantic
+readiness from a foreground IDE profile, public plugin, workspace metadata, or
+other external state. Live semantic readiness comes from the admitted exact-root
+headless runtime.

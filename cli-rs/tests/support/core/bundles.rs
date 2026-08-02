@@ -75,7 +75,6 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
     let backend_dir = bundle.join(format!("lib/backends/headless-{version}"));
     std::fs::create_dir_all(bundle.join("bin")).expect("bundle bin");
     std::fs::create_dir_all(bundle.join("libexec")).expect("bundle libexec");
-    std::fs::create_dir_all(bundle.join("plugins")).expect("bundle plugins");
     std::fs::create_dir_all(backend_dir.join("runtime-libs")).expect("runtime libs");
     std::fs::create_dir_all(backend_dir.join("idea-home/lib")).expect("idea lib");
     std::fs::create_dir_all(backend_dir.join("idea-home/modules")).expect("idea modules");
@@ -101,7 +100,6 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
     )
     .expect("module descriptors");
     std::fs::write(bundle.join("install.sh"), "#!/usr/bin/env bash\n").expect("bootstrap script");
-    std::fs::write(bundle.join("plugins/kast.zip"), b"plugin").expect("plugin");
     set_executable_for_test(&bundled_control);
     set_executable_for_test(&bundled_kast);
     set_executable_for_test(&backend_dir.join("kast-headless"));
@@ -152,11 +150,6 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
                     "role": "headless-backend",
                     "path": format!("lib/backends/headless-{version}"),
                     "sha256": test_path_sha256(&backend_dir)
-                },
-                {
-                    "role": "plugin",
-                    "path": "plugins/kast.zip",
-                    "sha256": test_path_sha256(&bundle.join("plugins/kast.zip"))
                 }
             ]
         }))

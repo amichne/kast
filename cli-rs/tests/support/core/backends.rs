@@ -1,65 +1,3 @@
-pub(crate) fn spawn_scripted_idea_backend(
-    home: &Path,
-    config_home: &Path,
-    workspace: &Path,
-    socket_path: &Path,
-    scripted_results: Vec<(&'static str, serde_json::Value)>,
-) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
-    write_macos_plugin_workspace_metadata(workspace);
-    std::fs::create_dir_all(workspace).expect("workspace");
-    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
-    spawn_scripted_backend(
-        home,
-        config_home,
-        workspace,
-        socket_path,
-        "idea",
-        1,
-        false,
-        scripted_results,
-    )
-}
-
-pub(crate) struct ScriptedCliAuthority<'a> {
-    binary: &'a Path,
-    version: &'a str,
-}
-
-impl<'a> ScriptedCliAuthority<'a> {
-    pub(crate) fn new(binary: &'a Path, version: &'a str) -> Self {
-        assert!(binary.is_file(), "scripted CLI authority binary");
-        assert!(!version.trim().is_empty(), "scripted CLI authority version");
-        Self { binary, version }
-    }
-}
-
-pub(crate) fn spawn_scripted_idea_backend_for_invocations(
-    home: &Path,
-    config_home: &Path,
-    workspace: &Path,
-    socket_path: &Path,
-    cli_authority: ScriptedCliAuthority<'_>,
-    invocation_count: usize,
-    scripted_results: Vec<(&'static str, serde_json::Value)>,
-) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
-    write_macos_plugin_workspace_metadata_for_cli(
-        workspace,
-        cli_authority.binary,
-        cli_authority.version,
-    );
-    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
-    spawn_scripted_backend(
-        home,
-        config_home,
-        workspace,
-        socket_path,
-        "idea",
-        invocation_count,
-        false,
-        scripted_results,
-    )
-}
-
 pub(crate) fn spawn_scripted_headless_backend(
     home: &Path,
     config_home: &Path,
@@ -67,6 +5,8 @@ pub(crate) fn spawn_scripted_headless_backend(
     socket_path: &Path,
     scripted_results: Vec<(&'static str, serde_json::Value)>,
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    std::fs::create_dir_all(workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
     spawn_scripted_backend(
         home,
         config_home,
@@ -75,6 +15,93 @@ pub(crate) fn spawn_scripted_headless_backend(
         "headless",
         1,
         false,
+        vec![],
+        scripted_results,
+    )
+}
+
+pub(crate) fn spawn_scripted_mutating_headless_backend(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    scripted_results: Vec<(&'static str, serde_json::Value)>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    std::fs::create_dir_all(workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
+    spawn_scripted_backend(
+        home,
+        config_home,
+        workspace,
+        socket_path,
+        "headless",
+        1,
+        false,
+        vec!["RENAME", "APPLY_EDITS"],
+        scripted_results,
+    )
+}
+
+pub(crate) fn runtime_descriptor_for_test(
+    workspace: &Path,
+    socket_path: &Path,
+    backend_name: &str,
+    backend_version: &str,
+) -> serde_json::Value {
+    use std::os::unix::fs::MetadataExt;
+
+    let socket = std::fs::metadata(socket_path).expect("bound runtime socket identity");
+    let output = Command::new("ps")
+        .env("LC_ALL", "C")
+        .args(["-o", "lstart=", "-p", &std::process::id().to_string()])
+        .output()
+        .expect("process start observation");
+    assert!(output.status.success(), "process start observation");
+    let started_at = std::ffi::CString::new(String::from_utf8(output.stdout).expect("UTF-8 ps output").trim())
+        .expect("process start contains no NUL");
+    let mut parsed = unsafe { std::mem::zeroed::<libc::tm>() };
+    parsed.tm_isdst = -1;
+    assert!(
+        !unsafe { libc::strptime(started_at.as_ptr(), c"%a %b %e %T %Y".as_ptr(), &mut parsed) }
+            .is_null(),
+        "parse process start"
+    );
+    let start_epoch_seconds = unsafe { libc::mktime(&mut parsed) };
+    assert!(start_epoch_seconds > 0, "positive process start");
+    serde_json::json!({
+        "workspaceRoot": workspace.display().to_string(),
+        "backendName": backend_name,
+        "backendVersion": backend_version,
+        "runtimeInstanceId": format!("test-{}-{}", std::process::id(), socket.ino()),
+        "processStartEpochMillis": u64::try_from(start_epoch_seconds).expect("process start") * 1_000,
+        "ownerUid": u64::from(unsafe { libc::geteuid() }),
+        "socketFileIdentity": {"device": socket.dev(), "inode": socket.ino()},
+        "transport": "uds",
+        "socketPath": socket_path.display().to_string(),
+        "pid": std::process::id(),
+        "schemaVersion": 5
+    })
+}
+
+pub(crate) fn spawn_scripted_headless_backend_for_invocations(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    socket_path: &Path,
+    invocation_count: usize,
+    scripted_results: Vec<(&'static str, serde_json::Value)>,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    std::fs::create_dir_all(workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
+    spawn_scripted_backend(
+        home,
+        config_home,
+        workspace,
+        socket_path,
+        "headless",
+        invocation_count,
+        false,
+        vec![],
         scripted_results,
     )
 }
@@ -122,6 +149,7 @@ pub(crate) fn spawn_ready_headless_backend_after_marker(
                 invocation_count,
                 true,
                 vec![],
+                vec![],
             )
             .join()
             .expect("ready headless backend"),
@@ -138,6 +166,7 @@ fn spawn_scripted_backend(
     backend_name: &str,
     invocation_count: usize,
     semantic_ready: bool,
+    mutation_capabilities: Vec<&'static str>,
     scripted_results: Vec<(&'static str, serde_json::Value)>,
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     assert!(invocation_count > 0, "scripted backend needs an invocation");
@@ -146,43 +175,41 @@ fn spawn_scripted_backend(
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::create_dir_all(config_home).expect("config home");
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
+    let workspace = std::fs::canonicalize(workspace).expect("canonical scripted workspace");
     std::fs::write(
         config_home.join("config.toml"),
         format!("[runtime]\ndefaultBackend = \"{backend_name}\"\n"),
     )
     .expect("config");
+    let listener = UnixListener::bind(socket_path).expect("bind scripted backend");
     std::fs::write(
         descriptor_dir.join("daemons.json"),
-        serde_json::to_vec_pretty(&serde_json::json!([{
-            "workspaceRoot": workspace.display().to_string(),
-            "backendName": backend_name,
-            "backendVersion": "scripted-test",
-            "transport": "uds",
-            "socketPath": socket_path.display().to_string(),
-            "pid": std::process::id(),
-            "schemaVersion": 5
-        }]))
+        serde_json::to_vec_pretty(&serde_json::json!([runtime_descriptor_for_test(
+            &workspace,
+            socket_path,
+            backend_name,
+            "scripted-test",
+        )]))
         .expect("descriptor json"),
     )
     .expect("descriptor");
-
-    let listener = UnixListener::bind(socket_path).expect("bind scripted backend");
     listener
         .set_nonblocking(true)
         .expect("nonblocking scripted backend");
-    let server_workspace = workspace.to_path_buf();
+    let server_workspace = workspace;
     let server_backend_name = backend_name.to_string();
     thread::spawn(move || {
         let mut requests = Vec::new();
         let mut scripted_results = scripted_results.into_iter();
         let expected_requests = 2 * invocation_count + scripted_results.len();
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
-        while (requests.len() < expected_requests || scripted_results.len() > 0)
-            && std::time::Instant::now() < deadline
-        {
+        let mut idle_deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while requests.len() < expected_requests || scripted_results.len() > 0 {
             let (mut stream, _) = match listener.accept() {
                 Ok(connection) => connection,
                 Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                    if std::time::Instant::now() >= idle_deadline {
+                        return requests;
+                    }
                     thread::sleep(std::time::Duration::from_millis(10));
                     continue;
                 }
@@ -224,7 +251,7 @@ fn spawn_scripted_backend(
                         "raw/implementations",
                         "raw/type-hierarchy"
                     ],
-                    "mutationCapabilities": [],
+                    "mutationCapabilities": mutation_capabilities.clone(),
                     "limits": {
                         "requestTimeoutMillis": 60000,
                         "maxResults": 1000,
@@ -241,6 +268,7 @@ fn spawn_scripted_backend(
                 }
             };
             requests.push(request);
+            idle_deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
             writeln!(
                 stream,
                 "{}",
@@ -252,7 +280,7 @@ fn spawn_scripted_backend(
     })
 }
 
-pub(crate) fn spawn_sequenced_idea_backend(
+pub(crate) fn spawn_sequenced_headless_backend(
     home: &Path,
     config_home: &Path,
     workspace: &Path,
@@ -264,32 +292,47 @@ pub(crate) fn spawn_sequenced_idea_backend(
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::create_dir_all(config_home).expect("config home");
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
-    write_macos_plugin_workspace_metadata(workspace);
+    let workspace = std::fs::canonicalize(workspace).expect("canonical sequenced workspace");
     std::fs::write(
         config_home.join("config.toml"),
-        "[runtime]\ndefaultBackend = \"idea\"\n",
+        "[runtime]\ndefaultBackend = \"headless\"\n",
     )
     .expect("config");
+    let listener = UnixListener::bind(socket_path).expect("bind sequenced backend");
     std::fs::write(
         descriptor_dir.join("daemons.json"),
-        serde_json::to_vec_pretty(&serde_json::json!([{
-            "workspaceRoot": workspace.display().to_string(),
-            "backendName": "idea",
-            "backendVersion": "scripted-test",
-            "transport": "uds",
-            "socketPath": socket_path.display().to_string(),
-            "pid": std::process::id(),
-            "schemaVersion": 5
-        }]))
+        serde_json::to_vec_pretty(&serde_json::json!([runtime_descriptor_for_test(
+            &workspace,
+            socket_path,
+            "headless",
+            "scripted-test",
+        )]))
         .expect("descriptor json"),
     )
     .expect("descriptor");
+    listener
+        .set_nonblocking(true)
+        .expect("nonblocking sequenced backend");
 
-    let listener = UnixListener::bind(socket_path).expect("bind sequenced backend");
     thread::spawn(move || {
         let mut requests = Vec::with_capacity(responses.len());
         for (expected_method, result) in responses {
-            let (mut stream, _) = listener.accept().expect("accept sequenced client");
+            let idle_deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+            let (mut stream, _) = loop {
+                match listener.accept() {
+                    Ok(connection) => break connection,
+                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
+                        if std::time::Instant::now() >= idle_deadline {
+                            return requests;
+                        }
+                        thread::sleep(std::time::Duration::from_millis(10));
+                    }
+                    Err(error) => panic!("accept sequenced client: {error}"),
+                }
+            };
+            stream
+                .set_nonblocking(false)
+                .expect("blocking sequenced backend stream");
             let mut reader = BufReader::new(stream.try_clone().expect("clone stream"));
             let mut request_line = String::new();
             reader.read_line(&mut request_line).expect("read request");

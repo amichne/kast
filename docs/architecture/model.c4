@@ -22,7 +22,7 @@ model {
 
   ideaPlatform = platform "IntelliJ Platform" {
     #compiler
-    description "Exact-root IntelliJ IDEA or Android Studio host with PSI and K2 analysis."
+    description "Private IntelliJ platform inside Kast's isolated exact-root headless process."
     icon tech:intellij-idea
     metadata {
       supportedBuilds ["IDEA 262", "Android Studio 261"]
@@ -33,7 +33,7 @@ model {
       #live
       description "Linked builds, imported modules, source roots, SDKs, and source-set ownership."
       metadata {
-        retention "live IDEA project state"
+        retention "live isolated headless project state"
       }
     }
 
@@ -191,10 +191,10 @@ model {
         link https://github.com/amichne/kast/blob/main/analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt "Source"
       }
 
-      idea = service "KastPluginBackend" {
+      idea = service "Private compiler implementation" {
         #compiler
         technology "IntelliJ PSI + Kotlin K2"
-        description "Executes reads and writes inside IntelliJ read/write actions."
+        description "Executes reads and writes inside the isolated IntelliJ runtime. It is not a foreground plugin service."
         metadata {
           fqName "io.github.amichne.kast.idea.backend.KastPluginBackend"
           kastEvidence "compiler-resolved"
@@ -202,7 +202,7 @@ model {
         link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/KastPluginBackend.kt "Source"
       }
 
-      ideaAdmission = contract "IDEA semantic admission" {
+      ideaAdmission = contract "Headless semantic admission" {
         #compiler #proof
         technology "DumbService + PSI + Analysis API"
         description "Proves smart mode, Kotlin modules and classpaths, PSI availability, and Analysis API diagnostics."
@@ -213,14 +213,14 @@ model {
         link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaIndexSemanticAdmission.kt "Source"
       }
 
-      ideaRefresh = service "Focused IDEA refresh" {
+      ideaRefresh = service "Focused compiler refresh" {
         #compiler #trigger
         technology "VFS + FileTypeIndex + PSI"
         description "Refreshes selected paths through VFS and Kotlin admission. It does not rebuild references or semantic graph rows."
         link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/mutation/MutationOperations.kt "Source"
       }
 
-      ideaDiagnostics = service "IDEA diagnostics" {
+      ideaDiagnostics = service "Compiler diagnostics" {
         #compiler #proof
         technology "PSI + Analysis API"
         description "Captures compiler diagnostics with a PSI generation and current content hash."
@@ -229,7 +229,7 @@ model {
 
       headless = service "HeadlessRuntime bootstrap" {
         technology "IntelliJ headless runtime"
-        description "Starts the same IDEA backend runtime on supported non-macOS hosts."
+        description "Starts the only production semantic runtime on every supported host."
         metadata {
           fqName "io.github.amichne.kast.headless.runtime.HeadlessRuntime"
           source "backend-headless/src/main/kotlin/io/github/amichne/kast/headless/runtime/HeadlessRuntime.kt"
@@ -240,13 +240,13 @@ model {
 
     indexing = platform "Indexing and refresh pipelines" {
       #indexing
-      description "Project-open reference indexing and explicit semantic graph refresh remain separate retained products."
+      description "Headless-bootstrap reference indexing and explicit semantic graph refresh remain separate retained products."
 
-      projectOpen = service "Project-open index trigger" {
+      projectOpen = service "Headless bootstrap index trigger" {
         #trigger
-        technology "KastStartupActivity"
-        description "Runs after exact-root project open and Gradle import; the production trigger for full source and relationship indexing."
-        link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/runtime/startup/KastProjectOpenAutoIndexing.kt "Source"
+        technology "HeadlessRuntime"
+        description "Runs after isolated exact-root open and Gradle import; the production trigger for full source and relationship indexing."
+        link https://github.com/amichne/kast/blob/main/backend-headless/src/main/kotlin/io/github/amichne/kast/headless/runtime/HeadlessRuntime.kt "Source"
       }
 
       projectIndexer = service "IdeaProjectIndexer" {
@@ -255,7 +255,7 @@ model {
         description "Builds the complete identifier inventory, then dependency-prioritized declarations and references."
         metadata {
           fqName "io.github.amichne.kast.idea.IdeaProjectIndexer"
-          trigger "project open, backend restart, or configuration reload"
+          trigger "headless bootstrap, explicit demand, or configuration reload"
         }
         link https://github.com/amichne/kast/blob/main/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/workspace/indexing/IdeaProjectIndexer.kt "Source"
       }
@@ -402,8 +402,7 @@ model {
   kast.cli -[call]-> kast.agent "dispatches agent commands"
   kast.control -[control]-> workspaceState "reads and updates owned state"
   kast.control -[control]-> kast.rpcClient "controls an admitted runtime"
-  kast.control -[control]-> ideaPlatform "reuses or opens the exact-root project"
-  kast.control -[control]-> kast.backend.headless "starts on supported hosts"
+  kast.control -[control]-> kast.backend.headless "admits, starts, or reuses the exact-root runtime"
   kast.agent -[evidence]-> kast.evidence.index "queries persisted evidence locally"
   kast.agent -[transport]-> kast.rpcClient "opens a bounded compiler request"
   kast.rpcClient -[transport]-> kast.server.dispatcher "sends JSON-RPC"
@@ -413,13 +412,14 @@ model {
   kast.server.mutation -[call]-> kast.server.orchestrator "reuses typed semantic operations"
   kast.server.orchestrator -[call]-> kast.backend.api "calls the shared backend contract"
   kast.backend.api -[implement]-> kast.backend.idea "is implemented by"
-  kast.backend.headless -[control]-> kast.backend.idea "boots the shared backend"
-  kast.backend.idea -[call]-> ideaPlatform "runs inside"
+  kast.backend.headless -[control]-> ideaPlatform "owns the isolated host"
+  kast.backend.headless -[control]-> kast.backend.idea "boots the private compiler implementation"
+  kast.backend.idea -[call]-> ideaPlatform "runs only inside the headless host"
   kast.backend.idea -[call]-> kotlinCompiler "resolves PSI and compiler semantics"
   kast.backend.idea -[call]-> kast.backend.ideaAdmission "gates indexing and semantic work"
   kast.backend.idea -[call]-> kast.backend.ideaRefresh "refreshes focused workspace paths"
   kast.backend.idea -[call]-> kast.backend.ideaDiagnostics "collects compiler diagnostics"
-  kast.backend.idea -[call]-> kast.indexing "drives project-open and explicit indexing"
+  kast.backend.idea -[call]-> kast.indexing "drives headless-bootstrap and explicit indexing"
   kast.backend.idea -[evidence]-> kast.evidence.index "reads and writes indexed facts"
   kast.indexing -[retain]-> kast.evidence.index "retains independently refreshed products"
   kast.server.orchestrator -[evidence]-> kast.evidence.index "combines persisted evidence"

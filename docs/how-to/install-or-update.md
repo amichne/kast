@@ -2,7 +2,7 @@
 type: How-to Guide
 title: How to Install or Update Kast
 description: Install one verified Kast release and connect the agent harnesses you use.
-tags: [install, update, macos, linux, idea, headless, agents]
+tags: [install, update, macos, linux, headless, agents]
 code_sources:
   - path: install.sh
   - path: cli-rs/src/operations/install/bundle_install.rs
@@ -53,9 +53,9 @@ surface.
 
 Forced setup removes the prior Kast installation, databases, registered
 workspace `.kast` metadata, current-directory ancestor `.kast` metadata
-through the user home, and Kast IDEA plugins before reinstalling. It does not
-search the user home, remove workspace source checkouts, or remove unrelated
-plugins.
+through the user home, and known legacy Kast IDE files before reinstalling. It
+does not search the user home, remove workspace source checkouts, or remove
+unrelated IDE extensions.
 
 ## Install a local or pinned bundle
 
@@ -71,7 +71,7 @@ For development from this checkout:
 
 ## Prepare a workspace
 
-On macOS, install one supported host:
+On macOS, install one supported IntelliJ runtime source:
 
 - IntelliJ IDEA 2026.2, build 262; or
 - Android Studio 2026.1.2, build 261.
@@ -83,9 +83,10 @@ kast
 kast up
 ```
 
-`kast up` reuses the exact open root or uses the supported background-open
-path. It returns only after usable semantic evidence is available, or reports
-the typed blocker to act on.
+`kast up` reuses or starts one isolated headless process for the exact root. It
+does not open, close, focus, or route through a foreground IDE. It returns only
+after usable semantic evidence is available, or reports the typed blocker to
+act on.
 
 Refresh after source changes:
 

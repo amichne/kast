@@ -161,12 +161,6 @@ internal suspend fun KastPluginBackend.optimizeImportsOperation(query: ParsedImp
 internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuery): RefreshResult {
         return telemetry.inSpan(IdeaTelemetryScope.REFRESH, "kast.idea.refresh") {
             if (query.externalFailureIds.isNotEmpty()) {
-                if (persistedIndexAccess != PersistedIndexAccess.READ_WRITE) {
-                    throw CapabilityNotSupportedException(
-                        capability = "REFRESH_WORKSPACE",
-                        message = "Persisted reference writes belong to the headless sidecar",
-                    )
-                }
                 val store = semanticGraphStore ?: throw CapabilityNotSupportedException(
                     capability = "SEMANTIC_GRAPH",
                     message = "External graph boundaries require the IDEA source index",
@@ -207,11 +201,20 @@ internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuer
                 .filter(SemanticAdmissionStatus::isRemoved)
                 .map(SemanticAdmissionStatus::filePath)
             val relationshipFailures = semanticGraphStore?.takeIf {
-                persistedIndexAccess == PersistedIndexAccess.READ_WRITE &&
-                    (admittedPaths.isNotEmpty() || removedPaths.isNotEmpty())
+                admittedPaths.isNotEmpty() || removedPaths.isNotEmpty()
             }?.let { store ->
                 val requestContext = currentCoroutineContext()
                 requestContext.ensureActive()
+                val admittedSourcePaths = admittedPaths.map { path ->
+                    requireNotNull(store.sourcePath(java.nio.file.Path.of(path))) {
+                        "Admitted refresh path is outside the exact workspace root: $path"
+                    }
+                }
+                val removedSourcePaths = removedPaths.map { path ->
+                    requireNotNull(store.sourcePath(java.nio.file.Path.of(path))) {
+                        "Removed refresh path is outside the exact workspace root: $path"
+                    }
+                }
                 val outcomes = IdeaProjectIndexer(
                     project = project,
                     workspaceRoot = workspaceRoot,
@@ -223,8 +226,8 @@ internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuer
                     readGradleWorkspaceModel = workspaceModelReader,
                     scopeCache = workspaceIndexingScopeCache,
                 ).refreshSymbolRelationships(
-                    admittedPaths,
-                    removedPaths,
+                    admittedSourcePaths,
+                    removedSourcePaths,
                     currentPersistedIndexingConfig(),
                 )
                 requestContext.ensureActive()
@@ -234,7 +237,7 @@ internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuer
                     }
                     RefreshRelationshipFailure(
                         failureId = SemanticGraphExternalBoundaryFailureId.parse(failure.id.value),
-                        filePath = outcome.path,
+                        filePath = outcome.path.absolute.value.value,
                         code = when (failure.code) {
                             FileStageFailureCode.PSI_UNAVAILABLE ->
                                 SemanticGraphExternalBoundaryReason.PSI_UNAVAILABLE

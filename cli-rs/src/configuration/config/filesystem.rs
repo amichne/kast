@@ -89,14 +89,6 @@ pub fn workspace_database_path(workspace_root: &Path) -> Result<PathBuf> {
     Ok(workspace_data_directory(workspace_root)?.join("cache/source-index.db"))
 }
 
-#[cfg(target_os = "macos")]
-pub fn default_socket_path(workspace_root: &Path) -> PathBuf {
-    let socket_dir = manifest::resolve_paths()
-        .map(|paths| paths.socket_dir)
-        .unwrap_or_else(|_| manifest::default_resolved_paths().socket_dir);
-    default_socket_path_for_directory(&socket_dir, workspace_root)
-}
-
 fn fallback_socket_path(workspace_root: &Path) -> PathBuf {
     env::temp_dir().join(format!("kast-{}.sock", workspace_hash(workspace_root)))
 }

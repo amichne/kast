@@ -13,6 +13,7 @@ import java.nio.file.Path
 import java.io.OutputStream
 import java.security.DigestInputStream
 import java.security.MessageDigest
+import java.util.concurrent.TimeUnit
 
 internal object KastInstallReceiptLoader {
     private val digestPattern = Regex("[0-9a-f]{64}")
@@ -134,4 +135,22 @@ internal object KastInstallReceiptLoader {
 
     private fun JsonObject.objectValue(key: String): JsonObject? =
         runCatching { get(key)?.jsonObject }.getOrNull()
+}
+
+internal fun loadConfiguredCliVersion(binary: Path): CliImplementationVersion? {
+    val process = runCatching {
+        ProcessBuilder(binary.toString(), "version")
+            .redirectErrorStream(true)
+            .start()
+    }.getOrNull() ?: return null
+    if (!process.waitFor(5, TimeUnit.SECONDS)) {
+        process.destroyForcibly()
+        return null
+    }
+    if (process.exitValue() != 0) return null
+    val output = process.inputStream.bufferedReader().use { reader -> reader.readText() }.trim()
+    val version = output.removePrefix("Kast CLI ").takeIf { value ->
+        output.startsWith("Kast CLI ") && value.isNotBlank() && value.none(Char::isWhitespace)
+    } ?: return null
+    return runCatching { CliImplementationVersion(version) }.getOrNull()
 }

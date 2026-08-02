@@ -47,9 +47,15 @@ reference-index readiness, limitations, and suggested next commands.
 | `kast change add-implementation <SCOPE>` | Validate implementation content appended to one named scope from standard input. |
 | `kast change add-statement <SCOPE>` | Validate a statement appended to one named executable scope from standard input. |
 | `kast change replace <SYMBOL>` | Validate replacement content from standard input. |
-| `kast apply <PLAN_ID>` | Apply the validated plan with retry-safe authority. |
+| `kast apply <PLAN_ID> --lease-id <LEASE_ID>` | Apply the validated plan with retry-safe exact-root authority. |
 
 Use `kast <command> --help` for the small operation-specific grammar.
+
+Applied mutations require a lease from
+`kastctl agent lease acquire --workspace-root "$PWD"`. Pass its opaque
+`leaseId` to `kast apply`, then release it with
+`kastctl agent lease release --workspace-root "$PWD" --lease-id <LEASE_ID>`
+when the mutation session ends.
 
 When `files`, a symbol relationship, `graph nodes`, or `graph impact` returns
 `nextPage`, repeat the same command with `--page <nextPage>`. The continuation

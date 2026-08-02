@@ -1,5 +1,5 @@
-const WORKSPACE_LEASE_SCHEMA_VERSION: u32 = 1;
-const WORKSPACE_LEASE_TOKEN_VERSION: &str = "kl1";
+const WORKSPACE_LEASE_SCHEMA_VERSION: u32 = 2;
+const WORKSPACE_LEASE_TOKEN_VERSION: &str = "kl2";
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -97,6 +97,18 @@ pub struct WorkspaceLeaseResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub release_receipt: Option<WorkspaceLeaseReleaseReceipt>,
     pub schema_version: u32,
+}
+
+pub(crate) struct ValidatedWorkspaceLease {
+    runtime: WorkspaceLeaseRuntimeIdentity,
+}
+
+impl ValidatedWorkspaceLease {
+    pub(crate) fn authorizes(&self, admission: &AdmittedHeadlessRuntime) -> bool {
+        self.runtime.descriptor_path == admission.candidate().descriptor_path
+            && self.runtime.descriptor == admission.candidate().descriptor
+            && process_identity_is_live(&self.runtime.process)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

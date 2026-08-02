@@ -20,13 +20,13 @@ fn agent_exposes_the_typed_workspace_lease_lifecycle() {
 
 #[cfg(target_os = "macos")]
 #[test]
-fn borrowed_idea_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
+fn borrowed_headless_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
     let other_workspace = temp.path().join("other-workspace");
-    let socket = temp.path().join("idea.sock");
+    let socket = temp.path().join("headless.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::create_dir_all(&other_workspace).expect("other workspace");
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
@@ -38,13 +38,12 @@ fn borrowed_idea_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
     )
     .expect("settings");
     let binary = write_active_kast_for_test(&home, &config_home);
-    let backend = spawn_scripted_idea_backend_for_invocations(
+    let backend = spawn_scripted_headless_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
         &socket,
-        ScriptedCliAuthority::new(&binary, env!("CARGO_PKG_VERSION")),
-        4,
+        100,
         vec![],
     );
 
@@ -171,7 +170,7 @@ fn borrowed_idea_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
             "--workspace-root",
             workspace.to_str().expect("workspace"),
             "--backend",
-            "idea",
+            "headless",
             "--lease-id",
             &lease_id,
         ])
@@ -190,23 +189,23 @@ fn borrowed_idea_lease_is_exact_authenticated_conflict_safe_and_idempotent() {
             "--workspace-root",
             workspace.to_str().expect("workspace"),
             "--backend",
-            "idea",
+            "headless",
         ])
         .output()
         .expect("runtime status");
     assert_success(&runtime_status, "borrowed runtime status after release");
     assert_eq!(output_json(&runtime_status)["selected"]["ready"], true);
-    assert_eq!(backend.join().expect("scripted backend").len(), 8);
+    assert_headless_runtime_observation_only(&backend.join().expect("scripted backend"));
 }
 
 #[cfg(target_os = "macos")]
 #[test]
-fn abandoned_owner_is_observable_and_recovered_without_stopping_borrowed_idea() {
+fn abandoned_owner_is_observable_and_recovered_without_stopping_borrowed_headless() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket = temp.path().join("idea.sock");
+    let socket = temp.path().join("headless.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::write(
@@ -215,13 +214,12 @@ fn abandoned_owner_is_observable_and_recovered_without_stopping_borrowed_idea() 
     )
     .expect("settings");
     let binary = write_active_kast_for_test(&home, &config_home);
-    let backend = spawn_scripted_idea_backend_for_invocations(
+    let backend = spawn_scripted_headless_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
         &socket,
-        ScriptedCliAuthority::new(&binary, env!("CARGO_PKG_VERSION")),
-        4,
+        100,
         vec![],
     );
 
@@ -293,5 +291,31 @@ raise SystemExit(completed.returncode)
         output_json(&release)["result"]["releaseReceipt"]["reason"],
         "BORROWED_RUNTIME_PRESERVED"
     );
-    assert_eq!(backend.join().expect("scripted backend").len(), 8);
+    assert_headless_runtime_observation_only(&backend.join().expect("scripted backend"));
+}
+
+#[cfg(target_os = "macos")]
+fn assert_headless_runtime_observation_only(requests: &[serde_json::Value]) {
+    let methods = requests
+        .iter()
+        .map(|request| request["method"].as_str().expect("RPC method"))
+        .collect::<Vec<_>>();
+    assert!(!methods.is_empty(), "headless runtime must be observed");
+    assert!(
+        methods
+            .iter()
+            .all(|method| matches!(*method, "runtime/status" | "capabilities")),
+        "lease flow sent a non-observation RPC: {methods:?}"
+    );
+    assert_eq!(
+        methods
+            .iter()
+            .filter(|method| **method == "runtime/status")
+            .count(),
+        methods
+            .iter()
+            .filter(|method| **method == "capabilities")
+            .count(),
+        "each status observation must retain its capability proof"
+    );
 }

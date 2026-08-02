@@ -62,6 +62,7 @@ class ConfigurationFieldLayoutTest {
             "IndexingIgnoredPaths.kt",
             "IndexingRemoteEnabled.kt",
             "IndexingRemoteSourceIndexUrl.kt",
+            "WorkspaceIndexingPattern.kt",
             "IdeaBackendEnabled.kt",
             "IdeaLaunchCommand.kt",
             "IdeaLaunchEnabled.kt",

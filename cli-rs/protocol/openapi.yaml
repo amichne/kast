@@ -807,6 +807,12 @@ components:
               type: string
         referenceIndexReady:
           type: boolean
+        referenceCoverageState:
+          "$ref": "#/components/schemas/ReferenceCoverageState"
+        referenceCoverageLimitations:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ReferenceCoverageLimitation"
         schemaVersion:
           type: integer
           format: int32
@@ -826,6 +832,23 @@ components:
         - INDEXING
         - READY
         - DEGRADED
+    ReferenceCoverageState:
+      type: string
+      enum:
+        - COMPLETE
+        - QUALIFIED
+        - INCOMPLETE
+        - UNAVAILABLE
+    ReferenceCoverageLimitation:
+      type: string
+      enum:
+        - INDEX_NOT_COMMITTED
+        - PROJECT_MODEL_UNAVAILABLE
+        - INDEXING_IN_PROGRESS
+        - NONCRITICAL_STAGE_GAP
+        - CRITICAL_STAGE_GAP
+        - UNMATCHED_CRITICAL_PATH
+        - CANCELLED
     RuntimeLifecycleResponse:
       type: object
       properties:

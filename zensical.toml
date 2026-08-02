@@ -1,6 +1,6 @@
 [project]
 site_name = "Kast"
-site_description = "Compiler-backed Kotlin work through Codex and IntelliJ IDEA."
+site_description = "Compiler-backed Kotlin work through one exact-root headless runtime."
 site_author = "amichne"
 site_url = "https://kast.michne.com/"
 repo_url = "https://github.com/amichne/kast"

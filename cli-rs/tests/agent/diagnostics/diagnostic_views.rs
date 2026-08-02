@@ -17,7 +17,6 @@ fn relative_file_paths_are_canonical_in_every_compact_json_view() {
     }
     write_gradle_marker(&workspace);
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&workspace);
 
     let expected = [&first, &second].map(|file| {
         file.canonicalize()
@@ -26,8 +25,8 @@ fn relative_file_paths_are_canonical_in_every_compact_json_view() {
             .to_string()
     });
     let socket_path = workspace_socket_path(&workspace, temp.path());
-    write_descriptor(&home, &workspace, &socket_path);
     let listener = bind_listener(&socket_path);
+    write_descriptor(&home, &workspace, &socket_path);
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
@@ -106,7 +105,6 @@ fn canonical_relative_path_is_reported_in_every_output_format() {
     std::fs::write(&file, "class Report\n").expect("scenario source");
     write_gradle_marker(&workspace);
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&workspace);
     let expected = file
         .canonicalize()
         .expect("canonical source")
@@ -114,8 +112,8 @@ fn canonical_relative_path_is_reported_in_every_output_format() {
         .to_string();
 
     let socket_path = workspace_socket_path(&workspace, temp.path());
-    write_descriptor(&home, &workspace, &socket_path);
     let listener = bind_listener(&socket_path);
+    write_descriptor(&home, &workspace, &socket_path);
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
@@ -163,15 +161,14 @@ fn deleted_relative_file_reaches_refresh_with_canonical_path() {
     std::fs::create_dir_all(&source_parent).expect("source parent");
     write_gradle_marker(&workspace);
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&workspace);
     let missing = source_parent
         .canonicalize()
         .expect("canonical source parent")
         .join("Removed.kt");
 
     let socket_path = workspace_socket_path(&workspace, temp.path());
-    write_descriptor(&home, &workspace, &socket_path);
     let listener = bind_listener(&socket_path);
+    write_descriptor(&home, &workspace, &socket_path);
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
@@ -227,11 +224,10 @@ fn incomplete_semantic_analysis_fails_closed_in_every_output_format() {
     std::fs::create_dir_all(file.parent().expect("source parent")).expect("source dir");
     write_gradle_marker(&workspace);
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&workspace);
 
     let socket_path = workspace_socket_path(&workspace, temp.path());
-    write_descriptor(&home, &workspace, &socket_path);
     let listener = bind_listener(&socket_path);
+    write_descriptor(&home, &workspace, &socket_path);
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
@@ -281,11 +277,10 @@ fn incomplete_semantic_admission_stops_before_diagnostics() {
     std::fs::write(&file, "fun pending(): Int = 42\n").expect("scenario source");
     write_gradle_marker(&workspace);
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&workspace);
 
     let socket_path = workspace_socket_path(&workspace, temp.path());
-    write_descriptor(&home, &workspace, &socket_path);
     let listener = bind_listener(&socket_path);
+    write_descriptor(&home, &workspace, &socket_path);
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),

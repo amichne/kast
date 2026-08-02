@@ -32,7 +32,7 @@ fn readiness_delegates_guidance_and_skill_authority_to_the_codex_plugin() {
 
 #[cfg(target_os = "macos")]
 #[test]
-fn agent_ready_uses_the_idea_plugin_without_a_global_skill() {
+fn plugin_metadata_does_not_satisfy_agent_readiness_without_a_live_headless_runtime() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -76,19 +76,20 @@ fn agent_ready_uses_the_idea_plugin_without_a_global_skill() {
         .expect("agent ready");
 
     assert!(
-        ready.status.success(),
-        "IDEA-backed readiness must ignore provider and worktree skills: stdout={}, stderr={}",
+        !ready.status.success(),
+        "plugin metadata must not satisfy headless readiness: stdout={}, stderr={}",
         String::from_utf8_lossy(&ready.stdout),
         String::from_utf8_lossy(&ready.stderr),
     );
     let payload: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("readiness JSON");
+    assert_eq!(payload["agentEnvironment"]["backend"]["state"], "missing");
     assert!(payload["agentEnvironment"].get("skills").is_none());
     assert!(payload["agentEnvironment"].get("guidance").is_none());
 }
 
 #[cfg(target_os = "macos")]
 #[test]
-fn kotlin_ready_accepts_an_installed_idea_plugin_backend() {
+fn kotlin_ready_rejects_an_installed_public_plugin_without_headless_evidence() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -127,8 +128,8 @@ fn kotlin_ready_accepts_an_installed_idea_plugin_backend() {
         .expect("Kotlin ready");
 
     assert!(
-        ready.status.success(),
-        "IDEA plugin installation should satisfy Kotlin readiness: stdout={}, stderr={}",
+        !ready.status.success(),
+        "public plugin installation must not satisfy Kotlin readiness: stdout={}, stderr={}",
         String::from_utf8_lossy(&ready.stdout),
         String::from_utf8_lossy(&ready.stderr),
     );
@@ -157,17 +158,9 @@ fn workspace_resources_do_not_affect_machine_readiness() {
 
     let ready = kast_at(&active_binary, &home, &config_home)
         .env_remove("CODEX_HOME")
-        .args([
-            "--output",
-            "json",
-            "ready",
-            "--for",
-            "agent",
-            "--workspace-root",
-        ])
-        .arg(&workspace)
+        .args(["--output", "json", "ready", "--for", "machine"])
         .output()
-        .expect("agent ready");
+        .expect("machine ready");
 
     assert!(
         ready.status.success(),
@@ -176,8 +169,7 @@ fn workspace_resources_do_not_affect_machine_readiness() {
         String::from_utf8_lossy(&ready.stderr),
     );
     let payload: serde_json::Value = serde_json::from_slice(&ready.stdout).expect("readiness JSON");
-    assert!(payload["agentEnvironment"].get("skills").is_none());
-    assert!(payload["agentEnvironment"].get("guidance").is_none());
+    assert!(payload.get("agentEnvironment").is_none());
     assert_eq!(
         std::fs::read_to_string(guidance).expect("guidance"),
         "legacy guidance"

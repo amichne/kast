@@ -1,12 +1,12 @@
 ---
 type: Tutorial
 title: Your First Compiler-Backed Task
-description: Learn the Kast workflow by tracing semantic admission in the Kast repository without changing source.
-tags: [tutorial, codex, kotlin, idea, compiler-evidence]
+description: Learn the Kast workflow by tracing headless Gradle settlement in the Kast repository without changing source.
+tags: [tutorial, codex, kotlin, headless, compiler-evidence]
 code_sources:
-  - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/IdeaIndexSemanticAdmission.kt
-  - path: backend-idea/src/test/kotlin/io/github/amichne/kast/idea/IdeaIndexSemanticAdmissionTest.kt
-  - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
+  - path: backend-headless/src/main/kotlin/io/github/amichne/kast/headless/gradle/settlement/HeadlessGradleModelSettlementOutcome.kt
+  - path: backend-headless/src/main/kotlin/io/github/amichne/kast/headless/gradle/settlement/HeadlessGradleModelSettlementAwaiter.kt
+  - path: backend-headless/src/test/kotlin/io/github/amichne/kast/headless/HeadlessGradleModelSettlementAwaiterTest.kt
 ---
 
 # Your First Compiler-Backed Task
@@ -23,7 +23,8 @@ The Codex plugin routes the task to the same small `kast` surface shown here.
 You need:
 
 - Kast installed on macOS;
-- IntelliJ IDEA 2026.2 or Android Studio 2026.1.2 installed;
+- on macOS, IntelliJ IDEA 2026.2 or Android Studio 2026.1.2 installed as the
+  headless runtime input;
 - a Codex task rooted at the same directory.
 
 If you still need Kast, follow [Install or update Kast](../how-to/install-or-update.md).
@@ -36,14 +37,13 @@ From the repository root, run:
 kast up
 ```
 
-A `READY` result means Kast found a compatible compiler-backed runtime for this
-exact root. If the project was closed, Kast background-opens it in the sole
-supported host. A new worktree is opened the same way and receives
-plugin-created metadata.
+A `READY` result means Kast admitted one compatible headless runtime for this
+exact root. A new worktree gets its own descriptor, socket, writer lease, and
+index. Foreground IDE state does not affect this identity.
 
 If the blocker says the exact runtime reached `INDEXING`, the server is
-reachable but its evidence is not ready. Wait for Gradle import, IDEA/Kotlin
-indexing, and the Kast reference index, then rerun the command. Follow any
+reachable but its evidence is not ready. Wait for headless Gradle import,
+Kotlin indexing, and the Kast reference index, then rerun the command. Follow any
 other typed action before continuing.
 
 `READY` proves runtime admission, not persisted graph completeness. If the
@@ -55,9 +55,9 @@ complete or limited.
 Start a Codex task with this prompt:
 
 ```text
-Use Kast to explain how IdeaIndexSemanticAdmission moves between Pending,
-Ready, and Failed. Cite the Kotlin declarations and tests that prove each
-transition. Do not edit files.
+Use Kast to explain how HeadlessGradleModelSettlementOutcome distinguishes
+Settled, TimedOut, Interrupted, and ProjectDisposed. Cite the Kotlin
+declarations and tests that prove each outcome. Do not edit files.
 ```
 
 The important part is not the wording. You named a declaration and an outcome,
@@ -67,15 +67,14 @@ then asked for evidence instead of asking Codex to scan files blindly.
 
 A successful answer should identify all of these facts:
 
-- `IdeaIndexSemanticAdmission` starts in `Pending`;
-- admission remains pending while IDEA indexing or Kotlin compiler inputs are
-  unavailable;
-- a semantically usable Kotlin module produces `Ready`; and
-- timeout or another failure produces `Failed` and retains a non-blank detail.
+- `HeadlessGradleModelSettlementOutcome` is a closed sealed interface;
+- `Settled` carries typed settlement evidence;
+- `TimedOut` retains the last readiness observation; and
+- interruption and project disposal are separate outcomes.
 
 The answer should point to
-`IdeaIndexSemanticAdmission.kt` and
-`IdeaIndexSemanticAdmissionTest.kt`. Those locations matter: Kast's semantic
+`HeadlessGradleModelSettlementOutcome.kt` and
+`HeadlessGradleModelSettlementAwaiterTest.kt`. Those locations matter: Kast's semantic
 graph carries repository-relative paths, declaration ranges, and compiler
 relationships rather than returning an unsupported narrative.
 
@@ -84,8 +83,8 @@ relationships rather than returning an unsupported narrative.
 Continue the same task:
 
 ```text
-Which test proves that semantic admission yields to a pending IDE write action,
-and which production method does that test exercise?
+Which test proves that interruption remains distinct from timeout, and which
+production method does that test exercise?
 ```
 
 This follow-up asks Codex to navigate from behavior to test and back to the

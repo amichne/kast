@@ -35,7 +35,7 @@ class WorkspaceIndexingScopeTest {
 
         assertEquals(
             listOf("generated/keep.kt", "src/main/App.kt"),
-            scope.includedPaths.map { workspace.relativize(it).toString() },
+            scope.includedPaths.map { it.relative.value },
         )
         assertEquals(
             listOf("generated/Drop.kt", "module/fixtures/Fixture.kt"),
@@ -44,11 +44,34 @@ class WorkspaceIndexingScopeTest {
     }
 
     @Test
+    fun `kastignore negation can target names that begin with directive characters`() {
+        workspace.resolve(".kastignore").writeText(
+            """
+                *
+                !!important.kt
+                !#important.kt
+            """.trimIndent(),
+        )
+
+        val scope = WorkspaceIndexingScope.resolve(
+            workspace,
+            KastConfig.defaults().indexing,
+            candidates("ordinary.kt", "!important.kt", "#important.kt"),
+        )
+
+        assertEquals(
+            listOf("!important.kt", "#important.kt"),
+            scope.includedPaths.map { it.relative.value },
+        )
+        assertEquals(listOf("ordinary.kt"), scope.ignoredPaths.map(::relative))
+    }
+
+    @Test
     fun `critical paths are shared and conflicting ignore rules fail typed`() {
         val candidates = candidates("src/main/App.kt", "src/test/AppTest.kt")
         val config = KastConfig.defaults().indexing.copy(
-            criticalPaths = IndexingCriticalPaths(listOf("src/main/**", "missing/**")),
-            ignoredPaths = IndexingIgnoredPaths(listOf("src/main/App.kt")),
+            criticalPaths = IndexingCriticalPaths.parse(listOf("src/main/**", "missing/**")),
+            ignoredPaths = IndexingIgnoredPaths.parse(listOf("src/main/App.kt")),
         )
 
         val error = assertThrows(IndexingScopeConfigurationException::class.java) {
@@ -62,13 +85,13 @@ class WorkspaceIndexingScopeTest {
     fun `critical matches and unmatched obligations remain explicit`() {
         val candidates = candidates("src/main/App.kt", "src/test/AppTest.kt")
         val config = KastConfig.defaults().indexing.copy(
-            criticalPaths = IndexingCriticalPaths(listOf("src/main/**", "missing/**")),
+            criticalPaths = IndexingCriticalPaths.parse(listOf("src/main/**", "missing/**")),
         )
 
         val scope = WorkspaceIndexingScope.resolve(workspace, config, candidates)
 
-        assertEquals(listOf("src/main/App.kt"), scope.criticalPaths.map { workspace.relativize(it).toString() })
-        assertEquals(listOf("missing/**"), scope.unmatchedCriticalPatterns)
+        assertEquals(listOf("src/main/App.kt"), scope.criticalPaths.map { it.relative.value })
+        assertEquals(listOf("missing/**"), scope.unmatchedCriticalPatterns.map { it.toString() })
     }
 
     @Test
@@ -82,12 +105,12 @@ class WorkspaceIndexingScopeTest {
             ".idea/metadata/Idea.kt",
         )
         val config = KastConfig.defaults().indexing.copy(
-            ignoredPaths = IndexingIgnoredPaths(listOf("src/test/**")),
+            ignoredPaths = IndexingIgnoredPaths.parse(listOf("src/test/**")),
         )
 
         val scope = WorkspaceIndexingScope.resolve(workspace, config, candidates)
 
-        assertEquals(listOf("src/main/App.kt"), scope.includedPaths.map(::relative))
+        assertEquals(listOf("src/main/App.kt"), scope.includedPaths.map { it.relative.value })
         assertEquals(
             listOf(
                 ".gradle/cache/Cache.kt",
@@ -101,16 +124,17 @@ class WorkspaceIndexingScopeTest {
     }
 
     @Test
-    fun `invalid patterns fail typed`() {
-        val config = KastConfig.defaults().indexing.copy(
-            criticalPaths = IndexingCriticalPaths(listOf("[]")),
+    fun `leading slash anchors a workspace pattern at the root`() {
+        workspace.resolve(".kastignore").writeText("/App.kt")
+
+        val scope = WorkspaceIndexingScope.resolve(
+            workspace,
+            KastConfig.defaults().indexing,
+            candidates("App.kt", "nested/App.kt"),
         )
 
-        val error = assertThrows(IndexingScopeConfigurationException::class.java) {
-            WorkspaceIndexingScope.resolve(workspace, config, emptyList())
-        }
-
-        assertEquals("INDEXING_SCOPE_INVALID", error.code)
+        assertEquals(listOf("nested/App.kt"), scope.includedPaths.map { it.relative.value })
+        assertEquals(listOf("App.kt"), scope.ignoredPaths.map(::relative))
     }
 
     @Test
@@ -145,7 +169,7 @@ class WorkspaceIndexingScopeTest {
             candidates("src/main/Other.kt", "generated/New.kt"),
         )
 
-        assertEquals(listOf("src/main/Other.kt"), fallback.includedPaths.map(::relative))
+        assertEquals(listOf("src/main/Other.kt"), fallback.includedPaths.map { it.relative.value })
         assertEquals(listOf("generated/New.kt"), fallback.ignoredPaths.map(::relative))
     }
 

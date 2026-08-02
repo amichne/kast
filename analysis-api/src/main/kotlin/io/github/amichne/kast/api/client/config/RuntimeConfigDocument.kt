@@ -139,8 +139,8 @@ private data class RuntimeServerConfig(
 
 @Serializable
 private data class RuntimeIndexingConfig(
-    val criticalPaths: List<String>? = null,
-    val ignoredPaths: List<String>? = null,
+    val criticalPaths: List<WorkspaceIndexingPattern>? = null,
+    val ignoredPaths: List<WorkspaceIndexingPattern>? = null,
     val graph: RuntimeGraphIndexingConfig? = null,
     val relationships: RuntimeRelationshipIndexingConfig? = null,
     val identifierIndexWaitMillis: Long? = null,
@@ -158,25 +158,25 @@ private data class RuntimeIndexingConfig(
 
 @Serializable
 private data class RuntimeGraphIndexingConfig(
-    val batchSize: Int? = null,
+    val batchSize: GraphIndexingBatchSize? = null,
 ) {
     fun toOverride(): GraphIndexingConfigOverride = GraphIndexingConfigOverride(
-        batchSize = batchSize?.let(::GraphIndexingBatchSize),
+        batchSize = batchSize,
     )
 }
 
 @Serializable
 private data class RuntimeRelationshipIndexingConfig(
     val enabled: Boolean? = null,
-    val batchSize: Int? = null,
-    val parallelism: Int? = null,
-    val modulePriorityDepth: Int? = null,
+    val batchSize: RelationshipIndexingBatchSize? = null,
+    val parallelism: RelationshipIndexingParallelism? = null,
+    val modulePriorityDepth: RelationshipIndexingModulePriorityDepth? = null,
 ) {
     fun toOverride(): RelationshipIndexingConfigOverride = RelationshipIndexingConfigOverride(
         enabled = enabled?.let(::RelationshipIndexingEnabled),
-        batchSize = batchSize?.let(::RelationshipIndexingBatchSize),
-        parallelism = parallelism?.let(::RelationshipIndexingParallelism),
-        modulePriorityDepth = modulePriorityDepth?.let(::RelationshipIndexingModulePriorityDepth),
+        batchSize = batchSize,
+        parallelism = parallelism,
+        modulePriorityDepth = modulePriorityDepth,
     )
 }
 

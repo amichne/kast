@@ -3,8 +3,14 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.indexstore.api.index.*
 import io.github.amichne.kast.indexstore.api.reference.EdgeKind
 import io.github.amichne.kast.indexstore.store.cache.defaultCacheJson
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonPrimitive
 import java.nio.file.Path
 import java.sql.Connection
 
@@ -13,7 +19,6 @@ internal class SourceIndexPendingUpdateStore(
     private val mutations: SourceIndexFileMutations,
     private val referenceStore: SourceIndexReferenceStore,
 ) {
-    private val workspaceRoot get() = state.workspaceRoot
     private val pathCodec get() = state.pathCodec
     private val fqCodec get() = state.fqCodec
     fun appendPendingUpdate(
@@ -22,17 +27,22 @@ internal class SourceIndexPendingUpdateStore(
         payload: String?,
         sessionId: String? = null,
     ) {
+        val operation = parsePendingUpdateOperation(op)
+        val sourcePath = requireNotNull(state.sourceFilePolicy.sourcePath(Path.of(path))) {
+            "Pending update source path is not an eligible workspace Kotlin source: $path"
+        }
+        val parsedPayload = parsePendingUpdatePayload(operation, payload)
         synchronized(state.writeLock) {
             val conn = state.connection()
-            val (prefixId, filename) = pathCodec.encodeOrCreate(conn, path)
+            val (prefixId, filename) = pathCodec.encodeOrCreate(conn, sourcePath.toDatabasePath())
             conn.prepareStatement(
                 """INSERT INTO pending_updates (op, prefix_id, filename, payload, session_id, epoch_ms)
                    VALUES (?, ?, ?, ?, ?, ?)""",
             ).use { stmt ->
-                stmt.setString(1, op)
+                stmt.setString(1, encodePendingUpdateOperation(operation))
                 stmt.setInt(2, prefixId)
                 stmt.setString(3, filename)
-                stmt.setString(4, payload)
+                stmt.setString(4, encodePendingUpdatePayload(parsedPayload))
                 stmt.setString(5, sessionId)
                 stmt.setLong(6, System.currentTimeMillis())
                 stmt.executeUpdate()
@@ -79,13 +89,19 @@ internal class SourceIndexPendingUpdateStore(
             )
             buildList {
                 while (rs.next()) {
+                    val prefixId = rs.getInt(3)
+                    val filename = rs.getString(4)
+                    val operation = parsePendingUpdateOperation(rs.getString(2))
+                    val sourcePath = state.sourceFilePolicy.sourcePath(
+                        Path.of(pathCodec.decode(prefixId, filename)),
+                    )
                     add(
                         PendingUpdateRow(
                             seq = rs.getLong(1),
-                            op = rs.getString(2),
-                            prefixId = rs.getInt(3),
-                            filename = rs.getString(4),
-                            payload = rs.getString(5),
+                            prefixId = prefixId,
+                            filename = filename,
+                            sourcePath = sourcePath,
+                            payload = parsePendingUpdatePayload(operation, rs.getString(5)),
                         ),
                     )
                 }
@@ -96,57 +112,48 @@ internal class SourceIndexPendingUpdateStore(
         conn: Connection,
         update: PendingUpdateRow,
     ) {
-        val path = pathCodec.decode(update.prefixId, update.filename)
-        if (!SourceIndexFilePolicy.isEligible(path)) {
+        val sourcePath = update.sourcePath
+        if (sourcePath == null) {
             mutations.deleteFileRowsInTransaction(conn, update.prefixId, update.filename)
             return
         }
-        when (update.op) {
-            "upsert_file" -> {
-                val payload = defaultCacheJson.decodeFromString(
-                    PendingFilePayload.serializer(),
-                    requireNotNull(update.payload)
-                )
+        when (val payload = update.payload) {
+            is PendingUpdatePayload.UpsertFile -> {
                 val fileUpdate = FileIndexUpdate(
-                    path = path,
-                    identifiers = payload.identifiers.toSet(),
-                    packageName = payload.packageName,
-                    modulePath = payload.modulePath,
-                    sourceSet = payload.sourceSet,
-                    imports = payload.imports.toSet(),
-                    wildcardImports = payload.wildcardImports.toSet(),
+                    path = sourcePath.toDatabasePath(),
+                    identifiers = payload.value.identifiers.toSet(),
+                    packageName = payload.value.packageName,
+                    modulePath = payload.value.modulePath,
+                    sourceSet = payload.value.sourceSet,
+                    imports = payload.value.imports.toSet(),
+                    wildcardImports = payload.value.wildcardImports.toSet(),
                 )
                 mutations.internFqNamesInTransaction(conn, mutations.fqNamesFor(fileUpdate))
                 mutations.insertFileDataInTransaction(conn, fileUpdate)
             }
 
-            "remove_file" -> mutations.deleteFileRowsInTransaction(conn, update.prefixId, update.filename)
-            "upsert_ref" -> {
-                val payload = defaultCacheJson.decodeFromString(
-                    PendingReferencePayload.serializer(),
-                    requireNotNull(update.payload)
+            PendingUpdatePayload.RemoveFile ->
+                mutations.deleteFileRowsInTransaction(conn, update.prefixId, update.filename)
+
+            is PendingUpdatePayload.UpsertReference -> {
+                mutations.internPathsInTransaction(
+                    conn,
+                    listOfNotNull(sourcePath.toDatabasePath(), payload.targetPath?.toDatabasePath()),
                 )
-                val targetPath = payload.targetPath?.let(::normalizePendingPayloadPath)
-                    ?.takeIf(SourceIndexFilePolicy::isEligible)
-                mutations.internPathsInTransaction(conn, listOfNotNull(path, targetPath))
                 mutations.internFqNamesInTransaction(conn, setOf(payload.targetFqName))
                 referenceStore.upsertSymbolReferenceInTransaction(
                     conn = conn,
-                    sourcePath = path,
+                    sourcePath = sourcePath,
                     sourceOffset = payload.sourceOffset,
                     sourceFqName = payload.sourceFqName,
                     targetFqName = payload.targetFqName,
-                    targetPath = targetPath,
-                    targetOffset = targetPath?.let { payload.targetOffset },
+                    targetPath = payload.targetPath,
+                    targetOffset = payload.targetPath?.let { payload.targetOffset },
                     edgeKind = payload.edgeKind,
                 )
             }
 
-            "remove_ref" -> {
-                val payload = defaultCacheJson.decodeFromString(
-                    PendingRemoveReferencePayload.serializer(),
-                    requireNotNull(update.payload)
-                )
+            is PendingUpdatePayload.RemoveReference -> {
                 removeSymbolReferenceInTransaction(
                     conn = conn,
                     sourcePrefixId = update.prefixId,
@@ -155,9 +162,84 @@ internal class SourceIndexPendingUpdateStore(
                     targetFqName = payload.targetFqName,
                 )
             }
-
-            else -> error("Unsupported pending update operation: ${update.op}")
         }
+    }
+
+    private fun parsePendingUpdateOperation(raw: String): PendingUpdateOperation =
+        defaultCacheJson.decodeFromJsonElement(PendingUpdateOperation.serializer(), JsonPrimitive(raw))
+
+    private fun encodePendingUpdateOperation(operation: PendingUpdateOperation): String =
+        defaultCacheJson.encodeToJsonElement(PendingUpdateOperation.serializer(), operation).jsonPrimitive.content
+
+    private fun parsePendingUpdatePayload(
+        operation: PendingUpdateOperation,
+        rawPayload: String?,
+    ): PendingUpdatePayload = when (operation) {
+        PendingUpdateOperation.UPSERT_FILE -> PendingUpdatePayload.UpsertFile(
+            defaultCacheJson.decodeFromString(
+                PendingFilePayload.serializer(),
+                requireNotNull(rawPayload) { "upsert_file requires a payload" },
+            ),
+        )
+
+        PendingUpdateOperation.REMOVE_FILE -> {
+            require(rawPayload == null) { "remove_file does not accept a payload" }
+            PendingUpdatePayload.RemoveFile
+        }
+
+        PendingUpdateOperation.UPSERT_REFERENCE -> {
+            val payload = defaultCacheJson.decodeFromString(
+                PendingReferencePayload.serializer(),
+                requireNotNull(rawPayload) { "upsert_ref requires a payload" },
+            )
+            PendingUpdatePayload.UpsertReference(
+                sourceOffset = payload.sourceOffset,
+                sourceFqName = payload.sourceFqName,
+                targetFqName = payload.targetFqName,
+                targetPath = payload.targetPath?.let { path ->
+                    state.sourceFilePolicy.sourcePath(Path.of(path))
+                },
+                targetOffset = payload.targetOffset,
+                edgeKind = payload.edgeKind,
+            )
+        }
+
+        PendingUpdateOperation.REMOVE_REFERENCE -> {
+            val payload = defaultCacheJson.decodeFromString(
+                PendingRemoveReferencePayload.serializer(),
+                requireNotNull(rawPayload) { "remove_ref requires a payload" },
+            )
+            PendingUpdatePayload.RemoveReference(
+                sourceOffset = payload.sourceOffset,
+                targetFqName = payload.targetFqName,
+            )
+        }
+    }
+
+    private fun encodePendingUpdatePayload(payload: PendingUpdatePayload): String? = when (payload) {
+        is PendingUpdatePayload.UpsertFile ->
+            defaultCacheJson.encodeToString(PendingFilePayload.serializer(), payload.value)
+
+        PendingUpdatePayload.RemoveFile -> null
+        is PendingUpdatePayload.UpsertReference -> defaultCacheJson.encodeToString(
+            PendingReferencePayload.serializer(),
+            PendingReferencePayload(
+                sourceOffset = payload.sourceOffset,
+                sourceFqName = payload.sourceFqName,
+                targetFqName = payload.targetFqName,
+                targetPath = payload.targetPath?.toDatabasePath(),
+                targetOffset = payload.targetPath?.let { payload.targetOffset },
+                edgeKind = payload.edgeKind,
+            ),
+        )
+
+        is PendingUpdatePayload.RemoveReference -> defaultCacheJson.encodeToString(
+            PendingRemoveReferencePayload.serializer(),
+            PendingRemoveReferencePayload(
+                sourceOffset = payload.sourceOffset,
+                targetFqName = payload.targetFqName,
+            ),
+        )
     }
 
     private fun removeSymbolReferenceInTransaction(
@@ -180,15 +262,6 @@ internal class SourceIndexPendingUpdateStore(
             stmt.setInt(3, sourceOffset)
             stmt.setInt(4, targetFqId)
             stmt.executeUpdate()
-        }
-    }
-
-    private fun normalizePendingPayloadPath(path: String): String {
-        val rawPath = Path.of(path)
-        return if (rawPath.isAbsolute) {
-            rawPath.normalize().toString()
-        } else {
-            workspaceRoot.resolve(rawPath).normalize().toString()
         }
     }
 
@@ -221,11 +294,46 @@ internal class SourceIndexPendingUpdateStore(
 
     private data class PendingUpdateRow(
         val seq: Long,
-        val op: String,
         val prefixId: Int,
         val filename: String,
-        val payload: String?,
+        val sourcePath: WorkspaceSourcePath?,
+        val payload: PendingUpdatePayload,
     )
+
+    @Serializable
+    private enum class PendingUpdateOperation {
+        @SerialName("upsert_file")
+        UPSERT_FILE,
+
+        @SerialName("remove_file")
+        REMOVE_FILE,
+
+        @SerialName("upsert_ref")
+        UPSERT_REFERENCE,
+
+        @SerialName("remove_ref")
+        REMOVE_REFERENCE,
+    }
+
+    private sealed interface PendingUpdatePayload {
+        data class UpsertFile(val value: PendingFilePayload) : PendingUpdatePayload
+
+        data object RemoveFile : PendingUpdatePayload
+
+        data class UpsertReference(
+            val sourceOffset: Int,
+            val sourceFqName: String?,
+            val targetFqName: String,
+            val targetPath: WorkspaceSourcePath?,
+            val targetOffset: Int?,
+            val edgeKind: EdgeKind,
+        ) : PendingUpdatePayload
+
+        data class RemoveReference(
+            val sourceOffset: Int,
+            val targetFqName: String,
+        ) : PendingUpdatePayload
+    }
 
     @Serializable
     private data class PendingFilePayload(

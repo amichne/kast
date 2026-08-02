@@ -121,23 +121,31 @@ internal class KastPluginBackendContractTestPersistedSearchScope : KastPluginBac
         try {
             store.ensureSchema()
             val declaringEntries = inputs.declaringModulePaths.mapIndexed { index, path ->
-                inventory(path, hashCharacter = 'a' + index, moduleName = ":main[main]")
+                inventory(
+                    workspaceRoot = inputs.workspaceRoot,
+                    path = path,
+                    hashCharacter = 'a' + index,
+                    moduleName = ":main[main]",
+                    sourceSet = "main",
+                )
             }
             store.reconcileFileInventory(
                 declaringEntries + inventory(
-                    inputs.dependentPath,
+                    workspaceRoot = inputs.workspaceRoot,
+                    path = inputs.dependentPath,
                     hashCharacter = 'f',
                     moduleName = ":secondary[test]",
+                    sourceSet = "test",
                 ),
                 FileStageVersions.CURRENT,
             )
             val pendingByPath = store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
                 .associateBy { work -> work.path }
             store.commitRelationshipBatch(
-                inputs.declaringModulePaths.map { path ->
+                declaringEntries.map { entry ->
                     RelationshipFileStageUpdate(
-                        work = pendingByPath.getValue(path),
-                        scannedContentHash = pendingByPath.getValue(path).contentHash,
+                        work = pendingByPath.getValue(entry.path),
+                        scannedContentHash = pendingByPath.getValue(entry.path).contentHash,
                         references = emptyList(),
                         declarations = emptyList(),
                         limitations = emptyList(),
@@ -157,15 +165,18 @@ internal class KastPluginBackendContractTestPersistedSearchScope : KastPluginBac
     }
 
     private fun inventory(
+        workspaceRoot: java.nio.file.Path,
         path: String,
         hashCharacter: Char,
         moduleName: String,
-    ): FileInventoryEntry = FileInventoryEntry(
+        sourceSet: String,
+    ): FileInventoryEntry = fileInventoryEntry(
+        workspaceRoot = workspaceRoot,
         path = path,
         lastModifiedMillis = 1,
         contentHash = FileContentHash.parse(hashCharacter.toString().repeat(64)),
         moduleName = moduleName,
-        sourceSet = "main",
+        sourceSet = sourceSet,
     )
 
     private data class PersistedSearchScopeInputs(

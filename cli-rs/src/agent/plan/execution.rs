@@ -18,6 +18,7 @@ pub(crate) fn run_change(args: KastChangeArgs) -> Result<i32> {
         preview_content_path,
         false,
         None,
+        None,
     )?) {
         Ok(preview) => preview,
         Err(error) => {
@@ -64,13 +65,19 @@ pub(crate) fn run_change(args: KastChangeArgs) -> Result<i32> {
         plan_id: plan_id.hyphenated().to_string(),
         operation: stored.operation.name(),
         plan: public_plan,
-        next: format!("kast apply {}", plan_id.hyphenated()),
+        next: format!(
+            "kast apply {} --lease-id <LEASE_ID>",
+            plan_id.hyphenated()
+        ),
     };
     output::print_structured(&result, crate::cli::OutputFormat::Toon)?;
     Ok(0)
 }
 
-pub(crate) fn run_apply(raw_plan_id: String) -> Result<i32> {
+pub(crate) fn run_apply(
+    raw_plan_id: String,
+    lease_id: AgentWorkspaceLeaseId,
+) -> Result<i32> {
     let plan_id = parse_plan_id(&raw_plan_id)?;
     let paths = PlanPaths::new(plan_id);
     let plan_bytes = read_private_file(&paths.plan, "KAST_PLAN_UNAVAILABLE")?;
@@ -124,6 +131,7 @@ pub(crate) fn run_apply(raw_plan_id: String) -> Result<i32> {
         content_path,
         true,
         Some(plan_id.hyphenated().to_string()),
+        Some(lease_id),
     )?)?;
     let outcome = envelope
         .get("result")

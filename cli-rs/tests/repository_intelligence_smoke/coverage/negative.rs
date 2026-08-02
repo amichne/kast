@@ -352,7 +352,7 @@ fn repository_malformed_semantic_source_path_fails_closed() {
 }
 
 #[test]
-fn repository_fresh_empty_inventory_cannot_produce_exact_empty() {
+fn repository_committed_empty_inventory_produces_exact_empty() {
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(0);
     seed_repository_graph(&fixture);
     fixture
@@ -378,7 +378,12 @@ fn repository_fresh_empty_inventory_cannot_produce_exact_empty() {
     );
 
     assert!(status.success(), "{response:#}");
-    assert_eq!(response["result"]["status"], "QUALIFIED_EMPTY", "{response:#}");
+    assert_eq!(response["result"]["status"], "EMPTY", "{response:#}");
     assert_eq!(response["result"]["coverage"]["total"], 0, "{response:#}");
-    assert_eq!(response["result"]["coverage"]["complete"], false, "{response:#}");
+    assert_eq!(response["result"]["coverage"]["complete"], true, "{response:#}");
+    assert_eq!(
+        response["result"]["coverage"]["eligibleForCompleteNegative"],
+        true,
+        "{response:#}"
+    );
 }

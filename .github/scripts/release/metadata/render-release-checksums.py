@@ -119,7 +119,6 @@ def release_assets(payload: dict) -> dict[str, dict]:
 
 
 def release_product_assets(remote: dict[str, dict], tag: str) -> set[str]:
-    plugin_name = f"kast-idea-{tag}.zip"
     return {
         name
         for name in remote
@@ -130,7 +129,6 @@ def release_product_assets(remote: dict[str, dict], tag: str) -> set[str]:
             or name == "kast-runtime-manifest.json"
             or name == "openapi.yaml"
         )
-        and name != plugin_name
         and not name.endswith(".tar.gz.sha256")
         and not name.endswith(".tar.zst.sha256")
     }

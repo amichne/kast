@@ -122,11 +122,10 @@ fn run_single_json_scenario(
     std::fs::write(&file, source).expect("scenario source");
     write_gradle_marker(&workspace);
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&workspace);
 
     let socket_path = workspace_socket_path(&workspace, temp.path());
-    write_descriptor(&home, &workspace, &socket_path);
     let listener = bind_listener(&socket_path);
+    write_descriptor(&home, &workspace, &socket_path);
     let backend = spawn_fake_backend(
         listener,
         workspace.clone(),
@@ -186,7 +185,7 @@ fn run_diagnostics_arguments_with_view(
         output_format,
         "agent",
         "diagnostics",
-        "--backend=idea",
+        "--backend=headless",
         "--workspace-root",
         workspace.to_str().expect("workspace path"),
     ]);
@@ -296,21 +295,6 @@ fn assert_semantic_counts(
     );
 }
 
-fn workspace_socket_path(workspace: &Path, _temp_root: &Path) -> PathBuf {
-    #[cfg(target_os = "macos")]
-    {
-        let metadata = std::fs::read_to_string(macos_plugin_workspace_metadata_path(workspace))
-            .expect("plugin workspace metadata");
-        let metadata: Value = serde_json::from_str(&metadata).expect("workspace metadata JSON");
-        PathBuf::from(
-            metadata["socketPath"]
-                .as_str()
-                .expect("metadata socketPath"),
-        )
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = workspace;
-        _temp_root.join("diagnostics.sock")
-    }
+fn workspace_socket_path(_workspace: &Path, temp_root: &Path) -> PathBuf {
+    temp_root.join("diagnostics.sock")
 }

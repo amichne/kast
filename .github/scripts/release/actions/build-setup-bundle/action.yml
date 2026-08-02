@@ -31,12 +31,6 @@ runs:
         name: headless-backend-${{ github.run_id }}
         path: headless-backend
 
-    - name: Download IDEA plugin artifact
-      uses: actions/download-artifact@v7
-      with:
-        name: idea-plugin-${{ github.run_id }}
-        path: idea-plugin
-
     - name: Build setup bundle
       shell: bash
       run: |
@@ -46,7 +40,6 @@ runs:
         cli_asset="provenance-cli/kast-${tag}-${platform}.zip"
         packager_archive="provenance-cli/kast-${tag}-linux-x64.zip"
         backend_asset="headless-backend/headless.zip"
-        plugin_asset="idea-plugin/kast-idea-${tag}.zip"
         work="$RUNNER_TEMP/kast-setup-bundle"
         asset="dist/kast-${platform}-${tag}.tar.gz"
         rm -rf "$work" dist
@@ -54,7 +47,6 @@ runs:
         [[ -f "$cli_asset" ]] || { echo "Missing platform CLI asset: ${cli_asset}" >&2; exit 1; }
         [[ -f "$packager_archive" ]] || { echo "Missing Linux packager CLI: ${packager_archive}" >&2; exit 1; }
         [[ -f "$backend_asset" ]] || { echo "Missing headless backend asset: ${backend_asset}" >&2; exit 1; }
-        [[ -f "$plugin_asset" ]] || { echo "Missing IDEA plugin asset: ${plugin_asset}" >&2; exit 1; }
         cli_evidence=(
           --ledger provenance-cli/build-ledger-cli-linux-x64.json
           --require-kind release-cli-linux-x64
@@ -70,12 +62,9 @@ runs:
         scripts/verify-ci-artifact-ledger.py verify \
           "${cli_evidence[@]}" \
           --ledger headless-backend/build-ledger-headless-backend.json \
-          --ledger idea-plugin/build-ledger-idea-plugin.json \
           --git-sha "$GITHUB_SHA" \
           --require-kind release-headless-backend \
-          --require-kind release-idea-plugin \
-          --artifact "release-headless-backend=${backend_asset}" \
-          --artifact "release-idea-plugin=${plugin_asset}"
+          --artifact "release-headless-backend=${backend_asset}"
         python3 -m zipfile -e "$packager_archive" "$work/packager"
         packager_bin="$work/packager/kastctl"
         [[ -f "$packager_bin" ]] || { echo "Missing extracted Rust CLI binary: ${packager_bin}" >&2; exit 1; }
@@ -84,7 +73,6 @@ runs:
           --repo-root "$PWD" \
           --cli-archive "$cli_asset" \
           --backend-archive "$backend_asset" \
-          --plugin-archive "$plugin_asset" \
           --platform "$platform" \
           --version "$tag" \
           --bundle-output "$asset"

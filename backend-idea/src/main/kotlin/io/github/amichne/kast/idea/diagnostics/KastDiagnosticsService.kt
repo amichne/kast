@@ -10,6 +10,8 @@ import com.intellij.openapi.util.Disposer
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.ReferenceCoverageLimitation
+import io.github.amichne.kast.api.contract.ReferenceCoverage
 import java.nio.file.Path
 
 internal const val KAST_TOOL_WINDOW_ID = "Kast"
@@ -220,6 +222,35 @@ internal fun KastActivityEvent.isActionableTerminalFailure(): Boolean =
 
 internal fun RuntimeStatusResponse.withReferenceIndex(
     index: KastSourceIndexSummary,
-): RuntimeStatusResponse = copy(
-    referenceIndexReady = index.state == KastIndexState.READY || index.state == KastIndexState.DEGRADED,
-)
+): RuntimeStatusResponse {
+    val limitations = index.referenceCoverageLimitations.ifEmpty {
+        when (index.state) {
+            KastIndexState.READY -> emptyList()
+            KastIndexState.INDEXING -> listOf(ReferenceCoverageLimitation.INDEXING_IN_PROGRESS)
+            KastIndexState.DEGRADED -> listOf(ReferenceCoverageLimitation.NONCRITICAL_STAGE_GAP)
+            KastIndexState.FAILED -> listOf(ReferenceCoverageLimitation.CRITICAL_STAGE_GAP)
+            KastIndexState.WAITING_FOR_IDE, KastIndexState.HYDRATING ->
+                listOf(ReferenceCoverageLimitation.PROJECT_MODEL_UNAVAILABLE)
+            KastIndexState.CANCELLED -> listOf(ReferenceCoverageLimitation.CANCELLED)
+            KastIndexState.IDLE -> listOf(ReferenceCoverageLimitation.INDEX_NOT_COMMITTED)
+        }
+    }
+    val coverage = when (index.state) {
+        KastIndexState.READY -> ReferenceCoverage.complete(limitations)
+        KastIndexState.INDEXING -> ReferenceCoverage.qualified(
+            limitations = limitations,
+            indexReady = false,
+        )
+        KastIndexState.DEGRADED -> ReferenceCoverage.qualified(
+            limitations = limitations,
+            indexReady = true,
+        )
+        KastIndexState.FAILED -> ReferenceCoverage.incomplete(limitations)
+        KastIndexState.IDLE,
+        KastIndexState.WAITING_FOR_IDE,
+        KastIndexState.HYDRATING,
+        KastIndexState.CANCELLED,
+        -> ReferenceCoverage.unavailable(limitations)
+    }
+    return withReferenceCoverage(coverage)
+}

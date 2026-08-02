@@ -29,7 +29,7 @@ class RepeatedSemanticGraphFailureTest {
 
     @Test
     fun `repeated PSI failure removes stale graph and remains durably retryable`() {
-        val outcomePath = workspaceRoot.resolve("src/App.kt").toString()
+        val outcomePath = workspaceSourceRawPath(workspaceRoot, workspaceRoot.resolve("src/App.kt").toString())
         val sourcePath = SemanticGraphSourcePath.parse("src/App.kt")
         val contentHash = hash('a')
         val initialInput = fingerprint('1')
@@ -38,28 +38,38 @@ class RepeatedSemanticGraphFailureTest {
         SqliteSourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             store.reconcileFileInventory(
-                listOf(FileInventoryEntry(outcomePath, 1, contentHash, ":app[main]", "main")),
+                listOf(fileInventoryEntry(workspaceRoot, outcomePath, 1, contentHash, ":app[main]", "main")),
                 FileStageVersions.CURRENT,
             )
             commitGraph(store, outcomePath, sourcePath, contentHash, initialInput, "stale")
-            failGraph(store, pending(store, outcomePath, contentHash, retryInput), sourcePath)
+            failGraph(store, pending(store, outcomePath, contentHash, retryInput))
 
             val failed = requireNotNull(store.fileStageOutcome(outcomePath, stage))
             assertEquals(FileStageOutcomeStatus.FAILED, failed.status)
+            assertEquals(1, failed.failureAttemptCount.value)
             assertEquals(FileStageFailureCode.PSI_UNAVAILABLE, failed.failure?.code)
             assertTrue(store.readSemanticGraph(listOf(sourcePath)).symbols.isEmpty())
             assertEquals(FileStageWorkReason.PENDING, pending(store, outcomePath, contentHash, retryInput).reason)
         }
 
         SqliteSourceIndexStore(workspaceRoot).use { store ->
-            failGraph(store, pending(store, outcomePath, contentHash, retryInput), sourcePath)
+            failGraph(store, pending(store, outcomePath, contentHash, retryInput))
+
+            val secondFailure = requireNotNull(store.fileStageOutcome(outcomePath, stage))
+            assertEquals(FileStageOutcomeStatus.FAILED, secondFailure.status)
+            assertEquals(2, secondFailure.failureAttemptCount.value)
+        }
+
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            failGraph(store, pending(store, outcomePath, contentHash, retryInput))
 
             val limited = requireNotNull(store.fileStageOutcome(outcomePath, stage))
             assertEquals(FileStageOutcomeStatus.LIMITED, limited.status)
+            assertEquals(3, limited.failureAttemptCount.value)
             assertEquals(listOf(FileStageLimitation.PSI_UNAVAILABLE), limited.limitations)
             assertNull(limited.failure)
             val retry = store.retryableLimitedSemanticGraphStages().single()
-            assertEquals(outcomePath, retry.path)
+            assertEquals(outcomePath, retry.path.rawPath)
             assertEquals(retryInput, retry.inputFingerprint)
             assertEquals(FileStageWorkReason.LIMITED_RETRY, retry.reason)
 
@@ -75,7 +85,7 @@ class RepeatedSemanticGraphFailureTest {
             )
             val conflict = store.commitSemanticGraphBatchIfGeneration(
                 expectedGeneration = staleGeneration,
-                failures = listOf(failure(retry, sourcePath)),
+                failures = listOf(failure(retry)),
             )
             assertTrue(conflict is SemanticGraphCommitResult.GenerationChanged)
             assertEquals(FileStageOutcomeStatus.LIMITED, store.fileStageOutcome(outcomePath, stage)?.status)
@@ -93,22 +103,19 @@ class RepeatedSemanticGraphFailureTest {
     private fun failGraph(
         store: SqliteSourceIndexStore,
         work: PendingFileStage,
-        sourcePath: SemanticGraphSourcePath,
     ) {
         val result = store.commitSemanticGraphBatchIfGeneration(
             expectedGeneration = store.readGeneration(),
-            failures = listOf(failure(work, sourcePath)),
+            failures = listOf(failure(work)),
         )
         assertTrue(result is SemanticGraphCommitResult.Committed)
     }
 
     private fun failure(
         work: PendingFileStage,
-        sourcePath: SemanticGraphSourcePath,
     ) = SemanticGraphFileStageFailureUpdate(
         work = work,
         scannedContentHash = work.contentHash,
-        sourcePath = sourcePath,
         code = FileStageFailureCode.PSI_UNAVAILABLE,
         message = "Kotlin PSI or diagnostics are unavailable for this file",
     )

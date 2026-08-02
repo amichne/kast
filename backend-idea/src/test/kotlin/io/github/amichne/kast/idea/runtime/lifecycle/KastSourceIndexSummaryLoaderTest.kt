@@ -1,9 +1,9 @@
 package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.idea.diagnostics.KastIndexState
+import io.github.amichne.kast.api.client.fields.WorkspaceIndexingPattern
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
-import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageVersion
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
@@ -32,7 +32,7 @@ class KastSourceIndexSummaryLoaderTest {
         SqliteSourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             store.reconcileFileInventory(
-                listOf(FileInventoryEntry(source, 1, hash, ":app[main]", "main")),
+                listOf(fileInventoryEntry(workspaceRoot, source, 1, hash, ":app[main]", "main")),
                 FileStageVersions(version, version, version),
             )
             ReferenceIndexer(store).indexPendingSymbolRelationships(
@@ -49,11 +49,13 @@ class KastSourceIndexSummaryLoaderTest {
             assertEquals(KastIndexState.DEGRADED, store.loadKastSourceIndexSummary().state)
             assertEquals(
                 KastIndexState.FAILED,
-                store.loadKastSourceIndexSummary(criticalPaths = setOf(source)).state,
+                store.loadKastSourceIndexSummary(criticalPaths = setOf(workspaceSourcePath(workspaceRoot, source))).state,
             )
             assertEquals(
                 KastIndexState.FAILED,
-                store.loadKastSourceIndexSummary(unmatchedCriticalPatterns = listOf("missing/**")).state,
+                store.loadKastSourceIndexSummary(
+                    unmatchedCriticalPatterns = listOf(WorkspaceIndexingPattern.parse("missing/**")),
+                ).state,
             )
         }
     }

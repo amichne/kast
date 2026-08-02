@@ -309,8 +309,14 @@ internal fun assertResolvedRuntimeConfigLoading(tempDir: Path) {
     assertEquals(11, config.indexing.relationships.batchSize.value)
     assertEquals(2, config.indexing.relationships.parallelism.value)
     assertEquals(1, config.indexing.relationships.modulePriorityDepth.value)
-    assertEquals(listOf("src/main/**", "build.gradle.kts"), config.indexing.criticalPaths.value)
-    assertEquals(listOf("samples/**"), config.indexing.ignoredPaths.value)
+    assertEquals(
+        listOf("src/main/**", "build.gradle.kts"),
+        config.indexing.criticalPaths.value.map(WorkspaceIndexingPattern::toString),
+    )
+    assertEquals(
+        listOf("samples/**"),
+        config.indexing.ignoredPaths.value.map(WorkspaceIndexingPattern::toString),
+    )
     assertEquals(17, config.indexing.graph.batchSize.value)
     assertEquals(9876L, config.indexing.identifierIndexWaitMillis.value)
     assertEquals(true, config.indexing.remote.enabled.value)

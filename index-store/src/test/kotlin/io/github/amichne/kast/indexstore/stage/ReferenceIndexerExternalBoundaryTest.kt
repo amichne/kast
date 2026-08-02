@@ -56,21 +56,22 @@ class ReferenceIndexerExternalBoundaryTest {
             ReferenceIndexer(store).indexPendingSymbolRelationships(
                 work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS),
                 scanner = { path ->
-                    if (path == failedPath) {
+                    val rawPath = path.rawPath
+                    if (rawPath == failedPath) {
                         RelationshipScanResult.Failed(
-                            contentHash = hashes.getValue(path),
+                            contentHash = hashes.getValue(rawPath),
                             code = FileStageFailureCode.PSI_UNAVAILABLE,
                             message = "Kotlin PSI is unavailable for this file",
                         )
                     } else {
                         RelationshipScanResult.Indexed(
-                            contentHash = hashes.getValue(path),
-                            references = listOf(reference(path)),
+                            contentHash = hashes.getValue(rawPath),
+                            references = listOf(reference(rawPath)),
                             declarations = emptyList(),
                         )
                     }
                 },
-                onFilesIndexed = indexedPaths::addAll,
+                onFilesIndexed = { paths -> indexedPaths.addAll(paths.map { path -> path.rawPath }) },
             )
 
             val failed = requireNotNull(store.fileStageOutcome(failedPath, FileIndexStage.RELATIONSHIPS))
@@ -84,7 +85,8 @@ class ReferenceIndexerExternalBoundaryTest {
             assertEquals(indexedPath, store.referencesToSymbol("demo.Target").single().sourcePath)
             assertEquals(
                 setOf(failedPath),
-                store.pendingFileStages(FileIndexStage.RELATIONSHIPS).mapTo(mutableSetOf()) { it.path },
+                store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
+                    .mapTo(mutableSetOf()) { work -> work.path.rawPath },
             )
         }
 
@@ -175,14 +177,15 @@ class ReferenceIndexerExternalBoundaryTest {
             ReferenceIndexer(store).indexPendingSymbolRelationships(
                 work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS),
                 scanner = { path ->
+                    val rawPath = path.rawPath
                     RelationshipScanResult.Indexed(
-                        contentHash = hashes.getValue(path),
-                        references = if (path == sourcePath) {
-                            listOf(reference(path, "demo.Failed", failedPath))
+                        contentHash = hashes.getValue(rawPath),
+                        references = if (rawPath == sourcePath) {
+                            listOf(reference(rawPath, "demo.Failed", failedPath))
                         } else {
-                            listOf(reference(path, "demo.Stale"))
+                            listOf(reference(rawPath, "demo.Stale"))
                         },
-                        declarations = if (path == failedPath) listOf(declaration(path)) else emptyList(),
+                        declarations = if (rawPath == failedPath) listOf(declaration(rawPath)) else emptyList(),
                     )
                 },
             )
@@ -209,16 +212,17 @@ class ReferenceIndexerExternalBoundaryTest {
             ReferenceIndexer(store).indexPendingSymbolRelationships(
                 work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS),
                 scanner = { path ->
-                    if (path == failedPath) {
+                    val rawPath = path.rawPath
+                    if (rawPath == failedPath) {
                         RelationshipScanResult.Failed(
-                            contentHash = hashes.getValue(path),
+                            contentHash = hashes.getValue(rawPath),
                             code = FileStageFailureCode.PSI_UNAVAILABLE,
                             message = "Kotlin PSI is unavailable for this file",
                         )
                     } else {
                         RelationshipScanResult.Indexed(
-                            contentHash = hashes.getValue(path),
-                            references = listOf(reference(path, "demo.Failed", failedPath)),
+                            contentHash = hashes.getValue(rawPath),
+                            references = listOf(reference(rawPath, "demo.Failed", failedPath)),
                             declarations = emptyList(),
                         )
                     }
@@ -229,7 +233,8 @@ class ReferenceIndexerExternalBoundaryTest {
             )
             val graphBeforeExternalization = store.readSemanticGraph(listOf(sourceGraphPath, failedGraphPath))
             assertTrue(
-                store.pendingFileStages(FileIndexStage.SEMANTIC_GRAPH).any { work -> work.path == failedPath },
+                store.pendingFileStages(FileIndexStage.SEMANTIC_GRAPH)
+                    .any { work -> work.path.rawPath == failedPath },
             )
 
             assertEquals(
@@ -250,7 +255,8 @@ class ReferenceIndexerExternalBoundaryTest {
 
             assertNull(store.fileStageOutcome(failedPath, FileIndexStage.SEMANTIC_GRAPH))
             assertTrue(
-                store.pendingFileStages(FileIndexStage.SEMANTIC_GRAPH).any { work -> work.path == failedPath },
+                store.pendingFileStages(FileIndexStage.SEMANTIC_GRAPH)
+                    .any { work -> work.path.rawPath == failedPath },
             )
             assertNotNull(
                 store.pendingFileStage(
@@ -272,7 +278,8 @@ class ReferenceIndexerExternalBoundaryTest {
 
     private fun inventory(hashes: Map<String, FileContentHash>): List<FileInventoryEntry> =
         hashes.map { (path, contentHash) ->
-            FileInventoryEntry(
+            fileInventoryEntry(
+                workspaceRoot = workspaceRoot,
                 path = path,
                 lastModifiedMillis = 1,
                 contentHash = contentHash,
@@ -328,7 +335,7 @@ class ReferenceIndexerExternalBoundaryTest {
         val path = workspaceRoot.resolve(relativePath).toAbsolutePath().normalize()
         Files.createDirectories(path.parent)
         Files.writeString(path, "package demo")
-        return path.toString()
+        return workspaceSourceRawPath(workspaceRoot, path.toString())
     }
 
     private fun hash(character: Char): FileContentHash =

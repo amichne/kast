@@ -213,29 +213,6 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
         serde_json::from_slice(&missing_key.stdout).expect("missing key error json");
     assert_eq!(missing_key["error"]["code"], "AGENT_USAGE");
 
-    let socket_path = temp.path().join("replace-handle-apply.sock");
-    let backend = spawn_scripted_idea_backend(
-        &home,
-        &config_home,
-        &workspace,
-        &socket_path,
-        vec![(
-            "mutation/submit",
-            json!({
-                "type": "SUCCEEDED",
-                "result": {
-                    "type": "SCOPE_MUTATION_RESULT",
-                    "response": {
-                        "editCount": 0,
-                        "affectedFiles": [],
-                        "createdFiles": [],
-                        "diagnostics": {"errorCount": 0, "warningCount": 0}
-                    }
-                },
-                "deduplicated": false
-            }),
-        )],
-    );
     let apply = kast(&home, &config_home)
         .args([
             "--output",
@@ -253,28 +230,15 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
             "issue-392-replace",
         ])
         .output()
-        .expect("authorized replace declaration");
+        .expect("replace declaration without workspace lease");
     assert!(
-        apply.status.success(),
-        "replace submission should succeed: stdout={}, stderr={}",
+        !apply.status.success(),
+        "replace submission must require a workspace lease: stdout={}, stderr={}",
         String::from_utf8_lossy(&apply.stdout),
         String::from_utf8_lossy(&apply.stderr),
     );
-    let requests = backend.join().expect("replace backend");
-    let submit = requests
-        .iter()
-        .find(|request| request["method"] == "mutation/submit")
-        .expect("mutation submission");
-    assert_eq!(submit["params"]["type"], "REPLACE_DECLARATION");
-    assert_eq!(submit["params"]["idempotencyKey"], "issue-392-replace",);
-    assert_eq!(
-        submit["params"]["request"]["type"],
-        "REPLACE_DECLARATION_BY_SELECTOR_HANDLE_REQUEST",
-    );
-    assert_eq!(
-        submit["params"]["request"]["selectorHandle"],
-        selector_handle,
-    );
+    let apply: Value = serde_json::from_slice(&apply.stdout).expect("lease error json");
+    assert_eq!(apply["error"]["code"], "WORKSPACE_LEASE_REQUIRED");
 }
 
 #[test]

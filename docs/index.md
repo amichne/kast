@@ -1,14 +1,13 @@
 # Kast
 
-Kast gives coding agents compiler-backed Kotlin evidence from the project you
-already have open in IntelliJ IDEA or Android Studio. On Linux and hosted
-agents, the packaged headless backend provides the same typed analysis
-boundary.
+Kast gives coding agents compiler-backed Kotlin evidence from one isolated
+headless runtime for the exact workspace. A foreground editor can be open or
+closed; it is not part of Kast routing or evidence production.
 
 ```mermaid
 flowchart LR
     task["Kotlin task in an agent"] --> route["Exact workspace route"]
-    route --> compiler["IDEA or headless compiler"]
+    route --> compiler["Exact-root headless compiler"]
     compiler --> result["Typed, source-located evidence"]
     result --> task
 ```
@@ -60,7 +59,7 @@ Choose the page that matches what you need now.
 ## Start here
 
 If Kast is not installed, follow [Install or update Kast](how-to/install-or-update.md).
-If it is installed and your project is open, begin with the
+If it is installed, begin from the exact project root with the
 [tutorial](tutorials/first-compiler-backed-task.md). For a specific job, go
 straight to [Explore Kotlin code](how-to/explore-kotlin-code.md) or
 [Plan a safe Kotlin edit](how-to/plan-safe-edits.md).

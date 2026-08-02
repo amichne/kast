@@ -1,5 +1,6 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.api.contract.compatibility.RuntimeImplementationVersion
 import io.github.amichne.kast.testing.InMemoryFileOperationsFixture
 import io.github.amichne.kast.testing.inMemoryFileOperations
 import kotlinx.serialization.json.Json
@@ -17,14 +18,12 @@ class DescriptorRegistryConcurrencyTest {
 
     private fun descriptor(
         workspaceRoot: String = "/workspace",
-        backendName: String = "headless",
         pid: Long = 42L,
     ) = ServerInstanceDescriptor(
-        workspaceRoot = workspaceRoot,
-        backendName = backendName,
-        backendVersion = "0.1.0",
-        socketPath = "$workspaceRoot/.kast/s",
-        pid = pid,
+        workspaceRoot = RuntimeWorkspaceRoot.parse(workspaceRoot),
+        backendVersion = RuntimeImplementationVersion("0.1.0"),
+        socketPath = RuntimeSocketPath.parse("$workspaceRoot/.kast/s"),
+        ownership = ServerInstanceOwnership.Legacy(ProcessId.of(pid)),
     )
 
     private fun readDescriptors(path: String, fixture: InMemoryFileOperationsFixture): List<ServerInstanceDescriptor> =
@@ -41,7 +40,7 @@ class DescriptorRegistryConcurrencyTest {
         val threads = mutableListOf<Thread>()
 
         for (i in 0 until numRegistrations) {
-            val registry = DescriptorRegistry(daemonsPath, fixture.fileOps)
+            val registry = DescriptorRegistry(DescriptorRegistryPath.parse(daemonsPath), fixture.fileOps)
             val descriptor = descriptor(
                 workspaceRoot = "${fixture.root}workspace-$i",
                 pid = 100L + i
@@ -73,7 +72,7 @@ class DescriptorRegistryConcurrencyTest {
         )
 
         val expectedPids = (0 until numRegistrations).map { 100L + it }.toSet()
-        val actualPids = listed.map { it.pid }.toSet()
+        val actualPids = listed.map { requireNotNull(it.ownership.processId).value }.toSet()
         assertEquals(expectedPids, actualPids, "All PIDs should be present")
     }
 
@@ -82,7 +81,7 @@ class DescriptorRegistryConcurrencyTest {
         val fixture = inMemoryFileOperations()
         val daemonsPath = "${fixture.root}home/user/.kast/daemons.json"
 
-        val initialRegistry = DescriptorRegistry(daemonsPath, fixture.fileOps)
+        val initialRegistry = DescriptorRegistry(DescriptorRegistryPath.parse(daemonsPath), fixture.fileOps)
         val initialDescriptors = (0 until 10).map { i ->
             descriptor(
                 workspaceRoot = "${fixture.root}workspace-$i",
@@ -95,7 +94,7 @@ class DescriptorRegistryConcurrencyTest {
         val threads = mutableListOf<Thread>()
 
         for (i in 0 until 5) {
-            val registry = DescriptorRegistry(daemonsPath, fixture.fileOps)
+            val registry = DescriptorRegistry(DescriptorRegistryPath.parse(daemonsPath), fixture.fileOps)
             val descriptor = initialDescriptors[i]
 
             val thread = thread {
@@ -111,7 +110,7 @@ class DescriptorRegistryConcurrencyTest {
         }
 
         for (i in 10 until 20) {
-            val registry = DescriptorRegistry(daemonsPath, fixture.fileOps)
+            val registry = DescriptorRegistry(DescriptorRegistryPath.parse(daemonsPath), fixture.fileOps)
             val descriptor = descriptor(
                 workspaceRoot = "${fixture.root}workspace-$i",
                 pid = 100L + i
@@ -142,7 +141,7 @@ class DescriptorRegistryConcurrencyTest {
             "Should have 15 descriptors after concurrent delete+register"
         )
 
-        val finalPids = listed.map { it.pid }.toSet()
+        val finalPids = listed.map { requireNotNull(it.ownership.processId).value }.toSet()
         for (i in 0 until 5) {
             assertTrue(
                 100L + i !in finalPids,
@@ -174,7 +173,7 @@ class DescriptorRegistryConcurrencyTest {
         val threads = mutableListOf<Thread>()
 
         for (i in 0 until numThreads) {
-            val registry = DescriptorRegistry(daemonsPath, fixture.fileOps)
+            val registry = DescriptorRegistry(DescriptorRegistryPath.parse(daemonsPath), fixture.fileOps)
 
             val thread = thread {
                 try {

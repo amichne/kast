@@ -17,6 +17,5 @@
     <extensions defaultExtensionNs="com.intellij">
         <appStarter id="kast-headless"
                     implementation="io.github.amichne.kast.headless.HeadlessApplicationStarter"/>
-        <supportsKotlinPluginMode supportsK1="false" supportsK2="true" />
     </extensions>
 </idea-plugin>

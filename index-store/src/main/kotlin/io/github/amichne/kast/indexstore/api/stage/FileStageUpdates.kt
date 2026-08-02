@@ -8,8 +8,10 @@ import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.PendingFileStage
+import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
+import java.nio.file.Path
 
 data class SourceFileStageUpdate(
     val work: PendingFileStage,
@@ -22,7 +24,9 @@ data class SourceFileStageUpdate(
         require(scannedContentHash == work.contentHash) {
             "Source update content hash must match pending work"
         }
-        require(update.path == work.path) { "Source update path must match pending work" }
+        require(work.path.hasSameIdentity(update.path)) {
+            "Source update path must match pending work"
+        }
     }
 }
 
@@ -40,10 +44,10 @@ data class RelationshipFileStageUpdate(
         require(scannedContentHash == work.contentHash) {
             "Relationship update content hash must match pending work"
         }
-        require(references.all { reference -> reference.sourcePath == work.path }) {
+        require(references.all { reference -> work.path.hasSameIdentity(reference.sourcePath) }) {
             "Every relationship must originate in the pending file"
         }
-        require(declarations.all { declaration -> declaration.filePath == work.path }) {
+        require(declarations.all { declaration -> work.path.hasSameIdentity(declaration.filePath) }) {
             "Every declaration must originate in the pending file"
         }
     }
@@ -81,16 +85,20 @@ data class SemanticGraphFileStageUpdate(
         require(update.contentHash.value == work.contentHash.value) {
             "Semantic graph update content hash must match pending work"
         }
+        require(update.path == work.path.semanticGraphSourcePath) {
+            "Semantic graph update path must match pending work"
+        }
     }
 }
 
 data class SemanticGraphFileStageFailureUpdate(
     val work: PendingFileStage,
     val scannedContentHash: FileContentHash,
-    val sourcePath: SemanticGraphSourcePath,
     val code: FileStageFailureCode,
     val message: String,
 ) {
+    val sourcePath: SemanticGraphSourcePath = work.path.semanticGraphSourcePath
+
     init {
         require(work.stage == FileIndexStage.SEMANTIC_GRAPH) {
             "Semantic graph failure requires SEMANTIC_GRAPH work"
@@ -106,10 +114,10 @@ data class SemanticGraphFileStageFailureUpdate(
 }
 
 data class SemanticGraphFileStageRemoval(
-    val outcomePath: String,
-    val sourcePath: SemanticGraphSourcePath,
+    val outcomePath: WorkspaceSourcePath,
 ) {
-    init {
-        require(outcomePath.isNotBlank()) { "Semantic graph outcome path must be non-blank" }
-    }
+    val sourcePath: SemanticGraphSourcePath = outcomePath.semanticGraphSourcePath
 }
+
+private fun WorkspaceSourcePath.hasSameIdentity(rawPath: String): Boolean =
+    WorkspaceSourcePath.resolve(workspaceRoot, Path.of(rawPath)) == this

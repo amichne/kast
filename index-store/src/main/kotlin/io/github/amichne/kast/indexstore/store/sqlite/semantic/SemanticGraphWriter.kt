@@ -295,6 +295,11 @@ internal class SemanticGraphWriter(
             }
         }
     }
+
+    internal fun deleteSemanticGraphFileInTransaction(
+        conn: Connection,
+        path: SemanticGraphSourcePath,
+    ) = deleteSemanticGraphFile(conn, path.value)
     private fun clearRepositoryOverlayTombstone(conn: Connection, path: String) {
         conn.prepareStatement("DELETE FROM repository_overlay_tombstones WHERE path = ?").use { statement ->
             statement.setString(1, path)

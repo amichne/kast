@@ -2,15 +2,20 @@ package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.api.client.IndexingConfig
 import io.github.amichne.kast.api.client.WorkspacePathPolicy
+import io.github.amichne.kast.api.client.WorkspaceRelativePath
+import io.github.amichne.kast.api.client.fields.WorkspaceIgnorePattern
+import io.github.amichne.kast.api.client.fields.WorkspaceIndexingPattern
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
+import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.regex.Pattern
 
 internal data class WorkspaceIndexingScope(
-    val includedPaths: List<Path>,
+    val includedPaths: List<WorkspaceSourcePath>,
     val ignoredPaths: List<Path>,
-    val criticalPaths: List<Path>,
-    val unmatchedCriticalPatterns: List<String>,
+    val criticalPaths: List<WorkspaceSourcePath>,
+    val unmatchedCriticalPatterns: List<WorkspaceIndexingPattern>,
 ) {
     companion object {
         fun resolve(
@@ -22,47 +27,53 @@ internal data class WorkspaceIndexingScope(
 }
 
 private data class WorkspaceIndexingRules(
-    val root: Path,
+    val root: NormalizedPath,
     val ignoreRules: List<IgnoreRule>,
-    val criticalRules: List<Pair<String, WorkspaceGlob>>,
+    val criticalRules: List<WorkspaceIndexingPattern>,
 ) {
     fun resolve(candidates: Collection<Path>): WorkspaceIndexingScope {
-        val matchedCriticalPatterns = linkedSetOf<String>()
-        val included = mutableListOf<Path>()
+        val rootPath = root.toJavaPath()
+        val sourceFilePolicy = SourceIndexFilePolicy.forWorkspace(rootPath)
+        val matchedCriticalPatterns = linkedSetOf<WorkspaceIndexingPattern>()
+        val included = mutableListOf<WorkspaceSourcePath>()
         val ignored = mutableListOf<Path>()
-        val critical = mutableListOf<Path>()
+        val critical = mutableListOf<WorkspaceSourcePath>()
 
         candidates
             .asSequence()
-            .map { path -> if (path.isAbsolute) path else root.resolve(path) }
+            .map { path -> if (path.isAbsolute) path else rootPath.resolve(path) }
             .map(Path::toAbsolutePath)
             .map(Path::normalize)
             .distinct()
             .sortedBy { path -> path.toString().replace('\\', '/') }
             .forEach { path ->
-                if (!path.startsWith(root)) {
+                val relative = WorkspaceRelativePath.resolve(rootPath, path)
+                if (relative == null) {
                     ignored.add(path)
                     return@forEach
                 }
-                val relativePath = root.relativize(path)
-                val relative = relativePath.toString().replace('\\', '/')
                 val matchingCriticalPatterns = criticalRules
-                    .filter { (_, rule) -> rule.matches(relative) }
-                    .map(Pair<String, WorkspaceGlob>::first)
+                    .filter { pattern -> pattern.matches(relative) }
                 matchedCriticalPatterns += matchingCriticalPatterns
 
-                val hardExcluded = WorkspacePathPolicy.isHardExcluded(relativePath)
+                val hardExcluded = WorkspacePathPolicy.isHardExcluded(relative)
                 val ignoredByRule = ignoreRules.fold(false) { isIgnored, rule ->
-                    if (rule.glob.matches(relative)) !rule.negated else isIgnored
+                    if (rule.matches(relative)) !rule.negated else isIgnored
                 }
                 if ((hardExcluded || ignoredByRule) && matchingCriticalPatterns.isNotEmpty()) {
-                    throw IndexingScopeConfigurationException.conflict(relative, matchingCriticalPatterns)
+                    throw IndexingScopeConfigurationException.conflict(
+                        relative,
+                        matchingCriticalPatterns,
+                    )
                 }
                 if (hardExcluded || ignoredByRule) {
                     ignored.add(path)
                 } else {
-                    included.add(path)
-                    if (matchingCriticalPatterns.isNotEmpty()) critical.add(path)
+                    val sourcePath = checkNotNull(sourceFilePolicy.sourcePath(relative)) {
+                        "Included indexing path is not an eligible Kotlin source file: ${relative.value}"
+                    }
+                    included.add(sourcePath)
+                    if (matchingCriticalPatterns.isNotEmpty()) critical.add(sourcePath)
                 }
             }
 
@@ -71,26 +82,22 @@ private data class WorkspaceIndexingRules(
             ignoredPaths = ignored,
             criticalPaths = critical,
             unmatchedCriticalPatterns = criticalRules
-                .map(Pair<String, WorkspaceGlob>::first)
                 .filterNot(matchedCriticalPatterns::contains),
         )
     }
 
     companion object {
         fun load(workspaceRoot: Path, config: IndexingConfig): WorkspaceIndexingRules {
-            val root = workspaceRoot.toAbsolutePath().normalize()
-            val criticalRules = config.criticalPaths.value.distinct().map { pattern ->
-                if (pattern.startsWith("!")) {
-                    throw IndexingScopeConfigurationException.invalid(
-                        "indexing.criticalPaths does not support negation: $pattern",
-                    )
-                }
-                pattern to WorkspaceGlob.parse(pattern)
-            }
+            val root = NormalizedPath.of(workspaceRoot)
             return WorkspaceIndexingRules(
                 root = root,
-                ignoreRules = readKastIgnore(root) + config.ignoredPaths.value.map(::parseIgnoreRule),
-                criticalRules = criticalRules,
+                ignoreRules = readKastIgnore(root.toJavaPath()) + config.ignoredPaths.value.map { pattern ->
+                    IgnoreRule(
+                        negated = false,
+                        pattern = ConfiguredIgnorePattern(pattern),
+                    )
+                },
+                criticalRules = config.criticalPaths.value.distinct(),
             )
         }
     }
@@ -125,11 +132,11 @@ internal class IndexingScopeConfigurationException private constructor(
             IndexingScopeConfigurationException("INDEXING_SCOPE_INVALID", message)
 
         fun conflict(
-            path: String,
-            criticalPatterns: Collection<String>,
+            path: WorkspaceRelativePath,
+            criticalPatterns: Collection<WorkspaceIndexingPattern>,
         ): IndexingScopeConfigurationException = IndexingScopeConfigurationException(
             code = "INDEXING_SCOPE_CONFLICT",
-            message = "Critical path $path is excluded by the persisted-index scope " +
+            message = "Critical path ${path.value} is excluded by the persisted-index scope " +
                 "(matched: ${criticalPatterns.joinToString()})",
         )
     }
@@ -137,8 +144,26 @@ internal class IndexingScopeConfigurationException private constructor(
 
 private data class IgnoreRule(
     val negated: Boolean,
-    val glob: WorkspaceGlob,
-)
+    private val pattern: IgnorePattern,
+) {
+    fun matches(relativePath: WorkspaceRelativePath): Boolean = pattern.matches(relativePath)
+}
+
+private sealed interface IgnorePattern {
+    fun matches(relativePath: WorkspaceRelativePath): Boolean
+}
+
+private data class ConfiguredIgnorePattern(
+    val pattern: WorkspaceIndexingPattern,
+) : IgnorePattern {
+    override fun matches(relativePath: WorkspaceRelativePath): Boolean = pattern.matches(relativePath)
+}
+
+private data class KastIgnorePattern(
+    val pattern: WorkspaceIgnorePattern,
+) : IgnorePattern {
+    override fun matches(relativePath: WorkspaceRelativePath): Boolean = pattern.matches(relativePath)
+}
 
 private fun readKastIgnore(workspaceRoot: Path): List<IgnoreRule> {
     val path = workspaceRoot.resolve(".kastignore")
@@ -151,10 +176,6 @@ private fun readKastIgnore(workspaceRoot: Path): List<IgnoreRule> {
     }
 }
 
-private fun parseIgnoreRule(pattern: String): IgnoreRule =
-    parseIgnoreRuleOrNull(pattern)
-        ?: throw IndexingScopeConfigurationException.invalid("Ignore pattern must not be blank or a comment")
-
 private fun parseIgnoreRuleOrNull(rawPattern: String): IgnoreRule? {
     var pattern = rawPattern.removePrefix("\uFEFF").trimUnescapedTrailingSpaces()
     if (pattern.isEmpty() || pattern.startsWith("#")) return null
@@ -164,7 +185,12 @@ private fun parseIgnoreRuleOrNull(rawPattern: String): IgnoreRule? {
     if (pattern.isEmpty()) {
         throw IndexingScopeConfigurationException.invalid("Ignore pattern must not be empty")
     }
-    return IgnoreRule(negated = negated, glob = WorkspaceGlob.parse(pattern))
+    val parsed = try {
+        WorkspaceIgnorePattern.parseDirectiveBody(pattern)
+    } catch (error: IllegalArgumentException) {
+        throw IndexingScopeConfigurationException.invalid(error.message ?: "Invalid ignore pattern")
+    }
+    return IgnoreRule(negated = negated, pattern = KastIgnorePattern(parsed))
 }
 
 private fun String.trimUnescapedTrailingSpaces(): String {
@@ -180,79 +206,4 @@ private fun String.trimUnescapedTrailingSpaces(): String {
         end -= 1
     }
     return substring(0, end)
-}
-
-private class WorkspaceGlob private constructor(
-    private val regex: Regex,
-) {
-    fun matches(relativePath: String): Boolean = regex.matches(relativePath)
-
-    companion object {
-        fun parse(rawPattern: String): WorkspaceGlob {
-            var pattern = rawPattern.removePrefix("/")
-            if (pattern.endsWith("/")) pattern = pattern.dropLast(1)
-            if (pattern.isEmpty()) {
-                throw IndexingScopeConfigurationException.invalid("Path pattern must not be empty")
-            }
-            val anchored = '/' in pattern
-            val prefix = if (anchored) "^" else "^(?:.*/)?"
-            return try {
-                WorkspaceGlob(Regex(prefix + pattern.toGitIgnoreRegex() + "(?:/.*)?$"))
-            } catch (error: IllegalArgumentException) {
-                throw IndexingScopeConfigurationException.invalid(
-                    "Invalid path pattern $rawPattern: ${error.message}",
-                )
-            }
-        }
-    }
-}
-
-private fun String.toGitIgnoreRegex(): String = buildString {
-    var index = 0
-    while (index < this@toGitIgnoreRegex.length) {
-        when (val character = this@toGitIgnoreRegex[index]) {
-            '\\' -> {
-                val literal = this@toGitIgnoreRegex.getOrNull(index + 1) ?: '\\'
-                append(Pattern.quote(literal.toString()))
-                index += if (index + 1 < this@toGitIgnoreRegex.length) 2 else 1
-            }
-            '*' -> {
-                if (this@toGitIgnoreRegex.getOrNull(index + 1) == '*') {
-                    if (this@toGitIgnoreRegex.getOrNull(index + 2) == '/') {
-                        append("(?:.*/)?")
-                        index += 3
-                    } else {
-                        append(".*")
-                        index += 2
-                    }
-                } else {
-                    append("[^/]*")
-                    index += 1
-                }
-            }
-            '?' -> {
-                append("[^/]")
-                index += 1
-            }
-            '[' -> {
-                val closing = this@toGitIgnoreRegex.indexOf(']', startIndex = index + 1)
-                if (closing < 0) {
-                    append("\\[")
-                    index += 1
-                } else {
-                    val content = this@toGitIgnoreRegex.substring(index + 1, closing)
-                    append('[')
-                    if (content.startsWith("!")) append('^')
-                    append(content.removePrefix("!").replace("\\", "\\\\"))
-                    append(']')
-                    index = closing + 1
-                }
-            }
-            else -> {
-                if (character in ".(){}+^$|") append('\\')
-                append(character)
-                index += 1
-            }
-        }
-    }
 }

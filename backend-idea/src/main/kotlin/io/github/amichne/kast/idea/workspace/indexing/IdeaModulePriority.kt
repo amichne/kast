@@ -1,5 +1,7 @@
 package io.github.amichne.kast.idea
 
+import io.github.amichne.kast.api.client.fields.RelationshipIndexingModulePriorityDepth
+
 internal data class IdeaModuleSpec(
     val name: String,
     val dependencyModuleNames: List<String>,
@@ -24,10 +26,8 @@ internal fun computeModulePriorityOrder(
     activeModule: String?,
     moduleSpecs: List<IdeaModuleSpec>,
     dependentModuleGraph: Map<String, Set<String>>,
-    depth: Int,
+    depth: RelationshipIndexingModulePriorityDepth,
 ): List<String> {
-    if (depth < 0) return emptyList()
-
     val mergedModuleSpecs = mergeModuleSpecsByName(moduleSpecs)
     val moduleNames = mergedModuleSpecs.mapTo(mutableSetOf()) { it.name }.sorted()
     if (activeModule == null || activeModule !in moduleNames) {
@@ -39,7 +39,7 @@ internal fun computeModulePriorityOrder(
     queue += activeModule to 0
     while (queue.isNotEmpty()) {
         val (moduleName, moduleDepth) = queue.removeFirst()
-        if (!priorityModules.add(moduleName) || moduleDepth >= depth) {
+        if (!priorityModules.add(moduleName) || moduleDepth >= depth.value) {
             continue
         }
         dependentModuleGraph[moduleName]

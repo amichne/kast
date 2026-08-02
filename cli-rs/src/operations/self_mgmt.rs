@@ -5,13 +5,8 @@ use crate::cli::ReadyTarget;
 use crate::config::{self, PathResolutionReport};
 use crate::error::Result;
 use crate::manifest;
-#[cfg(target_os = "macos")]
 use crate::runtime;
-#[cfg(target_os = "macos")]
-use serde::Deserialize;
 use serde::Serialize;
-#[cfg(target_os = "macos")]
-use std::collections::BTreeSet;
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -20,17 +15,11 @@ use std::path::{Path, PathBuf};
 mod agent_readiness;
 
 use agent_readiness::agent_environment_diagnostic;
+pub(crate) use agent_readiness::installed_backend_diagnostic;
 pub use agent_readiness::{AgentResourceState, DoctorAgentEnvironmentDiagnostic};
 
 pub use crate::manifest::KastInstallManifest as InstallState;
 
-const MACOS_PLUGIN_WORKSPACE_METADATA_RELATIVE: &str = "workspace.json";
-#[cfg(target_os = "macos")]
-const MACOS_PLUGIN_WORKSPACE_SCHEMA_VERSION: u32 = 3;
-#[cfg(target_os = "macos")]
-const MACOS_PLUGIN_WORKSPACE_PREPARED_BY: &str = "kast-intellij-plugin";
-#[cfg(target_os = "macos")]
-const MACOS_PLUGIN_WORKSPACE_BACKEND: &str = "idea";
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DoctorConfigurationDiagnostic {
@@ -246,12 +235,11 @@ pub fn doctor(target: ReadyTarget, workspace_root: Option<&Path>) -> Result<Self
 
 fn apply_ready_target_checks(
     target: ReadyTarget,
-    workspace_root: Option<&Path>,
+    _workspace_root: Option<&Path>,
     install: Option<&InstallState>,
     binary: &DoctorBinaryDiagnostic,
     issues: &mut Vec<String>,
 ) {
-    apply_macos_plugin_workspace_check(target, workspace_root, issues);
     match target {
         ReadyTarget::Agent | ReadyTarget::Release => {}
         ReadyTarget::Machine => {
@@ -268,15 +256,9 @@ fn apply_ready_target_checks(
             }
         }
         ReadyTarget::Kotlin => {
-            if install.is_none_or(|install| {
-                install.backends.is_empty()
-                    && !install
-                        .components
-                        .iter()
-                        .any(|component| component == "idea-plugin")
-            }) {
+            if install.is_none_or(|install| install.backends.is_empty()) {
                 issues.push(
-                    "Kotlin readiness requires an installed semantic backend in the manifest"
+                    "Kotlin readiness requires an installed headless semantic backend in the manifest"
                         .to_string(),
                 );
             }
@@ -284,5 +266,4 @@ fn apply_ready_target_checks(
     }
 }
 
-include!("parts/self_mgmt/macos_workspace.rs");
 include!("parts/self_mgmt/diagnostics.rs");

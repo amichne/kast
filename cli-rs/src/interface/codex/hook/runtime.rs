@@ -87,7 +87,7 @@ fn session_start_with_runner(
         OsString::from("--workspace-root"),
         workspace.as_os_str().to_os_string(),
         OsString::from("--backend"),
-        OsString::from("idea"),
+        OsString::from("headless"),
         OsString::from("--accept-indexing"),
     ];
     match runner(&args) {
@@ -116,7 +116,7 @@ fn post_tool_use_with_runner(
         OsString::from("--workspace-root"),
         workspace.as_os_str().to_os_string(),
         OsString::from("--backend"),
-        OsString::from("idea"),
+        OsString::from("headless"),
     ];
     if !matches!(runner(&status_args), Ok(status) if status_is_healthy(&status, workspace)) {
         return json!({});
@@ -143,7 +143,7 @@ fn diagnostics_args(workspace: &Path, path: &str) -> [OsString; 10] {
         OsString::from("--workspace-root"),
         workspace.as_os_str().to_os_string(),
         OsString::from("--backend"),
-        OsString::from("idea"),
+        OsString::from("headless"),
         OsString::from("--file-path"),
         OsString::from(path),
     ]

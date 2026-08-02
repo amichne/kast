@@ -5,6 +5,7 @@ import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.ReferenceCoverageLimitation
 import java.nio.file.Path
 import java.time.Instant
 import kotlin.math.max
@@ -299,6 +300,7 @@ internal data class KastSourceIndexSummary(
     val moduleCount: Int? = null,
     val importCount: Int? = null,
     val message: String? = null,
+    val referenceCoverageLimitations: List<ReferenceCoverageLimitation> = emptyList(),
 ) {
     fun displayText(): String {
         message?.let { return it }

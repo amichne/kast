@@ -1,6 +1,7 @@
 fn install_validated_bundle(
     bundle: &ValidatedBundle,
     targets: &ActivationTargetPaths,
+    migrated_config: Option<&str>,
 ) -> Result<(Option<PathBuf>, Option<PathBuf>)> {
     if bundle.root.starts_with(&targets.resolved.install_root) {
         return Err(CliError::new(
@@ -34,7 +35,12 @@ fn install_validated_bundle(
     link_active_headless_backend(bundle, &staged)?;
     manifest::make_executable(&staged.join(&bundle.cli_relative))?;
     manifest::make_executable(&staged.join(AGENT_CLI_BUNDLE_PATH))?;
-    write_headless_config(&staged.join("config/config.toml"))?;
+    let staged_config = staged.join("config/config.toml");
+    if let Some(contents) = migrated_config {
+        write_setup_config_atomic(&staged_config, contents)?;
+    } else {
+        write_headless_config(&staged_config)?;
+    }
     manifest::write_manifest_atomic(
         &staged.join(manifest::INSTALL_MANIFEST_FILE),
         &install_manifest,

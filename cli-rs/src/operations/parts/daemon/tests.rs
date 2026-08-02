@@ -172,7 +172,7 @@ mod tests {
     }
 
     #[test]
-    fn java_command_rejects_idea_backend_launch() {
+    fn java_command_rejects_retired_idea_backend_before_launch() {
         let temp = tempfile::tempdir().unwrap();
         let libs = temp.path().join("runtime-libs");
         fs::create_dir_all(&libs).unwrap();
@@ -181,7 +181,10 @@ mod tests {
         config.backends.headless.runtime_libs_dir = Some(libs);
         let args = DaemonStartArgs {
             workspace_root: Some(temp.path().to_path_buf()),
-            backend_name: Some(crate::cli::BackendName::Idea),
+            backend_name: Some(
+                <crate::cli::BackendName as clap::ValueEnum>::from_str("idea", true)
+                    .expect("legacy IDEA ingress remains parseable"),
+            ),
             runtime_libs_dir: None,
             idea_home: None,
             socket_path: Some(temp.path().join("kast.sock")),
@@ -200,8 +203,8 @@ mod tests {
 
         let error = java_command(&args, &config).unwrap_err();
 
-        assert_eq!(error.code, "DAEMON_START_ERROR");
-        assert!(error.message.contains("cannot be launched"));
+        assert_eq!(error.code, "IDEA_SEMANTIC_BACKEND_RETIRED");
+        assert!(error.message.contains("retired"));
     }
 
     #[cfg(target_os = "macos")]

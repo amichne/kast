@@ -114,8 +114,8 @@ class KastProjectOpenSourceIndexingTest {
                     pipelineEvents.add("reference")
                 },
             )
-            indexer.indexProject(KastConfig.defaults()) { paths ->
-                assertTrue(paths.containsAll(listOf(callerPath, targetPath)))
+            indexer.indexProject(KastConfig.defaults()) { scope ->
+                assertTrue(scope.paths.map { it.rawPath }.containsAll(listOf(callerPath, targetPath)))
                 pipelineEvents.add("graph")
             }
             assertTrue(sourceScans.isNotEmpty())
@@ -123,10 +123,12 @@ class KastProjectOpenSourceIndexingTest {
             assertTrue(pipelineEvents.indexOf("graph") < pipelineEvents.indexOf("reference"))
 
             val snapshot = store.loadSourceIndexSnapshot()
-            assertEquals(listOf(callerPath), snapshot.candidatePathsByIdentifier.getValue("caller"))
-            assertTrue(snapshot.candidatePathsByIdentifier.getValue("target").contains(targetPath))
-            assertEquals("demo", snapshot.packageByPath.getValue(callerPath))
-            assertEquals(listOf("demo.target"), snapshot.importsByPath.getValue(callerPath))
+            val callerSourcePath = workspaceSourcePath(workspaceRoot, callerPath)
+            val targetSourcePath = workspaceSourcePath(workspaceRoot, targetPath)
+            assertEquals(listOf(callerSourcePath), snapshot.candidatePathsByIdentifier.getValue("caller"))
+            assertTrue(snapshot.candidatePathsByIdentifier.getValue("target").contains(targetSourcePath))
+            assertEquals("demo", snapshot.packageByPath.getValue(callerSourcePath))
+            assertEquals(listOf("demo.target"), snapshot.importsByPath.getValue(callerSourcePath))
             assertTrue(store.loadManifest().orEmpty().keys.containsAll(setOf(callerPath, targetPath)))
             assertFalse(store.loadManifest().orEmpty().containsKey(diskOnlyPath.toString()))
             assertTrue(store.referencesToSymbol("demo.target").any { row -> row.sourcePath == callerPath })
@@ -244,10 +246,10 @@ class KastProjectOpenSourceIndexingTest {
                         }
                     }
                 },
-            ).refreshSymbolRelationships(listOf(failingPath))
+            ).refreshSymbolRelationships(workspaceSourcePaths(workspaceRoot, listOf(failingPath)))
 
             val outcome = outcomes.single()
-            assertEquals(failingPath, outcome.path)
+            assertEquals(failingPath, outcome.path.rawPath)
             assertEquals(FileStageOutcomeStatus.FAILED, outcome.status)
             assertEquals(FileStageFailureCode.PSI_UNAVAILABLE, requireNotNull(outcome.failure).code)
             assertEquals(
@@ -294,7 +296,10 @@ class KastProjectOpenSourceIndexingTest {
         SqliteSourceIndexStore(localWorkspaceRoot).use { store ->
             val snapshot = store.loadSourceIndexSnapshot()
             val hydratedFile = localWorkspaceRoot.resolve("src/Remote.kt").toAbsolutePath().normalize().toString()
-            assertEquals(listOf(hydratedFile), snapshot.candidatePathsByIdentifier.getValue("RemoteIndexed"))
+            assertEquals(
+                listOf(workspaceSourcePath(localWorkspaceRoot, hydratedFile)),
+                snapshot.candidatePathsByIdentifier.getValue("RemoteIndexed"),
+            )
         }
     }
 
@@ -355,7 +360,7 @@ class KastProjectOpenSourceIndexingTest {
                 assertNull(store.fileStageOutcome(callerPath, stage))
                 assertNotNull(store.fileStageOutcome(targetPath, stage))
                 assertTrue(
-                    store.pendingFileStages(stage).any { work -> work.path == callerPath },
+                    store.pendingFileStages(stage).any { work -> work.path.rawPath == callerPath },
                     "A scan from a newer PSI revision must remain pending",
                 )
             }

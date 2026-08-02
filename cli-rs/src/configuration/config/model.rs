@@ -50,16 +50,6 @@ pub enum RuntimeDefaultBackend {
     Headless,
 }
 
-impl RuntimeDefaultBackend {
-    pub fn backend_name(self) -> Option<BackendName> {
-        match self {
-            Self::Auto => None,
-            Self::Idea => Some(BackendName::Idea),
-            Self::Headless => Some(BackendName::Headless),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdeaLaunchConfig {

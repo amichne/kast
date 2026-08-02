@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::runtime::ReferenceCoverageState;
     use serde_json::json;
 
     #[test]
@@ -11,7 +12,7 @@ mod tests {
             healthy: true,
             active: true,
             indexing: false,
-            backend_name: "idea".to_string(),
+            backend_name: "headless".to_string(),
             backend_version: "test".to_string(),
             workspace_root: root.display().to_string(),
             message: None,
@@ -19,6 +20,8 @@ mod tests {
             source_module_names: vec!["main".to_string()],
             dependent_module_names_by_source_module_name: serde_json::Map::new(),
             reference_index_ready: true,
+            reference_coverage_state: ReferenceCoverageState::Complete,
+            reference_coverage_limitations: vec![],
             schema_version: crate::SCHEMA_VERSION,
         };
 

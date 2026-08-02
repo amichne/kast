@@ -6,6 +6,7 @@ import io.github.amichne.kast.api.docs.DocField
 import io.github.amichne.kast.api.protocol.*
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @Serializable
 data class RuntimeStatusResponse(
@@ -31,8 +32,152 @@ data class RuntimeStatusResponse(
     val sourceModuleNames: List<String> = emptyList(),
     @DocField(description = "Map from source module name to its dependency module names.", defaultValue = "emptyMap()")
     val dependentModuleNamesBySourceModuleName: Map<String, List<String>> = emptyMap(),
-    @DocField(description = "True when the symbol reference index is fully populated.", defaultValue = "false")
+    @DocField(
+        description = "True when committed symbol-reference evidence is queryable, including qualified evidence.",
+        defaultValue = "false",
+    )
     val referenceIndexReady: Boolean = false,
+    @DocField(
+        description = "Global persisted reference evidence state. This state is independent of runtime readiness.",
+        defaultValue = "COMPLETE when referenceIndexReady is true; otherwise UNAVAILABLE",
+    )
+    val referenceCoverageState: ReferenceCoverageState = if (referenceIndexReady) {
+        ReferenceCoverageState.COMPLETE
+    } else {
+        ReferenceCoverageState.UNAVAILABLE
+    },
+    @DocField(
+        description = "Typed limitations that qualify or prevent persisted reference evidence.",
+        defaultValue = "emptyList()",
+    )
+    val referenceCoverageLimitations: List<ReferenceCoverageLimitation> = emptyList(),
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
-)
+) {
+    @Transient
+    val referenceCoverage: ReferenceCoverage = ReferenceCoverage.parse(
+        indexReady = referenceIndexReady,
+        state = referenceCoverageState,
+        limitations = referenceCoverageLimitations,
+    )
+
+    fun withReferenceCoverage(coverage: ReferenceCoverage): RuntimeStatusResponse = copy(
+        referenceIndexReady = coverage.indexReady,
+        referenceCoverageState = coverage.state,
+        referenceCoverageLimitations = coverage.limitations,
+    )
+}
+
+class ReferenceCoverage private constructor(
+    val indexReady: Boolean,
+    val state: ReferenceCoverageState,
+    val limitations: List<ReferenceCoverageLimitation>,
+) {
+    companion object {
+        fun complete(
+            limitations: List<ReferenceCoverageLimitation> = emptyList(),
+        ): ReferenceCoverage = parse(
+            indexReady = true,
+            state = ReferenceCoverageState.COMPLETE,
+            limitations = limitations,
+        )
+
+        fun qualified(
+            limitations: List<ReferenceCoverageLimitation>,
+            indexReady: Boolean,
+        ): ReferenceCoverage = parse(
+            indexReady = indexReady,
+            state = ReferenceCoverageState.QUALIFIED,
+            limitations = limitations,
+        )
+
+        fun incomplete(limitations: List<ReferenceCoverageLimitation>): ReferenceCoverage = parse(
+            indexReady = false,
+            state = ReferenceCoverageState.INCOMPLETE,
+            limitations = limitations,
+        )
+
+        fun unavailable(
+            limitations: List<ReferenceCoverageLimitation> = emptyList(),
+        ): ReferenceCoverage = parse(
+            indexReady = false,
+            state = ReferenceCoverageState.UNAVAILABLE,
+            limitations = limitations,
+        )
+
+        fun parse(
+            indexReady: Boolean,
+            state: ReferenceCoverageState,
+            limitations: List<ReferenceCoverageLimitation>,
+        ): ReferenceCoverage {
+            require(limitations.distinct().size == limitations.size) {
+                "Reference coverage limitations must be unique"
+            }
+            val allowedLimitations = when (state) {
+                ReferenceCoverageState.COMPLETE -> emptySet()
+                ReferenceCoverageState.QUALIFIED -> QUALIFIED_LIMITATIONS
+                ReferenceCoverageState.INCOMPLETE -> INCOMPLETE_LIMITATIONS
+                ReferenceCoverageState.UNAVAILABLE -> UNAVAILABLE_LIMITATIONS
+            }
+            require(limitations.all(allowedLimitations::contains)) {
+                "$state reference coverage has an incompatible limitation"
+            }
+            when (state) {
+                ReferenceCoverageState.COMPLETE -> {
+                    require(indexReady) { "Complete reference coverage must be ready" }
+                    require(limitations.isEmpty()) { "Complete reference coverage cannot have limitations" }
+                }
+                ReferenceCoverageState.QUALIFIED -> {
+                    require(limitations.isNotEmpty()) { "Qualified reference coverage requires a limitation" }
+                    require(indexReady != limitations.contains(ReferenceCoverageLimitation.INDEXING_IN_PROGRESS)) {
+                        "Qualified reference coverage is ready only after indexing completes"
+                    }
+                }
+                ReferenceCoverageState.INCOMPLETE -> {
+                    require(!indexReady) { "Incomplete reference coverage cannot be ready" }
+                    require(limitations.isNotEmpty()) { "Incomplete reference coverage requires a limitation" }
+                }
+                ReferenceCoverageState.UNAVAILABLE ->
+                    require(!indexReady) { "Unavailable reference coverage cannot be ready" }
+            }
+            return ReferenceCoverage(
+                indexReady = indexReady,
+                state = state,
+                limitations = limitations.toList(),
+            )
+        }
+
+        private val QUALIFIED_LIMITATIONS = setOf(
+            ReferenceCoverageLimitation.INDEXING_IN_PROGRESS,
+            ReferenceCoverageLimitation.NONCRITICAL_STAGE_GAP,
+        )
+        private val INCOMPLETE_LIMITATIONS = setOf(
+            ReferenceCoverageLimitation.CRITICAL_STAGE_GAP,
+            ReferenceCoverageLimitation.UNMATCHED_CRITICAL_PATH,
+        )
+        private val UNAVAILABLE_LIMITATIONS = setOf(
+            ReferenceCoverageLimitation.INDEX_NOT_COMMITTED,
+            ReferenceCoverageLimitation.PROJECT_MODEL_UNAVAILABLE,
+            ReferenceCoverageLimitation.CANCELLED,
+        )
+    }
+}
+
+@Serializable
+enum class ReferenceCoverageState {
+    COMPLETE,
+    QUALIFIED,
+    INCOMPLETE,
+    UNAVAILABLE,
+}
+
+@Serializable
+enum class ReferenceCoverageLimitation {
+    INDEX_NOT_COMMITTED,
+    PROJECT_MODEL_UNAVAILABLE,
+    INDEXING_IN_PROGRESS,
+    NONCRITICAL_STAGE_GAP,
+    CRITICAL_STAGE_GAP,
+    UNMATCHED_CRITICAL_PATH,
+    CANCELLED,
+}

@@ -8,6 +8,8 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.ServerLimits
+import io.github.amichne.kast.api.client.WorkspaceIdentity
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
@@ -74,7 +76,7 @@ class NativeSemanticGraphBackendTest {
         var admission: IdeaIndexSemanticAdmission.Status =
             IdeaIndexSemanticAdmission.Status.Pending("Kotlin PSI is unavailable")
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -93,6 +95,20 @@ class NativeSemanticGraphBackendTest {
                 )
                 assertTrue(
                     store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse(sourceFile.name))).symbols.isEmpty(),
+                )
+
+                assertThrows(ValidationException::class.java) {
+                    runBlocking { backend.semanticGraph(query) }
+                }
+                assertEquals(
+                    FileStageOutcomeStatus.FAILED,
+                    store.fileStageOutcome(sourceFile.virtualFile.path, FileIndexStage.SEMANTIC_GRAPH)?.status,
+                )
+                assertEquals(
+                    2,
+                    store.fileStageOutcome(sourceFile.virtualFile.path, FileIndexStage.SEMANTIC_GRAPH)
+                        ?.failureAttemptCount
+                        ?.value,
                 )
 
                 assertThrows(ValidationException::class.java) {
@@ -124,7 +140,7 @@ class NativeSemanticGraphBackendTest {
         Files.writeString(ignoreFile, "Canonical.kt")
 
         try {
-            SqliteSourceIndexStore(storeRoot).use { store ->
+            sourceIndexStore(workspaceRoot).use { store ->
                 store.ensureSchema()
                 KastPluginBackend(
                     project = project,
@@ -156,7 +172,7 @@ class NativeSemanticGraphBackendTest {
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -213,7 +229,7 @@ class NativeSemanticGraphBackendTest {
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(files.first().virtualFile.path).toRealPath().parent
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -248,7 +264,7 @@ class NativeSemanticGraphBackendTest {
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -279,7 +295,7 @@ class NativeSemanticGraphBackendTest {
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -305,7 +321,7 @@ class NativeSemanticGraphBackendTest {
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -334,7 +350,7 @@ class NativeSemanticGraphBackendTest {
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(sourceFile.virtualFile.path).toRealPath().parent
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -364,7 +380,7 @@ class NativeSemanticGraphBackendTest {
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(validFile.virtualFile.path).toRealPath().parent
 
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
             KastPluginBackend(
                 project = project,
@@ -395,4 +411,11 @@ class NativeSemanticGraphBackendTest {
 
     private fun limits(): ServerLimits =
         ServerLimits(maxResults = 500, requestTimeoutMillis = 30_000, maxConcurrentRequests = 4)
+
+    private fun sourceIndexStore(workspaceRoot: Path): SqliteSourceIndexStore =
+        SqliteSourceIndexStore(
+            WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).copy(
+                sourceIndexDatabasePath = NormalizedPath.ofAbsolute(storeRoot.resolve("source-index.db")),
+            ),
+        )
 }

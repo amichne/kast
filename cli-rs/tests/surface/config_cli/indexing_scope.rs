@@ -235,3 +235,83 @@ fn workspace_config_rejects_the_wrong_mutation_for_a_field_type() {
         ],
     );
 }
+
+#[test]
+fn workspace_config_rejects_non_repository_indexing_patterns_before_writing() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+
+    let listed = run(&home, &config_home, &workspace, &["list"]);
+    assert!(listed.status.success());
+    let listed: serde_json::Value =
+        serde_json::from_slice(&listed.stdout).expect("list JSON");
+    let config_path = PathBuf::from(listed["configPath"].as_str().expect("config path"));
+    assert!(!config_path.exists(), "test requires an absent workspace config");
+
+    for key in ["indexing.criticalPaths", "indexing.ignoredPaths"] {
+        for invalid in [
+            "!generated/**",
+            "# generated files",
+            "../outside/**",
+            "/Users/name/project/**",
+            "C:/project/**",
+            "[]",
+        ] {
+            let rejected = run(&home, &config_home, &workspace, &["add", key, invalid]);
+            assert!(
+                !rejected.status.success(),
+                "{key} accepted invalid pattern {invalid:?}"
+            );
+            let rejected: serde_json::Value =
+                serde_json::from_slice(&rejected.stdout).expect("error JSON");
+            assert_eq!(rejected["code"], "CONFIG_VALUE_INVALID", "{rejected:#}");
+            assert!(
+                !config_path.exists(),
+                "invalid {key} mutation wrote {}",
+                config_path.display()
+            );
+        }
+    }
+
+    let rejected_remove = run(
+        &home,
+        &config_home,
+        &workspace,
+        &["remove", "indexing.ignoredPaths", "../outside/**"],
+    );
+    assert!(!rejected_remove.status.success());
+    assert!(!config_path.exists());
+}
+
+#[test]
+fn workspace_config_accepts_a_repository_root_anchored_indexing_pattern() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&home).expect("home");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
+
+    let accepted = run(
+        &home,
+        &config_home,
+        &workspace,
+        &["add", "indexing.ignoredPaths", "/module/src/**"],
+    );
+
+    assert!(
+        accepted.status.success(),
+        "root-anchored pattern failed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&accepted.stdout),
+        String::from_utf8_lossy(&accepted.stderr),
+    );
+    let accepted: serde_json::Value =
+        serde_json::from_slice(&accepted.stdout).expect("mutation JSON");
+    assert_eq!(accepted["effectiveValue"], serde_json::json!(["/module/src/**"]));
+}

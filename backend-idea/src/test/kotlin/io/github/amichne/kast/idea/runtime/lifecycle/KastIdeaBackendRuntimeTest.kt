@@ -77,28 +77,17 @@ class KastIdeaBackendRuntimeTest {
             workspaceRoot = workspaceRoot,
             socketPath = socketPath,
             config = config,
-            backendName = "headless",
         ).use { runtime ->
             assertEquals("headless", runtime.backend.capabilities().backendName)
             assertEquals("headless", runtime.backend.runtimeStatus().backendName)
             val delegateField = runtime.backend.javaClass.getDeclaredField("delegate").apply { isAccessible = true }
             val pluginBackend = delegateField.get(runtime.backend) as KastPluginBackend
-            assertEquals(7, pluginBackend.semanticGraphBatchSize)
-            pluginBackend.updateSemanticGraphBatchSize(9)
-            assertEquals(9, pluginBackend.semanticGraphBatchSize)
-            assertEquals(socketPath, runtime.server.descriptor?.socketPath?.let(Path::of))
+            assertEquals(GraphIndexingBatchSize(7), pluginBackend.semanticGraphBatchSize)
+            pluginBackend.updateSemanticGraphBatchSize(GraphIndexingBatchSize(9))
+            assertEquals(GraphIndexingBatchSize(9), pluginBackend.semanticGraphBatchSize)
+            assertEquals(socketPath.toRealPath(), runtime.server.descriptor?.socketPath?.toPath())
             assertTrue(descriptorDirectory.resolve("daemons.json").exists())
         }
-    }
-
-    @Test
-    fun `only the headless runtime owns persisted project indexing`() {
-        assertTrue(persistedProjectIndexingEnabled("headless"))
-        assertFalse(persistedProjectIndexingEnabled("idea"))
-        assertFalse(persistedProjectIndexingEnabled(null))
-        assertEquals(PersistedIndexAccess.READ_WRITE, persistedIndexAccess("headless"))
-        assertEquals(PersistedIndexAccess.READ_ONLY, persistedIndexAccess("idea"))
-        assertEquals(PersistedIndexAccess.READ_ONLY, persistedIndexAccess(null))
     }
 
     @Test
@@ -118,7 +107,16 @@ class KastIdeaBackendRuntimeTest {
             semanticAdmission = readyAdmission(project),
             semanticGraphIndexer = { _, _ -> error("graph unavailable") },
             runProjectIndexing = { _, graph ->
-                graph(listOf(workspaceRoot.resolve("src/main/App.kt").toString()))
+                graph(
+                    IndexedSourceIdentifiers(
+                        paths = workspaceSourcePaths(
+                            workspaceRoot,
+                            listOf(workspaceRoot.resolve("src/main/App.kt").toString()),
+                        ),
+                        criticalPaths = emptySet(),
+                        unmatchedCriticalPatterns = emptyList(),
+                    ),
+                )
                 referencesRan.incrementAndGet()
             },
             waitForNextPass = { delay -> retryDelays += delay; false },
@@ -129,6 +127,45 @@ class KastIdeaBackendRuntimeTest {
             indexing.awaitTermination()
             assertEquals(1, referencesRan.get())
             assertEquals(listOf(250L), retryDelays)
+        } finally {
+            indexing.cancel()
+            store.close()
+        }
+    }
+
+    @Test
+    fun `automatic graph indexing forwards files removed from persisted scope`() {
+        val project = projectFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = tempDir.resolve("graph-tombstones")
+        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot)
+        val store = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity).also { it.ensureSchema() }
+        val removed = workspaceSourcePath(workspaceRoot, workspaceRoot.resolve("src/Removed.kt").toString()).rawPath
+        val observed = AtomicReference<IndexedSourceIdentifiers>()
+        val indexing = KastIdeaProjectIndexing(
+            project = project,
+            workspaceIdentity = workspaceIdentity,
+            config = KastConfig.defaults(),
+            indexStore = store,
+            semanticAdmission = readyAdmission(project),
+            semanticGraphIndexer = { scope, _ -> observed.set(scope) },
+            runProjectIndexing = { _, graph ->
+                graph(
+                    IndexedSourceIdentifiers(
+                        paths = emptyList(),
+                        criticalPaths = emptySet(),
+                        unmatchedCriticalPatterns = emptyList(),
+                        removedPaths = workspaceSourcePaths(workspaceRoot, listOf(removed)),
+                    ),
+                )
+            },
+            waitForNextPass = { false },
+        )
+
+        try {
+            indexing.start()
+            indexing.awaitTermination()
+            assertEquals(listOf(removed), observed.get().removedPaths.map { it.rawPath })
         } finally {
             indexing.cancel()
             store.close()

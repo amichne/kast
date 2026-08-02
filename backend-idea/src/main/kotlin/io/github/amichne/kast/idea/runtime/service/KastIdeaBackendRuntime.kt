@@ -9,10 +9,8 @@ import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
-import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
-import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStoreAccess
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.RuntimeLifecycleController
@@ -27,7 +25,6 @@ object KastIdeaBackendRuntime {
         workspaceRoot: Path,
         socketPath: Path = defaultSocketPath(workspaceRoot),
         config: KastConfig = KastConfig.load(workspaceRoot),
-        backendName: String? = null,
         lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
         projectOpenController: RuntimeProjectOpenController = RuntimeProjectOpenController.Unavailable,
         startProjectIndexing: Boolean = true,
@@ -42,7 +39,6 @@ object KastIdeaBackendRuntime {
             workspaceIdentity = workspaceIdentity,
             transport = AnalysisTransport.UnixDomainSocket(socketPath),
             config = config,
-            backendName = backendName,
             lifecycleController = lifecycleController,
             projectOpenController = projectOpenController,
             indexAdmission = KastGradleIndexAdmission.fromStartIndexing(startProjectIndexing),
@@ -54,7 +50,6 @@ object KastIdeaBackendRuntime {
         workspaceRoot: Path,
         transport: AnalysisTransport,
         config: KastConfig = KastConfig.load(workspaceRoot),
-        backendName: String? = null,
         lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
         projectOpenController: RuntimeProjectOpenController = RuntimeProjectOpenController.Unavailable,
         startProjectIndexing: Boolean = true,
@@ -69,38 +64,17 @@ object KastIdeaBackendRuntime {
             workspaceIdentity = workspaceIdentity,
             transport = transport,
             config = config,
-            backendName = backendName,
             lifecycleController = lifecycleController,
             projectOpenController = projectOpenController,
             indexAdmission = KastGradleIndexAdmission.fromStartIndexing(startProjectIndexing),
         )
     }
 
-    internal fun startPrepared(
-        project: Project,
-        workspaceIdentity: IdeaWorkspaceIdentity,
-        socketPath: Path,
-        config: KastConfig,
-        lifecycleController: RuntimeLifecycleController,
-        projectOpenController: RuntimeProjectOpenController,
-        indexAdmission: KastGradleIndexAdmission,
-    ): RunningKastIdeaBackend = startResolved(
-        project = project,
-        workspaceIdentity = workspaceIdentity,
-        transport = AnalysisTransport.UnixDomainSocket(socketPath),
-        config = config,
-        backendName = null,
-        lifecycleController = lifecycleController,
-        projectOpenController = projectOpenController,
-        indexAdmission = indexAdmission,
-    )
-
     private fun startResolved(
         project: Project,
         workspaceIdentity: IdeaWorkspaceIdentity,
         transport: AnalysisTransport,
         config: KastConfig,
-        backendName: String?,
         lifecycleController: RuntimeLifecycleController,
         projectOpenController: RuntimeProjectOpenController,
         indexAdmission: KastGradleIndexAdmission,
@@ -112,17 +86,15 @@ object KastIdeaBackendRuntime {
             fields = KastStructuredTraceFields(agentRole = "idea-runtime"),
             detail = mapOf(
                 "transport" to transport.toString(),
-                "backendName" to backendName,
+                "backendName" to KastPluginBackend.HEADLESS_BACKEND_NAME,
             ) + workspaceIdentity.traceDetails(),
         )
         val diagnostics = KastDiagnosticsService.getInstance(project)
         val limits = ideaServerLimits(config)
-        val indexAccess = persistedIndexAccess(backendName)
         val indexingScopeCache = WorkspaceIndexingScopeCache { error ->
             diagnostics.recordConfigFallback(workspaceIdentity.workspaceRootPath.resolve(".kastignore"), error)
         }
         val snapshotCoordinator = workspaceIdentity.workspaceIdentity.repositoryDataDirectoryPath
-            ?.takeIf { indexAccess == PersistedIndexAccess.READ_WRITE }
             ?.let { repositoryDirectory ->
             RepositorySnapshotCoordinator(
                 workspaceRoot = workspaceIdentity.workspaceRootPath,
@@ -137,13 +109,7 @@ object KastIdeaBackendRuntime {
         val preparedOverlay = snapshotCoordinator?.prepareWorktreeDatabase(
             workspaceIdentity.workspaceIdentity.sourceIndexDatabaseFile,
         )
-        val sourceIndexStore = SqliteSourceIndexStore(
-            workspaceIdentity.workspaceIdentity,
-            when (indexAccess) {
-                PersistedIndexAccess.READ_ONLY -> SqliteSourceIndexStoreAccess.READ_ONLY
-                PersistedIndexAccess.READ_WRITE -> SqliteSourceIndexStoreAccess.READ_WRITE
-            },
-        )
+        val sourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
         preparedOverlay?.let { overlay ->
             (overlay.tombstones + overlay.shards.keys).forEach { relativePath ->
                 sourceIndexStore.removeFile(workspaceIdentity.workspaceRootPath.resolve(relativePath).toString())
@@ -161,12 +127,10 @@ object KastIdeaBackendRuntime {
                 workspaceRoot = workspaceIdentity.workspaceRootPath,
                 limits = limits,
                 telemetry = IdeaBackendTelemetry.fromConfig(workspaceIdentity.workspaceRootPath, config),
-                backendName = backendName,
                 workspaceIdentity = workspaceIdentity,
                 referenceIndexLookup = DiagnosticsReferenceIndexLookup(diagnostics, sourceIndexStore),
                 semanticGraphStore = sourceIndexStore,
-                semanticGraphBatchSize = config.indexing.graph.batchSize.value,
-                persistedIndexAccess = indexAccess,
+                semanticGraphBatchSize = config.indexing.graph.batchSize,
                 initialIndexingConfig = config.indexing,
                 indexingConfigLoader = {
                     try {
@@ -230,8 +194,7 @@ object KastIdeaBackendRuntime {
             )
             diagnostics.recordBackendStarted(transport)
             val startedPluginBackend = checkNotNull(pluginBackend)
-            val startedProjectIndexing = if (persistedProjectIndexingEnabled(backendName)) {
-                KastIdeaProjectIndexing(
+            val startedProjectIndexing = KastIdeaProjectIndexing(
                     project = project,
                     workspaceIdentity = workspaceIdentity,
                     config = config,
@@ -240,31 +203,29 @@ object KastIdeaBackendRuntime {
                     semanticAdmission = semanticAdmission,
                     snapshotCoordinator = snapshotCoordinator,
                     scopeCache = indexingScopeCache,
-                    semanticGraphIndexer = { paths, batchSize ->
-                        if (paths.isNotEmpty()) {
+                    semanticGraphIndexer = { scope, batchSize ->
+                        if (scope.paths.isNotEmpty() || scope.removedPaths.isNotEmpty()) {
                             startedPluginBackend.updateSemanticGraphBatchSize(batchSize)
                             runBlocking {
                                 startedPluginBackend.semanticGraph(
                                     ParsedSemanticGraphQuery(
-                                        filePaths = paths.distinct().sorted().map(SemanticGraphPath::parse),
-                                        removedFilePaths = emptyList(),
+                                        filePaths = scope.paths.distinct().sorted().map { path -> path.absolute },
+                                        removedFilePaths = scope.removedPaths
+                                            .distinct()
+                                            .sorted()
+                                            .map { path -> path.absolute },
                                         expectedGeneration = null,
                                     ),
                                 )
                             }
                         }
                     },
-                )
-            } else {
-                null
-            }
+            )
             projectIndexing = startedProjectIndexing
-            if (startedProjectIndexing != null) {
-                when (indexAdmission) {
-                    KastGradleIndexAdmission.Pending -> Unit
-                    KastGradleIndexAdmission.Ready -> startedProjectIndexing.start()
-                    is KastGradleIndexAdmission.Failed -> startedProjectIndexing.fail(indexAdmission.error)
-                }
+            when (indexAdmission) {
+                KastGradleIndexAdmission.Pending -> Unit
+                KastGradleIndexAdmission.Ready -> startedProjectIndexing.start()
+                is KastGradleIndexAdmission.Failed -> startedProjectIndexing.fail(indexAdmission.error)
             }
             return RunningKastIdeaBackend(
                 backend = backend,
@@ -296,16 +257,6 @@ object KastIdeaBackendRuntime {
         }
     }
 }
-
-internal fun persistedProjectIndexingEnabled(backendName: String?): Boolean = backendName == "headless"
-
-internal enum class PersistedIndexAccess {
-    READ_ONLY,
-    READ_WRITE,
-}
-
-internal fun persistedIndexAccess(backendName: String?): PersistedIndexAccess =
-    if (persistedProjectIndexingEnabled(backendName)) PersistedIndexAccess.READ_WRITE else PersistedIndexAccess.READ_ONLY
 
 private fun Throwable.indexAdmissionFailureDetail(): String =
     message?.takeIf(String::isNotBlank) ?: this::class.qualifiedName.orEmpty()

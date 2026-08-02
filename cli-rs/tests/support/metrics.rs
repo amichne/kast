@@ -1,4 +1,4 @@
-use super::{workspace_database_path_for_test, write_macos_plugin_workspace_metadata};
+use super::workspace_database_path_for_test;
 use rusqlite::{Connection, params};
 
 include!("metrics/source_index.rs");

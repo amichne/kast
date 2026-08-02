@@ -4,6 +4,7 @@ import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureAttemptCount
 import io.github.amichne.kast.indexstore.api.index.FileStageInputFingerprint
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcome
@@ -13,7 +14,9 @@ import io.github.amichne.kast.indexstore.api.index.FileStageVersion
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.FileStageWorkReason
 import io.github.amichne.kast.indexstore.api.index.PendingFileStage
-import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
+import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
+import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
+import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.indexstore.store.cache.defaultCacheJson
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -22,6 +25,7 @@ import java.sql.Connection
 internal class FileStageInventoryStore(
     private val state: SqliteSourceIndexStoreState,
     private val mutations: SourceIndexFileMutations,
+    private val semanticGraph: SemanticGraphWriter,
 ) {
     private val pathCodec get() = state.pathCodec
     private val reader = FileStageStateReader(state)
@@ -32,9 +36,6 @@ internal class FileStageInventoryStore(
         entries: Collection<FileInventoryEntry>,
         versions: FileStageVersions,
     ) {
-        require(entries.all { entry -> SourceIndexFilePolicy.isEligible(entry.path) }) {
-            "File-stage inventory accepts Kotlin source files only"
-        }
         val desired = entries.associateBy(FileInventoryEntry::path)
         require(desired.size == entries.size) { "File-stage inventory paths must be unique" }
         synchronized(state.writeLock) {
@@ -42,14 +43,17 @@ internal class FileStageInventoryStore(
             state.loadInterningTables(conn)
             val current = reader.readInventoryInTransaction(conn)
             val desiredState = desired.mapValues { (_, entry) -> PersistedFileInventoryState.from(entry, versions) }
-            if (current.mapValues { (_, row) -> row.state } == desiredState) return
+            val inventoryStateMatches = current.mapValues { (_, row) -> row.state } == desiredState
+            val hasCommittedInventorySnapshot =
+                state.readGenerationInTransaction(conn) != SourceIndexGeneration(0)
+            if (inventoryStateMatches && hasCommittedInventorySnapshot) return
             val resolutionInputsChanged = desired.any { (path, entry) ->
                 current[path]?.contentHash != entry.contentHash.value
             }
 
             conn.autoCommit = false
             try {
-                mutations.internPathsInTransaction(conn, desired.keys)
+                mutations.internPathsInTransaction(conn, desired.keys.map(WorkspaceSourcePath::toDatabasePath))
                 if (resolutionInputsChanged) statements.invalidateLimitedRelationshipOutcomesInTransaction(conn)
                 current.keys.minus(desired.keys).forEach { removedPath ->
                     removeInventoryInTransaction(conn, removedPath, current.getValue(removedPath))
@@ -58,13 +62,14 @@ internal class FileStageInventoryStore(
                     current[path]?.let { previous ->
                         if (previous.contentHash != entry.contentHash.value) {
                             deleteOutcomeRowsInTransaction(conn, path)
+                            deleteSemanticGraphFileInTransaction(conn, path)
                             inboundReferences.detachAndInvalidateInTransaction(
                                 conn,
                                 previous.prefixId,
                                 previous.filename,
                             )
                             mutations.deleteFileContentInTransaction(conn, previous.prefixId, previous.filename)
-                        } else if (previous.moduleName != entry.moduleName || previous.sourceSet != entry.sourceSet) {
+                        } else if (previous.module != entry.module) {
                             deleteOutcomeRowsInTransaction(conn, path)
                         }
                     }
@@ -82,10 +87,7 @@ internal class FileStageInventoryStore(
         }
     }
 
-    fun reconcileRemovedFileInventory(paths: Collection<String>) {
-        require(paths.all(SourceIndexFilePolicy::isEligible)) {
-            "Removed file-stage inventory accepts Kotlin source files only"
-        }
+    fun reconcileRemovedFileInventory(paths: Collection<WorkspaceSourcePath>) {
         val removedPaths = paths.distinct()
         if (removedPaths.isEmpty()) return
         synchronized(state.writeLock) {
@@ -136,7 +138,9 @@ internal class FileStageInventoryStore(
                     while (rows.next()) {
                         add(
                             PendingFileStage(
-                                path = pathCodec.decode(rows.getInt(1), rows.getString(2)),
+                                path = state.requireWorkspaceSourcePath(
+                                    pathCodec.decode(rows.getInt(1), rows.getString(2)),
+                                ),
                                 contentHash = FileContentHash.parse(rows.getString(3)),
                                 stage = stage,
                                 version = FileStageVersion.parse(rows.getString(4)),
@@ -175,12 +179,14 @@ internal class FileStageInventoryStore(
                 val rows = statement.executeQuery()
                 buildList {
                     while (rows.next()) {
-                        val limitations = defaultCacheJson.decodeFromString<List<String>>(rows.getString(6))
-                            .map(FileStageLimitation::valueOf)
+                        val limitations =
+                            defaultCacheJson.decodeFromString<List<FileStageLimitation>>(rows.getString(6))
                         if (FileStageLimitation.PSI_UNAVAILABLE !in limitations) continue
                         add(
                             PendingFileStage(
-                                path = pathCodec.decode(rows.getInt(1), rows.getString(2)),
+                                path = state.requireWorkspaceSourcePath(
+                                    pathCodec.decode(rows.getInt(1), rows.getString(2)),
+                                ),
                                 contentHash = FileContentHash.parse(rows.getString(3)),
                                 stage = stage,
                                 version = FileStageVersion.parse(rows.getString(4)),
@@ -194,7 +200,7 @@ internal class FileStageInventoryStore(
         }
 
     fun pendingFileStage(
-        path: String,
+        path: WorkspaceSourcePath,
         contentHash: FileContentHash,
         stage: FileIndexStage,
         version: FileStageVersion,
@@ -223,13 +229,16 @@ internal class FileStageInventoryStore(
         }
     }
 
-    fun fileStageOutcome(path: String, stage: FileIndexStage): FileStageOutcome? =
+    fun fileStageOutcome(path: WorkspaceSourcePath, stage: FileIndexStage): FileStageOutcome? =
         reader.fileStageOutcome(path, stage)
 
-    fun fileStageScopeCoverage(stage: FileIndexStage, path: String): FileStageScopeCoverage =
+    fun fileStageScopeCoverage(stage: FileIndexStage, path: WorkspaceSourcePath): FileStageScopeCoverage =
         reader.fileStageScopeCoverage(stage, path)
 
-    fun fileStageScopeCoverage(stage: FileIndexStage, paths: Collection<String>): FileStageScopeCoverage =
+    fun fileStageScopeCoverage(
+        stage: FileIndexStage,
+        paths: Collection<WorkspaceSourcePath>,
+    ): FileStageScopeCoverage =
         reader.fileStageScopeCoverage(stage, paths)
 
     internal fun requireCurrentWorkInTransaction(
@@ -262,18 +271,19 @@ internal class FileStageInventoryStore(
         }
     }
 
-    internal fun shouldLimitFailureInTransaction(
+    internal fun nextFailureAttemptInTransaction(
         conn: Connection,
         work: PendingFileStage,
         code: FileStageFailureCode,
-    ): Boolean {
-        if (code != FileStageFailureCode.PSI_UNAVAILABLE) return false
-        val outcome = reader.readOutcomeInTransaction(conn, work.path, work.stage) ?: return false
+    ): FileStageFailureAttemptCount {
+        if (code != FileStageFailureCode.PSI_UNAVAILABLE) return FileStageFailureAttemptCount.of(1)
+        val outcome = reader.readOutcomeInTransaction(conn, work.path, work.stage)
+            ?: return FileStageFailureAttemptCount.of(1)
         if (outcome.contentHash != work.contentHash ||
             outcome.version != work.version ||
             outcome.inputFingerprint != work.inputFingerprint
-        ) return false
-        return when (outcome.status) {
+        ) return FileStageFailureAttemptCount.of(1)
+        val matches = when (outcome.status) {
             FileStageOutcomeStatus.FAILED -> outcome.failure?.code == code
             FileStageOutcomeStatus.LIMITED ->
                 work.reason == FileStageWorkReason.LIMITED_RETRY &&
@@ -282,20 +292,23 @@ internal class FileStageInventoryStore(
             FileStageOutcomeStatus.EXTERNAL_BOUNDARY,
             -> false
         }
+        return if (matches) outcome.failureAttemptCount.next() else FileStageFailureAttemptCount.of(1)
     }
 
     internal fun writeOutcomeInTransaction(
         conn: Connection,
         work: PendingFileStage,
         limitations: List<FileStageLimitation>,
+        failureAttemptCount: FileStageFailureAttemptCount = FileStageFailureAttemptCount.NONE,
     ) {
         val canonicalLimitations = limitations.distinct().sortedBy(FileStageLimitation::name)
-        val (prefixId, filename) = pathCodec.encodeOrCreate(conn, work.path)
+        val (prefixId, filename) = pathCodec.encodeOrCreate(conn, work.path.toDatabasePath())
         conn.prepareStatement(
             """INSERT INTO file_stage_outcomes(
                    prefix_id, filename, stage, content_hash, stage_version, stage_input_fingerprint,
-                   outcome_status, limitations_json, failure_id, failure_code, failure_message
-               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL)
+                   outcome_status, limitations_json, failure_id, failure_code, failure_message,
+                   failure_attempt_count
+               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, ?)
                ON CONFLICT(prefix_id, filename, stage) DO UPDATE SET
                    content_hash = excluded.content_hash,
                    stage_version = excluded.stage_version,
@@ -304,7 +317,8 @@ internal class FileStageInventoryStore(
                    limitations_json = excluded.limitations_json,
                    failure_id = NULL,
                    failure_code = NULL,
-                   failure_message = NULL""",
+                   failure_message = NULL,
+                   failure_attempt_count = excluded.failure_attempt_count""",
         ).use { statement ->
             statement.setInt(1, prefixId)
             statement.setString(2, filename)
@@ -320,14 +334,15 @@ internal class FileStageInventoryStore(
                     FileStageOutcomeStatus.LIMITED.name
                 },
             )
-            statement.setString(8, defaultCacheJson.encodeToString(canonicalLimitations.map(FileStageLimitation::name)))
+            statement.setString(8, defaultCacheJson.encodeToString(canonicalLimitations))
+            statement.setInt(9, failureAttemptCount.value)
             statement.executeUpdate()
         }
     }
 
-    internal fun deleteOutcomeRowsInTransaction(conn: Connection, path: String) {
+    internal fun deleteOutcomeRowsInTransaction(conn: Connection, path: WorkspaceSourcePath) {
         state.loadInterningTables(conn)
-        val encoded = pathCodec.encodeIfInterned(path) ?: return
+        val encoded = pathCodec.encodeIfInterned(path.toDatabasePath()) ?: return
         conn.prepareStatement("DELETE FROM file_stage_outcomes WHERE prefix_id = ? AND filename = ?").use { statement ->
             statement.setInt(1, encoded.first)
             statement.setString(2, encoded.second)
@@ -337,17 +352,29 @@ internal class FileStageInventoryStore(
 
     private fun removeInventoryInTransaction(
         conn: Connection,
-        path: String,
+        path: WorkspaceSourcePath,
         row: PersistedFileInventory,
     ) {
         deleteOutcomeRowsInTransaction(conn, path)
+        deleteSemanticGraphFileInTransaction(conn, path)
         inboundReferences.detachAndInvalidateInTransaction(conn, row.prefixId, row.filename)
         mutations.deleteFileRowsInTransaction(conn, row.prefixId, row.filename)
     }
 
-    internal fun deleteOutcomeInTransaction(conn: Connection, path: String, stage: FileIndexStage) {
+    private fun deleteSemanticGraphFileInTransaction(conn: Connection, path: WorkspaceSourcePath) {
+        semanticGraph.deleteSemanticGraphFileInTransaction(
+            conn,
+            SemanticGraphSourcePath.parse(path.relative.value),
+        )
+    }
+
+    internal fun deleteOutcomeInTransaction(
+        conn: Connection,
+        path: WorkspaceSourcePath,
+        stage: FileIndexStage,
+    ) {
         state.loadInterningTables(conn)
-        val encoded = pathCodec.encodeIfInterned(path) ?: return
+        val encoded = pathCodec.encodeIfInterned(path.toDatabasePath()) ?: return
         conn.prepareStatement(
             "DELETE FROM file_stage_outcomes WHERE prefix_id = ? AND filename = ? AND stage = ?",
         ).use { statement ->

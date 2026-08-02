@@ -70,6 +70,7 @@ fn verify_required_structure(transaction: &Transaction<'_>) -> Result<(), ReadDa
             "stage_version",
             "outcome_status",
             "limitations_json",
+            "failure_attempt_count",
         ],
     )?;
     verify_nullable(

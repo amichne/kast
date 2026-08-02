@@ -193,6 +193,12 @@ fn read_coverage_with_orphans(
             }
         };
         let generation = index.stamp().generation().value();
+        if generation == 0 {
+            return Err(CliError::new(
+                "GRAPH_COVERAGE_UNAVAILABLE",
+                "The compatible source-index store has no committed current inventory.",
+            ));
+        }
         let resolved_scope = resolve_repository_scope(scope.clone(), index.files())?;
         let PersistedSemanticCoverageRead {
             generation: semantic_generation,
@@ -249,7 +255,12 @@ fn apply_critical_path_coverage(
     let mut unmatched = false;
     let mut incomplete = false;
     for raw in configured {
-        let pattern = CriticalPathPattern::parse(raw)?;
+        let pattern = config::WorkspaceCollectionPattern::parse(&raw).map_err(|error| {
+            CliError::new(
+                "INDEXING_SCOPE_INVALID",
+                format!("invalid indexing.criticalPaths pattern `{raw}`: {error}"),
+            )
+        })?;
         let mut matched = false;
         for file in snapshot
             .files
@@ -295,52 +306,6 @@ fn has_critical_path_gap(coverage: &CoverageSummary) -> bool {
             "SEMANTIC_GRAPH_CRITICAL_PATH_UNMATCHED" | "SEMANTIC_GRAPH_CRITICAL_PATH_INCOMPLETE"
         )
     })
-}
-
-struct CriticalPathPattern {
-    matcher: glob::Pattern,
-    basename_only: bool,
-}
-
-impl CriticalPathPattern {
-    fn parse(raw: String) -> Result<Self> {
-        let normalized = raw.trim().trim_start_matches('/').trim_end_matches('/');
-        if normalized.is_empty() || normalized.starts_with('!') {
-            return Err(CliError::new(
-                "INDEXING_SCOPE_INVALID",
-                format!("invalid indexing.criticalPaths pattern `{raw}`"),
-            ));
-        }
-        let matcher = glob::Pattern::new(normalized).map_err(|error| {
-            CliError::new(
-                "INDEXING_SCOPE_INVALID",
-                format!("invalid indexing.criticalPaths pattern `{raw}`: {error}"),
-            )
-        })?;
-        Ok(Self {
-            matcher,
-            basename_only: !normalized.contains('/'),
-        })
-    }
-
-    fn matches(&self, path: &str) -> bool {
-        let path = Path::new(path);
-        if self.basename_only {
-            return path.components().any(|component| {
-                component
-                    .as_os_str()
-                    .to_str()
-                    .is_some_and(|value| self.matcher.matches(value))
-            });
-        }
-        let options = glob::MatchOptions {
-            case_sensitive: true,
-            require_literal_separator: true,
-            require_literal_leading_dot: false,
-        };
-        path.ancestors()
-            .any(|candidate| self.matcher.matches_path_with(candidate, options))
-    }
 }
 
 include!("read/classify.rs");

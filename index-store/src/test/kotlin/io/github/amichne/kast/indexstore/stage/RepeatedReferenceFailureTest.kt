@@ -25,11 +25,11 @@ class RepeatedReferenceFailureTest {
     lateinit var workspaceRoot: Path
 
     @Test
-    fun `second durable PSI failure becomes limited and remains retryable after cancellation`() {
+    fun `third durable PSI failure becomes limited and remains retryable after cancellation`() {
         val path = workspaceRoot.resolve("src/App.kt").toAbsolutePath().normalize().also { file ->
             Files.createDirectories(file.parent)
             Files.writeString(file, "package demo")
-        }.toString()
+        }.let { file -> workspaceSourceRawPath(workspaceRoot, file.toString()) }
         val hash = FileContentHash.parse("a".repeat(64))
         val initialVersions = versions("retry-1")
         val retryVersions = versions("retry-2")
@@ -39,14 +39,36 @@ class RepeatedReferenceFailureTest {
             store.reconcileFileInventory(listOf(inventory(path, hash)), initialVersions)
             ReferenceIndexer(store).indexPendingSymbolRelationships(
                 work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS),
-                scanner = { RelationshipScanResult.Indexed(hash, listOf(reference(path, "demo.Stale")), emptyList()) },
+                scanner = { sourcePath ->
+                    RelationshipScanResult.Indexed(
+                        hash,
+                        listOf(reference(sourcePath.rawPath, "demo.Stale")),
+                        emptyList(),
+                    )
+                },
             )
             store.reconcileFileInventory(listOf(inventory(path, hash)), retryVersions)
             failCurrentRelationshipWork(store, hash)
 
             assertEquals(FileStageOutcomeStatus.FAILED, store.relationshipOutcome(path)?.status)
-            assertEquals(listOf(path), store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { it.path })
+            assertEquals(1, store.relationshipOutcome(path)?.failureAttemptCount?.value)
+            assertEquals(
+                listOf(path),
+                store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { work -> work.path.rawPath },
+            )
             assertTrue(store.referencesFromFile(path).isEmpty())
+        }
+
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            failCurrentRelationshipWork(store, hash)
+
+            val secondFailure = requireNotNull(store.relationshipOutcome(path))
+            assertEquals(FileStageOutcomeStatus.FAILED, secondFailure.status)
+            assertEquals(2, secondFailure.failureAttemptCount.value)
+            assertEquals(
+                listOf(path),
+                store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { work -> work.path.rawPath },
+            )
         }
 
         SqliteSourceIndexStore(workspaceRoot).use { store ->
@@ -54,10 +76,11 @@ class RepeatedReferenceFailureTest {
 
             val limited = requireNotNull(store.relationshipOutcome(path))
             assertEquals(FileStageOutcomeStatus.LIMITED, limited.status)
+            assertEquals(3, limited.failureAttemptCount.value)
             assertEquals(listOf(FileStageLimitation.PSI_UNAVAILABLE), limited.limitations)
             assertNull(limited.failure)
             assertTrue(store.pendingFileStages(FileIndexStage.RELATIONSHIPS).isEmpty())
-            assertEquals(listOf(path), store.retryableLimitedRelationshipStages().map { it.path })
+            assertEquals(listOf(path), store.retryableLimitedRelationshipStages().map { work -> work.path.rawPath })
             assertTrue(store.referencesFromFile(path).isEmpty())
         }
 
@@ -66,10 +89,16 @@ class RepeatedReferenceFailureTest {
                 scanner = { error("Cancelled retry must not scan") },
                 isCancelled = { true },
             )
-            assertEquals(listOf(path), store.retryableLimitedRelationshipStages().map { it.path })
+            assertEquals(listOf(path), store.retryableLimitedRelationshipStages().map { work -> work.path.rawPath })
 
             ReferenceIndexer(store).retryLimitedSymbolRelationships(
-                scanner = { RelationshipScanResult.Indexed(hash, listOf(reference(path, "demo.Current")), emptyList()) },
+                scanner = { sourcePath ->
+                    RelationshipScanResult.Indexed(
+                        hash,
+                        listOf(reference(sourcePath.rawPath, "demo.Current")),
+                        emptyList(),
+                    )
+                },
             )
             assertEquals(FileStageOutcomeStatus.COMPLETE, store.relationshipOutcome(path)?.status)
             assertTrue(store.retryableLimitedRelationshipStages().isEmpty())
@@ -94,7 +123,7 @@ class RepeatedReferenceFailureTest {
         fileStageOutcome(path, FileIndexStage.RELATIONSHIPS)
 
     private fun inventory(path: String, hash: FileContentHash) =
-        FileInventoryEntry(path, 1, hash, ":app[main]", "main")
+        fileInventoryEntry(workspaceRoot, path, 1, hash, ":app[main]", "main")
 
     private fun versions(value: String): FileStageVersions {
         val version = FileStageVersion.parse(value)

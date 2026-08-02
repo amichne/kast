@@ -1,5 +1,7 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.api.contract.NonBlankString
+import io.github.amichne.kast.api.contract.PositiveInt
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
@@ -11,11 +13,17 @@ import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
 import io.github.amichne.kast.indexstore.api.index.IndexedPackageEvidence
 import io.github.amichne.kast.indexstore.api.index.RelationshipIndexStatus
+import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
+import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
+import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -30,6 +38,16 @@ import java.sql.SQLException
 class DurableFileStageIndexingTest {
     @TempDir
     lateinit var workspaceRoot: Path
+
+    @Test
+    fun `file stage limitations use their typed kotlinx serializer`() {
+        val limitations = listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP)
+
+        val encoded = Json.encodeToString(limitations)
+
+        assertEquals("[\"UNRESOLVED_RELATIONSHIP\"]", encoded)
+        assertEquals(limitations, Json.decodeFromString<List<FileStageLimitation>>(encoded))
+    }
 
     @Test
     fun `restart reuses unchanged outcomes and invalidates only affected file stages`() {
@@ -52,16 +70,16 @@ class DurableFileStageIndexingTest {
             assertTrue(store.pendingFileStages(FileIndexStage.RELATIONSHIPS).isEmpty())
 
             val changed = entries.map { entry ->
-                if (entry.path == paths.first()) entry.copy(contentHash = hash('c')) else entry
+                if (entry.path.rawPath == paths.first()) entry.copy(contentHash = hash('c')) else entry
             }
             store.reconcileFileInventory(changed, versions)
             assertEquals(
                 listOf(paths.first()),
-                store.pendingFileStages(FileIndexStage.SOURCE).map { work -> work.path },
+                store.pendingFileStages(FileIndexStage.SOURCE).map { work -> work.path.rawPath },
             )
             assertEquals(
                 listOf(paths.first()),
-                store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { work -> work.path },
+                store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { work -> work.path.rawPath },
             )
 
             commitSources(store, FileIndexStage.SOURCE, listOf(paths.first()))
@@ -69,7 +87,7 @@ class DurableFileStageIndexingTest {
             assertTrue(store.pendingFileStages(FileIndexStage.SOURCE).isEmpty())
             assertEquals(
                 paths,
-                store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { work -> work.path },
+                store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { work -> work.path.rawPath },
             )
         }
     }
@@ -180,6 +198,68 @@ class DurableFileStageIndexingTest {
     }
 
     @Test
+    fun `file stages accept canonical source identity through a symlink alias`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val canonicalDirectory = normalized.resolve("canonical").also(Files::createDirectories)
+        val canonicalCaller = writeKotlinFile(canonicalDirectory.resolve("Caller.kt"))
+        val canonicalTarget = writeKotlinFile(canonicalDirectory.resolve("Target.kt"))
+        val aliasDirectory = normalized.resolve("alias")
+            .also { alias -> Files.createSymbolicLink(alias, canonicalDirectory) }
+        val aliasCaller = aliasDirectory.resolve(canonicalCaller.fileName)
+        val aliasTarget = aliasDirectory.resolve(canonicalTarget.fileName)
+        val callerPath = workspaceSourceRawPath(normalized, canonicalCaller.toString())
+        val targetPath = workspaceSourceRawPath(normalized, canonicalTarget.toString())
+        val declaration = DeclarationRow(
+            fqName = "demo.Caller",
+            kind = DeclarationKind.CLASS,
+            visibility = DeclarationVisibility.INTERNAL,
+            filePath = aliasCaller.toString(),
+            declarationOffset = 1,
+            modulePath = ":app",
+            sourceSet = "main",
+        )
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.reconcileFileInventory(
+                listOf(inventory(normalized, callerPath, hash('a'), ":app[main]")),
+                versions("1"),
+            )
+            val sourceWork = store.pendingFileStages(FileIndexStage.SOURCE).single()
+            store.commitSourceBatch(
+                listOf(
+                    SourceFileStageUpdate(
+                        work = sourceWork,
+                        scannedContentHash = sourceWork.contentHash,
+                        update = sourceUpdate(aliasCaller.toString()),
+                    ),
+                ),
+            )
+            val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).single()
+
+            store.commitRelationshipBatch(
+                listOf(
+                    RelationshipFileStageUpdate(
+                        work = work,
+                        scannedContentHash = work.contentHash,
+                        references = listOf(reference(aliasCaller.toString(), "demo.Target", aliasTarget.toString())),
+                        declarations = listOf(declaration),
+                    ),
+                ),
+            )
+
+            assertEquals(
+                listOf(reference(callerPath, "demo.Target", targetPath)),
+                store.referencesFromFile(callerPath),
+            )
+            assertEquals(
+                listOf(declaration.copy(filePath = callerPath)),
+                store.searchDeclarations(NonBlankString("demo.Caller"), PositiveInt(10)),
+            )
+        }
+    }
+
+    @Test
     fun `independent sessions complete only the scopes backed by persisted outcomes`() {
         val app = listOf(
             file("app/src/main/kotlin/App.kt"),
@@ -213,7 +293,7 @@ class DurableFileStageIndexingTest {
         SqliteSourceIndexStore(workspaceRoot).use { secondSession ->
             assertEquals(
                 listOf(app.last(), lib),
-                secondSession.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { work -> work.path },
+                secondSession.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { work -> work.path.rawPath },
             )
             commitRelationships(secondSession, listOf(app.last()))
             app.forEach { path ->
@@ -250,13 +330,14 @@ class DurableFileStageIndexingTest {
             val caller = file("$scenario/src/Caller.kt")
             val target = file("$scenario/src/Target.kt")
             val entries = listOf(
-                inventory(caller, hash('a'), ":app[main]"),
-                inventory(target, hash('b'), ":app[main]"),
+                inventory(scenarioRoot, caller, hash('a'), ":app[main]"),
+                inventory(scenarioRoot, target, hash('b'), ":app[main]"),
             )
             SqliteSourceIndexStore(scenarioRoot).use { store ->
                 store.ensureSchema()
                 store.reconcileFileInventory(entries, versions("1"))
-                val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).associateBy { it.path }
+                val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
+                    .associateBy { pending -> pending.path.rawPath }
                 store.commitRelationshipBatch(
                     listOf(
                         RelationshipFileStageUpdate(
@@ -280,7 +361,10 @@ class DurableFileStageIndexingTest {
                 assertNull(preserved.targetPath)
                 assertNull(preserved.targetOffset)
                 val expectedPending = if (removeTarget) listOf(caller) else listOf(caller, target)
-                assertEquals(expectedPending, store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { it.path })
+                assertEquals(
+                    expectedPending,
+                    store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { pending -> pending.path.rawPath },
+                )
                 assertNull(store.fileStageOutcome(caller, FileIndexStage.RELATIONSHIPS))
             }
         }
@@ -291,8 +375,8 @@ class DurableFileStageIndexingTest {
         relativePaths: List<String>,
         reopenAfterFirstBatch: Boolean,
     ): PersistedFacts {
-        val paths = relativePaths.map { relative -> root.resolve(relative).toAbsolutePath().normalize().toString() }
-        val entries = paths.mapIndexed { index, path -> inventory(path, hash('a' + index), ":app[main]") }
+        val paths = relativePaths.map { relative -> workspaceSourceRawPath(root, root.resolve(relative).toString()) }
+        val entries = paths.mapIndexed { index, path -> inventory(root, path, hash('a' + index), ":app[main]") }
         SqliteSourceIndexStore(root).use { store ->
             store.ensureSchema()
             store.reconcileFileInventory(entries, versions("1"))
@@ -319,7 +403,7 @@ class DurableFileStageIndexingTest {
         stage: FileIndexStage,
         paths: Collection<String>,
     ) {
-        val workByPath = store.pendingFileStages(stage).associateBy { work -> work.path }
+        val workByPath = store.pendingFileStages(stage).associateBy { work -> work.path.rawPath }
         store.commitSourceBatch(
             paths.map { path ->
                 SourceFileStageUpdate(
@@ -332,7 +416,7 @@ class DurableFileStageIndexingTest {
 
     private fun commitRelationships(store: SqliteSourceIndexStore, paths: Collection<String>) {
         val workByPath = store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
-            .associateBy { work -> work.path }
+            .associateBy { work -> work.path.rawPath }
         store.commitRelationshipBatch(
             paths.map { path ->
                 RelationshipFileStageUpdate(
@@ -345,7 +429,16 @@ class DurableFileStageIndexingTest {
     }
 
     private fun inventory(path: String, hash: FileContentHash, moduleName: String): FileInventoryEntry =
-        FileInventoryEntry(
+        inventory(workspaceRoot, path, hash, moduleName)
+
+    private fun inventory(
+        root: Path,
+        path: String,
+        hash: FileContentHash,
+        moduleName: String,
+    ): FileInventoryEntry =
+        fileInventoryEntry(
+            workspaceRoot = root,
             path = path,
             lastModifiedMillis = 1,
             contentHash = hash,
@@ -380,7 +473,7 @@ class DurableFileStageIndexingTest {
         val path = workspaceRoot.resolve(relative).toAbsolutePath().normalize()
         Files.createDirectories(path.parent)
         Files.writeString(path, "package demo")
-        return path.toString()
+        return workspaceSourceRawPath(workspaceRoot, path.toString())
     }
 
     private fun versions(value: String): FileStageVersions =

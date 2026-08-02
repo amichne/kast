@@ -5,14 +5,16 @@ description: Migration plan for one headless semantic authority with no foregrou
 tags: [internal, design, macos, headless, indexing, semantic-graph, references, vfs, migration]
 code_sources:
   - path: cli-rs/src/execution/runtime/backend/workspace.rs
-  - path: cli-rs/src/execution/runtime/backend/backend_selection.rs
+  - path: cli-rs/src/execution/runtime/backend/headless_authority.rs
+  - path: cli-rs/src/execution/runtime/backend/sidecar_host.rs
   - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
   - path: cli-rs/src/execution/runtime/backend/descriptors.rs
   - path: cli-rs/src/execution/runtime/control/inspect.rs
   - path: cli-rs/src/execution/runtime/control/lease.rs
   - path: cli-rs/src/execution/runtime/wire/rpc.rs
   - path: cli-rs/src/operations/self_mgmt/agent_readiness.rs
-  - path: cli-rs/src/operations/install/idea_plugin.rs
+  - path: cli-rs/src/operations/install/bundle_install.rs
+  - path: cli-rs/src/operations/install/force_reset.rs
   - path: cli-rs/src/configuration/bundle.rs
   - path: cli-rs/src/operations/package.rs
   - path: cli-rs/src/configuration/config/model.rs
@@ -44,8 +46,9 @@ code_sources:
 
 # Headless-Only VFS-Resilient Semantic Runtime
 
-**Status:** Direction accepted; implementation has not started. This revision
-supersedes the earlier IDEA-coordinated sidecar design.
+**Status:** Implemented on the PR 502 branch. This document remains the
+acceptance record for the headless-only migration and supersedes the earlier
+IDEA-coordinated sidecar design.
 
 **Audience:** Maintainers of the Kast runtime, index store, CLI, headless
 backend, installer, release workflow, and the retiring public IDEA plugin.
@@ -60,9 +63,9 @@ The private `kast-headless` IntelliJ plugin remains inside the isolated
 headless distribution. It supplies the IntelliJ, Kotlin, and Gradle services
 needed for compiler-backed analysis. It is not a public foreground plugin.
 
-## Problem
+## Pre-migration problem
 
-The foreground plugin still starts a complete IDEA semantic backend during
+Before this implementation, the foreground plugin started a complete IDEA semantic backend during
 project open. It indexes, imports Gradle state, publishes semantic capabilities,
 and binds the same exact-root socket as headless. Socket startup and shutdown
 delete that shared path without proving ownership.

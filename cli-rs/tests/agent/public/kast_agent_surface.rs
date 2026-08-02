@@ -122,7 +122,7 @@ fn home_reports_live_workspace_state_without_protocol_cruft() {
 }
 
 #[cfg(target_os = "macos")]
-fn installed_public_home(unrelated_authority: bool) -> String {
+fn installed_public_home(unrelated_legacy_plugin_authority: bool) -> String {
     let fixture = tempfile::tempdir().expect("temporary install");
     let home = fixture.path().join("home");
     let config_home = fixture.path().join("config");
@@ -132,7 +132,7 @@ fn installed_public_home(unrelated_authority: bool) -> String {
     let workspace = workspace.canonicalize().expect("canonical workspace");
     write_current_cli_install_manifest_for_test(&home, &config_home);
     let public_binary = default_bin_dir(&home).join("kast");
-    let control_binary = if unrelated_authority {
+    let control_binary = if unrelated_legacy_plugin_authority {
         let binary = fixture.path().join("unrelated/kastctl");
         std::fs::create_dir_all(binary.parent().expect("unrelated parent"))
             .expect("unrelated directory");
@@ -164,8 +164,8 @@ fn installed_public_entrypoint_uses_private_kastctl_libexec() {
 
 #[cfg(target_os = "macos")]
 #[test]
-fn installed_public_entrypoint_rejects_unrelated_control_binary_authority() {
-    assert!(installed_public_home(true).contains("does not match the running Kast executable"));
+fn installed_public_entrypoint_ignores_retired_plugin_control_binary_metadata() {
+    assert!(!installed_public_home(true).contains("does not match the running Kast executable"));
 }
 
 #[test]

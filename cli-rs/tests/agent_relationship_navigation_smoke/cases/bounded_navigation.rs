@@ -23,9 +23,9 @@ fn compact_references_bound_high_cardinality_output() {
             })
         })
         .collect::<Vec<_>>();
-    let socket = temp.path().join("idea.sock");
+    let socket = temp.path().join("headless.sock");
     let backend_token = "00000000-0000-4000-8000-000000000337";
-    let backend = spawn_scripted_idea_backend(
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -119,7 +119,7 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
     .enumerate()
     {
         let socket = temp.path().join(format!("idea-call-{index}.sock"));
-        let backend = spawn_scripted_idea_backend(
+        let backend = spawn_scripted_headless_backend(
             &home,
             &config,
             &workspace,
@@ -193,7 +193,7 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
     }
 
     let implementations_socket = temp.path().join("idea-implementations.sock");
-    let implementations_backend = spawn_scripted_idea_backend(
+    let implementations_backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -259,7 +259,7 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
     );
 
     let hierarchy_socket = temp.path().join("idea-hierarchy.sock");
-    let hierarchy_backend = spawn_scripted_idea_backend(
+    let hierarchy_backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,

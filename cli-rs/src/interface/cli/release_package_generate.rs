@@ -46,9 +46,6 @@ pub struct UbuntuDebianBundlePackageArgs {
     /// Headless backend portable zip archive containing backend-headless/.
     #[arg(long)]
     pub backend_archive: PathBuf,
-    /// IDEA plugin ZIP stored in the active release.
-    #[arg(long)]
-    pub plugin_archive: PathBuf,
     /// Bundle platform id used in the archive name and manifest.
     #[arg(long, default_value = "ubuntu-debian-headless-x86_64")]
     pub platform: String,

@@ -184,7 +184,7 @@ fn validate_bundle_artifacts(root: &Path, manifest: &BundleManifest) -> Result<(
         }
         roles.insert(artifact.role.as_str());
     }
-    for role in ["cli", "agent-cli", "headless-backend", "plugin"] {
+    for role in ["cli", "agent-cli", "headless-backend"] {
         if !roles.contains(role) {
             return Err(CliError::new(
                 "BUNDLE_MANIFEST_INVALID",

@@ -17,8 +17,8 @@ fn recover_or_reject_existing_lease(
         let WorkspaceLeaseRecord::Active { binding, .. } = record else {
             continue;
         };
-        if binding.workspace_root != admission.workspace_root
-            || binding.backend_name != admission.backend_name
+        if binding.workspace_root != admission.workspace_root()
+            || binding.backend_name != admission.backend()
         {
             continue;
         }
@@ -95,12 +95,7 @@ fn validate_lease_binding_identity(
             ),
         ));
     }
-    if binding.backend_name != BackendName::Idea {
-        return Err(CliError::new(
-            "WORKSPACE_LEASE_BACKEND_MISMATCH",
-            "Workspace leases bind IntelliJ plugin instances, not headless backends.",
-        ));
-    }
+    headless_authority::require_headless_backend(binding.backend_name)?;
     Ok(())
 }
 
@@ -118,12 +113,7 @@ fn validate_token_request_identity(
             ),
         ));
     }
-    if claims.backend_name != BackendName::Idea {
-        return Err(CliError::new(
-            "WORKSPACE_LEASE_BACKEND_MISMATCH",
-            "Workspace leases bind IntelliJ plugin instances, not headless backends.",
-        ));
-    }
+    headless_authority::require_headless_backend(claims.backend_name)?;
     Ok(())
 }
 

@@ -1,20 +1,14 @@
 views {
   dynamic view runtime-admission {
     title "Exact-root runtime admission"
-    description "Reachability may return INDEXING; semantic commands still wait for READY."
+    description "One typed boundary admits only the exact-root headless identity; reachability and READY remain separate."
 
     developer -> kast.cli "requests runtime status"
     kast.cli -> kast.control "resolves the canonical workspace"
 
-    alt {
-      when "compatible exact-root IDEA host exists" {
-        kast.control -> ideaPlatform "reuses or opens the project"
-      }
-      else "supported headless host" {
-        kast.control -> kast.backend.headless "starts packaged runtime"
-        kast.backend.headless -> kast.backend.idea "boots shared backend"
-      }
-    }
+    kast.control -> kast.backend.headless "admits, reuses, or starts one headless runtime"
+    kast.backend.headless -> ideaPlatform "opens the root in the isolated VFS"
+    kast.backend.headless -> kast.backend.idea "boots the private compiler implementation"
 
     kast.control -> workspaceState "persists an owned descriptor"
     developer <- kast.cli "returns typed INDEXING or READY evidence"
@@ -79,7 +73,7 @@ views {
       kast.server.orchestrator <- kast.backend.api "returns apply evidence"
     } catch "typed failure" {
       kast.server.mutation -> kast.evidence.projection "preserves stale identity, capability, or validation failure"
-    } finally "refresh live IDEA evidence" {
+    } finally "refresh live headless evidence" {
       kast.backend.idea -> kast.backend.ideaRefresh "awaits VFS, Kotlin index, PSI, and compiler admission"
       kast.backend.ideaRefresh -> kast.backend.ideaDiagnostics "validates focused compiler diagnostics"
     }
@@ -91,10 +85,11 @@ views {
 
   dynamic view reference-indexing {
     variant sequence
-    title "Indexing / Project-open reference build"
-    description "The production full-index trigger builds inventory first, then scans dependency-prioritized reference batches before publishing READY."
+    title "Indexing / Headless-bootstrap reference build"
+    description "The production full-index trigger builds inventory first, then scans dependency-prioritized reference batches before publishing reference readiness."
 
-    kast.control -> ideaPlatform.gradleModel "opens or reuses the exact-root Gradle project"
+    kast.control -> kast.backend.headless "admits the exact-root headless runtime"
+    kast.backend.headless -> ideaPlatform.gradleModel "opens and imports the exact-root Gradle project"
     ideaPlatform.gradleModel -> kast.indexing.projectOpen "completes Gradle link or refresh"
     kast.indexing.projectOpen -> ideaPlatform.smartMode "waits for IntelliJ indexes"
     ideaPlatform.smartMode -> kast.backend.ideaAdmission "admits modules, classpaths, PSI, and compiler diagnostics"
@@ -168,7 +163,7 @@ views {
   dynamic view refresh-lifecycle {
     variant sequence
     title "Refresh / Trigger routing and retention"
-    description "Focused IDEA admission, no-path VFS refresh, full reference indexing, and explicit semantic graph refresh are different operations."
+    description "Focused headless admission, VFS refresh, full reference indexing, and explicit semantic graph refresh are different operations."
 
     developer -> kast.cli "changes Kotlin source or requests semantic evidence"
     alt {

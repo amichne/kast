@@ -1,6 +1,7 @@
 package io.github.amichne.kast.api.client
 
 import io.github.amichne.kast.api.client.fields.*
+import kotlinx.serialization.SerializationException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -50,8 +51,8 @@ class KastConfigTest {
     fun `indexing scope and graph batch expose typed defaults`() {
         val indexing = KastConfig.defaults().indexing
 
-        assertEquals(emptyList<String>(), indexing.criticalPaths.value)
-        assertEquals(emptyList<String>(), indexing.ignoredPaths.value)
+        assertEquals(emptyList<WorkspaceIndexingPattern>(), indexing.criticalPaths.value)
+        assertEquals(emptyList<WorkspaceIndexingPattern>(), indexing.ignoredPaths.value)
         assertEquals(32, indexing.graph.batchSize.value)
         assertEquals("indexing", indexing.criticalPaths.section)
         assertEquals("criticalPaths", indexing.criticalPaths.key)
@@ -73,9 +74,153 @@ class KastConfigTest {
 
         val indexing = KastConfig.loadGlobal(configHome = { tempDir }).indexing
 
-        assertEquals(listOf("src/main/**", "build.gradle.kts"), indexing.criticalPaths.value)
-        assertEquals(listOf("samples/**"), indexing.ignoredPaths.value)
+        assertEquals(
+            listOf("src/main/**", "build.gradle.kts"),
+            indexing.criticalPaths.value.map(WorkspaceIndexingPattern::toString),
+        )
+        assertEquals(listOf("samples/**"), indexing.ignoredPaths.value.map(WorkspaceIndexingPattern::toString))
         assertEquals(17, indexing.graph.batchSize.value)
+    }
+
+    @Test
+    fun `workspace indexing scope accepts multiline toml arrays and quoted comments`() {
+        tempDir.resolve("config.toml").writeText(
+            """
+                [indexing]
+                criticalPaths = [
+                  "src/main/**", # production sources
+                  'literal#name.kt',
+                ]
+                ignoredPaths = [
+                  "samples/**",
+                  "generated/#literal.kt", # trailing comment
+                ]
+            """.trimIndent(),
+        )
+
+        val indexing = KastConfig.loadGlobal(configHome = { tempDir }).indexing
+
+        assertEquals(
+            listOf("src/main/**", "literal#name.kt"),
+            indexing.criticalPaths.value.map(WorkspaceIndexingPattern::toString),
+        )
+        assertEquals(
+            listOf("samples/**", "generated/#literal.kt"),
+            indexing.ignoredPaths.value.map(WorkspaceIndexingPattern::toString),
+        )
+    }
+
+    @Test
+    fun `toml rejects invalid workspace indexing patterns at the config boundary`() {
+        invalidWorkspaceIndexingPatterns.forEach { pattern ->
+            listOf("criticalPaths", "ignoredPaths").forEach { field ->
+                tempDir.resolve("config.toml").writeText(
+                    """
+                        [indexing]
+                        $field = ["$pattern"]
+                    """.trimIndent(),
+                )
+
+                assertThrows(IllegalArgumentException::class.java) {
+                    KastConfig.loadGlobal(configHome = { tempDir })
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `json rejects invalid workspace indexing patterns during deserialization`() {
+        invalidWorkspaceIndexingPatterns.forEach { pattern ->
+            listOf("criticalPaths", "ignoredPaths").forEach { field ->
+                val runtimeConfig = tempDir.resolve("runtime-config.json").also { path ->
+                    path.writeText(
+                        """
+                            {
+                              "indexing": {
+                                "$field": ["$pattern"]
+                              }
+                            }
+                        """.trimIndent(),
+                    )
+                }
+
+                assertThrows(IllegalArgumentException::class.java) {
+                    KastConfig.loadResolvedJson(runtimeConfig)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `json rejects invalid graph batch size during deserialization`() {
+        val runtimeConfig = tempDir.resolve("runtime-config.json").also { path ->
+            path.writeText(
+                """
+                    {
+                      "indexing": {
+                        "graph": {
+                          "batchSize": 0
+                        }
+                      }
+                    }
+                """.trimIndent(),
+            )
+        }
+
+        assertThrows(SerializationException::class.java) {
+            KastConfig.loadResolvedJson(runtimeConfig)
+        }
+    }
+
+    @Test
+    fun `json rejects invalid relationship indexing quantities during deserialization`() {
+        val invalidValues = mapOf(
+            "batchSize" to 0,
+            "parallelism" to 0,
+            "modulePriorityDepth" to -1,
+        )
+
+        invalidValues.forEach { (field, value) ->
+            val runtimeConfig = tempDir.resolve("runtime-config.json").also { path ->
+                path.writeText(
+                    """
+                        {
+                          "indexing": {
+                            "relationships": {
+                              "$field": $value
+                            }
+                          }
+                        }
+                    """.trimIndent(),
+                )
+            }
+
+            assertThrows(SerializationException::class.java) {
+                KastConfig.loadResolvedJson(runtimeConfig)
+            }
+        }
+    }
+
+    @Test
+    fun `toml rejects invalid relationship indexing quantities at the config boundary`() {
+        val invalidValues = mapOf(
+            "batchSize" to 0,
+            "parallelism" to 0,
+            "modulePriorityDepth" to -1,
+        )
+
+        invalidValues.forEach { (field, value) ->
+            tempDir.resolve("config.toml").writeText(
+                """
+                    [indexing.relationships]
+                    $field = $value
+                """.trimIndent(),
+            )
+
+            assertThrows(IllegalArgumentException::class.java) {
+                KastConfig.loadGlobal(configHome = { tempDir })
+            }
+        }
     }
 
     @Test
@@ -391,5 +536,16 @@ class KastConfigTest {
         } finally {
             thread.contextClassLoader = previous
         }
+    }
+
+    private companion object {
+        val invalidWorkspaceIndexingPatterns = listOf(
+            " ",
+            "#comment",
+            "!generated/**",
+            "../outside/**",
+            "/Users/example/project/**",
+            "[]",
+        )
     }
 }

@@ -32,7 +32,6 @@ pub struct UbuntuDebianBundlePackageResult {
     pub manifest_schema_version: u32,
     pub cli_archive: String,
     pub backend_archive: String,
-    pub plugin_archive: String,
     pub bundle_sha256: String,
     pub schema_version: u32,
 }
@@ -50,10 +49,8 @@ pub fn package_ubuntu_debian_bundle(
 ) -> Result<UbuntuDebianBundlePackageResult> {
     let cli_archive = config::normalize(args.cli_archive);
     let backend_archive = config::normalize(args.backend_archive);
-    let plugin_archive = config::normalize(args.plugin_archive);
     require_file(&cli_archive, "CLI archive")?;
     require_file(&backend_archive, "backend archive")?;
-    require_file(&plugin_archive, "IDEA plugin archive")?;
     let version = BundleVersion::parse(&args.version)
         .map_err(|message| CliError::new("CLI_USAGE", format!("Package version {message}.")))?;
     let platform = args.platform.trim();
@@ -86,7 +83,6 @@ pub fn package_ubuntu_debian_bundle(
     fs::create_dir_all(staging_root.join("bin"))?;
     fs::create_dir_all(staging_root.join("libexec"))?;
     fs::create_dir_all(staging_root.join("lib/backends"))?;
-    fs::create_dir_all(staging_root.join("plugins"))?;
     if let Some(parent) = output.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -118,8 +114,6 @@ pub fn package_ubuntu_debian_bundle(
     stage_backend_for_platform(&backend_root, &backend_install_dir, platform)?;
     make_executable(&backend_install_dir.join(HEADLESS_BACKEND_LAUNCHER))?;
 
-    fs::copy(&plugin_archive, staging_root.join("plugins/kast.zip"))?;
-
     let installer = repo_root.join(UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT);
     require_file(&installer, "setup bootstrap installer")?;
     fs::copy(
@@ -132,11 +126,10 @@ pub fn package_ubuntu_debian_bundle(
     let cli_sha = path_sha256(&staging_root.join(CONTROL_CLI_BUNDLE_PATH))?;
     let agent_cli_sha = path_sha256(&staging_root.join(AGENT_CLI_BUNDLE_PATH))?;
     let backend_sha = path_sha256(&backend_install_dir)?;
-    let plugin_sha = path_sha256(&staging_root.join("plugins/kast.zip"))?;
     let manifest = ubuntu_debian_headless_manifest(
         version.as_str(),
         platform,
-        [cli_sha, agent_cli_sha, backend_sha, plugin_sha],
+        [cli_sha, agent_cli_sha, backend_sha],
         build_commit(&repo_root),
     );
     fs::write(
@@ -168,7 +161,6 @@ pub fn package_ubuntu_debian_bundle(
         manifest_schema_version: manifest.schema_version,
         cli_archive: cli_archive.display().to_string(),
         backend_archive: backend_archive.display().to_string(),
-        plugin_archive: plugin_archive.display().to_string(),
         bundle_sha256: bundle_sha,
         schema_version: SCHEMA_VERSION,
     })
@@ -362,12 +354,7 @@ mod sidecar_tests {
         let manifest = ubuntu_debian_headless_manifest(
             "1.2.3",
             "macos-arm64",
-            [
-                "0".repeat(64),
-                "1".repeat(64),
-                "2".repeat(64),
-                "3".repeat(64),
-            ],
+            ["0".repeat(64), "1".repeat(64), "2".repeat(64)],
             "commit".to_string(),
         );
         assert_eq!(manifest.profile, "macos-installed-idea-sidecar");

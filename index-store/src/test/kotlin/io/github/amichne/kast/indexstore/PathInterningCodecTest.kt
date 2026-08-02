@@ -1,5 +1,6 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.store.codec.PathInterningCodec
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
@@ -21,7 +22,7 @@ class PathInterningCodecTest {
         assertEquals("src/main/kotlin", relativeDir)
         assertEquals("Caller.kt", filename)
         assertEquals(
-            restoredRoot.resolve("src/main/kotlin/Caller.kt").toString(),
+            NormalizedPath.of(restoredRoot.resolve("src/main/kotlin/Caller.kt")).value,
             PathInterningCodec(restoredRoot).compose(relativeDir, filename),
         )
     }
@@ -35,6 +36,6 @@ class PathInterningCodecTest {
 
         assertEquals("__kast_rel__/__kast_abs__/generated", relativeDir)
         assertEquals("Collision.kt", filename)
-        assertEquals(path, PathInterningCodec(root).compose(relativeDir, filename))
+        assertEquals(NormalizedPath.of(Path.of(path)).value, PathInterningCodec(root).compose(relativeDir, filename))
     }
 }

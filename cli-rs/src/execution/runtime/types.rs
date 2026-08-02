@@ -4,6 +4,14 @@ pub struct ServerInstanceDescriptor {
     pub workspace_root: String,
     pub backend_name: String,
     pub backend_version: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub runtime_instance_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub process_start_epoch_millis: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub owner_uid: Option<u64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub socket_file_identity: Option<RuntimeSocketFileIdentity>,
     #[serde(default = "default_transport")]
     pub transport: String,
     pub socket_path: String,
@@ -11,6 +19,13 @@ pub struct ServerInstanceDescriptor {
     pub pid: u64,
     #[serde(default = "schema_version")]
     pub schema_version: u32,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct RuntimeSocketFileIdentity {
+    pub device: u64,
+    pub inode: u64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,8 +48,32 @@ pub struct RuntimeStatusResponse {
     pub dependent_module_names_by_source_module_name: serde_json::Map<String, Value>,
     #[serde(default)]
     pub reference_index_ready: bool,
+    #[serde(default)]
+    pub reference_coverage_state: ReferenceCoverageState,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub reference_coverage_limitations: Vec<String>,
     #[serde(default = "schema_version")]
     pub schema_version: u32,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ReferenceCoverageState {
+    Complete,
+    Qualified,
+    Incomplete,
+    #[default]
+    Unavailable,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SemanticMutationCapability {
+    ApplyEdits,
+    FileOperations,
+    OptimizeImports,
+    RefreshWorkspace,
+    Rename,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -44,14 +83,6 @@ pub enum RuntimeState {
     Indexing,
     Ready,
     Degraded,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum LaunchDisposition {
-    ReusedOpenProject,
-    OpenedInRunningIdea,
-    LaunchedIdea,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -98,8 +129,6 @@ pub struct WorkspaceEnsureResult {
     pub descriptor_directory: String,
     pub path_resolution: PathResolutionReport,
     pub started: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub launch_disposition: Option<LaunchDisposition>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub log_file: Option<String>,
     pub selected: RuntimeCandidateStatus,
@@ -159,13 +188,6 @@ pub struct RuntimeStopAction {
     pub schema_version: u32,
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct RuntimeLifecycleResponse {
-    accepted: bool,
-    action: String,
-}
-
 #[derive(Debug, Clone)]
 struct RegisteredDescriptor {
     id: String,
@@ -175,27 +197,4 @@ struct RegisteredDescriptor {
 struct WorkspaceInspection {
     descriptor_directory: PathBuf,
     candidates: Vec<RuntimeCandidateStatus>,
-    selected: Option<RuntimeCandidateStatus>,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RuntimeBackendPreference {
-    Automatic,
-    Fixed(BackendName),
-}
-
-impl RuntimeBackendPreference {
-    fn backend_filter(self) -> Option<BackendName> {
-        match self {
-            Self::Automatic => None,
-            Self::Fixed(backend) => Some(backend),
-        }
-    }
-
-    fn fixed_backend(self) -> Option<BackendName> {
-        match self {
-            Self::Automatic => None,
-            Self::Fixed(backend) => Some(backend),
-        }
-    }
 }

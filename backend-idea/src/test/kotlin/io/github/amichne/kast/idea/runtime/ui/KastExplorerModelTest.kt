@@ -4,6 +4,7 @@ import io.github.amichne.kast.api.contract.ByteOffset
 import io.github.amichne.kast.api.contract.FqName
 import io.github.amichne.kast.api.contract.LineNumber
 import io.github.amichne.kast.api.contract.NonBlankString
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.result.SemanticGraphFileStatus
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
 import io.github.amichne.kast.api.contract.result.SemanticGraphRelationKind
@@ -170,7 +171,7 @@ class KastExplorerModelTest {
             ) as KastExplorerResult.Inspection
 
             assertEquals(
-                listOf(tempDir.resolve("SecondCaller.kt")),
+                listOf(NormalizedPath.of(tempDir.resolve("SecondCaller.kt")).toJavaPath()),
                 inspection.value.relations.mapNotNull(KastExplorerRelation::navigationTarget)
                     .map(KastSourceTarget::filePath),
             )

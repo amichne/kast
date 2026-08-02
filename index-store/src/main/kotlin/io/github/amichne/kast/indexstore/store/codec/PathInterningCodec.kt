@@ -1,5 +1,6 @@
 package io.github.amichne.kast.indexstore.store.codec
 
+import io.github.amichne.kast.api.contract.NormalizedPath
 import java.nio.file.Path
 import java.sql.Connection
 
@@ -11,10 +12,10 @@ internal class PathInterningCodec(
         valueColumn = "dir_path",
     ),
 ) {
-    private val normalizedWorkspaceRoot = workspaceRoot.toAbsolutePath().normalize()
+    private val normalizedWorkspaceRoot = NormalizedPath.of(workspaceRoot).toJavaPath()
 
     fun decompose(absolutePath: String): Pair<String, String> {
-        val normalizedPath = Path.of(absolutePath).toAbsolutePath().normalize()
+        val normalizedPath = NormalizedPath.of(Path.of(absolutePath)).toJavaPath()
         val filename = requireNotNull(normalizedPath.fileName) { "Path must include a filename: $absolutePath" }.toString()
         val relativeDir = if (normalizedPath.startsWith(normalizedWorkspaceRoot)) {
             escapeRelativeDir(normalizedWorkspaceRoot.relativize(normalizedPath).parent?.toSlashPath().orEmpty())

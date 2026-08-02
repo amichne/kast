@@ -2,16 +2,15 @@
 
 # Kast
 
-Kast gives coding agents compiler-backed Kotlin and Gradle evidence through
-IntelliJ IDEA, Android Studio, or the packaged headless backend. It resolves exact
-symbols, navigates relationships, plans semantic edits, and keeps evidence
-limits visible.
+Kast gives coding agents compiler-backed Kotlin and Gradle evidence through one
+exact-root headless runtime. It resolves exact symbols, navigates
+relationships, plans semantic edits, and keeps evidence limits visible.
 
 ## Install or update
 
-One command installs, replaces, repairs, upgrades, or downgrades Kast. On macOS
-it installs the native CLI and matching IDEA plugin; on Linux it installs the
-complete headless release:
+One command installs, replaces, repairs, upgrades, or downgrades Kast. Every
+platform bundle contains the native CLI and its matched private headless
+runtime:
 
 ```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
@@ -44,7 +43,7 @@ For a local bundle:
 ```
 
 Use `./install.sh --force` to remove validated Kast-owned installation,
-workspace, database, and plugin state before reinstalling.
+workspace, database, and legacy IDE state before reinstalling.
 
 Start with the [first compiler-backed task](https://kast.michne.com/tutorials/first-compiler-backed-task/),
 follow the [installation guide](https://kast.michne.com/how-to/install-or-update/),

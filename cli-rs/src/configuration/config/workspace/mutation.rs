@@ -317,15 +317,12 @@ fn effective_string_list(config: &KastConfig, field: StringListField) -> &[Strin
 }
 
 fn validate_string_list_member(spec: &ConfigFieldSpec, value: &str) -> Result<()> {
-    if value.trim().is_empty() || value.chars().any(char::is_control) {
-        return Err(CliError::new(
+    WorkspaceCollectionPattern::parse(value).map_err(|error| {
+        CliError::new(
             "CONFIG_VALUE_INVALID",
-            format!(
-                "{} requires a non-empty string-list member without control characters",
-                spec.field.key,
-            ),
-        ));
-    }
+            format!("{} pattern `{value}` is invalid: {error}", spec.field.key),
+        )
+    })?;
     Ok(())
 }
 

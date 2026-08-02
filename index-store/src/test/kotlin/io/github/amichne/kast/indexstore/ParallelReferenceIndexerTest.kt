@@ -1,5 +1,7 @@
 package io.github.amichne.kast.indexstore
 
+import io.github.amichne.kast.api.client.fields.RelationshipIndexingBatchSize
+import io.github.amichne.kast.api.client.fields.RelationshipIndexingParallelism
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.indexing.ReferenceIndexer
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -32,7 +34,11 @@ class ParallelReferenceIndexerTest {
             // Gate that keeps every task alive until we have measured concurrent depth
             val releaseLatch = CountDownLatch(1)
 
-            ReferenceIndexer(store, batchSize = fileCount, parallelism = 4).indexSymbolRelationships(
+            ReferenceIndexer(
+                store,
+                batchSize = RelationshipIndexingBatchSize(fileCount),
+                parallelism = RelationshipIndexingParallelism(4),
+            ).indexSymbolRelationships(
                 filePaths = filePaths,
                 referenceScanner = { path ->
                     val current = concurrentScans.incrementAndGet()
@@ -70,7 +76,11 @@ class ParallelReferenceIndexerTest {
         val filePaths = (0 until 10).map { i -> "/src/File$i.kt" }
 
         val resultsSerial = storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store, batchSize = 10, parallelism = 1).indexSymbolRelationships(
+            ReferenceIndexer(
+                store,
+                batchSize = RelationshipIndexingBatchSize(10),
+                parallelism = RelationshipIndexingParallelism(1),
+            ).indexSymbolRelationships(
                 filePaths = filePaths,
                 referenceScanner = { path ->
                     listOf(
@@ -88,7 +98,11 @@ class ParallelReferenceIndexerTest {
         }
 
         val resultsParallel = storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store, batchSize = 10, parallelism = 4).indexSymbolRelationships(
+            ReferenceIndexer(
+                store,
+                batchSize = RelationshipIndexingBatchSize(10),
+                parallelism = RelationshipIndexingParallelism(4),
+            ).indexSymbolRelationships(
                 filePaths = filePaths,
                 referenceScanner = { path ->
                     listOf(
@@ -130,7 +144,7 @@ class ParallelReferenceIndexerTest {
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
             yieldedPaths.set(0)
 
-            ReferenceIndexer(store, batchSize = 4).indexSymbolRelationships(
+            ReferenceIndexer(store, batchSize = RelationshipIndexingBatchSize(4)).indexSymbolRelationships(
                 filePaths = filePaths,
                 referenceScanner = {
                     firstScanYieldCount.compareAndSet(0, yieldedPaths.get())
@@ -155,7 +169,11 @@ class ParallelReferenceIndexerTest {
         val cancelAfter = 4
 
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
-            ReferenceIndexer(store, batchSize = fileCount, parallelism = 4).indexSymbolRelationships(
+            ReferenceIndexer(
+                store,
+                batchSize = RelationshipIndexingBatchSize(fileCount),
+                parallelism = RelationshipIndexingParallelism(4),
+            ).indexSymbolRelationships(
                 filePaths = filePaths,
                 referenceScanner = { path ->
                     scannedCount.incrementAndGet()
@@ -187,7 +205,11 @@ class ParallelReferenceIndexerTest {
 
         storeWithManifest(*filePaths.toTypedArray()).use { store ->
             val failure = assertThrows(RuntimeException::class.java) {
-                ReferenceIndexer(store, batchSize = filePaths.size, parallelism = 4).indexSymbolRelationships(
+                ReferenceIndexer(
+                    store,
+                    batchSize = RelationshipIndexingBatchSize(filePaths.size),
+                    parallelism = RelationshipIndexingParallelism(4),
+                ).indexSymbolRelationships(
                     filePaths = filePaths,
                     referenceScanner = { path ->
                         if (path == failingPath) {
@@ -217,7 +239,11 @@ class ParallelReferenceIndexerTest {
 
         storeWithManifest(filePath).use { store ->
             assertThrows(AssertionError::class.java) {
-                ReferenceIndexer(store, batchSize = 1, parallelism = 2).indexSymbolRelationships(
+                ReferenceIndexer(
+                    store,
+                    batchSize = RelationshipIndexingBatchSize(1),
+                    parallelism = RelationshipIndexingParallelism(2),
+                ).indexSymbolRelationships(
                     filePaths = listOf(filePath),
                     referenceScanner = { throw AssertionError("fatal") },
                 )

@@ -19,6 +19,7 @@ import com.intellij.psi.util.PsiModificationTracker
 import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
 import io.github.amichne.kast.api.client.IndexingConfig
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
 import io.github.amichne.kast.api.continuation.ContinuationStateDisposer
 import io.github.amichne.kast.api.continuation.ContinuationTokenIssuer
 import io.github.amichne.kast.api.continuation.ServerHeldContinuationStore as SharedContinuationStore
@@ -81,11 +82,9 @@ internal class KastPluginBackend(
     workspaceRoot: Path,
     internal val limits: ServerLimits,
     internal val telemetry: IdeaBackendTelemetry = IdeaBackendTelemetry.disabled(),
-    internal val backendName: String? = null,
     internal val workspaceIdentity: IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
     internal val referenceIndexLookup: ReferenceIndexLookup = ReferenceIndexLookup.Unavailable,
     internal val semanticGraphStore: SqliteSourceIndexStore? = null,
-    internal val persistedIndexAccess: PersistedIndexAccess = PersistedIndexAccess.READ_WRITE,
     initialIndexingConfig: IndexingConfig = KastConfig.defaults().indexing,
     internal val indexingConfigLoader: () -> IndexingConfig = { initialIndexingConfig },
     internal val workspaceIndexingScopeCache: WorkspaceIndexingScopeCache = WorkspaceIndexingScopeCache(),
@@ -97,7 +96,7 @@ internal class KastPluginBackend(
     internal val psiGeneration: () -> Long = { PsiModificationTracker.getInstance(project).modificationCount },
     internal val readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
     internal val referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
-    @Volatile internal var semanticGraphBatchSize: Int = 32,
+    @Volatile internal var semanticGraphBatchSize: GraphIndexingBatchSize = GraphIndexingBatchSize(32),
     internal val indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
         IdeaIndexSemanticAdmission.Status.Ready
     },
@@ -113,14 +112,12 @@ internal class KastPluginBackend(
             sourceIndexStore = semanticGraphStore,
         ),
 ) : CloseableAnalysisBackend {
-    init { require(semanticGraphBatchSize > 0) { "Semantic graph batch size must be positive" } }
 
     @Volatile
     private var lastValidIndexingConfig: IndexingConfig = initialIndexingConfig
     private val psiSupport = KastPluginPsiSupport(this)
 
-    internal fun updateSemanticGraphBatchSize(batchSize: Int) {
-        require(batchSize > 0) { "Semantic graph batch size must be positive" }
+    internal fun updateSemanticGraphBatchSize(batchSize: GraphIndexingBatchSize) {
         semanticGraphBatchSize = batchSize
     }
 
@@ -149,7 +146,7 @@ internal class KastPluginBackend(
     override val selectorHandles: SelectorHandleAuthority =
         DigestSelectorHandleAuthority(
             workspaceRoot = workspaceRoot.toString(),
-            backendName = backendName ?: defaultBackendName(),
+            backendName = HEADLESS_BACKEND_NAME,
             backendVersion = BACKEND_VERSION,
             backendInstanceId = UUID.randomUUID().toString(),
             semanticGeneration = psiGeneration,
@@ -228,7 +225,7 @@ internal class KastPluginBackend(
     }
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
-        backendName = backendName ?: defaultBackendName(),
+        backendName = HEADLESS_BACKEND_NAME,
         backendVersion = BACKEND_VERSION,
         workspaceRoot = workspaceRoot.toString(),
         readCapabilities = setOf(
@@ -247,20 +244,12 @@ internal class KastPluginBackend(
             ReadCapability.COMPLETIONS,
         ) + setOfNotNull(
             ReadCapability.SEMANTIC_GRAPH.takeIf {
-                semanticGraphStore != null && persistedIndexAccess == PersistedIndexAccess.READ_WRITE
+                semanticGraphStore != null
             },
         ),
-        mutationCapabilities = setOf(
-            MutationCapability.RENAME,
-            MutationCapability.APPLY_EDITS,
-            MutationCapability.FILE_OPERATIONS,
-            MutationCapability.OPTIMIZE_IMPORTS,
-            MutationCapability.REFRESH_WORKSPACE,
-        ),
+        mutationCapabilities = HEADLESS_MUTATION_CAPABILITIES,
         limits = limits,
     )
-
-    internal fun defaultBackendName(): String = "idea"
 
     override suspend fun runtimeStatus(): RuntimeStatusResponse {
         val caps = capabilities()
@@ -286,7 +275,7 @@ internal class KastPluginBackend(
                 isDumb -> "IDEA is indexing — analysis results may be incomplete"
                 admission is IdeaIndexSemanticAdmission.Status.Pending ->
                     "IDEA compiler-backed semantic admission is pending: ${admission.detail}"
-                else -> "IDEA analysis backend is ready"
+                else -> "Headless compiler-backed analysis runtime is ready"
             },
             sourceModuleNames = moduleNames,
         )
@@ -361,6 +350,8 @@ internal class KastPluginBackend(
     override fun close() = closeResources()
 
     companion object {
+        internal const val HEADLESS_BACKEND_NAME: String = "headless"
+        internal val HEADLESS_MUTATION_CAPABILITIES: Set<MutationCapability> = MutationCapability.entries.toSet()
         internal const val RELATIONSHIP_STATE_CAPACITY: Int = 16_384
         internal val BACKEND_VERSION = readBackendVersion()
 

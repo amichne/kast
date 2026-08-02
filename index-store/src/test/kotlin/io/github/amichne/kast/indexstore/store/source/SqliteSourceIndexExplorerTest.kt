@@ -9,6 +9,7 @@ import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 
 class SqliteSourceIndexExplorerTest {
@@ -38,6 +39,32 @@ class SqliteSourceIndexExplorerTest {
             assertEquals(
                 listOf(first.fqName, second.fqName),
                 store.searchDeclarations(NonBlankString("Se"), PositiveInt(10)).map(DeclarationRow::fqName),
+            )
+        }
+    }
+
+    @Test
+    fun `declaration replacement treats alias and canonical paths as one source`() {
+        val normalized = tempDir.toAbsolutePath().normalize()
+        val canonicalDirectory = normalized.resolve("canonical").also(Files::createDirectories)
+        val canonicalFile = writeKotlinFile(canonicalDirectory.resolve("Aliased.kt"))
+        val aliasFile = normalized.resolve("alias")
+            .also { alias -> Files.createSymbolicLink(alias, canonicalDirectory) }
+            .resolve(canonicalFile.fileName)
+        val declaration = declaration(
+            "demo.alias.Aliased",
+            workspaceSourceRawPath(normalized, canonicalFile.toString()),
+            18,
+        )
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+
+            store.replaceDeclarationsFromFile(aliasFile.toString(), listOf(declaration))
+
+            assertEquals(
+                listOf(declaration),
+                store.searchDeclarations(NonBlankString("Aliased"), PositiveInt(10)),
             )
         }
     }

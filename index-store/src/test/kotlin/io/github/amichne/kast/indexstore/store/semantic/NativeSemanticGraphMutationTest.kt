@@ -13,6 +13,9 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKind
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphCommitResult
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
+import io.github.amichne.kast.indexstore.api.index.FileContentHash
+import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
+import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
 import io.github.amichne.kast.indexstore.snapshot.ExtractionShardKey
 import io.github.amichne.kast.indexstore.snapshot.GitObjectId
@@ -37,6 +40,39 @@ import java.sql.DriverManager
 class NativeSemanticGraphMutationTest {
     @TempDir
     lateinit var workspaceRoot: Path
+
+    @Test
+    fun `inventory scope reconciliation tombstones graph facts in the same generation`() {
+        val sourcePath = SemanticGraphSourcePath.parse("src/A.kt")
+        val absolutePath = workspaceRoot.resolve(sourcePath.value).toAbsolutePath().normalize().toString()
+
+        SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            store.reconcileFileInventory(
+                listOf(
+                    fileInventoryEntry(
+                        workspaceRoot = workspaceRoot,
+                        path = absolutePath,
+                        lastModifiedMillis = 1,
+                        contentHash = FileContentHash.parse("a".repeat(64)),
+                        moduleName = ":app[main]",
+                        sourceSet = "main",
+                    ),
+                ),
+                FileStageVersions.CURRENT,
+            )
+            store.replaceSemanticGraphFiles(
+                listOf(semanticUpdate(sourcePath, "a", listOf(semanticSymbol("a#source", "source", sourcePath)))),
+            )
+            val beforeReconciliation = store.readGeneration()
+
+            store.reconcileFileInventory(emptyList(), FileStageVersions.CURRENT)
+
+            assertEquals(beforeReconciliation.value + 1, store.readGeneration().value)
+            assertTrue(store.semanticGraphScopeSnapshot().sourcePaths.isEmpty())
+            assertTrue(store.readSemanticGraph(listOf(sourcePath)).symbols.isEmpty())
+        }
+    }
 
     @Test
     fun `conditional graph replacement rejects a stale generation without mutating rows`() {

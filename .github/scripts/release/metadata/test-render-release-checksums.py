@@ -63,11 +63,6 @@ class RenderReleaseChecksumsTest(unittest.TestCase):
                     "digest": f"sha256:{ZIP_DIGEST}",
                 },
                 {
-                    "name": f"kast-idea-{TAG}.zip",
-                    "state": "uploaded",
-                    "digest": f"sha256:{'d' * 64}",
-                },
-                {
                     "name": sidecar_name,
                     "state": "uploaded",
                     "digest": "sha256:" + hashlib.sha256(sidecar.read_bytes()).hexdigest(),
@@ -142,7 +137,7 @@ class RenderReleaseChecksumsTest(unittest.TestCase):
         self.assertIn("provenance asset mismatch", result.stderr)
 
     def test_rejects_unexpected_remote_product_asset(self) -> None:
-        result = self.run_renderer(extra_product="kast-v1.0.0-linux-x64.zip")
+        result = self.run_renderer(extra_product=f"kast-idea-{TAG}.zip")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("unexpected release product asset", result.stderr)
 

@@ -104,6 +104,7 @@ internal class SqliteSourceIndexSchema(
                 "failure_id" to false,
                 "failure_code" to false,
                 "failure_message" to false,
+                "failure_attempt_count" to true,
             ),
             "module_index_progress" to mapOf(
                 "relationship_index_status" to true,

@@ -20,7 +20,7 @@ fn spawn_paged_workspace_files_backend(
             serde_json::json!({"type": "ISSUED", "pageToken": page_token}),
         ));
     }
-    spawn_sequenced_idea_backend(home, config_home, workspace, socket, responses)
+    spawn_sequenced_headless_backend(home, config_home, workspace, socket, responses)
 }
 
 fn workspace_files_session_responses(
@@ -31,13 +31,13 @@ fn workspace_files_session_responses(
         "healthy": true,
         "active": true,
         "indexing": false,
-        "backendName": "idea",
+        "backendName": "headless",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "schemaVersion": 5
     });
     let capabilities = serde_json::json!({
-        "backendName": "idea",
+        "backendName": "headless",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "readCapabilities": ["WORKSPACE_FILES"],
@@ -135,7 +135,7 @@ fn run_workspace_files_page(
         "--workspace-root",
         workspace.to_str().expect("UTF-8 workspace"),
         "--backend",
-        "idea",
+        "headless",
         "--kind",
         "source",
         "--limit",

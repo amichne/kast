@@ -4,6 +4,7 @@ import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
 import io.github.amichne.kast.idea.diagnostics.*
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -21,8 +22,8 @@ internal class KastIdeaProjectIndexing(
     private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
     private val snapshotCoordinator: RepositorySnapshotCoordinator? = null,
     private val liveConfigLoader: (Path, KastConfig) -> KastConfig = ::loadLiveIndexingConfig,
-    private val semanticGraphIndexer: (List<String>, Int) -> Unit = { _, _ -> },
-    private val runProjectIndexing: ((KastConfig, (List<String>) -> Unit) -> Unit)? = null,
+    private val semanticGraphIndexer: (IndexedSourceIdentifiers, GraphIndexingBatchSize) -> Unit = { _, _ -> },
+    private val runProjectIndexing: ((KastConfig, (IndexedSourceIdentifiers) -> Unit) -> Unit)? = null,
     private val waitForNextPass: (Long) -> Boolean = ::waitForIndexingRetry,
     private val scopeCache: WorkspaceIndexingScopeCache = WorkspaceIndexingScopeCache(),
 ) {
@@ -212,9 +213,9 @@ internal class KastIdeaProjectIndexing(
         liveConfig: KastConfig,
     ): IndexingPassResult {
         var graphFailure: Throwable? = null
-        val graph: (List<String>) -> Unit = { paths ->
+        val graph: (IndexedSourceIdentifiers) -> Unit = { scope ->
             runCatching {
-                semanticGraphIndexer(paths, liveConfig.indexing.graph.batchSize.value)
+                semanticGraphIndexer(scope, liveConfig.indexing.graph.batchSize)
             }.onFailure { error ->
                 graphFailure = error
                 LOG.warn("Kast semantic graph indexing pass failed", error)
@@ -228,8 +229,8 @@ internal class KastIdeaProjectIndexing(
                 candidates = indexStore.knownSourcePaths(),
             ).let { scope ->
                 IndexedSourceIdentifiers(
-                    paths = scope.includedPaths.map(Path::toString),
-                    criticalPaths = scope.criticalPaths.mapTo(linkedSetOf(), Path::toString),
+                    paths = scope.includedPaths,
+                    criticalPaths = scope.criticalPaths.toSet(),
                     unmatchedCriticalPatterns = scope.unmatchedCriticalPatterns,
                 )
             }

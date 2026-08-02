@@ -9,7 +9,6 @@ cleanup() {
     find "$setup_scratch" -depth -delete
   fi
 }
-
 trap cleanup EXIT
 
 kast_repository_root() {
@@ -29,7 +28,6 @@ kast_repository_root() {
 usage() {
   cat >&2 <<'USAGE'
 Usage: install.sh [--source <bundle-directory-or-tar.gz>] [--version <vX.Y.Z>] [--force]
-                  [--configure | --autostart | --config-defaults <path>]
                   [--harness <codex|claude|copilot|none>]...
 
 Downloads one platform bundle when --source is omitted, then delegates every
@@ -38,21 +36,16 @@ installation write to:
   libexec/kastctl setup --source <bundle>
 
 Options:
-  --configure             Select IDEA and Codex defaults interactively.
-  --autostart             Open each Codex worktree in a background IDEA instance.
-  --config-defaults PATH  Install defaults from an existing TOML file.
-  --harness HARNESS       Install resources for one agent harness. Repeatable.
-                          Defaults to every detected harness; none disables it.
-  --source PATH           Install a local bundle directory or tar.gz archive.
-  --version VERSION       Install an exact release instead of the latest release.
-  --force                 Remove prior Kast-owned state before reinstalling.
-  -h, --help              Show this help.
+  --harness HARNESS  Install resources for one agent harness. Repeatable.
+                     Defaults to every detected harness; none disables it.
+  --source PATH      Install a local bundle directory or tar.gz archive.
+  --version VERSION  Install an exact release instead of the latest release.
+  --force            Remove prior Kast-owned state before reinstalling.
+  -h, --help         Show this help.
 
 Environment:
-  KAST_HOME           Active install root. Defaults to ~/.local/share/kast.
-  KAST_INTELLIJ_BIN   Exact IntelliJ executable required for macOS autolaunch.
-  KAST_RELEASES_URL   Release base URL. Defaults to the Kast GitHub releases.
-  NONINTERACTIVE=1    Never close a detected JetBrains IDE.
+  KAST_HOME          Active install root. Defaults to ~/.local/share/kast.
+  KAST_RELEASES_URL  Release base URL. Defaults to the Kast GitHub releases.
 USAGE
   if kast_repository_root >/dev/null; then
     cat >&2 <<'USAGE'
@@ -60,21 +53,16 @@ USAGE
 Repository development:
   ./install.sh --development [--clean] [--harness <codex|claude|copilot|none>]...
 
-  --development           Build, install, and ready this Kast Git worktree.
-  --clean                 Reinstall Kast-owned state; preserve build caches.
+  --development  Build, install, and ready this Kast Git worktree.
+  --clean        Reinstall Kast-owned state; preserve build caches.
 USAGE
   fi
 }
 
 supports_color() {
-  if [[ -n "${NO_COLOR:-}" ]]; then return 1; fi
-  if [[ "${CLICOLOR_FORCE:-}" == "1" ]]; then return 0; fi
-  if [[ ! -t 2 ]]; then return 1; fi
-  [[ "${TERM:-}" != "dumb" ]]
-}
-
-interactive_terminal() {
-  [[ "${NONINTERACTIVE:-}" != "1" && -t 0 && -t 2 ]]
+  [[ -z "${NO_COLOR:-}" ]] || return 1
+  [[ "${CLICOLOR_FORCE:-}" != "1" ]] || return 0
+  [[ -t 2 && "${TERM:-}" != "dumb" ]]
 }
 
 supports_unicode() {
@@ -90,25 +78,9 @@ colorize() {
   shift
   if supports_color; then
     printf '\033[%sm%s\033[0m' "$code" "$*"
-    return
-  fi
-  printf '%s' "$*"
-}
-
-print_banner() {
-  printf '\n' >&2
-  if interactive_terminal && supports_unicode; then
-    printf '%s\n' "$(colorize '1;36' '    ██╗  ██╗ █████╗ ███████╗████████╗
-    ██║ ██╔╝██╔══██╗██╔════╝╚══██╔══╝
-    █████╔╝ ███████║███████╗   ██║
-    ██╔═██╗ ██╔══██║╚════██║   ██║
-    ██║  ██║██║  ██║███████║   ██║
-    ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝   ╚═╝')" >&2
   else
-    printf '  %s\n' "$(colorize '1;36' "$(ui_glyph step) KAST INSTALLER")" >&2
+    printf '%s' "$*"
   fi
-  printf '  %s\n' "$(colorize '2' 'Kotlin semantic tooling for agents')" >&2
-  printf '\n' >&2
 }
 
 ui_glyph() {
@@ -119,7 +91,6 @@ ui_glyph() {
       success) printf '✓' ;;
       warning) printf '!' ;;
       error) printf '×' ;;
-      prompt) printf '?' ;;
       *) printf '›' ;;
     esac
   else
@@ -128,7 +99,6 @@ ui_glyph() {
       success) printf '+' ;;
       warning) printf '!' ;;
       error) printf 'x' ;;
-      prompt) printf '?' ;;
       *) printf '>' ;;
     esac
   fi
@@ -139,18 +109,14 @@ ui_line() {
   shift 2
   printf '  %s %s\n' "$(colorize "$color" "$(ui_glyph "$kind")")" "$*" >&2
 }
-
 ui_step() { ui_line step 36 "$*"; }
 ui_success() { ui_line success 32 "$*"; }
 ui_warning() { ui_line warning 33 "$*"; }
 ui_info() { ui_line info 2 "$*"; }
+ui_detail() { printf '    %s\n' "$(colorize 2 "$*")" >&2; }
 
-ui_prompt() {
-  printf '  %s %s' "$(colorize 33 "$(ui_glyph prompt)")" "$*" >&2
-}
-
-ui_detail() {
-  printf '    %s\n' "$(colorize 2 "$*")" >&2
+print_banner() {
+  printf '\n  %s\n\n' "$(colorize '1;36' "$(ui_glyph step) KAST INSTALLER")" >&2
 }
 
 die() {
@@ -188,6 +154,15 @@ download_artifact() {
   ui_success "${label} downloaded"
 }
 
+run_quiet() {
+  local output_file="${setup_scratch}/command-output"
+  if "$@" >"$output_file" 2>&1; then
+    return 0
+  fi
+  [[ ! -s "$output_file" ]] || sed -n '1,160p' "$output_file" >&2
+  return 1
+}
+
 install_agent_harnesses() {
   (($# > 0)) || return 0
   local agent_path="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin/kast"
@@ -200,258 +175,6 @@ install_agent_harnesses() {
   ui_step "Connecting agent harnesses"
   "$agent_path" "${args[@]}" || die "agent harness installation failed"
   ui_success "Agent harnesses connected"
-}
-
-JETBRAINS_PROCESS_PIDS=()
-JETBRAINS_PROCESS_PRODUCTS=()
-JETBRAINS_PROCESS_EXECUTABLES=()
-last_closed_idea_app=""
-
-detect_running_jetbrains_ides() {
-  local process_table pid executable product
-  JETBRAINS_PROCESS_PIDS=()
-  JETBRAINS_PROCESS_PRODUCTS=()
-  JETBRAINS_PROCESS_EXECUTABLES=()
-  process_table="$(ps -axo pid=,comm=)" || die "could not inspect running JetBrains IDEs"
-  while read -r pid executable; do
-    product=""
-    case "$executable" in
-      */IntelliJ\ IDEA*.app/Contents/MacOS/idea) product="IntelliJ IDEA" ;;
-      */Android\ Studio*.app/Contents/MacOS/studio) product="Android Studio" ;;
-    esac
-    if [[ -n "$product" && "$pid" =~ ^[0-9]+$ ]]; then
-      JETBRAINS_PROCESS_PIDS+=("$pid")
-      JETBRAINS_PROCESS_PRODUCTS+=("$product")
-      JETBRAINS_PROCESS_EXECUTABLES+=("$executable")
-    fi
-  done <<<"$process_table"
-}
-
-require_jetbrains_ides_closed() {
-  local index reply="" deadline
-  detect_running_jetbrains_ides
-  ((${#JETBRAINS_PROCESS_PIDS[@]} > 0)) || return 0
-  ui_warning "A JetBrains IDE must close before its plugin is updated"
-  for ((index = 0; index < ${#JETBRAINS_PROCESS_PIDS[@]}; index += 1)); do
-    ui_detail "Detected ${JETBRAINS_PROCESS_PRODUCTS[$index]} (PID ${JETBRAINS_PROCESS_PIDS[$index]}): ${JETBRAINS_PROCESS_EXECUTABLES[$index]}"
-  done
-  if [[ "${NONINTERACTIVE:-}" == "1" ]]; then
-    die "close the detected JetBrains IDE before installing the plugin"
-  fi
-  if ((${#JETBRAINS_PROCESS_PIDS[@]} != 1)); then
-    die "multiple JetBrains IDEs are running; close all but the intended plugin host and rerun the installer"
-  fi
-  ui_prompt 'Close the detected editor and continue? [y/N]: '
-  IFS= read -r reply || die "could not read editor closure confirmation"
-  [[ "$reply" == "y" || "$reply" == "Y" ]] || die "aborted while a JetBrains IDE is running"
-  last_closed_idea_app="${JETBRAINS_PROCESS_EXECUTABLES[0]%/Contents/MacOS/*}"
-  env kill -TERM "${JETBRAINS_PROCESS_PIDS[@]}" || die "could not stop the detected JetBrains IDE"
-  deadline=$((SECONDS + 30))
-  while ((SECONDS < deadline)); do
-    detect_running_jetbrains_ides
-    if ((${#JETBRAINS_PROCESS_PIDS[@]} == 0)); then
-      ui_success "JetBrains IDE closed"
-      return 0
-    fi
-    sleep 1
-  done
-  die "timed out waiting for the detected JetBrains IDE to stop"
-}
-
-relaunch_closed_idea() {
-  [[ -n "$last_closed_idea_app" ]] || return 0
-  if open -j -g -a "$last_closed_idea_app"; then
-    ui_success "JetBrains IDE relaunched in the background"
-  else
-    ui_warning "Kast installed, but ${last_closed_idea_app} could not be relaunched"
-  fi
-}
-
-prompt_boolean() {
-  local label="$1" default="$2" reply="" suffix="[y/N]"
-  local choice options
-  if use_fzf; then
-    if [[ "$default" == "true" ]]; then
-      options=($'true\tEnabled (default)' $'false\tDisabled')
-    else
-      options=($'false\tDisabled (default)' $'true\tEnabled')
-    fi
-    choice="$(select_one "$label" "${options[@]}")" || die "configuration cancelled"
-    printf '%s\n' "$choice"
-    return
-  fi
-  [[ "$default" == "true" ]] && suffix="[Y/n]"
-  while true; do
-    ui_prompt "$label $suffix: "
-    IFS= read -r reply || die "could not read configuration selection"
-    case "$reply" in
-      y|Y) printf 'true\n'; return ;;
-      n|N) printf 'false\n'; return ;;
-      "") printf '%s\n' "$default"; return ;;
-    esac
-  done
-}
-
-prompt_backend() {
-  local reply="" choice
-  if use_fzf; then
-    choice="$(select_one 'Default backend' \
-      $'idea\tIDEA — compiler context from the open project (default)' \
-      $'auto\tAutomatic — select the available semantic backend')" || die "configuration cancelled"
-    printf '%s\n' "$choice"
-    return
-  fi
-  while true; do
-    ui_prompt 'Default backend (idea/auto) [idea]: '
-    IFS= read -r reply || die "could not read backend selection"
-    case "$reply" in
-      idea|auto) printf '%s\n' "$reply"; return ;;
-      "") printf 'idea\n'; return ;;
-    esac
-  done
-}
-
-use_fzf() {
-  interactive_terminal && command -v fzf >/dev/null 2>&1
-}
-
-select_one() {
-  local prompt="$1" selection="" reply="" index option key label
-  shift
-  local options=("$@")
-  if use_fzf; then
-    local pointer='>' marker='+'
-    supports_unicode && pointer='›' && marker='✓'
-    local fzf_args=(
-      --height='~40%'
-      --layout=reverse
-      --border=rounded
-      --border-label=" ${prompt} "
-      --prompt="Select ${pointer} "
-      --header='↑↓ move • enter select • esc cancel'
-      --delimiter=$'\t'
-      --with-nth=2
-      --pointer="$pointer"
-      --marker="$marker"
-    )
-    if [[ -n "${NO_COLOR:-}" ]]; then
-      fzf_args+=(--no-color)
-    else
-      fzf_args+=(--color='border:cyan,prompt:cyan,pointer:green,marker:yellow,header:bright-black')
-    fi
-    selection="$(printf '%s\n' "${options[@]}" | fzf "${fzf_args[@]}")" || return 1
-    printf '%s\n' "${selection%%$'\t'*}"
-    return
-  fi
-
-  ui_info "$prompt"
-  index=1
-  for option in "${options[@]}"; do
-    key="${option%%$'\t'*}"
-    label="${option#*$'\t'}"
-    ui_detail "${index}. ${label} [${key}]"
-    index=$((index + 1))
-  done
-  while true; do
-    ui_prompt 'Select [1]: '
-    IFS= read -r reply || return 1
-    [[ -n "$reply" ]] || reply=1
-    if [[ "$reply" =~ ^[0-9]+$ ]] && ((reply >= 1 && reply <= ${#options[@]})); then
-      selection="${options[$((reply - 1))]}"
-      printf '%s\n' "${selection%%$'\t'*}"
-      return
-    fi
-    for option in "${options[@]}"; do
-      key="${option%%$'\t'*}"
-      if [[ "$reply" == "$key" ]]; then
-        printf '%s\n' "$key"
-        return
-      fi
-    done
-  done
-}
-
-choose_install_mode() {
-  local choice
-  choice="$(select_one 'Choose setup' \
-    $'recommended\tRecommended — IDEA plugin and Codex hooks' \
-    $'autostart\tAutostart — open each worktree in a background IDEA instance' \
-    $'configure\tCustomize — review every installer default' \
-    $'cancel\tCancel installation')" || die "installation cancelled"
-  case "$choice" in
-    autostart) autostart=1 ;;
-    configure) configure=1 ;;
-    cancel) ui_info "Installation cancelled"; return 1 ;;
-  esac
-}
-
-write_idea_defaults() {
-  local path="$1" backend="$2" strict="$3" autostart="$4"
-  local profile_auto_init="$5" gradle_load="$6" auto_exclude_git="$7"
-  local hooks="$8" session_start="$9" post_tool_use="${10}"
-  printf '%s\n' \
-    '[runtime]' \
-    "defaultBackend = \"${backend}\"" \
-    "strictPluginMatching = ${strict}" \
-    '' \
-    '[runtime.ideaLaunch]' \
-    "enabled = ${autostart}" \
-    'command = "idea"' \
-    'waitTimeoutMillis = 90000' \
-    '' \
-    '[projectOpen]' \
-    "profileAutoInit = ${profile_auto_init}" \
-    'profile = "jetbrains-plugin"' \
-    "autoExcludeGit = ${auto_exclude_git}" \
-    "gradleLoadEnabled = ${gradle_load}" \
-    '' \
-    '[codex.hooks]' \
-    "enabled = ${hooks}" \
-    "sessionStart = ${session_start}" \
-    "postToolUse = ${post_tool_use}" \
-    '' \
-    '[backends.headless]' \
-    'enabled = false' \
-    '' \
-    '[backends.idea]' \
-    'enabled = true' >"$path"
-}
-
-configure_idea_defaults() {
-  local path="$1" backend strict autostart profile_auto_init gradle_load auto_exclude_git
-  local hooks session_start post_tool_use
-  backend="$(prompt_backend)"
-  strict="$(prompt_boolean 'Require matching Kast plugin version' true)"
-  autostart="$(prompt_boolean 'Open new worktrees in a background IDEA instance' false)"
-  profile_auto_init="$(prompt_boolean 'Prepare Kast workspaces when projects open' true)"
-  gradle_load="$(prompt_boolean 'Load the Gradle project model on open' true)"
-  auto_exclude_git="$(prompt_boolean 'Exclude managed setup files from Git' true)"
-  hooks="$(prompt_boolean 'Enable Codex hooks' true)"
-  session_start="$(prompt_boolean 'Open worktrees on Codex session start' true)"
-  post_tool_use="$(prompt_boolean 'Diagnose Kotlin files after writes' true)"
-  write_idea_defaults "$path" "$backend" "$strict" "$autostart" "$profile_auto_init" \
-    "$gradle_load" "$auto_exclude_git" "$hooks" "$session_start" "$post_tool_use"
-  ui_success "Configuration selected"
-}
-
-run_setup() {
-  local output_file="${setup_scratch}/setup-output"
-  if "$@" >"$output_file" 2>&1; then
-    return 0
-  fi
-  [[ ! -s "$output_file" ]] || sed -n '1,160p' "$output_file" >&2
-  return 1
-}
-
-run_setup_with_idea_restart() {
-  if run_setup "$@"; then
-    return 0
-  fi
-  grep -Fq 'IDE_RESTART_REQUIRED' "${setup_scratch}/setup-output" || return 1
-  require ps
-  require_jetbrains_ides_closed
-  run_setup "$@" || return 1
-  relaunch_closed_idea
 }
 
 finish_install() {
@@ -467,11 +190,10 @@ finish_install() {
 
 main() {
   local source="" version="" bundle_root="" bundle_archive="" platform_id=""
-  local cli_archive="" cli_url="" plugin_archive="" plugin_url=""
-  local configure=0 autostart=0 config_defaults="" force=0
-  local development=0 development_clean=0 repository_root="" control_cli=""
+  local force=0 development=0 development_clean=0 repository_root="" active_agent=""
   local harness requested none_selected=0 already_selected
   local -a setup_args=() gradle_args=() requested_harnesses=() selected_harnesses=()
+
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --source) [[ $# -ge 2 ]] || die '--source requires a value'; source="$2"; shift 2 ;;
@@ -479,9 +201,6 @@ main() {
       --force) force=1; shift ;;
       --development) development=1; shift ;;
       --clean) development_clean=1; shift ;;
-      --configure) configure=1; shift ;;
-      --autostart) autostart=1; shift ;;
-      --config-defaults) [[ $# -ge 2 ]] || die '--config-defaults requires a value'; config_defaults="$2"; shift 2 ;;
       --harness)
         [[ $# -ge 2 ]] || die '--harness requires a value'
         case "$2" in
@@ -500,6 +219,9 @@ main() {
       || die 'development options are available only from the Kast Git repository'
   fi
   ((development_clean == 0 || development == 1)) || die '--clean requires --development'
+  if ((development == 1)) && { [[ -n "$source" || -n "$version" ]] || ((force == 1)); }; then
+    die '--development cannot be combined with release installer options'
+  fi
 
   if ((${#requested_harnesses[@]} == 0)); then
     for harness in codex claude copilot; do
@@ -522,18 +244,6 @@ main() {
     fi
   fi
 
-  ((configure + autostart + (${#config_defaults} > 0) <= 1)) || \
-    die 'pass only one of --configure, --autostart, or --config-defaults'
-  if [[ -n "$source" && ($configure == 1 || $autostart == 1 || -n "$config_defaults") ]]; then
-    die 'IDEA defaults require the downloaded macOS installer'
-  fi
-  if ((development == 1)) && {
-    [[ -n "$source" || -n "$version" || -n "$config_defaults" ]] ||
-      ((force == 1 || configure == 1 || autostart == 1))
-  }; then
-    die '--development cannot be combined with release installer options'
-  fi
-
   print_banner
   setup_scratch="$(mktemp -d "${TMPDIR:-/tmp}/kast-setup.XXXXXX")"
 
@@ -542,14 +252,13 @@ main() {
     ((development_clean == 0)) || gradle_args+=("-PkastDevelopmentClean=true")
     gradle_args+=(refreshDevelopmentMachine --no-daemon --console=plain)
     ui_step "Refreshing the local development installation"
-    run_setup_with_idea_restart "${gradle_args[@]}" || die "local development setup failed"
+    run_quiet "${gradle_args[@]}" || die "local development setup failed"
     ui_success "Local development installation refreshed"
     install_agent_harnesses "${selected_harnesses[@]}"
-    control_cli="${KAST_HOME:-${HOME}/.local/share/kast}/current/libexec/kastctl"
-    [[ -x "$control_cli" ]] || die "installed Kast control CLI is missing: $control_cli"
+    active_agent="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin/kast"
+    [[ -x "$active_agent" ]] || die "installed Kast agent CLI is missing: $active_agent"
     ui_step "Building the repository database"
-    run_setup "$control_cli" developer runtime up \
-      --workspace-root "$repository_root" --backend idea --accept-indexing \
+    (cd -- "$repository_root" && run_quiet "$active_agent" up) \
       || die "repository database did not become ready"
     ui_success "Repository database ready"
     finish_install
@@ -562,47 +271,6 @@ main() {
     version="${version:-$(latest_version)}"
     platform_id="$(platform)"
     ui_info "${version} · ${platform_id}"
-    if [[ "$platform_id" == macos-* ]]; then
-      if ((configure == 0 && autostart == 0)) && [[ -z "$config_defaults" ]] && interactive_terminal; then
-        choose_install_mode || return 0
-      fi
-      require unzip
-      cli_archive="${setup_scratch}/kast-${version}-${platform_id}.zip"
-      plugin_archive="${setup_scratch}/kast-idea-${version}.zip"
-      cli_url="${RELEASES_URL}/download/${version}/kast-${version}-${platform_id}.zip"
-      plugin_url="${RELEASES_URL}/download/${version}/kast-idea-${version}.zip"
-      download_artifact "Kast CLI" "$cli_url" "$cli_archive"
-      download_artifact "IDEA plugin" "$plugin_url" "$plugin_archive"
-      ui_step "Preparing installer"
-      mkdir -p "${setup_scratch}/cli"
-      unzip -q "$cli_archive" -d "${setup_scratch}/cli"
-      [[ -f "${setup_scratch}/cli/kastctl" ]] || die "native CLI bundle is missing kastctl"
-      [[ -f "${setup_scratch}/cli/kast" ]] || die "native CLI bundle is missing kast"
-      cmp -s "${setup_scratch}/cli/kastctl" "${setup_scratch}/cli/kast" \
-        || die "native CLI entrypoints are not byte-identical"
-      chmod 755 "${setup_scratch}/cli/kastctl" "${setup_scratch}/cli/kast"
-      ui_success "Installer prepared"
-      if ((configure == 1)); then
-        config_defaults="${setup_scratch}/config.toml"
-        configure_idea_defaults "$config_defaults"
-      elif ((autostart == 1)); then
-        config_defaults="${setup_scratch}/config.toml"
-        write_idea_defaults "$config_defaults" idea true true true true true true true true
-      elif [[ -n "$config_defaults" ]]; then
-        [[ -f "$config_defaults" ]] || die "config defaults do not exist: $config_defaults"
-      fi
-      ui_step "Installing Kast and the IDEA plugin"
-      setup_args=("${setup_scratch}/cli/kastctl" setup --idea-plugin "$plugin_archive")
-      if [[ -n "$config_defaults" ]]; then
-        setup_args+=(--config-defaults "$config_defaults")
-      fi
-      ((force == 0)) || setup_args+=(--force)
-      run_setup_with_idea_restart "${setup_args[@]}" || die "Kast setup failed"
-      ui_success "Kast and the IDEA plugin installed"
-      install_agent_harnesses "${selected_harnesses[@]}"
-      finish_install
-      return 0
-    fi
     bundle_archive="${setup_scratch}/kast-bundle.tar.gz"
     source="${RELEASES_URL}/download/${version}/kast-${platform_id}-${version}.tar.gz"
     download_artifact "Kast bundle" "$source" "$bundle_archive"
@@ -628,7 +296,7 @@ main() {
   ui_step "Installing Kast"
   setup_args=("${bundle_root}/libexec/kastctl" setup --source "$bundle_root")
   ((force == 0)) || setup_args+=(--force)
-  run_setup_with_idea_restart "${setup_args[@]}" || die "Kast setup failed"
+  run_quiet "${setup_args[@]}" || die "Kast setup failed"
   ui_success "Kast installed"
   install_agent_harnesses "${selected_harnesses[@]}"
   finish_install

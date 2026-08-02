@@ -54,7 +54,7 @@ fn require_semantic_graph_tables(connection: &Connection) -> Result<()> {
     );
     error.details.insert(
         "remedy".to_string(),
-        "Run `kast developer runtime up --workspace-root \"$PWD\" --backend idea --accept-indexing`, then rebuild compiler graph evidence with `kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path <path-to-kotlin-file>`."
+        "Run `kast developer runtime up --workspace-root \"$PWD\" --backend headless --accept-indexing`, then rebuild compiler graph evidence with `kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path <path-to-kotlin-file>`."
             .to_string(),
     );
     Err(error)

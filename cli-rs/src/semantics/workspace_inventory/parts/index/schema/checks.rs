@@ -50,6 +50,7 @@ fn verify_file_stage_outcome_checks(
         "FAILURE_IDISNULL",
         "OUTCOME_STATUSIN('FAILED','EXTERNAL_BOUNDARY')",
         "FAILURE_IDISNOTNULL",
+        "FAILURE_ATTEMPT_COUNT>=0",
     ];
     if required_tokens
         .iter()

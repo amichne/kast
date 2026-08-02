@@ -1,65 +1,59 @@
-# IDEA Integration
+# Headless IntelliJ Integration
 
-This bundle describes the one IDEA integration that owns an exact Kast
-workspace from project open through shutdown. It is an internal source map, not
-a user guide. The pages are intentionally absent from the public site
-navigation.
+This bundle describes Kast's private IntelliJ-based headless runtime. It is an
+internal source map, not a user guide. The directory name is retained only to
+keep existing internal links stable.
 
-The integration keeps generated Kast state outside the project. The normalized
-workspace root remains the routing identity. Under the global Kast home, its
-workspace-keyed data directory holds compatibility metadata, snapshots, and
-the SQLite source index; the global runtime directory holds keyed descriptors
-and sockets.
+Kast owns one isolated semantic process for each canonical workspace root. A
+foreground IntelliJ IDEA or Android Studio process is not part of this flow.
+On macOS, a supported installation supplies compatible runtime libraries only.
 
 ```mermaid
 flowchart LR
-    open["IDEA opens exact workspace"] --> bootstrap["Load config and prepare global workspace state"]
-    bootstrap --> gradle["Join, refresh, or link the exact Gradle project"]
-    gradle --> admission["Wait for complete IDEA and Kotlin models"]
-    admission --> index["Build source index"]
-    index --> refresh["Refresh semantic graph files"]
-    refresh --> query["Read one pinned graph generation"]
-    query --> close["Stop admission, drain work, and close owned state"]
+    demand["Public semantic demand"] --> admit["Admit one exact-root headless identity"]
+    admit --> launch["Start isolated IntelliJ runtime when absent"]
+    launch --> gradle["Load and settle the exact Gradle model"]
+    gradle --> index["Reconcile graph and reference indexing"]
+    index --> store["Commit through one SQLite writer"]
+    store --> query["Read one pinned generation"]
+    query --> close["Ownership-safe stop on explicit demand"]
 
-    bootstrap -. "typed failure" .-> notReady["Readiness remains unavailable"]
-    gradle -. "import failure" .-> notReady
-    admission -. "model failure" .-> notReady
-    index -. "index failure" .-> notReady
+    admit -. "typed conflict" .-> blocked["No semantic side effect"]
+    gradle -. "typed model failure" .-> blocked
+    index -. "typed coverage limit" .-> blocked
 ```
 
 ## Flow pages
 
 - [Load and bootstrap](flows/load-and-bootstrap.md) explains exact-root
-  admission, install receipt validation, global metadata, and backend startup.
-- [Gradle sync](flows/gradle-sync.md) explains the asynchronous link boundary
-  and how the imported model becomes indexing evidence.
-- [Indexing and generation](flows/indexing-and-generation.md) explains smart
-  mode, semantic admission, inventory, SQLite writes, and generation changes.
-- [Graph queries](flows/graph-queries.md) explains refresh, nodes, linkages,
-  topology, communities, and generation pinning.
-- [Shutdown](flows/shutdown.md) explains the close order and why the index store
-  outlives the indexing worker.
+  admission, isolated host startup, and descriptor ownership.
+- [Gradle sync](flows/gradle-sync.md) explains headless import and model
+  settlement.
+- [Indexing and generation](flows/indexing-and-generation.md) explains source
+  scope, resumable file stages, configuration reconciliation, and generation
+  changes.
+- [Graph queries](flows/graph-queries.md) explains admitted refresh, read-only
+  projections, coverage, and generation pinning.
+- [Shutdown](flows/shutdown.md) explains lease, transport, worker, endpoint,
+  and store close order.
 
 The [architecture decisions](architecture-decisions.md) record the boundaries
-that make those flows deterministic. The [increment log](log.md) records
-material changes to this bundle.
+that keep these flows deterministic. The [increment log](log.md) is historical
+and does not define current authority.
 
-## Proposed design
-
-- [VFS-resilient headless indexing](headless-indexing-resilience.md) proposes a
-  macOS headless index sidecar, configurable source scope, durable retry, and
-  separate global graph and reference coverage.
+The implementation design is [Headless-only VFS-resilient semantic
+runtime](headless-indexing-resilience.md).
 
 ## Stable integration invariants
 
-1. A normalized workspace root identifies every runtime, index, and graph
-   request.
-2. Project-open startup has one owner. It starts the backend without indexing,
-   coordinates Gradle, retains admission through restart, and then starts
-   indexing once.
-3. IDEA and Gradle models decide Kotlin source coverage. A recursive filesystem
-   walk cannot substitute for those models.
-4. A graph query reads one SQLite generation and rejects a generation change.
-5. Shutdown remains `STOPPING` while it stops new transport work and closes the
-   dispatcher and backend. The source index closes only after its indexing
-   worker terminates.
+1. One normalized workspace root identifies the runtime, descriptor, socket,
+   writer lease, index, and graph request.
+2. One typed Rust boundary admits a healthy headless runtime and rejects legacy
+   foreground intent before side effects.
+3. The private headless IntelliJ and imported Gradle model decide Kotlin source
+   coverage. A recursive repository walk cannot replace them.
+4. One headless process holds the persistent writer lease for its lifetime.
+5. Runtime readiness, graph coverage, and reference coverage are separate.
+6. A query reads one SQLite generation and rejects a generation change.
+7. Foreground IDE state cannot change runtime identity, lifecycle, generation,
+   or readiness.

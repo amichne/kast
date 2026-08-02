@@ -62,7 +62,7 @@ pub(crate) fn run_up() -> Result<i32> {
     Err(CliError::new(
         "SEMANTIC_EVIDENCE_NOT_READY",
         format!(
-            "The exact workspace reached {state}, but semantic evidence did not become ready within {} ms (referenceIndexReady={reference_index_ready}, sourceModuleCount={source_module_count}). Let IDEA finish indexing, then run `kast up` again.",
+            "The exact workspace reached {state}, but semantic evidence did not become ready within {} ms (referenceIndexReady={reference_index_ready}, sourceModuleCount={source_module_count}). Let the headless runtime finish indexing, then run `kast up` again.",
             args.wait_timeout_ms
         ),
     ))

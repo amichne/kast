@@ -66,7 +66,8 @@ fn classify_coverage(
                 | WorkspaceInventoryLimitationCode::OutOfRootExcluded
         )
     });
-    let semantic_scope_proven = counts.indexed + counts.limited > 0;
+    let eligible_file_count = counts.total.saturating_sub(counts.excluded);
+    let semantic_scope_proven = eligible_file_count == 0 || counts.indexed + counts.limited > 0;
     let persisted_updates_complete = pending_update_count == 0;
     let complete = inventory_complete
         && eligibility_proven
