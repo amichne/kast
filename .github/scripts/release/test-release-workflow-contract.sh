@@ -62,6 +62,13 @@ reject "$release" 'runtime-manifest' "release must not publish a second runtime 
 reject "$release" 'ubuntu-debian-headless' "release must not publish a legacy Linux bundle"
 reject "$release" 'linux-headless' "release must not publish a standalone runtime product"
 
+require "$release" 'timeout-minutes: 30' \
+  "release preflight must bound the exact-source CI wait"
+require "$release" 'gh run watch "$ci_run_id" --exit-status --interval 10' \
+  "release preflight must wait for exact-source CI to complete"
+reject "$release" '-f status=success' \
+  "release preflight must discover in-progress exact-source CI"
+
 for exact_ci_evidence in \
   'actions: read' \
   'GH_TOKEN: ${{ github.token }}' \
@@ -70,7 +77,6 @@ for exact_ci_evidence in \
   '-f branch=main' \
   '-f event=push' \
   '-f head_sha="$GITHUB_SHA"' \
-  '-f status=success' \
   '.head_sha == $sha' \
   '.head_branch == "main"' \
   '.path == ".github/workflows/ci.yml"' \

@@ -5,7 +5,7 @@
     "description": "Release topology for one retained indexer and four canonical setup bundles. Timing claims require completed workflow evidence.",
     "observedAt": "2026-08-02",
     "source": ".github/workflows/release.yml",
-    "sourceSha256": "cb81ab67d107b91cf7681331c021facea4b3867e3c95814e3e204eddd30b85ac"
+    "sourceSha256": "3c466ecede792f4e98e8e885252466df055203bc6b58cc7d6a259de09fcc5785"
   },
   "tasks": [
     {

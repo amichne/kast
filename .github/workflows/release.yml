@@ -40,6 +40,7 @@ jobs:
   release-preflight:
     name: Preflight release automation
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     outputs:
       run_id: ${{ steps.exact-source-ci.outputs.run_id }}
     permissions:
@@ -62,20 +63,30 @@ jobs:
             -f branch=main \
             -f event=push \
             -f head_sha="$GITHUB_SHA" \
-            -f status=success \
             -f per_page=100)"
           ci_run_id="$(jq -er --arg sha "$GITHUB_SHA" '
             [.workflow_runs[] | select(
               .head_sha == $sha
               and .head_branch == "main"
               and .path == ".github/workflows/ci.yml"
-              and .event == "push"
-              and .status == "completed"
-              and .conclusion == "success")]
+              and .event == "push")]
             | sort_by(.run_attempt)
             | last
             | .id
           ' <<<"$ci_runs")" \
+            || { printf 'error: exact source CI is unavailable for %s\n' "$GITHUB_SHA" >&2; exit 1; }
+          gh run watch "$ci_run_id" --exit-status --interval 10 \
+            || { printf 'error: exact source CI did not finish green for %s\n' "$GITHUB_SHA" >&2; exit 1; }
+          ci_run="$(gh api --method GET \
+            "repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run_id}")"
+          jq -e --arg sha "$GITHUB_SHA" '
+            .head_sha == $sha
+            and .head_branch == "main"
+            and .path == ".github/workflows/ci.yml"
+            and .event == "push"
+            and .status == "completed"
+            and .conclusion == "success"
+          ' <<<"$ci_run" >/dev/null \
             || { printf 'error: exact source CI is not green for %s\n' "$GITHUB_SHA" >&2; exit 1; }
           ci_artifacts="$(gh api --method GET \
             "repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run_id}/artifacts" \
