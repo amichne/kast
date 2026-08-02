@@ -44,6 +44,10 @@ and does not define current authority.
 The implementation design is [Headless-only VFS-resilient semantic
 runtime](headless-indexing-resilience.md).
 
+The [semantic evidence pressure-test gaps](semantic-evidence-pressure-test-gaps.md)
+separate incorrect behavior from unwanted effects of intentional evidence
+choices and leave solution pathways open for a later decision.
+
 ## Stable integration invariants
 
 1. One normalized workspace root identifies the runtime, descriptor, socket,
