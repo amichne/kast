@@ -151,7 +151,7 @@ fn ordinary_setup_retires_an_owned_legacy_headless_daemon() {
         let _ = current_reaped.recv_timeout(std::time::Duration::from_secs(1));
     }
     assert!(
-        server.join().expect("legacy status server"),
+        server.finish(),
         "setup did not inspect the owned legacy runtime: stopped={stopped_by_setup}, stdout={}, stderr={}",
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),

@@ -1,18 +1,43 @@
+struct LegacyHeadlessStatusServer {
+    stop_sender: std::sync::mpsc::Sender<()>,
+    join_handle: std::thread::JoinHandle<bool>,
+}
+
+impl LegacyHeadlessStatusServer {
+    fn finish(self) -> bool {
+        let _ = self.stop_sender.send(());
+        self.join_handle.join().expect("legacy status server")
+    }
+}
+
+#[test]
+fn legacy_headless_status_server_has_owned_cancellation() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let listener = UnixListener::bind(temp.path().join("legacy-headless.sock"))
+        .expect("legacy runtime socket");
+    let server = spawn_legacy_headless_status_server(listener, temp.path().to_path_buf());
+
+    assert!(!server.finish(), "cancelled server did not inspect a runtime");
+}
+
 fn spawn_legacy_headless_status_server(
     listener: UnixListener,
     workspace: PathBuf,
-) -> std::thread::JoinHandle<bool> {
+) -> LegacyHeadlessStatusServer {
     listener
         .set_nonblocking(true)
         .expect("nonblocking legacy listener");
-    thread::spawn(move || {
+    let (stop_sender, stop_receiver) = std::sync::mpsc::channel();
+    let server = thread::spawn(move || {
         for _ in 0..2 {
-            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
             let (mut stream, _) = loop {
                 match listener.accept() {
                     Ok(connection) => break connection,
                     Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                        if std::time::Instant::now() >= deadline {
+                        if !matches!(
+                            stop_receiver.try_recv(),
+                            Err(std::sync::mpsc::TryRecvError::Empty)
+                        ) {
                             return false;
                         }
                         thread::sleep(std::time::Duration::from_millis(10));
@@ -48,7 +73,11 @@ fn spawn_legacy_headless_status_server(
             .expect("write legacy response");
         }
         true
-    })
+    });
+    LegacyHeadlessStatusServer {
+        stop_sender,
+        join_handle: server,
+    }
 }
 
 fn spawn_reapable_process() -> (u32, std::sync::mpsc::Receiver<std::process::ExitStatus>) {
