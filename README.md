@@ -3,14 +3,13 @@
 # Kast
 
 Kast gives coding agents compiler-backed Kotlin and Gradle evidence through one
-exact-root headless runtime. It resolves exact symbols, navigates
+exact-root indexer. It resolves exact symbols, navigates
 relationships, plans semantic edits, and keeps evidence limits visible.
 
 ## Install or update
 
 One command installs, replaces, repairs, upgrades, or downgrades Kast. Every
-platform bundle contains the native CLI and its matched private headless
-runtime:
+platform bundle contains the native CLI and its matched private indexer:
 
 ```console
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/amichne/kast/main/install.sh)"
@@ -42,8 +41,8 @@ For a local bundle:
 ./install.sh --source /path/to/kast-platform-vX.Y.Z.tar.gz
 ```
 
-Use `./install.sh --force` to remove validated Kast-owned installation,
-workspace, database, and legacy IDE state before reinstalling.
+Use `./install.sh --force` to replace validated Kast-owned installation state
+and managed user commands. Existing workspace indexes are preserved.
 
 Start with the [first compiler-backed task](https://kast.michne.com/tutorials/first-compiler-backed-task/),
 follow the [installation guide](https://kast.michne.com/how-to/install-or-update/),

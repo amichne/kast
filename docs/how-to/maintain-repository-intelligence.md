@@ -1,39 +1,26 @@
 ---
 type: How-to Guide
 title: How to Maintain Repository Intelligence
-description: Operate and release Kast's compiler-backed repository query path.
-tags: [maintenance, repository-intelligence, validation, recovery, release]
+description: Change and verify Kast's compiler-backed repository query path.
+tags: [maintenance, repository-intelligence, validation, recovery]
 code_sources:
   - path: cli-rs/src/semantics/repository_intelligence.rs
-  - path: backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt
+  - path: indexer/src/main/kotlin/io/github/amichne/kast/idea/backend/semantic/SemanticGraphOperations.kt
   - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/sqlite/semantic/SemanticGraphWriter.kt
-  - path: benchmarks/repository-intelligence/spec/manifest.json
-  - path: .github/workflows/release.yml
-  - path: scripts/release/verify-release-state.sh
+  - path: .github/scripts/test-release-indexing-benchmark-contract.sh
 ---
 
 # How to Maintain Repository Intelligence
 
-Use this guide when changing the repository question contract, compiler graph
-production, SQLite persistence, query algorithms, projection, tests,
-benchmarks, or release evidence. It assumes the architecture described in
-[Repository intelligence architecture](../explanation/repository-intelligence.md).
-
-The shortest safe maintenance path is to identify the authority that owns the
-behavior, run its focused proof, and broaden validation only when a shared
-contract moved.
-
-For every change, follow **Start → Route → Trace → Prove → Broaden**. Use the
-diagnosis, persistence, benchmark, and release sections only when that
-authority is in scope.
+Use this guide when changing repository questions, compiler graph production,
+SQLite persistence, query algorithms, or projection. Start with the narrowest
+authority that owns the behavior, prove one case, then broaden verification
+only when a shared contract moved.
 
 ## Start from the exact worktree
 
-Read the nearest `AGENTS.md` files before investigating or editing. The root
-task contract and module-specific instructions define allowed writes,
-verification, generated-file boundaries, and platform constraints.
-
-Confirm the checkout and preserve unrelated work:
+Read the nearest `AGENTS.md` files and the active task contract. Preserve
+unrelated work before investigating:
 
 ```console
 git status --short
@@ -42,50 +29,40 @@ git rev-parse HEAD
 git worktree list --porcelain
 ```
 
-Admit the current root through the public headless pathway:
+Admit the current root:
 
 ```console
 kast up
 ```
 
-`kast up` waits for semantic readiness. Runtime readiness and persisted graph
-completeness are separate: inspect the coverage returned by the repository or
-relationship operation under test. Runtime status does not report graph
-coverage. A runtime can be `READY` while the task result remains incomplete.
-Do not use foreground IDE state or a runtime attached to another worktree.
+Kast reuses an eligible exact-root indexer or creates an isolated one. Continue
+only when the command reports semantic readiness. Readiness and persisted graph
+coverage are separate; retain the coverage returned by the operation under
+test.
 
 ## Route the change to its owner
 
-Use the narrowest row that fully owns the behavior. A change spanning rows
-usually needs proof for each affected boundary.
+Use the narrowest row that fully owns the behavior.
 
 | Change | Owning source | Focused proof |
 | --- | --- | --- |
-| CLI flags and typed user input | `cli-rs/src/interface/cli/agent/commands.rs` | Repository smoke tests and live `--help`. |
-| CLI-to-RPC request construction | `cli-rs/src/agent/core/dispatch/commands.rs` | Repository and projection tests. |
-| Request, label, continuation, or result contract | `repository_intelligence/contract/` and `query/` | Validation, continuation, and agent-view smoke groups. |
-| Coverage, eligibility, or Gradle scope | `coverage/` and `workspace_inventory/` | Coverage and authority smoke groups. |
-| Resolve, regex, ranking, or labels | `discovery/` | Discovery, label, and label-security smoke groups. |
-| Path or impact traversal | `graph/` | Repository traversal tests and `agent_graph_smoke`. |
-| Architecture findings | `architecture/` | Architecture limit and agent-view tests. |
-| Repository context | `context/` | Context and root-authority tests. |
-| Agent-facing result shape | `cli-rs/src/agent/projection/repository/` | Repository projection-family and view tests. |
-| Host-neutral semantic graph model | `analysis-api/` | `./gradlew :analysis-api:test`. |
-| Private IntelliJ compiler extraction | `backend-idea/` | `./gradlew :backend-idea:test`. |
-| SQLite graph rows or generation | `index-store/` | `./gradlew :index-store:test`. |
-| Schema version generation | `build-logic/` and schema source | Generator test plus Rust schema smoke proof. |
-| Authored CLI protocol | `cli-rs/protocol/source/commands.json` | Generated-contract check; do not edit generated output. |
-| Public docs and navigation | `docs/` and `zensical.toml` | Both docs contracts and Zensical build. |
-| Benchmark proof | `benchmarks/repository-intelligence/` | Manifest checks and an intentional benchmark capture. |
-| Beta publication | `.github/workflows/release.yml` and release scripts | Release contracts, exact tag jobs, published-state verifier. |
+| Public CLI input | `cli-rs/src/interface/cli/agent/commands.rs` | Repository smoke tests and live `--help`. |
+| Request construction | `cli-rs/src/agent/core/dispatch/commands.rs` | Repository and projection tests. |
+| Query or result contract | `repository_intelligence/contract/` and `query/` | Validation and continuation tests. |
+| Coverage or Gradle scope | `coverage/` and `workspace_inventory/` | Coverage and authority tests. |
+| Discovery or labels | `discovery/` | Discovery and label-security tests. |
+| Traversal or impact | `graph/` | Repository traversal and native graph tests. |
+| Agent result shape | `cli-rs/src/agent/projection/repository/` | Projection-family tests. |
+| Compiler graph extraction | `indexer/` | `./gradlew :indexer:test`. |
+| SQLite rows or generation | `index-store/` | `./gradlew :index-store:test`. |
+| Shared result models | `analysis-api/` | `./gradlew :analysis-api:test`. |
+| Public docs | `docs/` | Docs contracts, LikeC4 validation, and site build. |
 
-The Rust subsystem is composed with `include!`, so a source filename may not
-look like a conventional public module. Search the composition file and every
-caller before splitting or moving a function:
+The Rust subsystem uses `include!`. Trace both the composition file and callers
+before moving a function:
 
 ```console
-sed -n '1,180p' \
-  cli-rs/src/semantics/repository_intelligence.rs
+sed -n '1,180p' cli-rs/src/semantics/repository_intelligence.rs
 
 rg -n 'symbol_or_function_name' \
   cli-rs/src/semantics/repository_intelligence \
@@ -93,44 +70,37 @@ rg -n 'symbol_or_function_name' \
   cli-rs/tests/repository_intelligence_smoke
 ```
 
-Fix a shared invariant at the narrowest common boundary. For example, required
-semantic-table admission belongs in the shared discovery loader, not in each
-CLI view that happens to expose discovery.
+Fix a shared invariant at the narrowest common boundary. Do not repeat the same
+admission check in every output view.
 
 ## Trace every affected boundary
 
-Before editing, trace the behavior through the stages it actually crosses:
+Before editing, trace each stage the behavior crosses:
 
 1. CLI parsing and closed user input.
-2. RPC request construction and exact-root routing.
+2. Request construction and exact-root routing.
 3. Gradle scope and file coverage admission.
 4. Read-only SQLite generation pinning.
-5. Optional label and continuation verification.
+5. Label and continuation verification, when present.
 6. One intent executor.
 7. Certainty and qualification construction.
 8. Agent projection and output formatting.
 
-A change is incomplete while any affected stage encodes the old contract.
-Trace the complete authority chain described in
-[Repository intelligence architecture](../explanation/repository-intelligence.md).
+For compiler production changes, trace the reverse path:
 
-For Kotlin production changes, trace the other direction as well:
-
-1. `SemanticGraphQuery` parses exact Kotlin paths.
-2. The headless runtime resolves PSI and K2 facts in an IntelliJ read action.
+1. The operation parses exact Kotlin paths.
+2. The indexer resolves PSI and K2 facts in one read boundary.
 3. Diagnostics and source hashes admit each file.
-4. `SemanticGraphFileIndexUpdate` carries the complete file replacement.
-5. `SemanticGraphWriter` updates rows and generation in one transaction.
+4. A complete file replacement reaches `SemanticGraphWriter`.
+5. Rows and generation change in one transaction.
 6. Rust coverage admits the resulting `semantic_files` rows.
 
 Do not hand-edit `source-index.db`, overlay descriptors, receipts, sockets, or
-the active installation link. Those are outputs of typed operations, not
-maintainer configuration.
+the active installation link.
 
 ## Prove one behavior first
 
-Use a focused test that fails for the missing behavior before changing source.
-The repository smoke binary supports a name filter:
+Run a focused test that fails for the missing behavior before editing:
 
 ```console
 cargo test --manifest-path cli-rs/Cargo.toml --locked \
@@ -138,28 +108,12 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked \
   <exact-test-name>
 ```
 
-Keep the test at the public boundary when the regression affects users. A
-focused unit test is appropriate for an isolated parser or algorithm, but it
-does not replace the RPC and projection proof for a result-contract change.
+Keep user-facing regressions at the public boundary. A unit test can prove an
+isolated parser or algorithm, but it does not replace RPC and projection proof
+for a result-contract change.
 
-The current semantic-table recovery contract has a focused public check:
-
-```console
-cargo test --manifest-path cli-rs/Cargo.toml --locked \
-  --test repository_intelligence_smoke \
-  repository_missing_semantic_tables_rejects_instead_of_empty
-```
-
-When the focused proof passes, run the complete repository intelligence
-binary:
-
-```console
-cargo test --manifest-path cli-rs/Cargo.toml --locked \
-  --test repository_intelligence_smoke
-```
-
-Add `agent_graph_smoke` when shared native graph storage, generation, or
-traversal behavior changed:
+After the focused proof passes, run the complete repository intelligence and
+native graph tests:
 
 ```console
 cargo test --manifest-path cli-rs/Cargo.toml --locked \
@@ -167,54 +121,36 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked \
   --test repository_intelligence_smoke
 ```
 
-## Broaden validation by changed authority
-
-Rust-wide proof catches formatting, lint, feature, and target interactions:
-
-```console
-cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
-
-cargo clippy --manifest-path cli-rs/Cargo.toml --locked \
-  --all-targets --all-features -- -D warnings
-
-cargo test --manifest-path cli-rs/Cargo.toml --locked \
-  --all-targets --all-features
-```
-
-If compiler models, private extraction, or persistence changed, run the
-affected Kotlin modules before the broad JVM gate:
+Run affected JVM modules when compiler models, extraction, or persistence
+changed:
 
 ```console
-./gradlew :analysis-api:test
-./gradlew :backend-idea:test
-./gradlew :index-store:test
-./gradlew test --no-daemon
+./gradlew :analysis-api:test :indexer:test :index-store:test --no-daemon
 ```
 
-The repository shape gate enforces no more than 400 physical lines in tracked
-`.kt`, `.kts`, and `.rs` files and no more than 10 direct tracked children in a
-directory:
+Then use the repository-wide checks required by the task contract.
 
-```console
-bash .github/scripts/test-repository-shape-contract.sh
-python3 .github/scripts/check-repository-shape.py
-```
+## Validate documentation changes
 
-When public docs change, validate their exact page set, navigation, and
-rendered site:
+When public docs or architecture change, run:
 
 ```console
 .github/scripts/docs/test-docs-content-contract.sh
 .github/scripts/docs/test-docs-navigation-contract.sh
-zensical build --clean --strict
+.github/scripts/docs/test-likec4-contract.sh
+npm run diagrams:validate
+zensical build --clean
 ```
 
-Use `git diff --check` and inspect the final path-restricted diff before
-staging. A green unrelated test run does not prove the requested change.
+Regenerate the checked-in LikeC4 module after the source model validates:
+
+```console
+npm run diagrams:embed
+```
 
 ## Inspect a result before diagnosing code
 
-Use the complete validated view when diagnosing coverage or certainty. Compact
+Use a complete validated result when diagnosing coverage or certainty. Compact
 and count views intentionally omit details:
 
 ```console
@@ -227,64 +163,34 @@ and count views intentionally omit details:
 
 Inspect these fields together:
 
-- `workspaceIdentity.canonicalRoot`
-- `generation`, `inventoryGeneration`, and `graphGeneration`
-- `scope` and `coverage`
-- `status`, `qualification`, and `truncated`
-- `bounds`, `ordering`, and both continuation fields
-- selected canonical identities and their occurrence evidence
+- canonical workspace root;
+- inventory and graph generations;
+- scope and coverage;
+- status, qualification, and truncation;
+- limits, ordering, and continuation; and
+- selected canonical identities and occurrence evidence.
 
-Use the
-[certainty explanation](../explanation/repository-intelligence.md#certainty-is-a-result-property)
-to check how coverage and truncation constrain an internal result.
-
-## Diagnose by failed authority
-
-Start with the typed code and the result phase. Avoid changing index files or
-loosening validation to make an error disappear.
-
-| Symptom or code | Inspect | Recovery |
-| --- | --- | --- |
-| Wrong canonical root | Command root and runtime identity. | Rerun from the intended exact worktree. |
-| `IDEA_SEMANTIC_BACKEND_RETIRED` | Persisted legacy backend intent. | Run setup to migrate it to headless. |
-| `IDEA_VERSION_UNSUPPORTED` | Installed IntelliJ runtime source and build. | Use a supported build. |
-| `IDEA_HOST_AMBIGUOUS` | Installed supported runtime sources. | Configure one exact source; foreground state is irrelevant. |
-| `HEADLESS_RUNTIME_CONFLICT` | Exact-root descriptor identities. | Stop only the stale Kast-owned identity named by the result. |
-| `INDEXING` | Headless Gradle import, smart mode, Kotlin admission, reference index. | Wait and retry readiness; do not bypass it. |
-| `INVALID_REPOSITORY_SCOPE` | Requested Gradle project or source set. | Use an identity present in the workspace inventory. |
-| `AMBIGUOUS_REPOSITORY_SCOPE` | Included builds or repeated project names. | Supply the build-qualified identity. |
-| `GRAPH_COVERAGE_UNSTABLE` | Source-index generation movement. | Let indexing settle, then retry coverage. |
-| `REPOSITORY_QUERY_UNSTABLE` | Generation moved between admission and execution twice. | Retry after the index quiesces. |
-| `REPOSITORY_COVERAGE_INCOMPLETE` | A positive result lacks complete compiler coverage. | Restore exact-root readiness, refresh incomplete files, and retry. |
-| `REPOSITORY_INDEX_INVALID` | Schema and required semantic tables. | Rebuild compiler evidence through the supported runtime. |
-| Invalid or stale continuation | Root, query, scope, generation, and schema. | Restart the query; never edit the token. |
-| Invalid or stale label index | Path, artifact schema, key, and content hash. | Regenerate labels from the active compiler snapshot. |
-| `REPOSITORY_CONTEXT_CHANGED` | Context file replacement during read. | Retry after the working tree stops changing. |
-
-Runtime-source compatibility errors remain blockers. Do not route through a
-foreground IDE or weaken exact-root admission to bypass them.
+Do not diagnose from a compact projection that omitted the evidence you need.
 
 ## Recover compiler graph evidence
 
-Recovery must reestablish each authority in order. First bring up the exact
-workspace runtime through public demand:
+Recovery must reestablish each authority in order. First admit the exact-root
+indexer:
 
 ```console
 kast up
 ```
 
-Then inspect runtime and graph state:
+Then inspect its typed descriptor without choosing an implementation:
 
 ```console
 ~/.local/share/kast/current/libexec/kastctl --output json status \
-  --workspace-root "$PWD" \
-  --backend headless
+  --workspace-root "$PWD"
 ```
 
-Continue when `selected.ready` is `true`. Rerun the failed repository or
-relationship operation with `--explain`, then use its coverage limitations to
-choose targeted refreshes. Refresh the affected Kotlin file through the
-compiler-backed graph operation:
+Continue when the selected indexer is ready. Rerun the failed repository or
+relationship operation with explanation enabled, then use its coverage limits
+to choose exact refresh paths.
 
 ```console
 ~/.local/share/kast/current/libexec/kastctl agent graph \
@@ -293,124 +199,34 @@ compiler-backed graph operation:
   --file-path path/to/AffectedFile.kt
 ```
 
-Repeat `--file-path` for the exact affected set. Do not sweep the repository
-merely to hide an unknown ownership or coverage problem.
+Repeat `--file-path` only for the affected set. Do not sweep the repository to
+hide an unknown ownership problem. Restart a query without stale continuation
+tokens, and rebuild labels only from the current canonical keys and content
+hashes.
 
-Rerun the repository query without old continuation tokens. Inspect coverage
-before regenerating any label artifact. Labels must be rebuilt from the
-refreshed canonical keys and source content hashes; otherwise the verifier
-must reject them as stale.
-
-If compiler extraction fails, no semantic batch write begins until all
-selected files have extracted successfully. Fix the reported diagnostic or
-unsupported target, then rerun the refresh. If a SQLite write fails, the
-replacement transaction rolls back; resolve the underlying storage error and
-retry the supported operation.
+If compiler extraction fails, no semantic batch begins until all selected
+files extract successfully. If a SQLite write fails, the replacement rolls
+back. Repair the typed cause and retry the supported operation.
 
 ## Validate persistence invariants
 
-Persistence changes have failure modes that ordinary query tests can miss.
-Check all of these behaviors when editing `SemanticGraphWriter` or schema code:
+When changing `SemanticGraphWriter` or schema code, prove that:
 
-- Old outgoing occurrences and removed declarations disappear.
-- Valid inbound edges survive when their target remains.
-- Boundary symbols are replaced by authoritative symbols when refreshed.
-- Owner links are repaired after all symbols exist.
-- Overlay tombstones hide removed base rows and clear on refresh.
-- Generation increments once per successful transaction.
-- Any exception rolls back rows and generation together.
+- old outgoing occurrences and removed declarations disappear;
+- valid inbound edges survive when their target remains;
+- boundary symbols are replaced by authoritative symbols after refresh;
+- owner links are repaired after all symbols exist;
+- overlay tombstones hide removed base rows and clear on refresh;
+- generation increments once per successful transaction;
+- any exception rolls back rows and generation together; and
 - Rust and Kotlin consume the same source-index schema version.
 
-- Verify that the shared generation still covers inventory and reference-index
-  writes; never reinterpret it as a graph-only counter.
-- Test schema-mismatch rebuild separately from current-version corruption.
-  Preserve structural failure evidence instead of assuming a rebuild occurred.
+Test schema-mismatch rebuild separately from current-version corruption. Do not
+reinterpret the shared generation as graph-only state.
 
-## Refresh benchmark evidence intentionally
+## Hand off exact evidence
 
-The checked-in benchmark is a frozen corpus with recorded source, binary,
-index, question, and rubric provenance. It is historical evidence unless its
-`implementationCommit` equals the release candidate.
-
-Run the benchmark only when release or performance proof is required, because
-it writes result artifacts:
-
-```console
-./benchmarks/repository-intelligence/run.sh --assert --repeat 2
-```
-
-That command writes the uncommitted candidate capture to `results/latest.json`.
-Require exact source identity before treating it as release evidence:
-
-```console
-test "$(jq -r '.implementationCommit' \
-  benchmarks/repository-intelligence/results/latest.json)" = \
-  "$(git rev-parse HEAD)"
-```
-
-Also require a clean recorded source status, deterministic repeated answers,
-zero critical failures, unchanged corpus identity, and stable source-index
-identity before and after capture. Do not cite a prior benchmark as current
-release proof merely because the question set still passes. Promote a capture
-to the tracked `final.json` only as an intentional benchmark update with its
-own reviewed diff.
-
-## Assemble beta release evidence
-
-Treat local validation, the pushed commit, the release tag, and published
-assets as four different checkpoints. Capture the exact SHA at each boundary.
-
-Before dispatch, require:
-
-1. The intended diff is committed and the worktree is clean.
-2. The branch is pushed and the remote head equals the local head.
-3. Focused, full, shape, docs, and release-contract checks are green.
-4. Benchmark output, when claimed, records that exact head.
-5. Known certainty and recovery gaps are either fixed or explicitly accepted
-   as beta limitations.
-
-The release workflow accepts the `beta` release type and creates a tag shaped
-as `v<next-patch>-beta.<short-sha>`. Dispatch it only for the reviewed remote
-head:
-
-```console
-gh workflow run release.yml \
-  --ref <reviewed-branch> \
-  -f release_type=beta
-```
-
-The dispatch run performs preflight validation and pushes the tag. A separate
-tag-triggered run builds and publishes the assets. Do not call the beta
-published while either run is pending or failed.
-
-After the release is published, verify the immutable remote state:
-
-```console
-scripts/release/verify-release-state.sh --tag <beta-tag>
-```
-
-Record the branch SHA, tag target SHA, both workflow conclusions, release URL,
-asset verification result, and the machine installation result. The release
-verifier's bundle check is publication evidence; installation on the intended
-corporate macOS host is separate acceptance evidence.
-
-## Hand off with proof, not confidence
-
-A useful maintainer handoff states what changed, which authority owns it, the
-focused red and green proof, every broader command run, exact Git and remote
-identities, benchmark provenance, and known limitations.
-
-Do not collapse these states:
-
-- Implemented locally
-- Verified locally
-- Committed
-- Pushed
-- Reviewed
-- CI green
-- Tagged
-- Published
-- Installed and accepted
-
-The subsystem is ready to publish only when the checkpoint being claimed has
-its own evidence and no known gap contradicts the claim.
+A useful handoff records the exact source identity, changed authority, focused
+red and green proof, broader checks, Git identity, and known limits. Keep local
+implementation, local verification, remote CI, and publication as separate
+claims.

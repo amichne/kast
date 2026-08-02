@@ -38,7 +38,7 @@ pub enum KastCommand {
     Apply {
         /// Opaque plan identifier returned by `kast change`.
         plan_id: String,
-        /// Opaque workspace lease acquired for this exact root and headless runtime.
+        /// Opaque workspace lease acquired for this exact root and indexer.
         #[arg(long = "lease-id")]
         lease_id: AgentWorkspaceLeaseId,
     },

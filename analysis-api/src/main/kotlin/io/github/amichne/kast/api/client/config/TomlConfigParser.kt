@@ -171,8 +171,6 @@ private fun normalizeConfigPath(path: String): String =
 
 private fun Map<String, TomlConfigValue>.toKastConfigOverride(): KastConfigOverride = KastConfigOverride(
     server = serverOverride(),
-    runtime = runtimeOverride(),
-    projectOpen = projectOpenOverride(),
     codex = codexOverride(),
     indexing = indexingOverride(),
     cache = cacheOverride(),
@@ -180,7 +178,6 @@ private fun Map<String, TomlConfigValue>.toKastConfigOverride(): KastConfigOverr
     gradle = gradleOverride(),
     telemetry = telemetryOverride(),
     profiling = profilingOverride(),
-    backends = backendsOverride(),
 )
 
 private fun Map<String, TomlConfigValue>.codexOverride(): CodexConfigOverride? {
@@ -191,34 +188,6 @@ private fun Map<String, TomlConfigValue>.codexOverride(): CodexConfigOverride? {
         CodexHooksConfigOverride(enabled, sessionStart, postToolUse)
     }
     return hooks?.let(::CodexConfigOverride)
-}
-
-private fun Map<String, TomlConfigValue>.runtimeOverride(): RuntimeConfigOverride? {
-    val defaultBackend = stringValue("runtime.defaultbackend")?.let(::RuntimeDefaultBackend)
-    val strictPluginMatching = booleanValue("runtime.strictpluginmatching")?.let(::RuntimeStrictPluginMatching)
-    val ideaLaunch = ideaLaunchOverride()
-    return takeIfAny(defaultBackend, strictPluginMatching, ideaLaunch) {
-        RuntimeConfigOverride(defaultBackend, strictPluginMatching, ideaLaunch)
-    }
-}
-
-private fun Map<String, TomlConfigValue>.ideaLaunchOverride(): IdeaLaunchConfigOverride? {
-    val enabled = booleanValue("runtime.idealaunch.enabled")?.let(::IdeaLaunchEnabled)
-    val command = stringValue("runtime.idealaunch.command")?.let(::IdeaLaunchCommand)
-    val waitTimeoutMillis = longValue("runtime.idealaunch.waittimeoutmillis")?.let(::IdeaLaunchWaitTimeoutMillis)
-    return takeIfAny(enabled, command, waitTimeoutMillis) {
-        IdeaLaunchConfigOverride(enabled, command, waitTimeoutMillis)
-    }
-}
-
-private fun Map<String, TomlConfigValue>.projectOpenOverride(): ProjectOpenConfigOverride? {
-    val profileAutoInit = booleanValue("projectopen.profileautoinit")?.let(::ProjectOpenProfileAutoInit)
-    val profile = stringValue("projectopen.profile")?.let(::ProjectOpenProfile)
-    val autoExcludeGit = booleanValue("projectopen.autoexcludegit")?.let(::ProjectOpenAutoExcludeGit)
-    val gradleLoadEnabled = booleanValue("projectopen.gradleloadenabled")?.let(::ProjectOpenGradleLoadEnabled)
-    return takeIfAny(profileAutoInit, profile, autoExcludeGit, gradleLoadEnabled) {
-        ProjectOpenConfigOverride(profileAutoInit, profile, autoExcludeGit, gradleLoadEnabled)
-    }
 }
 
 private fun Map<String, TomlConfigValue>.serverOverride(): ServerConfigOverride? {
@@ -324,22 +293,6 @@ private fun Map<String, TomlConfigValue>.profilingOverride(): ProfilingConfigOve
     return takeIfAny(enabled, modes, durationSeconds, outputDir, otlpEndpoint, emitManifest) {
         ProfilingConfigOverride(enabled, modes, durationSeconds, outputDir, otlpEndpoint, emitManifest)
     }
-}
-
-private fun Map<String, TomlConfigValue>.backendsOverride(): BackendsConfigOverride? {
-    val headless = headlessBackendOverride()
-    val idea = ideaBackendOverride()
-    return takeIfAny(headless, idea) { BackendsConfigOverride(headless, idea) }
-}
-
-private fun Map<String, TomlConfigValue>.headlessBackendOverride(): HeadlessBackendConfigOverride? {
-    val enabled = booleanValue("backends.headless.enabled")?.let(::HeadlessBackendEnabled)
-    return takeIfAny(enabled) { HeadlessBackendConfigOverride(enabled = enabled) }
-}
-
-private fun Map<String, TomlConfigValue>.ideaBackendOverride(): IdeaBackendConfigOverride? {
-    val enabled = booleanValue("backends.idea.enabled")?.let(::IdeaBackendEnabled)
-    return takeIfAny(enabled) { IdeaBackendConfigOverride(enabled) }
 }
 
 private fun Map<String, TomlConfigValue>.stringValue(key: String): String? =

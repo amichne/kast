@@ -7,10 +7,8 @@ fn force_setup_removes_only_validated_kast_state() {
     let registered = home.join("workspaces/registered");
     let current = home.join("workspaces/current/nested");
     let unrelated = home.join("unrelated");
-    let plugins =
-        home.join("Library/Application Support/JetBrains/IntelliJIdea2026.2/plugins");
 
-    for directory in [&registered, &current, &unrelated, &plugins] {
+    for directory in [&registered, &current, &unrelated] {
         std::fs::create_dir_all(directory).expect("fixture directory");
     }
     assert!(
@@ -45,15 +43,8 @@ fn force_setup_removes_only_validated_kast_state() {
     std::fs::create_dir_all(kast_home.join("releases/obsolete")).expect("obsolete release");
     std::fs::write(kast_home.join("releases/obsolete/junk"), "obsolete")
         .expect("obsolete release marker");
-    std::fs::create_dir_all(plugins.join("kast")).expect("Kast IDEA plugin");
-    std::fs::write(plugins.join("kast/plugin.jar"), "kast").expect("Kast IDEA plugin marker");
-    std::fs::create_dir_all(plugins.join("unrelated")).expect("unrelated IDEA plugin");
-    std::fs::write(plugins.join("unrelated/plugin.jar"), "unrelated")
-        .expect("unrelated IDEA plugin marker");
-
     let output = setup_command(&home, &kast_home, &source)
         .current_dir(&current)
-        .env("KAST_MACHINE_IDE_STATE", "closed")
         .arg("--force")
         .output()
         .expect("forced Kast setup");
@@ -71,7 +62,11 @@ fn force_setup_removes_only_validated_kast_state() {
         current.parent().expect("current parent"),
         home.as_path(),
     ] {
-        assert!(!root.join(".kast").exists(), "stale state at {}", root.display());
+        assert!(
+            root.join(".kast/state").is_file(),
+            "workspace-owned state was removed at {}",
+            root.display(),
+        );
     }
     assert!(
         unrelated.join(".kast/state").is_file(),
@@ -79,8 +74,6 @@ fn force_setup_removes_only_validated_kast_state() {
     );
     assert!(!kast_home.join("state/cache/source-index.db").exists());
     assert!(!kast_home.join("releases/obsolete").exists());
-    assert!(!plugins.join("kast").exists());
-    assert!(plugins.join("unrelated/plugin.jar").is_file());
     assert!(kast_home.join("current/libexec/kastctl").is_file());
     assert!(home.join(".local/bin/kast").exists());
     assert!(!home.join(".local/bin/_kastctl").exists());

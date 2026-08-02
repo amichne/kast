@@ -1,12 +1,12 @@
 ---
 type: Tutorial
 title: Your First Compiler-Backed Task
-description: Learn the Kast workflow by tracing headless Gradle settlement in the Kast repository without changing source.
-tags: [tutorial, codex, kotlin, headless, compiler-evidence]
+description: Learn the Kast workflow by tracing indexer Gradle settlement in the Kast repository without changing source.
+tags: [tutorial, codex, kotlin, indexer, compiler-evidence]
 code_sources:
-  - path: backend-headless/src/main/kotlin/io/github/amichne/kast/headless/gradle/settlement/HeadlessGradleModelSettlementOutcome.kt
-  - path: backend-headless/src/main/kotlin/io/github/amichne/kast/headless/gradle/settlement/HeadlessGradleModelSettlementAwaiter.kt
-  - path: backend-headless/src/test/kotlin/io/github/amichne/kast/headless/HeadlessGradleModelSettlementAwaiterTest.kt
+  - path: indexer/src/main/kotlin/io/github/amichne/kast/indexer/gradle/settlement/GradleModelSettlementOutcome.kt
+  - path: indexer/src/main/kotlin/io/github/amichne/kast/indexer/gradle/settlement/GradleModelSettlementAwaiter.kt
+  - path: indexer/src/test/kotlin/io/github/amichne/kast/indexer/gradle/settlement/GradleModelSettlementAwaiterTest.kt
 ---
 
 # Your First Compiler-Backed Task
@@ -24,7 +24,7 @@ You need:
 
 - Kast installed on macOS;
 - on macOS, IntelliJ IDEA 2026.2 or Android Studio 2026.1.2 installed as the
-  headless runtime input;
+  source of compatible indexer libraries;
 - a Codex task rooted at the same directory.
 
 If you still need Kast, follow [Install or update Kast](../how-to/install-or-update.md).
@@ -37,12 +37,12 @@ From the repository root, run:
 kast up
 ```
 
-A `READY` result means Kast admitted one compatible headless runtime for this
-exact root. A new worktree gets its own descriptor, socket, writer lease, and
-index. Foreground IDE state does not affect this identity.
+A `READY` result means Kast admitted one compatible indexer for this exact
+root. Kast reuses an eligible exact-root process or creates an isolated one. A
+new worktree gets its own descriptor, socket, writer lease, and index.
 
 If the blocker says the exact runtime reached `INDEXING`, the server is
-reachable but its evidence is not ready. Wait for headless Gradle import,
+reachable but its evidence is not ready. Wait for Gradle import,
 Kotlin indexing, and the Kast reference index, then rerun the command. Follow any
 other typed action before continuing.
 
@@ -55,7 +55,7 @@ complete or limited.
 Start a Codex task with this prompt:
 
 ```text
-Use Kast to explain how HeadlessGradleModelSettlementOutcome distinguishes
+Use Kast to explain how GradleModelSettlementOutcome distinguishes
 Settled, TimedOut, Interrupted, and ProjectDisposed. Cite the Kotlin
 declarations and tests that prove each outcome. Do not edit files.
 ```
@@ -67,14 +67,14 @@ then asked for evidence instead of asking Codex to scan files blindly.
 
 A successful answer should identify all of these facts:
 
-- `HeadlessGradleModelSettlementOutcome` is a closed sealed interface;
+- `GradleModelSettlementOutcome` is a closed sealed interface;
 - `Settled` carries typed settlement evidence;
 - `TimedOut` retains the last readiness observation; and
 - interruption and project disposal are separate outcomes.
 
 The answer should point to
-`HeadlessGradleModelSettlementOutcome.kt` and
-`HeadlessGradleModelSettlementAwaiterTest.kt`. Those locations matter: Kast's semantic
+`GradleModelSettlementOutcome.kt` and
+`GradleModelSettlementAwaiterTest.kt`. Those locations matter: Kast's semantic
 graph carries repository-relative paths, declaration ranges, and compiler
 relationships rather than returning an unsupported narrative.
 

@@ -51,12 +51,7 @@ fn write_runtime_descriptors(home: &Path, descriptors: &[(&Path, &Path, &str)]) 
             &descriptors
                 .iter()
                 .map(|(workspace, socket_path, backend)| {
-                    runtime_descriptor_for_test(
-                        workspace,
-                        socket_path,
-                        backend,
-                        "admission-test",
-                    )
+                    runtime_descriptor_for_test(workspace, socket_path, backend, "admission-test")
                 })
                 .collect::<Vec<_>>(),
         )
@@ -228,7 +223,7 @@ fn spawn_verify_backend(
                     "backendName": backend_name,
                     "backendVersion": "admission-test",
                     "workspaceRoot": workspace.display().to_string(),
-                    "sourceModuleNames": [":analysis-api", format!(":backend:{backend_name}")],
+                    "sourceModuleNames": [":analysis-api", ":indexer"],
                     "referenceIndexReady": false,
                     "schemaVersion": 5
                 }),

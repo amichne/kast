@@ -118,7 +118,7 @@ fn applied_add_file_submits_typed_mutation_request() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("headless.sock");
+    let socket_path = temp.path().join("indexer.sock");
     let content_file = temp.path().join("Added.kt");
     let target = workspace.join("src/Added.kt");
     std::fs::create_dir_all(&workspace).expect("workspace");

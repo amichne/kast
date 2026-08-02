@@ -34,7 +34,7 @@ class KastDiagnosticsSummaryTest {
                 FileAnalysisStatus.skipped(
                     filePath,
                     FileAnalysisState.PENDING_INDEX,
-                    "IDEA is indexing",
+                    "Indexer is indexing",
                 ),
             ),
             fileHashes = emptyList(),
@@ -96,7 +96,7 @@ class KastDiagnosticsSummaryTest {
                     analysisStatus = FileAnalysisStatus.skipped(
                         filePath,
                         FileAnalysisState.PENDING_INDEX,
-                        "IDEA is indexing",
+                        "Indexer is indexing",
                     ),
                 ),
             ),

@@ -185,7 +185,6 @@ fn run_diagnostics_arguments_with_view(
         output_format,
         "agent",
         "diagnostics",
-        "--backend=headless",
         "--workspace-root",
         workspace.to_str().expect("workspace path"),
     ]);

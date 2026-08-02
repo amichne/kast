@@ -9,9 +9,9 @@ from pathlib import Path
 
 SCRIPT = Path(__file__).with_name("render-release-checksums.py")
 TAG = "v9.8.7"
-ZIP_NAME = f"kast-{TAG}-linux-x64.zip"
+OPENAPI_NAME = "openapi.yaml"
 BUNDLE_NAME = f"kast-linux-x64-{TAG}.tar.gz"
-ZIP_DIGEST = "a" * 64
+OPENAPI_DIGEST = "a" * 64
 BUNDLE_DIGEST = "b" * 64
 
 
@@ -22,9 +22,7 @@ class RenderReleaseChecksumsTest(unittest.TestCase):
         bundle_state: str = "uploaded",
         sidecar_digest: str = BUNDLE_DIGEST,
         swap_platforms: bool = False,
-        zip_name: str = ZIP_NAME,
         extra_product: str | None = None,
-        bundle_platform: str = "setup-linux-x64",
         bundle_name: str = BUNDLE_NAME,
     ) -> subprocess.CompletedProcess[str]:
         scratch = Path(self.temp_dir.name)
@@ -39,14 +37,14 @@ class RenderReleaseChecksumsTest(unittest.TestCase):
         provenance = {
             "builds": [
                 {
-                    "platformId": "cli-linux-x64" if swap_platforms else bundle_platform,
+                    "platformId": "openapi" if swap_platforms else "setup-linux-x64",
                     "assetName": bundle_name,
                     "assetDigest": f"sha256:{BUNDLE_DIGEST}",
                 },
                 {
-                    "platformId": "setup-linux-x64" if swap_platforms else "cli-linux-x64",
-                    "assetName": zip_name,
-                    "assetDigest": f"sha256:{ZIP_DIGEST}",
+                    "platformId": "setup-linux-x64" if swap_platforms else "openapi",
+                    "assetName": OPENAPI_NAME,
+                    "assetDigest": f"sha256:{OPENAPI_DIGEST}",
                 },
             ]
         }
@@ -58,9 +56,9 @@ class RenderReleaseChecksumsTest(unittest.TestCase):
                     "digest": f"sha256:{BUNDLE_DIGEST}",
                 },
                 {
-                    "name": zip_name,
+                    "name": OPENAPI_NAME,
                     "state": "uploaded",
-                    "digest": f"sha256:{ZIP_DIGEST}",
+                    "digest": f"sha256:{OPENAPI_DIGEST}",
                 },
                 {
                     "name": sidecar_name,
@@ -113,7 +111,7 @@ class RenderReleaseChecksumsTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(
             self.output.read_text(encoding="utf-8"),
-            f"{BUNDLE_DIGEST}  {BUNDLE_NAME}\n{ZIP_DIGEST}  {ZIP_NAME}\n",
+            f"{BUNDLE_DIGEST}  {BUNDLE_NAME}\n{OPENAPI_DIGEST}  {OPENAPI_NAME}\n",
         )
 
     def test_rejects_incomplete_remote_asset(self) -> None:
@@ -132,21 +130,14 @@ class RenderReleaseChecksumsTest(unittest.TestCase):
         self.assertIn("provenance asset mismatch", result.stderr)
 
     def test_rejects_asset_from_another_tag(self) -> None:
-        result = self.run_renderer(zip_name="kast-v9.8.6-linux-x64.zip")
+        result = self.run_renderer(bundle_name="kast-linux-x64-v9.8.6.tar.gz")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("provenance asset mismatch", result.stderr)
 
     def test_rejects_unexpected_remote_product_asset(self) -> None:
-        result = self.run_renderer(extra_product=f"kast-idea-{TAG}.zip")
+        result = self.run_renderer(extra_product=f"kast-{TAG}-linux-x64.zip")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("unexpected release product asset", result.stderr)
-
-    def test_accepts_real_ubuntu_headless_platform_name(self) -> None:
-        result = self.run_renderer(
-            bundle_platform="ubuntu-debian-headless-x86_64",
-            bundle_name=f"kast-ubuntu-debian-headless-x86_64-{TAG}.tar.gz",
-        )
-        self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":

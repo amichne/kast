@@ -10,8 +10,6 @@ fn documented_workspace_file_arguments_reach_the_typed_boundary() {
     let stdout = assert_typed_boundary(&[
         "--workspace-root",
         workspace,
-        "--backend",
-        "headless",
         "--module",
         "gradle:included/tools#:app",
         "--source-set",
@@ -37,7 +35,7 @@ fn documented_workspace_file_arguments_reach_the_typed_boundary() {
     ]);
     let query = &stdout["error"]["details"]["admittedQuery"];
     assert_eq!(query["canonicalWorkspaceRoot"], workspace, "{stdout:#}");
-    assert_eq!(query["backend"], "headless", "{stdout:#}");
+    assert!(query.get("backend").is_none(), "{stdout:#}");
     assert_eq!(
         query["filters"]["package"], "named:例子.`when`",
         "{stdout:#}"
@@ -63,8 +61,6 @@ fn documented_workspace_file_arguments_reach_the_typed_boundary() {
             "verify",
             "--workspace-root",
             workspace,
-            "--backend",
-            "headless"
         ]),
         "{stdout:#}"
     );

@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Any
 
 
-SOURCE_SCHEMA_VERSION = 1
-MANIFEST_SCHEMA_VERSION = 1
+SOURCE_SCHEMA_VERSION = 2
+MANIFEST_SCHEMA_VERSION = 2
 RELEASE_VERSION_TEMPLATE = "{releaseVersion}"
 RELEASE_TAG_PATTERN = re.compile(r"v[0-9A-Za-z][0-9A-Za-z._-]*")
 VERSION_PATTERN = re.compile(r"[0-9A-Za-z][0-9A-Za-z._-]*")
@@ -46,9 +46,6 @@ MUTATION_CAPABILITIES = frozenset(
         "REFRESH_WORKSPACE",
     )
 )
-BACKEND_KINDS = frozenset(("IDEA", "HEADLESS"))
-
-
 def fail(message: str) -> None:
     print(f"error: {message}", file=sys.stderr)
     raise SystemExit(1)
@@ -142,26 +139,26 @@ def parse_capabilities(raw: object, *, field: str) -> tuple[Capability, ...]:
 
 
 @dataclass(frozen=True)
-class IdeaBuildRange:
+class RuntimeBuildRange:
     since_build: str
     until_build: str | None
 
     @classmethod
-    def parse(cls, raw: object) -> "IdeaBuildRange":
+    def parse(cls, raw: object) -> "RuntimeBuildRange":
         payload = require_object(
             raw,
-            field="ideaBuildRange",
+            field="runtimeBuildRange",
             keys=frozenset(("sinceBuild", "untilBuild")),
         )
         since_build = payload["sinceBuild"]
         until_build = payload["untilBuild"]
         if not isinstance(since_build, str) or BUILD_PATTERN.fullmatch(since_build) is None:
-            fail("ideaBuildRange.sinceBuild must be a numeric JetBrains build")
+            fail("runtimeBuildRange.sinceBuild must be a numeric runtime build")
         if until_build is not None and (
             not isinstance(until_build, str)
             or UNTIL_BUILD_PATTERN.fullmatch(until_build) is None
         ):
-            fail("ideaBuildRange.untilBuild must be null or a numeric JetBrains build range")
+            fail("runtimeBuildRange.untilBuild must be null or a numeric runtime build range")
         result = cls(since_build=since_build, until_build=until_build)
         result.require_ordered()
         return result
@@ -175,11 +172,11 @@ class IdeaBuildRange:
         until_parts = tuple(int(part) for part in raw_until.split("."))
         if wildcard:
             if until_parts < since_parts[: len(until_parts)]:
-                fail("ideaBuildRange.untilBuild is below sinceBuild")
+                fail("runtimeBuildRange.untilBuild is below sinceBuild")
             return
         width = max(len(since_parts), len(until_parts))
         if until_parts + (0,) * (width - len(until_parts)) < since_parts + (0,) * (width - len(since_parts)):
-            fail("ideaBuildRange.untilBuild is below sinceBuild")
+            fail("runtimeBuildRange.untilBuild is below sinceBuild")
 
     def value(self) -> dict[str, str | None]:
         return {"sinceBuild": self.since_build, "untilBuild": self.until_build}
@@ -188,7 +185,6 @@ class IdeaBuildRange:
 @dataclass(frozen=True)
 class RuntimeIdentityTemplate:
     implementation_version: str
-    backend_kind: str
 
     @classmethod
     def parse(
@@ -201,25 +197,21 @@ class RuntimeIdentityTemplate:
         payload = require_object(
             raw,
             field=field,
-            keys=frozenset(("implementationVersion", "backendKind")),
+            keys=frozenset(("implementationVersion",)),
         )
-        backend_kind = payload["backendKind"]
-        if backend_kind not in BACKEND_KINDS:
-            fail(f"{field}.backendKind must be one of {sorted(BACKEND_KINDS)}")
         return cls(
             implementation_version=require_version(
                 payload["implementationVersion"],
                 field=f"{field}.implementationVersion",
                 allow_template=allow_template,
             ),
-            backend_kind=backend_kind,
         )
 
 
 @dataclass(frozen=True)
 class SupportedPair:
     relation: str
-    plugin_version: str
+    indexer_version: str
     cli_version: str
     protocol_revision: int
     workspace_metadata_revision: int
@@ -244,7 +236,7 @@ class SupportedPair:
             keys=frozenset(
                 (
                     "relation",
-                    "pluginVersion",
+                    "indexerVersion",
                     "cliVersion",
                     "protocolRevision",
                     "workspaceMetadataRevision",
@@ -258,9 +250,9 @@ class SupportedPair:
         relation = payload["relation"]
         if relation not in ("same-release", "adjacent-release"):
             fail(f"{field}.relation must be same-release or adjacent-release")
-        plugin_version = require_version(
-            payload["pluginVersion"],
-            field=f"{field}.pluginVersion",
+        indexer_version = require_version(
+            payload["indexerVersion"],
+            field=f"{field}.indexerVersion",
             allow_template=release_version is None,
         )
         cli_version = require_version(
@@ -275,19 +267,19 @@ class SupportedPair:
         )
         if relation == "same-release":
             expected_version = RELEASE_VERSION_TEMPLATE if release_version is None else release_version
-            if (plugin_version, cli_version, runtime.implementation_version) != (expected_version,) * 3:
+            if (indexer_version, cli_version, runtime.implementation_version) != (expected_version,) * 3:
                 fail(f"{field} same-release versions must all equal {expected_version}")
         else:
             if RELEASE_VERSION_TEMPLATE in (
-                plugin_version,
+                indexer_version,
                 cli_version,
                 runtime.implementation_version,
             ):
                 fail(f"{field} adjacent-release versions must be explicit")
-            if plugin_version == cli_version:
-                fail(f"{field} adjacent-release plugin and CLI versions must differ")
-            if runtime.implementation_version not in (plugin_version, cli_version):
-                fail(f"{field} adjacent runtime version must equal the plugin or CLI version")
+            if indexer_version == cli_version:
+                fail(f"{field} adjacent-release indexer and CLI versions must differ")
+            if runtime.implementation_version not in (indexer_version, cli_version):
+                fail(f"{field} adjacent runtime version must equal the indexer or CLI version")
 
         required = parse_capabilities(
             payload["requiredCapabilities"], field=f"{field}.requiredCapabilities"
@@ -321,7 +313,7 @@ class SupportedPair:
 
         return cls(
             relation=relation,
-            plugin_version=plugin_version,
+            indexer_version=indexer_version,
             cli_version=cli_version,
             protocol_revision=require_positive_revision(
                 payload["protocolRevision"], field=f"{field}.protocolRevision"
@@ -338,7 +330,7 @@ class SupportedPair:
 
     def key(self) -> tuple[object, ...]:
         return (
-            self.plugin_version,
+            self.indexer_version,
             self.cli_version,
             self.protocol_revision,
             self.workspace_metadata_revision,
@@ -347,12 +339,11 @@ class SupportedPair:
 
     def sort_key(self) -> tuple[object, ...]:
         return (
-            self.plugin_version,
+            self.indexer_version,
             self.cli_version,
             self.protocol_revision,
             self.workspace_metadata_revision,
             self.runtime.implementation_version,
-            self.runtime.backend_kind,
         )
 
     def render(self, release_version: str) -> dict[str, object]:
@@ -361,13 +352,12 @@ class SupportedPair:
 
         return {
             "relation": self.relation,
-            "pluginVersion": resolve(self.plugin_version),
+            "indexerVersion": resolve(self.indexer_version),
             "cliVersion": resolve(self.cli_version),
             "protocolRevision": self.protocol_revision,
             "workspaceMetadataRevision": self.workspace_metadata_revision,
             "runtime": {
                 "implementationVersion": resolve(self.runtime.implementation_version),
-                "backendKind": self.runtime.backend_kind,
             },
             "requiredCapabilities": [value.value() for value in self.required_capabilities],
             "optionalCapabilities": [value.value() for value in self.optional_capabilities],
@@ -377,7 +367,7 @@ class SupportedPair:
 
 @dataclass(frozen=True)
 class RuntimeCompatibilitySource:
-    idea_build_range: IdeaBuildRange
+    runtime_build_range: RuntimeBuildRange
     supported_pairs: tuple[SupportedPair, ...]
 
     @classmethod
@@ -385,7 +375,7 @@ class RuntimeCompatibilitySource:
         payload = require_object(
             read_json(path),
             field="runtime compatibility source",
-            keys=frozenset(("schemaVersion", "ideaBuildRange", "supportedPairs")),
+            keys=frozenset(("schemaVersion", "runtimeBuildRange", "supportedPairs")),
         )
         if payload["schemaVersion"] != SOURCE_SCHEMA_VERSION:
             fail(f"runtime compatibility source schemaVersion must be {SOURCE_SCHEMA_VERSION}")
@@ -404,13 +394,10 @@ class RuntimeCompatibilitySource:
         )
         if len({pair.key() for pair in pairs}) != len(pairs):
             fail("supportedPairs must not contain duplicate negotiation rows")
-        if not any(
-            pair.relation == "same-release" and pair.runtime.backend_kind == "IDEA"
-            for pair in pairs
-        ):
-            fail("supportedPairs must contain the tested same-release IDEA row")
+        if not any(pair.relation == "same-release" for pair in pairs):
+            fail("supportedPairs must contain the tested same-release row")
         return cls(
-            idea_build_range=IdeaBuildRange.parse(payload["ideaBuildRange"]),
+            runtime_build_range=RuntimeBuildRange.parse(payload["runtimeBuildRange"]),
             supported_pairs=pairs,
         )
 
@@ -419,7 +406,7 @@ class RuntimeCompatibilitySource:
 class RuntimeCompatibilityManifest:
     release_tag: str
     release_sha: str
-    idea_build_range: IdeaBuildRange
+    runtime_build_range: RuntimeBuildRange
     supported_pairs: tuple[SupportedPair, ...]
 
     @classmethod
@@ -432,7 +419,7 @@ class RuntimeCompatibilityManifest:
                     "schemaVersion",
                     "releaseTag",
                     "releaseSha",
-                    "ideaBuildRange",
+                    "runtimeBuildRange",
                     "supportedPairs",
                 )
             ),
@@ -462,15 +449,12 @@ class RuntimeCompatibilityManifest:
             fail("runtime compatibility manifest supportedPairs contain duplicate negotiation rows")
         if pairs != tuple(sorted(pairs, key=SupportedPair.sort_key)):
             fail("runtime compatibility manifest supportedPairs are not deterministically ordered")
-        if not any(
-            pair.relation == "same-release" and pair.runtime.backend_kind == "IDEA"
-            for pair in pairs
-        ):
-            fail("runtime compatibility manifest must contain the tested same-release IDEA row")
+        if not any(pair.relation == "same-release" for pair in pairs):
+            fail("runtime compatibility manifest must contain the tested same-release row")
         return cls(
             release_tag=release_tag,
             release_sha=release_sha,
-            idea_build_range=IdeaBuildRange.parse(payload["ideaBuildRange"]),
+            runtime_build_range=RuntimeBuildRange.parse(payload["runtimeBuildRange"]),
             supported_pairs=pairs,
         )
 
@@ -497,7 +481,7 @@ def render_manifest(
         "schemaVersion": MANIFEST_SCHEMA_VERSION,
         "releaseTag": release_tag,
         "releaseSha": release_sha,
-        "ideaBuildRange": source.idea_build_range.value(),
+        "runtimeBuildRange": source.runtime_build_range.value(),
         "supportedPairs": pairs,
     }
 
@@ -507,12 +491,11 @@ def rendered_pair_sort_key(pair: dict[str, object]) -> tuple[object, ...]:
     if not isinstance(runtime, dict):
         fail("rendered runtime identity must be an object")
     return (
-        str(pair["pluginVersion"]),
+        str(pair["indexerVersion"]),
         str(pair["cliVersion"]),
         int(pair["protocolRevision"]),
         int(pair["workspaceMetadataRevision"]),
         str(runtime["implementationVersion"]),
-        str(runtime["backendKind"]),
     )
 
 
@@ -547,8 +530,8 @@ def render_command(args: argparse.Namespace) -> None:
     print(f"Rendered runtime compatibility manifest for {args.release_tag}")
 
 
-def idea_build_range_command(args: argparse.Namespace) -> None:
-    value = RuntimeCompatibilitySource.load(Path(args.source)).idea_build_range.value()[args.field]
+def runtime_build_range_command(args: argparse.Namespace) -> None:
+    value = RuntimeCompatibilitySource.load(Path(args.source)).runtime_build_range.value()[args.field]
     if value is not None:
         print(value)
 
@@ -575,10 +558,10 @@ def parse_args() -> argparse.Namespace:
     render.add_argument("--output", required=True)
     render.set_defaults(handler=render_command)
 
-    idea_range = subparsers.add_parser("idea-build-range")
-    idea_range.add_argument("--source", required=True)
-    idea_range.add_argument("--field", choices=("sinceBuild", "untilBuild"), required=True)
-    idea_range.set_defaults(handler=idea_build_range_command)
+    runtime_range = subparsers.add_parser("runtime-build-range")
+    runtime_range.add_argument("--source", required=True)
+    runtime_range.add_argument("--field", choices=("sinceBuild", "untilBuild"), required=True)
+    runtime_range.set_defaults(handler=runtime_build_range_command)
 
     return parser.parse_args()
 

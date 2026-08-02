@@ -84,7 +84,7 @@ impl WorkspaceIndexFixture {
             }
             transaction
                 .execute(
-                    "INSERT INTO file_metadata(prefix_id, filename, package_fq_id, package_state, package_unproven_reason, module_path, source_set) VALUES (1, ?, 1, 'PROVEN_NAMED', NULL, 'idea.app.main', 'main')",
+                    "INSERT INTO file_metadata(prefix_id, filename, package_fq_id, package_state, package_unproven_reason, module_path, source_set) VALUES (1, ?, 1, 'PROVEN_NAMED', NULL, 'indexer.app.main', 'main')",
                     params![filename],
                 )
                 .expect("source metadata row");

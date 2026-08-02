@@ -12,7 +12,7 @@ mod tests {
             healthy: true,
             active: true,
             indexing: false,
-            backend_name: "headless".to_string(),
+            backend_name: "indexer".to_string(),
             backend_version: "test".to_string(),
             workspace_root: root.display().to_string(),
             message: None,

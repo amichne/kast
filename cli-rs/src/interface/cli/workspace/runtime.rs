@@ -5,10 +5,7 @@ pub struct RuntimeArgs {
     /// Absolute workspace root for daemon lifecycle and RPC commands.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
-    /// Pin the command to a specific backend.
-    #[arg(long = "backend", value_enum)]
-    pub backend_name: Option<BackendName>,
-    /// IDEA Community installation home for the headless backend.
+    /// Supported IntelliJ platform home for the indexer.
     #[arg(long, hide = true)]
     pub idea_home: Option<PathBuf>,
     /// Maximum time to wait for a ready daemon when a command needs one.
@@ -17,7 +14,7 @@ pub struct RuntimeArgs {
     /// Allow up to return while the daemon is servable in INDEXING.
     #[arg(long, num_args = 0..=1, default_missing_value = "true")]
     pub accept_indexing: Option<bool>,
-    /// Fail instead of auto-starting a headless daemon.
+    /// Fail instead of auto-starting the Kast indexer.
     #[arg(long, num_args = 0..=1, default_missing_value = "true", hide = true)]
     pub no_auto_start: Option<bool>,
     /// Unix-domain socket path for the backend to listen on when auto-started.
@@ -60,13 +57,10 @@ pub struct DaemonStartArgs {
     /// Absolute workspace root for daemon lifecycle and RPC commands.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
-    /// Backend runtime to launch. Defaults to headless.
-    #[arg(long = "backend", value_enum)]
-    pub backend_name: Option<BackendName>,
     /// Override the directory containing backend runtime classpath.txt.
     #[arg(long)]
     pub runtime_libs_dir: Option<PathBuf>,
-    /// IDEA Community installation home for the headless backend.
+    /// Supported IntelliJ platform home for the indexer.
     #[arg(long)]
     pub idea_home: Option<PathBuf>,
     /// Unix-domain socket path for the backend to listen on.
@@ -118,7 +112,7 @@ pub struct RuntimeCommandArgs {
 pub enum RuntimeCommand {
     /// Start or warm the workspace daemon.
     #[command(
-        after_help = "Examples:\n  kast developer runtime up --workspace-root \"$PWD\" --backend headless --accept-indexing\n  kast developer runtime up --workspace-root /workspace --backend headless --accept-indexing"
+        after_help = "Examples:\n  kast developer runtime up --workspace-root \"$PWD\" --accept-indexing\n  kast developer runtime up --workspace-root /workspace --accept-indexing"
     )]
     Up(RuntimeArgs),
     /// Check what backends are running.

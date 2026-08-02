@@ -11,9 +11,8 @@ on:
       - "docs/**"
       - "package.json"
       - "package-lock.json"
-      - "packaging/jetbrains/**"
+      - "packaging/indexer/**"
       - "cli-rs/protocol/**"
-      - "cli-rs/protocol/source/commands.json"
       - "requirements-docs.txt"
       - "zensical.toml"
   push:
@@ -28,17 +27,14 @@ on:
       - "docs/**"
       - "package.json"
       - "package-lock.json"
-      - "packaging/jetbrains/**"
+      - "packaging/indexer/**"
       - "cli-rs/protocol/**"
-      - "cli-rs/protocol/source/commands.json"
       - "requirements-docs.txt"
       - "zensical.toml"
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages-${{ github.ref }}
@@ -67,11 +63,9 @@ jobs:
       - run: ./.github/scripts/docs/test-docs-navigation-contract.sh
       - run: ./.github/scripts/docs/test-docs-content-contract.sh
       - run: zensical build --clean
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
-          name: documentation-site-${{ github.run_id }}
           path: site
-          if-no-files-found: error
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -83,15 +77,10 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/download-artifact@v7
-        with:
-          name: documentation-site-${{ github.run_id }}
-          path: site
-      - uses: actions/configure-pages@v6
-      - uses: actions/upload-pages-artifact@v5
-        with:
-          path: site
       - uses: actions/deploy-pages@v5
         id: deployment

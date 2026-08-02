@@ -1,7 +1,7 @@
 use crate::cli::{OutputFormat, ReadyTarget};
 use crate::config::PathResolutionReport;
 use crate::error::{CliError, Result};
-use crate::package::{PackageResult, UbuntuDebianBundlePackageResult};
+use crate::package::{PackageResult, SetupBundlePackageResult};
 use crate::runtime::{
     DaemonStopResult, RuntimeCandidateStatus, RuntimeState, WorkspaceEnsureResult,
     WorkspaceRestartResult, WorkspaceStatusResult,

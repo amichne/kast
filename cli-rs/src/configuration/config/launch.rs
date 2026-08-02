@@ -1,10 +1,8 @@
-pub fn backend_runtime_libs_dir(
+pub fn indexer_runtime_libs_dir(
     config: &KastConfig,
-    backend_name: BackendName,
     override_dir: Option<PathBuf>,
 ) -> Result<PathBuf> {
-    crate::runtime::require_headless_backend(backend_name)?;
-    let configured = config.backends.headless.runtime_libs_dir.clone();
+    let configured = config.indexer.runtime_libs_dir.clone();
     override_dir.map(normalize).or(configured).ok_or_else(|| {
         CliError::new(
             "DAEMON_START_ERROR",

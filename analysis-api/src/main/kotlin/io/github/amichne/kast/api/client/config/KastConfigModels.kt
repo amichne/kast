@@ -8,25 +8,6 @@ data class ServerConfig(
     val maxConcurrentRequests: ServerMaxConcurrentRequests,
 )
 
-data class RuntimeConfig(
-    val defaultBackend: RuntimeDefaultBackend,
-    val strictPluginMatching: RuntimeStrictPluginMatching,
-    val ideaLaunch: IdeaLaunchConfig,
-)
-
-data class ProjectOpenConfig(
-    val profileAutoInit: ProjectOpenProfileAutoInit,
-    val profile: ProjectOpenProfile,
-    val autoExcludeGit: ProjectOpenAutoExcludeGit,
-    val gradleLoadEnabled: ProjectOpenGradleLoadEnabled,
-)
-
-data class IdeaLaunchConfig(
-    val enabled: IdeaLaunchEnabled,
-    val command: IdeaLaunchCommand,
-    val waitTimeoutMillis: IdeaLaunchWaitTimeoutMillis,
-)
-
 data class IndexingConfig(
     val criticalPaths: IndexingCriticalPaths,
     val ignoredPaths: IndexingIgnoredPaths,
@@ -82,21 +63,6 @@ data class ProfilingConfig(
     val emitManifest: ProfilingEmitManifest,
 )
 
-data class BackendsConfig(
-    val headless: HeadlessBackendConfig,
-    val idea: IdeaBackendConfig,
-)
-
-data class HeadlessBackendConfig(
-    val enabled: HeadlessBackendEnabled,
-    val runtimeLibsDir: HeadlessRuntimeLibsDir,
-    val ideaHome: HeadlessIdeaHome,
-)
-
-data class IdeaBackendConfig(
-    val enabled: IdeaBackendEnabled,
-)
-
 data class CodexConfig(
     val hooks: CodexHooksConfig = CodexHooksConfig(),
 )
@@ -124,8 +90,6 @@ data class CliConfig(
 
 data class KastConfigOverride(
     val server: ServerConfigOverride? = null,
-    val runtime: RuntimeConfigOverride? = null,
-    val projectOpen: ProjectOpenConfigOverride? = null,
     val codex: CodexConfigOverride? = null,
     val indexing: IndexingConfigOverride? = null,
     val cache: CacheConfigOverride? = null,
@@ -133,7 +97,6 @@ data class KastConfigOverride(
     val gradle: GradleConfigOverride? = null,
     val telemetry: TelemetryConfigOverride? = null,
     val profiling: ProfilingConfigOverride? = null,
-    val backends: BackendsConfigOverride? = null,
     val paths: PathsConfigOverride? = null,
     val cli: CliConfigOverride? = null,
 )
@@ -146,25 +109,6 @@ data class CodexHooksConfigOverride(
     val enabled: CodexHooksEnabled? = null,
     val sessionStart: CodexSessionStartEnabled? = null,
     val postToolUse: CodexPostToolUseEnabled? = null,
-)
-
-data class ProjectOpenConfigOverride(
-    val profileAutoInit: ProjectOpenProfileAutoInit? = null,
-    val profile: ProjectOpenProfile? = null,
-    val autoExcludeGit: ProjectOpenAutoExcludeGit? = null,
-    val gradleLoadEnabled: ProjectOpenGradleLoadEnabled? = null,
-)
-
-data class RuntimeConfigOverride(
-    val defaultBackend: RuntimeDefaultBackend? = null,
-    val strictPluginMatching: RuntimeStrictPluginMatching? = null,
-    val ideaLaunch: IdeaLaunchConfigOverride? = null,
-)
-
-data class IdeaLaunchConfigOverride(
-    val enabled: IdeaLaunchEnabled? = null,
-    val command: IdeaLaunchCommand? = null,
-    val waitTimeoutMillis: IdeaLaunchWaitTimeoutMillis? = null,
 )
 
 data class ServerConfigOverride(
@@ -226,19 +170,6 @@ data class ProfilingConfigOverride(
     val outputDir: ProfilingOutputDir? = null,
     val otlpEndpoint: ProfilingOtlpEndpoint? = null,
     val emitManifest: ProfilingEmitManifest? = null,
-)
-
-data class BackendsConfigOverride(
-    val headless: HeadlessBackendConfigOverride? = null,
-    val idea: IdeaBackendConfigOverride? = null,
-)
-
-data class HeadlessBackendConfigOverride(
-    val enabled: HeadlessBackendEnabled? = null,
-)
-
-data class IdeaBackendConfigOverride(
-    val enabled: IdeaBackendEnabled? = null,
 )
 
 data class PathsConfigOverride(

@@ -11,7 +11,6 @@ internal fun KastConfig.mergeResolvedJson(configFile: Path): KastConfig {
         Files.readString(configFile),
     )
     return merge(document.toKastConfigOverride())
-        .mergeResolved(document.toResolvedRuntimeConfigOverride())
 }
 
 private val runtimeConfigJson = Json {
@@ -21,106 +20,25 @@ private val runtimeConfigJson = Json {
 @Serializable
 private data class RuntimeConfigDocument(
     val server: RuntimeServerConfig? = null,
-    val runtime: RuntimeRuntimeConfig? = null,
-    val projectOpen: RuntimeProjectOpenConfig? = null,
     val indexing: RuntimeIndexingConfig? = null,
     val cache: RuntimeCacheConfig? = null,
     val watcher: RuntimeWatcherConfig? = null,
     val gradle: RuntimeGradleConfig? = null,
     val telemetry: RuntimeTelemetryConfig? = null,
     val profiling: RuntimeProfilingConfig? = null,
-    val backends: RuntimeBackendsConfig? = null,
     val paths: RuntimePathsConfig? = null,
     val cli: RuntimeCliConfig? = null,
 ) {
     fun toKastConfigOverride(): KastConfigOverride = KastConfigOverride(
         server = server?.toOverride(),
-        runtime = runtime?.toOverride(),
-        projectOpen = projectOpen?.toOverride(),
         indexing = indexing?.toOverride(),
         cache = cache?.toOverride(),
         watcher = watcher?.toOverride(),
         gradle = gradle?.toOverride(),
         telemetry = telemetry?.toOverride(),
         profiling = profiling?.toOverride(),
-        backends = backends?.toOverride(),
         paths = paths?.toOverride(),
         cli = cli?.toOverride(),
-    )
-
-    fun toResolvedRuntimeConfigOverride(): ResolvedRuntimeConfigOverride = ResolvedRuntimeConfigOverride(
-        backends = backends?.toResolvedOverride(),
-    )
-}
-
-private data class ResolvedRuntimeConfigOverride(
-    val backends: ResolvedBackendsConfigOverride? = null,
-)
-
-private data class ResolvedBackendsConfigOverride(
-    val headless: ResolvedHeadlessBackendConfigOverride? = null,
-)
-
-private data class ResolvedHeadlessBackendConfigOverride(
-    val runtimeLibsDir: HeadlessRuntimeLibsDir? = null,
-    val ideaHome: HeadlessIdeaHome? = null,
-)
-
-private fun KastConfig.mergeResolved(override: ResolvedRuntimeConfigOverride): KastConfig = copy(
-    backends = backends.mergeResolved(override.backends),
-)
-
-private fun BackendsConfig.mergeResolved(
-    override: ResolvedBackendsConfigOverride?,
-): BackendsConfig = copy(
-    headless = headless.mergeResolved(override?.headless),
-)
-
-private fun HeadlessBackendConfig.mergeResolved(
-    override: ResolvedHeadlessBackendConfigOverride?,
-): HeadlessBackendConfig = copy(
-    runtimeLibsDir = override?.runtimeLibsDir ?: runtimeLibsDir,
-    ideaHome = override?.ideaHome ?: ideaHome,
-)
-
-@Serializable
-private data class RuntimeRuntimeConfig(
-    val defaultBackend: String? = null,
-    val strictPluginMatching: Boolean? = null,
-    val ideaLaunch: RuntimeIdeaLaunchConfig? = null,
-) {
-    fun toOverride(): RuntimeConfigOverride = RuntimeConfigOverride(
-        defaultBackend = defaultBackend?.let(::RuntimeDefaultBackend),
-        strictPluginMatching = strictPluginMatching?.let(::RuntimeStrictPluginMatching),
-        ideaLaunch = ideaLaunch?.toOverride(),
-    )
-}
-
-@Serializable
-private data class RuntimeIdeaLaunchConfig(
-    val enabled: Boolean? = null,
-    val command: String? = null,
-    val waitTimeoutMillis: Long? = null,
-) {
-    fun toOverride(): IdeaLaunchConfigOverride = IdeaLaunchConfigOverride(
-        enabled = enabled?.let(::IdeaLaunchEnabled),
-        command = command?.let(::IdeaLaunchCommand),
-        waitTimeoutMillis = waitTimeoutMillis?.let(::IdeaLaunchWaitTimeoutMillis),
-    )
-}
-
-@Serializable
-private data class RuntimeProjectOpenConfig(
-    val profileAutoInit: Boolean? = null,
-    val profile: String? = null,
-    val autoExcludeGit: Boolean? = null,
-    val gradleLoadEnabled: Boolean? = null,
-) {
-    fun toOverride(): ProjectOpenConfigOverride = ProjectOpenConfigOverride(
-        profileAutoInit = profileAutoInit?.let(::ProjectOpenProfileAutoInit),
-        profile = profile?.let(::ProjectOpenProfile),
-        autoExcludeGit = autoExcludeGit?.let(::ProjectOpenAutoExcludeGit),
-        gradleLoadEnabled = gradleLoadEnabled?.let(::ProjectOpenGradleLoadEnabled),
     )
 }
 
@@ -253,53 +171,6 @@ private data class RuntimeProfilingConfig(
         outputDir = outputDir?.let(::ProfilingOutputDir),
         otlpEndpoint = otlpEndpoint?.let(::OptionalConfigString)?.let(::ProfilingOtlpEndpoint),
         emitManifest = emitManifest?.let(::ProfilingEmitManifest),
-    )
-}
-
-@Serializable
-private data class RuntimeBackendsConfig(
-    val headless: RuntimeHeadlessBackendConfig? = null,
-    val idea: RuntimeIdeaBackendConfig? = null,
-) {
-    fun toOverride(): BackendsConfigOverride = BackendsConfigOverride(
-        headless = headless?.toOverride(),
-        idea = idea?.toOverride(),
-    )
-
-    fun toResolvedOverride(): ResolvedBackendsConfigOverride? {
-        val resolvedHeadless = headless?.toResolvedOverride()
-        return takeIfAny(resolvedHeadless) { ResolvedBackendsConfigOverride(resolvedHeadless) }
-    }
-}
-
-@Serializable
-private data class RuntimeHeadlessBackendConfig(
-    val enabled: Boolean? = null,
-    val runtimeLibsDir: String? = null,
-    val ideaHome: String? = null,
-) {
-    fun toOverride(): HeadlessBackendConfigOverride = HeadlessBackendConfigOverride(
-        enabled = enabled?.let(::HeadlessBackendEnabled),
-    )
-
-    fun toResolvedOverride(): ResolvedHeadlessBackendConfigOverride? {
-        val resolvedRuntimeLibsDir = runtimeLibsDir?.let(::OptionalConfigString)?.let(::HeadlessRuntimeLibsDir)
-        val resolvedIdeaHome = ideaHome?.let(::OptionalConfigString)?.let(::HeadlessIdeaHome)
-        return takeIfAny(resolvedRuntimeLibsDir, resolvedIdeaHome) {
-            ResolvedHeadlessBackendConfigOverride(
-                runtimeLibsDir = resolvedRuntimeLibsDir,
-                ideaHome = resolvedIdeaHome,
-            )
-        }
-    }
-}
-
-@Serializable
-private data class RuntimeIdeaBackendConfig(
-    val enabled: Boolean? = null,
-) {
-    fun toOverride(): IdeaBackendConfigOverride = IdeaBackendConfigOverride(
-        enabled = enabled?.let(::IdeaBackendEnabled),
     )
 }
 

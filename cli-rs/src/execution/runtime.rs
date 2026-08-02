@@ -17,8 +17,8 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 include!("runtime/types.rs");
-#[path = "runtime/backend/headless_authority.rs"]
-mod headless_authority;
+#[path = "runtime/backend/indexer_authority.rs"]
+mod indexer_authority;
 #[cfg(target_os = "macos")]
 include!("runtime/backend/sidecar_host.rs");
 include!("runtime/backend/workspace_admission.rs");

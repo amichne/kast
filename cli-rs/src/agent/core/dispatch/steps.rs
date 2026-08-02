@@ -28,20 +28,13 @@ fn execute_agent_steps(
     let mut workspace_admission = None;
     if daemon_step_count > 0 {
         let route = if method == "agent/verify" {
-            runtime::semantic_workspace_route_reuse_only(
-                runtime.workspace_root.clone(),
-                runtime.backend_name,
-            )
+            runtime::semantic_workspace_route_reuse_only(runtime.workspace_root.clone())
         } else {
-            runtime::semantic_workspace_route(
-                runtime.workspace_root.clone(),
-                runtime.backend_name,
-            )
+            runtime::semantic_workspace_route(runtime.workspace_root.clone())
         };
         match route {
             Ok(runtime::SemanticWorkspaceRoute::Admitted(admission)) => {
                 runtime.workspace_root = Some(admission.workspace_root().to_path_buf());
-                runtime.backend_name = Some(admission.backend());
                 workspace_admission = Some(admission);
             }
             Ok(runtime::SemanticWorkspaceRoute::Rejected(rejection)) => {

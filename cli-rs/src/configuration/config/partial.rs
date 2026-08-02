@@ -2,8 +2,7 @@
 #[serde(rename_all = "camelCase")]
 struct PartialConfig {
     server: Option<PartialServer>,
-    runtime: Option<PartialRuntime>,
-    project_open: Option<PartialProjectOpen>,
+    indexer: Option<PartialIndexer>,
     codex: Option<PartialCodex>,
     indexing: Option<PartialIndexing>,
     cache: Option<PartialCache>,
@@ -11,7 +10,6 @@ struct PartialConfig {
     gradle: Option<PartialGradle>,
     telemetry: Option<PartialTelemetry>,
     profiling: Option<PartialProfiling>,
-    backends: Option<PartialBackends>,
     cli: Option<PartialCli>,
 }
 
@@ -25,27 +23,8 @@ struct PartialServer {
 
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct PartialRuntime {
-    default_backend: Option<RuntimeDefaultBackend>,
-    strict_plugin_matching: Option<bool>,
-    idea_launch: Option<PartialIdeaLaunch>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PartialIdeaLaunch {
-    enabled: Option<bool>,
-    command: Option<PathBuf>,
-    wait_timeout_millis: Option<NonZeroU64>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PartialProjectOpen {
-    profile_auto_init: Option<bool>,
-    profile: Option<ProjectOpenProfile>,
-    auto_exclude_git: Option<bool>,
-    gradle_load_enabled: Option<bool>,
+struct PartialIndexer {
+    host_command: Option<PathBuf>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -132,24 +111,6 @@ struct PartialProfiling {
     output_dir: Option<String>,
     otlp_endpoint: Option<Option<String>>,
     emit_manifest: Option<bool>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct PartialBackends {
-    headless: Option<PartialHeadless>,
-    idea: Option<PartialIdea>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PartialHeadless {
-    enabled: Option<bool>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PartialIdea {
-    enabled: Option<bool>,
 }
 
 #[derive(Debug, Default, Deserialize)]

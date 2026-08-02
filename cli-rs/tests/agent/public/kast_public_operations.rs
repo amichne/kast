@@ -8,8 +8,8 @@ use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use support::{
-    kast_at, spawn_scripted_headless_backend, spawn_scripted_headless_backend_for_invocations,
-    spawn_scripted_mutating_headless_backend, workspace_database_path_for_test,
+    kast_at, spawn_scripted_indexer_backend, spawn_scripted_indexer_backend_for_invocations,
+    spawn_scripted_mutating_indexer_backend, workspace_database_path_for_test,
     workspace_files::WorkspaceIndexFixture, write_active_kast_for_test,
 };
 
@@ -156,7 +156,7 @@ fn change_persists_a_private_root_bound_plan_and_apply_consumes_it_after_success
     );
 
     let socket = fixture.path().join("apply.sock");
-    let backend = spawn_scripted_mutating_headless_backend(
+    let backend = spawn_scripted_mutating_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -280,7 +280,7 @@ fn refresh_keeps_relationship_failure_actionable_without_graph_extraction() {
     let source = source.canonicalize().expect("canonical source");
     let failure_id = uuid::Uuid::new_v4().hyphenated().to_string();
     let socket = fixture.path().join("refresh.sock");
-    let backend = spawn_scripted_headless_backend_for_invocations(
+    let backend = spawn_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,

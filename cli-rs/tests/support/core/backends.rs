@@ -1,4 +1,4 @@
-pub(crate) fn spawn_scripted_headless_backend(
+pub(crate) fn spawn_scripted_indexer_backend(
     home: &Path,
     config_home: &Path,
     workspace: &Path,
@@ -12,7 +12,7 @@ pub(crate) fn spawn_scripted_headless_backend(
         config_home,
         workspace,
         socket_path,
-        "headless",
+        "indexer",
         1,
         false,
         vec![],
@@ -20,7 +20,7 @@ pub(crate) fn spawn_scripted_headless_backend(
     )
 }
 
-pub(crate) fn spawn_scripted_mutating_headless_backend(
+pub(crate) fn spawn_scripted_mutating_indexer_backend(
     home: &Path,
     config_home: &Path,
     workspace: &Path,
@@ -34,7 +34,7 @@ pub(crate) fn spawn_scripted_mutating_headless_backend(
         config_home,
         workspace,
         socket_path,
-        "headless",
+        "indexer",
         1,
         false,
         vec!["RENAME", "APPLY_EDITS"],
@@ -48,12 +48,28 @@ pub(crate) fn runtime_descriptor_for_test(
     backend_name: &str,
     backend_version: &str,
 ) -> serde_json::Value {
+    runtime_descriptor_for_process_test(
+        workspace,
+        socket_path,
+        backend_name,
+        backend_version,
+        std::process::id(),
+    )
+}
+
+pub(crate) fn runtime_descriptor_for_process_test(
+    workspace: &Path,
+    socket_path: &Path,
+    backend_name: &str,
+    backend_version: &str,
+    pid: u32,
+) -> serde_json::Value {
     use std::os::unix::fs::MetadataExt;
 
     let socket = std::fs::metadata(socket_path).expect("bound runtime socket identity");
     let output = Command::new("ps")
         .env("LC_ALL", "C")
-        .args(["-o", "lstart=", "-p", &std::process::id().to_string()])
+        .args(["-o", "lstart=", "-p", &pid.to_string()])
         .output()
         .expect("process start observation");
     assert!(output.status.success(), "process start observation");
@@ -72,18 +88,18 @@ pub(crate) fn runtime_descriptor_for_test(
         "workspaceRoot": workspace.display().to_string(),
         "backendName": backend_name,
         "backendVersion": backend_version,
-        "runtimeInstanceId": format!("test-{}-{}", std::process::id(), socket.ino()),
+        "runtimeInstanceId": format!("test-{pid}-{}", socket.ino()),
         "processStartEpochMillis": u64::try_from(start_epoch_seconds).expect("process start") * 1_000,
         "ownerUid": u64::from(unsafe { libc::geteuid() }),
         "socketFileIdentity": {"device": socket.dev(), "inode": socket.ino()},
         "transport": "uds",
         "socketPath": socket_path.display().to_string(),
-        "pid": std::process::id(),
+        "pid": pid,
         "schemaVersion": 5
     })
 }
 
-pub(crate) fn spawn_scripted_headless_backend_for_invocations(
+pub(crate) fn spawn_scripted_indexer_backend_for_invocations(
     home: &Path,
     config_home: &Path,
     workspace: &Path,
@@ -98,7 +114,7 @@ pub(crate) fn spawn_scripted_headless_backend_for_invocations(
         config_home,
         workspace,
         socket_path,
-        "headless",
+        "indexer",
         invocation_count,
         false,
         vec![],
@@ -106,7 +122,7 @@ pub(crate) fn spawn_scripted_headless_backend_for_invocations(
     )
 }
 
-pub(crate) fn spawn_ready_headless_backend_after_marker(
+pub(crate) fn spawn_ready_indexer_backend_after_marker(
     home: &Path,
     config_home: &Path,
     workspace: &Path,
@@ -145,14 +161,14 @@ pub(crate) fn spawn_ready_headless_backend_after_marker(
                 &config_home,
                 &workspace,
                 &socket_path,
-                "headless",
+                "indexer",
                 invocation_count,
                 true,
                 vec![],
                 vec![],
             )
             .join()
-            .expect("ready headless backend"),
+            .expect("ready indexer"),
         )
     })
 }
@@ -176,11 +192,6 @@ fn spawn_scripted_backend(
     std::fs::create_dir_all(config_home).expect("config home");
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     let workspace = std::fs::canonicalize(workspace).expect("canonical scripted workspace");
-    std::fs::write(
-        config_home.join("config.toml"),
-        format!("[runtime]\ndefaultBackend = \"{backend_name}\"\n"),
-    )
-    .expect("config");
     let listener = UnixListener::bind(socket_path).expect("bind scripted backend");
     std::fs::write(
         descriptor_dir.join("daemons.json"),
@@ -280,7 +291,7 @@ fn spawn_scripted_backend(
     })
 }
 
-pub(crate) fn spawn_sequenced_headless_backend(
+pub(crate) fn spawn_sequenced_indexer_backend(
     home: &Path,
     config_home: &Path,
     workspace: &Path,
@@ -293,18 +304,13 @@ pub(crate) fn spawn_sequenced_headless_backend(
     std::fs::create_dir_all(config_home).expect("config home");
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     let workspace = std::fs::canonicalize(workspace).expect("canonical sequenced workspace");
-    std::fs::write(
-        config_home.join("config.toml"),
-        "[runtime]\ndefaultBackend = \"headless\"\n",
-    )
-    .expect("config");
     let listener = UnixListener::bind(socket_path).expect("bind sequenced backend");
     std::fs::write(
         descriptor_dir.join("daemons.json"),
         serde_json::to_vec_pretty(&serde_json::json!([runtime_descriptor_for_test(
             &workspace,
             socket_path,
-            "headless",
+            "indexer",
             "scripted-test",
         )]))
         .expect("descriptor json"),
@@ -357,7 +363,10 @@ fn default_socket_path_for_test(workspace: &Path) -> PathBuf {
 
     let normalized: PathBuf = workspace.components().collect();
     let digest = Sha256::digest(normalized.to_string_lossy().as_bytes());
-    std::env::temp_dir().join(format!("kast-{}.sock", &hex::encode(digest)[0..12]))
+    std::env::temp_dir().join(format!(
+        "kast-indexer-{}.sock",
+        &hex::encode(digest)[0..12]
+    ))
 }
 
 pub(crate) fn path_report_entry<'a>(

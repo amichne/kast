@@ -60,7 +60,7 @@ class WorkspacePathsRuntimeTest {
         }
 
         @Test
-        fun `workspace socket path is headless qualified and uses the canonical root hash`() {
+        fun `workspace socket path is indexer qualified and uses the canonical root hash`() {
             val realWorkspaceRoot = Files.createDirectories(tempDir.resolve("real-workspace"))
             val workspaceRoot = tempDir.resolve("workspace-link")
             Files.createSymbolicLink(workspaceRoot, realWorkspaceRoot)
@@ -70,7 +70,7 @@ class WorkspacePathsRuntimeTest {
             ).take(12)
 
             assertEquals(
-                socketDirectory.resolve("kast-headless-$expectedHash.sock").toAbsolutePath().normalize(),
+                socketDirectory.resolve("kast-indexer-$expectedHash.sock").toAbsolutePath().normalize(),
                 socketPathForWorkspaceRoot(workspaceRoot, socketDirectory),
             )
         }

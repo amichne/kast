@@ -5,10 +5,7 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
             return error_envelope("agent/workspace-files".to_string(), None, error);
         }
     };
-    let admission = match runtime::semantic_workspace_route(
-        args.runtime.workspace_root.clone(),
-        args.runtime.backend_name,
-    ) {
+    let admission = match runtime::semantic_workspace_route(args.runtime.workspace_root.clone()) {
         Ok(runtime::SemanticWorkspaceRoute::Admitted(admission)) => admission,
         Ok(runtime::SemanticWorkspaceRoute::Rejected(rejection)) => {
             let mut error = agent_error(rejection.code, rejection.message);

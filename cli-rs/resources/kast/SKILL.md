@@ -7,7 +7,7 @@ description: Use for compiler-backed Kotlin and Gradle discovery, reference inde
 
 Use `kast` as the public interface for Kotlin and Gradle semantic work. Use the
 private `kastctl` interface only to acquire, inspect, or release the exact-root
-headless workspace lease required by a mutation.
+indexer workspace lease required by a mutation.
 
 - Run `kast` to inspect current workspace readiness and suggested next actions.
 - Run `kast up` to start or reuse the semantic runtime.

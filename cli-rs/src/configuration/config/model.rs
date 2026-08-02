@@ -2,8 +2,7 @@
 #[serde(rename_all = "camelCase")]
 pub struct KastConfig {
     pub server: ServerConfig,
-    pub runtime: RuntimeConfig,
-    pub project_open: ProjectOpenConfig,
+    pub indexer: IndexerConfig,
     pub codex: CodexConfig,
     pub indexing: IndexingConfig,
     pub cache: CacheConfig,
@@ -12,7 +11,6 @@ pub struct KastConfig {
     pub telemetry: TelemetryConfig,
     pub profiling: ProfilingConfig,
     pub paths: PathsConfig,
-    pub backends: BackendsConfig,
     pub cli: CliConfig,
 }
 
@@ -26,64 +24,18 @@ pub struct ServerConfig {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RuntimeConfig {
-    pub default_backend: RuntimeDefaultBackend,
-    pub strict_plugin_matching: bool,
-    pub idea_launch: IdeaLaunchConfig,
+pub struct IndexerConfig {
+    pub runtime_libs_dir: Option<PathBuf>,
+    pub host_home: Option<PathBuf>,
+    pub host_command: PathBuf,
 }
 
-impl Default for RuntimeConfig {
+impl Default for IndexerConfig {
     fn default() -> Self {
         Self {
-            default_backend: RuntimeDefaultBackend::Auto,
-            strict_plugin_matching: true,
-            idea_launch: IdeaLaunchConfig::default(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum RuntimeDefaultBackend {
-    Auto,
-    Idea,
-    Headless,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IdeaLaunchConfig {
-    pub enabled: bool,
-    pub command: PathBuf,
-    pub wait_timeout_millis: NonZeroU64,
-}
-
-impl Default for IdeaLaunchConfig {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            command: PathBuf::from("idea"),
-            wait_timeout_millis: NonZeroU64::new(90_000).expect("default IDEA launch timeout"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectOpenConfig {
-    pub profile_auto_init: bool,
-    pub profile: ProjectOpenProfile,
-    pub auto_exclude_git: bool,
-    pub gradle_load_enabled: bool,
-}
-
-impl Default for ProjectOpenConfig {
-    fn default() -> Self {
-        Self {
-            profile_auto_init: true,
-            profile: ProjectOpenProfile::JetbrainsPlugin,
-            auto_exclude_git: true,
-            gradle_load_enabled: true,
+            runtime_libs_dir: None,
+            host_home: None,
+            host_command: PathBuf::from("idea"),
         }
     }
 }
@@ -109,12 +61,6 @@ impl Default for CodexHooksConfig {
             post_tool_use: true,
         }
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum ProjectOpenProfile {
-    JetbrainsPlugin,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -201,26 +147,6 @@ pub struct PathsConfig {
     pub runtime_dir: PathBuf,
     pub descriptor_dir: PathBuf,
     pub socket_dir: PathBuf,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct BackendsConfig {
-    pub headless: HeadlessBackendConfig,
-    pub idea: IdeaBackendConfig,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct HeadlessBackendConfig {
-    pub enabled: bool,
-    pub runtime_libs_dir: Option<PathBuf>,
-    pub idea_home: Option<PathBuf>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IdeaBackendConfig {
-    pub enabled: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]

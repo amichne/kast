@@ -43,11 +43,7 @@ fn recover_or_reject_existing_lease(
             return Err(error);
         }
         let runtime_stopped = if binding.ownership == WorkspaceLeaseOwnership::Started {
-            stop_exact_runtime(
-                &binding.workspace_root,
-                binding.backend_name,
-                &binding.runtime,
-            )?
+            stop_exact_runtime(&binding.workspace_root, &binding.runtime)?
         } else {
             false
         };
@@ -95,7 +91,6 @@ fn validate_lease_binding_identity(
             ),
         ));
     }
-    headless_authority::require_headless_backend(binding.backend_name)?;
     Ok(())
 }
 
@@ -113,7 +108,6 @@ fn validate_token_request_identity(
             ),
         ));
     }
-    headless_authority::require_headless_backend(claims.backend_name)?;
     Ok(())
 }
 

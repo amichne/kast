@@ -4,13 +4,13 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("headless.sock");
+    let socket_path = temp.path().join("indexer.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
     write_gradle_marker(&workspace);
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let file = workspace.join("src/Added.kt");
     let binary = write_active_kast_for_test(&home, &config_home);
-    let backend = spawn_scripted_mutating_headless_backend(
+    let backend = spawn_scripted_mutating_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -95,7 +95,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("headless.sock");
+    let socket_path = temp.path().join("indexer.sock");
     write_gradle_marker(&workspace);
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let runtime = json!({
@@ -103,13 +103,13 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
         "healthy": true,
         "active": true,
         "indexing": false,
-        "backendName": "headless",
+        "backendName": "indexer",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "schemaVersion": 5
     });
     let capabilities = json!({
-        "backendName": "headless",
+        "backendName": "indexer",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "readCapabilities": ["WORKSPACE_FILES", "symbol/resolve", "symbol/references"],
@@ -126,7 +126,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
         ("runtime/status", runtime.clone()),
         ("capabilities", capabilities.clone()),
     ];
-    let backend = spawn_sequenced_headless_backend(
+    let backend = spawn_sequenced_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -163,7 +163,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
     assert_eq!(stdout["result"]["type"], "KAST_AGENT_VERIFY_RESULT");
     assert_eq!(stdout["result"]["health"]["ok"], true);
     assert_eq!(stdout["result"]["runtime"]["state"], "READY");
-    assert_eq!(stdout["result"]["runtime"]["backendName"], "headless");
+    assert_eq!(stdout["result"]["runtime"]["backendName"], "indexer");
     assert_eq!(stdout["result"]["capabilities"]["readCount"], 3);
     assert_eq!(stdout["result"]["capabilities"]["mutationCount"], 1);
     assert_eq!(stdout["result"]["capabilities"]["publicReadCount"], 1);

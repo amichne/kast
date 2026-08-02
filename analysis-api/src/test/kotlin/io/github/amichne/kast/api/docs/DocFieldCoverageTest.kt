@@ -104,8 +104,6 @@ class DocFieldCoverageTest {
         "HealthResponse" to HealthResponse.serializer(),
         "RuntimeStatusResponse" to RuntimeStatusResponse.serializer(),
         "RuntimeLifecycleResponse" to RuntimeLifecycleResponse.serializer(),
-        "RuntimeOpenProjectRequest" to RuntimeOpenProjectRequest.serializer(),
-        "RuntimeOpenProjectResponse" to RuntimeOpenProjectResponse.serializer(),
         "BackendCapabilities" to BackendCapabilities.serializer(),
 
         // Shared types
@@ -121,30 +119,6 @@ class DocFieldCoverageTest {
         "FileHash" to FileHash.serializer(),
         "OutlineSymbol" to OutlineSymbol.serializer(),
         "WorkspaceModule" to WorkspaceModule.serializer(),
-
-        // Runtime compatibility negotiation vocabulary
-        "RuntimeCapability" to RuntimeCapability.serializer(),
-        "RuntimeCapability.Read" to RuntimeCapability.Read.serializer(),
-        "RuntimeCapability.Mutation" to RuntimeCapability.Mutation.serializer(),
-        "RuntimeIdentity" to RuntimeIdentity.serializer(),
-        "RuntimeCompatibilityFacts" to RuntimeCompatibilityFacts.serializer(),
-        "SupportedRuntimeCompatibilityPair" to SupportedRuntimeCompatibilityPair.serializer(),
-        "RuntimeCompatibilityMatrix" to RuntimeCompatibilityMatrix.serializer(),
-        "RuntimeCompatibilityUpdateRequirement" to RuntimeCompatibilityUpdateRequirement.serializer(),
-        "RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair" to
-            RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair.serializer(),
-        "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision" to
-            RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision.serializer(),
-        "RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision" to
-            RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision.serializer(),
-        "RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity" to
-            RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity.serializer(),
-        "RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability" to
-            RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability.serializer(),
-        "RuntimeCompatibilityOutcome" to RuntimeCompatibilityOutcome.serializer(),
-        "RuntimeCompatibilityOutcome.Compatible" to RuntimeCompatibilityOutcome.Compatible.serializer(),
-        "RuntimeCompatibilityOutcome.UpdateRequired" to RuntimeCompatibilityOutcome.UpdateRequired.serializer(),
-        "RuntimeCompatibilityOutcome.MissingCapability" to RuntimeCompatibilityOutcome.MissingCapability.serializer(),
 
         // Read queries & results
         "SymbolQuery" to SymbolQuery.serializer(),

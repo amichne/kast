@@ -31,8 +31,6 @@ fn discovered_file_path_composes_with_diagnostics_and_exact_symbol_lookup() {
             "workspace-files",
             "--workspace-root",
             workspace.to_str().expect("UTF-8 workspace"),
-            "--backend",
-            "headless",
             "--kind",
             "source",
             "--fields",
@@ -61,7 +59,7 @@ fn discovered_file_path_composes_with_diagnostics_and_exact_symbol_lookup() {
     assert_eq!(discovered_file_path, owned_file.display().to_string());
     assert_ne!(discovered_file_path, unowned_file.display().to_string());
 
-    let diagnostics_backend = spawn_scripted_headless_backend(
+    let diagnostics_backend = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -118,8 +116,6 @@ fn discovered_file_path_composes_with_diagnostics_and_exact_symbol_lookup() {
             "diagnostics",
             "--workspace-root",
             workspace.to_str().expect("UTF-8 workspace"),
-            "--backend",
-            "headless",
             "--file-path",
             &discovered_file_path,
         ])
@@ -140,7 +136,7 @@ fn discovered_file_path_composes_with_diagnostics_and_exact_symbol_lookup() {
         serde_json::json!([discovered_file_path])
     );
 
-    let symbol_backend = spawn_scripted_headless_backend(
+    let symbol_backend = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -178,8 +174,6 @@ fn discovered_file_path_composes_with_diagnostics_and_exact_symbol_lookup() {
             &discovered_file_path,
             "--workspace-root",
             workspace.to_str().expect("UTF-8 workspace"),
-            "--backend",
-            "headless",
         ])
         .output()
         .expect("composed exact symbol lookup");

@@ -23,9 +23,9 @@ fn compact_references_bound_high_cardinality_output() {
             })
         })
         .collect::<Vec<_>>();
-    let socket = temp.path().join("headless.sock");
+    let socket = temp.path().join("indexer.sock");
     let backend_token = "00000000-0000-4000-8000-000000000337";
-    let backend = spawn_scripted_headless_backend(
+    let backend = spawn_scripted_indexer_backend(
         &home,
         &config,
         &workspace,
@@ -118,8 +118,8 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
     .into_iter()
     .enumerate()
     {
-        let socket = temp.path().join(format!("idea-call-{index}.sock"));
-        let backend = spawn_scripted_headless_backend(
+        let socket = temp.path().join(format!("indexer-call-{index}.sock"));
+        let backend = spawn_scripted_indexer_backend(
             &home,
             &config,
             &workspace,
@@ -192,8 +192,8 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
         assert_eq!(requests[2]["params"]["maxResults"], 4);
     }
 
-    let implementations_socket = temp.path().join("idea-implementations.sock");
-    let implementations_backend = spawn_scripted_headless_backend(
+    let implementations_socket = temp.path().join("indexer-implementations.sock");
+    let implementations_backend = spawn_scripted_indexer_backend(
         &home,
         &config,
         &workspace,
@@ -258,8 +258,8 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
         canonical_file.to_string_lossy().as_ref()
     );
 
-    let hierarchy_socket = temp.path().join("idea-hierarchy.sock");
-    let hierarchy_backend = spawn_scripted_headless_backend(
+    let hierarchy_socket = temp.path().join("indexer-hierarchy.sock");
+    let hierarchy_backend = spawn_scripted_indexer_backend(
         &home,
         &config,
         &workspace,

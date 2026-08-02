@@ -2,7 +2,7 @@ package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.client.DescriptorRegistry
 import io.github.amichne.kast.api.client.DescriptorRegistryPath
-import io.github.amichne.kast.api.client.HeadlessBackendName
+import io.github.amichne.kast.api.client.IndexerBackendName
 import io.github.amichne.kast.api.client.RuntimeInstanceId
 import io.github.amichne.kast.api.client.RuntimeProcessIdentity
 import io.github.amichne.kast.api.client.RuntimeSocketPath
@@ -33,7 +33,7 @@ internal value class EffectiveProcessOwnerUid private constructor(val value: Lon
 
 internal data class EndpointLaunchRequest(
     val workspaceRoot: RuntimeWorkspaceRoot,
-    val backendName: HeadlessBackendName,
+    val backendName: IndexerBackendName,
     val backendVersion: RuntimeImplementationVersion,
     val socketPath: RuntimeSocketPath,
     val runtimeInstanceId: RuntimeInstanceId,

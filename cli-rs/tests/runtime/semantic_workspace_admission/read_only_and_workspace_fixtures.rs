@@ -7,8 +7,8 @@ fn prepared_linked_worktree_supports_read_only_symbol_resolution() {
     let socket_path = fixture.socket_path("linked-symbol.sock");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
-    let backend = spawn_verify_backend(listener, workspace.clone(), "headless", 3);
+    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 3);
 
     let symbol = kast(&home, &config_home)
         .args([
@@ -20,7 +20,6 @@ fn prepared_linked_worktree_supports_read_only_symbol_resolution() {
             "Foo",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=headless",
         ])
         .output()
         .expect("agent symbol");
@@ -54,8 +53,8 @@ fn prepared_linked_worktree_supports_read_only_diagnostics() {
     std::fs::create_dir_all(file.parent().expect("file parent")).expect("source dir");
     std::fs::write(&file, "package lib\n\nclass Foo\n").expect("source file");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
-    let backend = spawn_verify_backend(listener, workspace.clone(), "headless", 4);
+    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 4);
     let diagnostics = kast(&home, &config_home)
         .args([
             "--output",
@@ -66,7 +65,6 @@ fn prepared_linked_worktree_supports_read_only_diagnostics() {
             file.to_str().expect("file path"),
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=headless",
         ])
         .output()
         .expect("agent diagnostics");
@@ -174,9 +172,9 @@ fn assert_unprepared_route(workspace: &Path, expected_kind: &str) {
 
     assert!(!verify.status.success(), "unprepared workspace must fail");
     let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
-    assert_eq!(output["error"]["code"], "NO_BACKEND_AVAILABLE");
+    assert_eq!(output["error"]["code"], "NO_INDEXER_AVAILABLE");
     let semantic_workspace = &output["error"]["details"]["semanticWorkspace"];
-    assert_eq!(semantic_workspace["backendName"], "headless");
+    assert_eq!(semantic_workspace["backendName"], "indexer");
     assert_eq!(
         semantic_workspace["workspaceRoot"],
         workspace.display().to_string()
@@ -195,7 +193,7 @@ fn assert_unprepared_route(workspace: &Path, expected_kind: &str) {
 }
 
 fn default_semantic_backend() -> &'static str {
-    "headless"
+    "indexer"
 }
 
 fn decode_toon(output: &[u8]) -> serde_json::Value {

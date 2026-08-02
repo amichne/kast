@@ -1,5 +1,2 @@
-[runtime]
-defaultBackend = "headless"
-
-[projectOpen]
-profileAutoInit = false
+[indexer]
+hostCommand = "idea"

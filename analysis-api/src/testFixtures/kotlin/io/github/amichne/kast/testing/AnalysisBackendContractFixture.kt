@@ -144,12 +144,12 @@ data class AnalysisBackendContractFixture(
             val brokenFile = writeFile("src/main/kotlin/sample/Broken.kt", brokenContent)
 
             return AnalysisBackendContractFixture(
-                workspaceRoot = normalizeHeadlessPath(workspaceRoot),
-                declarationFile = normalizeHeadlessPath(declarationFile),
-                firstUsageFile = normalizeHeadlessPath(firstUsageFile),
-                secondUsageFile = normalizeHeadlessPath(secondUsageFile),
-                typeDeclarationFile = normalizeHeadlessPath(typeDeclarationFile),
-                brokenFile = normalizeHeadlessPath(brokenFile),
+                workspaceRoot = normalizeFixturePath(workspaceRoot),
+                declarationFile = normalizeFixturePath(declarationFile),
+                firstUsageFile = normalizeFixturePath(firstUsageFile),
+                secondUsageFile = normalizeFixturePath(secondUsageFile),
+                typeDeclarationFile = normalizeFixturePath(typeDeclarationFile),
+                brokenFile = normalizeFixturePath(brokenFile),
                 declarationLocation = createLocation(
                     declarationFile,
                     declarationContent,
@@ -223,6 +223,6 @@ data class AnalysisBackendContractFixture(
 
         private fun normalizePath(path: Path): String = NormalizedPath.of(path).value
 
-        private fun normalizeHeadlessPath(path: Path): Path = NormalizedPath.of(path).toJavaPath()
+        private fun normalizeFixturePath(path: Path): Path = NormalizedPath.of(path).toJavaPath()
     }
 }

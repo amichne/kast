@@ -52,9 +52,6 @@ pub struct AgentRuntimeArgs {
     /// Absolute workspace root for daemon lifecycle and RPC commands.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
-    /// Pin the command to a specific backend.
-    #[arg(long = "backend", value_enum)]
-    pub backend_name: Option<BackendName>,
     /// Opaque workspace lease acquired for this exact root and backend.
     #[arg(long = "lease-id")]
     pub lease_id: Option<AgentWorkspaceLeaseId>,

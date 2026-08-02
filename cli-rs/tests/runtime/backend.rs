@@ -5,65 +5,23 @@ mod support;
 
 use support::*;
 
-#[test]
-fn up_without_installed_backend_reports_supported_headless_distribution() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-    let workspace = temp.path().join("workspace");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&workspace).expect("workspace");
+fn standalone_workspace(root: &Path) {
+    std::fs::create_dir_all(root).expect("workspace");
     std::fs::write(
-        workspace.join("settings.gradle.kts"),
+        root.join("settings.gradle.kts"),
         "rootProject.name = \"fixture\"\n",
     )
     .expect("settings");
-
-    let up = kast(&home, &config_home)
-        .args([
-            "--output",
-            "human",
-            "developer",
-            "runtime",
-            "up",
-            "--workspace-root",
-            workspace.to_str().expect("workspace path"),
-            "--backend=headless",
-        ])
-        .output()
-        .expect("up");
-
-    assert!(
-        !up.status.success(),
-        "up should fail without an installed backend"
-    );
-    let stderr = String::from_utf8_lossy(&up.stderr);
-    assert!(stderr.contains("- Code: NO_BACKEND_AVAILABLE"), "{stderr}");
-    assert!(
-        stderr.contains("supportedDistribution") && stderr.contains("linux-headless-tarball"),
-        "stderr should point to the supported headless distribution: {stderr}"
-    );
 }
 
 #[test]
-fn runtime_commands_use_configured_default_backend_when_backend_flag_is_absent() {
+fn up_without_an_installed_indexer_reports_the_supported_distribution() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
     std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&config_home).expect("config home");
-    std::fs::create_dir_all(&workspace).expect("workspace");
-    std::fs::write(
-        workspace.join("settings.gradle.kts"),
-        "rootProject.name = \"fixture\"\n",
-    )
-    .expect("settings");
-    std::fs::write(
-        config_home.join("config.toml"),
-        "[runtime]\ndefaultBackend = \"headless\"\n",
-    )
-    .expect("config");
+    standalone_workspace(&workspace);
 
     let up = kast(&home, &config_home)
         .args([
@@ -80,81 +38,24 @@ fn runtime_commands_use_configured_default_backend_when_backend_flag_is_absent()
 
     assert!(
         !up.status.success(),
-        "up should fail without an installed headless backend"
+        "up should require an installed indexer"
     );
     let stderr = String::from_utf8_lossy(&up.stderr);
-    assert!(stderr.contains("- Code: NO_BACKEND_AVAILABLE"), "{stderr}");
+    assert!(stderr.contains("- Code: NO_INDEXER_AVAILABLE"), "{stderr}");
     assert!(
-        stderr.contains("supportedDistribution") && stderr.contains("linux-headless-tarball"),
-        "stderr should point to the supported headless distribution: {stderr}"
+        stderr.contains("supportedDistribution") && stderr.contains("linux-indexer-tarball"),
+        "stderr should identify the supported private indexer distribution: {stderr}",
     );
 }
 
 #[test]
-fn runtime_backend_flag_overrides_configured_default_backend() {
+fn agent_verify_reports_the_single_indexer_identity_without_starting_it() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
     std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&config_home).expect("config home");
-    std::fs::create_dir_all(&workspace).expect("workspace");
-    std::fs::write(
-        workspace.join("settings.gradle.kts"),
-        "rootProject.name = \"fixture\"\n",
-    )
-    .expect("settings");
-    std::fs::write(
-        config_home.join("config.toml"),
-        "[runtime]\ndefaultBackend = \"headless\"\n",
-    )
-    .expect("config");
-
-    let up = kast(&home, &config_home)
-        .args([
-            "--output",
-            "human",
-            "developer",
-            "runtime",
-            "up",
-            "--workspace-root",
-            workspace.to_str().expect("workspace path"),
-            "--backend=headless",
-        ])
-        .output()
-        .expect("up");
-
-    assert!(
-        !up.status.success(),
-        "up should fail without an installed headless backend"
-    );
-    let stderr = String::from_utf8_lossy(&up.stderr);
-    assert!(stderr.contains("- Code: NO_BACKEND_AVAILABLE"), "{stderr}");
-    assert!(
-        stderr.contains("supportedDistribution") && stderr.contains("linux-headless-tarball"),
-        "stderr should point to the supported headless distribution: {stderr}"
-    );
-}
-
-#[test]
-fn agent_verify_uses_configured_default_backend_without_starting() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-    let workspace = temp.path().join("workspace");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&config_home).expect("config home");
-    std::fs::create_dir_all(&workspace).expect("workspace");
-    std::fs::write(
-        workspace.join("settings.gradle.kts"),
-        "rootProject.name = \"fixture\"\n",
-    )
-    .expect("settings");
-    std::fs::write(
-        config_home.join("config.toml"),
-        "[runtime]\ndefaultBackend = \"headless\"\n",
-    )
-    .expect("config");
+    standalone_workspace(&workspace);
 
     let verify = kast(&home, &config_home)
         .args([
@@ -170,59 +71,13 @@ fn agent_verify_uses_configured_default_backend_without_starting() {
 
     assert!(
         !verify.status.success(),
-        "agent verify should fail without an installed headless backend"
+        "verify should not start the indexer"
     );
     let output: serde_json::Value =
         serde_json::from_slice(&verify.stdout).expect("agent verify JSON");
-    assert_eq!(output["error"]["code"], "NO_BACKEND_AVAILABLE");
+    assert_eq!(output["error"]["code"], "NO_INDEXER_AVAILABLE");
     assert_eq!(
         output["error"]["details"]["semanticWorkspace"]["backendName"],
-        "headless"
-    );
-}
-
-#[test]
-fn agent_verify_backend_flag_overrides_configured_default_backend() {
-    let temp = tempfile::tempdir().expect("tempdir");
-    let home = temp.path().join("home");
-    let config_home = temp.path().join("config");
-    let workspace = temp.path().join("workspace");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&config_home).expect("config home");
-    std::fs::create_dir_all(&workspace).expect("workspace");
-    std::fs::write(
-        workspace.join("settings.gradle.kts"),
-        "rootProject.name = \"fixture\"\n",
-    )
-    .expect("settings");
-    std::fs::write(
-        config_home.join("config.toml"),
-        "[runtime]\ndefaultBackend = \"headless\"\n",
-    )
-    .expect("config");
-
-    let verify = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "verify",
-            "--workspace-root",
-            workspace.to_str().expect("workspace path"),
-            "--backend=headless",
-        ])
-        .output()
-        .expect("agent verify");
-
-    assert!(
-        !verify.status.success(),
-        "agent verify should fail without an installed headless backend"
-    );
-    let output: serde_json::Value =
-        serde_json::from_slice(&verify.stdout).expect("agent verify JSON");
-    assert_eq!(output["error"]["code"], "NO_BACKEND_AVAILABLE");
-    assert_eq!(
-        output["error"]["details"]["semanticWorkspace"]["backendName"],
-        "headless"
+        "indexer",
     );
 }

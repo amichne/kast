@@ -165,7 +165,7 @@ fn should_run_public_demo_tui(
 }
 
 fn public_missing_index_error(request: &DemoRequest) -> CliError {
-    let remedy = "Start the installed headless runtime, wait for indexing, then rerun `kast demo`.";
+    let remedy = "Start the Kast indexer, wait for indexing, then rerun `kast demo`.";
     CliError::new(
         "DEMO_SOURCE_INDEX_MISSING",
         format!(
@@ -184,7 +184,6 @@ impl DemoRequest {
             database,
             symbol: args.symbol,
             limit: 30,
-            backend_name: args.runtime.backend_name,
         })
     }
 }

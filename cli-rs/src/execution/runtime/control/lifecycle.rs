@@ -1,4 +1,4 @@
-fn stop_admitted_runtime(admission: AdmittedHeadlessRuntime) -> Result<DaemonStopResult> {
+fn stop_admitted_runtime(admission: AdmittedIndexerRuntime) -> Result<DaemonStopResult> {
     admission.validate_current()?;
     let candidate = admission.candidate().clone();
     let descriptor_directory = admission.config().paths.descriptor_dir.clone();

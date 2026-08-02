@@ -198,7 +198,7 @@ fn setup_rejects_a_modified_artifact_before_activation() {
 
     let modified = write_install_bundle_source(temp.path(), "v4.1.0");
     std::fs::write(
-        modified.join("lib/backends/headless-v4.1.0/runtime-libs/kast-test.jar"),
+        modified.join("lib/backends/indexer-v4.1.0/runtime-libs/kast-test.jar"),
         "modified",
     )
     .expect("drift");

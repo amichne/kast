@@ -1,323 +1,82 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "evidenceMode": "structural-only",
   "provenance": {
-    "description": "Expanded release retry-isolation topology. Performance claims require a completed candidate release.",
-    "observedAt": "2026-07-30",
+    "description": "Release topology for one retained indexer and four canonical setup bundles. Timing claims require completed workflow evidence.",
+    "observedAt": "2026-08-02",
     "source": ".github/workflows/release.yml",
-    "sourceSha256": "12615e5aa3a30a1d25d24f34abed3f47007e1859a3558021a3f8bbd167484a18"
+    "sourceSha256": "cb81ab67d107b91cf7681331c021facea4b3867e3c95814e3e204eddd30b85ac"
   },
   "tasks": [
     {
       "id": "prepare-release",
       "needs": [],
-      "outputs": []
-    },
-    {
-      "id": "validate-jvm",
-      "needs": [
-        "prepare-release"
-      ],
-      "outputs": [
-        "exact-source-ci-maven-validation"
-      ]
+      "outputs": ["exact-source-ci", "release-tag"]
     },
     {
       "id": "publish-maven-central",
-      "needs": [
-        "prepare-release",
-        "validate-jvm"
-      ],
-      "outputs": [
-        "release-maven-publication"
-      ]
+      "needs": ["prepare-release"],
+      "outputs": ["release-maven-publication"]
     },
     {
       "id": "build-openapi-spec",
-      "needs": [
-        "prepare-release"
-      ],
-      "outputs": []
+      "needs": ["prepare-release"],
+      "outputs": ["retained-openapi"]
     },
     {
       "id": "publish-openapi-spec",
-      "needs": [
-        "prepare-release",
-        "build-openapi-spec"
-      ],
-      "outputs": [
-        "release-openapi-asset"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": true,
-      "publishesProductAssets": true,
-      "publishesMetadataAssets": false
+      "needs": ["prepare-release", "build-openapi-spec"],
+      "outputs": ["release-openapi-asset"]
     },
     {
-      "id": "build-cli-linux-x64",
-      "needs": [
-        "prepare-release"
-      ],
-      "outputs": []
-    },
-    {
-      "id": "build-cli-linux-arm64",
-      "needs": [
-        "prepare-release"
-      ],
-      "outputs": []
-    },
-    {
-      "id": "build-cli-macos-x64",
-      "needs": [
-        "prepare-release"
-      ],
-      "outputs": []
-    },
-    {
-      "id": "build-cli-macos-arm64",
-      "needs": [
-        "prepare-release"
-      ],
-      "outputs": []
-    },
-    {
-      "id": "publish-cli-linux-x64",
-      "needs": [
-        "prepare-release",
-        "build-cli-linux-x64"
-      ],
-      "outputs": [
-        "release-cli-linux-x64-asset"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": true,
-      "publishesProductAssets": true,
-      "publishesMetadataAssets": false
-    },
-    {
-      "id": "publish-cli-linux-arm64",
-      "needs": [
-        "prepare-release",
-        "build-cli-linux-arm64"
-      ],
-      "outputs": [
-        "release-cli-linux-arm64-asset"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": true,
-      "publishesProductAssets": true,
-      "publishesMetadataAssets": false
-    },
-    {
-      "id": "publish-cli-macos-x64",
-      "needs": [
-        "prepare-release",
-        "build-cli-macos-x64"
-      ],
-      "outputs": [
-        "release-cli-macos-x64-asset"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": true,
-      "publishesProductAssets": true,
-      "publishesMetadataAssets": false
-    },
-    {
-      "id": "publish-cli-macos-arm64",
-      "needs": [
-        "prepare-release",
-        "build-cli-macos-arm64"
-      ],
-      "outputs": [
-        "release-cli-macos-arm64-asset"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": true,
-      "publishesProductAssets": true,
-      "publishesMetadataAssets": false
+      "id": "build-cli",
+      "needs": ["prepare-release"],
+      "outputs": ["retained-cli-inputs"]
     },
     {
       "id": "build-agent-resources",
-      "needs": [
-        "prepare-release"
-      ],
-      "outputs": []
+      "needs": ["prepare-release"],
+      "outputs": ["retained-agent-resource-assets"]
     },
     {
       "id": "publish-agent-resources",
-      "needs": [
-        "prepare-release",
-        "build-agent-resources"
-      ],
-      "outputs": [
-        "release-agent-resource-assets"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": true,
-      "publishesProductAssets": true,
-      "publishesMetadataAssets": false
+      "needs": ["prepare-release", "build-agent-resources"],
+      "outputs": ["release-agent-resource-assets"]
     },
     {
-      "id": "build-headless-backend",
-      "needs": [
-        "prepare-release"
-      ],
-      "outputs": []
+      "id": "build-indexer",
+      "needs": ["prepare-release"],
+      "outputs": ["retained-indexer"]
     },
     {
-      "id": "build-linux-headless-tarball",
-      "needs": [
-        "prepare-release",
-        "build-cli-linux-x64",
-        "build-headless-backend"
-      ],
-      "outputs": []
+      "id": "build-setup-bundles",
+      "needs": ["prepare-release", "build-cli", "build-indexer"],
+      "outputs": ["retained-setup-bundles"]
     },
     {
-      "id": "publish-linux-headless-assets",
-      "needs": [
-        "prepare-release",
-        "build-linux-headless-tarball"
-      ],
-      "outputs": [
-        "release-linux-headless-assets"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": true,
-      "publishesProductAssets": true,
-      "publishesMetadataAssets": false
-    },
-    {
-      "id": "build-setup-linux-x64",
-      "needs": [
-        "prepare-release",
-        "build-cli-linux-x64",
-        "build-headless-backend"
-      ],
-      "outputs": []
-    },
-    {
-      "id": "build-setup-linux-arm64",
-      "needs": [
-        "prepare-release",
-        "build-cli-linux-x64",
-        "build-cli-linux-arm64",
-        "build-headless-backend"
-      ],
-      "outputs": []
-    },
-    {
-      "id": "build-setup-macos-x64",
-      "needs": [
-        "prepare-release",
-        "build-cli-linux-x64",
-        "build-cli-macos-x64",
-        "build-headless-backend"
-      ],
-      "outputs": []
-    },
-    {
-      "id": "build-setup-macos-arm64",
-      "needs": [
-        "prepare-release",
-        "build-cli-linux-x64",
-        "build-cli-macos-arm64",
-        "build-headless-backend"
-      ],
-      "outputs": []
-    },
-    {
-      "id": "publish-setup-linux-x64",
-      "needs": [
-        "prepare-release",
-        "build-setup-linux-x64"
-      ],
+      "id": "publish-setup-bundles",
+      "needs": ["prepare-release", "build-setup-bundles"],
       "outputs": [
         "release-setup-linux-x64-asset",
         "release-setup-linux-x64-sidecar",
-        "release-setup-linux-x64-provenance"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": true,
-      "publishesProductAssets": true,
-      "publishesMetadataAssets": false
-    },
-    {
-      "id": "publish-setup-linux-arm64",
-      "needs": [
-        "prepare-release",
-        "build-setup-linux-arm64"
-      ],
-      "outputs": [
+        "release-setup-linux-x64-provenance",
         "release-setup-linux-arm64-asset",
         "release-setup-linux-arm64-sidecar",
-        "release-setup-linux-arm64-provenance"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": true,
-      "publishesProductAssets": true,
-      "publishesMetadataAssets": false
-    },
-    {
-      "id": "publish-setup-macos-x64",
-      "needs": [
-        "prepare-release",
-        "build-setup-macos-x64"
-      ],
-      "outputs": [
+        "release-setup-linux-arm64-provenance",
         "release-setup-macos-x64-asset",
         "release-setup-macos-x64-sidecar",
-        "release-setup-macos-x64-provenance"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": true,
-      "publishesProductAssets": true,
-      "publishesMetadataAssets": false
-    },
-    {
-      "id": "publish-setup-macos-arm64",
-      "needs": [
-        "prepare-release",
-        "build-setup-macos-arm64"
-      ],
-      "outputs": [
+        "release-setup-macos-x64-provenance",
         "release-setup-macos-arm64-asset",
         "release-setup-macos-arm64-sidecar",
         "release-setup-macos-arm64-provenance"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": true,
-      "publishesProductAssets": true,
-      "publishesMetadataAssets": false
-    },
-    {
-      "id": "real-repository-indexing-ktor",
-      "needs": [
-        "prepare-release",
-        "build-linux-headless-tarball"
-      ],
-      "outputs": [
-        "release-index-ktor-proof"
       ]
     },
     {
-      "id": "real-repository-indexing-spring-boot",
-      "needs": [
-        "prepare-release",
-        "build-linux-headless-tarball"
-      ],
+      "id": "real-repository-indexing",
+      "needs": ["prepare-release", "build-setup-bundles"],
       "outputs": [
-        "release-index-spring-boot-proof"
-      ]
-    },
-    {
-      "id": "real-repository-indexing-okhttp",
-      "needs": [
-        "prepare-release",
-        "build-linux-headless-tarball"
-      ],
-      "outputs": [
+        "release-index-ktor-proof",
+        "release-index-spring-boot-proof",
         "release-index-okhttp-proof"
       ]
     },
@@ -325,67 +84,35 @@
       "id": "build-release-metadata",
       "needs": [
         "prepare-release",
-        "validate-jvm",
         "publish-openapi-spec",
-        "publish-cli-linux-x64",
-        "publish-cli-linux-arm64",
-        "publish-cli-macos-x64",
-        "publish-cli-macos-arm64",
         "publish-agent-resources",
-        "publish-linux-headless-assets",
-        "publish-setup-linux-x64",
-        "publish-setup-linux-arm64",
-        "publish-setup-macos-x64",
-        "publish-setup-macos-arm64",
-        "real-repository-indexing-ktor",
-        "real-repository-indexing-spring-boot",
-        "real-repository-indexing-okhttp"
+        "publish-setup-bundles",
+        "real-repository-indexing"
       ],
-      "outputs": [
-        "retained-release-metadata"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": false,
-      "publishesProductAssets": false,
-      "publishesMetadataAssets": false
+      "outputs": ["release-build-provenance", "release-checksum-manifest"]
     },
     {
       "id": "publish-release",
-      "needs": [
-        "prepare-release",
-        "build-release-metadata"
-      ],
-      "outputs": [
-        "release-combined-provenance",
-        "release-sha256sums",
-        "published-release"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": false,
-      "publishesProductAssets": false,
-      "publishesMetadataAssets": true
+      "needs": ["prepare-release", "build-release-metadata"],
+      "outputs": ["published-release"]
     },
     {
       "id": "verify-release-state",
-      "needs": [
-        "prepare-release",
-        "publish-release"
-      ],
-      "outputs": [
-        "release-published-state-proof"
-      ]
+      "needs": ["prepare-release", "publish-release"],
+      "outputs": ["published-release-state"]
     }
   ],
   "requiredOutputs": [
-    "exact-source-ci-maven-validation",
+    "exact-source-ci",
+    "release-tag",
     "release-maven-publication",
+    "retained-openapi",
     "release-openapi-asset",
-    "release-cli-linux-x64-asset",
-    "release-cli-linux-arm64-asset",
-    "release-cli-macos-x64-asset",
-    "release-cli-macos-arm64-asset",
+    "retained-cli-inputs",
+    "retained-agent-resource-assets",
     "release-agent-resource-assets",
-    "release-linux-headless-assets",
+    "retained-indexer",
+    "retained-setup-bundles",
     "release-setup-linux-x64-asset",
     "release-setup-linux-x64-sidecar",
     "release-setup-linux-x64-provenance",
@@ -401,10 +128,9 @@
     "release-index-ktor-proof",
     "release-index-spring-boot-proof",
     "release-index-okhttp-proof",
-    "retained-release-metadata",
-    "release-combined-provenance",
-    "release-sha256sums",
+    "release-build-provenance",
+    "release-checksum-manifest",
     "published-release",
-    "release-published-state-proof"
+    "published-release-state"
   ]
 }

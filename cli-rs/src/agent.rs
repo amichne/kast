@@ -12,7 +12,7 @@ use crate::cli::{
     AgentReusableSymbolSelectorArgs, AgentRuntimeArgs, AgentScopedMutationArgs,
     AgentSelectorHandle, AgentStatementMutationArgs, AgentSymbolArgs, AgentSymbolField,
     AgentSymbolMode, AgentSymbolViewArgs, AgentVerifyArgs, AgentVerifyField, AgentVerifyViewArgs,
-    AgentWorkspaceFilesArgs, AgentWorkspaceFilesField, AgentWorkspaceFilesViewArgs, BackendName,
+    AgentWorkspaceFilesArgs, AgentWorkspaceFilesField, AgentWorkspaceFilesViewArgs,
     NativeGraphOperation, NativeGraphScope, WorkspaceDirtyFilter, WorkspaceDriftFilter,
     WorkspaceFileKindFilter, WorkspaceFilesPublicPageToken, WorkspaceModuleSelector,
     WorkspacePackageSelector, WorkspaceRelativeGlob, WorkspaceRelativePathPrefix,

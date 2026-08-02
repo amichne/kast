@@ -41,15 +41,15 @@ pub struct SetupResult {
     pub schema_version: u32,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SetupRestartRequirement {
     pub code: &'static str,
     pub message: &'static str,
 }
 
-#[derive(Debug, Clone, Default)]
-struct PublicPluginMigration {
+#[derive(Debug)]
+struct RetiredPublicPluginRemoval {
     restart_requirement: Option<SetupRestartRequirement>,
 }
 
@@ -110,5 +110,5 @@ struct ActivationTargetPaths {
     version_dir: PathBuf,
     current_link: PathBuf,
     previous_link: PathBuf,
-    headless_current_dir: PathBuf,
+    indexer_current_dir: PathBuf,
 }

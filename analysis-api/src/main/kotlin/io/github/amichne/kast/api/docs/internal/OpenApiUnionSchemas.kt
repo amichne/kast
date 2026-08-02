@@ -1,9 +1,6 @@
 package io.github.amichne.kast.api.docs.internal
 
 import io.github.amichne.kast.api.contract.FileOperation
-import io.github.amichne.kast.api.contract.compatibility.RuntimeCapability
-import io.github.amichne.kast.api.contract.compatibility.RuntimeCompatibilityOutcome
-import io.github.amichne.kast.api.contract.compatibility.RuntimeCompatibilityUpdateRequirement
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationQuery
 import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
 import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
@@ -114,73 +111,6 @@ internal fun SchemaRegistry.manualUnionSchema(componentName: String): Map<String
         "WorkspaceFilesContinuationResult.Consumed" -> subtypeWithDiscriminator(
             WorkspaceFilesContinuationResult.Consumed.serializer(),
             discriminatorValue = "CONSUMED",
-        )
-        "RuntimeCapability" -> discriminatedUnion(
-            "type",
-            "READ" to "RuntimeCapability.Read",
-            "MUTATION" to "RuntimeCapability.Mutation",
-        )
-        "RuntimeCapability.Read" -> subtypeWithDiscriminator(
-            RuntimeCapability.Read.serializer(),
-            discriminatorValue = "READ",
-        )
-        "RuntimeCapability.Mutation" -> subtypeWithDiscriminator(
-            RuntimeCapability.Mutation.serializer(),
-            discriminatorValue = "MUTATION",
-        )
-        "RuntimeCompatibilityUpdateRequirement" -> discriminatedUnion(
-            "type",
-            "UNSUPPORTED_RELEASE_PAIR" to
-                "RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair",
-            "UNSUPPORTED_PROTOCOL_REVISION" to
-                "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision",
-            "UNSUPPORTED_WORKSPACE_METADATA_REVISION" to
-                "RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision",
-            "UNSUPPORTED_RUNTIME_IDENTITY" to
-                "RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity",
-            "MISSING_REQUIRED_CAPABILITY" to
-                "RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability",
-        )
-        "RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair" -> subtypeWithDiscriminator(
-            RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair.serializer(),
-            discriminatorValue = "UNSUPPORTED_RELEASE_PAIR",
-        )
-        "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision" -> subtypeWithDiscriminator(
-            RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision.serializer(),
-            discriminatorValue = "UNSUPPORTED_PROTOCOL_REVISION",
-            nonEmptyCollections = setOf("supported"),
-        )
-        "RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision" -> subtypeWithDiscriminator(
-            RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision.serializer(),
-            discriminatorValue = "UNSUPPORTED_WORKSPACE_METADATA_REVISION",
-            nonEmptyCollections = setOf("supported"),
-        )
-        "RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity" -> subtypeWithDiscriminator(
-            RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity.serializer(),
-            discriminatorValue = "UNSUPPORTED_RUNTIME_IDENTITY",
-            nonEmptyCollections = setOf("supported"),
-        )
-        "RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability" -> subtypeWithDiscriminator(
-            RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability.serializer(),
-            discriminatorValue = "MISSING_REQUIRED_CAPABILITY",
-        )
-        "RuntimeCompatibilityOutcome" -> discriminatedUnion(
-            "type",
-            "COMPATIBLE" to "RuntimeCompatibilityOutcome.Compatible",
-            "UPDATE_REQUIRED" to "RuntimeCompatibilityOutcome.UpdateRequired",
-            "MISSING_CAPABILITY" to "RuntimeCompatibilityOutcome.MissingCapability",
-        )
-        "RuntimeCompatibilityOutcome.Compatible" -> subtypeWithDiscriminator(
-            RuntimeCompatibilityOutcome.Compatible.serializer(),
-            discriminatorValue = "COMPATIBLE",
-        )
-        "RuntimeCompatibilityOutcome.UpdateRequired" -> subtypeWithDiscriminator(
-            RuntimeCompatibilityOutcome.UpdateRequired.serializer(),
-            discriminatorValue = "UPDATE_REQUIRED",
-        )
-        "RuntimeCompatibilityOutcome.MissingCapability" -> subtypeWithDiscriminator(
-            RuntimeCompatibilityOutcome.MissingCapability.serializer(),
-            discriminatorValue = "MISSING_CAPABILITY",
         )
         else -> null
     }

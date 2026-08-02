@@ -12,7 +12,7 @@
                         "name": "runtime-status", "method": "runtime/status", "mutates": false,
                         "ok": true,
                         "result": {
-                            "state": "READY", "backendName": "headless",
+                            "state": "READY", "backendName": "indexer",
                             "backendVersion": "test", "workspaceRoot": "/workspace"
                         },
                         "error": null
@@ -33,7 +33,7 @@
                 .insert(
                     "semanticWorkspace".to_string(),
                     json!({
-                        "backendName": "headless",
+                        "backendName": "indexer",
                         "workspaceRoot": "/workspace",
                         "workspaceKind": "LINKED_WORKTREE",
                         "sourceModuleNames": ["analysis-api"],
@@ -108,7 +108,7 @@
                             "message": "Backend unavailable",
                             "retryable": true,
                             "details": {
-                                "backendName": "headless",
+                                "backendName": "indexer",
                                 "operation": "rename"
                             }
                         }
@@ -130,7 +130,7 @@
         assert_eq!(result["execution"]["failure"]["requestId"], "request-337");
         assert_eq!(
             result["execution"]["failure"]["details"]["backendName"],
-            "headless"
+            "indexer"
         );
         assert_eq!(
             result["execution"]["failure"]["details"]["operation"],

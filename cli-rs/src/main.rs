@@ -357,7 +357,6 @@ fn agent_process_environment_present() -> bool {
 fn default_runtime_args() -> cli::RuntimeArgs {
     cli::RuntimeArgs {
         workspace_root: None,
-        backend_name: None,
         idea_home: None,
         wait_timeout_ms: cli::DEFAULT_RUNTIME_WAIT_TIMEOUT_MS,
         accept_indexing: None,

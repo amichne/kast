@@ -31,7 +31,7 @@ fn exact_root_inventory_returns_a_bounded_compact_public_result() {
             "schemaVersion": 5
         })
     };
-    let server = spawn_scripted_headless_backend(
+    let server = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -69,8 +69,6 @@ fn exact_root_inventory_returns_a_bounded_compact_public_result() {
             "workspace-files",
             "--workspace-root",
             workspace.to_str().expect("UTF-8 workspace"),
-            "--backend",
-            "headless",
             "--kind",
             "source",
             "--limit",

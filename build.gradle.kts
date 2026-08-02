@@ -30,17 +30,17 @@ subprojects {
     version = rootProject.version
 }
 
-tasks.register("stageHeadlessDist") {
+tasks.register("stageIndexerDist") {
     group = "distribution"
     description =
-        "Builds a clean staged backend-headless tree under backend-headless/build/portable-dist/backend-headless."
-    dependsOn(":backend-headless:syncPortableDist")
+        "Builds a clean staged indexer tree under indexer/build/portable-dist/indexer."
+    dependsOn(":indexer:syncPortableDist")
 }
 
-tasks.register("buildHeadlessPortableZip") {
+tasks.register("buildIndexerPortableZip") {
     group = "distribution"
-    description = "Builds the versioned portable backend-headless zip under backend-headless/build/distributions."
-    dependsOn(":backend-headless:portableDistZip")
+    description = "Builds the versioned portable indexer zip under indexer/build/distributions."
+    dependsOn(":indexer:portableDistZip")
 }
 
 tasks.register<Copy>("stageOpenApiSpec") {
@@ -85,7 +85,7 @@ val cliDevelopmentBinary: RegularFile = layout.projectDirectory.file("cli-rs/tar
 val resolvedCargoExecutable = resolveCargoExecutable()
 val developmentCliArchive = layout.buildDirectory.file("setup/kast-cli.zip")
 val developmentBundle = layout.buildDirectory.file(
-    "setup/kast-ubuntu-debian-headless-x86_64-${version}.tar.gz",
+    "setup/kast-linux-x64-${version}.tar.gz",
 )
 val cleanDevelopmentMachine: Provider<Boolean> = providers.gradleProperty("kastDevelopmentClean")
     .map { value -> value.toBooleanStrict() }
@@ -126,15 +126,15 @@ val packageDevelopmentCli: TaskProvider<Zip> by tasks.registering(Zip::class) {
 val packageDevelopmentSetupBundle: TaskProvider<Exec> by tasks.registering(Exec::class) {
     group = "distribution"
     description = "Builds one complete development setup bundle."
-    dependsOn(packageDevelopmentCli, ":backend-headless:portableDistZip")
-    val backendArchive = project(":backend-headless").tasks.named<Zip>("portableDistZip")
+    dependsOn(packageDevelopmentCli, ":indexer:portableDistZip")
+    val indexerArchive = project(":indexer").tasks.named<Zip>("portableDistZip")
         .flatMap { task -> task.archiveFile }
     commandLine(
         cliDevelopmentBinary.asFile.absolutePath,
-        "developer", "release", "package", "ubuntu-debian-bundle",
+        "developer", "release", "package", "setup-bundle",
         "--repo-root", layout.projectDirectory.asFile.absolutePath,
         "--cli-archive", developmentCliArchive.get().asFile.absolutePath,
-        "--backend-archive", backendArchive.get().asFile.absolutePath,
+        "--indexer-archive", indexerArchive.get().asFile.absolutePath,
         "--version", project.version.toString(),
         "--bundle-output", developmentBundle.get().asFile.absolutePath,
     )

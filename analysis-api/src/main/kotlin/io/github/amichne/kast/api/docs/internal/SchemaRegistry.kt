@@ -135,8 +135,7 @@ internal class SchemaRegistry {
         val valueDescriptor = descriptor.getElementDescriptor(0)
         val schema = LinkedHashMap(primitiveSchema(valueDescriptor.kind as PrimitiveKind))
         when (componentName) {
-            "ProtocolRevision", "WorkspaceMetadataRevision" -> schema["minimum"] = 1
-            "PluginImplementationVersion", "CliImplementationVersion", "RuntimeImplementationVersion" -> {
+            "RuntimeImplementationVersion" -> {
                 schema["minLength"] = 1
                 schema["pattern"] = "^\\S+$"
             }

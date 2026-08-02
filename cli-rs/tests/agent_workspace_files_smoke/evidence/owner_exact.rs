@@ -32,8 +32,6 @@ fn gradle_module_filter_is_exact_when_complete_index_proves_candidates_have_no_o
             "workspace-files",
             "--workspace-root",
             workspace.to_str().expect("UTF-8 workspace"),
-            "--backend",
-            "headless",
             "--module",
             "gradle:.#:app",
         ])

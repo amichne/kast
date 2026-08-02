@@ -26,13 +26,13 @@ class RuntimeClasspathAssertionsTest {
     @Test
     fun `required class entry is reported when no runtime jar contains it`(@TempDir runtimeLibs: Path) {
         writeJar(
-            runtimeLibs.resolve("backend-headless.jar"),
-            "io/github/amichne/kast/headless/HeadlessMainKt.class",
+            runtimeLibs.resolve("indexer.jar"),
+            "io/github/amichne/kast/indexer/KastIndexerMainKt.class",
         )
 
         val missing = RuntimeClasspathAssertions.missingRequiredClassEntries(
             runtimeLibsDirectory = runtimeLibs,
-            classpathEntries = listOf("backend-headless.jar"),
+            classpathEntries = listOf("indexer.jar"),
             requiredClassEntries = listOf("io/github/amichne/kast/api/client/ServerLaunchOptions.class"),
         )
 
@@ -43,15 +43,15 @@ class RuntimeClasspathAssertionsTest {
     fun `runtime entries with forbidden prefixes are reported`() {
         val forbiddenEntries = RuntimeClasspathAssertions.entriesMatchingAnyPrefix(
             classpathEntries = listOf(
-                "backend-headless-1.0-launcher.jar",
-                "backend-idea-1.0-base.jar",
+                "indexer-1.0-launcher.jar",
+                "indexer-1.0-plugin.jar",
                 "analysis-server-1.0.jar",
                 "platform-loader.jar",
             ),
-            jarPrefixes = listOf("analysis-server-", "backend-idea-"),
+            jarPrefixes = listOf("analysis-server-", "indexer-1.0-plugin"),
         )
 
-        assertEquals(listOf("backend-idea-1.0-base.jar", "analysis-server-1.0.jar"), forbiddenEntries)
+        assertEquals(listOf("indexer-1.0-plugin.jar", "analysis-server-1.0.jar"), forbiddenEntries)
     }
 
     @Test
@@ -59,13 +59,13 @@ class RuntimeClasspathAssertionsTest {
         val missingPrefixes = RuntimeClasspathAssertions.missingJarPrefixes(
             classpathEntries = listOf(
                 "analysis-api-1.0.jar",
-                "backend-idea-1.0-base.jar",
+                "indexer-1.0-plugin.jar",
                 "kotlinx-coroutines-core-jvm-1.10.2.jar",
             ),
             requiredJarPrefixes = listOf(
                 "analysis-api-",
                 "analysis-server-",
-                "backend-idea-",
+                "indexer-",
                 "kotlinx-coroutines-core",
             ),
         )
@@ -76,11 +76,11 @@ class RuntimeClasspathAssertionsTest {
     @Test
     fun `jar entries containing nested plugin descriptors are reported`(@TempDir runtimeLibs: Path) {
         writeJar(
-            runtimeLibs.resolve("backend-headless-1.0-plugin-descriptor.jar"),
+            runtimeLibs.resolve("indexer-1.0-plugin.jar"),
             "META-INF/plugin.xml",
         )
         writeJar(
-            runtimeLibs.resolve("backend-idea-1.0-base.jar"),
+            runtimeLibs.resolve("unexpected-plugin.jar"),
             "META-INF/plugin.xml",
         )
         writeJar(
@@ -91,15 +91,15 @@ class RuntimeClasspathAssertionsTest {
         val entries = RuntimeClasspathAssertions.entriesContainingJarEntry(
             runtimeLibsDirectory = runtimeLibs,
             classpathEntries = listOf(
-                "backend-headless-1.0-plugin-descriptor.jar",
-                "backend-idea-1.0-base.jar",
+                "indexer-1.0-plugin.jar",
+                "unexpected-plugin.jar",
                 "analysis-api-1.0.jar",
             ),
             jarEntry = "META-INF/plugin.xml",
         )
 
         assertEquals(
-            listOf("backend-headless-1.0-plugin-descriptor.jar", "backend-idea-1.0-base.jar"),
+            listOf("indexer-1.0-plugin.jar", "unexpected-plugin.jar"),
             entries,
         )
     }
@@ -108,15 +108,15 @@ class RuntimeClasspathAssertionsTest {
     fun `portable distribution jars with forbidden suffixes are reported`(@TempDir portableDist: Path) {
         Files.createDirectories(portableDist.resolve("libs"))
         Files.createDirectories(portableDist.resolve("runtime-libs"))
-        Files.writeString(portableDist.resolve("libs/backend-headless-1.0-all.jar"), "fat jar")
-        Files.writeString(portableDist.resolve("runtime-libs/backend-headless-1.0-launcher.jar"), "launcher")
+        Files.writeString(portableDist.resolve("libs/indexer-1.0-all.jar"), "fat jar")
+        Files.writeString(portableDist.resolve("runtime-libs/indexer-1.0-launcher.jar"), "launcher")
 
         val entries = RuntimeClasspathAssertions.filesWithAnySuffix(
             directory = portableDist,
             suffixes = listOf("-all.jar"),
         )
 
-        assertEquals(listOf("libs/backend-headless-1.0-all.jar"), entries)
+        assertEquals(listOf("libs/indexer-1.0-all.jar"), entries)
     }
 
     private fun writeJar(path: Path, vararg entryNames: String) {

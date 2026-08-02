@@ -7,7 +7,7 @@ fn write_descriptor(home: &Path, workspace: &Path, socket_path: &Path) {
         serde_json::to_vec_pretty(&json!([runtime_descriptor_for_test(
             &workspace,
             socket_path,
-            "headless",
+            "indexer",
             "diagnostics-test",
         )]))
         .expect("descriptor JSON"),
@@ -66,13 +66,13 @@ fn spawn_fake_backend(
                     "healthy": true,
                     "active": true,
                     "indexing": false,
-                    "backendName": "headless",
+                    "backendName": "indexer",
                     "backendVersion": "diagnostics-test",
                     "workspaceRoot": workspace.display().to_string(),
                     "schemaVersion": 5
                 }),
                 "capabilities" => json!({
-                    "backendName": "headless",
+                    "backendName": "indexer",
                     "backendVersion": "diagnostics-test",
                     "workspaceRoot": workspace.display().to_string(),
                     "readCapabilities": ["DIAGNOSTICS"],

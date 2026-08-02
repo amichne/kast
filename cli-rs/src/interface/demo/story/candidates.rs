@@ -1,7 +1,6 @@
 fn demo_runtime_args(request: &DemoRequest) -> RuntimeArgs {
     RuntimeArgs {
         workspace_root: Some(request.workspace_root.clone()),
-        backend_name: request.backend_name,
         idea_home: None,
         wait_timeout_ms: crate::cli::DEFAULT_RUNTIME_WAIT_TIMEOUT_MS,
         accept_indexing: Some(false),

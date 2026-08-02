@@ -94,7 +94,7 @@ internal class RecordingMutationBackend(
                     analysisStatus = FileAnalysisStatus.skipped(
                         filePath,
                         FileAnalysisState.PENDING_INDEX,
-                        "IDEA is indexing",
+                        "Indexer is indexing",
                     ),
                 )
             },

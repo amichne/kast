@@ -36,7 +36,7 @@ fn consumed_continuation_rejects_cross_lane_instability() {
     ));
     append_paged_workspace_files_collection(&mut responses, &workspace, "snapshot-moved");
     append_paged_workspace_files_collection(&mut responses, &workspace, "snapshot-moved");
-    let backend = spawn_sequenced_headless_backend(
+    let backend = spawn_sequenced_indexer_backend(
         &home,
         &config_home,
         &workspace,

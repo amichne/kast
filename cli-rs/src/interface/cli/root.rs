@@ -67,9 +67,6 @@ pub struct RpcArgs {
     /// Absolute workspace root for local database or backend requests.
     #[arg(long)]
     pub workspace_root: Option<PathBuf>,
-    /// Pin backend-routed requests to one runtime.
-    #[arg(long = "backend", value_enum)]
-    pub backend_name: Option<BackendName>,
     /// Complete JSON-RPC request object.
     #[arg(long)]
     pub request: String,

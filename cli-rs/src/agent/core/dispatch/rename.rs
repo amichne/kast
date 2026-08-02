@@ -24,10 +24,7 @@ fn execute_agent_rename_symbol_preview(
             "includeSurroundingMembers": false,
         })),
     );
-    let session = match runtime::raw_rpc_session(
-        args.runtime.workspace_root.clone(),
-        args.runtime.backend_name,
-    ) {
+    let session = match runtime::raw_rpc_session(args.runtime.workspace_root.clone()) {
         Ok(session) => session,
         Err(error) => {
             return error_envelope(
@@ -149,10 +146,7 @@ fn execute_agent_rename_handle_preview(
             "family": "RENAME",
         }),
     );
-    let session = match runtime::raw_rpc_session(
-        args.runtime.workspace_root.clone(),
-        args.runtime.backend_name,
-    ) {
+    let session = match runtime::raw_rpc_session(args.runtime.workspace_root.clone()) {
         Ok(session) => session,
         Err(error) => {
             return error_envelope(

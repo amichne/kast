@@ -4,21 +4,19 @@ mod support;
 use support::*;
 
 #[test]
-fn package_ubuntu_debian_bundle_writes_manifest_projection() {
+fn package_setup_bundle_writes_manifest_projection() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let repo_root = temp.path().join("repo");
-    let output = temp
-        .path()
-        .join("dist/kast-ubuntu-debian-headless-x86_64-v9.8.7.tar.gz");
+    let output = temp.path().join("dist/kast-linux-x64-v9.8.7.tar.gz");
     std::fs::create_dir_all(&repo_root).expect("repo root");
     std::fs::write(repo_root.join("install.sh"), "#!/usr/bin/env bash\n")
         .expect("bootstrap script");
     set_executable_for_test(&repo_root.join("install.sh"));
 
     let cli_archive = write_cli_archive(temp.path());
-    let backend_archive = write_backend_archive(temp.path(), "headless", "v9.8.7");
+    let indexer_archive = write_indexer_archive(temp.path(), "indexer", "v9.8.7");
 
     let package = kast(&home, &config_home)
         .args([
@@ -27,20 +25,20 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
             "developer",
             "release",
             "package",
-            "ubuntu-debian-bundle",
+            "setup-bundle",
             "--repo-root",
             repo_root.to_str().expect("repo root"),
             "--cli-archive",
             cli_archive.to_str().expect("cli archive"),
-            "--backend-archive",
-            backend_archive.to_str().expect("backend archive"),
+            "--indexer-archive",
+            indexer_archive.to_str().expect("indexer archive"),
             "--version",
             "v9.8.7",
             "--bundle-output",
             output.to_str().expect("output"),
         ])
         .output()
-        .expect("package ubuntu debian bundle");
+        .expect("package setup bundle");
 
     assert!(
         package.status.success(),
@@ -50,7 +48,7 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     );
     let stdout: serde_json::Value = serde_json::from_slice(&package.stdout).expect("package json");
     assert_eq!(stdout["version"], "v9.8.7");
-    assert_eq!(stdout["platform"], "ubuntu-debian-headless-x86_64");
+    assert_eq!(stdout["platform"], "linux-x64");
     assert_eq!(stdout["manifestSchemaVersion"], 3);
     assert!(stdout.get("pluginArchive").is_none());
     assert_eq!(stdout["output"], output.display().to_string());
@@ -67,12 +65,12 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     let decoder = flate2::read::GzDecoder::new(file);
     let mut archive = tar::Archive::new(decoder);
     archive.unpack(&extract_dir).expect("unpack bundle");
-    let bundle_root = extract_dir.join("kast-ubuntu-debian-headless_x86_64-v9.8.7");
+    let bundle_root = extract_dir.join("kast-linux_x64-v9.8.7");
     assert!(
         !bundle_root.exists(),
         "bundle root must use the canonical hyphenated/underscored platform id"
     );
-    let bundle_root = extract_dir.join("kast-ubuntu-debian-headless-x86_64-v9.8.7");
+    let bundle_root = extract_dir.join("kast-linux-x64-v9.8.7");
     assert!(bundle_root.join("libexec/kastctl").is_file());
     assert_eq!(
         std::fs::read(bundle_root.join("libexec/kastctl")).expect("kastctl bytes"),
@@ -81,13 +79,13 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     );
     assert!(
         bundle_root
-            .join("lib/backends/headless-v9.8.7/kast-headless")
+            .join("lib/backends/indexer-v9.8.7/kast-indexer")
             .is_file()
     );
     assert!(bundle_root.join("install.sh").is_file());
     assert!(
         !bundle_root.join("plugins").exists(),
-        "headless-only bundle must not contain a public plugin directory",
+        "the indexer bundle must not contain a public plugin directory",
     );
 
     let manifest: serde_json::Value = serde_json::from_str(
@@ -96,21 +94,21 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     .expect("manifest json");
     assert_eq!(manifest["schemaVersion"], 3);
     assert_eq!(manifest["kind"], "KAST_INSTALL_BUNDLE");
-    assert_eq!(manifest["profile"], "ubuntu-debian-headless");
+    assert_eq!(manifest["profile"], "indexer");
     assert_eq!(manifest["version"], "v9.8.7");
-    assert_eq!(manifest["platform"], "ubuntu-debian-headless-x86_64");
+    assert_eq!(manifest["platform"], "linux-x64");
     assert_eq!(manifest["entrypoint"], "install.sh");
     assert_eq!(manifest["activation"]["cli"]["path"], "libexec/kastctl");
-    assert_eq!(manifest["activation"]["backend"]["kind"], "headless");
-    assert_eq!(manifest["activation"]["backend"]["name"], "headless");
+    assert_eq!(manifest["activation"]["backend"]["kind"], "indexer");
+    assert_eq!(manifest["activation"]["backend"]["name"], "indexer");
     assert_eq!(manifest["activation"]["backend"]["version"], "9.8.7");
     assert_eq!(
         manifest["activation"]["backend"]["installDir"],
-        "lib/backends/headless-v9.8.7"
+        "lib/backends/indexer-v9.8.7"
     );
     assert_eq!(
         manifest["activation"]["backend"]["requiredPlugin"],
-        "idea-home/plugins/kast-headless"
+        "idea-home/plugins/kast-indexer"
     );
     assert_eq!(
         manifest["activation"]["shim"]["javaOpts"][0],
@@ -118,7 +116,7 @@ fn package_ubuntu_debian_bundle_writes_manifest_projection() {
     );
     assert_eq!(manifest["artifacts"][0]["role"], "cli");
     assert_eq!(manifest["artifacts"][1]["role"], "agent-cli");
-    assert_eq!(manifest["artifacts"][2]["role"], "headless-backend");
+    assert_eq!(manifest["artifacts"][2]["role"], "indexer");
     assert_eq!(
         manifest["artifacts"].as_array().expect("artifacts").len(),
         3

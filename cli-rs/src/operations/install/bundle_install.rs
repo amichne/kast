@@ -32,14 +32,14 @@ fn install_validated_bundle(
         .join(format!("{}-{}", bundle.release_digest, std::process::id()));
     manifest::remove_path(&staged)?;
     copy_bundle_tree(&bundle.root, &staged)?;
-    link_active_headless_backend(bundle, &staged)?;
+    link_active_indexer(bundle, &staged)?;
     manifest::make_executable(&staged.join(&bundle.cli_relative))?;
     manifest::make_executable(&staged.join(AGENT_CLI_BUNDLE_PATH))?;
     let staged_config = staged.join("config/config.toml");
     if let Some(contents) = migrated_config {
         write_setup_config_atomic(&staged_config, contents)?;
     } else {
-        write_headless_config(&staged_config)?;
+        write_indexer_config(&staged_config)?;
     }
     manifest::write_manifest_atomic(
         &staged.join(manifest::INSTALL_MANIFEST_FILE),
@@ -106,7 +106,7 @@ fn project_install_manifest(
 ) -> manifest::KastInstallManifest {
     let now = manifest::current_timestamp();
     let normalized_version = bundle.version.normalized();
-    let headless_root = targets.headless_current_dir.clone();
+    let indexer_root = targets.indexer_current_dir.clone();
     let install_id = format!("kast-{}-{}", bundle.manifest.platform, normalized_version);
     manifest::KastInstallManifest {
         tool: "kast".to_string(),
@@ -139,15 +139,15 @@ fn project_install_manifest(
         platform: bundle.manifest.platform.clone(),
         components: vec![
             "cli".to_string(),
-            "headless-backend".to_string(),
+            "indexer".to_string(),
             "manifest".to_string(),
         ],
         backends: vec![manifest::BackendComponentState {
-            name: "headless".to_string(),
+            name: "indexer".to_string(),
             version: bundle.manifest.activation.backend.version.clone(),
-            install_dir: headless_root.display().to_string(),
-            runtime_libs_dir: headless_root.join("runtime-libs").display().to_string(),
-            idea_home: Some(headless_root.join("idea-home").display().to_string()),
+            install_dir: indexer_root.display().to_string(),
+            runtime_libs_dir: indexer_root.join("runtime-libs").display().to_string(),
+            idea_home: Some(indexer_root.join("idea-home").display().to_string()),
         }],
         managed_paths: bundle
             .manifest
@@ -178,15 +178,15 @@ fn verify_activated_bundle(
         ));
     }
     require_directory(&targets.version_dir, "installed bundle version")?;
-    if !is_macos_installed_idea_sidecar(&bundle.manifest) {
+    if !is_macos_indexer(&bundle.manifest) {
         require_file(
             &targets
                 .resolved
-                .headless_runtime_libs_dir
+                .indexer_runtime_libs_dir
                 .join("classpath.txt"),
             "installed runtime classpath",
         )?;
-        if let Some(idea_home) = &targets.resolved.headless_idea_home {
+        if let Some(idea_home) = &targets.resolved.indexer_host_home {
             require_file(
                 &idea_home.join("lib/nio-fs.jar"),
                 "installed IDEA nio-fs.jar",

@@ -19,7 +19,7 @@
         let mut snapshot = sample_public_demo_snapshot();
         snapshot.availability = PublicDemoAvailability::Full;
         snapshot.backend = Some(DemoBackendSummary {
-            name: "headless".to_string(),
+            name: "indexer".to_string(),
             version: "test".to_string(),
             reference_index_ready: true,
         });

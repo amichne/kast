@@ -1,4 +1,0 @@
-interface:
-  display_name: "Kast Diagnostics"
-  short_description: "Diagnose Kast safely from typed local evidence"
-  default_prompt: "Use $kast-diagnostics to diagnose this Kast workspace without exposing secrets."

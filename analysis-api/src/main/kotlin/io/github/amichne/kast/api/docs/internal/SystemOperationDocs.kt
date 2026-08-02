@@ -19,27 +19,8 @@ internal fun systemOperationDocs(): List<OperationDoc> = listOf(
             tag = "system",
             responseSchema = "RuntimeStatusResponse",
             description = "Returns the full runtime state including indexing progress, " +
-                "backend identity, and workspace root. Use this to verify readiness " +
+                "indexer identity, and workspace root. Use this to verify readiness " +
                 "before running analysis commands.",
-        ),
-        OperationDoc(
-            operationId = "runtimeOpenProject",
-            jsonRpcMethod = "runtime/open-project",
-            summary = "Open an authenticated exact-root project in this runtime host",
-            tag = "system",
-            requestSchema = "RuntimeOpenProjectRequest",
-            responseSchema = "RuntimeOpenProjectResponse",
-            description = "Consumes a local one-shot request and opens its canonical root " +
-                "in this compatible IDEA application without replacing an existing project.",
-            behavioralNotes = listOf(
-                "The response is flushed before IDEA begins opening a new project frame.",
-                "Requests are exact-root, one-shot, short-lived, and restricted to the selected local host.",
-            ),
-            errorCodes = listOf(
-                "IDEA_OPEN_REQUEST_REJECTED",
-                "IDEA_VERSION_UNSUPPORTED",
-                "IDEA_PROJECT_OPEN_FAILED",
-            ),
         ),
         OperationDoc(
             operationId = "runtimeShutdown",
@@ -47,14 +28,13 @@ internal fun systemOperationDocs(): List<OperationDoc> = listOf(
             summary = "Request runtime host shutdown after the response is flushed",
             tag = "system",
             responseSchema = "RuntimeLifecycleResponse",
-            description = "Requests that the runtime host shut down the current backend " +
-                "after returning a JSON-RPC response. IDEA hosts stop the plugin backend " +
-                "server and indexer without killing the IDE process; headless daemon " +
-                "process lifecycle is handled by the top-level `kast stop` command.",
+            description = "Requests that the runtime host shut down the current indexer " +
+                "after returning a JSON-RPC response. The top-level `kast stop` command " +
+                "also handles stale endpoint state.",
             behavioralNotes = listOf(
                 "The response is flushed before the lifecycle action runs, so callers can observe an accepted request.",
                 "Hosts without lifecycle support return a capability-not-supported JSON-RPC error.",
-                "Prefer the top-level `kast stop` command for operator workflows; it handles stale descriptors and backend-specific cleanup.",
+                "Prefer the top-level `kast stop` command for operator workflows; it handles stale descriptors and cleanup.",
             ),
             errorCodes = listOf("CAPABILITY_NOT_SUPPORTED"),
         ),
@@ -64,10 +44,9 @@ internal fun systemOperationDocs(): List<OperationDoc> = listOf(
             summary = "Request runtime host restart after the response is flushed",
             tag = "system",
             responseSchema = "RuntimeLifecycleResponse",
-            description = "Requests that the runtime host rebuild the current backend " +
-                "after returning a JSON-RPC response. IDEA hosts restart the plugin " +
-                "backend server and indexer in the open IDE; headless daemon rebuilds " +
-                "are handled by the top-level `kast restart` command.",
+            description = "Requests that the runtime host restart the current indexer " +
+                "after returning a JSON-RPC response. The top-level `kast restart` " +
+                "command also waits for readiness.",
             behavioralNotes = listOf(
                 "The response is flushed before the lifecycle action runs, so callers can observe an accepted request.",
                 "Hosts without lifecycle support return a capability-not-supported JSON-RPC error.",
@@ -81,7 +60,7 @@ internal fun systemOperationDocs(): List<OperationDoc> = listOf(
             summary = "Advertised read and mutation capabilities",
             tag = "system",
             responseSchema = "BackendCapabilities",
-            description = "Lists every read and mutation capability the current backend " +
+            description = "Lists every read and mutation capability the current indexer " +
                 "advertises, along with server limits. Query this before calling an " +
                 "operation to confirm it is available.",
         ),

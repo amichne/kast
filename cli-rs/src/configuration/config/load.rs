@@ -10,8 +10,11 @@ impl KastConfig {
                 request_timeout_millis: 30_000,
                 max_concurrent_requests: 4,
             },
-            runtime: RuntimeConfig::default(),
-            project_open: ProjectOpenConfig::default(),
+            indexer: IndexerConfig {
+                runtime_libs_dir: Some(paths.indexer_runtime_libs_dir.clone()),
+                host_home: paths.indexer_host_home.clone(),
+                ..IndexerConfig::default()
+            },
             codex: CodexConfig::default(),
             indexing: IndexingConfig {
                 critical_paths: Vec::new(),
@@ -65,14 +68,6 @@ impl KastConfig {
                 runtime_dir: paths.runtime_dir.clone(),
                 descriptor_dir: paths.descriptor_dir.clone(),
                 socket_dir: paths.socket_dir.clone(),
-            },
-            backends: BackendsConfig {
-                headless: HeadlessBackendConfig {
-                    enabled: true,
-                    runtime_libs_dir: Some(paths.headless_runtime_libs_dir.clone()),
-                    idea_home: paths.headless_idea_home.clone(),
-                },
-                idea: IdeaBackendConfig { enabled: true },
             },
             cli: CliConfig {
                 binary_path: paths.shim_path.clone(),
@@ -136,38 +131,8 @@ impl KastConfig {
                 self.server.max_concurrent_requests = value;
             }
         }
-        if let Some(runtime) = partial.runtime {
-            if let Some(value) = runtime.default_backend {
-                self.runtime.default_backend = value;
-            }
-            if let Some(value) = runtime.strict_plugin_matching {
-                self.runtime.strict_plugin_matching = value;
-            }
-            if let Some(idea_launch) = runtime.idea_launch {
-                if let Some(value) = idea_launch.enabled {
-                    self.runtime.idea_launch.enabled = value;
-                }
-                if let Some(value) = idea_launch.command {
-                    self.runtime.idea_launch.command = value;
-                }
-                if let Some(value) = idea_launch.wait_timeout_millis {
-                    self.runtime.idea_launch.wait_timeout_millis = value;
-                }
-            }
-        }
-        if let Some(project_open) = partial.project_open {
-            if let Some(value) = project_open.profile_auto_init {
-                self.project_open.profile_auto_init = value;
-            }
-            if let Some(value) = project_open.profile {
-                self.project_open.profile = value;
-            }
-            if let Some(value) = project_open.auto_exclude_git {
-                self.project_open.auto_exclude_git = value;
-            }
-            if let Some(value) = project_open.gradle_load_enabled {
-                self.project_open.gradle_load_enabled = value;
-            }
+        if let Some(value) = partial.indexer.and_then(|indexer| indexer.host_command) {
+            self.indexer.host_command = value;
         }
         if let Some(hooks) = partial.codex.and_then(|codex| codex.hooks) {
             if let Some(value) = hooks.enabled {
@@ -271,18 +236,6 @@ impl KastConfig {
             }
             if let Some(value) = profiling.emit_manifest {
                 self.profiling.emit_manifest = value;
-            }
-        }
-        if let Some(backends) = partial.backends {
-            if let Some(headless) = backends.headless
-                && let Some(value) = headless.enabled
-            {
-                self.backends.headless.enabled = value;
-            }
-            if let Some(idea) = backends.idea
-                && let Some(value) = idea.enabled
-            {
-                self.backends.idea.enabled = value;
             }
         }
         if let Some(cli) = partial.cli

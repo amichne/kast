@@ -61,27 +61,27 @@ value class RuntimeWorkspaceRoot private constructor(val value: String) {
     }
 }
 
-@Serializable(with = HeadlessBackendName.Serializer::class)
+@Serializable(with = IndexerBackendName.Serializer::class)
 @JvmInline
-value class HeadlessBackendName private constructor(val value: String) {
+value class IndexerBackendName private constructor(val value: String) {
     companion object {
-        val HEADLESS: HeadlessBackendName = HeadlessBackendName("headless")
+        val INDEXER: IndexerBackendName = IndexerBackendName("indexer")
 
-        fun parse(value: String): HeadlessBackendName {
-            require(value == HEADLESS.value) { "Runtime backend must be headless" }
-            return HEADLESS
+        fun parse(value: String): IndexerBackendName {
+            require(value == INDEXER.value) { "Runtime identity must be indexer" }
+            return INDEXER
         }
     }
 
-    object Serializer : KSerializer<HeadlessBackendName> {
+    object Serializer : KSerializer<IndexerBackendName> {
         override val descriptor: SerialDescriptor =
-            PrimitiveSerialDescriptor("HeadlessBackendName", PrimitiveKind.STRING)
+            PrimitiveSerialDescriptor("IndexerBackendName", PrimitiveKind.STRING)
 
-        override fun serialize(encoder: Encoder, value: HeadlessBackendName) {
+        override fun serialize(encoder: Encoder, value: IndexerBackendName) {
             encoder.encodeString(value.value)
         }
 
-        override fun deserialize(decoder: Decoder): HeadlessBackendName = parse(decoder.decodeString())
+        override fun deserialize(decoder: Decoder): IndexerBackendName = parse(decoder.decodeString())
     }
 }
 

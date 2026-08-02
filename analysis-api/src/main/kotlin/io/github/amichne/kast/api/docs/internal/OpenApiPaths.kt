@@ -14,13 +14,6 @@ internal fun openApiPaths(): Map<String, Any?> = linkedMapOf(
         method = "runtime/status",
         responseSchema = "RuntimeStatusResponse",
     ),
-    "/rpc/runtime-open-project" to systemMethod(
-        operationId = "runtimeOpenProject",
-        summary = "Open an authenticated exact-root project in this runtime host",
-        method = "runtime/open-project",
-        requestSchema = "RuntimeOpenProjectRequest",
-        responseSchema = "RuntimeOpenProjectResponse",
-    ),
     "/rpc/runtime-shutdown" to systemMethod(
         operationId = "runtimeShutdown",
         summary = "Request runtime host shutdown after the response is flushed",

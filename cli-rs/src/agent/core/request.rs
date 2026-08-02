@@ -20,7 +20,6 @@ fn execute_request_with_session(
         let validated_lease = match runtime::validate_workspace_lease_for_command(
             lease_id,
             request.runtime.workspace_root.as_deref(),
-            request.runtime.backend_name,
         ) {
             Ok(lease) => lease,
             Err(error) => return error_envelope(
@@ -31,7 +30,6 @@ fn execute_request_with_session(
         };
         let admission = match runtime::semantic_mutation_workspace_route(
             request.runtime.workspace_root.clone(),
-            request.runtime.backend_name,
         ) {
             Ok(runtime::SemanticWorkspaceRoute::Admitted(admission)) => admission,
             Ok(runtime::SemanticWorkspaceRoute::Rejected(rejection)) => {
@@ -57,7 +55,7 @@ fn execute_request_with_session(
                 Some(request.request),
                 agent_error(
                     "WORKSPACE_LEASE_RUNTIME_REPLACED",
-                    "The admitted headless runtime is not the exact runtime authenticated by the workspace lease.",
+                    "The admitted indexer is not the exact runtime authenticated by the workspace lease.",
                 ),
             );
         }
@@ -67,7 +65,7 @@ fn execute_request_with_session(
                 Some(request.request),
                 agent_error(
                     "SEMANTIC_MUTATION_CAPABILITY_UNAVAILABLE",
-                    "The admitted headless runtime did not advertise the required mutation capability.",
+                    "The admitted indexer did not advertise the required mutation capability.",
                 ),
             );
         }
@@ -99,7 +97,6 @@ fn execute_request_with_session(
         None => runtime::raw_request_passthrough(
             raw_request,
             request.runtime.workspace_root.clone(),
-            request.runtime.backend_name,
         ),
     };
     match response {

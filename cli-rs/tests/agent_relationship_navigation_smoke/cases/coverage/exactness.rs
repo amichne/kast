@@ -72,7 +72,7 @@ fn exact_zero_relationships_require_complete_coverage_proof() {
     ];
 
     for (index, (command_name, method, extra_args, response)) in cases.into_iter().enumerate() {
-        let backend = spawn_scripted_headless_backend(
+        let backend = spawn_scripted_indexer_backend(
             &home,
             &config,
             &workspace,
@@ -164,7 +164,7 @@ fn relationship_evidence_variants_reject_inconsistent_coverage_facts() {
     ];
 
     for (index, evidence) in cases.into_iter().enumerate() {
-        let backend = spawn_scripted_headless_backend(
+        let backend = spawn_scripted_indexer_backend(
             &home,
             &config,
             &workspace,
@@ -225,7 +225,7 @@ fn genuine_exact_zero_preserves_complete_coverage_in_compact_and_count_views() {
         })
     };
 
-    let compact_backend = spawn_scripted_headless_backend(
+    let compact_backend = spawn_scripted_indexer_backend(
         &home,
         &config,
         &workspace,
@@ -255,7 +255,7 @@ fn genuine_exact_zero_preserves_complete_coverage_in_compact_and_count_views() {
     assert!(compact_stdout.contains("limitations"), "{compact_stdout}");
     compact_backend.join().expect("compact backend");
 
-    let count_backend = spawn_scripted_headless_backend(
+    let count_backend = spawn_scripted_indexer_backend(
         &home,
         &config,
         &workspace,
@@ -280,7 +280,7 @@ fn genuine_exact_zero_preserves_complete_coverage_in_compact_and_count_views() {
     assert_eq!(count["result"]["limitations"], serde_json::json!([]));
     count_backend.join().expect("count backend");
 
-    let selected_backend = spawn_scripted_headless_backend(
+    let selected_backend = spawn_scripted_indexer_backend(
         &home,
         &config,
         &workspace,
@@ -321,7 +321,7 @@ fn handle_backed_degraded_relationship_preserves_known_minimum_and_limitations()
         "kind": "FUNCTION"
     });
     let subject = relation_identity("sample.Service.run", "FUNCTION", &declaration_file, 42);
-    let backend = spawn_scripted_headless_backend(
+    let backend = spawn_scripted_indexer_backend(
         &home,
         &config,
         &workspace,

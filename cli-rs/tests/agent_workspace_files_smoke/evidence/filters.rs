@@ -28,8 +28,6 @@ fn structured_filters_are_conjunctive_and_never_match_legacy_labels() {
             "workspace-files",
             "--workspace-root",
             workspace.to_str().expect("UTF-8 workspace"),
-            "--backend",
-            "headless",
             "--module",
             "gradle:.#:app",
             "--source-set",

@@ -36,8 +36,6 @@ mod tests {
                 "diagnostics",
                 "--workspace-root",
                 "/workspace",
-                "--backend",
-                "headless",
                 "--file-path",
                 "src/A.kt",
             ]

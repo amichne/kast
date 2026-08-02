@@ -110,7 +110,7 @@ fn public_cli_exposes_setup_and_no_retired_install_mutators() {
     assert!(setup.status.success());
     let setup_stdout = String::from_utf8_lossy(&setup.stdout);
     assert!(setup_stdout.contains("--source"), "{setup_stdout}");
-    for retired in ["--workspace-root", "--dry-run", "--target-dir", "--backend"] {
+    for retired in ["--workspace-root", "--dry-run", "--target-dir"] {
         assert!(
             !setup_stdout.contains(retired),
             "retired {retired}: {setup_stdout}"
@@ -171,13 +171,32 @@ fn operational_help_exposes_canonical_runtime_and_graph_recipes() {
     let runtime_stdout = String::from_utf8_lossy(&runtime.stdout);
     for expected in [
         "--accept-indexing",
-        "kast developer runtime up --workspace-root \"$PWD\" --backend headless --accept-indexing",
+        "kast developer runtime up --workspace-root \"$PWD\" --accept-indexing",
     ] {
         assert!(
             runtime_stdout.contains(expected),
             "missing {expected}: {runtime_stdout}"
         );
     }
+    let retired_selector = ["--", "backend"].concat();
+    assert!(
+        !runtime_stdout.contains(&retired_selector),
+        "retired selector remains in runtime help: {runtime_stdout}"
+    );
+
+    let rejected = kast(&home, &config_home)
+        .args([
+            "developer",
+            "runtime",
+            "up",
+            &format!("{retired_selector}=indexer"),
+        ])
+        .output()
+        .expect("retired runtime selector");
+    assert!(
+        !rejected.status.success(),
+        "retired selector remained callable"
+    );
 
     let graph = kast(&home, &config_home)
         .args(["agent", "graph", "--help"])

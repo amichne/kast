@@ -22,7 +22,7 @@ fn rename_backend(
     )
     .expect("Kotlin fixture");
     let file_path = file_path.display().to_string();
-    spawn_scripted_headless_backend(
+    spawn_scripted_indexer_backend(
         home,
         config_home,
         workspace,
@@ -77,7 +77,7 @@ fn agent_rename_plan_default_toon_matches_explicit_json() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("headless.sock");
+    let socket_path = temp.path().join("indexer.sock");
     let json_backend = rename_backend(&home, &config_home, &workspace, &socket_path);
 
     let json = kast(&home, &config_home)
@@ -152,7 +152,7 @@ fn agent_rename_plan_is_read_only_until_apply() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("headless.sock");
+    let socket_path = temp.path().join("indexer.sock");
     let backend = rename_backend(&home, &config_home, &workspace, &socket_path);
     let source_before = std::fs::read(workspace.join("OrderService.kt")).expect("source before");
 

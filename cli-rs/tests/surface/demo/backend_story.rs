@@ -4,7 +4,7 @@ fn demo_uses_a_ready_backend_when_the_source_index_is_missing() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("headless.sock");
+    let socket_path = temp.path().join("indexer.sock");
     let handle = spawn_ready_demo_backend(&home, &config_home, &workspace, &socket_path, 5, None);
 
     let demo = kast(&home, &config_home)
@@ -14,8 +14,6 @@ fn demo_uses_a_ready_backend_when_the_source_index_is_missing() {
             "demo",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend",
-            "headless",
             "--symbol",
             "lib.Foo",
         ])
@@ -52,7 +50,7 @@ fn backend_only_demo_requests_a_symbol_instead_of_inventing_a_ranked_story() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("headless.sock");
+    let socket_path = temp.path().join("indexer.sock");
     let handle = spawn_ready_demo_backend(&home, &config_home, &workspace, &socket_path, 2, None);
 
     let demo = kast(&home, &config_home)
@@ -62,8 +60,6 @@ fn backend_only_demo_requests_a_symbol_instead_of_inventing_a_ranked_story() {
             "demo",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend",
-            "headless",
         ])
         .output()
         .expect("backend-only demo without symbol");
@@ -86,7 +82,7 @@ fn backend_only_demo_fails_when_the_compiler_cannot_resolve_the_requested_symbol
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("headless.sock");
+    let socket_path = temp.path().join("indexer.sock");
     let handle = spawn_ready_demo_backend(
         &home,
         &config_home,
@@ -107,8 +103,6 @@ fn backend_only_demo_fails_when_the_compiler_cannot_resolve_the_requested_symbol
             "demo",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend",
-            "headless",
             "--symbol",
             "NoSuchSymbol",
         ])
@@ -148,7 +142,7 @@ fn backend_only_demo_handles_typed_not_found_and_ambiguous_resolve_outcomes() {
         let home = temp.path().join("home");
         let config_home = temp.path().join("config");
         let workspace = temp.path().join("workspace");
-        let socket_path = temp.path().join("headless.sock");
+        let socket_path = temp.path().join("indexer.sock");
         let handle = spawn_ready_demo_backend(
             &home,
             &config_home,
@@ -165,8 +159,6 @@ fn backend_only_demo_handles_typed_not_found_and_ambiguous_resolve_outcomes() {
                 "demo",
                 "--workspace-root",
                 workspace.to_str().expect("workspace path"),
-                "--backend",
-                "headless",
                 "--symbol",
                 "Foo",
             ])
@@ -186,7 +178,7 @@ fn demo_relations_use_canonical_resolved_symbol_identity() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("headless.sock");
+    let socket_path = temp.path().join("indexer.sock");
     seed_source_index(&workspace);
     let canonical_fq_name = "canonical.lib.Foo";
     let handle = spawn_ready_demo_backend(
@@ -220,8 +212,6 @@ fn demo_relations_use_canonical_resolved_symbol_identity() {
             "demo",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend",
-            "headless",
         ])
         .output()
         .expect("canonical relation demo");
@@ -255,18 +245,13 @@ fn spawn_ready_demo_backend(
             .expect("Gradle settings");
     }
     let server_workspace = workspace.canonicalize().expect("canonical workspace");
-    std::fs::write(
-        config_home.join("config.toml"),
-        "[runtime]\ndefaultBackend = \"headless\"\n",
-    )
-    .expect("config");
     let listener = UnixListener::bind(socket_path).expect("bind fake backend");
     std::fs::write(
         descriptor_dir.join("daemons.json"),
         serde_json::to_vec_pretty(&serde_json::json!([runtime_descriptor_for_test(
             &server_workspace,
             socket_path,
-            "headless",
+            "indexer",
             "demo-test",
         )]))
         .expect("descriptor JSON"),
@@ -298,14 +283,14 @@ fn spawn_ready_demo_backend(
                     "healthy": true,
                     "active": true,
                     "indexing": false,
-                    "backendName": "headless",
+                    "backendName": "indexer",
                     "backendVersion": "demo-test",
                     "workspaceRoot": server_workspace.display().to_string(),
                     "referenceIndexReady": true,
                     "schemaVersion": 5
                 }),
                 "capabilities" => serde_json::json!({
-                    "backendName": "headless",
+                    "backendName": "indexer",
                     "backendVersion": "demo-test",
                     "workspaceRoot": server_workspace.display().to_string(),
                     "readCapabilities": ["symbol/resolve", "symbol/references", "raw/diagnostics"],

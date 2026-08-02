@@ -7,7 +7,7 @@ fn agent_graph_source_scope_does_not_wait_for_relationship_stage() {
     let app_main = workspace.join("app/src/main/App.kt");
     let app_test = workspace.join("app/src/test/AppTest.kt");
     let lib_main = workspace.join("lib/src/main/Lib.kt");
-    let socket_path = temp.path().join("headless.sock");
+    let socket_path = temp.path().join("indexer.sock");
     for source in [&app_main, &app_test, &lib_main] {
         std::fs::create_dir_all(source.parent().expect("source parent")).expect("source directory");
         std::fs::write(source, "package sample\nclass Sample\n").expect("source");
@@ -22,7 +22,7 @@ fn agent_graph_source_scope_does_not_wait_for_relationship_stage() {
             [],
         )
         .expect("make unrelated lib relationship stage pending");
-    let handle = spawn_scripted_headless_backend(
+    let handle = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,

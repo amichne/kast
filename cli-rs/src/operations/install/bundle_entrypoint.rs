@@ -18,11 +18,14 @@ fn setup_bundle(source: PathBuf, mode: SetupMode) -> Result<SetupResult> {
     )?;
 
     manifest::with_install_lock(&targets.resolved, || {
+        crate::runtime::retire_registered_legacy_headless_daemons(
+            &targets.resolved.descriptor_dir,
+        )?;
         if mode.is_force() {
             ForceResetPlan::build(&targets)?.execute()?;
         }
         let migrated_config = plan_existing_config_migration(&targets)?;
-        let public_plugin_migration = remove_known_public_plugins()?;
+        let retired_plugin_removal = remove_retired_public_plugins()?;
         let legacy_archive = archive_legacy_installations(&targets)?;
         manifest::remove_path(&targets.resolved.install_root.join("staging"))?;
         fs::create_dir_all(targets.resolved.install_root.join("staging"))?;
@@ -46,7 +49,7 @@ fn setup_bundle(source: PathBuf, mode: SetupMode) -> Result<SetupResult> {
                     &targets,
                     SetupStatus::Current,
                     legacy_archive.backup_path(),
-                    &public_plugin_migration,
+                    &retired_plugin_removal,
                 ));
             }
         }
@@ -89,7 +92,7 @@ fn setup_bundle(source: PathBuf, mode: SetupMode) -> Result<SetupResult> {
             &targets,
             SetupStatus::Activated,
             backup.as_deref().or_else(|| legacy_archive.backup_path()),
-            &public_plugin_migration,
+            &retired_plugin_removal,
         ))
     })
 }
@@ -126,45 +129,7 @@ fn write_setup_config_atomic(path: &Path, contents: &str) -> Result<()> {
     Ok(())
 }
 
-fn remove_known_public_plugins() -> Result<PublicPluginMigration> {
-    let mut removed_public_plugin = false;
-    for plugins in supported_idea_plugins_dirs()? {
-        let public_plugin = validated_child(
-            &plugins,
-            "kast",
-            "Kast public IDEA plugin",
-        )?;
-        removed_public_plugin |= fs::symlink_metadata(&public_plugin).is_ok();
-        manifest::remove_path(&public_plugin)?;
-        let profile = plugins.parent().ok_or_else(|| {
-            CliError::new(
-                "SETUP_MIGRATION_TARGET_INVALID",
-                format!(
-                    "IDEA plugins directory has no profile parent: {}",
-                    plugins.display()
-                ),
-            )
-        })?;
-        manifest::remove_path(&validated_child(
-            profile,
-            ".kast-plugin-backup",
-            "Kast public IDEA plugin backup",
-        )?)?;
-    }
-    let restart_requirement = if removed_public_plugin && foreground_ide_is_open()? {
-        Some(SetupRestartRequirement {
-            code: "FOREGROUND_IDE_RESTART_REQUIRED",
-            message: "Restart IntelliJ IDEA or Android Studio to unload the retired public Kast plugin. Kast did not stop, close, or relaunch the application.",
-        })
-    } else {
-        None
-    };
-    Ok(PublicPluginMigration {
-        restart_requirement,
-    })
-}
-
-include!("bundle_entrypoint/idea_migration.rs");
+include!("bundle_entrypoint/legacy_plugin_removal.rs");
 
 fn at_setup_phase(mut error: CliError, phase: &'static str) -> CliError {
     error.details.insert("phase".to_string(), phase.to_string());
@@ -304,7 +269,7 @@ fn setup_result(
     targets: &ActivationTargetPaths,
     status: SetupStatus,
     backup: Option<&Path>,
-    public_plugin_migration: &PublicPluginMigration,
+    retired_plugin_removal: &RetiredPublicPluginRemoval,
 ) -> SetupResult {
     SetupResult {
         result_type: "KAST_SETUP",
@@ -315,7 +280,7 @@ fn setup_result(
         current: targets.current_link.display().to_string(),
         active_binary: targets.resolved.active_binary.display().to_string(),
         backup: backup.map(|path| path.display().to_string()),
-        restart_requirement: public_plugin_migration.restart_requirement.clone(),
+        restart_requirement: retired_plugin_removal.restart_requirement.clone(),
         artifacts: bundle
             .manifest
             .artifacts

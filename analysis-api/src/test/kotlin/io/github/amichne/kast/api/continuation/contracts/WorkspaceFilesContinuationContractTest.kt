@@ -115,7 +115,7 @@ class WorkspaceFilesContinuationContractTest {
             workspaceRoot = WorkspaceFilesPublicContinuationIdentity.WorkspaceRoot.parse(
                 Path.of("/workspace").toAbsolutePath().normalize().toString(),
             ),
-            backendName = WorkspaceFilesPublicContinuationIdentity.BackendName.parse("idea"),
+            backendName = WorkspaceFilesPublicContinuationIdentity.BackendName.parse("indexer"),
             normalizedQuery = WorkspaceFilesPublicContinuationIdentity.NormalizedQuery.parse(
                 "kind=source;package=named:com.example",
             ),

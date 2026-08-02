@@ -108,10 +108,9 @@ fn installed_idea_sidecar_java_command(
         })?;
     }
     let payload_plugin = installed_sidecar_plugin(args, config)?;
-    let isolated_plugin = plugins.join("kast-headless");
+    let isolated_plugin = plugins.join("kast-indexer");
     ensure_isolated_plugin_link(&payload_plugin, &isolated_plugin)?;
-    let runtime_config_file =
-        write_runtime_config_file(BackendName::Headless, args, config, None, &idea_home)?;
+    let runtime_config_file = write_runtime_config_file(args, config, None, &idea_home)?;
 
     let mut command = vec![java_exec.display().to_string()];
     if let Some(vm_options) = launch.vm_options_file_path.as_deref() {
@@ -146,7 +145,7 @@ fn installed_idea_sidecar_java_command(
         "-Dkast.idea.autostart=false".to_string(),
         format!("-Didea.home.path={}", idea_home.display()),
         format!(
-            "-Didea.paths.selector=KastHeadless-{}",
+            "-Didea.paths.selector=KastIndexer-{}",
             config::workspace_hash(&workspace_root),
         ),
         format!("-Didea.config.path={}", idea_config.display()),
@@ -159,7 +158,7 @@ fn installed_idea_sidecar_java_command(
     command.push("-cp".to_string());
     command.push(classpath);
     command.push(launch.main_class);
-    command.push(HEADLESS_STARTER_COMMAND.to_string());
+    command.push(INDEXER_STARTER_COMMAND.to_string());
     command.extend(config::server_launch_args(args, config)?);
     command.push(format!("--idea-home={}", idea_home.display()));
     command.push(format!(
@@ -231,17 +230,17 @@ fn installed_sidecar_plugin(args: &DaemonStartArgs, config: &KastConfig) -> Resu
     let conventional_home = config
         .paths
         .install_root
-        .join("current/lib/backends/headless/current/idea-home");
+        .join("current/lib/backends/indexer/current/idea-home");
     let mut homes = Vec::new();
     if let Some(home) = &args.idea_home {
         homes.push(home.clone());
     }
-    if let Some(home) = &config.backends.headless.idea_home {
+    if let Some(home) = &config.indexer.host_home {
         homes.push(home.clone());
     }
     homes.push(conventional_home.clone());
     for home in homes {
-        let plugin = home.join("plugins/kast-headless");
+        let plugin = home.join("plugins/kast-indexer");
         if plugin.join("lib").is_dir()
             && fs::read_dir(plugin.join("lib")).is_ok_and(|entries| {
                 entries
@@ -255,7 +254,7 @@ fn installed_sidecar_plugin(args: &DaemonStartArgs, config: &KastConfig) -> Resu
     Err(CliError::new(
         "DAEMON_START_ERROR",
         format!(
-            "The Kast headless plugin payload is unavailable under {}. Run `kast setup` for the active release.",
+            "The private Kast indexer payload is unavailable under {}. Run `kast setup` for the active release.",
             conventional_home.display(),
         ),
     ))
@@ -303,7 +302,7 @@ fn ensure_isolated_plugin_link(source: &Path, target: &Path) -> Result<()> {
         return Ok(());
     }
 
-    let temporary = target.with_file_name(format!(".kast-headless-{}.tmp", uuid::Uuid::new_v4(),));
+    let temporary = target.with_file_name(format!(".kast-indexer-{}.tmp", uuid::Uuid::new_v4(),));
     std::os::unix::fs::symlink(&source, &temporary).map_err(|error| {
         CliError::new(
             "DAEMON_START_ERROR",

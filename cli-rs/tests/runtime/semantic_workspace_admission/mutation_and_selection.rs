@@ -5,23 +5,13 @@ fn automatic_applied_mutation_checks_workspace_authority_before_backend_discover
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
     let config_home = fixture.path().join("config");
-    let idea_socket = fixture.path().join("idea.sock");
-    let headless_socket = fixture.path().join("headless.sock");
+    let indexer_socket = fixture.path().join("indexer.sock");
     write_gradle_workspace(&workspace);
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::create_dir_all(&home).expect("home");
-    let idea_listener = bind_semantic_listener(&idea_socket);
-    let headless_listener = bind_semantic_listener(&headless_socket);
-    write_runtime_descriptors(
-        &home,
-        &[
-            (&workspace, &idea_socket, "idea"),
-            (&workspace, &headless_socket, "headless"),
-        ],
-    );
-    let idea = ObservedSemanticBackend::spawn(idea_listener, workspace.clone(), "idea");
-    let headless =
-        ObservedSemanticBackend::spawn(headless_listener, workspace.clone(), "headless");
+    let indexer_listener = bind_semantic_listener(&indexer_socket);
+    write_runtime_descriptor(&home, &workspace, &indexer_socket, "indexer");
+    let indexer = ObservedSemanticBackend::spawn(indexer_listener, workspace.clone(), "indexer");
 
     let mutation = kast(&home, &config_home)
         .args([
@@ -49,11 +39,7 @@ fn automatic_applied_mutation_checks_workspace_authority_before_backend_discover
         output["error"]["code"], "WORKSPACE_LEASE_REQUIRED",
         "{output:#}"
     );
-    assert!(idea.finish().is_empty(), "IDEA must not be contacted");
-    assert!(
-        headless.finish().is_empty(),
-        "headless must not be contacted"
-    );
+    assert!(indexer.finish().is_empty(), "indexer must not be contacted");
 }
 
 #[cfg(target_os = "macos")]
@@ -94,18 +80,18 @@ fn default_applied_mutation_maps_every_public_family_to_missing_workspace_author
 }
 
 #[test]
-fn applied_headless_mutation_requires_a_workspace_lease_before_rpc() {
+fn applied_indexer_mutation_requires_a_workspace_lease_before_rpc() {
     let fixture = tempfile::tempdir().expect("prepared mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
     let config_home = fixture.path().join("config");
-    let socket_path = fixture.path().join("headless.sock");
+    let socket_path = fixture.path().join("indexer.sock");
     write_gradle_workspace(&workspace);
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
-    let backend = ObservedSemanticBackend::spawn(listener, workspace.clone(), "headless");
+    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let backend = ObservedSemanticBackend::spawn(listener, workspace.clone(), "indexer");
 
     let mutation = kast(&home, &config_home)
         .args([
@@ -122,7 +108,6 @@ fn applied_headless_mutation_requires_a_workspace_lease_before_rpc() {
             "authority-test",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-            "--backend=headless",
         ])
         .output()
         .expect("prepared mutation");
@@ -139,106 +124,19 @@ fn applied_headless_mutation_requires_a_workspace_lease_before_rpc() {
 }
 
 #[test]
-fn agent_verify_never_runs_configured_idea_launch_command() {
-    let fixture = tempfile::tempdir().expect("launch fixture");
-    let workspace = fixture.path().join("workspace");
-    let home = fixture.path().join("home");
-    let config_home = fixture.path().join("config");
-    let launch_marker = fixture.path().join("idea-launched");
-    let launch_command = fixture.path().join("launch-idea");
-    let socket_path = fixture.path().join("idea.sock");
-    write_gradle_workspace(&workspace);
-    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
-    std::fs::create_dir_all(&home).expect("home");
-    std::fs::create_dir_all(&config_home).expect("config home");
-    write_macos_plugin_workspace_metadata(&workspace);
-    std::fs::write(
-        &launch_command,
-        format!("#!/bin/sh\ntouch '{}'\n", launch_marker.display()),
-    )
-    .expect("launch command");
-    let mut permissions = std::fs::metadata(&launch_command)
-        .expect("launch metadata")
-        .permissions();
-    permissions.set_mode(0o755);
-    std::fs::set_permissions(&launch_command, permissions).expect("launch executable");
-    let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "idea");
-    let backend = ObservedSemanticBackend::spawn(listener, workspace.clone(), "idea");
-    std::fs::write(
-        config_home.join("config.toml"),
-        format!(
-            "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\ncommand = \"{}\"\nwaitTimeoutMillis = 100\n",
-            launch_command.display()
-        ),
-    )
-    .expect("config");
-
-    let verify = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "verify",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-            "--backend=idea",
-        ])
-        .output()
-        .expect("agent verify");
-
-    let observed_methods = backend.finish();
-    assert!(!verify.status.success(), "retired IDEA intent must fail");
-    let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
-    assert_eq!(
-        output["error"]["code"],
-        "IDEA_SEMANTIC_BACKEND_RETIRED"
-    );
-    assert!(
-        observed_methods.is_empty(),
-        "retirement must precede IDEA RPC: {observed_methods:?}"
-    );
-    assert!(
-        !launch_marker.exists(),
-        "verification must not execute runtime.ideaLaunch"
-    );
-}
-
-#[test]
-fn reuse_only_verify_preserves_dead_descriptor_bytes_without_launching() {
+fn reuse_only_verify_preserves_dead_indexer_descriptor_bytes() {
     let fixture = tempfile::tempdir().expect("stale descriptor fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
     let config_home = fixture.path().join("config");
     let socket_path = fixture.path().join("dead.sock");
-    let launch_marker = fixture.path().join("idea-launched");
-    let launch_command = fixture.path().join("launch-idea");
     write_gradle_workspace(&workspace);
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
-    write_macos_plugin_workspace_metadata(&workspace);
-    write_stale_runtime_descriptor(&home, &workspace, &socket_path, "idea");
+    write_stale_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
     let descriptor_path = default_descriptor_dir(&home).join("daemons.json");
     let descriptor_before = std::fs::read(&descriptor_path).expect("descriptor bytes");
-    std::fs::write(
-        &launch_command,
-        format!("#!/bin/sh\ntouch '{}'\n", launch_marker.display()),
-    )
-    .expect("launch command");
-    let mut permissions = std::fs::metadata(&launch_command)
-        .expect("launch metadata")
-        .permissions();
-    permissions.set_mode(0o755);
-    std::fs::set_permissions(&launch_command, permissions).expect("launch executable");
-    std::fs::write(
-        config_home.join("config.toml"),
-        format!(
-            "[runtime]\ndefaultBackend = \"idea\"\n\n[runtime.ideaLaunch]\nenabled = true\ncommand = \"{}\"\nwaitTimeoutMillis = 100\n",
-            launch_command.display()
-        ),
-    )
-    .expect("config");
 
     let verify = kast(&home, &config_home)
         .args([
@@ -252,21 +150,17 @@ fn reuse_only_verify_preserves_dead_descriptor_bytes_without_launching() {
         .output()
         .expect("agent verify");
 
-    assert!(!verify.status.success(), "dead backend must fail");
+    assert!(!verify.status.success(), "dead indexer must fail");
     let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
-    assert_eq!(
-        output["error"]["code"],
-        "IDEA_SEMANTIC_BACKEND_RETIRED"
-    );
+    assert_eq!(output["error"]["code"], "NO_INDEXER_AVAILABLE");
     assert_eq!(
         std::fs::read(&descriptor_path).expect("preserved descriptor bytes"),
         descriptor_before,
         "reuse-only verification must not prune or rewrite descriptor state"
     );
-    assert!(!launch_marker.exists(), "verification must not launch IDEA");
     assert!(
         !socket_path.exists(),
-        "verification must not start a backend"
+        "verification must not start an indexer"
     );
 }
 
@@ -290,7 +184,7 @@ fn descriptor_cannot_make_non_gradle_root_supported() {
     let socket_path = fixture.path().join("stale.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::create_dir_all(&home).expect("home");
-    write_stale_runtime_descriptor(&home, &workspace, &socket_path, "headless");
+    write_stale_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
 
     let verify = kast(&home, &config_home)
         .args([
@@ -300,7 +194,6 @@ fn descriptor_cannot_make_non_gradle_root_supported() {
             "verify",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-            "--backend=headless",
         ])
         .output()
         .expect("agent verify");

@@ -6,19 +6,12 @@ die() {
   exit 1
 }
 
-resolve_repo_root() {
-  local script_dir
-  script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-  cd -- "${script_dir}/../../.." && pwd
-}
-
 write_provenance() {
   local path="$1"
   local platform="$2"
   local asset="$3"
-
   mkdir -p "$(dirname -- "$path")"
-  cat > "$path" <<JSON
+  cat >"$path" <<JSON
 {
   "platformId": "${platform}",
   "assetName": "${asset}",
@@ -27,72 +20,30 @@ write_provenance() {
 JSON
 }
 
-repo_root="$(resolve_repo_root)"
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
 assembler="${repo_root}/scripts/release/assemble-release-provenance.py"
 [[ -x "$assembler" ]] || die "release provenance assembler is missing or not executable: $assembler"
 
 scratch_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-release-provenance.XXXXXX")"
-cleanup() {
-  rm -rf "$scratch_dir"
-}
-trap cleanup EXIT
-
+trap 'rm -rf "$scratch_dir"' EXIT
 tag="v9.8.7"
+
 write_provenance \
-  "${scratch_dir}/provenance-cli-linux-x64/dist/build-provenance-cli-linux-x64.json" \
-  "cli-linux-x64" \
-  "kast-${tag}-linux-x64.zip"
-write_provenance \
-  "${scratch_dir}/provenance-cli-linux-arm64/dist/build-provenance-cli-linux-arm64.json" \
-  "cli-linux-arm64" \
-  "kast-${tag}-linux-arm64.zip"
-write_provenance \
-  "${scratch_dir}/provenance-cli-macos-x64/dist/build-provenance-cli-macos-x64.json" \
-  "cli-macos-x64" \
-  "kast-${tag}-macos-x64.zip"
-write_provenance \
-  "${scratch_dir}/provenance-cli-macos-arm64/dist/build-provenance-cli-macos-arm64.json" \
-  "cli-macos-arm64" \
-  "kast-${tag}-macos-arm64.zip"
-write_provenance \
-  "${scratch_dir}/provenance-gradle-ro-cache/dist/build-provenance-gradle-ro-cache.json" \
-  "gradle-ro-cache" \
-  "gradle-ro-dep-cache.tar.zst"
-write_provenance \
-  "${scratch_dir}/provenance-headless-linux-x64/dist/build-provenance-headless-linux-x64.json" \
-  "headless-linux-x64" \
-  "kast-headless-linux-x64.tar.zst"
-write_provenance \
-  "${scratch_dir}/provenance-openapi/dist/build-provenance-openapi.json" \
-  "openapi" \
-  "openapi.yaml"
-write_provenance \
-  "${scratch_dir}/provenance-runtime-manifest/dist/build-provenance-runtime-manifest.json" \
-  "runtime-manifest" \
-  "kast-runtime-manifest.json"
-write_provenance \
-  "${scratch_dir}/provenance-setup-linux-arm64/dist/build-provenance-setup-linux-arm64.json" \
-  "setup-linux-arm64" \
-  "kast-linux-arm64-${tag}.tar.gz"
-write_provenance \
-  "${scratch_dir}/provenance-setup-linux-x64/dist/build-provenance-setup-linux-x64.json" \
-  "setup-linux-x64" \
-  "kast-linux-x64-${tag}.tar.gz"
-write_provenance \
-  "${scratch_dir}/provenance-setup-macos-arm64/dist/build-provenance-setup-macos-arm64.json" \
-  "setup-macos-arm64" \
-  "kast-macos-arm64-${tag}.tar.gz"
-write_provenance \
-  "${scratch_dir}/provenance-setup-macos-x64/dist/build-provenance-setup-macos-x64.json" \
-  "setup-macos-x64" \
-  "kast-macos-x64-${tag}.tar.gz"
-write_provenance \
-  "${scratch_dir}/provenance-ubuntu-debian-headless/dist/build-provenance-ubuntu-debian-headless.json" \
-  "ubuntu-debian-headless-x86_64" \
-  "kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
+  "${scratch_dir}/provenance-openapi/build-provenance-openapi.json" \
+  openapi \
+  openapi.yaml
+for platform in linux-arm64 linux-x64 macos-arm64 macos-x64; do
+  write_provenance \
+    "${scratch_dir}/provenance-setup/build-provenance-setup-${platform}.json" \
+    "setup-${platform}" \
+    "kast-${platform}-${tag}.tar.gz"
+done
 
 output="${scratch_dir}/dist/build-provenance.json"
-provenance_roots=("${scratch_dir}"/provenance-*)
+provenance_roots=(
+  "${scratch_dir}/provenance-openapi"
+  "${scratch_dir}/provenance-setup"
+)
 "$assembler" --output "$output" --tag "$tag" "${provenance_roots[@]}"
 
 python3 - "$output" <<'PY'
@@ -103,31 +54,28 @@ from pathlib import Path
 payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 platforms = [entry.get("platformId") for entry in payload.get("builds", [])]
 expected = [
-    "cli-linux-arm64",
-    "cli-linux-x64",
-    "cli-macos-arm64",
-    "cli-macos-x64",
-    "gradle-ro-cache",
-    "headless-linux-x64",
     "openapi",
-    "runtime-manifest",
     "setup-linux-arm64",
     "setup-linux-x64",
     "setup-macos-arm64",
     "setup-macos-x64",
-    "ubuntu-debian-headless-x86_64",
 ]
 if platforms != expected:
     raise SystemExit(f"unexpected platform order: {platforms!r}")
 PY
 
+first_digest="$(shasum -a 256 "$output" | awk '{print $1}')"
 "$assembler" --output "$output" --tag "$tag" "${provenance_roots[@]}"
+second_digest="$(shasum -a 256 "$output" | awk '{print $1}')"
+[[ "$first_digest" == "$second_digest" ]] \
+  || die "provenance assembly is not deterministic"
 
-rm "${scratch_dir}/provenance-openapi/dist/build-provenance-openapi.json"
+rm "${scratch_dir}/provenance-openapi/build-provenance-openapi.json"
 if "$assembler" --output "$output" --tag "$tag" "${provenance_roots[@]}" \
   >"${scratch_dir}/missing.out" 2>"${scratch_dir}/missing.err"; then
   die "assembler unexpectedly passed with missing OpenAPI provenance"
 fi
-grep -Fq "missing=['openapi']" "${scratch_dir}/missing.err" || die "missing provenance failure did not name OpenAPI"
+grep -Fq "missing=['openapi']" "${scratch_dir}/missing.err" \
+  || die "missing provenance failure did not name OpenAPI"
 
 printf '%s\n' "Release provenance assembler test passed"

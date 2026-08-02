@@ -18,6 +18,45 @@ MAX_DIRECT_CHILDREN = 10
 SOURCE_SUFFIXES = frozenset({".kt", ".kts", ".rs"})
 SHAPE_ATTRIBUTE = "repository-shape"
 EXCLUDED_KINDS = frozenset({"binary", "generated", "lock"})
+REQUIRED_TRACKED_PATHS = frozenset({Path("indexer/build.gradle.kts")})
+RETIRED_PATH_PREFIXES = (
+    "backend-headless/",
+    "backend-idea/",
+    "backend-shared/",
+    "packaging/jetbrains/",
+)
+RETIRED_TEXT_MARKERS = (
+    "--backend",
+    "backend-headless",
+    "backend-idea",
+    "backend-shared",
+    "buildIdeaPlugin",
+    "idea-plugin",
+    "KastPluginBackend",
+    "KastPluginBackendLifecycle",
+    "KastPluginService",
+    "KastSettingsConfigurable",
+    "KastStartupActivity",
+    "KastStatusBarWidgetFactory",
+    "KastToolWindowFactory",
+    "org.jetbrains.intellij.platform",
+    "pluginConfiguration",
+    "pluginVerification",
+    "plugins/kast-headless",
+)
+RETIREMENT_CONTRACT_PATHS = frozenset(
+    {
+        Path(".github/scripts/check-repository-shape.py"),
+        Path(".github/scripts/test-repository-shape-contract.sh"),
+    }
+)
+RETIRED_TEXT_EXEMPT_PATHS = frozenset(
+    {
+        # The private indexer runs inside the IntelliJ platform and requires its
+        # native descriptor root. It is not a published plugin product.
+        Path("indexer/src/main/resources/META-INF/plugin.xml"),
+    }
+)
 
 
 class ShapeError(Exception):
@@ -37,6 +76,12 @@ class DirectoryViolation:
 
 
 @dataclass(frozen=True, order=True)
+class RetiredSurfaceViolation:
+    path: str
+    marker: str
+
+
+@dataclass(frozen=True, order=True)
 class Candidate:
     path: Path
     binary: bool
@@ -49,10 +94,17 @@ class ShapeReport:
     governed_directories: int
     file_violations: tuple[FileViolation, ...]
     directory_violations: tuple[DirectoryViolation, ...]
+    missing_required_paths: tuple[str, ...]
+    retired_surface_violations: tuple[RetiredSurfaceViolation, ...]
 
     @property
     def valid(self) -> bool:
-        return not self.file_violations and not self.directory_violations
+        return not (
+            self.file_violations
+            or self.directory_violations
+            or self.missing_required_paths
+            or self.retired_surface_violations
+        )
 
 
 class Parser(argparse.ArgumentParser):
@@ -169,11 +221,22 @@ def physical_lines(path: Path) -> int | None:
     return len(data.splitlines())
 
 
+def retired_text_markers(path: Path) -> tuple[str, ...]:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (FileNotFoundError, IsADirectoryError, UnicodeDecodeError):
+        return ()
+    except OSError as error:
+        raise ShapeError(f"tracked text could not be read: {path}") from error
+    return tuple(marker for marker in RETIRED_TEXT_MARKERS if marker in text)
+
+
 def inspect(root: Path) -> ShapeReport:
     candidates = candidate_paths(root)
     excluded = excluded_paths(root, candidates)
     governed: list[tuple[Path, int]] = []
     tracked_paths: list[Path] = []
+    retired_surface_violations: set[RetiredSurfaceViolation] = set()
     for candidate in candidates:
         absolute = root / candidate.path
         if not absolute.exists() and not absolute.is_symlink():
@@ -181,6 +244,19 @@ def inspect(root: Path) -> ShapeReport:
         if candidate.binary or candidate.path in excluded:
             continue
         tracked_paths.append(candidate.path)
+        encoded_path = candidate.path.as_posix()
+        for prefix in RETIRED_PATH_PREFIXES:
+            if encoded_path.startswith(prefix):
+                retired_surface_violations.add(
+                    RetiredSurfaceViolation(encoded_path, f"path:{prefix}")
+                )
+        if candidate.regular and candidate.path not in (
+            RETIREMENT_CONTRACT_PATHS | RETIRED_TEXT_EXEMPT_PATHS
+        ):
+            for marker in retired_text_markers(absolute):
+                retired_surface_violations.add(
+                    RetiredSurfaceViolation(encoded_path, f"text:{marker}")
+                )
         if not candidate.regular or candidate.path.suffix not in SOURCE_SUFFIXES:
             continue
         line_count = physical_lines(absolute)
@@ -214,13 +290,17 @@ def inspect(root: Path) -> ShapeReport:
         governed_directories=sum(path != Path() for path in children),
         file_violations=file_violations,
         directory_violations=directory_violations,
+        missing_required_paths=tuple(
+            sorted(str(path) for path in REQUIRED_TRACKED_PATHS if path not in tracked_paths)
+        ),
+        retired_surface_violations=tuple(sorted(retired_surface_violations)),
     )
 
 
 def emit(report: ShapeReport) -> None:
     print(f"ok: {str(report.valid).lower()}")
     if not report.valid:
-        print("code: REPOSITORY_SHAPE_LIMIT_EXCEEDED")
+        print("code: REPOSITORY_SHAPE_CONTRACT_VIOLATED")
     print("limits:")
     print(f"  maxPhysicalLines: {MAX_PHYSICAL_LINES}")
     print(f"  maxDirectChildren: {MAX_DIRECT_CHILDREN}")
@@ -233,6 +313,8 @@ def emit(report: ShapeReport) -> None:
     print(f"  governedDirectories: {report.governed_directories}")
     print(f"  fileViolations: {len(report.file_violations)}")
     print(f"  directoryViolations: {len(report.directory_violations)}")
+    print(f"  missingRequiredPaths: {len(report.missing_required_paths)}")
+    print(f"  retiredSurfaceViolations: {len(report.retired_surface_violations)}")
     if report.file_violations:
         print(
             f"fileViolations[{len(report.file_violations)}]"
@@ -253,11 +335,22 @@ def emit(report: ShapeReport) -> None:
                 f"  {json.dumps(violation.path)},"
                 f"{violation.direct_children},{MAX_DIRECT_CHILDREN}"
             )
+    if report.missing_required_paths:
+        print(f"missingRequiredPaths[{len(report.missing_required_paths)}]{{path}}:")
+        for path in report.missing_required_paths:
+            print(f"  {json.dumps(path)}")
+    if report.retired_surface_violations:
+        print(
+            f"retiredSurfaceViolations[{len(report.retired_surface_violations)}]"
+            "{path,marker}:"
+        )
+        for violation in report.retired_surface_violations:
+            print(f"  {json.dumps(violation.path)},{json.dumps(violation.marker)}")
     if not report.valid:
         print(
             "help: "
             + json.dumps(
-                "Split each named source owner into cohesive files or subdirectories."
+                "Split oversized owners and remove every named retired repository surface."
             )
         )
 

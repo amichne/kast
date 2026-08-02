@@ -6,7 +6,7 @@ tags: [compiler, kotlin, semantic-graph, evidence, coverage]
 code_sources:
   - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/result/symbol/SemanticGraphResult.kt
   - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/docs/internal/ReadOperationDocs.kt
-  - path: backend-shared/src/main/kotlin/io/github/amichne/kast/shared/analysis/ReferenceIndexEnvironment.kt
+  - path: indexer/src/main/kotlin/io/github/amichne/kast/shared/analysis/ReferenceIndexEnvironment.kt
   - path: cli-rs/src/agent/navigation/native_graph.rs
   - path: index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt
   - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
@@ -26,18 +26,18 @@ the analysis contract to persisted evidence and typed projection.
 
 <kast-view view-id="compiler-evidence" browser="true"></kast-view>
 
-## PSI, Analysis API, K2, and FIR stay behind the backend
+## PSI, Analysis API, K2, and FIR stay inside the indexer
 
-The private headless backend uses the Program Structure Interface (PSI) to
-enumerate Kotlin elements and retain source ranges. The Kotlin Analysis API (AA) runs K2
+The Kast indexer uses the Program Structure Interface (PSI) to enumerate
+Kotlin elements and retain source ranges. The Kotlin Analysis API (AA) runs K2
 compiler analysis over its Front-end Intermediate Representation (FIR) to
 resolve identities, types, diagnostics, and references.
 
-Those compiler objects never cross Kast's backend contract. The backend
+Those compiler objects never cross Kast's analysis contract. The indexer
 converts them to provider-neutral symbols, relations, diagnostics, and source
-locations before persistence or projection. On the headless pathway,
-reference indexing also serializes access to the K2/FIR resolver because one
-analysis session cannot resolve those declarations concurrently.
+locations before persistence or projection. Reference indexing serializes
+access to the K2/FIR resolver because one analysis session cannot resolve
+those declarations concurrently.
 
 ## Symbols have canonical identity
 
@@ -73,21 +73,21 @@ not proof that no relationship exists.
 
 ## The native graph preserves compiler provenance
 
-The active backend writes compiler-derived symbols and relations into the
+The active indexer writes compiler-derived symbols and relations into the
 workspace source index selected by the CLI. `kast graph` reads that database
 directly and exposes generation-pinned nodes, symbol neighborhoods, topology,
 communities, impact, and workspace summaries.
 
 Every query verifies the source-index schema and generation. Worktree overlays
 retain their base-database identity, and a generation change during a graph
-calculation fails instead of mixing snapshots. The headless runtime derives
+calculation fails instead of mixing snapshots. The indexer derives
 the database location from the active CLI receipt, so an independently guessed
 cache path cannot become a second graph authority.
 
 ## Failures remain explicit
 
-Workspace admission reports `COMPILER_BACKED` only after the selected headless
-runtime matches the requested root and exact identity. Indexing, unavailable
+Workspace admission reports `COMPILER_BACKED` only after the selected indexer
+matches the requested root and exact identity. Indexing, unavailable
 source modules, an unprepared workspace, a conflicting runtime, and an
 unavailable reference index remain typed limitations. Kast fails closed when
 those facts would make a semantic claim unsafe.

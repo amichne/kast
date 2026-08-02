@@ -33,26 +33,26 @@ pub struct PackageArgs {
 
 #[derive(Debug, Subcommand, Clone)]
 pub enum PackageCommand {
-    /// Build the Ubuntu/Debian headless install bundle.
-    #[command(name = "ubuntu-debian-bundle")]
-    UbuntuDebianBundle(UbuntuDebianBundlePackageArgs),
+    /// Build a platform setup bundle for the Kast indexer.
+    #[command(name = "setup-bundle")]
+    SetupBundle(SetupBundlePackageArgs),
 }
 
 #[derive(Debug, Args, Clone)]
-pub struct UbuntuDebianBundlePackageArgs {
+pub struct SetupBundlePackageArgs {
     /// Rust CLI zip archive containing kast at the archive root.
     #[arg(long)]
     pub cli_archive: PathBuf,
-    /// Headless backend portable zip archive containing backend-headless/.
+    /// Kast indexer portable zip archive containing indexer/.
     #[arg(long)]
-    pub backend_archive: PathBuf,
+    pub indexer_archive: PathBuf,
     /// Bundle platform id used in the archive name and manifest.
-    #[arg(long, default_value = "ubuntu-debian-headless-x86_64")]
+    #[arg(long, default_value = "linux-x64")]
     pub platform: String,
     /// Release tag or version for the generated bundle.
     #[arg(long)]
     pub version: String,
-    /// Output tar.gz path. Defaults to dist/kast-ubuntu-debian-headless-x86_64-<version>.tar.gz.
+    /// Output tar.gz path. Defaults to dist/kast-linux-x64-<version>.tar.gz.
     #[arg(long = "bundle-output")]
     pub bundle_output: Option<PathBuf>,
     /// Repository root containing install.sh, bundle resources, and LICENSE.

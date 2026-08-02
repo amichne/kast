@@ -28,7 +28,7 @@ pub fn workspace_ensure(args: RuntimeArgs) -> Result<WorkspaceEnsureResult> {
     workspace_ensure_result(&admission)
 }
 
-fn workspace_ensure_result(admission: &AdmittedHeadlessRuntime) -> Result<WorkspaceEnsureResult> {
+fn workspace_ensure_result(admission: &AdmittedIndexerRuntime) -> Result<WorkspaceEnsureResult> {
     let path_resolution = config::path_resolution_report(
         admission.config(),
         Some(admission.workspace_root()),
@@ -65,7 +65,6 @@ pub fn workspace_restart(mut args: RuntimeArgs) -> Result<WorkspaceRestartResult
     let backend_name = admission.backend_name().to_string();
     let stop = stop_admitted_runtime(admission)?;
     args.workspace_root = Some(workspace_root.clone());
-    args.backend_name = Some(BackendName::Headless);
     args.no_auto_start = Some(false);
     let restarted = admitted_runtime(semantic_workspace_route_for_runtime(args)?)?;
     let ensure = workspace_ensure_result(&restarted)?;
@@ -78,7 +77,7 @@ pub fn workspace_restart(mut args: RuntimeArgs) -> Result<WorkspaceRestartResult
     })
 }
 
-fn admitted_runtime(route: SemanticWorkspaceRoute) -> Result<AdmittedHeadlessRuntime> {
+fn admitted_runtime(route: SemanticWorkspaceRoute) -> Result<AdmittedIndexerRuntime> {
     match route {
         SemanticWorkspaceRoute::Admitted(admission) => Ok(*admission),
         SemanticWorkspaceRoute::Rejected(rejection) => Err(rejection.into_cli_error()),

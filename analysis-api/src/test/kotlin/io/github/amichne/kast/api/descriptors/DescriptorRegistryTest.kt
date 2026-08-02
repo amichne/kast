@@ -105,7 +105,7 @@ class DescriptorRegistryTest {
         val daemonsFile = tempDir.resolve("daemons.json")
         val validDescriptor = descriptor()
         val validJson = json.encodeToString(ServerInstanceDescriptor.serializer(), validDescriptor)
-        val invalidJson = validJson.replace("\"headless\"", "\"idea\"")
+        val invalidJson = validJson.replace("\"indexer\"", "\"idea\"")
         Files.writeString(daemonsFile, "[$validJson,$invalidJson]")
 
         assertEquals(listOf(validDescriptor), registry(daemonsFile).descriptors())

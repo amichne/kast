@@ -1,5 +1,5 @@
 use crate::SCHEMA_VERSION;
-use crate::cli::{BackendName, DaemonStartArgs};
+use crate::cli::DaemonStartArgs;
 use crate::error::{CliError, Result};
 use crate::manifest;
 use serde::{Deserialize, Serialize};
@@ -8,7 +8,7 @@ use std::collections::BTreeSet;
 use std::env;
 use std::fmt;
 use std::fs;
-use std::num::{NonZeroU32, NonZeroU64};
+use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
 
 include!("config/model.rs");

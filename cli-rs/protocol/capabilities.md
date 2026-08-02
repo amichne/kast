@@ -14,7 +14,7 @@ category. Expand any operation to see its input and output schemas.
 
     !!! abstract "At a glance"
 
-        6 operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required.
+        5 operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required.
 
     ??? info "health — Basic health check"
 
@@ -26,7 +26,7 @@ category. Expand any operation to see its input and output schemas.
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin status: String` :material-information-outline:{ title="Default: &quot;ok&quot;" } | Health status string, always "ok" when the daemon is responsive. |
-            | `#!kotlin backendName: String` | Identifier of the analysis backend (e.g. "headless" or "idea"). |
+            | `#!kotlin backendName: String` | Identifier of the analysis backend (for example, "indexer"). |
             | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
             | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
@@ -54,21 +54,6 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin referenceIndexReady: Boolean` :material-information-outline:{ title="Default: false" } | True when committed symbol-reference evidence is queryable, including qualified evidence. |
             | `#!kotlin referenceCoverageState: ReferenceCoverageState` :material-information-outline:{ title="Default: COMPLETE when referenceIndexReady is true; otherwise UNAVAILABLE" } | Global persisted reference evidence state. This state is independent of runtime readiness. |
             | `#!kotlin referenceCoverageLimitations: List<ReferenceCoverageLimitation>` :material-information-outline:{ title="Default: emptyList()" } | Typed limitations that qualify or prevent persisted reference evidence. |
-            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-
-    ??? info "runtime/open-project — Open an authenticated exact-root project in this runtime host"
-
-        === "Input: RuntimeOpenProjectRequest"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin canonicalRoot: String` | Canonical absolute root of the project to open. |
-            | `#!kotlin requestId: String` | One-shot UUID authenticating the project-open request. |
-        === "Output: RuntimeOpenProjectResponse"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin result: RuntimeOpenProjectResult` | Whether the exact root was already open or was opened in a new project frame. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
     ??? info "runtime/shutdown — Request runtime host shutdown after the response is flushed"

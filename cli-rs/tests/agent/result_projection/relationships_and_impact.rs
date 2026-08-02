@@ -5,7 +5,7 @@ fn symbol_relationships_bound_requests_and_compact_a_143k_token_result() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let verbose_socket_path = temp.path().join("idea-verbose.sock");
+    let verbose_socket_path = temp.path().join("indexer-verbose.sock");
     let noise = "high cardinality relationship evidence ".repeat(72);
     let references = (0..RELATION_ITEMS)
         .map(|index| {
@@ -40,7 +40,7 @@ fn symbol_relationships_bound_requests_and_compact_a_143k_token_result() {
             })
         })
         .collect::<Vec<_>>();
-    let verbose_backend = spawn_scripted_headless_backend(
+    let verbose_backend = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -133,8 +133,8 @@ fn symbol_relationships_bound_requests_and_compact_a_143k_token_result() {
         "verbose command must preserve the reviewed 143k-token scenario; measured {verbose_tokens}"
     );
 
-    let compact_socket_path = temp.path().join("idea-compact.sock");
-    let compact_backend = spawn_scripted_headless_backend(
+    let compact_socket_path = temp.path().join("indexer-compact.sock");
+    let compact_backend = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -291,7 +291,7 @@ fn impact_default_is_typed_bounded_and_supports_selected_and_count_views() {
         let index = run_index.get();
         run_index.set(index + 1);
         let socket = temp.path().join(format!("impact-{index}.sock"));
-        let backend = spawn_scripted_headless_backend(
+        let backend = spawn_scripted_indexer_backend(
             &home,
             &config_home,
             &workspace,

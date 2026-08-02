@@ -1,9 +1,9 @@
 use crate::SCHEMA_VERSION;
 use crate::bundle::{
-    AGENT_CLI_BUNDLE_PATH, BundleVersion, CONTROL_CLI_BUNDLE_PATH, HEADLESS_BACKEND_ARCHIVE_ROOT,
-    HEADLESS_BACKEND_LAUNCHER, UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT, ubuntu_debian_headless_manifest,
+    AGENT_CLI_BUNDLE_PATH, BundleVersion, CONTROL_CLI_BUNDLE_PATH, INDEXER_ARCHIVE_ROOT,
+    INDEXER_LAUNCHER, SETUP_ENTRYPOINT, setup_bundle_manifest,
 };
-use crate::cli::{PackageArgs, PackageCommand, UbuntuDebianBundlePackageArgs};
+use crate::cli::{PackageArgs, PackageCommand, SetupBundlePackageArgs};
 use crate::config;
 use crate::error::{CliError, Result};
 use flate2::Compression;
@@ -19,38 +19,36 @@ use std::process::Command as ProcessCommand;
 #[derive(Debug, Serialize)]
 #[serde(untagged)]
 pub enum PackageResult {
-    UbuntuDebianBundle(UbuntuDebianBundlePackageResult),
+    SetupBundle(SetupBundlePackageResult),
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UbuntuDebianBundlePackageResult {
+pub struct SetupBundlePackageResult {
     pub output: String,
     pub sha256_sidecar: String,
     pub version: String,
     pub platform: String,
     pub manifest_schema_version: u32,
     pub cli_archive: String,
-    pub backend_archive: String,
+    pub indexer_archive: String,
     pub bundle_sha256: String,
     pub schema_version: u32,
 }
 
 pub fn run(args: PackageArgs) -> Result<PackageResult> {
     match args.command {
-        PackageCommand::UbuntuDebianBundle(args) => {
-            package_ubuntu_debian_bundle(args).map(PackageResult::UbuntuDebianBundle)
+        PackageCommand::SetupBundle(args) => {
+            package_setup_bundle(args).map(PackageResult::SetupBundle)
         }
     }
 }
 
-pub fn package_ubuntu_debian_bundle(
-    args: UbuntuDebianBundlePackageArgs,
-) -> Result<UbuntuDebianBundlePackageResult> {
+pub fn package_setup_bundle(args: SetupBundlePackageArgs) -> Result<SetupBundlePackageResult> {
     let cli_archive = config::normalize(args.cli_archive);
-    let backend_archive = config::normalize(args.backend_archive);
+    let indexer_archive = config::normalize(args.indexer_archive);
     require_file(&cli_archive, "CLI archive")?;
-    require_file(&backend_archive, "backend archive")?;
+    require_file(&indexer_archive, "indexer archive")?;
     let version = BundleVersion::parse(&args.version)
         .map_err(|message| CliError::new("CLI_USAGE", format!("Package version {message}.")))?;
     let platform = args.platform.trim();
@@ -74,12 +72,12 @@ pub fn package_ubuntu_debian_bundle(
     sidecar.push(".sha256");
     let sidecar = PathBuf::from(sidecar);
 
-    let scratch = ScratchDir::new("kast-package-ubuntu-debian")?;
+    let scratch = ScratchDir::new("kast-package-setup")?;
     let cli_extract = scratch.path().join("cli");
-    let backend_extract = scratch.path().join("backend");
+    let indexer_extract = scratch.path().join("indexer");
     let staging_root = scratch.path().join(&bundle_name);
     fs::create_dir_all(&cli_extract)?;
-    fs::create_dir_all(&backend_extract)?;
+    fs::create_dir_all(&indexer_extract)?;
     fs::create_dir_all(staging_root.join("bin"))?;
     fs::create_dir_all(staging_root.join("libexec"))?;
     fs::create_dir_all(staging_root.join("lib/backends"))?;
@@ -88,7 +86,7 @@ pub fn package_ubuntu_debian_bundle(
     }
 
     extract_zip_archive(&cli_archive, &cli_extract)?;
-    extract_zip_archive(&backend_archive, &backend_extract)?;
+    extract_zip_archive(&indexer_archive, &indexer_extract)?;
 
     let cli_bin = cli_extract.join("kastctl");
     let agent_cli_bin = cli_extract.join("kast");
@@ -100,36 +98,33 @@ pub fn package_ubuntu_debian_bundle(
             "CLI archive root kastctl and kast binaries must be byte-identical.",
         ));
     }
-    let backend_root = backend_extract.join(HEADLESS_BACKEND_ARCHIVE_ROOT);
-    validate_backend_archive_root(&backend_root)?;
+    let indexer_root = indexer_extract.join(INDEXER_ARCHIVE_ROOT);
+    validate_indexer_archive_root(&indexer_root)?;
 
     fs::copy(&cli_bin, staging_root.join(CONTROL_CLI_BUNDLE_PATH))?;
     make_executable(&staging_root.join(CONTROL_CLI_BUNDLE_PATH))?;
     fs::copy(&agent_cli_bin, staging_root.join(AGENT_CLI_BUNDLE_PATH))?;
     make_executable(&staging_root.join(AGENT_CLI_BUNDLE_PATH))?;
-    let backend_install_name = format!("headless-{}", version.as_str());
-    let backend_install_dir = staging_root
+    let indexer_install_name = format!("indexer-{}", version.as_str());
+    let indexer_install_dir = staging_root
         .join("lib/backends")
-        .join(&backend_install_name);
-    stage_backend_for_platform(&backend_root, &backend_install_dir, platform)?;
-    make_executable(&backend_install_dir.join(HEADLESS_BACKEND_LAUNCHER))?;
+        .join(&indexer_install_name);
+    stage_indexer_for_platform(&indexer_root, &indexer_install_dir, platform)?;
+    make_executable(&indexer_install_dir.join(INDEXER_LAUNCHER))?;
 
-    let installer = repo_root.join(UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT);
+    let installer = repo_root.join(SETUP_ENTRYPOINT);
     require_file(&installer, "setup bootstrap installer")?;
-    fs::copy(
-        &installer,
-        staging_root.join(UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT),
-    )?;
-    make_executable(&staging_root.join(UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT))?;
+    fs::copy(&installer, staging_root.join(SETUP_ENTRYPOINT))?;
+    make_executable(&staging_root.join(SETUP_ENTRYPOINT))?;
     copy_license(&repo_root, &staging_root)?;
 
     let cli_sha = path_sha256(&staging_root.join(CONTROL_CLI_BUNDLE_PATH))?;
     let agent_cli_sha = path_sha256(&staging_root.join(AGENT_CLI_BUNDLE_PATH))?;
-    let backend_sha = path_sha256(&backend_install_dir)?;
-    let manifest = ubuntu_debian_headless_manifest(
+    let indexer_sha = path_sha256(&indexer_install_dir)?;
+    let manifest = setup_bundle_manifest(
         version.as_str(),
         platform,
-        [cli_sha, agent_cli_sha, backend_sha],
+        [cli_sha, agent_cli_sha, indexer_sha],
         build_commit(&repo_root),
     );
     fs::write(
@@ -153,14 +148,14 @@ pub fn package_ubuntu_debian_bundle(
         ),
     )?;
 
-    Ok(UbuntuDebianBundlePackageResult {
+    Ok(SetupBundlePackageResult {
         output: output.display().to_string(),
         sha256_sidecar: sidecar.display().to_string(),
         version: version.into_string(),
         platform: platform.to_string(),
         manifest_schema_version: manifest.schema_version,
         cli_archive: cli_archive.display().to_string(),
-        backend_archive: backend_archive.display().to_string(),
+        indexer_archive: indexer_archive.display().to_string(),
         bundle_sha256: bundle_sha,
         schema_version: SCHEMA_VERSION,
     })
@@ -218,43 +213,37 @@ fn extract_zip_archive(archive_path: &Path, output_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-fn validate_backend_archive_root(backend_root: &Path) -> Result<()> {
-    require_directory(backend_root, "backend archive root backend-headless")?;
+fn validate_indexer_archive_root(indexer_root: &Path) -> Result<()> {
+    require_directory(indexer_root, "indexer archive root")?;
     require_file(
-        &backend_root.join("runtime-libs/classpath.txt"),
-        "backend runtime-libs/classpath.txt",
+        &indexer_root.join("runtime-libs/classpath.txt"),
+        "indexer runtime-libs/classpath.txt",
+    )?;
+    require_file(&indexer_root.join(INDEXER_LAUNCHER), "indexer launcher")?;
+    require_file(
+        &indexer_root.join("idea-home/lib/nio-fs.jar"),
+        "indexer host nio-fs.jar",
     )?;
     require_file(
-        &backend_root.join(HEADLESS_BACKEND_LAUNCHER),
-        "headless backend launcher",
-    )?;
-    require_file(
-        &backend_root.join("idea-home/lib/nio-fs.jar"),
-        "headless IDEA nio-fs.jar",
-    )?;
-    require_file(
-        &backend_root.join("idea-home/modules/module-descriptors.dat"),
-        "headless IDEA module descriptors",
+        &indexer_root.join("idea-home/modules/module-descriptors.dat"),
+        "indexer host module descriptors",
     )?;
     require_directory(
-        &backend_root.join("idea-home/plugins/kast-headless"),
-        "bundled kast-headless plugin",
+        &indexer_root.join("idea-home/plugins/kast-indexer"),
+        "bundled Kast indexer runtime payload",
     )?;
     Ok(())
 }
 
-fn stage_backend_for_platform(source: &Path, target: &Path, platform: &str) -> Result<()> {
+fn stage_indexer_for_platform(source: &Path, target: &Path, platform: &str) -> Result<()> {
     if !platform.starts_with("macos-") {
         return copy_dir_recursive(source, target);
     }
     fs::create_dir_all(target.join("idea-home/plugins"))?;
-    fs::copy(
-        source.join(HEADLESS_BACKEND_LAUNCHER),
-        target.join(HEADLESS_BACKEND_LAUNCHER),
-    )?;
+    fs::copy(source.join(INDEXER_LAUNCHER), target.join(INDEXER_LAUNCHER))?;
     copy_dir_recursive(
-        &source.join("idea-home/plugins/kast-headless"),
-        &target.join("idea-home/plugins/kast-headless"),
+        &source.join("idea-home/plugins/kast-indexer"),
+        &target.join("idea-home/plugins/kast-indexer"),
     )
 }
 
@@ -323,41 +312,41 @@ mod sidecar_tests {
     use super::*;
 
     #[test]
-    fn macos_bundle_stages_only_the_installed_idea_sidecar_payload() {
+    fn macos_bundle_stages_only_the_indexer_payload() {
         let temp = tempfile::tempdir().expect("tempdir");
         let source = temp.path().join("source");
         let target = temp.path().join("target");
         fs::create_dir_all(source.join("runtime-libs")).expect("runtime libs");
         fs::create_dir_all(source.join("idea-home/lib")).expect("IDEA libs");
-        fs::create_dir_all(source.join("idea-home/plugins/kast-headless/lib"))
+        fs::create_dir_all(source.join("idea-home/plugins/kast-indexer/lib"))
             .expect("sidecar plugin");
-        fs::write(source.join(HEADLESS_BACKEND_LAUNCHER), "launcher").expect("launcher");
+        fs::write(source.join(INDEXER_LAUNCHER), "launcher").expect("launcher");
         fs::write(source.join("runtime-libs/classpath.txt"), "runtime").expect("classpath");
         fs::write(source.join("idea-home/lib/nio-fs.jar"), "platform").expect("platform");
         fs::write(
-            source.join("idea-home/plugins/kast-headless/lib/kast-headless.jar"),
+            source.join("idea-home/plugins/kast-indexer/lib/kast-indexer.jar"),
             "payload",
         )
         .expect("payload");
 
-        stage_backend_for_platform(&source, &target, "macos-arm64").expect("stage sidecar");
+        stage_indexer_for_platform(&source, &target, "macos-arm64").expect("stage sidecar");
 
-        assert!(target.join(HEADLESS_BACKEND_LAUNCHER).is_file());
+        assert!(target.join(INDEXER_LAUNCHER).is_file());
         assert!(
             target
-                .join("idea-home/plugins/kast-headless/lib/kast-headless.jar")
+                .join("idea-home/plugins/kast-indexer/lib/kast-indexer.jar")
                 .is_file()
         );
         assert!(!target.join("runtime-libs").exists());
         assert!(!target.join("idea-home/lib").exists());
 
-        let manifest = ubuntu_debian_headless_manifest(
+        let manifest = setup_bundle_manifest(
             "1.2.3",
             "macos-arm64",
             ["0".repeat(64), "1".repeat(64), "2".repeat(64)],
             "commit".to_string(),
         );
-        assert_eq!(manifest.profile, "macos-installed-idea-sidecar");
+        assert_eq!(manifest.profile, "indexer");
         assert!(
             manifest
                 .java_requirement

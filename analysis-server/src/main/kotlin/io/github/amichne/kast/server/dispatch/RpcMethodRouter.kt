@@ -7,14 +7,11 @@ import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.RuntimeLifecycleAction
 import io.github.amichne.kast.api.contract.RuntimeLifecycleResponse
-import io.github.amichne.kast.api.contract.RuntimeOpenProjectRequest
-import io.github.amichne.kast.api.contract.RuntimeOpenProjectResponse
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
 import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.server.AnalysisServerConfig
 import io.github.amichne.kast.server.RuntimeLifecycleController
-import io.github.amichne.kast.server.RuntimeProjectOpenController
 import io.github.amichne.kast.server.SkillRpcOrchestrator
 import io.github.amichne.kast.server.WorkspaceFilesContinuationService
 import io.github.amichne.kast.server.mutation.MutationExecutionService
@@ -32,7 +29,6 @@ internal class RpcMethodRouter(
     internal val backend: AnalysisBackend,
     internal val config: AnalysisServerConfig,
     private val lifecycleController: RuntimeLifecycleController,
-    private val projectOpenController: RuntimeProjectOpenController,
     internal val json: Json,
 ) : Closeable {
     internal val skillRpc = SkillRpcOrchestrator(backend, config, json)
@@ -52,9 +48,6 @@ internal class RpcMethodRouter(
         )
         method == "runtime/shutdown" -> requestLifecycle(RuntimeLifecycleAction.SHUTDOWN)
         method == "runtime/restart" -> requestLifecycle(RuntimeLifecycleAction.RESTART)
-        method == "runtime/open-project" -> requestProjectOpen(
-            decodeParams(RuntimeOpenProjectRequest.serializer(), params),
-        )
         method == "capabilities" -> RpcMethodResult(
             encode(
                 BackendCapabilities.serializer(),
@@ -144,13 +137,6 @@ internal class RpcMethodRouter(
         )
     }
 
-    private fun requestProjectOpen(request: RuntimeOpenProjectRequest): RpcMethodResult {
-        val plan = projectOpenController.openProject(request)
-        return RpcMethodResult(
-            result = encode(RuntimeOpenProjectResponse.serializer(), plan.response),
-            afterResponseAction = plan.afterResponseAction,
-        )
-    }
 }
 
 internal class UnknownRpcMethodException(

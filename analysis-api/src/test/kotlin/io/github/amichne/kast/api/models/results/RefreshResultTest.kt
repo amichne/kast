@@ -52,7 +52,7 @@ class RefreshResultTest {
         val analysisStatus = FileAnalysisStatus.skipped(
             pendingPath,
             FileAnalysisState.PENDING_INDEX,
-            "IDEA has not created PSI for the file yet",
+            "Indexer has not created PSI for the file yet",
         )
         val admissionStatus = SemanticAdmissionStatus.incomplete(
             filePath = pendingPath,

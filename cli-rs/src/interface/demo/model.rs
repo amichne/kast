@@ -4,7 +4,6 @@ struct DemoRequest {
     database: PathBuf,
     symbol: Option<String>,
     limit: usize,
-    backend_name: Option<BackendName>,
 }
 
 #[derive(Debug, Clone, Serialize)]

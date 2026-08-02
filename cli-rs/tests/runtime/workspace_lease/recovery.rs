@@ -5,7 +5,7 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket = temp.path().join("headless.sock");
+    let socket = temp.path().join("indexer.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::write(
@@ -14,7 +14,7 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
     )
     .expect("settings");
     let binary = write_active_kast_for_test(&home, &config_home);
-    let backend = spawn_scripted_headless_backend_for_invocations(
+    let backend = spawn_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
@@ -55,15 +55,13 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
             "verify",
             "--workspace-root",
             workspace.to_str().expect("workspace"),
-            "--backend",
-            "headless",
             "--lease-id",
             &lease_id,
         ])
         .output()
         .expect("verify after runtime loss");
     assert_error(&verify, "WORKSPACE_LEASE_RUNTIME_UNAVAILABLE");
-    assert_headless_runtime_observation_only(&backend.join().expect("scripted backend"));
+    assert_indexer_runtime_observation_only(&backend.join().expect("scripted backend"));
 
     let failed_release = lease_command(
         &binary,
@@ -79,7 +77,7 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
     );
 
     std::fs::remove_file(&socket).expect("stale socket cleanup");
-    let replacement = spawn_scripted_headless_backend_for_invocations(
+    let replacement = spawn_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
@@ -101,17 +99,17 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
         &workspace,
     );
     assert_success(&recovery_release, "bounded recovery release");
-    assert_headless_runtime_observation_only(&replacement.join().expect("replacement backend"));
+    assert_indexer_runtime_observation_only(&replacement.join().expect("replacement backend"));
 }
 
 #[cfg(target_os = "macos")]
 #[test]
-fn indexing_headless_runtime_never_becomes_lease_ready() {
+fn indexing_indexer_runtime_never_becomes_lease_ready() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket = temp.path().join("headless.sock");
+    let socket = temp.path().join("indexer.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::write(
@@ -129,7 +127,7 @@ fn indexing_headless_runtime_never_becomes_lease_ready() {
                 "healthy": true,
                 "active": true,
                 "indexing": true,
-                "backendName": "headless",
+                "backendName": "indexer",
                 "backendVersion": "scripted-test",
                 "workspaceRoot": workspace.display().to_string(),
                 "schemaVersion": 5
@@ -138,7 +136,7 @@ fn indexing_headless_runtime_never_becomes_lease_ready() {
         responses.push((
             "capabilities",
             serde_json::json!({
-                "backendName": "headless",
+                "backendName": "indexer",
                 "backendVersion": "scripted-test",
                 "workspaceRoot": workspace.display().to_string(),
                 "readCapabilities": [],
@@ -153,7 +151,7 @@ fn indexing_headless_runtime_never_becomes_lease_ready() {
         ));
     }
     let backend =
-        spawn_sequenced_headless_backend(&home, &config_home, &workspace, &socket, responses);
+        spawn_sequenced_indexer_backend(&home, &config_home, &workspace, &socket, responses);
     let acquire = lease_command(
         &binary,
         &home,
@@ -173,17 +171,17 @@ fn indexing_headless_runtime_never_becomes_lease_ready() {
     );
     assert!(
         default_descriptor_dir(&home).join("daemons.json").is_file(),
-        "failed headless acquisition must preserve the borrowed runtime"
+        "failed indexer acquisition must preserve the borrowed runtime"
     );
     let requests = backend.join().expect("indexing backend");
-    assert_headless_runtime_observation_only(&requests);
+    assert_indexer_runtime_observation_only(&requests);
     assert!(
         requests
             .iter()
             .filter(|request| request["method"] == "runtime/status")
             .count()
             > 1,
-        "INDEXING acquisition must poll the same headless runtime"
+        "INDEXING acquisition must poll the same indexer runtime"
     );
 }
 
@@ -227,7 +225,7 @@ fn primary_and_linked_worktree_leases_keep_distinct_exact_roots() {
         uuid::Uuid::new_v4().simple()
     ));
 
-    let primary_backend = spawn_scripted_headless_backend_for_invocations(
+    let primary_backend = spawn_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &primary,
@@ -250,10 +248,10 @@ fn primary_and_linked_worktree_leases_keep_distinct_exact_roots() {
         &primary,
     );
     assert_success(&primary_release, "primary release");
-    assert_headless_runtime_observation_only(&primary_backend.join().expect("primary backend"));
+    assert_indexer_runtime_observation_only(&primary_backend.join().expect("primary backend"));
     std::fs::remove_file(&primary_socket).expect("primary socket cleanup");
 
-    let linked_backend = spawn_scripted_headless_backend_for_invocations(
+    let linked_backend = spawn_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &linked,
@@ -288,7 +286,7 @@ fn primary_and_linked_worktree_leases_keep_distinct_exact_roots() {
         &linked,
     );
     assert_success(&linked_release, "linked release");
-    assert_headless_runtime_observation_only(&linked_backend.join().expect("linked backend"));
+    assert_indexer_runtime_observation_only(&linked_backend.join().expect("linked backend"));
     std::fs::remove_file(&linked_socket).expect("linked socket cleanup");
 }
 

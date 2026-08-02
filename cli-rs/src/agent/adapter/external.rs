@@ -86,7 +86,6 @@ fn raw_workspace_refresh(
     let raw = runtime::raw_request_passthrough(
         serde_json::to_string(&request)?,
         Some(workspace_root.to_path_buf()),
-        None,
     )?;
     serde_json::from_str(&raw).map_err(CliError::from)
 }

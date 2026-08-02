@@ -237,7 +237,7 @@ class AnalysisServerOwnershipTest {
         val first = ServerInstanceDescriptor(
             workspaceRoot = RuntimeWorkspaceRoot.canonicalize(tempDir),
             backendVersion = RuntimeImplementationVersion("test"),
-            socketPath = RuntimeSocketPath.of(tempDir.resolve("headless.sock")),
+            socketPath = RuntimeSocketPath.of(tempDir.resolve("indexer.sock")),
             ownership = ServerInstanceOwnership.Owned(
                 runtimeInstanceId = RuntimeInstanceId.create(),
                 processIdentity = RuntimeProcessIdentity(

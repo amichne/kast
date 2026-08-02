@@ -16,14 +16,14 @@ files you need to read.
 
 ## Prepare the exact workspace
 
-Start your coding agent at the exact Gradle workspace root, then start or resume its
-semantic runtime:
+Start your coding agent at the exact Gradle workspace root, then start or
+resume its indexer:
 
 ```console
 kast up
 ```
 
-Inspect the selected runtime and next action:
+Inspect the selected indexer and next action:
 
 ```console
 kast
@@ -70,7 +70,7 @@ of each relationship and the occurrence that connects them.
 Find the symbol and follow its exact identity:
 
 ```console
-kast symbol find HeadlessGradleModelSettlementOutcome
+kast symbol find GradleModelSettlementOutcome
 kast symbol show <symbol>
 ```
 

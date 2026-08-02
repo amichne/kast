@@ -27,8 +27,6 @@ fn high_cardinality_default_compact_page_stays_within_agent_budget() {
             "workspace-files",
             "--workspace-root",
             workspace.to_str().expect("UTF-8 workspace"),
-            "--backend",
-            "headless",
             "--kind",
             "source",
         ])

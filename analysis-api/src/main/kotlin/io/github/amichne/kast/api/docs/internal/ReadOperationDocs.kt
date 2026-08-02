@@ -204,7 +204,7 @@ internal fun readOperationDocs(): List<OperationDoc> = listOf(
             responseSchema = "SemanticGraphResult",
             description = "Refreshes selected Kotlin files through K2 analysis, atomically persists provider-neutral graph facts, and returns coverage plus persisted fact counts.",
             behavioralNotes = listOf(
-                "PSI is used only inside the IDEA backend for enumeration and source ranges; no PSI or Analysis API object crosses the contract boundary.",
+                "PSI is used only inside the indexer for enumeration and source ranges; no PSI or Analysis API object crosses the contract boundary.",
                 "The result is an atomic refresh acknowledgement; enumerate native graph nodes separately with generation-pinned keyset queries.",
                 "Compiler-resolved library and JDK targets are omitted and counted in coverage evidence.",
             ),

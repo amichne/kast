@@ -16,7 +16,6 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         && let Err(error) = runtime::validate_workspace_lease_for_command(
             lease_id,
             runtime.workspace_root.as_deref(),
-            runtime.backend_name,
         )
     {
         return error_envelope(
@@ -168,7 +167,6 @@ fn execute_agent_repository(args: AgentRepositoryArgs) -> AgentEnvelope {
         request: json_rpc_request("repository/query", params),
         runtime: AgentRuntimeArgs {
             workspace_root: args.workspace_root,
-            backend_name: None,
             lease_id: None,
         },
         full_response: true,

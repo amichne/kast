@@ -63,8 +63,7 @@ fn run_config(command: cli::ConfigCommand, output_format: OutputFormat) -> Resul
 }
 
 fn run_rpc(args: cli::RpcArgs, output_format: OutputFormat) -> Result<i32> {
-    let response =
-        runtime::raw_request_passthrough(args.request, args.workspace_root, args.backend_name)?;
+    let response = runtime::raw_request_passthrough(args.request, args.workspace_root)?;
     if output_format == OutputFormat::Json {
         println!("{response}");
         return Ok(0);

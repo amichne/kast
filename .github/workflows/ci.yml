@@ -91,6 +91,10 @@ jobs:
         shell: bash
         run: ./.github/scripts/docs/test-docs-content-contract.sh
 
+      - name: Test terminal command contract
+        shell: bash
+        run: ./.github/scripts/docs/test-terminal-command-contract.sh
+
       - name: Test macOS installer contract
         shell: bash
         run: ./.github/scripts/install/test-macos-installer-contract.sh
@@ -107,25 +111,11 @@ jobs:
         shell: bash
         run: ./.github/scripts/ci/test-ci-artifact-ledger.sh
 
-      - name: Ensure zstd is available
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! command -v zstd >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends zstd
-          fi
-
-      - name: Test headless runtime packagers
-        shell: bash
-        run: ./.github/scripts/runtime/test-headless-runtime-packagers.sh
-
       - name: Test CI Gradle retry helper
         shell: bash
         run: ./.github/scripts/ci/test-ci-gradle-retry.sh
 
   local-authority-contracts:
-    continue-on-error: ${{ vars.CI_AUX_LOCAL_AUTHORITY == 'optional' }}
     name: Local development authority contracts
     runs-on: ubuntu-latest
     steps:
@@ -154,25 +144,6 @@ jobs:
         shell: bash
         run: ./.github/scripts/install/test-local-development-refresh-contract.sh
 
-  runtime-contracts:
-    continue-on-error: ${{ vars.CI_AUX_RUNTIME_CONTRACTS == 'optional' }}
-    name: Runtime command and bundle contracts
-    runs-on: ubuntu-latest
-    needs: workflow-contracts
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Test terminal command contract
-        shell: bash
-        run: ./.github/scripts/docs/test-terminal-command-contract.sh
-
-      - name: Test sole setup transaction
-        shell: bash
-        run: ./.github/scripts/install/test-setup-contract.sh
-
   runtime-compatibility-contract:
     name: Runtime compatibility matrix
     runs-on: ubuntu-latest
@@ -185,7 +156,6 @@ jobs:
         run: ./.github/scripts/runtime/test-runtime-compatibility-contract.sh
 
   maven-publication-contract:
-    continue-on-error: ${{ vars.CI_AUX_MAVEN_PUBLICATION == 'optional' }}
     name: Maven publication metadata
     runs-on: ubuntu-latest
     needs: workflow-contracts
@@ -271,7 +241,6 @@ jobs:
         run: cargo test --locked --all-targets --all-features
 
   source-bound-cli:
-    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
     name: Source-bound release CLI
     runs-on: ubuntu-22.04
     needs: workflow-contracts
@@ -363,239 +332,59 @@ jobs:
           retention-days: 3
 
   build-and-test-linux:
-    name: Build & test (ubuntu-latest)
+    name: JVM and indexer tests
+    runs-on: ubuntu-latest
     needs: workflow-contracts
-    uses: ./.github/workflows/ci-build-and-test.yml
-
-  prepared-generation:
-    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
-    name: Prepared source-attested generation
-    runs-on: ubuntu-24.04
-    needs:
-      - workflow-contracts
-      - source-bound-cli
-      - source-bound-headless-backend
     steps:
       - uses: actions/checkout@v5
 
-      - name: Ensure zstd is available for prepared generation packaging
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Free disk for indexer tests
         shell: bash
         run: |
           set -euo pipefail
-          if ! command -v zstd >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends zstd
-          fi
+          df -h /
+          sudo rm -rf \
+            /usr/local/lib/android \
+            /usr/share/dotnet \
+            /opt/ghc \
+            /opt/hostedtoolcache/CodeQL
+          df -h /
 
-      - name: Download local source snapshot
-        uses: actions/download-artifact@v7
+      - uses: gradle/actions/setup-gradle@v5
         with:
-          name: kast-local-source-snapshot
-          path: build/ci-inputs
+          cache-read-only: false
+          cache-cleanup: on-success
 
-      - name: Download local source snapshot ledger
-        uses: actions/download-artifact@v7
-        with:
-          name: ci-artifact-ledger-local-source-snapshot
-          path: build/ci-input-ledgers
+      - name: Test JVM modules and indexer
+        run: >
+          ./scripts/ci-gradle-retry.sh
+          ./gradlew
+          :analysis-api:test
+          :analysis-server:test
+          :index-store:test
+          :indexer:test
+          -PexcludeTags=performance
 
-      - name: Download Rust CLI CI asset
-        uses: actions/download-artifact@v7
-        with:
-          name: kast-rust-cli-linux-x64
-          path: build/ci-inputs
-
-      - name: Download Rust CLI CI ledger
-        uses: actions/download-artifact@v7
-        with:
-          name: ci-artifact-ledger-rust-cli-linux-x64
-          path: build/ci-input-ledgers
-
-      - name: Download source-bound headless backend
-        uses: actions/download-artifact@v7
-        with:
-          name: kast-headless-ubuntu-latest
-          path: build/ci-inputs
-
-      - name: Download source-bound headless backend ledger
-        uses: actions/download-artifact@v7
-        with:
-          name: ci-artifact-ledger-headless-ubuntu-latest
-          path: build/ci-input-ledgers
-
-      - name: Verify generation producer inputs
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger build/ci-input-ledgers/local-source-snapshot.json \
-            --ledger build/ci-input-ledgers/rust-cli-linux-x64.json \
-            --ledger build/ci-input-ledgers/headless-ubuntu-latest.json \
-            --git-sha "$GITHUB_SHA" \
-            --require-kind ci-local-source-snapshot \
-            --require-kind ci-rust-cli-linux-x64 \
-            --require-kind ci-headless-ubuntu-latest \
-            --artifact ci-local-source-snapshot=build/ci-inputs/source-snapshot.json \
-            --artifact ci-rust-cli-linux-x64=build/ci-inputs/kast-v0.0.0-ci-linux-x64.zip \
-            --artifact ci-headless-ubuntu-latest=build/ci-inputs/kast-local-source-bound-backend.zip
-
-      - name: Assemble and package prepared generation
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts/packaging/assemble-prepared-local-generation.sh \
-            --source-root "$GITHUB_WORKSPACE" \
-            --source-snapshot build/ci-inputs/source-snapshot.json \
-            --cli-archive build/ci-inputs/kast-v0.0.0-ci-linux-x64.zip \
-            --backend-archive build/ci-inputs/kast-local-source-bound-backend.zip \
-            --prepared-generation build/ci-prepared-generation \
-            --output dist/kast-local-prepared-generation.tar.zst
-
-      - name: Record prepared generation output ledgers
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist/ci-ledgers/prepared-generation
-          record_output() {
-            local kind="$1"
-            local name="$2"
-            local path="$3"
-            local command_id="$4"
-            scripts/verify-ci-artifact-ledger.py record \
-              --output "dist/ci-ledgers/prepared-generation/${kind}.json" \
-              --git-sha "$GITHUB_SHA" \
-              --source-ref "$GITHUB_REF" \
-              --workflow-run-id "$GITHUB_RUN_ID" \
-              --artifact-kind "$kind" \
-              --artifact-name "$name" \
-              --artifact-path "$path" \
-              --producer-job prepared-generation \
-              --build-command-id "$command_id"
-          }
-          record_output ci-prepared-local-generation kast-prepared-local-generation \
-            dist/kast-local-prepared-generation.tar.zst ci-assemble-prepared-local-generation
-
-      - name: Upload prepared local generation
+      - name: Upload JVM test reports
+        if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: kast-prepared-local-generation
+          name: build-and-test-reports-ubuntu-latest
           path: |
-            dist/kast-local-prepared-generation.tar.zst
-            dist/kast-local-prepared-generation.sha256
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 1
-
-      - name: Upload prepared generation ledgers
-        uses: actions/upload-artifact@v6
-        with:
-          name: ci-artifact-ledger-prepared-generation
-          path: dist/ci-ledgers/prepared-generation
-          if-no-files-found: error
+            **/build/test-results/test/*.xml
+            **/build/reports/tests/test/
+          if-no-files-found: ignore
           retention-days: 3
 
-  prepared-ubuntu-debian-bundle:
-    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
-    name: Prepared Ubuntu and Debian bundle
+  source-bound-indexer:
+    name: Source-bound indexer
     runs-on: ubuntu-24.04
-    needs: prepared-generation
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Ensure zstd is available for prepared generation extraction
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! command -v zstd >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends zstd
-          fi
-
-      - name: Download prepared local generation
-        uses: actions/download-artifact@v7
-        with:
-          name: kast-prepared-local-generation
-          path: ${{ runner.temp }}/kast-prepared-generation
-
-      - name: Download prepared generation ledger
-        uses: actions/download-artifact@v7
-        with:
-          name: ci-artifact-ledger-prepared-generation
-          path: ${{ runner.temp }}/kast-prepared-generation-ledger
-
-      - name: Verify prepared generation input
-        shell: bash
-        run: |
-          set -euo pipefail
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger "$RUNNER_TEMP/kast-prepared-generation-ledger/ci-prepared-local-generation.json" \
-            --git-sha "$GITHUB_SHA" \
-            --require-kind ci-prepared-local-generation \
-            --artifact "ci-prepared-local-generation=$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst"
-          (cd "$RUNNER_TEMP/kast-prepared-generation" && sha256sum -c kast-local-prepared-generation.sha256)
-
-      - name: Package prepared Ubuntu and Debian bundle
-        shell: bash
-        run: |
-          set -euo pipefail
-          KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG="v0.7.11-ci"
-          printf 'KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG=%s\n' "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG" >> "$GITHUB_ENV"
-          scripts/packaging/package-prepared-local-generation-derivatives.sh \
-            --kind ubuntu-debian-bundle \
-            --source-root "$GITHUB_WORKSPACE" \
-            --prepared-generation-archive "$RUNNER_TEMP/kast-prepared-generation/kast-local-prepared-generation.tar.zst" \
-            --dist-directory dist \
-            --bundle-version "$KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG"
-
-      - name: Record prepared bundle ledger
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist/ci-ledgers/prepared-ubuntu-debian-bundle
-          record_output() {
-            local kind="$1"
-            local name="$2"
-            local path="$3"
-            local command_id="$4"
-            scripts/verify-ci-artifact-ledger.py record \
-              --output "dist/ci-ledgers/prepared-ubuntu-debian-bundle/${kind}.json" \
-              --git-sha "$GITHUB_SHA" \
-              --source-ref "$GITHUB_REF" \
-              --workflow-run-id "$GITHUB_RUN_ID" \
-              --artifact-kind "$kind" \
-              --artifact-name "$name" \
-              --artifact-path "$path" \
-              --producer-job prepared-ubuntu-debian-bundle \
-              --build-command-id "$command_id"
-          }
-          record_output ci-ubuntu-debian-bundle kast-ubuntu-debian-ci-bundle \
-            "dist/kast-ubuntu-debian-headless-x86_64-${KAST_UBUNTU_DEBIAN_CI_BUNDLE_TAG}.tar.gz" ci-package-ubuntu-debian-bundle
-
-      - name: Upload prepared Ubuntu and Debian bundle
-        uses: actions/upload-artifact@v6
-        with:
-          name: kast-ubuntu-debian-ci-bundle
-          path: |
-            dist/kast-ubuntu-debian-headless-x86_64-v0.7.11-ci.tar.gz
-            dist/kast-ubuntu-debian-headless-x86_64-v0.7.11-ci.tar.gz.sha256
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 1
-
-      - name: Upload prepared bundle ledger
-        uses: actions/upload-artifact@v6
-        with:
-          name: ci-artifact-ledger-prepared-ubuntu-debian-bundle
-          path: dist/ci-ledgers/prepared-ubuntu-debian-bundle
-          if-no-files-found: error
-          retention-days: 3
-
-  source-bound-headless-backend:
-    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
-    name: Source-bound headless backend
-    runs-on: ubuntu-24.04
-    needs:
-      - workflow-contracts
+    needs: workflow-contracts
     steps:
       - uses: actions/checkout@v5
 
@@ -630,108 +419,170 @@ jobs:
         with:
           cache-read-only: true
 
-      - name: Cache source-bound IntelliJ runtime distribution
-        uses: actions/cache@v5
-        with:
-          path: ~/.gradle/kast/headless-idea-distributions
-          key: intellij-runtime-headless-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
-          restore-keys: |
-            intellij-runtime-headless-${{ runner.os }}-
-
-      - name: Build source-bound headless backend distribution
+      - name: Build source-bound indexer distribution
         shell: bash
         run: |
           set -euo pipefail
           ./scripts/ci-gradle-retry.sh ./gradlew \
-            :backend-headless:portableDistZip \
-            :backend-headless:verifyHeadlessPortableDistLayout \
-            -PkastHeadlessIdeaHomeProfile=agent
-          mapfile -t archives < <(find backend-headless/build/distributions -maxdepth 1 -type f -name 'backend-headless-*-portable.zip' -print)
-          [[ "${#archives[@]}" -eq 1 ]] || { printf 'expected one headless archive, found %s\n' "${#archives[@]}" >&2; exit 1; }
-          mkdir -p build/distributions
-          cp "${archives[0]}" build/distributions/kast-local-source-bound-backend.zip
+            :indexer:portableDistZip \
+            :indexer:verifyPortableDistLayout
+          mapfile -t archives < <(find indexer/build/distributions -maxdepth 1 -type f -name 'indexer-*-portable.zip' -print)
+          [[ "${#archives[@]}" -eq 1 ]] || { printf 'expected one indexer archive, found %s\n' "${#archives[@]}" >&2; exit 1; }
+          mkdir -p build/distributions dist/ci-ledgers
+          cp "${archives[0]}" build/distributions/kast-local-source-bound-indexer.zip
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/ci-ledgers/indexer-linux-x64.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind ci-indexer-linux-x64 \
+            --artifact-name kast-indexer-linux-x64 \
+            --artifact-path build/distributions/kast-local-source-bound-indexer.zip \
+            --producer-job source-bound-indexer \
+            --build-command-id ci-indexer-source-bound-development
 
-      - name: Upload source-bound headless backend distribution
+      - name: Upload source-bound indexer distribution
         uses: actions/upload-artifact@v6
         with:
-          name: kast-headless-ubuntu-latest
-          path: build/distributions/kast-local-source-bound-backend.zip
+          name: kast-indexer-linux-x64
+          path: build/distributions/kast-local-source-bound-indexer.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
 
-      - name: Record source-bound headless backend ledger
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p dist/ci-ledgers
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/ci-ledgers/headless-ubuntu-latest.json \
-            --git-sha "$GITHUB_SHA" \
-            --source-ref "$GITHUB_REF" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind ci-headless-ubuntu-latest \
-            --artifact-name kast-headless-ubuntu-latest \
-            --artifact-path build/distributions/kast-local-source-bound-backend.zip \
-            --producer-job source-bound-headless-backend \
-            --build-command-id ci-headless-source-bound-development
-
-      - name: Upload source-bound headless backend ledger
+      - name: Upload source-bound indexer ledger
         uses: actions/upload-artifact@v6
         with:
-          name: ci-artifact-ledger-headless-ubuntu-latest
-          path: dist/ci-ledgers/headless-ubuntu-latest.json
+          name: ci-artifact-ledger-indexer-linux-x64
+          path: dist/ci-ledgers/indexer-linux-x64.json
           if-no-files-found: error
           retention-days: 3
 
-  install-ubuntu-debian-container:
-    continue-on-error: ${{ vars.CI_AUX_DISTRIBUTION == 'optional' }}
-    name: Ubuntu/Debian install container (${{ matrix.container-image }}, Java ${{ matrix.java-version }})
+  source-bound-linux-setup:
+    name: Source-bound Linux setup bundle
     runs-on: ubuntu-24.04
     needs:
-      - prepared-ubuntu-debian-bundle
-    strategy:
-      fail-fast: false
-      matrix:
-        container-image:
-          - ubuntu:22.04
-          - ubuntu:24.04
-        java-version:
-          - "21"
+      - workflow-contracts
+      - source-bound-cli
+      - source-bound-indexer
     steps:
       - uses: actions/checkout@v5
 
-      - name: Download prepared Ubuntu and Debian bundle
+      - name: Download source-bound CLI
         uses: actions/download-artifact@v7
         with:
-          name: kast-ubuntu-debian-ci-bundle
+          name: kast-rust-cli-linux-x64
+          path: build/ci-inputs
+
+      - name: Download source-bound CLI ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-rust-cli-linux-x64
+          path: build/ci-input-ledgers
+
+      - name: Download source-bound indexer
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-indexer-linux-x64
+          path: build/ci-inputs
+
+      - name: Download source-bound indexer ledger
+        uses: actions/download-artifact@v7
+        with:
+          name: ci-artifact-ledger-indexer-linux-x64
+          path: build/ci-input-ledgers
+
+      - name: Verify and package canonical Linux setup
+        shell: bash
+        run: |
+          set -euo pipefail
+          cli_asset="build/ci-inputs/kast-v0.0.0-ci-linux-x64.zip"
+          indexer_asset="build/ci-inputs/kast-local-source-bound-indexer.zip"
+          setup_asset="dist/kast-linux-x64-v0.0.0-ci.tar.gz"
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger build/ci-input-ledgers/rust-cli-linux-x64.json \
+            --ledger build/ci-input-ledgers/indexer-linux-x64.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind ci-rust-cli-linux-x64 \
+            --require-kind ci-indexer-linux-x64 \
+            --artifact "ci-rust-cli-linux-x64=${cli_asset}" \
+            --artifact "ci-indexer-linux-x64=${indexer_asset}"
+          packager_dir="$RUNNER_TEMP/kast-ci-packager"
+          rm -rf "$packager_dir" dist
+          mkdir -p "$packager_dir" dist/ci-ledgers
+          scripts/extract-safe-zip.py "$cli_asset" "$packager_dir"
+          chmod 755 "$packager_dir/kastctl"
+          "$packager_dir/kastctl" developer release package setup-bundle \
+            --repo-root "$PWD" \
+            --cli-archive "$cli_asset" \
+            --indexer-archive "$indexer_asset" \
+            --platform linux-x64 \
+            --version v0.0.0-ci \
+            --bundle-output "$setup_asset"
+          scripts/verify-ci-artifact-ledger.py record \
+            --output dist/ci-ledgers/setup-linux-x64.json \
+            --git-sha "$GITHUB_SHA" \
+            --source-ref "$GITHUB_REF" \
+            --workflow-run-id "$GITHUB_RUN_ID" \
+            --artifact-kind ci-setup-linux-x64 \
+            --artifact-name kast-setup-linux-x64 \
+            --artifact-path "$setup_asset" \
+            --producer-job source-bound-linux-setup \
+            --build-command-id ci-package-linux-setup
+          (cd dist && sha256sum -c "$(basename -- "$setup_asset").sha256")
+
+      - name: Upload canonical Linux setup bundle
+        uses: actions/upload-artifact@v6
+        with:
+          name: kast-setup-linux-x64
+          path: |
+            dist/kast-linux-x64-v0.0.0-ci.tar.gz
+            dist/kast-linux-x64-v0.0.0-ci.tar.gz.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
+      - name: Upload canonical Linux setup ledger
+        uses: actions/upload-artifact@v6
+        with:
+          name: ci-artifact-ledger-setup-linux-x64
+          path: dist/ci-ledgers/setup-linux-x64.json
+          if-no-files-found: error
+          retention-days: 3
+
+  install-linux-setup:
+    name: Linux setup activation
+    runs-on: ubuntu-24.04
+    needs: source-bound-linux-setup
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Download canonical Linux setup bundle
+        uses: actions/download-artifact@v7
+        with:
+          name: kast-setup-linux-x64
           path: dist
 
-      - name: Download prepared generation ledgers
+      - name: Download canonical Linux setup ledger
         uses: actions/download-artifact@v7
         with:
-          name: ci-artifact-ledger-prepared-ubuntu-debian-bundle
+          name: ci-artifact-ledger-setup-linux-x64
           path: ci-ledgers
 
-      - name: Verify prepared Ubuntu and Debian bundle
+      - name: Verify canonical Linux setup bundle
         shell: bash
         run: |
           set -euo pipefail
-          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-v0.7.11-ci.tar.gz"
+          setup_asset="dist/kast-linux-x64-v0.0.0-ci.tar.gz"
           scripts/verify-ci-artifact-ledger.py verify \
-            --ledger ci-ledgers/ci-ubuntu-debian-bundle.json \
+            --ledger ci-ledgers/setup-linux-x64.json \
             --git-sha "$GITHUB_SHA" \
-            --require-kind ci-ubuntu-debian-bundle \
-            --artifact "ci-ubuntu-debian-bundle=${bundle_asset}"
-          printf 'KAST_UBUNTU_DEBIAN_BUNDLE=%s\n' "$bundle_asset" >> "$GITHUB_ENV"
+            --require-kind ci-setup-linux-x64 \
+            --artifact "ci-setup-linux-x64=${setup_asset}"
+          ./scripts/verify-setup-bundle.sh "$setup_asset"
 
-      - name: Validate setup bundle
-        shell: bash
-        run: ./scripts/verify-setup-bundle.sh "$KAST_UBUNTU_DEBIAN_BUNDLE"
-
-  analysis-server-transport:
-    continue-on-error: ${{ vars.CI_AUX_ANALYSIS_TRANSPORT == 'optional' }}
-    name: Analysis server transport
+  indexer-performance:
+    name: Indexer performance baselines
     runs-on: ubuntu-latest
     needs: workflow-contracts
     steps:
@@ -742,62 +593,19 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - uses: gradle/actions/setup-gradle@v5
-        with:
-          cache-read-only: true
-
-      - name: Smoke analysis-server socket transport
-        run: >
-          ./scripts/ci-gradle-retry.sh
-          ./gradlew
-          :analysis-server:test
-          --tests io.github.amichne.kast.server.AnalysisServerSocketTest
-
-  test-intellij-runtime:
-    name: Shared IntelliJ runtime
-    runs-on: ubuntu-latest
-    needs: workflow-contracts
-    steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Free disk for IntelliJ runtime tests
+      - name: Free disk for indexer performance baselines
         shell: bash
         run: |
           set -euo pipefail
-          df -h /
           sudo rm -rf \
             /usr/local/lib/android \
             /usr/share/dotnet \
             /opt/ghc \
             /opt/hostedtoolcache/CodeQL
-          df -h /
 
       - uses: gradle/actions/setup-gradle@v5
         with:
           cache-read-only: true
 
-      - name: Restore IntelliJ runtime inputs
-        uses: actions/cache/restore@v5
-        with:
-          path: |
-            ~/.gradle/kast/shared-idea-distributions
-            ~/.gradle/kast/backend-idea-distributions
-          key: intellij-runtime-inputs-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
-          restore-keys: |
-            intellij-runtime-inputs-${{ runner.os }}-
-
-      - name: Test shared IntelliJ runtime
-        run: >
-          ./scripts/ci-gradle-retry.sh
-          ./gradlew
-          :backend-idea:test
-          -PexcludeTags=performance
-
-      - name: Run IntelliJ runtime performance baselines
-        continue-on-error: ${{ vars.CI_AUX_IDEA_PERFORMANCE == 'optional' }}
-        run: ./scripts/ci-gradle-retry.sh ./gradlew :backend-idea:test -PincludeTags=performance
+      - name: Run indexer performance baselines
+        run: ./scripts/ci-gradle-retry.sh ./gradlew :indexer:test -PincludeTags=performance

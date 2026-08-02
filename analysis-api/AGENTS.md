@@ -13,16 +13,12 @@ Keep this unit small, stable, and reusable across every runtime host.
   `AnalysisTransport`, JSON-RPC wire models, descriptor discovery helpers,
   `ServerLaunchOptions`, shared error types, capability enums,
   `ServerInstanceDescriptor`, and edit-plan validation semantics.
-- Own the host-agnostic runtime compatibility vocabulary under
-  `contract/compatibility`: positive protocol and exact-root metadata
-  revisions, implementation and runtime identities, capability advertisements,
-  explicit supported pairs, and closed compatible/update-required/
-  missing-capability outcomes. Optional capability absence may disable only
-  that operation; revision, required-capability, and identity mismatches fail
-  closed as typed update requirements.
+- Own the validated `RuntimeImplementationVersion` value carried by runtime
+  descriptors. Installed-host compatibility belongs to the single indexer
+  manifest under `packaging/indexer/`, not to a runtime implementation matrix.
 - Keep shared startup helpers quiet for callers. `KastConfig.load`,
   descriptor discovery, and similar shared entry points report through typed
-  results because CLI JSON commands and IDEA startup use these APIs inside
+  results because CLI JSON commands and indexer startup use these APIs inside
   machine-readable or UI-sensitive flows.
 - Keep file-path rules explicit. Edit queries, rename hashes, workspace roots,
   and descriptor socket paths must stay absolute and normalized.
@@ -104,7 +100,7 @@ Validate the contract locally before you rely on downstream failures.
   single-use consumption, TTL/capacity invalidation, and state-free issue
   responses.
 - If you change shared config loading, descriptor discovery, or other
-  startup-facing helpers, also run `./gradlew :backend-idea:test` when the
-  IDEA Platform artifacts for the pinned IDE version are available.
+  startup-facing helpers, also run `./gradlew :indexer:test` when the
+  IntelliJ Platform artifacts for the pinned host version are available.
 - For a continuation-lifecycle or cross-module workspace contract change, final
-  acceptance also requires `./gradlew test` and `./gradlew buildIdeaPlugin`.
+  acceptance also requires `./gradlew test`.

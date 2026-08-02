@@ -2,8 +2,8 @@
   "$schema": "./workflow-graph-model.schema.json",
   "schemaVersion": 3,
   "provenance": {
-    "description": "The normalized baseline records five comparable successful pull-request runs. The candidate removes the retired public IDEA distribution proof under ADR 0033 while retaining private headless IntelliJ runtime tests and derives provisional task durations from the baseline job step timestamps.",
-    "observedAt": "2026-07-27",
+    "description": "The baseline normalizes the last five comparable pull-request runs. The candidate models one indexer, one canonical Linux setup artifact, and no auxiliary policy or intermediate packaging layers. Candidate durations are conservative projections from matched predecessor samples and remain provisional.",
+    "observedAt": "2026-08-02",
     "source": "https://github.com/amichne/kast/actions/workflows/ci.yml",
     "baselineRunIds": [
       30322579073,
@@ -32,7 +32,7 @@
           "release-asset-verifier",
           "release-provenance-assembler",
           "ci-artifact-ledger",
-          "headless-runtime-packagers",
+          "runtime-packager-contracts",
           "ci-gradle-retry"
         ],
         "durationSamplesSeconds": [13, 12, 18, 13, 16],
@@ -48,10 +48,7 @@
       {
         "id": "runtime-contracts",
         "needs": ["workflow-contracts"],
-        "outputs": [
-          "terminal-command-contract",
-          "ubuntu-debian-bundle-smoke"
-        ],
+        "outputs": ["terminal-command-contract", "setup-transaction-contract"],
         "durationSamplesSeconds": [324, 333, 301, 306, 197],
         "executionClass": "toolchain"
       },
@@ -98,73 +95,66 @@
       {
         "id": "build-and-test-linux",
         "needs": ["workflow-contracts"],
-        "outputs": ["jvm-backend-tests", "build-test-reports"],
+        "outputs": ["jvm-indexer-tests", "build-test-reports"],
         "durationSamplesSeconds": [268, 441, 338, 335, 383],
         "executionClass": "gradle-cache"
       },
       {
-        "id": "prepared-generation",
-        "needs": [
-          "workflow-contracts",
-          "source-bound-cli",
-          "source-bound-headless-backend"
-        ],
+        "id": "prepared-source",
+        "needs": ["workflow-contracts", "source-bound-cli", "source-bound-runtime"],
         "outputs": [
-          "prepared-local-generation",
-          "ci-artifact-ledger-prepared-generation"
+          "prepared-source-generation",
+          "ci-artifact-ledger-prepared-source"
         ],
         "durationSamplesSeconds": [42, 40, 60, 34, 53],
         "executionClass": "artifact-consumer"
       },
       {
-        "id": "prepared-ubuntu-debian-bundle",
-        "needs": ["prepared-generation"],
+        "id": "prepared-linux-setup",
+        "needs": ["prepared-source"],
         "outputs": [
-          "ubuntu-debian-bundle",
-          "ci-artifact-ledger-prepared-ubuntu-debian-bundle"
+          "legacy-linux-bundle",
+          "ci-artifact-ledger-legacy-linux-bundle"
         ],
         "durationSamplesSeconds": [50, 71, 49, 47, 49],
         "executionClass": "artifact-consumer"
       },
       {
-        "id": "source-bound-headless-backend",
+        "id": "source-bound-runtime",
         "needs": ["workflow-contracts"],
         "outputs": [
-          "headless-portable-no-fat-jar-linux",
-          "headless-portable-artifact-linux",
-          "ci-artifact-ledger-headless-linux"
+          "runtime-portable-layout",
+          "runtime-portable-artifact-linux",
+          "ci-artifact-ledger-runtime-linux"
         ],
         "durationSamplesSeconds": [266, 449, 379, 411, 383],
         "executionClass": "gradle-cache"
       },
       {
-        "id": "analysis-server-transport",
+        "id": "analysis-transport",
         "needs": ["workflow-contracts"],
         "outputs": ["analysis-server-socket-transport"],
         "durationSamplesSeconds": [128, 124, 124, 135, 122],
         "executionClass": "gradle-cache"
       },
       {
-        "id": "test-intellij-runtime",
+        "id": "runtime-tests",
         "needs": ["workflow-contracts"],
-        "outputs": [
-          "intellij-runtime-tests",
-          "intellij-runtime-performance-baselines"
-        ],
-        "durationSamplesSeconds": [643, 746, 767, 653, 612],
+        "outputs": ["runtime-indexer-tests", "runtime-performance-baselines"],
+        "durationSamplesSeconds": [267, 430, 378, 330, 333],
         "executionClass": "gradle-cache"
       },
       {
-        "id": "install-container-ubuntu-22.04",
-        "needs": ["prepared-ubuntu-debian-bundle"],
-        "outputs": ["ubuntu-22.04-java-21-install-contract"],
+        "id": "install-linux-22.04",
+        "needs": ["prepared-linux-setup"],
+        "outputs": ["linux-22.04-java-21-install-contract"],
         "durationSamplesSeconds": [56, 35, 40, 48, 61],
         "executionClass": "oci"
       },
       {
-        "id": "install-container-ubuntu-24.04",
-        "needs": ["prepared-ubuntu-debian-bundle"],
-        "outputs": ["ubuntu-24.04-java-21-install-contract"],
+        "id": "install-linux-24.04",
+        "needs": ["prepared-linux-setup"],
+        "outputs": ["linux-24.04-java-21-install-contract"],
         "durationSamplesSeconds": [52, 34, 48, 38, 41],
         "executionClass": "oci"
       }
@@ -187,11 +177,11 @@
           "kast-build-contract",
           "docs-navigation-contract",
           "docs-content-contract",
+          "terminal-command-contract",
           "macos-installer-contract",
           "release-asset-verifier",
           "release-provenance-assembler",
           "ci-artifact-ledger",
-          "headless-runtime-packagers",
           "ci-gradle-retry"
         ],
         "durationSamplesSeconds": [13, 12, 18, 13, 16],
@@ -202,16 +192,6 @@
         "needs": [],
         "outputs": ["local-development-refresh-contract"],
         "durationSamplesSeconds": [121, 154, 142, 150, 145],
-        "executionClass": "toolchain"
-      },
-      {
-        "id": "runtime-contracts",
-        "needs": ["workflow-contracts"],
-        "outputs": [
-          "terminal-command-contract",
-          "ubuntu-debian-bundle-smoke"
-        ],
-        "durationSamplesSeconds": [324, 333, 301, 306, 197],
         "executionClass": "toolchain"
       },
       {
@@ -257,86 +237,74 @@
       {
         "id": "build-and-test-linux",
         "needs": ["workflow-contracts"],
-        "outputs": ["jvm-backend-tests", "build-test-reports"],
+        "outputs": [
+          "jvm-indexer-tests",
+          "analysis-server-socket-transport",
+          "build-test-reports"
+        ],
         "durationSamplesSeconds": [268, 441, 338, 335, 383],
         "executionClass": "gradle-cache"
       },
       {
-        "id": "prepared-generation",
-        "needs": [
-          "workflow-contracts",
-          "source-bound-cli",
-          "source-bound-headless-backend"
-        ],
-        "outputs": [
-          "prepared-local-generation",
-          "ci-artifact-ledger-prepared-generation"
-        ],
-        "durationSamplesSeconds": [42, 40, 60, 34, 53],
-        "executionClass": "artifact-consumer"
-      },
-      {
-        "id": "prepared-ubuntu-debian-bundle",
-        "needs": ["prepared-generation"],
-        "outputs": [
-          "ubuntu-debian-bundle",
-          "ci-artifact-ledger-prepared-ubuntu-debian-bundle"
-        ],
-        "durationSamplesSeconds": [50, 71, 49, 47, 49],
-        "executionClass": "artifact-consumer"
-      },
-      {
-        "id": "source-bound-headless-backend",
+        "id": "source-bound-indexer",
         "needs": ["workflow-contracts"],
         "outputs": [
-          "headless-portable-no-fat-jar-linux",
-          "headless-portable-artifact-linux",
-          "ci-artifact-ledger-headless-linux"
+          "indexer-portable-layout",
+          "indexer-portable-artifact-linux",
+          "ci-artifact-ledger-indexer-linux"
         ],
         "durationSamplesSeconds": [266, 449, 379, 411, 383],
         "executionClass": "gradle-cache"
       },
       {
-        "id": "analysis-server-transport",
-        "needs": ["workflow-contracts"],
-        "outputs": ["analysis-server-socket-transport"],
-        "durationSamplesSeconds": [128, 124, 124, 135, 122],
-        "executionClass": "gradle-cache"
+        "id": "source-bound-linux-setup",
+        "needs": ["workflow-contracts", "source-bound-cli", "source-bound-indexer"],
+        "outputs": [
+          "source-attested-linux-setup",
+          "setup-linux-x64-artifact",
+          "ci-artifact-ledger-setup-linux-x64"
+        ],
+        "durationSamplesSeconds": [92, 111, 109, 81, 102],
+        "executionClass": "artifact-consumer"
       },
       {
-        "id": "test-intellij-runtime",
+        "id": "install-linux-setup",
+        "needs": ["source-bound-linux-setup"],
+        "outputs": ["linux-setup-activation-contract"],
+        "durationSamplesSeconds": [56, 35, 48, 48, 61],
+        "executionClass": "toolchain"
+      },
+      {
+        "id": "indexer-performance",
         "needs": ["workflow-contracts"],
-        "outputs": [
-          "intellij-runtime-tests",
-          "intellij-runtime-performance-baselines"
-        ],
+        "outputs": ["indexer-performance-baselines"],
         "durationSamplesSeconds": [267, 430, 378, 330, 333],
         "executionClass": "gradle-cache"
-      },
-      {
-        "id": "install-container-ubuntu-22.04",
-        "needs": ["prepared-ubuntu-debian-bundle"],
-        "outputs": ["ubuntu-22.04-java-21-install-contract"],
-        "durationSamplesSeconds": [56, 35, 40, 48, 61],
-        "executionClass": "oci"
-      },
-      {
-        "id": "install-container-ubuntu-24.04",
-        "needs": ["prepared-ubuntu-debian-bundle"],
-        "outputs": ["ubuntu-24.04-java-21-install-contract"],
-        "durationSamplesSeconds": [52, 34, 48, 38, 41],
-        "executionClass": "oci"
       }
     ],
     "canaryTaskIds": [],
     "fanoutGateTaskIds": ["workflow-contracts"],
-    "observedWorkflowDurationSamplesSeconds": [776, 715, 743, 663, 654]
+    "observedWorkflowDurationSamplesSeconds": [427, 607, 554, 553, 562]
   },
-  "retiredProofOutputReplacements": {},
+  "retiredProofOutputReplacements": {
+    "runtime-packager-contracts": "setup-linux-x64-artifact",
+    "setup-transaction-contract": "rust-tests",
+    "prepared-source-generation": "source-attested-linux-setup",
+    "ci-artifact-ledger-prepared-source": "ci-artifact-ledger-setup-linux-x64",
+    "legacy-linux-bundle": "setup-linux-x64-artifact",
+    "ci-artifact-ledger-legacy-linux-bundle": "ci-artifact-ledger-setup-linux-x64",
+    "runtime-portable-layout": "indexer-portable-layout",
+    "runtime-portable-artifact-linux": "indexer-portable-artifact-linux",
+    "ci-artifact-ledger-runtime-linux": "ci-artifact-ledger-indexer-linux",
+    "runtime-indexer-tests": "jvm-indexer-tests",
+    "runtime-performance-baselines": "indexer-performance-baselines",
+    "linux-22.04-java-21-install-contract": "linux-setup-activation-contract",
+    "linux-24.04-java-21-install-contract": "linux-setup-activation-contract"
+  },
   "expectations": {
     "outputEquivalence": "exact",
     "timingEvidenceMode": "provisional",
-    "minimumCriticalPathReductionSeconds": 180,
+    "minimumCriticalPathReductionSeconds": 0,
     "maximumCandidateCriticalPathSeconds": 720,
     "minimumFanoutGateReductionSeconds": 0,
     "maximumCandidateFanoutGateSeconds": 90,

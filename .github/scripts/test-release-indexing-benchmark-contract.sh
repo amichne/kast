@@ -8,7 +8,7 @@ cli_root="$repo_root/cli-rs/src/interface/cli/root.rs"
 cli_config="$repo_root/cli-rs/src/interface/cli/workspace/config.rs"
 dispatch="$repo_root/cli-rs/src/interface/entrypoint/dispatch.rs"
 cli_model="$repo_root/cli-rs/src/configuration/config/model.rs"
-idea_indexer="$repo_root/backend-idea/src/main/kotlin/io/github/amichne/kast/idea/workspace/indexing/IdeaProjectIndexer.kt"
+project_indexer="$repo_root/indexer/src/main/kotlin/io/github/amichne/kast/idea/workspace/indexing/IdeaProjectIndexer.kt"
 indexer="$repo_root/index-store/src/main/kotlin/io/github/amichne/kast/indexstore/indexing/ReferenceIndexer.kt"
 schema="$repo_root/index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/sqlite/schema/SourceIndexSchemaTables.kt"
 
@@ -57,7 +57,7 @@ for repository in ktor spring-boot okhttp; do
   }
 done
 # shellcheck disable=SC2016 # GitHub expression is intentionally matched literally.
-require "$release" 'linux-headless-tarball-${{ github.run_id }}' 'release gate must test the built release runtime'
+require "$release" 'setup-bundle-linux-x64-${{ github.run_id }}' 'release gate must test the built release bundle'
 require "$release" 'Set up Gradle Java 17 toolchain' 'release gate must install the Ktor sample toolchain'
 require "$release" 'set-default: false' 'Gradle toolchain setup must not replace the Java 21 Kast runtime'
 # shellcheck disable=SC2016 # GitHub expression is intentionally matched literally.
@@ -76,7 +76,7 @@ require "$runner" 'settings.gradle.kts' 'benchmark must recognize Kotlin Gradle 
 require "$runner" 'settings.gradle' 'benchmark must recognize Groovy Gradle build roots'
 # shellcheck disable=SC2016 # Runner variables are intentionally matched literally.
 require "$runner" 'scoped_graph_file="${graph_path#"$workspace"/}"' 'benchmark must make the probe relative to the selected Gradle root'
-require "$runner" '--operation refresh' 'benchmark must populate the native graph through the compiler backend'
+require "$runner" '--operation refresh' 'benchmark must populate the native graph through the compiler indexer'
 require "$runner" "--file-path \"\$scoped_graph_file\"" 'benchmark must refresh the pinned Kotlin source within the selected Gradle root'
 require "$runner" '--exclusive' 'benchmark graph evidence must stay within the pinned probe scope'
 require "$runner" 'Semantic graph refresh was incomplete' 'benchmark must verify compiler graph coverage'
@@ -152,7 +152,7 @@ require "$cli_config" 'Set(ConfigSetArgs)' 'config must set one workspace field 
 require "$cli_config" 'Unset(ConfigUnsetArgs)' 'config must unset one workspace field non-interactively'
 require "$dispatch" 'Command::Config(args)' 'config commands must be dispatched'
 require "$cli_model" 'pub relationships: RelationshipIndexingConfig' 'effective config must name relationship indexing directly'
-require "$idea_indexer" 'indexSymbolRelationships(' 'IDEA orchestration must name the compiler-resolved operation'
+require "$project_indexer" 'indexSymbolRelationships(' 'Indexer orchestration must name the compiler-resolved operation'
 require "$indexer" 'onFilesIndexed(successfulPaths)' 'failed scans must not be reported as indexed'
 require "$schema" 'relationship_index_status TEXT NOT NULL' 'module progress must name relationship indexing state'
 

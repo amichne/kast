@@ -85,45 +85,6 @@ class AnalysisDispatcherRuntimeTest : AnalysisDispatcherTestSupport() {
     }
 
     @Test
-    fun `runtime open project forwards the authenticated exact-root request`() {
-        var received: RuntimeOpenProjectRequest? = null
-        var opened = false
-        val dispatcher = RpcAnalysisDispatcher(
-            backend = FakeAnalysisBackend.sample(tempDir),
-            config = AnalysisServerConfig(),
-            projectOpenController = RuntimeProjectOpenController { request ->
-                received = request
-                RuntimeProjectOpenPlan(
-                    response = RuntimeOpenProjectResponse(RuntimeOpenProjectResult.OPENED_NEW_PROJECT),
-                    afterResponseAction = { opened = true },
-                )
-            },
-        )
-        val request = RuntimeOpenProjectRequest(
-            canonicalRoot = RuntimeOpenProjectRoot.parse(tempDir.toRealPath().toString()),
-            requestId = RuntimeOpenProjectRequestId.parse("a7370b30-7ca5-4fa5-93c0-e59d30aa6157"),
-        )
-
-        val dispatchResult = runBlocking {
-            dispatcher.dispatchForTransport(
-                JsonRpcRequest(
-                    id = JsonPrimitive(1),
-                    method = "runtime/open-project",
-                    params = json.encodeToJsonElement(RuntimeOpenProjectRequest.serializer(), request),
-                ),
-            )
-        }
-        val response = json.decodeFromString(JsonRpcSuccessResponse.serializer(), dispatchResult.response)
-        val result = json.decodeFromJsonElement(RuntimeOpenProjectResponse.serializer(), response.result)
-
-        assertEquals(request, received)
-        assertEquals(RuntimeOpenProjectResult.OPENED_NEW_PROJECT, result.result)
-        assertFalse(opened, "Project opening must wait until the transport flushes the response")
-        assertTrue(dispatchResult.runAfterFlushAction())
-        assertTrue(opened)
-    }
-
-    @Test
     fun `dispatcher bytecode avoids kotlin Duration ABI coupling`() {
         val classFileText = classFileText(RpcAnalysisDispatcher::class.java)
 

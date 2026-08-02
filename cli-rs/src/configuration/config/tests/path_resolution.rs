@@ -12,8 +12,8 @@
         config.paths.descriptor_dir = install_root.join("runtime/daemons");
         config.paths.socket_dir = install_root.join("runtime");
         config.cli.binary_path = temp.path().join("bin/kast");
-        config.backends.headless.runtime_libs_dir =
-            Some(install_root.join("current/lib/backends/headless/current/runtime-libs"));
+        config.indexer.runtime_libs_dir =
+            Some(install_root.join("current/lib/backends/indexer/current/runtime-libs"));
 
         let entries = path_resolution_entries(
             &config,
@@ -47,20 +47,20 @@
             Some("paths.binDir")
         );
         assert_eq!(
-            entry("backends.headless.runtimeLibsDir")
+            entry("indexer.runtimeLibsDir")
                 .derived_from
                 .as_deref(),
             Some("paths.libDir")
         );
         assert!(entry("cli.binaryPath").used_by_idea);
-        assert!(!entry("backends.headless.runtimeLibsDir").used_by_idea);
+        assert!(!entry("indexer.runtimeLibsDir").used_by_idea);
     }
 
     #[test]
     fn path_resolution_entries_mark_manifest_owned_derivations() {
         let mut config = KastConfig::defaults();
-        config.backends.headless.runtime_libs_dir = Some(PathBuf::from(
-            "/opt/kast/current/lib/backends/headless/current/runtime-libs",
+        config.indexer.runtime_libs_dir = Some(PathBuf::from(
+            "/opt/kast/current/lib/backends/indexer/current/runtime-libs",
         ));
 
         let entries = path_resolution_entries(
@@ -97,7 +97,7 @@
             Some("paths.runtimeDir")
         );
         assert_eq!(
-            entry("backends.headless.runtimeLibsDir").source,
+            entry("indexer.runtimeLibsDir").source,
             PathResolutionSource::Manifest
         );
     }

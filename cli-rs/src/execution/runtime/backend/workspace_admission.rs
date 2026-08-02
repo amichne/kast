@@ -1,15 +1,11 @@
-pub(crate) use headless_authority::{
-    AdmittedHeadlessRuntime, LegacyBackendMigrationPlan, SupportedHeadlessDistribution,
+pub(crate) use indexer_authority::{
+    AdmittedIndexerRuntime, LegacyBackendMigrationPlan, SupportedIndexerDistribution,
 };
 
 pub(crate) fn plan_legacy_backend_migration(
     config_contents: &str,
 ) -> Result<LegacyBackendMigrationPlan> {
-    headless_authority::plan_legacy_backend_migration(config_contents)
-}
-
-pub(crate) fn require_headless_backend(backend_name: BackendName) -> Result<()> {
-    headless_authority::require_headless_backend(backend_name)
+    indexer_authority::plan_legacy_backend_migration(config_contents)
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -63,13 +59,13 @@ pub struct SemanticBackendCandidateEvidence {
     pub evidence_quality: SemanticEvidenceQuality,
 }
 
-pub(crate) type SemanticWorkspaceAdmission = AdmittedHeadlessRuntime;
+pub(crate) type SemanticWorkspaceAdmission = AdmittedIndexerRuntime;
 
 #[derive(Debug, Clone)]
 pub(crate) struct SemanticWorkspaceRejection {
     pub code: &'static str,
     pub message: String,
-    pub supported_distribution: Option<SupportedHeadlessDistribution>,
+    pub supported_distribution: Option<SupportedIndexerDistribution>,
     pub evidence: SemanticWorkspaceEvidence,
 }
 
@@ -97,21 +93,19 @@ pub(crate) enum SemanticWorkspaceRoute {
 
 pub(crate) fn semantic_workspace_route(
     requested_workspace_root: Option<PathBuf>,
-    requested_backend: Option<BackendName>,
 ) -> Result<SemanticWorkspaceRoute> {
     semantic_workspace_route_with_availability(
-        semantic_runtime_args(requested_workspace_root, requested_backend, true, false),
-        headless_authority::SemanticRuntimeAvailability::StartIfMissing,
+        semantic_runtime_args(requested_workspace_root, true, false),
+        indexer_authority::SemanticRuntimeAvailability::StartIfMissing,
     )
 }
 
 pub(crate) fn semantic_workspace_route_reuse_only(
     requested_workspace_root: Option<PathBuf>,
-    requested_backend: Option<BackendName>,
 ) -> Result<SemanticWorkspaceRoute> {
     semantic_workspace_route_with_availability(
-        semantic_runtime_args(requested_workspace_root, requested_backend, true, true),
-        headless_authority::SemanticRuntimeAvailability::ReuseOnly,
+        semantic_runtime_args(requested_workspace_root, true, true),
+        indexer_authority::SemanticRuntimeAvailability::ReuseOnly,
     )
 }
 
@@ -119,28 +113,26 @@ pub(crate) fn semantic_workspace_route_for_runtime(
     args: RuntimeArgs,
 ) -> Result<SemanticWorkspaceRoute> {
     let availability = if args.no_auto_start.unwrap_or(false) {
-        headless_authority::SemanticRuntimeAvailability::ReuseOnly
+        indexer_authority::SemanticRuntimeAvailability::ReuseOnly
     } else {
-        headless_authority::SemanticRuntimeAvailability::StartIfMissing
+        indexer_authority::SemanticRuntimeAvailability::StartIfMissing
     };
     semantic_workspace_route_with_availability(args, availability)
 }
 
 pub(crate) fn semantic_workspace_route_ready(
     requested_workspace_root: Option<PathBuf>,
-    requested_backend: Option<BackendName>,
 ) -> Result<SemanticWorkspaceRoute> {
     semantic_workspace_route_with_availability(
-        semantic_runtime_args(requested_workspace_root, requested_backend, false, true),
-        headless_authority::SemanticRuntimeAvailability::ReuseOnly,
+        semantic_runtime_args(requested_workspace_root, false, true),
+        indexer_authority::SemanticRuntimeAvailability::ReuseOnly,
     )
 }
 
 fn semantic_workspace_route_with_availability(
     args: RuntimeArgs,
-    availability: headless_authority::SemanticRuntimeAvailability,
+    availability: indexer_authority::SemanticRuntimeAvailability,
 ) -> Result<SemanticWorkspaceRoute> {
-    let requested_backend = args.backend_name;
     let workspace_root = workspace_root(args.workspace_root.clone())?;
     let workspace_root = fs::canonicalize(&workspace_root).map_err(|error| {
         CliError::new(
@@ -153,32 +145,21 @@ fn semantic_workspace_route_with_availability(
     })?;
     let config = KastConfig::load(&workspace_root)?;
     let workspace_kind = classify_semantic_workspace(&workspace_root);
-    if let Some(rejection) = headless_authority::retired_backend_rejection(
-        &config,
-        requested_backend,
-        &workspace_root,
-        workspace_kind,
-    ) {
-        return Ok(SemanticWorkspaceRoute::Rejected(
-            semantic_workspace_rejection(rejection),
-        ));
-    }
     if !is_gradle_workspace(&workspace_root) {
         return Ok(SemanticWorkspaceRoute::Rejected(
             unsupported_workspace_rejection(&workspace_root),
         ));
     }
-    let request = headless_authority::SemanticRuntimeRequest {
+    let request = indexer_authority::SemanticRuntimeRequest {
         workspace_root,
         config,
-        requested_backend,
         workspace_kind,
         availability,
         accept_indexing: args.accept_indexing.unwrap_or(false),
         wait_timeout_ms: args.wait_timeout_ms,
         runtime_args: args,
     };
-    Ok(match headless_authority::admit_headless_runtime(request) {
+    Ok(match indexer_authority::admit_indexer_runtime(request) {
         Ok(admission) => SemanticWorkspaceRoute::Admitted(Box::new(admission)),
         Err(rejection) => {
             SemanticWorkspaceRoute::Rejected(semantic_workspace_rejection(rejection))
@@ -188,9 +169,8 @@ fn semantic_workspace_route_with_availability(
 
 pub(crate) fn semantic_mutation_workspace_route(
     requested_workspace_root: Option<PathBuf>,
-    requested_backend: Option<BackendName>,
 ) -> Result<SemanticWorkspaceRoute> {
-    semantic_workspace_route_reuse_only(requested_workspace_root, requested_backend)
+    semantic_workspace_route_reuse_only(requested_workspace_root)
 }
 
 pub(crate) fn compiler_backed_workspace_evidence(
@@ -225,7 +205,7 @@ pub(crate) fn compiler_backed_workspace_evidence(
 }
 
 fn semantic_workspace_rejection(
-    rejection: headless_authority::SemanticRuntimeRejection,
+    rejection: indexer_authority::SemanticRuntimeRejection,
 ) -> SemanticWorkspaceRejection {
     SemanticWorkspaceRejection {
         code: rejection.code,
@@ -237,13 +217,11 @@ fn semantic_workspace_rejection(
 
 fn semantic_runtime_args(
     workspace_root: Option<PathBuf>,
-    backend_name: Option<BackendName>,
     accept_indexing: bool,
     no_auto_start: bool,
 ) -> RuntimeArgs {
     RuntimeArgs {
         workspace_root,
-        backend_name,
         idea_home: None,
         wait_timeout_ms: crate::cli::DEFAULT_RUNTIME_WAIT_TIMEOUT_MS,
         accept_indexing: Some(accept_indexing),
@@ -297,7 +275,7 @@ fn unsupported_workspace_rejection(workspace_root: &Path) -> SemanticWorkspaceRe
         ),
         supported_distribution: None,
         evidence: SemanticWorkspaceEvidence {
-            backend_name: Some(BackendName::Headless.canonical().to_string()),
+            backend_name: Some(BackendName::Indexer.canonical().to_string()),
             workspace_root: workspace_root.display().to_string(),
             workspace_kind: SemanticWorkspaceKind::UnsupportedProject,
             source_module_names: vec![],
