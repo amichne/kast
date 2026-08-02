@@ -184,14 +184,16 @@ fn start_headless_runtime(
     #[cfg(target_os = "macos")]
     let runtime_libs_dir = None;
     #[cfg(not(target_os = "macos"))]
-    let runtime_libs_dir = request
-        .config
-        .backends
-        .headless
-        .runtime_libs_dir
-        .clone()
-        .filter(|path| path.is_dir())
-        .ok_or_else(|| headless_backend_unavailable_error(&request.workspace_root))?;
+    let runtime_libs_dir = Some(
+        request
+            .config
+            .backends
+            .headless
+            .runtime_libs_dir
+            .clone()
+            .filter(|path| path.is_dir())
+            .ok_or_else(|| headless_backend_unavailable_error(&request.workspace_root))?,
+    );
     let log_file = daemon_log_file(
         &request.config,
         &request.workspace_root,
