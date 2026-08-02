@@ -29,7 +29,6 @@ fn up_without_installed_backend_reports_supported_headless_distribution() {
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend=headless",
-            "--no-auto-start=true",
         ])
         .output()
         .expect("up");
@@ -75,7 +74,6 @@ fn runtime_commands_use_configured_default_backend_when_backend_flag_is_absent()
             "up",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--no-auto-start=true",
         ])
         .output()
         .expect("up");
@@ -122,7 +120,6 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend=headless",
-            "--no-auto-start=true",
         ])
         .output()
         .expect("up");
