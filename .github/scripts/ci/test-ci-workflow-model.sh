@@ -51,6 +51,12 @@ grep -Fq ':indexer:portableDistZip' "$workflow" || die "CI must build the portab
 grep -Fq ':indexer:verifyPortableDistLayout' "$workflow" || die "CI must verify the portable indexer layout"
 grep -Fq 'kast-indexer-linux-x64' "$workflow" || die "CI must retain the source-bound indexer artifact"
 grep -Fq 'kast-setup-linux-x64' "$workflow" || die "CI must retain the canonical Linux setup bundle"
+grep -Fq 'setup_manifest_version="v0.7.11-ci"' "$workflow" \
+  || die "CI setup activation must use a doctor-compatible indexer version"
+grep -Fq -- '--version "$setup_manifest_version"' "$workflow" \
+  || die "CI setup packaging must write the doctor-compatible manifest version"
+grep -Fq 'setup_asset="dist/kast-linux-x64-v0.0.0-ci.tar.gz"' "$workflow" \
+  || die "CI setup artifact naming must remain source-bound"
 ! grep -Fq 'container-image:' "$workflow" || die "CI must not advertise containers it does not run"
 
 report="${scratch_dir}/report.json"

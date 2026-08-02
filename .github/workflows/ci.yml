@@ -499,6 +499,7 @@ jobs:
           cli_asset="build/ci-inputs/kast-v0.0.0-ci-linux-x64.zip"
           indexer_asset="build/ci-inputs/kast-local-source-bound-indexer.zip"
           setup_asset="dist/kast-linux-x64-v0.0.0-ci.tar.gz"
+          setup_manifest_version="v0.7.11-ci"
           scripts/verify-ci-artifact-ledger.py verify \
             --ledger build/ci-input-ledgers/rust-cli-linux-x64.json \
             --ledger build/ci-input-ledgers/indexer-linux-x64.json \
@@ -517,7 +518,7 @@ jobs:
             --cli-archive "$cli_asset" \
             --indexer-archive "$indexer_asset" \
             --platform linux-x64 \
-            --version v0.0.0-ci \
+            --version "$setup_manifest_version" \
             --bundle-output "$setup_asset"
           scripts/verify-ci-artifact-ledger.py record \
             --output dist/ci-ledgers/setup-linux-x64.json \

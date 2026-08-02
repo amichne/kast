@@ -52,7 +52,10 @@ fn spawn_legacy_headless_status_server(
 }
 
 fn spawn_reapable_process() -> (u32, std::sync::mpsc::Receiver<std::process::ExitStatus>) {
-    let mut child = Command::new("sleep").arg("30").spawn().expect("fixture process");
+    let mut child = Command::new("sleep")
+        .arg("900")
+        .spawn()
+        .expect("fixture process");
     let pid = child.id();
     let (sender, receiver) = std::sync::mpsc::channel();
     thread::spawn(move || {
