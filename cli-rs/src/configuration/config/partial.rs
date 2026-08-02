@@ -64,9 +64,18 @@ struct PartialCodexHooks {
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct PartialIndexing {
+    critical_paths: Option<Vec<String>>,
+    ignored_paths: Option<Vec<String>>,
+    graph: Option<PartialGraphIndexing>,
     relationships: Option<PartialRelationshipIndexing>,
     identifier_index_wait_millis: Option<u64>,
     remote: Option<PartialRemoteIndex>,
+}
+
+#[derive(Debug, Default, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct PartialGraphIndexing {
+    batch_size: Option<NonZeroU32>,
 }
 
 #[derive(Debug, Default, Deserialize)]

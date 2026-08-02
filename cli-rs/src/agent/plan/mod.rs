@@ -2,7 +2,7 @@ use crate::agent_adapter;
 use crate::cli::{
     AgentAddFileArgs, AgentCommand, AgentMutationApplyArgs, AgentPlacementAnchor, AgentRenameArgs,
     AgentReplaceDeclarationArgs, AgentScopedMutationArgs, AgentStatementAnchor,
-    AgentStatementMutationArgs, KastChangeArgs, KastChangeCommand,
+    AgentStatementMutationArgs, AgentWorkspaceLeaseId, KastChangeArgs, KastChangeCommand,
 };
 use crate::error::{CliError, Result};
 use crate::{config, manifest, output};

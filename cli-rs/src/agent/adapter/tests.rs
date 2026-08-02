@@ -1,17 +1,18 @@
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::runtime::ReferenceCoverageState;
     use serde_json::json;
 
     #[test]
-    fn readiness_requires_exact_ready_runtime_and_semantic_index_evidence() {
+    fn readiness_requires_exact_ready_runtime_only() {
         let root = Path::new("/workspace");
         let mut status = RuntimeStatusResponse {
             state: RuntimeState::Ready,
             healthy: true,
             active: true,
             indexing: false,
-            backend_name: "idea".to_string(),
+            backend_name: "headless".to_string(),
             backend_version: "test".to_string(),
             workspace_root: root.display().to_string(),
             message: None,
@@ -19,15 +20,17 @@ mod tests {
             source_module_names: vec!["main".to_string()],
             dependent_module_names_by_source_module_name: serde_json::Map::new(),
             reference_index_ready: true,
+            reference_coverage_state: ReferenceCoverageState::Complete,
+            reference_coverage_limitations: vec![],
             schema_version: crate::SCHEMA_VERSION,
         };
 
         assert!(semantic_status_ready(root, &status));
         status.reference_index_ready = false;
-        assert!(!semantic_status_ready(root, &status));
+        assert!(semantic_status_ready(root, &status));
         status.reference_index_ready = true;
         status.source_module_names.clear();
-        assert!(!semantic_status_ready(root, &status));
+        assert!(semantic_status_ready(root, &status));
         status.source_module_names.push("main".to_string());
         status.workspace_root = "/different".to_string();
         assert!(!semantic_status_ready(root, &status));

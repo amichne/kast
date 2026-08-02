@@ -29,6 +29,7 @@ class IdeaProjectModelWorkspaceFileInventoryTest {
         val conventionScript = file(workspaceRoot.resolve("build-logic/src/main/kotlin/conventions.gradle.kts"))
         val ordinaryScript = file(workspaceRoot.resolve("app/scripts/check.main.kts"))
         val rootSource = file(workspaceRoot.resolve("app/src/main/kotlin/App.kt"))
+        val generatedOutput = file(workspaceRoot.resolve("build/generated/Generated.kt"))
         val includedSource = file(includedRoot.resolve("app/src/main/kotlin/Included.kt"))
         val sharedSource = file(workspaceRoot.resolve("shared/Shared.kt"))
         val outsideSource = workspaceRoot.parent.resolve("outside-workspace/Outside.kt").toAbsolutePath().normalize()
@@ -37,7 +38,14 @@ class IdeaProjectModelWorkspaceFileInventoryTest {
                 module(
                     name = "root",
                     contentRoot = workspaceRoot,
-                    ownedFiles = listOf(rootSource, conventionScript, ordinaryScript, sharedSource, outsideSource),
+                    ownedFiles = listOf(
+                        rootSource,
+                        conventionScript,
+                        ordinaryScript,
+                        sharedSource,
+                        generatedOutput,
+                        outsideSource,
+                    ),
                 ),
                 module(
                     name = "included",
@@ -87,6 +95,7 @@ class IdeaProjectModelWorkspaceFileInventoryTest {
         )
         source.modules.forEach { module ->
             assertFalse(outsideSource.toString() in module.filePaths(WorkspaceFileKindDomain.SOURCE_ONLY))
+            assertFalse(generatedOutput.toString() in module.filePaths(WorkspaceFileKindDomain.SOURCE_ONLY))
         }
     }
 

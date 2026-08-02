@@ -1,7 +1,8 @@
 package io.github.amichne.kast.indexstore.store
 
-import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
+import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import io.github.amichne.kast.indexstore.api.reference.*
+import java.nio.file.Path
 import java.sql.Connection
 
 internal class SourceIndexReferenceStore(
@@ -20,25 +21,29 @@ internal class SourceIndexReferenceStore(
         sourceFqName: String? = null,
         edgeKind: EdgeKind = EdgeKind.UNKNOWN,
     ) {
-        if (!SourceIndexFilePolicy.isEligible(sourcePath)) {
+        val parsedSourcePath = state.sourceFilePolicy.sourcePath(Path.of(sourcePath))
+        if (parsedSourcePath == null) {
             fileStore.removeFile(sourcePath)
             return
         }
-        val eligibleTargetPath = targetPath?.takeIf(SourceIndexFilePolicy::isEligible)
+        val parsedTargetPath = targetPath?.let { path -> state.sourceFilePolicy.sourcePath(Path.of(path)) }
         synchronized(state.writeLock) {
             val conn = state.connection()
             conn.autoCommit = false
             try {
-                mutations.internPathsInTransaction(conn, listOfNotNull(sourcePath, eligibleTargetPath))
+                mutations.internPathsInTransaction(
+                    conn,
+                    listOfNotNull(parsedSourcePath.toDatabasePath(), parsedTargetPath?.toDatabasePath()),
+                )
                 mutations.internFqNamesInTransaction(conn, listOfNotNull(targetFqName, sourceFqName).toSet())
                 upsertSymbolReferenceInTransaction(
                     conn = conn,
-                    sourcePath = sourcePath,
+                    sourcePath = parsedSourcePath,
                     sourceOffset = sourceOffset,
                     sourceFqName = sourceFqName,
                     targetFqName = targetFqName,
-                    targetPath = eligibleTargetPath,
-                    targetOffset = eligibleTargetPath?.let { targetOffset },
+                    targetPath = parsedTargetPath,
+                    targetOffset = parsedTargetPath?.let { targetOffset },
                     edgeKind = edgeKind,
                 )
                 state.incrementGenerationInTransaction(conn)
@@ -54,16 +59,18 @@ internal class SourceIndexReferenceStore(
 
     internal fun upsertSymbolReferenceInTransaction(
         conn: Connection,
-        sourcePath: String,
+        sourcePath: WorkspaceSourcePath,
         sourceOffset: Int,
         sourceFqName: String?,
         targetFqName: String,
-        targetPath: String?,
+        targetPath: WorkspaceSourcePath?,
         targetOffset: Int?,
         edgeKind: EdgeKind,
     ) {
-        val (sourcePrefixId, sourceFilename) = pathCodec.encode(sourcePath)
-        val targetPathParts = targetPath?.let { pathCodec.encode(it) }
+        val checkedSourcePath = state.requireWorkspaceSourcePath(sourcePath)
+        val checkedTargetPath = targetPath?.let(state::requireWorkspaceSourcePath)
+        val (sourcePrefixId, sourceFilename) = pathCodec.encode(checkedSourcePath.toDatabasePath())
+        val targetPathParts = checkedTargetPath?.let { path -> pathCodec.encode(path.toDatabasePath()) }
         val sourceFqId = sourceFqName?.let { fqCodec.getOrCreate(conn, it) }
         val targetFqId = fqCodec.getOrCreate(conn, targetFqName)
         conn.prepareStatement(
@@ -90,11 +97,12 @@ internal class SourceIndexReferenceStore(
     }
 
     fun clearReferencesFromFile(sourcePath: String) {
+        val parsedSourcePath = state.sourceFilePolicy.sourcePath(Path.of(sourcePath)) ?: return
         synchronized(state.writeLock) {
             val conn = state.connection()
             conn.autoCommit = false
             try {
-                clearReferencesFromFileInTransaction(conn, sourcePath)
+                clearReferencesFromFileInTransaction(conn, parsedSourcePath)
                 state.incrementGenerationInTransaction(conn)
                 conn.commit()
             } catch (e: Exception) {
@@ -108,28 +116,36 @@ internal class SourceIndexReferenceStore(
 
     internal fun clearReferencesFromFileInTransaction(
         conn: Connection,
-        sourcePath: String,
+        sourcePath: WorkspaceSourcePath,
     ) {
         state.loadInterningTables(conn)
-        val (prefixId, filename) = pathCodec.encodeIfInterned(sourcePath) ?: return
+        val checkedSourcePath = state.requireWorkspaceSourcePath(sourcePath)
+        val (prefixId, filename) = pathCodec.encodeIfInterned(checkedSourcePath.toDatabasePath()) ?: return
         conn.prepareStatement("DELETE FROM symbol_references WHERE src_prefix_id = ? AND src_filename = ?")
             .use { stmt ->
                 stmt.setInt(1, prefixId)
                 stmt.setString(2, filename)
-            stmt.executeUpdate()
-        }
+                stmt.executeUpdate()
+            }
     }
 
     fun removeReferencesOutsideSources(sourcePaths: Collection<String>) {
+        val parsedSourcePaths = sourcePaths.map { sourcePath ->
+            requireNotNull(state.sourceFilePolicy.sourcePath(Path.of(sourcePath))) {
+                "Retained reference source must be an eligible exact-root Kotlin file: $sourcePath"
+            }
+        }
         synchronized(state.writeLock) {
             val conn = state.connection()
             conn.autoCommit = false
             try {
-                if (sourcePaths.isEmpty()) {
+                if (parsedSourcePaths.isEmpty()) {
                     conn.createStatement().use { stmt -> stmt.execute("DELETE FROM symbol_references") }
                 } else {
                     state.loadInterningTables(conn)
-                    val encodedSources = sourcePaths.mapNotNull { pathCodec.encodeIfInterned(it) }.toSet()
+                    val encodedSources = parsedSourcePaths
+                        .mapNotNull { path -> pathCodec.encodeIfInterned(path.toDatabasePath()) }
+                        .toSet()
                     if (encodedSources.isEmpty()) {
                         conn.createStatement().use { stmt -> stmt.execute("DELETE FROM symbol_references") }
                     } else {
@@ -183,50 +199,41 @@ internal class SourceIndexReferenceStore(
 
     fun replaceReferencesFromFiles(referencesBySource: List<Pair<String, List<SymbolReferenceRow>>>) {
         val eligibleReferencesBySource = referencesBySource
-            .filter { (filePath, _) -> SourceIndexFilePolicy.isEligible(filePath) }
-            .map { (filePath, refs) ->
-                filePath to refs
-                    .filter { ref -> SourceIndexFilePolicy.isEligible(ref.sourcePath) }
-                    .map { ref ->
-                        if (ref.targetPath?.let(SourceIndexFilePolicy::isEligible) != false) {
-                            ref
-                        } else {
-                            ref.copy(targetPath = null, targetOffset = null)
-                        }
-                    }
-            }
+            .mapNotNull(::parseReferenceBatch)
         synchronized(state.writeLock) {
             val conn = state.connection()
             conn.autoCommit = false
             try {
-                val pathsToIntern = eligibleReferencesBySource.flatMap { (filePath, refs) ->
+                val pathsToIntern = eligibleReferencesBySource.flatMap { batch ->
                     buildList {
-                        add(filePath)
-                        refs.forEach { ref ->
-                            add(ref.sourcePath)
-                            ref.targetPath?.let(::add)
+                        add(batch.sourcePath.toDatabasePath())
+                        batch.references.forEach { reference ->
+                            reference.targetPath?.toDatabasePath()?.let(::add)
                         }
                     }
                 }
                 mutations.internPathsInTransaction(conn, pathsToIntern)
                 mutations.internFqNamesInTransaction(
                     conn,
-                    eligibleReferencesBySource.flatMapTo(mutableSetOf()) { (_, refs) ->
-                        refs.flatMap { ref -> listOfNotNull(ref.targetFqName, ref.sourceFqName) }
+                    eligibleReferencesBySource.flatMapTo(mutableSetOf()) { batch ->
+                        batch.references.flatMap { reference ->
+                            listOfNotNull(reference.row.targetFqName, reference.row.sourceFqName)
+                        }
                     },
                 )
-                for ((filePath, refs) in eligibleReferencesBySource) {
-                    clearReferencesFromFileInTransaction(conn, filePath)
-                    refs.forEach { ref ->
+                for (batch in eligibleReferencesBySource) {
+                    clearReferencesFromFileInTransaction(conn, batch.sourcePath)
+                    batch.references.forEach { reference ->
+                        val row = reference.row
                         upsertSymbolReferenceInTransaction(
                             conn = conn,
-                            sourcePath = ref.sourcePath,
-                            sourceOffset = ref.sourceOffset,
-                            sourceFqName = ref.sourceFqName,
-                            targetFqName = ref.targetFqName,
-                            targetPath = ref.targetPath,
-                            targetOffset = ref.targetOffset,
-                            edgeKind = ref.edgeKind,
+                            sourcePath = batch.sourcePath,
+                            sourceOffset = row.sourceOffset,
+                            sourceFqName = row.sourceFqName,
+                            targetFqName = row.targetFqName,
+                            targetPath = reference.targetPath,
+                            targetOffset = reference.targetPath?.let { row.targetOffset },
+                            edgeKind = row.edgeKind,
                         )
                     }
                 }
@@ -242,4 +249,28 @@ internal class SourceIndexReferenceStore(
         }
     }
 
+    private fun parseReferenceBatch(
+        batch: Pair<String, List<SymbolReferenceRow>>,
+    ): ParsedReferenceBatch? {
+        val sourcePath = state.sourceFilePolicy.sourcePath(Path.of(batch.first)) ?: return null
+        val references = batch.second.mapNotNull { row ->
+            val rowSourcePath = state.sourceFilePolicy.sourcePath(Path.of(row.sourcePath)) ?: return@mapNotNull null
+            if (rowSourcePath != sourcePath) return@mapNotNull null
+            ParsedSymbolReference(
+                row = row,
+                targetPath = row.targetPath?.let { path -> state.sourceFilePolicy.sourcePath(Path.of(path)) },
+            )
+        }
+        return ParsedReferenceBatch(sourcePath, references)
+    }
+
+    private data class ParsedReferenceBatch(
+        val sourcePath: WorkspaceSourcePath,
+        val references: List<ParsedSymbolReference>,
+    )
+
+    private data class ParsedSymbolReference(
+        val row: SymbolReferenceRow,
+        val targetPath: WorkspaceSourcePath?,
+    )
 }

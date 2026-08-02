@@ -11,18 +11,20 @@ a runtime Kast started and one it merely borrowed.
 
 ## Decision
 
-`kast agent lease acquire`, `status`, and `release` operate on one canonical
-workspace root and backend. Acquisition requires an exact `READY` runtime and
-binds an authenticated lease to the active installation generation, runtime
-descriptor and process identity, owner process identity, and workspace.
+Private `kastctl agent lease acquire`, `status`, and `release` operate on one
+canonical workspace root and headless runtime. Acquisition requires an exact
+`READY` runtime and binds an authenticated lease to the active installation
+generation, runtime descriptor and process identity, owner process identity,
+and workspace. Public `kast apply` requires the returned opaque lease through
+`--lease-id`.
 
 Only one live lease exists for an exact root/backend. PID alone is not
 identity; process-start evidence prevents reuse mistakes. No expiry or
 heartbeat is inferred.
 
 A released or recovered lease stops a runtime only when the lease started it
-and the current descriptor and process identity still match. Borrowed IDEA and
-headless runtimes remain running. Release is idempotent and records its reason.
+and the current descriptor and process identity still match. Borrowed headless
+runtimes remain running. Release is idempotent and records its reason.
 
 Tampered, wrong-root, wrong-backend, stale-generation, abandoned-owner, and
 replaced-runtime states remain distinct. No state falls back to a different

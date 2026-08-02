@@ -37,7 +37,7 @@ mod tests {
                 "--workspace-root",
                 "/workspace",
                 "--backend",
-                "idea",
+                "headless",
                 "--file-path",
                 "src/A.kt",
             ]

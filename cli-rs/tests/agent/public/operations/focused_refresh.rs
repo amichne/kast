@@ -21,15 +21,11 @@ fn explicit_refresh_does_not_expand_to_unrelated_pending_graph_files() {
     let mut workspace_refresh = complete_refresh(&source, &uuid::Uuid::new_v4().to_string());
     workspace_refresh["relationshipFailures"] = json!([]);
     let socket = fixture.path().join("focused-refresh.sock");
-    let backend = spawn_scripted_idea_backend_for_invocations(
+    let backend = spawn_scripted_headless_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
         &socket,
-        ScriptedCliAuthority::new(
-            Path::new(env!("CARGO_BIN_EXE_kast")),
-            env!("CARGO_PKG_VERSION"),
-        ),
         3,
         vec![
             ("raw/workspace-refresh", workspace_refresh),

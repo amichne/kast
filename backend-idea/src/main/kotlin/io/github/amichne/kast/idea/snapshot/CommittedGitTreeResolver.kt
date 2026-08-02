@@ -36,7 +36,7 @@ object CommittedGitTreeResolver {
                 require(fields.size == 3 && fields[1] == "blob") { "Git tree contains an unsupported entry" }
                 path to GitObjectId.parse(fields[2])
             }
-            .filterKeys(SourceIndexFilePolicy::isEligible)
+            .filterKeys(SourceIndexFilePolicy::isEligibleWorkspaceRelative)
             .toSortedMap()
         return CommittedGitTree(treeOid, files)
     }

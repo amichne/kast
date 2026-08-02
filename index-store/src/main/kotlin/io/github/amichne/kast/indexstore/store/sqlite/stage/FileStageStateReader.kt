@@ -5,6 +5,7 @@ import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageInputFingerprint
 import io.github.amichne.kast.indexstore.api.index.FileStageFailure
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureAttemptCount
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureId
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
@@ -13,6 +14,8 @@ import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.api.index.FileStageScopeCoverage
 import io.github.amichne.kast.indexstore.api.index.FileStageVersion
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
+import io.github.amichne.kast.indexstore.api.index.SourceIndexModuleIdentity
+import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import io.github.amichne.kast.indexstore.store.cache.defaultCacheJson
 import kotlinx.serialization.decodeFromString
 import java.sql.Connection
@@ -22,22 +25,22 @@ internal class FileStageStateReader(
 ) {
     private val pathCodec get() = state.pathCodec
 
-    fun fileStageOutcome(path: String, stage: FileIndexStage): FileStageOutcome? =
+    fun fileStageOutcome(path: WorkspaceSourcePath, stage: FileIndexStage): FileStageOutcome? =
         synchronized(state.writeLock) {
             readOutcomeInTransaction(state.connection(), path, stage)
         }
 
     fun fileStageScopeCoverage(
         stage: FileIndexStage,
-        path: String,
+        path: WorkspaceSourcePath,
     ): FileStageScopeCoverage = synchronized(state.writeLock) {
         val conn = state.connection()
         val scope = inventoryScopeInTransaction(conn, path)
         val files = when {
             scope == null -> listOf(classifyStandaloneOutcome(readOutcomeInTransaction(conn, path, stage)))
-            scope.moduleName == null -> listOf(classifyInventoryFile(conn, scope, stage))
+            scope.module == null -> listOf(classifyInventoryFile(conn, scope, stage))
             else -> readInventoryInTransaction(conn).values
-                .filter { row -> row.moduleName == scope.moduleName }
+                .filter { row -> row.module == scope.module }
                 .map { row -> classifyInventoryFile(conn, row, stage) }
         }
         coverage(files)
@@ -45,7 +48,7 @@ internal class FileStageStateReader(
 
     fun fileStageScopeCoverage(
         stage: FileIndexStage,
-        paths: Collection<String>,
+        paths: Collection<WorkspaceSourcePath>,
     ): FileStageScopeCoverage = synchronized(state.writeLock) {
         val conn = state.connection()
         val inventory = readInventoryInTransaction(conn)
@@ -57,7 +60,7 @@ internal class FileStageStateReader(
         )
     }
 
-    internal fun readInventoryInTransaction(conn: Connection): Map<String, PersistedFileInventory> {
+    internal fun readInventoryInTransaction(conn: Connection): Map<WorkspaceSourcePath, PersistedFileInventory> {
         state.loadInterningTables(conn)
         return conn.createStatement().use { statement ->
             val rows = statement.executeQuery(
@@ -76,10 +79,9 @@ internal class FileStageStateReader(
                         sourceVersion = rows.getString(5),
                         relationshipsVersion = rows.getString(6),
                         semanticGraphVersion = rows.getString(7),
-                        moduleName = rows.getString(8),
-                        sourceSet = rows.getString(9),
+                        module = decodeSourceIndexModuleIdentity(rows.getString(8), rows.getString(9)),
                     )
-                    put(pathCodec.decode(row.prefixId, row.filename), row)
+                    put(state.requireWorkspaceSourcePath(pathCodec.decode(row.prefixId, row.filename)), row)
                 }
             }
         }
@@ -87,14 +89,14 @@ internal class FileStageStateReader(
 
     internal fun readOutcomeInTransaction(
         conn: Connection,
-        path: String,
+        path: WorkspaceSourcePath,
         stage: FileIndexStage,
     ): FileStageOutcome? {
         state.loadInterningTables(conn)
-        val encoded = pathCodec.encodeIfInterned(path) ?: return null
+        val encoded = pathCodec.encodeIfInterned(path.toDatabasePath()) ?: return null
         return conn.prepareStatement(
             """SELECT content_hash, stage_version, stage_input_fingerprint, outcome_status, limitations_json,
-                      failure_id, failure_code, failure_message
+                      failure_id, failure_code, failure_message, failure_attempt_count
                FROM file_stage_outcomes
                WHERE prefix_id = ? AND filename = ? AND stage = ?""",
         ).use { statement ->
@@ -110,8 +112,7 @@ internal class FileStageStateReader(
                 version = FileStageVersion.parse(rows.getString(2)),
                 inputFingerprint = rows.getString(3)?.let(FileStageInputFingerprint::parse),
                 status = FileStageOutcomeStatus.valueOf(rows.getString(4)),
-                limitations = defaultCacheJson.decodeFromString<List<String>>(rows.getString(5))
-                    .map(FileStageLimitation::valueOf),
+                limitations = defaultCacheJson.decodeFromString<List<FileStageLimitation>>(rows.getString(5)),
                 failure = rows.getString(6)?.let { failureId ->
                     FileStageFailure(
                         id = FileStageFailureId.parse(failureId),
@@ -119,13 +120,17 @@ internal class FileStageStateReader(
                         message = checkNotNull(rows.getString(8)),
                     )
                 },
+                failureAttemptCount = FileStageFailureAttemptCount.of(rows.getInt(9)),
             )
         }
     }
 
-    internal fun inventoryScopeInTransaction(conn: Connection, path: String): PersistedFileInventory? {
+    internal fun inventoryScopeInTransaction(
+        conn: Connection,
+        path: WorkspaceSourcePath,
+    ): PersistedFileInventory? {
         state.loadInterningTables(conn)
-        val encoded = pathCodec.encodeIfInterned(path) ?: return null
+        val encoded = pathCodec.encodeIfInterned(path.toDatabasePath()) ?: return null
         return conn.prepareStatement(
             """SELECT last_modified_millis, content_hash,
                       desired_source_version, desired_relationships_version, desired_semantic_graph_version,
@@ -145,8 +150,7 @@ internal class FileStageStateReader(
                 sourceVersion = rows.getString(3),
                 relationshipsVersion = rows.getString(4),
                 semanticGraphVersion = rows.getString(5),
-                moduleName = rows.getString(6),
-                sourceSet = rows.getString(7),
+                module = decodeSourceIndexModuleIdentity(rows.getString(6), rows.getString(7)),
             )
         }
     }
@@ -158,7 +162,11 @@ internal class FileStageStateReader(
     ): ClassifiedFile {
         val hash = row.contentHash ?: return ClassifiedFile.Pending
         val version = row.version(stage) ?: return ClassifiedFile.Pending
-        val outcome = readOutcomeInTransaction(conn, pathCodec.decode(row.prefixId, row.filename), stage)
+        val outcome = readOutcomeInTransaction(
+            conn,
+            state.requireWorkspaceSourcePath(pathCodec.decode(row.prefixId, row.filename)),
+            stage,
+        )
             ?: return ClassifiedFile.Pending
         if (outcome.contentHash.value != hash || outcome.version.value != version) return ClassifiedFile.Stale
         return when (outcome.status) {
@@ -213,8 +221,7 @@ internal data class PersistedFileInventory(
     val sourceVersion: String?,
     val relationshipsVersion: String?,
     val semanticGraphVersion: String?,
-    val moduleName: String?,
-    val sourceSet: String?,
+    val module: SourceIndexModuleIdentity?,
 ) {
     val state: PersistedFileInventoryState
         get() = PersistedFileInventoryState(
@@ -223,8 +230,7 @@ internal data class PersistedFileInventory(
             sourceVersion = sourceVersion,
             relationshipsVersion = relationshipsVersion,
             semanticGraphVersion = semanticGraphVersion,
-            moduleName = moduleName,
-            sourceSet = sourceSet,
+            module = module,
         )
 
     fun version(stage: FileIndexStage): String? = when (stage) {
@@ -240,8 +246,7 @@ internal data class PersistedFileInventoryState(
     val sourceVersion: String?,
     val relationshipsVersion: String?,
     val semanticGraphVersion: String?,
-    val moduleName: String?,
-    val sourceSet: String?,
+    val module: SourceIndexModuleIdentity?,
 ) {
     companion object {
         fun from(entry: FileInventoryEntry, versions: FileStageVersions): PersistedFileInventoryState =
@@ -251,8 +256,7 @@ internal data class PersistedFileInventoryState(
                 sourceVersion = versions.source.value,
                 relationshipsVersion = versions.relationships.value,
                 semanticGraphVersion = versions.semanticGraph.value,
-                moduleName = entry.moduleName,
-                sourceSet = entry.sourceSet,
+                module = entry.module,
             )
     }
 }

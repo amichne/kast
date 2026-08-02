@@ -72,7 +72,7 @@ fn references_project_every_closed_non_available_outcome() {
 
     for (index, (expected_outcome, response)) in cases.into_iter().enumerate() {
         let socket = temp.path().join(format!("idea-{index}.sock"));
-        let backend = spawn_scripted_idea_backend(
+        let backend = spawn_scripted_headless_backend(
             &home,
             &config,
             &workspace,
@@ -111,8 +111,8 @@ fn references_fail_closed_on_an_unknown_response_variant() {
     let declaration_file = workspace.join("Service.kt");
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::write(&declaration_file, "package sample\nclass Service\n").expect("source");
-    let socket = temp.path().join("idea.sock");
-    let backend = spawn_scripted_idea_backend(
+    let socket = temp.path().join("headless.sock");
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -205,7 +205,7 @@ fn explicit_references_fail_closed_on_response_provenance_mismatch() {
     ];
 
     for (index, response) in cases.into_iter().enumerate() {
-        let backend = spawn_scripted_idea_backend(
+        let backend = spawn_scripted_headless_backend(
             &home,
             &config,
             &workspace,
@@ -297,7 +297,7 @@ fn references_fail_closed_on_malformed_expected_outcome_evidence() {
 
     for (index, response) in malformed.into_iter().enumerate() {
         let socket = temp.path().join(format!("idea-malformed-{index}.sock"));
-        let backend = spawn_scripted_idea_backend(
+        let backend = spawn_scripted_headless_backend(
             &home,
             &config,
             &workspace,

@@ -39,7 +39,7 @@ fn consumed_continuation_reports_stale_before_disappeared_authorities() {
         ("raw/workspace-files", serde_json::json!({})),
         ("raw/workspace-files", serde_json::json!({})),
     ]);
-    let backend = spawn_sequenced_idea_backend(
+    let backend = spawn_sequenced_headless_backend(
         &home,
         &config_home,
         &workspace,

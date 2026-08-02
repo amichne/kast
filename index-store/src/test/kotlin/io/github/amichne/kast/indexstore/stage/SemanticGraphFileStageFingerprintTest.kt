@@ -4,8 +4,11 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphCommitResult
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageInputFingerprint
 import io.github.amichne.kast.indexstore.api.index.FileStageVersion
+import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageFailureUpdate
+import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageRemoval
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageUpdate
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
@@ -23,6 +26,62 @@ import java.sql.SQLException
 class SemanticGraphFileStageFingerprintTest {
     @TempDir
     lateinit var workspaceRoot: Path
+
+    @Test
+    fun `semantic graph update path must match pending work`() {
+        val work = SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            checkNotNull(
+                store.pendingFileStage(
+                    workspaceRoot.resolve("src/A.kt").toString(),
+                    defaultContentHash,
+                    stage,
+                    version,
+                    fingerprint('1'),
+                ),
+            )
+        }
+        val wrongPath = SemanticGraphSourcePath.parse("src/B.kt")
+
+        assertThrows(IllegalArgumentException::class.java) {
+            SemanticGraphFileStageUpdate(
+                work = work,
+                update = semanticUpdate(
+                    wrongPath,
+                    "a",
+                    listOf(semanticSymbol("demo#wrong", "wrong", wrongPath)),
+                ),
+            )
+        }
+    }
+
+    @Test
+    fun `semantic graph failure and removal derive their graph path from workspace proof`() {
+        val work = SqliteSourceIndexStore(workspaceRoot).use { store ->
+            store.ensureSchema()
+            checkNotNull(
+                store.pendingFileStage(
+                    workspaceRoot.resolve("src/A.kt").toString(),
+                    defaultContentHash,
+                    stage,
+                    version,
+                    fingerprint('1'),
+                ),
+            )
+        }
+        val expectedPath = SemanticGraphSourcePath.parse("src/A.kt")
+
+        val failure = SemanticGraphFileStageFailureUpdate(
+            work = work,
+            scannedContentHash = work.contentHash,
+            code = FileStageFailureCode.PSI_UNAVAILABLE,
+            message = "Kotlin PSI is unavailable",
+        )
+        val removal = SemanticGraphFileStageRemoval(work.path)
+
+        assertEquals(expectedPath, failure.sourcePath)
+        assertEquals(expectedPath, removal.sourcePath)
+    }
 
     @Test
     fun `restart reuses the same semantic input and rejects a wider scope`() {

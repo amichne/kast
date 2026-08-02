@@ -20,6 +20,7 @@ code_sources:
   - path: cli-rs/resources/kast/copilot/hooks.json
   - path: cli-rs/src/execution/runtime/backend/workspace.rs
     symbols: [workspace_ensure, workspace_status, workspace_stop]
+  - path: cli-rs/src/execution/runtime/backend/headless_authority.rs
   - path: cli-rs/src/agent/core/dispatch/commands.rs
     symbols: [run, execute]
   - path: cli-rs/src/agent/core/request.rs
@@ -53,7 +54,7 @@ code_sources:
   - path: .agents/adr/0027-effective-agent-environment-readiness.md
   - path: .agents/adr/0028-exact-root-agent-workspace-leases.md
   - path: .agents/adr/0031-cli-install-and-data-authority.md
-  - path: .agents/adr/0032-macos-idea-golden-pathway.md
+  - path: .agents/adr/0033-exact-root-headless-semantic-authority.md
 ---
 
 # How Kast works
@@ -61,8 +62,8 @@ code_sources:
 Kast has one public API: the agent-focused `kast` command-line interface (CLI).
 The same executable bytes run the internal KastCTL control plane when invoked
 as the release-local `libexec/kastctl`. The shell installer and harness hooks
-adapt external events into these named entrypoints. IntelliJ IDEA and the
-headless host implement the compiler boundary.
+adapt external events into these named entrypoints. One isolated headless host
+implements the compiler boundary.
 
 This page is an Open Knowledge Format (OKF) `Runtime Flow` concept. Its
 `code_sources` point to the current owners of each claim. Use the map to start
@@ -80,7 +81,7 @@ The visible `kast --help` surface contains only agent-actionable operations.
 | Discovery | `kast files`, `kast symbol` | Enumerate Kotlin files, resolve symbols, and traverse compiler relationships. |
 | Graph | `kast graph` | Read generation-pinned nodes, neighborhoods, topology, communities, and impact. |
 | Diagnostics | `kast check` | Report compiler diagnostics for changed or selected files. |
-| Mutations | `kast change`, `kast apply` | Validate a semantic plan, then apply its opaque identifier. |
+| Mutations | `kast change`, `kast apply` | Validate a semantic plan, then apply its opaque identifier with an authenticated exact-root headless lease. |
 
 `libexec/kastctl` preserves the full administrative CLI for setup, runtime
 control, raw RPC, release, and developer automation. It is private, is not
@@ -114,17 +115,16 @@ remote marketplace becomes runtime authority.
 
 ### Runtime and readiness flow
 
-`kast` and `kast up` discover the nearest Gradle workspace before selecting a
-backend. Runtime inspection reads descriptors, checks process reachability,
-validates compatibility, and rejects ambiguous hosts. `kast up` reuses a
-servable exact-root runtime before it starts another one.
+`kast` and `kast up` discover the nearest Gradle workspace before admitting a
+headless runtime. Runtime inspection reads descriptors, checks process and
+socket identity, validates compatibility, and rejects conflicts. `kast up`
+reuses a healthy exact-root runtime before it starts another one.
 
-On macOS, the supported path reuses an open exact-root IDEA project or asks the
-sole compatible host to open it. On supported non-macOS hosts, Kast may start
-the packaged headless runtime. `INDEXING` proves reachability only. Semantic
-commands require `READY`.
+On macOS, one supported JetBrains installation supplies runtime libraries to
+the isolated process. Its foreground state has no lifecycle or semantic edge.
+`INDEXING` proves reachability only. Semantic commands require `READY`.
 
-<kast-view view-id="macos-runtime" browser="true"></kast-view>
+<kast-view view-id="headless-runtime" browser="true"></kast-view>
 
 ### Compiler read flow
 
@@ -138,11 +138,11 @@ parameters. `SkillRpcOrchestrator` handles the existing typed semantic
 workflows.
 `AnalysisBackend` defines the shared Kotlin boundary.
 
-`KastPluginBackend` implements that boundary with IntelliJ PSI and the Kotlin
-compiler. The headless host starts the same IDEA backend runtime with a
-different host bootstrap. Both return the same result contracts.
+`KastPluginBackend` is retained as a private implementation library for
+IntelliJ PSI and the Kotlin compiler. `HeadlessRuntime` is its only production
+host. The foreground plugin descriptor registers no runtime extension.
 
-<kast-view view-id="idea-semantic-pipeline" browser="true"></kast-view>
+<kast-view view-id="headless-semantic-pipeline" browser="true"></kast-view>
 
 PSI, Analysis API sessions, K2 frontend state, and FIR are live compiler
 objects. Kast retains provider-neutral identities, diagnostics, references,
@@ -167,7 +167,7 @@ Use the routing view to open the project-index, SQLite, or refresh sequence:
 
 <kast-view view-id="indexing-guide" browser="true"></kast-view>
 
-Project open after Gradle import is the production full-reference-index
+Headless bootstrap after Gradle import is the production full-reference-index
 trigger. It replaces the source inventory first, then dependency-prioritizes
 modules and persists successful declaration and reference batches through
 serialized SQLite transactions.
@@ -194,9 +194,12 @@ terminal.
 ### Mutation flow
 
 `kast change` resolves the target and validates a semantic edit without
-applying it. The CLI returns an opaque plan identifier. `kast apply` reloads
-that plan, rechecks its root and authority, and applies it with retry-safe
-idempotency.
+applying it. The CLI returns an opaque plan identifier. Before apply, the agent
+uses private `kastctl agent lease acquire` for the exact workspace root.
+`kast apply <PLAN_ID> --lease-id <LEASE_ID>` reloads the plan, rechecks its
+root and authenticated headless authority, and applies it with retry-safe
+idempotency. The agent uses `kastctl agent lease release` when the mutation
+session ends.
 
 The public result preserves typed failure. A failed apply, stale identity,
 incomplete analysis, or missing capability does not become success through
@@ -244,10 +247,10 @@ the whole graph. Their durable meaning is:
 | --- | --- | --- |
 | One installation authority | The active CLI receipt owns installation identity and all derived Kast paths. Setup is the only persistent installer. | [ADR 0031](https://github.com/amichne/kast/blob/main/.agents/adr/0031-cli-install-and-data-authority.md) |
 | Readiness composes evidence | A reachable process is insufficient. The active release, compatible backend, exact workspace, and capability evidence must agree. | [ADR 0027](https://github.com/amichne/kast/blob/main/.agents/adr/0027-effective-agent-environment-readiness.md) |
-| The semantic workspace is exact | Runtime reuse, descriptors, indexes, and commands bind one canonical root. No fallback may silently select another project. | [ADR 0032](https://github.com/amichne/kast/blob/main/.agents/adr/0032-macos-idea-golden-pathway.md) |
+| The semantic workspace is exact and headless | Runtime reuse, descriptors, indexes, commands, and writer ownership bind one canonical root. Foreground IDE state has no authority. | [ADR 0033](https://github.com/amichne/kast/blob/main/.agents/adr/0033-exact-root-headless-semantic-authority.md) |
 | Selector handles are identity proofs | A handle binds workspace, backend instance, semantic generation, declaration, and allowed operation families. Clients keep it opaque. | [ADR 0025](https://github.com/amichne/kast/blob/main/.agents/adr/0025-backend-bound-opaque-selector-handles.md) |
 | Data and completeness are separate | Returned rows do not prove a complete search. Coverage, truncation, timeout, cancellation, and index limits remain visible. | [ADR 0026](https://github.com/amichne/kast/blob/main/.agents/adr/0026-proof-carrying-relationship-coverage.md) |
-| Cleanup follows ownership | A lease may stop only the matching runtime it started. Borrowed IDEA and headless runtimes remain running. | [ADR 0028](https://github.com/amichne/kast/blob/main/.agents/adr/0028-exact-root-agent-workspace-leases.md) |
+| Cleanup follows ownership | A lease may stop only the matching headless runtime it started. A borrowed runtime remains running. | [ADR 0028](https://github.com/amichne/kast/blob/main/.agents/adr/0028-exact-root-agent-workspace-leases.md) |
 
 These constraints are more important than the individual class layout. When
 implementation moves, the system still needs one authority, exact identity,

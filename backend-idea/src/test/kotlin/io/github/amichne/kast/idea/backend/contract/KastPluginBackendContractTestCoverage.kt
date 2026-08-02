@@ -49,7 +49,6 @@ import io.github.amichne.kast.api.contract.skill.WrapperCallDirection
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
-import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
@@ -166,7 +165,8 @@ internal class KastPluginBackendContractTestCoverage : KastPluginBackendContract
             store.ensureSchema()
             store.reconcileFileInventory(
                 entries = listOf(
-                    FileInventoryEntry(
+                    fileInventoryEntry(
+                        workspaceRoot = workspaceRoot,
                         path = filePath,
                         lastModifiedMillis = 1,
                         contentHash = FileContentHash.parse("a".repeat(64)),

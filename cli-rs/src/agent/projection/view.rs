@@ -175,7 +175,6 @@ struct AgentSemanticWorkspaceProjection {
     source_module_names: Vec<String>,
     limitations: Vec<AgentSemanticWorkspaceLimitationProjection>,
     evidence_quality: AgentSemanticEvidenceQualityProjection,
-    next_actions: Vec<AgentSemanticWorkspaceNextActionProjection>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     backend_candidates: Vec<AgentSemanticBackendCandidateProjection>,
 }
@@ -193,10 +192,8 @@ enum AgentSemanticWorkspaceKindProjection {
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum AgentSemanticWorkspaceLimitationProjection {
-    WorkspaceUnprepared,
     SourceModulesUnavailable,
     UnsupportedProject,
-    MutationAuthorityRequired,
     BackendSelectionAmbiguous,
     RuntimeIndexing,
     ReferenceIndexUnavailable,
@@ -207,21 +204,6 @@ enum AgentSemanticWorkspaceLimitationProjection {
 enum AgentSemanticEvidenceQualityProjection {
     Unavailable,
     CompilerBacked,
-}
-
-#[derive(Debug, Clone, Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AgentSemanticWorkspaceNextActionProjection {
-    kind: AgentSemanticWorkspaceNextActionKindProjection,
-    command: String,
-    mutates_global_install_authority: bool,
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-enum AgentSemanticWorkspaceNextActionKindProjection {
-    PrepareIdeaWorkspace,
-    UseHeadlessDistribution,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

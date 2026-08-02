@@ -1,5 +1,6 @@
 package io.github.amichne.kast.api.client
 
+import io.github.amichne.kast.api.contract.compatibility.RuntimeImplementationVersion
 import io.github.amichne.kast.testing.InMemoryFileOperationsFixture
 import io.github.amichne.kast.testing.inMemoryFileOperations
 import kotlinx.serialization.json.Json
@@ -14,14 +15,12 @@ class DescriptorRegistryJimfsTest {
 
     private fun descriptor(
         workspaceRoot: String = "/workspace",
-        backendName: String = "headless",
         pid: Long = 42L,
     ) = ServerInstanceDescriptor(
-        workspaceRoot = workspaceRoot,
-        backendName = backendName,
-        backendVersion = "0.1.0",
-        socketPath = "$workspaceRoot/.kast/s",
-        pid = pid,
+        workspaceRoot = RuntimeWorkspaceRoot.parse(workspaceRoot),
+        backendVersion = RuntimeImplementationVersion("0.1.0"),
+        socketPath = RuntimeSocketPath.parse("$workspaceRoot/.kast/s"),
+        ownership = ServerInstanceOwnership.Legacy(ProcessId.of(pid)),
     )
 
     private fun readDescriptors(path: String, fixture: InMemoryFileOperationsFixture): List<ServerInstanceDescriptor> =
@@ -32,7 +31,7 @@ class DescriptorRegistryJimfsTest {
         val fixture = inMemoryFileOperations()
         val daemonsPath = "${fixture.root}home/user/.kast/daemons.json"
         val registry = DescriptorRegistry(
-            daemonsPath = daemonsPath,
+            daemonsPath = DescriptorRegistryPath.parse(daemonsPath),
             fileOps = fixture.fileOps,
         )
         val d1 = descriptor(workspaceRoot = "${fixture.root}workspace-a")
@@ -56,7 +55,7 @@ class DescriptorRegistryJimfsTest {
         val fixture = inMemoryFileOperations()
         val daemonsPath = "${fixture.root}home/user/.kast/daemons.json"
         val registry = DescriptorRegistry(
-            daemonsPath = daemonsPath,
+            daemonsPath = DescriptorRegistryPath.parse(daemonsPath),
             fileOps = fixture.fileOps,
         )
         val d = descriptor(workspaceRoot = "${fixture.root}workspace")

@@ -100,9 +100,9 @@ data class WorkspaceIdentity(
         ): WorkspaceIdentity {
             val normalizedWorkspaceRoot = NormalizedPath.ofAbsolute(workspaceRoot)
             val canonicalWorkspaceRoot = NormalizedPath.of(normalizedWorkspaceRoot.toJavaPath())
-            val workspaceId = WorkspaceId(resolver.workspaceHash(normalizedWorkspaceRoot.toJavaPath()))
+            val workspaceId = WorkspaceId(resolver.workspaceHash(canonicalWorkspaceRoot.toJavaPath()))
             val canonicalWorkspaceId = WorkspaceId(resolver.workspaceHash(canonicalWorkspaceRoot.toJavaPath()))
-            val layout = resolver.resolveLayout(normalizedWorkspaceRoot.toJavaPath())
+            val layout = resolver.resolveLayout(canonicalWorkspaceRoot.toJavaPath())
             return WorkspaceIdentity(
                 workspaceRoot = normalizedWorkspaceRoot,
                 canonicalWorkspaceRoot = canonicalWorkspaceRoot,
@@ -113,7 +113,7 @@ data class WorkspaceIdentity(
                 workspaceDataDirectory = NormalizedPath.ofAbsolute(layout.workspaceDataDirectory),
                 workspaceCacheDirectory = NormalizedPath.ofAbsolute(layout.workspaceCacheDirectory),
                 sourceIndexDatabasePath = NormalizedPath.ofAbsolute(layout.workspaceDatabasePath),
-                defaultSocketPath = NormalizedPath.ofAbsolute(defaultSocketPath(normalizedWorkspaceRoot.toJavaPath())),
+                defaultSocketPath = NormalizedPath.ofAbsolute(defaultSocketPath(canonicalWorkspaceRoot.toJavaPath())),
                 descriptorDirectory = NormalizedPath.ofAbsolute(descriptorDirectory),
                 gradleRoot = gradleRootIdentity(canonicalWorkspaceRoot.toJavaPath()),
             )

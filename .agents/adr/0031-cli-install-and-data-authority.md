@@ -6,8 +6,8 @@ Date: 2026-07-25
 
 ## Reason this record remains
 
-Kast spans a CLI, semantic backends, an IDEA plugin, and an external Codex
-plugin. They must not independently choose installation or workspace data
+Kast spans a CLI, one headless semantic runtime, and external agent harness
+resources. They must not independently choose installation or workspace data
 paths.
 
 ## Decision
@@ -20,12 +20,12 @@ it, switches the active release atomically, verifies the new CLI, and restores
 the previous verified release on failure. The public `kast` interface does not
 expose installation commands.
 
-All backends and plugins derive Kast data paths from the active CLI receipt.
+The headless runtime and harness resources derive Kast data paths from the active CLI receipt.
 The CLI-resolved workspace data directory is canonical for configuration,
 runtime descriptors, source indexes, graph data, and other workspace state.
-No plugin, backend, environment variable, or legacy default may establish a
-parallel path authority. If the receipt is unavailable, consumers use only the
-CLI's documented fallback layout under the same install root.
+No runtime, harness resource, environment variable, or legacy default may
+establish a parallel path authority. If the receipt is unavailable, consumers
+use only the CLI's documented fallback layout under the same install root.
 
 Kast embeds its Codex, Claude, and Copilot resources and installs only the
 harnesses selected by `install.sh`. No remote marketplace or GitHub Action owns

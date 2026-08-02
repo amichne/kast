@@ -5,7 +5,7 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket = temp.path().join("idea.sock");
+    let socket = temp.path().join("headless.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::write(
@@ -14,13 +14,12 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
     )
     .expect("settings");
     let binary = write_active_kast_for_test(&home, &config_home);
-    let backend = spawn_scripted_idea_backend_for_invocations(
+    let backend = spawn_scripted_headless_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
         &socket,
-        ScriptedCliAuthority::new(&binary, env!("CARGO_PKG_VERSION")),
-        2,
+        100,
         vec![],
     );
     let acquire = lease_command(&binary, &home, &config_home, &["acquire"], &workspace);
@@ -57,14 +56,14 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
             "--workspace-root",
             workspace.to_str().expect("workspace"),
             "--backend",
-            "idea",
+            "headless",
             "--lease-id",
             &lease_id,
         ])
         .output()
         .expect("verify after runtime loss");
     assert_error(&verify, "WORKSPACE_LEASE_RUNTIME_UNAVAILABLE");
-    assert_eq!(backend.join().expect("scripted backend").len(), 4);
+    assert_headless_runtime_observation_only(&backend.join().expect("scripted backend"));
 
     let failed_release = lease_command(
         &binary,
@@ -80,13 +79,12 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
     );
 
     std::fs::remove_file(&socket).expect("stale socket cleanup");
-    let replacement = spawn_scripted_idea_backend_for_invocations(
+    let replacement = spawn_scripted_headless_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
         &socket,
-        ScriptedCliAuthority::new(&binary, env!("CARGO_PKG_VERSION")),
-        2,
+        100,
         vec![],
     );
     let recovery = lease_command(&binary, &home, &config_home, &["acquire"], &workspace);
@@ -103,17 +101,17 @@ fn runtime_loss_is_failed_before_a_leased_semantic_session_opens_and_recovers_bo
         &workspace,
     );
     assert_success(&recovery_release, "bounded recovery release");
-    assert_eq!(replacement.join().expect("replacement backend").len(), 4);
+    assert_headless_runtime_observation_only(&replacement.join().expect("replacement backend"));
 }
 
 #[cfg(target_os = "macos")]
 #[test]
-fn indexing_idea_runtime_never_becomes_lease_ready() {
+fn indexing_headless_runtime_never_becomes_lease_ready() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket = temp.path().join("idea.sock");
+    let socket = temp.path().join("headless.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::write(
@@ -122,45 +120,40 @@ fn indexing_idea_runtime_never_becomes_lease_ready() {
     )
     .expect("settings");
     let binary = write_active_kast_for_test(&home, &config_home);
-    let backend = spawn_sequenced_idea_backend(
-        &home,
-        &config_home,
-        &workspace,
-        &socket,
-        vec![
-            (
-                "runtime/status",
-                serde_json::json!({
-                    "state": "INDEXING",
-                    "healthy": true,
-                    "active": true,
-                    "indexing": true,
-                    "backendName": "idea",
-                    "backendVersion": "scripted-test",
-                    "workspaceRoot": workspace.display().to_string(),
-                    "schemaVersion": 5
-                }),
-            ),
-            (
-                "capabilities",
-                serde_json::json!({
-                    "backendName": "idea",
-                    "backendVersion": "scripted-test",
-                    "workspaceRoot": workspace.display().to_string(),
-                    "readCapabilities": [],
-                    "mutationCapabilities": [],
-                    "limits": {
-                        "requestTimeoutMillis": 60000,
-                        "maxResults": 1000,
-                        "maxConcurrentRequests": 4
-                    },
-                    "schemaVersion": 5
-                }),
-            ),
-        ],
-    );
-    write_macos_plugin_workspace_metadata_for_cli(&workspace, &binary, env!("CARGO_PKG_VERSION"));
-
+    let mut responses = Vec::new();
+    for _ in 0..5 {
+        responses.push((
+            "runtime/status",
+            serde_json::json!({
+                "state": "INDEXING",
+                "healthy": true,
+                "active": true,
+                "indexing": true,
+                "backendName": "headless",
+                "backendVersion": "scripted-test",
+                "workspaceRoot": workspace.display().to_string(),
+                "schemaVersion": 5
+            }),
+        ));
+        responses.push((
+            "capabilities",
+            serde_json::json!({
+                "backendName": "headless",
+                "backendVersion": "scripted-test",
+                "workspaceRoot": workspace.display().to_string(),
+                "readCapabilities": [],
+                "mutationCapabilities": [],
+                "limits": {
+                    "requestTimeoutMillis": 60000,
+                    "maxResults": 1000,
+                    "maxConcurrentRequests": 4
+                },
+                "schemaVersion": 5
+            }),
+        ));
+    }
+    let backend =
+        spawn_sequenced_headless_backend(&home, &config_home, &workspace, &socket, responses);
     let acquire = lease_command(
         &binary,
         &home,
@@ -180,9 +173,18 @@ fn indexing_idea_runtime_never_becomes_lease_ready() {
     );
     assert!(
         default_descriptor_dir(&home).join("daemons.json").is_file(),
-        "failed IDEA acquisition must preserve the borrowed runtime"
+        "failed headless acquisition must preserve the borrowed runtime"
     );
-    assert_eq!(backend.join().expect("indexing backend").len(), 2);
+    let requests = backend.join().expect("indexing backend");
+    assert_headless_runtime_observation_only(&requests);
+    assert!(
+        requests
+            .iter()
+            .filter(|request| request["method"] == "runtime/status")
+            .count()
+            > 1,
+        "INDEXING acquisition must poll the same headless runtime"
+    );
 }
 
 #[cfg(target_os = "macos")]
@@ -225,13 +227,12 @@ fn primary_and_linked_worktree_leases_keep_distinct_exact_roots() {
         uuid::Uuid::new_v4().simple()
     ));
 
-    let primary_backend = spawn_scripted_idea_backend_for_invocations(
+    let primary_backend = spawn_scripted_headless_backend_for_invocations(
         &home,
         &config_home,
         &primary,
         &primary_socket,
-        ScriptedCliAuthority::new(&binary, env!("CARGO_PKG_VERSION")),
-        2,
+        100,
         vec![],
     );
     let primary_acquire = lease_command(&binary, &home, &config_home, &["acquire"], &primary);
@@ -249,16 +250,15 @@ fn primary_and_linked_worktree_leases_keep_distinct_exact_roots() {
         &primary,
     );
     assert_success(&primary_release, "primary release");
-    assert_eq!(primary_backend.join().expect("primary backend").len(), 4);
+    assert_headless_runtime_observation_only(&primary_backend.join().expect("primary backend"));
     std::fs::remove_file(&primary_socket).expect("primary socket cleanup");
 
-    let linked_backend = spawn_scripted_idea_backend_for_invocations(
+    let linked_backend = spawn_scripted_headless_backend_for_invocations(
         &home,
         &config_home,
         &linked,
         &linked_socket,
-        ScriptedCliAuthority::new(&binary, env!("CARGO_PKG_VERSION")),
-        2,
+        100,
         vec![],
     );
     let linked_acquire = lease_command(&binary, &home, &config_home, &["acquire"], &linked);
@@ -288,7 +288,7 @@ fn primary_and_linked_worktree_leases_keep_distinct_exact_roots() {
         &linked,
     );
     assert_success(&linked_release, "linked release");
-    assert_eq!(linked_backend.join().expect("linked backend").len(), 4);
+    assert_headless_runtime_observation_only(&linked_backend.join().expect("linked backend"));
     std::fs::remove_file(&linked_socket).expect("linked socket cleanup");
 }
 
@@ -337,5 +337,6 @@ fn assert_success(output: &std::process::Output, label: &str) {
 #[cfg(target_os = "macos")]
 fn assert_error(output: &std::process::Output, code: &str) {
     assert!(!output.status.success(), "{code} must fail");
-    assert_eq!(output_json(output)["error"]["code"], code);
+    let payload = output_json(output);
+    assert_eq!(payload["error"]["code"], code, "{payload:#}");
 }

@@ -2,7 +2,7 @@
   "$schema": "./workflow-graph-model.schema.json",
   "schemaVersion": 3,
   "provenance": {
-    "description": "The normalized baseline records five comparable successful pull-request runs after the accepted installation-authority scope contraction. The candidate splits the consumed IDEA plugin artifact from independent tests and derives provisional task durations from the baseline job step timestamps.",
+    "description": "The normalized baseline records five comparable successful pull-request runs. The candidate removes the retired public IDEA distribution proof under ADR 0033 while retaining private headless IntelliJ runtime tests and derives provisional task durations from the baseline job step timestamps.",
     "observedAt": "2026-07-27",
     "source": "https://github.com/amichne/kast/actions/workflows/ci.yml",
     "baselineRunIds": [
@@ -118,7 +118,7 @@
       },
       {
         "id": "prepared-ubuntu-debian-bundle",
-        "needs": ["prepared-generation", "test-idea-plugin"],
+        "needs": ["prepared-generation"],
         "outputs": [
           "ubuntu-debian-bundle",
           "ci-artifact-ledger-prepared-ubuntu-debian-bundle"
@@ -145,14 +145,11 @@
         "executionClass": "gradle-cache"
       },
       {
-        "id": "test-idea-plugin",
+        "id": "test-intellij-runtime",
         "needs": ["workflow-contracts"],
         "outputs": [
-          "idea-plugin-tests",
-          "idea-plugin-distribution-verification",
-          "idea-plugin-artifact",
-          "ci-artifact-ledger-idea-plugin",
-          "idea-plugin-performance-baselines"
+          "intellij-runtime-tests",
+          "intellij-runtime-performance-baselines"
         ],
         "durationSamplesSeconds": [643, 746, 767, 653, 612],
         "executionClass": "gradle-cache"
@@ -280,7 +277,7 @@
       },
       {
         "id": "prepared-ubuntu-debian-bundle",
-        "needs": ["prepared-generation", "build-idea-plugin"],
+        "needs": ["prepared-generation"],
         "outputs": [
           "ubuntu-debian-bundle",
           "ci-artifact-ledger-prepared-ubuntu-debian-bundle"
@@ -307,22 +304,11 @@
         "executionClass": "gradle-cache"
       },
       {
-        "id": "build-idea-plugin",
+        "id": "test-intellij-runtime",
         "needs": ["workflow-contracts"],
         "outputs": [
-          "idea-plugin-distribution-verification",
-          "idea-plugin-artifact",
-          "ci-artifact-ledger-idea-plugin"
-        ],
-        "durationSamplesSeconds": [496, 485, 490, 428, 340],
-        "executionClass": "gradle-cache"
-      },
-      {
-        "id": "test-idea-plugin",
-        "needs": ["workflow-contracts"],
-        "outputs": [
-          "idea-plugin-tests",
-          "idea-plugin-performance-baselines"
+          "intellij-runtime-tests",
+          "intellij-runtime-performance-baselines"
         ],
         "durationSamplesSeconds": [267, 430, 378, 330, 333],
         "executionClass": "gradle-cache"
@@ -354,7 +340,7 @@
     "maximumCandidateCriticalPathSeconds": 720,
     "minimumFanoutGateReductionSeconds": 0,
     "maximumCandidateFanoutGateSeconds": 90,
-    "maximumCandidateTaskCountIncrease": 1,
+    "maximumCandidateTaskCountIncrease": 0,
     "maximumMedianModelDriftRatio": 0.25,
     "minimumTaskSamples": 5,
     "minimumWorkflowSamples": 5

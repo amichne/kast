@@ -1,17 +1,15 @@
 fn write_descriptor(home: &Path, workspace: &Path, socket_path: &Path) {
     let descriptor_dir = default_descriptor_dir(home);
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
+    let workspace = workspace.canonicalize().expect("canonical workspace");
     std::fs::write(
         descriptor_dir.join("daemons.json"),
-        serde_json::to_vec_pretty(&json!([{
-            "workspaceRoot": workspace.display().to_string(),
-            "backendName": "idea",
-            "backendVersion": "diagnostics-test",
-            "transport": "uds",
-            "socketPath": socket_path.display().to_string(),
-            "pid": std::process::id(),
-            "schemaVersion": 5
-        }]))
+        serde_json::to_vec_pretty(&json!([runtime_descriptor_for_test(
+            &workspace,
+            socket_path,
+            "headless",
+            "diagnostics-test",
+        )]))
         .expect("descriptor JSON"),
     )
     .expect("descriptor");
@@ -31,6 +29,7 @@ fn spawn_fake_backend(
     diagnostics: Value,
     expected_requests: usize,
 ) -> std::thread::JoinHandle<Vec<Value>> {
+    let workspace = workspace.canonicalize().expect("canonical workspace");
     listener
         .set_nonblocking(true)
         .expect("nonblocking listener");
@@ -67,13 +66,13 @@ fn spawn_fake_backend(
                     "healthy": true,
                     "active": true,
                     "indexing": false,
-                    "backendName": "idea",
+                    "backendName": "headless",
                     "backendVersion": "diagnostics-test",
                     "workspaceRoot": workspace.display().to_string(),
                     "schemaVersion": 5
                 }),
                 "capabilities" => json!({
-                    "backendName": "idea",
+                    "backendName": "headless",
                     "backendVersion": "diagnostics-test",
                     "workspaceRoot": workspace.display().to_string(),
                     "readCapabilities": ["DIAGNOSTICS"],

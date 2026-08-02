@@ -1,3 +1,17 @@
+pub(crate) use headless_authority::{
+    AdmittedHeadlessRuntime, LegacyBackendMigrationPlan, SupportedHeadlessDistribution,
+};
+
+pub(crate) fn plan_legacy_backend_migration(
+    config_contents: &str,
+) -> Result<LegacyBackendMigrationPlan> {
+    headless_authority::plan_legacy_backend_migration(config_contents)
+}
+
+pub(crate) fn require_headless_backend(backend_name: BackendName) -> Result<()> {
+    headless_authority::require_headless_backend(backend_name)
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SemanticWorkspaceKind {
@@ -18,28 +32,11 @@ pub enum SemanticEvidenceQuality {
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SemanticWorkspaceLimitation {
-    WorkspaceUnprepared,
     SourceModulesUnavailable,
     UnsupportedProject,
-    MutationAuthorityRequired,
     BackendSelectionAmbiguous,
     RuntimeIndexing,
     ReferenceIndexUnavailable,
-}
-
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum SemanticWorkspaceNextActionKind {
-    PrepareIdeaWorkspace,
-    UseHeadlessDistribution,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
-pub struct SemanticWorkspaceNextAction {
-    pub kind: SemanticWorkspaceNextActionKind,
-    pub command: String,
-    pub mutates_global_install_authority: bool,
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq, Eq)]
@@ -52,7 +49,6 @@ pub struct SemanticWorkspaceEvidence {
     pub source_module_names: Vec<String>,
     pub limitations: Vec<SemanticWorkspaceLimitation>,
     pub evidence_quality: SemanticEvidenceQuality,
-    pub next_actions: Vec<SemanticWorkspaceNextAction>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub backend_candidates: Vec<SemanticBackendCandidateEvidence>,
 }
@@ -67,120 +63,143 @@ pub struct SemanticBackendCandidateEvidence {
     pub evidence_quality: SemanticEvidenceQuality,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct SemanticWorkspaceAdmission {
-    pub workspace_root: PathBuf,
-    pub backend_name: BackendName,
-    pub workspace_kind: SemanticWorkspaceKind,
-}
+pub(crate) type SemanticWorkspaceAdmission = AdmittedHeadlessRuntime;
 
 #[derive(Debug, Clone)]
-pub struct SemanticWorkspaceRejection {
+pub(crate) struct SemanticWorkspaceRejection {
     pub code: &'static str,
     pub message: String,
+    pub supported_distribution: Option<SupportedHeadlessDistribution>,
     pub evidence: SemanticWorkspaceEvidence,
 }
 
-pub enum SemanticWorkspaceRoute {
-    Admitted(SemanticWorkspaceAdmission),
+impl SemanticWorkspaceRejection {
+    pub(crate) fn into_cli_error(self) -> CliError {
+        let mut error = CliError::new(self.code, self.message);
+        if let Some(distribution) = self.supported_distribution {
+            error.details.insert(
+                "supportedDistribution".to_string(),
+                distribution.wire_value().to_string(),
+            );
+        }
+        error.details.insert(
+            "semanticWorkspace".to_string(),
+            serde_json::to_string(&self.evidence).unwrap_or_default(),
+        );
+        error
+    }
+}
+
+pub(crate) enum SemanticWorkspaceRoute {
+    Admitted(Box<SemanticWorkspaceAdmission>),
     Rejected(SemanticWorkspaceRejection),
 }
 
-pub fn semantic_workspace_route(
+pub(crate) fn semantic_workspace_route(
     requested_workspace_root: Option<PathBuf>,
     requested_backend: Option<BackendName>,
 ) -> Result<SemanticWorkspaceRoute> {
-    let workspace_root = workspace_root(requested_workspace_root)?;
-    let config = KastConfig::load(&workspace_root)?;
-    semantic_workspace_route_with_config(workspace_root, config, requested_backend)
+    semantic_workspace_route_with_availability(
+        semantic_runtime_args(requested_workspace_root, requested_backend, true, false),
+        headless_authority::SemanticRuntimeAvailability::StartIfMissing,
+    )
 }
 
-fn semantic_workspace_route_with_config(
-    workspace_root: PathBuf,
-    config: KastConfig,
+pub(crate) fn semantic_workspace_route_reuse_only(
+    requested_workspace_root: Option<PathBuf>,
     requested_backend: Option<BackendName>,
 ) -> Result<SemanticWorkspaceRoute> {
-    if !is_gradle_workspace(&workspace_root) {
-        let backend_name = requested_backend.unwrap_or_else(default_semantic_backend);
-        return Ok(SemanticWorkspaceRoute::Rejected(
-            unsupported_workspace_rejection(&workspace_root, backend_name),
-        ));
-    }
-    let preference = runtime_backend_preference(&config, requested_backend);
-    let workspace_kind = classify_semantic_workspace(&workspace_root);
-    let backend_name = match preference.fixed_backend() {
-        Some(backend_name) => backend_name,
-        None => {
-            let candidates = ready_semantic_backend_candidates(&workspace_root, &config)?;
-            match automatic_semantic_backend_selection(candidates, default_semantic_backend()) {
-                Ok(backend_name) => backend_name,
-                Err(candidates) => {
-                    return Ok(SemanticWorkspaceRoute::Rejected(
-                    ambiguous_backend_rejection(&workspace_root, workspace_kind, candidates),
-                    ));
-                }
-            }
-        }
+    semantic_workspace_route_with_availability(
+        semantic_runtime_args(requested_workspace_root, requested_backend, true, true),
+        headless_authority::SemanticRuntimeAvailability::ReuseOnly,
+    )
+}
+
+pub(crate) fn semantic_workspace_route_for_runtime(
+    args: RuntimeArgs,
+) -> Result<SemanticWorkspaceRoute> {
+    let availability = if args.no_auto_start.unwrap_or(false) {
+        headless_authority::SemanticRuntimeAvailability::ReuseOnly
+    } else {
+        headless_authority::SemanticRuntimeAvailability::StartIfMissing
     };
-
-    if backend_name == BackendName::Idea
-        && let Err(error) = self_mgmt::validate_macos_plugin_workspace(&workspace_root)
-    {
-        return Ok(SemanticWorkspaceRoute::Rejected(
-            unprepared_workspace_rejection(
-                &workspace_root,
-                backend_name,
-                workspace_kind,
-                error.message,
-            ),
-        ));
-    }
-
-    Ok(SemanticWorkspaceRoute::Admitted(
-        SemanticWorkspaceAdmission {
-            workspace_root,
-            backend_name,
-            workspace_kind,
-        },
-    ))
+    semantic_workspace_route_with_availability(args, availability)
 }
 
-pub fn semantic_mutation_workspace_route(
+pub(crate) fn semantic_workspace_route_ready(
     requested_workspace_root: Option<PathBuf>,
     requested_backend: Option<BackendName>,
 ) -> Result<SemanticWorkspaceRoute> {
-    let workspace_root = workspace_root(requested_workspace_root)?;
-    let config = KastConfig::load(&workspace_root)?;
-    if !is_gradle_workspace(&workspace_root) {
-        let backend_name = requested_backend.unwrap_or_else(default_semantic_backend);
-        return Ok(SemanticWorkspaceRoute::Rejected(
-            unsupported_workspace_rejection(&workspace_root, backend_name),
-        ));
-    }
-    let workspace_kind = classify_semantic_workspace(&workspace_root);
-    let authority_backend = runtime_backend_preference(&config, requested_backend)
-        .fixed_backend()
-        .unwrap_or_else(default_semantic_backend);
-    if let Err(error) = self_mgmt::validate_macos_plugin_workspace(&workspace_root) {
-        return Ok(SemanticWorkspaceRoute::Rejected(
-            mutation_authority_rejection(
-                &workspace_root,
-                authority_backend,
-                workspace_kind,
-                error.message,
-            ),
-        ));
-    }
-    semantic_workspace_route_with_config(workspace_root, config, requested_backend)
+    semantic_workspace_route_with_availability(
+        semantic_runtime_args(requested_workspace_root, requested_backend, false, true),
+        headless_authority::SemanticRuntimeAvailability::ReuseOnly,
+    )
 }
 
-pub fn compiler_backed_workspace_evidence(
+fn semantic_workspace_route_with_availability(
+    args: RuntimeArgs,
+    availability: headless_authority::SemanticRuntimeAvailability,
+) -> Result<SemanticWorkspaceRoute> {
+    let requested_backend = args.backend_name;
+    let workspace_root = workspace_root(args.workspace_root.clone())?;
+    let workspace_root = fs::canonicalize(&workspace_root).map_err(|error| {
+        CliError::new(
+            "WORKSPACE_ROOT_INVALID",
+            format!(
+                "Workspace root {} could not be canonicalized: {error}",
+                workspace_root.display()
+            ),
+        )
+    })?;
+    let config = KastConfig::load(&workspace_root)?;
+    let workspace_kind = classify_semantic_workspace(&workspace_root);
+    if let Some(rejection) = headless_authority::retired_backend_rejection(
+        &config,
+        requested_backend,
+        &workspace_root,
+        workspace_kind,
+    ) {
+        return Ok(SemanticWorkspaceRoute::Rejected(
+            semantic_workspace_rejection(rejection),
+        ));
+    }
+    if !is_gradle_workspace(&workspace_root) {
+        return Ok(SemanticWorkspaceRoute::Rejected(
+            unsupported_workspace_rejection(&workspace_root),
+        ));
+    }
+    let request = headless_authority::SemanticRuntimeRequest {
+        workspace_root,
+        config,
+        requested_backend,
+        workspace_kind,
+        availability,
+        accept_indexing: args.accept_indexing.unwrap_or(false),
+        wait_timeout_ms: args.wait_timeout_ms,
+        runtime_args: args,
+    };
+    Ok(match headless_authority::admit_headless_runtime(request) {
+        Ok(admission) => SemanticWorkspaceRoute::Admitted(Box::new(admission)),
+        Err(rejection) => {
+            SemanticWorkspaceRoute::Rejected(semantic_workspace_rejection(rejection))
+        }
+    })
+}
+
+pub(crate) fn semantic_mutation_workspace_route(
+    requested_workspace_root: Option<PathBuf>,
+    requested_backend: Option<BackendName>,
+) -> Result<SemanticWorkspaceRoute> {
+    semantic_workspace_route_reuse_only(requested_workspace_root, requested_backend)
+}
+
+pub(crate) fn compiler_backed_workspace_evidence(
     admission: &SemanticWorkspaceAdmission,
     runtime_status: &RuntimeStatusResponse,
 ) -> Option<SemanticWorkspaceEvidence> {
     let runtime_root = config::normalize(PathBuf::from(&runtime_status.workspace_root));
-    if runtime_root != admission.workspace_root
-        || runtime_status.backend_name != admission.backend_name.canonical()
+    if runtime_root != admission.workspace_root()
+        || runtime_status.backend_name != admission.backend_name()
     {
         return None;
     }
@@ -197,13 +216,94 @@ pub fn compiler_backed_workspace_evidence(
     Some(SemanticWorkspaceEvidence {
         backend_name: Some(runtime_status.backend_name.clone()),
         workspace_root: runtime_root.display().to_string(),
-        workspace_kind: admission.workspace_kind,
+        workspace_kind: admission.workspace_kind(),
         source_module_names: runtime_status.source_module_names.clone(),
         limitations,
         evidence_quality: SemanticEvidenceQuality::CompilerBacked,
-        next_actions: vec![],
         backend_candidates: vec![],
     })
 }
 
-include!("workspace_admission/routing_support.rs");
+fn semantic_workspace_rejection(
+    rejection: headless_authority::SemanticRuntimeRejection,
+) -> SemanticWorkspaceRejection {
+    SemanticWorkspaceRejection {
+        code: rejection.code,
+        message: rejection.message,
+        supported_distribution: rejection.supported_distribution,
+        evidence: *rejection.evidence,
+    }
+}
+
+fn semantic_runtime_args(
+    workspace_root: Option<PathBuf>,
+    backend_name: Option<BackendName>,
+    accept_indexing: bool,
+    no_auto_start: bool,
+) -> RuntimeArgs {
+    RuntimeArgs {
+        workspace_root,
+        backend_name,
+        idea_home: None,
+        wait_timeout_ms: crate::cli::DEFAULT_RUNTIME_WAIT_TIMEOUT_MS,
+        accept_indexing: Some(accept_indexing),
+        no_auto_start: Some(no_auto_start),
+        socket_path: None,
+        module_name: None,
+        source_roots: None,
+        classpath: None,
+        request_timeout_ms: None,
+        max_results: None,
+        max_concurrent_requests: None,
+        profile: false,
+        profile_modes: None,
+        profile_duration: None,
+        profile_otlp_endpoint: None,
+    }
+}
+
+fn classify_semantic_workspace(workspace_root: &Path) -> SemanticWorkspaceKind {
+    if workspace_root.join(".git").is_file() {
+        return SemanticWorkspaceKind::LinkedWorktree;
+    }
+    let temporary_root = fs::canonicalize(std::env::temp_dir())
+        .unwrap_or_else(|_| config::normalize(std::env::temp_dir()));
+    if workspace_root.starts_with(&temporary_root) {
+        return SemanticWorkspaceKind::DisposableCheckout;
+    }
+    if workspace_root.join(".git").is_dir() {
+        return SemanticWorkspaceKind::PrimaryCheckout;
+    }
+    SemanticWorkspaceKind::StandaloneGradleWorkspace
+}
+
+fn is_gradle_workspace(workspace_root: &Path) -> bool {
+    [
+        "settings.gradle.kts",
+        "settings.gradle",
+        "build.gradle.kts",
+        "build.gradle",
+    ]
+    .iter()
+    .any(|marker| workspace_root.join(marker).is_file())
+}
+
+fn unsupported_workspace_rejection(workspace_root: &Path) -> SemanticWorkspaceRejection {
+    SemanticWorkspaceRejection {
+        code: "SEMANTIC_WORKSPACE_UNSUPPORTED",
+        message: format!(
+            "{} is not a supported Kotlin Gradle workspace. Select a workspace containing settings.gradle(.kts) or build.gradle(.kts).",
+            workspace_root.display()
+        ),
+        supported_distribution: None,
+        evidence: SemanticWorkspaceEvidence {
+            backend_name: Some(BackendName::Headless.canonical().to_string()),
+            workspace_root: workspace_root.display().to_string(),
+            workspace_kind: SemanticWorkspaceKind::UnsupportedProject,
+            source_module_names: vec![],
+            limitations: vec![SemanticWorkspaceLimitation::UnsupportedProject],
+            evidence_quality: SemanticEvidenceQuality::Unavailable,
+            backend_candidates: vec![],
+        },
+    }
+}

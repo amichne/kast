@@ -14,9 +14,10 @@ orchestration, source-index CLI reads, and release packaging.
   the cross-provider `task begin|status|finish|abort` proof lifecycle plus
   `lease`, `verify`, `workspace-files`, `symbol`, `diagnostics`, `impact`,
   and `rename`. Task ownership is persisted and cross-process; it is distinct
-  from the IDEA runtime lease used by individual semantic requests.
-- `src/execution/runtime/` owns IDEA lifecycle inspection and exact-root leases on macOS,
-  plus release headless lifecycle on supported non-macOS hosts.
+  from the exact-root headless runtime lease used by semantic requests.
+- `src/execution/runtime/` owns the one typed headless admission boundary,
+  descriptor proof, exact-root leases, and headless lifecycle. On macOS, an
+  installed supported IDE supplies private sidecar runtime files only.
 - `src/operations/install/` owns the sole persistent setup transaction: bundle validation,
   staging, atomic activation, rollback, active-root verification, receipts, and
   bounded legacy backup.
@@ -34,11 +35,9 @@ orchestration, source-index CLI reads, and release packaging.
   `src/operations/self_mgmt/agent_readiness.rs` own install state, managed resource
   records, doctor checks, effective binary/backend evidence, and readiness
   behavior.
-- `src/operations/self_mgmt.rs` parses revision-3 exact-root compatibility facts strictly
-  and delegates active admission to the authored typed compatibility matrix.
-  Unknown fields, capabilities, revisions, unsupported rows, and missing
-  required capabilities fail closed; missing optional capabilities remain
-  local to the operation that needs them.
+- `src/operations/self_mgmt.rs` owns install readiness. Semantic readiness also
+  requires one live exact-root `AdmittedHeadlessRuntime`; public-plugin metadata
+  is never readiness evidence.
 - `resources/kast/` owns the embedded Codex, Claude, and Copilot resources
   installed by `install.sh`; installation must not fetch a remote marketplace.
 - `protocol/source/` contains the authored internal catalog plus generated
@@ -52,7 +51,7 @@ The retained cross-module boundaries are:
 - `.agents/adr/0027-effective-agent-environment-readiness.md`
 - `.agents/adr/0028-exact-root-agent-workspace-leases.md`
 - `.agents/adr/0031-cli-install-and-data-authority.md`
-- `.agents/adr/0032-macos-idea-golden-pathway.md`
+- `.agents/adr/0033-exact-root-headless-semantic-authority.md`
 
 ## Edit rules
 
@@ -66,8 +65,15 @@ The retained cross-module boundaries are:
   but must not duplicate changed-file, diagnostics-hash, Gradle-outcome, or
   test-report policy.
 - Agent-facing semantic workflows use the public `kast` surface. Administrative
-  lifecycle and compatibility operations use the release-local
+  lifecycle operations use the release-local
   `libexec/kastctl`.
+- Route every semantic read, mutation, graph operation, readiness check, lease,
+  and lifecycle operation through `AdmittedHeadlessRuntime`. Do not inspect,
+  select, contact, start, or stop a foreground IDEA backend.
+- Treat a runtime descriptor as evidence only after exact canonical-root,
+  headless-kind, runtime-instance, process-start, effective-owner, socket
+  device/inode, status, schema, and capability checks. Revalidate that proof
+  before an RPC or destructive lifecycle action.
 - Keep raw workspace paging handles and public workspace-file continuation
   handles distinct and opaque. Public continuations bind every result-affecting
   query field and the coherent multi-source composition stamp, including each
@@ -115,9 +121,9 @@ The retained cross-module boundaries are:
   derived from the catalog. Regenerate them through the contract generator.
 - Generated protocol markdown, OpenAPI YAML, and example fixtures live under
   `protocol/`; regenerate them through the Gradle docs generators.
-- Runtime compatibility admission truth lives in
-  `../packaging/jetbrains/runtime-compatibility.json`; the Rust metadata parser
-  consumes exact-root facts but does not own supported-pair policy.
+- Supported private sidecar host inputs live in
+  `../packaging/jetbrains/runtime-compatibility.json`. They do not authorize a
+  foreground IDE process, public plugin, or semantic endpoint.
 
 ## Verify
 
@@ -128,7 +134,7 @@ contracts move:
 cargo fmt --manifest-path cli-rs/Cargo.toml --all -- --check
 cargo clippy --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features -- -D warnings
 cargo test --manifest-path cli-rs/Cargo.toml --locked
-.github/scripts/runtime/test-runtime-compatibility-contract.sh
+.github/scripts/runtime/test-headless-semantic-authority-contract.sh
 ```
 
 For workspace-files, resource, or catalog changes, run the relevant
@@ -141,5 +147,5 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked --test source_index_schema
 .github/scripts/docs/test-docs-navigation-contract.sh
 zensical build --clean
 ./gradlew test --no-daemon
-./gradlew buildIdeaPlugin --no-daemon
+./gradlew :analysis-api:test :analysis-server:test :backend-headless:test :backend-idea:test :index-store:test --no-daemon
 ```

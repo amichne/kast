@@ -51,15 +51,12 @@ fn write_runtime_descriptors(home: &Path, descriptors: &[(&Path, &Path, &str)]) 
             &descriptors
                 .iter()
                 .map(|(workspace, socket_path, backend)| {
-                    serde_json::json!({
-                        "workspaceRoot": workspace.display().to_string(),
-                        "backendName": backend,
-                        "backendVersion": "admission-test",
-                        "transport": "uds",
-                        "socketPath": socket_path.display().to_string(),
-                        "pid": std::process::id(),
-                        "schemaVersion": 5
-                    })
+                    runtime_descriptor_for_test(
+                        workspace,
+                        socket_path,
+                        backend,
+                        "admission-test",
+                    )
                 })
                 .collect::<Vec<_>>(),
         )

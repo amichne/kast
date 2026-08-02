@@ -6,21 +6,20 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.fileTypes.FileType
 import com.intellij.openapi.fileTypes.FileTypeManager
 import com.intellij.openapi.module.ModuleManager
-import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectFileIndex
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiElement
-import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiReference
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import com.intellij.psi.util.PsiModificationTracker
-import com.intellij.psi.util.PsiTreeUtil
 import io.github.amichne.kast.api.contract.CloseableAnalysisBackend
+import io.github.amichne.kast.api.client.IndexingConfig
+import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
 import io.github.amichne.kast.api.continuation.ContinuationStateDisposer
 import io.github.amichne.kast.api.continuation.ContinuationTokenIssuer
 import io.github.amichne.kast.api.continuation.ServerHeldContinuationStore as SharedContinuationStore
@@ -39,13 +38,9 @@ import io.github.amichne.kast.api.contract.result.ImplementationsResult
 import io.github.amichne.kast.api.contract.result.ImplementationRelationsResult
 import io.github.amichne.kast.api.contract.result.HierarchyRelationsResult
 import io.github.amichne.kast.api.contract.MutationCapability
-import io.github.amichne.kast.api.contract.NonNegativeInt
-import io.github.amichne.kast.api.contract.NormalizedPath
-import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.contract.ReadCapability
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
-import io.github.amichne.kast.api.contract.result.ContainingSymbolUnavailableReason
 import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RenameResult
@@ -66,22 +61,12 @@ import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
 import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
 import io.github.amichne.kast.api.contract.selector.DigestSelectorHandleAuthority
 import io.github.amichne.kast.api.contract.selector.SelectorHandleAuthority
-import io.github.amichne.kast.shared.analysis.compilerContainingDeclarationName
-import io.github.amichne.kast.shared.analysis.toKastLocation
-import io.github.amichne.kast.shared.analysis.toSymbolModel
-import io.github.amichne.kast.shared.analysis.usageSiteDeclarationScope
 import io.github.amichne.kast.shared.analysis.visibility
 import io.github.amichne.kast.shared.hierarchy.ReadAccessScope
 import kotlinx.coroutines.Dispatchers
-import org.jetbrains.kotlin.analysis.api.analyze
-import org.jetbrains.kotlin.lexer.KtTokens
-import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtNamedDeclaration
-import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import java.nio.file.Path
 import java.util.UUID
-import java.util.concurrent.CancellationException
 import io.github.amichne.kast.idea.*
 import io.github.amichne.kast.idea.edit.*
 import io.github.amichne.kast.idea.backend.references.*
@@ -97,10 +82,12 @@ internal class KastPluginBackend(
     workspaceRoot: Path,
     internal val limits: ServerLimits,
     internal val telemetry: IdeaBackendTelemetry = IdeaBackendTelemetry.disabled(),
-    internal val backendName: String? = null,
     internal val workspaceIdentity: IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
     internal val referenceIndexLookup: ReferenceIndexLookup = ReferenceIndexLookup.Unavailable,
     internal val semanticGraphStore: SqliteSourceIndexStore? = null,
+    initialIndexingConfig: IndexingConfig = KastConfig.defaults().indexing,
+    internal val indexingConfigLoader: () -> IndexingConfig = { initialIndexingConfig },
+    internal val workspaceIndexingScopeCache: WorkspaceIndexingScopeCache = WorkspaceIndexingScopeCache(),
     internal val referenceSearchClock: ReferenceSearchClock = ReferenceSearchClock.System,
     internal val semanticAdmissionAwaiter: IdeaSemanticAdmissionAwaiter =
         IdeaSemanticAdmissionAwaiter.forRequestBudget(limits.requestTimeoutMillis),
@@ -109,7 +96,7 @@ internal class KastPluginBackend(
     internal val psiGeneration: () -> Long = { PsiModificationTracker.getInstance(project).modificationCount },
     internal val readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
     internal val referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
-    internal val semanticGraphBatchSize: Int = 32,
+    @Volatile internal var semanticGraphBatchSize: GraphIndexingBatchSize = GraphIndexingBatchSize(32),
     internal val indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
         IdeaIndexSemanticAdmission.Status.Ready
     },
@@ -125,7 +112,33 @@ internal class KastPluginBackend(
             sourceIndexStore = semanticGraphStore,
         ),
 ) : CloseableAnalysisBackend {
-    init { require(semanticGraphBatchSize > 0) { "Semantic graph batch size must be positive" } }
+
+    @Volatile
+    private var lastValidIndexingConfig: IndexingConfig = initialIndexingConfig
+    private val psiSupport = KastPluginPsiSupport(this)
+
+    internal fun updateSemanticGraphBatchSize(batchSize: GraphIndexingBatchSize) {
+        semanticGraphBatchSize = batchSize
+    }
+
+    internal fun currentPersistedIndexingConfig(): IndexingConfig = try {
+        indexingConfigLoader().also { lastValidIndexingConfig = it }
+    } catch (_: Exception) {
+        lastValidIndexingConfig
+    }
+
+    internal fun persistedIndexingScope(paths: Collection<String>): WorkspaceIndexingScope = try {
+        workspaceIndexingScopeCache.resolve(
+            workspaceRoot = workspaceRoot,
+            config = currentPersistedIndexingConfig(),
+            candidates = paths.map(Path::of),
+        )
+    } catch (error: IndexingScopeConfigurationException) {
+        throw io.github.amichne.kast.api.protocol.ValidationException(
+            error.message ?: "Persisted-index scope configuration is invalid",
+            details = mapOf("scopeError" to error.code),
+        )
+    }
 
     internal val readDispatcher = Dispatchers.Default.limitedParallelism(limits.maxConcurrentRequests)
     internal val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
@@ -133,7 +146,7 @@ internal class KastPluginBackend(
     override val selectorHandles: SelectorHandleAuthority =
         DigestSelectorHandleAuthority(
             workspaceRoot = workspaceRoot.toString(),
-            backendName = backendName ?: defaultBackendName(),
+            backendName = HEADLESS_BACKEND_NAME,
             backendVersion = BACKEND_VERSION,
             backendInstanceId = UUID.randomUUID().toString(),
             semanticGeneration = psiGeneration,
@@ -212,7 +225,7 @@ internal class KastPluginBackend(
     }
 
     override suspend fun capabilities(): BackendCapabilities = BackendCapabilities(
-        backendName = backendName ?: defaultBackendName(),
+        backendName = HEADLESS_BACKEND_NAME,
         backendVersion = BACKEND_VERSION,
         workspaceRoot = workspaceRoot.toString(),
         readCapabilities = setOf(
@@ -229,18 +242,14 @@ internal class KastPluginBackend(
             ReadCapability.IMPLEMENTATIONS,
             ReadCapability.CODE_ACTIONS,
             ReadCapability.COMPLETIONS,
-        ) + setOfNotNull(ReadCapability.SEMANTIC_GRAPH.takeIf { semanticGraphStore != null }),
-        mutationCapabilities = setOf(
-            MutationCapability.RENAME,
-            MutationCapability.APPLY_EDITS,
-            MutationCapability.FILE_OPERATIONS,
-            MutationCapability.OPTIMIZE_IMPORTS,
-            MutationCapability.REFRESH_WORKSPACE,
+        ) + setOfNotNull(
+            ReadCapability.SEMANTIC_GRAPH.takeIf {
+                semanticGraphStore != null
+            },
         ),
+        mutationCapabilities = HEADLESS_MUTATION_CAPABILITIES,
         limits = limits,
     )
-
-    internal fun defaultBackendName(): String = "idea"
 
     override suspend fun runtimeStatus(): RuntimeStatusResponse {
         val caps = capabilities()
@@ -266,7 +275,7 @@ internal class KastPluginBackend(
                 isDumb -> "IDEA is indexing — analysis results may be incomplete"
                 admission is IdeaIndexSemanticAdmission.Status.Pending ->
                     "IDEA compiler-backed semantic admission is pending: ${admission.detail}"
-                else -> "IDEA analysis backend is ready"
+                else -> "Headless compiler-backed analysis runtime is ready"
             },
             sourceModuleNames = moduleNames,
         )
@@ -304,66 +313,15 @@ internal class KastPluginBackend(
     override suspend fun workspaceSymbolSearch(query: ParsedWorkspaceSymbolQuery): WorkspaceSymbolResult = workspaceSymbolSearchOperation(query)
     override suspend fun workspaceSearch(query: ParsedWorkspaceSearchQuery): WorkspaceSearchResult = workspaceSearchOperation(query)
 
-    internal fun PsiReference.toReferenceOccurrence(includeUsageSiteScope: Boolean): ReferenceOccurrence? {
-        val referenceElement = element
-        if (!referenceElement.isValid) return null
-        val location = referenceElement.toKastLocation(absoluteTextRange())
-        if (!isWorkspaceFile(location.filePath)) return null
-        val enrichedLocation = if (includeUsageSiteScope) {
-            location.copy(usageSiteScope = referenceElement.usageSiteDeclarationScope())
-        } else {
-            location
-        }
-        return ReferenceOccurrence(
-            location = enrichedLocation,
-            containingSymbol = referenceElement.containingSymbolEvidence(),
-        )
-    }
+    internal fun PsiReference.toReferenceOccurrence(includeUsageSiteScope: Boolean): ReferenceOccurrence? =
+        psiSupport.toReferenceOccurrence(this, includeUsageSiteScope)
 
-    internal fun PsiElement.containingSymbolEvidence(): ContainingSymbolEvidence {
-        val owner = PsiTreeUtil.getParentOfType(this, KtNamedDeclaration::class.java, false)
-            ?: return ContainingSymbolEvidence.TopLevel
-        return try {
-            val symbol = analyze(owner.containingKtFile) {
-                owner.toSymbolModel(containingDeclaration = compilerContainingDeclarationName(owner))
-            }
-            ContainingSymbolEvidence.Known(
-                io.github.amichne.kast.api.contract.SymbolIdentity(
-                    fqName = symbol.fqName,
-                    kind = symbol.kind,
-                    declarationFile = NormalizedPath.parse(symbol.location.filePath),
-                    declarationStartOffset = NonNegativeInt(symbol.location.startOffset),
-                    containingType = symbol.containingDeclaration,
-                ),
-            )
-        } catch (failure: ProcessCanceledException) {
-            throw failure
-        } catch (failure: CancellationException) {
-            throw failure
-        } catch (_: Exception) {
-            ContainingSymbolEvidence.Unavailable(ContainingSymbolUnavailableReason.NO_SEMANTIC_OWNER)
-        }
-    }
+    internal fun PsiElement.containingSymbolEvidence(): ContainingSymbolEvidence =
+        psiSupport.containingSymbolEvidence(this)
 
-    internal fun isConcreteType(target: PsiElement): Boolean = when (target) {
-        is KtClass -> !target.isInterface() && !target.hasModifier(KtTokens.ABSTRACT_KEYWORD)
-        is KtObjectDeclaration -> !target.isCompanion()
-        is com.intellij.psi.PsiClass -> !target.isInterface && !target.hasModifierProperty(com.intellij.psi.PsiModifier.ABSTRACT)
-        else -> false
-    }
+    internal fun isConcreteType(target: PsiElement): Boolean = psiSupport.isConcreteType(target)
 
-    internal fun findKtFile(filePath: String): KtFile {
-        val normalizedPath = Path.of(filePath).toAbsolutePath().normalize().toString()
-        if (!isWorkspaceFile(normalizedPath)) {
-            throw NotFoundException("File is outside the active workspace: $filePath")
-        }
-        val virtualFile = LocalFileSystem.getInstance().findFileByPath(normalizedPath)
-            ?: throw NotFoundException("File not found: $filePath")
-        val psiFile = PsiManager.getInstance(project).findFile(virtualFile)
-            ?: throw NotFoundException("Cannot resolve PSI for: $filePath")
-        return psiFile as? KtFile
-            ?: throw NotFoundException("Not a Kotlin file: $filePath")
-    }
+    internal fun findKtFile(filePath: String): KtFile = psiSupport.findKtFile(filePath)
 
     internal fun visibilityScopedSearch(
         target: PsiElement,
@@ -392,6 +350,8 @@ internal class KastPluginBackend(
     override fun close() = closeResources()
 
     companion object {
+        internal const val HEADLESS_BACKEND_NAME: String = "headless"
+        internal val HEADLESS_MUTATION_CAPABILITIES: Set<MutationCapability> = MutationCapability.entries.toSet()
         internal const val RELATIONSHIP_STATE_CAPACITY: Int = 16_384
         internal val BACKEND_VERSION = readBackendVersion()
 

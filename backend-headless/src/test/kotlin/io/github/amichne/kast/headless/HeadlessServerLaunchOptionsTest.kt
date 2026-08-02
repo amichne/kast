@@ -4,9 +4,11 @@ import com.intellij.openapi.application.ApplicationStarter
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.writeText
 
@@ -18,6 +20,30 @@ class HeadlessServerLaunchOptionsTest {
     fun `headless starter implements IDEA app starter extension type`() {
         assertEquals(Any::class.java, HeadlessApplicationStarter::class.java.superclass)
         assertTrue(HeadlessApplicationStarter::class.java.interfaces.contains(ApplicationStarter::class.java))
+    }
+
+    @Test
+    fun `private plugin exposes only the headless starter and Kotlin mode`() {
+        val pluginXml = Files.readString(Path.of("src/main/resources/META-INF/plugin.xml"))
+
+        assertTrue(pluginXml.contains("HeadlessApplicationStarter"))
+        assertEquals(1, Regex("supportsKotlinPluginMode").findAll(pluginXml).count())
+        assertTrue(!pluginXml.contains("projectService"))
+        assertTrue(!pluginXml.contains("postStartupActivity"))
+    }
+
+    @Test
+    fun `starter owns runtime until it stops`() {
+        val caller = Thread.currentThread()
+        var runtimeThread: Thread? = null
+        val starter = HeadlessApplicationStarter {
+            runtimeThread = Thread.currentThread()
+        }
+
+        assertEquals(ApplicationStarter.NOT_IN_EDT, starter.requiredModality)
+        starter.main(listOf(HeadlessApplicationStarter.COMMAND_NAME, "--workspace-root=/tmp/project"))
+
+        assertSame(caller, runtimeThread)
     }
 
     @Test

@@ -13,7 +13,11 @@ fn up_without_installed_backend_reports_supported_headless_distribution() {
     let workspace = temp.path().join("workspace");
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&workspace).expect("workspace");
-    write_macos_plugin_workspace_metadata(&workspace);
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("settings");
 
     let up = kast(&home, &config_home)
         .args([
@@ -25,7 +29,6 @@ fn up_without_installed_backend_reports_supported_headless_distribution() {
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend=headless",
-            "--no-auto-start=true",
         ])
         .output()
         .expect("up");
@@ -37,7 +40,7 @@ fn up_without_installed_backend_reports_supported_headless_distribution() {
     let stderr = String::from_utf8_lossy(&up.stderr);
     assert!(stderr.contains("- Code: NO_BACKEND_AVAILABLE"), "{stderr}");
     assert!(
-        stderr.contains("Linux headless tarball"),
+        stderr.contains("supportedDistribution") && stderr.contains("linux-headless-tarball"),
         "stderr should point to the supported headless distribution: {stderr}"
     );
 }
@@ -51,7 +54,11 @@ fn runtime_commands_use_configured_default_backend_when_backend_flag_is_absent()
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
-    write_macos_plugin_workspace_metadata(&workspace);
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("settings");
     std::fs::write(
         config_home.join("config.toml"),
         "[runtime]\ndefaultBackend = \"headless\"\n",
@@ -67,7 +74,6 @@ fn runtime_commands_use_configured_default_backend_when_backend_flag_is_absent()
             "up",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--no-auto-start=true",
         ])
         .output()
         .expect("up");
@@ -77,8 +83,9 @@ fn runtime_commands_use_configured_default_backend_when_backend_flag_is_absent()
         "up should fail without an installed headless backend"
     );
     let stderr = String::from_utf8_lossy(&up.stderr);
+    assert!(stderr.contains("- Code: NO_BACKEND_AVAILABLE"), "{stderr}");
     assert!(
-        stderr.contains("Linux headless tarball"),
+        stderr.contains("supportedDistribution") && stderr.contains("linux-headless-tarball"),
         "stderr should point to the supported headless distribution: {stderr}"
     );
 }
@@ -92,7 +99,11 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&workspace).expect("workspace");
-    write_macos_plugin_workspace_metadata(&workspace);
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"fixture\"\n",
+    )
+    .expect("settings");
     std::fs::write(
         config_home.join("config.toml"),
         "[runtime]\ndefaultBackend = \"headless\"\n",
@@ -109,7 +120,6 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend=headless",
-            "--no-auto-start=true",
         ])
         .output()
         .expect("up");
@@ -119,8 +129,9 @@ fn runtime_backend_flag_overrides_configured_default_backend() {
         "up should fail without an installed headless backend"
     );
     let stderr = String::from_utf8_lossy(&up.stderr);
+    assert!(stderr.contains("- Code: NO_BACKEND_AVAILABLE"), "{stderr}");
     assert!(
-        stderr.contains("Linux headless tarball"),
+        stderr.contains("supportedDistribution") && stderr.contains("linux-headless-tarball"),
         "stderr should point to the supported headless distribution: {stderr}"
     );
 }
@@ -139,7 +150,6 @@ fn agent_verify_uses_configured_default_backend_without_starting() {
         "rootProject.name = \"fixture\"\n",
     )
     .expect("settings");
-    write_macos_plugin_workspace_metadata(&workspace);
     std::fs::write(
         config_home.join("config.toml"),
         "[runtime]\ndefaultBackend = \"headless\"\n",
@@ -148,6 +158,8 @@ fn agent_verify_uses_configured_default_backend_without_starting() {
 
     let verify = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "agent",
             "verify",
             "--workspace-root",
@@ -160,10 +172,12 @@ fn agent_verify_uses_configured_default_backend_without_starting() {
         !verify.status.success(),
         "agent verify should fail without an installed headless backend"
     );
-    let stdout = String::from_utf8_lossy(&verify.stdout);
-    assert!(
-        stdout.contains("Linux headless tarball"),
-        "agent envelope should point to the supported headless distribution: {stdout}"
+    let output: serde_json::Value =
+        serde_json::from_slice(&verify.stdout).expect("agent verify JSON");
+    assert_eq!(output["error"]["code"], "NO_BACKEND_AVAILABLE");
+    assert_eq!(
+        output["error"]["details"]["semanticWorkspace"]["backendName"],
+        "headless"
     );
 }
 
@@ -181,7 +195,6 @@ fn agent_verify_backend_flag_overrides_configured_default_backend() {
         "rootProject.name = \"fixture\"\n",
     )
     .expect("settings");
-    write_macos_plugin_workspace_metadata(&workspace);
     std::fs::write(
         config_home.join("config.toml"),
         "[runtime]\ndefaultBackend = \"headless\"\n",
@@ -190,6 +203,8 @@ fn agent_verify_backend_flag_overrides_configured_default_backend() {
 
     let verify = kast(&home, &config_home)
         .args([
+            "--output",
+            "json",
             "agent",
             "verify",
             "--workspace-root",
@@ -203,9 +218,11 @@ fn agent_verify_backend_flag_overrides_configured_default_backend() {
         !verify.status.success(),
         "agent verify should fail without an installed headless backend"
     );
-    let stdout = String::from_utf8_lossy(&verify.stdout);
-    assert!(
-        stdout.contains("Linux headless tarball"),
-        "agent envelope should point to the supported headless distribution: {stdout}"
+    let output: serde_json::Value =
+        serde_json::from_slice(&verify.stdout).expect("agent verify JSON");
+    assert_eq!(output["error"]["code"], "NO_BACKEND_AVAILABLE");
+    assert_eq!(
+        output["error"]["details"]["semanticWorkspace"]["backendName"],
+        "headless"
     );
 }

@@ -17,10 +17,12 @@ require scripts/verify-setup-bundle.sh 'libexec/kastctl.*setup' \
   'bundle verification must enter setup through private kastctl'
 require scripts/verify-setup-kast-install.sh 'install_dir}/libexec/kastctl' \
   'installed-runtime verification must select private kastctl'
-require scripts/smoke-macos-idea-golden-path.sh 'current/libexec/kastctl' \
-  'the macOS runtime smoke must select private kastctl'
+require scripts/smoke-macos-headless-runtime.sh 'current/bin/kast' \
+  'the macOS runtime smoke must demand the exact-root runtime through public kast'
+require scripts/smoke-macos-headless-runtime.sh 'current/libexec/kastctl' \
+  'the macOS runtime smoke must use private kastctl only for its identity snapshot'
 require scripts/benchmark-native-graph.py 'current/libexec/kastctl' \
-  'the legacy JSON graph benchmark must select private kastctl'
+  'the JSON graph diagnostic must select private kastctl'
 require scripts/release/benchmark-real-repositories.sh 'current/libexec/kastctl' \
   'the release benchmark must select private kastctl'
 
@@ -40,6 +42,26 @@ if grep -Eq 'local/bin/(kastctl|_kastctl)' "$repo_root/install.sh"; then
   printf '%s\n' 'error: installer exposes a private control command on the user path' >&2
   exit 1
 fi
+
+if [[ -e "$repo_root/scripts/smoke-macos-idea-golden-path.sh" ]]; then
+  printf '%s\n' 'error: retired foreground IDEA smoke still exists' >&2
+  exit 1
+fi
+
+for retired_pattern in \
+  '--backend[ =]idea' \
+  'kast-idea-' \
+  'updatePlugins\.xml' \
+  'validate_plugin_only|bootstrap_idea|idea_log|PLUGIN_ONLY_REQUIRED|live macOS IntelliJ IDEA plugin'
+do
+  if rg -n -- "$retired_pattern" \
+    "$repo_root/scripts/benchmark-native-graph.py" \
+    "$repo_root/scripts/smoke-macos-headless-runtime.sh" 2>/dev/null
+  then
+    printf 'error: active runtime proof retains retired IDEA surface: %s\n' "$retired_pattern" >&2
+    exit 1
+  fi
+done
 
 if rg -n '\bkagent\b' \
   --glob '!control_binary_paths_test.sh' \

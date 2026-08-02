@@ -28,9 +28,9 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
             );
         }
     };
-    admitted_query.canonical_workspace_root = admission.workspace_root.display().to_string();
-    admitted_query.backend = Some(admission.backend_name.canonical());
-    let root = match WorkspaceRoot::try_from(admission.workspace_root.as_path()) {
+    admitted_query.canonical_workspace_root = admission.workspace_root().display().to_string();
+    admitted_query.backend = Some(admission.backend_name());
+    let root = match WorkspaceRoot::try_from(admission.workspace_root()) {
         Ok(root) => root,
         Err(error) => {
             let mut error = agent_error("AGENT_WORKSPACE_INVALID", error.to_string());
@@ -42,21 +42,7 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
             );
         }
     };
-    let session = match runtime::raw_rpc_session(
-        Some(admission.workspace_root.clone()),
-        Some(admission.backend_name),
-    ) {
-        Ok(session) => session,
-        Err(error) => {
-            let mut error = AgentError::from_cli_error(error);
-            workspace_files_query_details(&mut error, &admitted_query, page_handle.as_ref());
-            return error_envelope(
-                "agent/workspace-files".to_string(),
-                None,
-                error,
-            );
-        }
-    };
+    let session = runtime::raw_rpc_session_for_admission(admission.as_ref().clone());
     let mut backend = RawRpcWorkspaceBackend::new(&session, &root);
     let continuation_identity = match workspace_files_continuation_identity(&admitted_query) {
         Ok(identity) => identity,
@@ -147,7 +133,7 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
         .iter()
         .map(|file| {
             project_workspace_file(
-                admission.workspace_root.as_path(),
+                admission.workspace_root(),
                 file,
                 index_evidence_complete,
                 &args.view,
@@ -184,10 +170,10 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
     let result = WorkspaceFilesResult {
         result_type: "KAST_AGENT_WORKSPACE_FILES_RESULT",
         ok: true,
-        workspace_root: admission.workspace_root.display().to_string(),
+        workspace_root: admission.workspace_root().display().to_string(),
         files: if workspace_files_view_name(&args.view) == "compact" {
             WorkspaceFilesResultFiles::Compact(project_workspace_file_groups(
-                admission.workspace_root.as_path(),
+                admission.workspace_root(),
                 &returned_matches,
                 index_evidence_complete,
             ))

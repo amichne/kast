@@ -1,9 +1,12 @@
 package io.github.amichne.kast.indexstore.indexing
 
+import io.github.amichne.kast.api.client.fields.RelationshipIndexingBatchSize
+import io.github.amichne.kast.api.client.fields.RelationshipIndexingParallelism
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
 import io.github.amichne.kast.indexstore.api.index.PendingFileStage
+import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
@@ -55,14 +58,10 @@ sealed interface RelationshipScanResult {
  */
 class ReferenceIndexer(
     private val store: SqliteSourceIndexStore,
-    private val batchSize: Int = DEFAULT_REFERENCE_BATCH_SIZE,
-    private val parallelism: Int = 1,
+    private val batchSize: RelationshipIndexingBatchSize =
+        RelationshipIndexingBatchSize(DEFAULT_REFERENCE_BATCH_SIZE),
+    private val parallelism: RelationshipIndexingParallelism = RelationshipIndexingParallelism(1),
 ) {
-    init {
-        require(batchSize > 0) { "Reference index batch size must be positive" }
-        require(parallelism > 0) { "Parallelism must be positive" }
-    }
-
     fun indexSymbolRelationships(
         filePaths: Collection<String>,
         referenceScanner: (String) -> List<SymbolReferenceRow>,
@@ -72,7 +71,7 @@ class ReferenceIndexer(
     ) {
         val executor = createExecutor()
         try {
-            for (batch in filePaths.asSequence().chunked(batchSize)) {
+            for (batch in filePaths.asSequence().chunked(batchSize.value)) {
                 if (isCancelled()) break
                 val referenceResults = scanBatch(batch, referenceScanner, isCancelled, executor)
                 if (isCancelled()) break
@@ -102,13 +101,13 @@ class ReferenceIndexer(
 
     fun indexPendingSymbolRelationships(
         work: Collection<PendingFileStage>,
-        scanner: (String) -> RelationshipScanResult,
+        scanner: (WorkspaceSourcePath) -> RelationshipScanResult,
         isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
-        onFilesIndexed: (List<String>) -> Unit = {},
+        onFilesIndexed: (List<WorkspaceSourcePath>) -> Unit = {},
     ) {
         val executor = createExecutor()
         try {
-            for (batch in work.asSequence().chunked(batchSize)) {
+            for (batch in work.asSequence().chunked(batchSize.value)) {
                 if (isCancelled()) break
                 val scanned = scanBatch(batch, { pending -> scanner(pending.path) }, isCancelled, executor)
                 if (isCancelled()) break
@@ -147,6 +146,20 @@ class ReferenceIndexer(
         } finally {
             executor?.shutdownNow()
         }
+    }
+
+    /** Retries durable PSI limitations without making them ordinary pending work first. */
+    fun retryLimitedSymbolRelationships(
+        scanner: (WorkspaceSourcePath) -> RelationshipScanResult,
+        isCancelled: () -> Boolean = { Thread.currentThread().isInterrupted },
+        onFilesIndexed: (List<WorkspaceSourcePath>) -> Unit = {},
+    ) {
+        indexPendingSymbolRelationships(
+            work = store.retryableLimitedRelationshipStages(),
+            scanner = scanner,
+            isCancelled = isCancelled,
+            onFilesIndexed = onFilesIndexed,
+        )
     }
 
     fun reindexFiles(
@@ -222,9 +235,9 @@ class ReferenceIndexer(
     }
 
     private fun createExecutor(): ExecutorService? {
-        if (parallelism == 1) return null
+        if (parallelism.value == 1) return null
         val threadCounter = AtomicInteger(0)
-        return Executors.newFixedThreadPool(parallelism) { runnable ->
+        return Executors.newFixedThreadPool(parallelism.value) { runnable ->
             Thread(runnable, "kast-ref-indexer-${threadCounter.incrementAndGet()}").apply {
                 isDaemon = true
             }

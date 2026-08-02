@@ -4,12 +4,15 @@ import io.github.amichne.kast.idea.diagnostics.*
 
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.ReferenceCoverageLimitation
+import io.github.amichne.kast.api.contract.ReferenceCoverageState
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
+import org.junit.jupiter.api.assertThrows
 import java.nio.file.Path
 import java.time.Instant
 
@@ -72,7 +75,7 @@ class KastDiagnosticsStateTest {
     }
 
     @Test
-    fun `runtime reaches ready only after the Kast reference index`() {
+    fun `reference index readiness does not change runtime readiness`() {
         val readyBackend = RuntimeStatusResponse(
             state = RuntimeState.READY,
             healthy = true,
@@ -102,15 +105,51 @@ class KastDiagnosticsStateTest {
             ),
         )
 
-        assertEquals(RuntimeState.INDEXING, indexing.state)
+        assertEquals(
+            readyBackend.copy(
+                referenceCoverageState = ReferenceCoverageState.QUALIFIED,
+                referenceCoverageLimitations = listOf(ReferenceCoverageLimitation.INDEXING_IN_PROGRESS),
+            ),
+            indexing,
+        )
         assertFalse(indexing.referenceIndexReady)
-        assertEquals(RuntimeState.READY, ready.state)
+        assertEquals(ReferenceCoverageState.QUALIFIED, indexing.referenceCoverageState)
+        assertEquals(
+            listOf(ReferenceCoverageLimitation.INDEXING_IN_PROGRESS),
+            indexing.referenceCoverageLimitations,
+        )
+        assertEquals(
+            readyBackend.copy(
+                referenceIndexReady = true,
+                referenceCoverageState = ReferenceCoverageState.COMPLETE,
+            ),
+            ready,
+        )
         assertTrue(ready.referenceIndexReady)
-        assertEquals(RuntimeState.READY, readyWithBoundaries.state)
+        assertEquals(ReferenceCoverageState.QUALIFIED, readyWithBoundaries.referenceCoverageState)
+        assertEquals(
+            listOf(ReferenceCoverageLimitation.NONCRITICAL_STAGE_GAP),
+            readyWithBoundaries.referenceCoverageLimitations,
+        )
         assertTrue(readyWithBoundaries.healthy)
         assertTrue(readyWithBoundaries.referenceIndexReady)
-        assertEquals(RuntimeState.DEGRADED, degraded.state)
-        assertFalse(degraded.healthy)
+        assertEquals(ReferenceCoverageState.INCOMPLETE, degraded.referenceCoverageState)
+        assertEquals(
+            listOf(ReferenceCoverageLimitation.CRITICAL_STAGE_GAP),
+            degraded.referenceCoverageLimitations,
+        )
+        assertTrue(degraded.healthy)
+
+        assertThrows<IllegalArgumentException> {
+            readyBackend.withReferenceIndex(
+                KastSourceIndexSummary(
+                    state = KastIndexState.READY,
+                    referenceCoverageLimitations = listOf(
+                        ReferenceCoverageLimitation.NONCRITICAL_STAGE_GAP,
+                    ),
+                ),
+            )
+        }
     }
 
     @Test

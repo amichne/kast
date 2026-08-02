@@ -171,7 +171,7 @@ fn operational_help_exposes_canonical_runtime_and_graph_recipes() {
     let runtime_stdout = String::from_utf8_lossy(&runtime.stdout);
     for expected in [
         "--accept-indexing",
-        "kast developer runtime up --workspace-root \"$PWD\" --backend idea --accept-indexing",
+        "kast developer runtime up --workspace-root \"$PWD\" --backend headless --accept-indexing",
     ] {
         assert!(
             runtime_stdout.contains(expected),

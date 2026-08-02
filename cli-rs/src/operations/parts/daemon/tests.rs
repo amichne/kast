@@ -32,7 +32,7 @@ mod tests {
             profile_duration: None,
             profile_otlp_endpoint: None,
         };
-        let command = java_command(&args, &config).unwrap();
+        let command = linux_headless_java_command(&args, &config, BackendName::Headless).unwrap();
         assert!(command.contains(&"-cp".to_string()));
         let cp = command.iter().position(|arg| arg == "-cp").unwrap() + 1;
         assert!(command[cp].contains(&libs.join("a.jar").display().to_string()));
@@ -74,7 +74,7 @@ mod tests {
             profile_otlp_endpoint: None,
         };
 
-        let command = java_command(&args, &config).unwrap();
+        let command = linux_headless_java_command(&args, &config, BackendName::Headless).unwrap();
 
         let cp = command.iter().position(|arg| arg == "-cp").unwrap() + 1;
         assert!(command[cp].contains(&headless_libs.join("headless.jar").display().to_string()));
@@ -137,7 +137,7 @@ mod tests {
             profile_otlp_endpoint: None,
         };
 
-        let command = java_command(&args, &config).unwrap();
+        let command = linux_headless_java_command(&args, &config, BackendName::Headless).unwrap();
 
         let config_arg = command
             .iter()
@@ -172,7 +172,7 @@ mod tests {
     }
 
     #[test]
-    fn java_command_rejects_idea_backend_launch() {
+    fn java_command_rejects_retired_idea_backend_before_launch() {
         let temp = tempfile::tempdir().unwrap();
         let libs = temp.path().join("runtime-libs");
         fs::create_dir_all(&libs).unwrap();
@@ -181,7 +181,10 @@ mod tests {
         config.backends.headless.runtime_libs_dir = Some(libs);
         let args = DaemonStartArgs {
             workspace_root: Some(temp.path().to_path_buf()),
-            backend_name: Some(crate::cli::BackendName::Idea),
+            backend_name: Some(
+                <crate::cli::BackendName as clap::ValueEnum>::from_str("idea", true)
+                    .expect("legacy IDEA ingress remains parseable"),
+            ),
             runtime_libs_dir: None,
             idea_home: None,
             socket_path: Some(temp.path().join("kast.sock")),
@@ -200,8 +203,162 @@ mod tests {
 
         let error = java_command(&args, &config).unwrap_err();
 
+        assert_eq!(error.code, "IDEA_SEMANTIC_BACKEND_RETIRED");
+        assert!(error.message.contains("retired"));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn installed_idea_sidecar_uses_product_jbr_boot_classpath_and_isolated_paths() {
+        let temp = tempfile::tempdir().unwrap();
+        let workspace = temp.path().join("workspace");
+        let app = temp.path().join("IntelliJ IDEA.app");
+        let contents = app.join("Contents");
+        let resources = contents.join("Resources");
+        let java = contents.join("jbr/Contents/Home/bin/java");
+        let boot_jar = contents.join("lib/platform-loader.jar");
+        std::fs::create_dir(&workspace).unwrap();
+        std::fs::create_dir_all(&resources).unwrap();
+        std::fs::create_dir_all(java.parent().unwrap()).unwrap();
+        std::fs::create_dir_all(boot_jar.parent().unwrap()).unwrap();
+        std::fs::write(&java, "fixture").unwrap();
+        std::fs::write(&boot_jar, "fixture").unwrap();
+        std::fs::write(
+            resources.join("product-info.json"),
+            serde_json::to_vec(&serde_json::json!({
+                "productCode": "IU",
+                "dataDirectoryName": "IntelliJIdea2026.2",
+                "launch": [{
+                    "os": "macOS",
+                    "arch": if cfg!(target_arch = "aarch64") { "aarch64" } else { "x86_64" },
+                    "javaExecutablePath": "../jbr/Contents/Home/bin/java",
+                    "bootClassPathJarNames": ["platform-loader.jar"],
+                    "additionalJvmArguments": ["-Dfixture.product=true"],
+                    "mainClass": "com.intellij.idea.Main"
+                }]
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let mut config = KastConfig::defaults();
+        config.paths.install_root = temp.path().join("install");
+        config.paths.cache_dir = temp.path().join("cache");
+        config.paths.logs_dir = temp.path().join("logs");
+        let payload = config
+            .paths
+            .install_root
+            .join("current/lib/backends/headless/current/idea-home/plugins/kast-headless/lib");
+        std::fs::create_dir_all(&payload).unwrap();
+        std::fs::write(payload.join("kast-headless.jar"), "fixture").unwrap();
+        let args = DaemonStartArgs {
+            workspace_root: Some(workspace.clone()),
+            backend_name: Some(BackendName::Headless),
+            runtime_libs_dir: None,
+            idea_home: None,
+            socket_path: Some(temp.path().join("kast.sock")),
+            module_name: None,
+            source_roots: None,
+            classpath: None,
+            request_timeout_ms: None,
+            max_results: None,
+            max_concurrent_requests: None,
+            stdio: false,
+            profile: false,
+            profile_modes: None,
+            profile_duration: None,
+            profile_otlp_endpoint: None,
+        };
+
+        let command = installed_idea_sidecar_java_command(&args, &config, &app).unwrap();
+
+        assert_eq!(
+            command.first(),
+            Some(&std::fs::canonicalize(&java).unwrap().display().to_string()),
+        );
+        assert!(command.contains(&"-Dfixture.product=true".to_string()));
+        let classpath = command.iter().position(|arg| arg == "-cp").unwrap() + 1;
+        assert_eq!(
+            command[classpath],
+            std::fs::canonicalize(&boot_jar)
+                .unwrap()
+                .display()
+                .to_string(),
+        );
+        assert!(command.contains(&"com.intellij.idea.Main".to_string()));
+        assert!(command.contains(&"kast-headless".to_string()));
+        assert!(!command.contains(&"-Didea.force.use.core.classloader=true".to_string()));
+        let sidecar_root = config
+            .paths
+            .cache_dir
+            .join("idea-sidecars")
+            .join(config::workspace_hash(&workspace));
+        for name in ["idea-config", "idea-system", "idea-log", "plugins"] {
+            assert!(
+                command
+                    .iter()
+                    .any(|arg| arg.contains(&sidecar_root.join(name).display().to_string()))
+            );
+        }
+        assert_eq!(
+            std::fs::canonicalize(sidecar_root.join("plugins/kast-headless")).unwrap(),
+            std::fs::canonicalize(payload.parent().unwrap()).unwrap(),
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn isolated_sidecar_plugin_link_retargets_an_upgraded_payload() {
+        let temp = tempfile::tempdir().unwrap();
+        let previous = temp.path().join("previous/kast-headless");
+        let current = temp.path().join("current/kast-headless");
+        let target = temp.path().join("sidecar/plugins/kast-headless");
+        std::fs::create_dir_all(&previous).unwrap();
+        std::fs::create_dir_all(&current).unwrap();
+        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(&previous, &target).unwrap();
+
+        ensure_isolated_plugin_link(&current, &target).unwrap();
+
+        assert_eq!(
+            std::fs::canonicalize(target).unwrap(),
+            std::fs::canonicalize(current).unwrap(),
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn isolated_sidecar_plugin_link_recovers_from_a_dangling_owned_link() {
+        let temp = tempfile::tempdir().unwrap();
+        let missing = temp.path().join("removed/kast-headless");
+        let current = temp.path().join("current/kast-headless");
+        let target = temp.path().join("sidecar/plugins/kast-headless");
+        std::fs::create_dir_all(&current).unwrap();
+        std::fs::create_dir_all(target.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(missing, &target).unwrap();
+
+        ensure_isolated_plugin_link(&current, &target).unwrap();
+
+        assert_eq!(
+            std::fs::canonicalize(target).unwrap(),
+            std::fs::canonicalize(current).unwrap(),
+        );
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn isolated_sidecar_plugin_link_preserves_a_non_symlink_path() {
+        let temp = tempfile::tempdir().unwrap();
+        let source = temp.path().join("current/kast-headless");
+        let target = temp.path().join("sidecar/plugins/kast-headless");
+        std::fs::create_dir_all(&source).unwrap();
+        std::fs::create_dir_all(&target).unwrap();
+
+        let error = ensure_isolated_plugin_link(&source, &target)
+            .expect_err("a non-symlink sidecar path must not be replaced");
+
         assert_eq!(error.code, "DAEMON_START_ERROR");
-        assert!(error.message.contains("cannot be launched"));
+        assert!(target.is_dir());
+        assert!(!target.symlink_metadata().unwrap().file_type().is_symlink());
     }
 
     #[test]

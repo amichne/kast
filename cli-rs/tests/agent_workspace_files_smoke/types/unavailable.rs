@@ -1,5 +1,5 @@
 #[test]
-fn unavailable_error_has_structured_next_action_and_toon_stdout_discipline() {
+fn unavailable_error_has_one_structured_recovery_action_and_toon_stdout_discipline() {
     let workspace = tempfile::tempdir().expect("workspace");
     let workspace = std::fs::canonicalize(workspace.path()).expect("canonical workspace");
     let workspace = workspace.to_str().expect("UTF-8 workspace");
@@ -21,9 +21,10 @@ fn unavailable_error_has_structured_next_action_and_toon_stdout_discipline() {
     let document: serde_json::Value =
         toon_format::decode_default(toon).expect("workspace-files TOON");
     assert_eq!(document["error"]["code"], "SEMANTIC_WORKSPACE_UNSUPPORTED");
-    assert_eq!(
-        document["error"]["details"]["semanticWorkspace"]["nextActions"],
-        serde_json::json!([]),
+    assert!(
+        document["error"]["details"]["semanticWorkspace"]
+            .get("nextActions")
+            .is_none(),
         "{document:#}"
     );
     assert_eq!(

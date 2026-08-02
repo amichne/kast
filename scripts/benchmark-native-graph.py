@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
-"""Benchmark Kast's native graph through the live macOS IntelliJ IDEA plugin."""
+"""Benchmark Kast native graph refresh and traversal through one headless runtime."""
 
 import argparse
 import collections
 import datetime
 import json
 import math
-import os
-import socket
 import sqlite3
 import subprocess
 import sys
 import tempfile
-import threading
 import time
 from pathlib import Path
 
@@ -61,15 +58,15 @@ def fail(error):
 def parse_args(argv):
     parser = ArgumentParser(
         description=(
-            "Build and traverse Kast's native graph through the live host IntelliJ "
-            "IDEA plugin. Every run writes JSON evidence under build/benchmarks."
+            "Refresh and traverse Kast native graph evidence through the exact-root "
+            "headless runtime. Every run writes JSON evidence under build/benchmarks."
         )
     )
     parser.add_argument(
         "workspace",
         nargs="?",
         default=".",
-        help="Kotlin repository to bootstrap in host IntelliJ IDEA (default: current directory)",
+        help="Kotlin repository to benchmark (default: current directory)",
     )
     parser.add_argument(
         "--source-root",
@@ -81,7 +78,7 @@ def parse_args(argv):
         "--limit",
         type=int,
         default=0,
-        help="Maximum tracked Kotlin files to build; 0 means all (default: 0)",
+        help="Maximum tracked Kotlin files to refresh; 0 means all (default: 0)",
     )
     parser.add_argument(
         "--iterations",
@@ -99,21 +96,24 @@ def parse_args(argv):
         "--ready-timeout",
         type=float,
         default=300.0,
-        help="Golden-path INDEXING to READY timeout in seconds (default: 300)",
+        help="Public exact-root readiness timeout in seconds (default: 300)",
+    )
+    parser.add_argument(
+        "--kast",
+        default="~/.local/share/kast/current/bin/kast",
+        help="Current public Kast CLI path",
     )
     parser.add_argument(
         "--kastctl",
-        dest="kast",
-        default="~/.local/share/kast/current/libexec/kastctl",
-        help="Current Kast control CLI path",
+        default=None,
+        help=(
+            "Private diagnostic CLI path (default: "
+            "~/.local/share/kast/current/libexec/kastctl beside --kast)"
+        ),
     )
     parser.add_argument(
         "--database",
-        help="Exact plugin source-index.db; normally discovered from the IDEA log",
-    )
-    parser.add_argument(
-        "--idea-log",
-        help="Exact host IDEA idea.log; normally the newest IntelliJIdea*/idea.log",
+        help="Exact headless source-index.db; normally discovered from the install receipt",
     )
     parser.add_argument(
         "--output-root",
@@ -123,7 +123,7 @@ def parse_args(argv):
     parser.add_argument(
         "--self-test",
         action="store_true",
-        help="Run the harness's dependency-free behavioral checks",
+        help="Run the harness dependency-free behavioral checks",
     )
     return parser.parse_args(argv)
 
@@ -135,30 +135,43 @@ def load_json(path, code):
         raise BenchmarkError(code, f"Cannot read {path}: {error}") from error
 
 
-def validate_plugin_only(receipt, platform_name=sys.platform):
-    if platform_name != "darwin":
+def validate_headless_install(receipt):
+    components = sorted(receipt.get("components") or [])
+    backends = receipt.get("backends") or []
+    if components != ["cli", "headless-backend", "manifest"]:
         raise BenchmarkError(
-            "MACOS_REQUIRED",
-            "This benchmark is intentionally restricted to macOS host IntelliJ IDEA.",
+            "HEADLESS_INSTALL_REQUIRED",
+            "The active Kast install must contain the CLI, manifest, and headless backend.",
+            "Refresh Kast from a current headless release bundle.",
         )
-    components = receipt.get("components")
-    if (
-        receipt.get("profile") != "macos-idea"
-        or not str(receipt.get("platform", "")).startswith("macos-")
-        or sorted(components or []) != ["cli", "idea-plugin"]
-    ):
+    if len(backends) != 1 or backends[0].get("name") != "headless":
         raise BenchmarkError(
-            "PLUGIN_ONLY_REQUIRED",
-            "The active Kast install must contain exactly the CLI and IDEA plugin.",
-            "Refresh Kast with the macos-idea profile; do not install a headless backend.",
+            "HEADLESS_INSTALL_REQUIRED",
+            "The active Kast receipt must declare exactly one headless backend.",
         )
 
 
-def run_json(command, timeout):
+def resolve_commands(args):
+    kast = Path(args.kast).expanduser().absolute()
+    if not kast.is_file():
+        raise BenchmarkError("KAST_MISSING", f"Kast agent CLI does not exist: {kast}")
+    if args.kastctl:
+        kastctl = Path(args.kastctl).expanduser().absolute()
+    else:
+        kastctl = kast.parent.parent / "libexec" / "kastctl"
+    if not kastctl.is_file():
+        raise BenchmarkError(
+            "KASTCTL_MISSING", f"Kast diagnostic CLI does not exist: {kastctl}"
+        )
+    return kast, kastctl
+
+
+def run_process(command, timeout, cwd=None):
     started = time.perf_counter()
     try:
         process = subprocess.run(
             [str(part) for part in command],
+            cwd=cwd,
             capture_output=True,
             text=True,
             timeout=timeout,
@@ -168,7 +181,11 @@ def run_json(command, timeout):
         raise BenchmarkError(
             "COMMAND_FAILED", f"Cannot run {' '.join(map(str, command))}: {error}"
         ) from error
-    elapsed_ms = (time.perf_counter() - started) * 1000.0
+    return process, (time.perf_counter() - started) * 1000.0
+
+
+def run_json(command, timeout, cwd=None):
+    process, elapsed_ms = run_process(command, timeout, cwd)
     try:
         payload = json.loads(process.stdout)
     except json.JSONDecodeError as error:
@@ -177,196 +194,72 @@ def run_json(command, timeout):
     return payload, process, elapsed_ms
 
 
-def runtime_snapshot(payload, workspace, allowed_states):
+def runtime_snapshot(payload, workspace):
     if payload.get("workspaceRoot") not in (None, str(workspace)):
-        raise BenchmarkError(
-            "WORKSPACE_MISMATCH", "Kast returned a different workspace root."
-        )
+        raise BenchmarkError("WORKSPACE_MISMATCH", "Kast returned a different workspace root.")
     selected = payload.get("selected") or {}
     descriptor = selected.get("descriptor") or {}
     runtime_status = selected.get("runtimeStatus") or {}
-    if (
-        descriptor.get("workspaceRoot") != str(workspace)
-        or runtime_status.get("workspaceRoot") not in (None, str(workspace))
-    ):
+    if descriptor.get("workspaceRoot") != str(workspace):
+        raise BenchmarkError("WORKSPACE_MISMATCH", "Kast selected a different workspace root.")
+    if descriptor.get("backendName") != "headless":
         raise BenchmarkError(
-            "WORKSPACE_MISMATCH", "Kast selected a different workspace root."
+            "HEADLESS_AUTHORITY_REQUIRED", "The selected backend is not headless."
         )
-    if descriptor.get("backendName") != "idea":
-        raise BenchmarkError("HEADLESS_REFUSED", "The selected backend is not IntelliJ IDEA.")
-    state = runtime_status.get("state")
-    if state not in allowed_states:
+    if runtime_status.get("state") != "READY" or runtime_status.get("healthy") is not True:
         raise BenchmarkError(
-            "IDEA_RUNTIME_STATE_INVALID", f"Unexpected IDEA runtime state: {state}"
+            "HEADLESS_RUNTIME_NOT_READY",
+            f"Unexpected headless runtime state: {runtime_status.get('state')}",
+        )
+    if runtime_status.get("referenceIndexReady") is not True:
+        raise BenchmarkError(
+            "REFERENCE_INDEX_NOT_READY", "Headless reference indexing is not ready."
         )
     return descriptor, runtime_status
 
 
-def runtime_ready(runtime_status):
-    return (
-        runtime_status.get("state") == "READY"
-        and runtime_status.get("referenceIndexReady") is True
-    )
-
-
-def bootstrap_idea(kast, workspace, request_timeout, ready_timeout):
+def bootstrap_headless(kast, kastctl, workspace, ready_timeout):
     started = time.perf_counter()
-    up_command = [
-        kast,
-        "--output",
-        "json",
-        "developer",
-        "runtime",
-        "up",
-        "--workspace-root",
-        workspace,
-        "--backend",
-        "idea",
-        "--accept-indexing",
-    ]
-    up, up_process, up_ms = run_json(up_command, ready_timeout)
-    if up_process.returncode != 0:
+    process, public_up_ms = run_process([kast, "up"], ready_timeout, workspace)
+    if process.returncode != 0:
         raise BenchmarkError(
-            str(up.get("code") or "IDEA_BOOTSTRAP_FAILED"),
-            str(up.get("message") or "The macOS IDEA golden-path bootstrap failed."),
+            "HEADLESS_BOOTSTRAP_FAILED",
+            process.stderr.strip() or process.stdout.strip() or "`kast up` failed.",
         )
-    descriptor, runtime_status = runtime_snapshot(
-        up, workspace, {"INDEXING", "READY"}
-    )
-    disposition = up.get("launchDisposition")
-    if disposition not in {
-        "REUSED_OPEN_PROJECT",
-        "OPENED_IN_RUNNING_IDEA",
-        "LAUNCHED_IDEA",
-    }:
-        raise BenchmarkError(
-            "LAUNCH_DISPOSITION_INVALID",
-            f"Golden-path bootstrap returned an invalid launch disposition: {disposition}",
-        )
-    transitions = [
-        {
-            "elapsedMs": round(up_ms, 3),
-            "state": runtime_status["state"],
-            "referenceIndexReady": bool(runtime_status.get("referenceIndexReady")),
-        }
-    ]
-    previous = (
-        runtime_status["state"],
-        bool(runtime_status.get("referenceIndexReady")),
-    )
-    final_status = up
-    deadline = started + ready_timeout
-    while not runtime_ready(runtime_status):
-        remaining = deadline - time.perf_counter()
-        if remaining <= 0:
-            raise BenchmarkError(
-                "IDEA_READY_TIMEOUT",
-                f"Exact-root IDEA runtime did not reach READY within {ready_timeout:g}s.",
-            )
-        time.sleep(min(2.0, remaining))
-        status_command = [
-            kast,
+    status, status_process, status_ms = run_json(
+        [
+            kastctl,
             "--output",
             "json",
             "status",
             "--workspace-root",
             workspace,
             "--backend",
-            "idea",
-        ]
-        final_status, status_process, _ = run_json(status_command, request_timeout)
-        if status_process.returncode != 0:
-            raise BenchmarkError(
-                "IDEA_STATUS_FAILED", "Cannot inspect the bootstrapped IDEA runtime."
-            )
-        descriptor, runtime_status = runtime_snapshot(
-            final_status, workspace, {"INDEXING", "READY", "DEGRADED"}
+            "headless",
+        ],
+        ready_timeout,
+    )
+    if status_process.returncode != 0:
+        raise BenchmarkError(
+            "HEADLESS_STATUS_FAILED", "Cannot inspect the demanded headless runtime."
         )
-        if runtime_status["state"] == "DEGRADED":
-            raise BenchmarkError(
-                "IDEA_RUNTIME_DEGRADED",
-                str(runtime_status.get("message") or "IDEA indexing degraded."),
-            )
-        current = (
-            runtime_status["state"],
-            bool(runtime_status.get("referenceIndexReady")),
-        )
-        if current != previous:
-            transitions.append(
-                {
-                    "elapsedMs": round((time.perf_counter() - started) * 1000.0, 3),
-                    "state": current[0],
-                    "referenceIndexReady": current[1],
-                }
-            )
-            previous = current
+    descriptor, runtime_status = runtime_snapshot(status, workspace)
     return {
-        "up": up,
-        "status": final_status,
+        "status": status,
         "descriptor": descriptor,
-        "launchDisposition": disposition,
-        "initialState": transitions[0]["state"],
+        "runtimeStatus": runtime_status,
+        "publicUpMs": round(public_up_ms, 3),
+        "statusMs": round(status_ms, 3),
         "readyMs": round((time.perf_counter() - started) * 1000.0, 3),
-        "transitions": transitions,
     }
 
 
-def idea_log_offsets(explicit=None):
-    if explicit:
-        paths = [Path(explicit).expanduser().resolve()]
-    else:
-        root = Path.home() / "Library" / "Logs" / "JetBrains"
-        paths = list(root.glob("IntelliJIdea*/idea.log"))
-    return {path: path.stat().st_size for path in paths if path.is_file()}
-
-
-def newest_idea_log(explicit=None):
-    if explicit:
-        path = Path(explicit).expanduser().resolve()
-        if not path.is_file():
-            raise BenchmarkError("IDEA_LOG_MISSING", f"IDEA log does not exist: {path}")
-        return path
-    root = Path.home() / "Library" / "Logs" / "JetBrains"
-    candidates = list(root.glob("IntelliJIdea*/idea.log"))
-    if not candidates:
-        raise BenchmarkError(
-            "IDEA_LOG_MISSING",
-            "No host IntelliJ IDEA idea.log was found.",
-            "Pass --idea-log with the active host IDEA log.",
-        )
-    return max(candidates, key=lambda path: path.stat().st_mtime_ns)
-
-
-def latest_logged_database(idea_log, workspace):
-    try:
-        with idea_log.open("rb") as stream:
-            stream.seek(0, os.SEEK_END)
-            size = stream.tell()
-            stream.seek(max(0, size - 16 * 1024 * 1024))
-            text = stream.read().decode("utf-8", errors="replace")
-    except OSError:
-        return None
-    for line in reversed(text.splitlines()):
-        marker = line.find("{")
-        if marker < 0 or "sourceIndexDatabasePath" not in line:
-            continue
-        try:
-            event = json.loads(line[marker:])
-        except json.JSONDecodeError:
-            continue
-        if event.get("workspaceRoot") != str(workspace):
-            continue
-        detail = event.get("detail") or {}
-        candidate = event.get("sourceIndexDatabasePath") or detail.get(
-            "sourceIndexDatabasePath"
-        )
-        if candidate and Path(candidate).is_file():
-            return Path(candidate)
-    return None
-
-
 def database_candidates(receipt, workspace):
-    state_root = Path(receipt["roots"]["data"]) / "workspaces"
+    roots = receipt.get("roots") or {}
+    data = roots.get("data")
+    if not data:
+        raise BenchmarkError("INSTALL_RECEIPT_INVALID", "Install receipt has no data root.")
+    state_root = Path(data) / "workspaces"
     workspace = workspace.resolve()
     candidates = []
     for database in state_root.glob("**/cache/source-index.db"):
@@ -380,7 +273,7 @@ def database_candidates(receipt, workspace):
     return sorted(candidates)
 
 
-def discover_database(explicit, receipt, idea_log, workspace, source_path=None):
+def discover_database(explicit, receipt, workspace):
     if explicit:
         database = Path(explicit).expanduser().resolve()
         if not database.is_file():
@@ -388,26 +281,13 @@ def discover_database(explicit, receipt, idea_log, workspace, source_path=None):
                 "DATABASE_MISSING", f"source-index.db does not exist: {database}"
             )
         return database
-    if source_path:
-        data_root = (Path(receipt["roots"]["data"]) / "workspaces").resolve()
-        database = Path(source_path).expanduser().resolve().parent / "cache" / "source-index.db"
-        try:
-            database.relative_to(data_root)
-        except ValueError:
-            pass
-        else:
-            if database.is_file():
-                return database
-    logged = latest_logged_database(idea_log, workspace)
-    if logged:
-        return logged
     candidates = database_candidates(receipt, workspace)
     if len(candidates) == 1:
         return candidates[0]
     raise BenchmarkError(
         "DATABASE_AMBIGUOUS",
-        f"Found {len(candidates)} plugin databases for {workspace}.",
-        "Pass --database with the sourceIndexDatabasePath from the Kast IDEA trace.",
+        f"Found {len(candidates)} headless databases for {workspace}.",
+        "Pass --database with the exact source-index.db path.",
     )
 
 
@@ -458,35 +338,6 @@ def tracked_kotlin_files(workspace, source_roots, limit):
     return selected
 
 
-def rpc_request(socket_path, method, params, request_id, timeout):
-    request = json.dumps(
-        {
-            "jsonrpc": "2.0",
-            "method": method,
-            "params": params,
-            "id": request_id,
-        },
-        separators=(",", ":"),
-    ).encode()
-    try:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
-            client.settimeout(timeout)
-            client.connect(str(socket_path))
-            client.sendall(request + b"\n")
-            with client.makefile("rb") as response:
-                line = response.readline()
-    except OSError as error:
-        raise BenchmarkError(
-            "IDEA_RPC_FAILED", f"IDEA plugin request failed at {socket_path}: {error}"
-        ) from error
-    if not line:
-        raise BenchmarkError("IDEA_RPC_MISSING", "IDEA plugin returned no JSON-RPC response.")
-    try:
-        return json.loads(line)
-    except json.JSONDecodeError as error:
-        raise BenchmarkError("IDEA_RPC_INVALID", f"Invalid IDEA response: {error}") from error
-
-
 def timing_stats(values):
     if not values:
         return {"count": 0}
@@ -512,7 +363,7 @@ def response_error_code(response):
     return str(data.get("code") or error.get("code") or "RPC_ERROR")
 
 
-def build_graph(workspace, files, socket_path, timeout, artifact):
+def build_graph(kastctl, workspace, files, timeout, artifact):
     timings = []
     failures = collections.Counter()
     symbol_count = 0
@@ -520,18 +371,27 @@ def build_graph(workspace, files, socket_path, timeout, artifact):
     final_generation = None
     with artifact.open("w") as output:
         for request_id, path in enumerate(files, start=1):
-            started = time.perf_counter()
-            response = rpc_request(
-                socket_path,
-                "raw/semantic-graph",
-                {"filePaths": [str(path)], "removedFilePaths": []},
-                request_id,
+            relative = path.relative_to(workspace)
+            response, process, elapsed_ms = run_json(
+                [
+                    kastctl,
+                    "--output",
+                    "json",
+                    "agent",
+                    "graph",
+                    "--workspace-root",
+                    workspace,
+                    "--operation",
+                    "refresh",
+                    "--file-path",
+                    relative,
+                ],
                 timeout,
+                workspace,
             )
-            elapsed_ms = (time.perf_counter() - started) * 1000.0
             timings.append(elapsed_ms)
-            result = response.get("result")
-            ok = result is not None and "error" not in response
+            result = response.get("result") or {}
+            ok = process.returncode == 0 and response.get("ok") is not False
             if ok:
                 symbol_count += int(result.get("symbolCount", 0))
                 edge_count += int(result.get("edgeOccurrenceCount", 0))
@@ -541,7 +401,7 @@ def build_graph(workspace, files, socket_path, timeout, artifact):
             output.write(
                 json.dumps(
                     {
-                        "file": str(path.relative_to(workspace)),
+                        "file": str(relative),
                         "elapsedMs": round(elapsed_ms, 3),
                         "ok": ok,
                         "response": response,
@@ -552,7 +412,7 @@ def build_graph(workspace, files, socket_path, timeout, artifact):
             )
             if request_id % 25 == 0 or request_id == len(files):
                 print(
-                    f"native graph build: {request_id}/{len(files)} files",
+                    f"native graph refresh: {request_id}/{len(files)} files",
                     file=sys.stderr,
                     flush=True,
                 )
@@ -615,17 +475,15 @@ def graph_seeds(database):
     return seeds
 
 
-def graph_command(kast, workspace, database, scope, operation, generation, seed):
+def graph_command(kastctl, workspace, database, scope, operation, generation, seed):
     command = [
-        kast,
+        kastctl,
         "--output",
         "json",
         "agent",
         "graph",
         "--workspace-root",
         workspace,
-        "--backend",
-        "idea",
         "--database",
         database,
         "--scope",
@@ -640,7 +498,7 @@ def graph_command(kast, workspace, database, scope, operation, generation, seed)
     return command
 
 
-def traverse_graph(kast, workspace, database, iterations, timeout, output_dir):
+def traverse_graph(kastctl, workspace, database, iterations, timeout, output_dir):
     seeds = graph_seeds(database)
     reports = []
     generation = None
@@ -664,15 +522,9 @@ def traverse_graph(kast, workspace, database, iterations, timeout, output_dir):
             status = "ok"
             for _ in range(iterations):
                 command = graph_command(
-                    kast,
-                    workspace,
-                    database,
-                    scope,
-                    operation,
-                    generation,
-                    seed,
+                    kastctl, workspace, database, scope, operation, generation, seed
                 )
-                payload, process, elapsed_ms = run_json(command, timeout)
+                payload, process, elapsed_ms = run_json(command, timeout, workspace)
                 timings.append(elapsed_ms)
                 last_payload = payload
                 stderr = process.stderr.strip()
@@ -680,7 +532,7 @@ def traverse_graph(kast, workspace, database, iterations, timeout, output_dir):
                     status = "failed"
                     break
                 if generation is None:
-                    generation = payload.get("result", {}).get("generation")
+                    generation = (payload.get("result") or {}).get("generation")
                     if generation is None:
                         raise BenchmarkError(
                             "GRAPH_GENERATION_MISSING",
@@ -702,46 +554,6 @@ def traverse_graph(kast, workspace, database, iterations, timeout, output_dir):
                 }
             )
     return generation, seeds, reports
-
-
-def capture_idea_logs(idea_log, workspace, start_offset, run_artifact, indexing_artifact):
-    try:
-        size = idea_log.stat().st_size
-        offset = start_offset if size >= start_offset else 0
-        with idea_log.open("rb") as source:
-            source.seek(offset)
-            run_data = source.read()
-        relevant_lines = []
-        project_markers = (str(workspace), f"[{workspace.name}]", f"={workspace.name},")
-        with idea_log.open(errors="replace") as source:
-            for line in source:
-                lower = line.lower()
-                if ("index" in lower or "kast" in lower) and any(
-                    marker in line for marker in project_markers
-                ):
-                    relevant_lines.append(line)
-    except OSError as error:
-        raise BenchmarkError("IDEA_LOG_CAPTURE_FAILED", str(error)) from error
-    run_artifact.write_bytes(run_data)
-    indexing_artifact.write_text("".join(relevant_lines))
-    text = run_data.decode("utf-8", errors="replace")
-    lines = text.splitlines()
-    return {
-        "source": str(idea_log),
-        "runArtifact": str(run_artifact),
-        "indexingArtifact": str(indexing_artifact),
-        "bytes": len(run_data),
-        "lines": len(lines),
-        "indexingEvidenceLines": len(relevant_lines),
-        "indexingLines": sum("index" in line.lower() for line in lines),
-        "kastLines": sum("kast" in line.lower() for line in lines),
-        "graphLines": sum(
-            "semantic.graph" in line.lower()
-            or "semantic-graph" in line.lower()
-            or "raw/semantic-graph" in line.lower()
-            for line in lines
-        ),
-    }
 
 
 def git_metadata(workspace):
@@ -777,13 +589,10 @@ def run_benchmark(args):
     workspace = Path(args.workspace).expanduser().resolve()
     if not workspace.is_dir():
         raise BenchmarkError("WORKSPACE_MISSING", f"Workspace does not exist: {workspace}")
-    kast = Path(args.kast).expanduser().absolute()
-    if not kast.is_file():
-        raise BenchmarkError("KAST_MISSING", f"Kast control CLI does not exist: {kast}")
+    kast, kastctl = resolve_commands(args)
     receipt_path = kast.parent.parent / "receipt.json"
     receipt = load_json(receipt_path, "INSTALL_RECEIPT_INVALID")
-    validate_plugin_only(receipt)
-    log_offsets = idea_log_offsets(args.idea_log)
+    validate_headless_install(receipt)
 
     timestamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
     run_dir = Path(args.output_root).expanduser().resolve() / workspace.name / timestamp
@@ -791,105 +600,51 @@ def run_benchmark(args):
     started_at = datetime.datetime.now(datetime.timezone.utc)
     started = time.perf_counter()
 
-    bootstrap = bootstrap_idea(
-        kast, workspace, args.timeout, args.ready_timeout
-    )
+    bootstrap = bootstrap_headless(kast, kastctl, workspace, args.ready_timeout)
     descriptor = bootstrap["descriptor"]
-    if descriptor.get("backendVersion") != receipt.get("activeVersion"):
+    if descriptor.get("backendVersion") != receipt.get("backendVersion"):
         raise BenchmarkError(
-            "PLUGIN_VERSION_MISMATCH",
-            "The live IDEA plugin and current Kast CLI versions do not match.",
-            "Refresh the plugin before benchmarking.",
+            "HEADLESS_VERSION_MISMATCH",
+            "The live headless runtime and current Kast receipt versions do not match.",
+            "Refresh Kast before benchmarking.",
         )
 
-    ready_command = [
-        kast,
-        "--output",
-        "json",
-        "ready",
-        "--workspace-root",
-        workspace,
-        "--backend",
-        "idea",
-        "--for",
-        "agent",
-    ]
-    ready, ready_process, ready_ms = run_json(ready_command, args.timeout)
-    if ready_process.returncode != 0 or not ready.get("ok"):
-        raise BenchmarkError(
-            "IDEA_PLUGIN_NOT_READY",
-            "The bootstrapped host IDEA plugin failed final agent readiness.",
-        )
-    backend = ready.get("agentEnvironment", {}).get("backend", {})
-    if backend.get("kind") != "idea":
-        raise BenchmarkError(
-            "HEADLESS_REFUSED", f"Readiness selected a non-IDEA backend: {backend.get('kind')}"
-        )
-
-    status = bootstrap["status"]
-    selected = status.get("selected") or {}
-    capabilities = selected.get("capabilities", {}).get("readCapabilities", [])
-    if "SEMANTIC_GRAPH" not in capabilities:
-        raise BenchmarkError(
-            "SEMANTIC_GRAPH_UNAVAILABLE",
-            "The live IDEA plugin does not expose SEMANTIC_GRAPH.",
-        )
-    socket_path = Path(descriptor["socketPath"])
-    if not socket_path.exists():
-        raise BenchmarkError("IDEA_SOCKET_MISSING", f"IDEA socket is missing: {socket_path}")
-
-    idea_log = newest_idea_log(args.idea_log)
-    log_start = log_offsets.get(idea_log, 0)
-    database = discover_database(
-        args.database,
-        receipt,
-        idea_log,
-        workspace,
-        source_path=backend.get("sourcePath"),
-    )
+    database = discover_database(args.database, receipt, workspace)
     files = tracked_kotlin_files(workspace, args.source_root, args.limit)
     write_json(
         run_dir / "preflight.json",
         {
             "receipt": receipt,
-            "up": bootstrap["up"],
-            "ready": ready,
-            "status": status,
+            "status": bootstrap["status"],
             "timings": {
-                "bootstrapReadyMs": bootstrap["readyMs"],
-                "agentReadyMs": round(ready_ms, 3),
+                "publicUpMs": bootstrap["publicUpMs"],
+                "statusMs": bootstrap["statusMs"],
+                "readyMs": bootstrap["readyMs"],
             },
         },
     )
 
     build = build_graph(
+        kastctl,
         workspace,
         files,
-        socket_path,
         args.timeout,
         run_dir / "semantic-graph-build.jsonl",
     )
     generation, seeds, traversals = traverse_graph(
-        kast,
+        kastctl,
         workspace,
         database,
         args.iterations,
         args.timeout,
         run_dir / "traversal",
     )
-    idea_evidence = capture_idea_logs(
-        idea_log,
-        workspace,
-        log_start,
-        run_dir / "idea-run.log",
-        run_dir / "idea-indexing.log",
-    )
     finished_at = datetime.datetime.now(datetime.timezone.utc)
     partial = build["failedFiles"] > 0 or any(
         report["status"] == "failed" for report in traversals
     )
     summary = {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "status": "partial" if partial else "complete",
         "startedAt": started_at.isoformat(),
         "finishedAt": finished_at.isoformat(),
@@ -913,10 +668,10 @@ def run_benchmark(args):
             "kotlinFiles": len(files),
         },
         "bootstrap": {
-            "launchDisposition": bootstrap["launchDisposition"],
-            "initialState": bootstrap["initialState"],
+            "publicUpMs": bootstrap["publicUpMs"],
+            "statusMs": bootstrap["statusMs"],
             "readyMs": bootstrap["readyMs"],
-            "transitions": bootstrap["transitions"],
+            "runtimeInstanceId": descriptor.get("runtimeInstanceId"),
         },
         "graphBuild": build,
         "nativeGraph": {
@@ -924,7 +679,6 @@ def run_benchmark(args):
             "seeds": seeds,
             "traversals": traversals,
         },
-        "ideaLog": idea_evidence,
         "artifacts": {
             "runDirectory": str(run_dir),
             "preflight": str(run_dir / "preflight.json"),
@@ -942,7 +696,7 @@ def run_benchmark(args):
             "files": len(files),
             "graphFailures": build["failedFiles"],
             "generation": generation,
-            "launchDisposition": bootstrap["launchDisposition"],
+            "runtimeInstanceId": descriptor.get("runtimeInstanceId"),
             "readyMs": bootstrap["readyMs"],
             "summary": summary_path,
         },
@@ -952,84 +706,46 @@ def run_benchmark(args):
 
 def self_test():
     good_receipt = {
-        "profile": "macos-idea",
-        "platform": "macos-arm64",
-        "components": ["cli", "idea-plugin"],
+        "components": ["cli", "headless-backend", "manifest"],
+        "backends": [{"name": "headless"}],
     }
-    validate_plugin_only(good_receipt, "darwin")
+    validate_headless_install(good_receipt)
     try:
-        validate_plugin_only({**good_receipt, "components": ["cli", "headless"]}, "darwin")
+        validate_headless_install(
+            {"components": ["cli", "manifest"], "backends": []}
+        )
     except BenchmarkError as error:
-        assert error.code == "PLUGIN_ONLY_REQUIRED"
+        assert error.code == "HEADLESS_INSTALL_REQUIRED"
     else:
-        raise AssertionError("headless install was accepted")
+        raise AssertionError("install without a headless backend was accepted")
+
     assert timing_stats([5.0, 1.0, 3.0])["p50Ms"] == 3.0
     workspace = Path("/repo")
-    indexing = {
+    ready = {
         "workspaceRoot": str(workspace),
-        "launchDisposition": "LAUNCHED_IDEA",
         "selected": {
             "descriptor": {
                 "workspaceRoot": str(workspace),
-                "backendName": "idea",
-                "socketPath": "/tmp/idea.sock",
+                "backendName": "headless",
+                "socketPath": "/tmp/headless.sock",
             },
             "runtimeStatus": {
                 "workspaceRoot": str(workspace),
-                "state": "INDEXING",
-                "referenceIndexReady": False,
+                "state": "READY",
+                "healthy": True,
+                "referenceIndexReady": True,
             },
         },
     }
-    ready = json.loads(json.dumps(indexing))
-    ready.pop("launchDisposition")
-    ready["selected"]["runtimeStatus"].update(
-        {"state": "READY", "referenceIndexReady": True}
+    descriptor, status = runtime_snapshot(ready, workspace)
+    assert descriptor["backendName"] == "headless"
+    assert status["referenceIndexReady"] is True
+
+    command = graph_command(
+        Path("/kastctl"), workspace, Path("/index.db"), "symbol", "summary", 7, None
     )
-
-    class FakeProcess:
-        returncode = 0
-
-    commands = []
-    responses = iter((indexing, ready))
-    original_run_json = globals()["run_json"]
-    original_sleep = time.sleep
-    try:
-        globals()["run_json"] = lambda command, timeout: (
-            commands.append(command) or next(responses),
-            FakeProcess(),
-            5.0,
-        )
-        time.sleep = lambda _: None
-        bootstrap = bootstrap_idea(Path("/kast"), workspace, 1.0, 5.0)
-    finally:
-        globals()["run_json"] = original_run_json
-        time.sleep = original_sleep
-    assert commands[0][3:6] == ["developer", "runtime", "up"]
-    assert "--accept-indexing" in commands[0]
-    assert bootstrap["initialState"] == "INDEXING"
-    assert bootstrap["status"]["selected"]["runtimeStatus"]["state"] == "READY"
-
-    with tempfile.TemporaryDirectory() as directory:
-        socket_path = Path(directory) / "idea.sock"
-        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        listener.bind(str(socket_path))
-        listener.listen(1)
-
-        def serve():
-            connection, _ = listener.accept()
-            with connection:
-                request = connection.makefile("rb").readline()
-                parsed = json.loads(request)
-                assert parsed["method"] == "raw/semantic-graph"
-                connection.sendall(b'{"jsonrpc":"2.0","id":1,"result":{"generation":7}}\n')
-            listener.close()
-
-        thread = threading.Thread(target=serve)
-        thread.start()
-        response = rpc_request(socket_path, "raw/semantic-graph", {}, 1, 1.0)
-        thread.join()
-        assert response["result"]["generation"] == 7
+    assert command[-2:] == ["--generation", "7"]
+    assert "idea" not in command
 
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
@@ -1045,57 +761,13 @@ def self_test():
         )
         database.parent.mkdir(parents=True)
         database.touch()
-        receipt = {
-            "roots": {
-                "install": str(root / "install"),
-                "data": str(root / "data"),
-            }
-        }
+        receipt = {"roots": {"data": str(root / "data")}}
         metadata = database.parent.parent / "workspace.json"
         metadata.write_text(json.dumps({"workspaceRoot": str(workspace)}))
         assert database_candidates(receipt, workspace) == [database]
-        other_database = (
-            root
-            / "data"
-            / "workspaces"
-            / "git"
-            / "local"
-            / "repo--def"
-            / "cache"
-            / "source-index.db"
-        )
-        other_database.parent.mkdir(parents=True)
-        other_database.touch()
-        (other_database.parent.parent / "workspace.json").write_text(
-            json.dumps({"workspaceRoot": "/other/repo"})
-        )
-        assert database_candidates(receipt, workspace) == [database]
-        assert discover_database(
-            None,
-            receipt,
-            root / "idea.log",
-            workspace,
-            source_path=metadata,
-        ) == database.resolve()
-        spaced_workspace = root / "my repo"
-        spaced_database = (
-            root
-            / "data"
-            / "workspaces"
-            / "git"
-            / "local"
-            / "my-repo--ghi"
-            / "cache"
-            / "source-index.db"
-        )
-        spaced_database.parent.mkdir(parents=True)
-        spaced_database.touch()
-        (spaced_database.parent.parent / "workspace.json").write_text(
-            json.dumps({"workspaceRoot": str(spaced_workspace)})
-        )
-        assert database_candidates(receipt, spaced_workspace) == [spaced_database]
+        assert discover_database(None, receipt, workspace) == database
 
-    emit_result("selfTest", {"ok": True, "checks": 8})
+    emit_result("selfTest", {"ok": True, "checks": 7})
     return 0
 
 

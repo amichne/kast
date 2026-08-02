@@ -7,6 +7,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
 const HEADLESS_MAIN_CLASS: &str = "io.github.amichne.kast.headless.HeadlessMainKt";
+#[cfg(target_os = "macos")]
+const HEADLESS_STARTER_COMMAND: &str = "kast-headless";
 
 pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<Child> {
     let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
@@ -40,12 +42,27 @@ pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<Child>
 
 pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<String>> {
     let backend_name = args.backend_name.unwrap_or(BackendName::Headless);
-    if backend_name == BackendName::Idea {
-        return Err(CliError::new(
-            "DAEMON_START_ERROR",
-            "The idea backend is hosted by IDEA and cannot be launched as a headless runtime.",
-        ));
+    crate::runtime::require_headless_backend(backend_name)?;
+
+    #[cfg(target_os = "macos")]
+    {
+        let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
+        let app = crate::runtime::resolve_installed_idea_sidecar_app(&workspace_root, config)?;
+        installed_idea_sidecar_java_command(args, config, &app)
     }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        linux_headless_java_command(args, config, backend_name)
+    }
+}
+
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+fn linux_headless_java_command(
+    args: &DaemonStartArgs,
+    config: &KastConfig,
+    backend_name: BackendName,
+) -> Result<Vec<String>> {
     let runtime_libs_dir =
         config::backend_runtime_libs_dir(config, backend_name, args.runtime_libs_dir.clone())?;
     let classpath = read_classpath(&runtime_libs_dir)?;
@@ -62,8 +79,13 @@ pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<S
 
     let mut command = vec![java_exec];
     let idea_home = headless_idea_home(args, config)?;
-    let runtime_config_file =
-        write_runtime_config_file(backend_name, args, config, &runtime_libs_dir, &idea_home)?;
+    let runtime_config_file = write_runtime_config_file(
+        backend_name,
+        args,
+        config,
+        Some(&runtime_libs_dir),
+        &idea_home,
+    )?;
     command.extend(headless_jvm_args(&idea_home, config));
     if let Ok(java_opts) = env::var("JAVA_OPTS") {
         command.extend(java_opts.split_whitespace().map(ToOwned::to_owned));
@@ -80,11 +102,13 @@ pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<S
     Ok(command)
 }
 
+include!("parts/daemon/installed_idea.rs");
+
 fn write_runtime_config_file(
     backend_name: BackendName,
     args: &DaemonStartArgs,
     config: &KastConfig,
-    runtime_libs_dir: &Path,
+    runtime_libs_dir: Option<&Path>,
     idea_home: &Path,
 ) -> Result<PathBuf> {
     let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
@@ -96,7 +120,7 @@ fn write_runtime_config_file(
         backend_name.canonical(),
     ));
     let mut runtime_config = config.clone();
-    runtime_config.backends.headless.runtime_libs_dir = Some(runtime_libs_dir.to_path_buf());
+    runtime_config.backends.headless.runtime_libs_dir = runtime_libs_dir.map(Path::to_path_buf);
     runtime_config.backends.headless.idea_home = Some(idea_home.to_path_buf());
     if let Some(value) = args.request_timeout_ms {
         runtime_config.server.request_timeout_millis = value;

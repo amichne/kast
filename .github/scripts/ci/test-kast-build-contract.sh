@@ -54,6 +54,8 @@ require_contains "$root_build" 'tasks.register("stageHeadlessDist")' "Root Gradl
 require_contains "$root_build" 'tasks.register("buildHeadlessPortableZip")' "Root Gradle build must expose the portable zip task"
 require_contains "$runtime_app_plugin" "kastIncludeShadowJar" "Shared app packaging must expose a shadow-jar inclusion property"
 require_contains "$headless_build" 'extra["kastIncludeShadowJar"] = "false"' "Headless backend must opt out of the shadow fat jar"
+require_contains "$headless_build" 'catalog.findVersion("idea-plugin")' "Installed-host sidecar payload must compile against the supported IDEA plugin baseline"
+require_not_contains "$headless_build" 'catalog.findVersion("idea")' "Installed-host sidecar payload must not compile against the obsolete portable-only IDEA baseline"
 require_contains "$idea_build" "val headlessRuntimeElements: Configuration" "IDEA must publish a typed headless-only runtime variant"
 require_contains "$idea_build" 'outgoing.artifact(tasks.named<Jar>("jar"))' "The headless-only IDEA variant must publish only the base jar"
 require_contains "$idea_build" 'outgoing.capability("${project.group}:backend-idea-headless-runtime:${project.version}")' "The headless-only IDEA variant must expose a distinct capability"

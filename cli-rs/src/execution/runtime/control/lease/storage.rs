@@ -278,6 +278,13 @@ mod workspace_lease_tests {
             workspace_root: "/workspace".to_string(),
             backend_name: "headless".to_string(),
             backend_version: "revision-1".to_string(),
+            runtime_instance_id: Some("instance-1".to_string()),
+            process_start_epoch_millis: Some(1),
+            owner_uid: Some(1),
+            socket_file_identity: Some(RuntimeSocketFileIdentity {
+                device: 1,
+                inode: 1,
+            }),
             transport: "uds".to_string(),
             socket_path: "/tmp/runtime-1.sock".to_string(),
             pid: 42,
@@ -318,7 +325,7 @@ mod workspace_lease_tests {
             generation: "generation-1".to_string(),
             environment_sha256: "a".repeat(64),
             workspace_root: PathBuf::from("/workspace"),
-            backend_name: BackendName::Idea,
+            backend_name: BackendName::Headless,
             binding_sha256: "b".repeat(64),
             record_id: uuid::Uuid::new_v4(),
         };
@@ -333,5 +340,29 @@ mod workspace_lease_tests {
                 .code,
             "WORKSPACE_LEASE_STALE_ENVIRONMENT"
         );
+    }
+
+    #[test]
+    fn authenticated_retired_backend_claim_is_rejected_before_runtime_observation() {
+        let retired_backend = serde_json::from_str::<BackendName>("\"idea\"")
+            .expect("legacy backend remains parseable at ingress");
+        let claims = WorkspaceLeaseTokenClaims {
+            authority: WorkspaceLeaseInstallAuthority::ActiveRelease,
+            generation: "generation-1".to_string(),
+            environment_sha256: "a".repeat(64),
+            workspace_root: PathBuf::from("/workspace"),
+            backend_name: retired_backend,
+            binding_sha256: "b".repeat(64),
+            record_id: uuid::Uuid::new_v4(),
+        };
+        let secret = [7_u8; 32];
+        let token = sign_workspace_lease_token(&secret, &claims).expect("authenticated token");
+        let verified =
+            verify_workspace_lease_token(&secret, &token).expect("authenticated claims");
+
+        let error = validate_token_request_identity(&verified, Path::new("/workspace"))
+            .expect_err("retired backend claim must fail before runtime observation");
+
+        assert_eq!(error.code, "IDEA_SEMANTIC_BACKEND_RETIRED");
     }
 }

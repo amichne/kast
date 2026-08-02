@@ -108,7 +108,7 @@ fn degraded_relationships_preserve_qualified_positive_records() {
     for (index, (command_name, method, extra_args, response, expected_relation)) in
         cases.into_iter().enumerate()
     {
-        let backend = spawn_scripted_idea_backend(
+        let backend = spawn_scripted_headless_backend(
             &home,
             &config,
             &workspace,
@@ -229,7 +229,7 @@ fn assert_invalid_degraded_response(references: bool, include_record: bool, incl
             }),
         )
     };
-    let backend = spawn_scripted_idea_backend(
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,

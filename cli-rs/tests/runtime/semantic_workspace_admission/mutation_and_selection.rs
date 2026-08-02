@@ -10,6 +10,8 @@ fn automatic_applied_mutation_checks_workspace_authority_before_backend_discover
     write_gradle_workspace(&workspace);
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::create_dir_all(&home).expect("home");
+    let idea_listener = bind_semantic_listener(&idea_socket);
+    let headless_listener = bind_semantic_listener(&headless_socket);
     write_runtime_descriptors(
         &home,
         &[
@@ -17,16 +19,9 @@ fn automatic_applied_mutation_checks_workspace_authority_before_backend_discover
             (&workspace, &headless_socket, "headless"),
         ],
     );
-    let idea = ObservedSemanticBackend::spawn(
-        bind_semantic_listener(&idea_socket),
-        workspace.clone(),
-        "idea",
-    );
-    let headless = ObservedSemanticBackend::spawn(
-        bind_semantic_listener(&headless_socket),
-        workspace.clone(),
-        "headless",
-    );
+    let idea = ObservedSemanticBackend::spawn(idea_listener, workspace.clone(), "idea");
+    let headless =
+        ObservedSemanticBackend::spawn(headless_listener, workspace.clone(), "headless");
 
     let mutation = kast(&home, &config_home)
         .args([
@@ -51,7 +46,7 @@ fn automatic_applied_mutation_checks_workspace_authority_before_backend_discover
     let output: serde_json::Value =
         serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
     assert_eq!(
-        output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
+        output["error"]["code"], "WORKSPACE_LEASE_REQUIRED",
         "{output:#}"
     );
     assert!(idea.finish().is_empty(), "IDEA must not be contacted");
@@ -92,16 +87,14 @@ fn default_applied_mutation_maps_every_public_family_to_missing_workspace_author
         let output: serde_json::Value =
             serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
         assert_eq!(
-            output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
+            output["error"]["code"], "WORKSPACE_LEASE_REQUIRED",
             "{output:#}"
         );
     }
 }
 
-#[cfg(target_os = "macos")]
 #[test]
-#[cfg(not(target_os = "macos"))]
-fn prepared_workspace_authority_allows_explicit_headless_mutation() {
+fn applied_headless_mutation_requires_a_workspace_lease_before_rpc() {
     let fixture = tempfile::tempdir().expect("prepared mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
@@ -110,13 +103,9 @@ fn prepared_workspace_authority_allows_explicit_headless_mutation() {
     write_gradle_workspace(&workspace);
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&workspace);
+    let listener = bind_semantic_listener(&socket_path);
     write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
-    let backend = ObservedSemanticBackend::spawn(
-        bind_semantic_listener(&socket_path),
-        workspace.clone(),
-        "headless",
-    );
+    let backend = ObservedSemanticBackend::spawn(listener, workspace.clone(), "headless");
 
     let mutation = kast(&home, &config_home)
         .args([
@@ -138,15 +127,14 @@ fn prepared_workspace_authority_allows_explicit_headless_mutation() {
         .output()
         .expect("prepared mutation");
 
+    let observed_methods = backend.finish();
+    assert!(!mutation.status.success(), "lease-free mutation must fail");
+    let output: serde_json::Value =
+        serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
+    assert_eq!(output["error"]["code"], "WORKSPACE_LEASE_REQUIRED");
     assert!(
-        mutation.status.success(),
-        "prepared authority should admit mutation: stdout={}, stderr={}",
-        String::from_utf8_lossy(&mutation.stdout),
-        String::from_utf8_lossy(&mutation.stderr)
-    );
-    assert_eq!(
-        backend.finish(),
-        vec!["runtime/status", "capabilities", "mutation/submit"]
+        observed_methods.is_empty(),
+        "lease rejection must precede RPC: {observed_methods:?}"
     );
 }
 
@@ -158,6 +146,7 @@ fn agent_verify_never_runs_configured_idea_launch_command() {
     let config_home = fixture.path().join("config");
     let launch_marker = fixture.path().join("idea-launched");
     let launch_command = fixture.path().join("launch-idea");
+    let socket_path = fixture.path().join("idea.sock");
     write_gradle_workspace(&workspace);
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::create_dir_all(&home).expect("home");
@@ -173,6 +162,9 @@ fn agent_verify_never_runs_configured_idea_launch_command() {
         .permissions();
     permissions.set_mode(0o755);
     std::fs::set_permissions(&launch_command, permissions).expect("launch executable");
+    let listener = bind_semantic_listener(&socket_path);
+    write_runtime_descriptor(&home, &workspace, &socket_path, "idea");
+    let backend = ObservedSemanticBackend::spawn(listener, workspace.clone(), "idea");
     std::fs::write(
         config_home.join("config.toml"),
         format!(
@@ -195,12 +187,17 @@ fn agent_verify_never_runs_configured_idea_launch_command() {
         .output()
         .expect("agent verify");
 
-    assert!(
-        !verify.status.success(),
-        "verify without a runtime must fail"
-    );
+    let observed_methods = backend.finish();
+    assert!(!verify.status.success(), "retired IDEA intent must fail");
     let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
-    assert_eq!(output["error"]["code"], "NO_BACKEND_AVAILABLE");
+    assert_eq!(
+        output["error"]["code"],
+        "IDEA_SEMANTIC_BACKEND_RETIRED"
+    );
+    assert!(
+        observed_methods.is_empty(),
+        "retirement must precede IDEA RPC: {observed_methods:?}"
+    );
     assert!(
         !launch_marker.exists(),
         "verification must not execute runtime.ideaLaunch"
@@ -257,7 +254,10 @@ fn reuse_only_verify_preserves_dead_descriptor_bytes_without_launching() {
 
     assert!(!verify.status.success(), "dead backend must fail");
     let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
-    assert_eq!(output["error"]["code"], "NO_BACKEND_AVAILABLE");
+    assert_eq!(
+        output["error"]["code"],
+        "IDEA_SEMANTIC_BACKEND_RETIRED"
+    );
     assert_eq!(
         std::fs::read(&descriptor_path).expect("preserved descriptor bytes"),
         descriptor_before,
@@ -310,64 +310,4 @@ fn descriptor_cannot_make_non_gradle_root_supported() {
     assert_eq!(output["error"]["code"], "SEMANTIC_WORKSPACE_UNSUPPORTED");
 }
 
-#[test]
-#[cfg(not(target_os = "macos"))]
-fn automatic_selection_rejects_two_ready_exact_root_backends() {
-    let fixture = tempfile::tempdir().expect("ambiguity fixture");
-    let workspace = fixture.path().join("workspace");
-    let home = fixture.path().join("home");
-    let config_home = fixture.path().join("config");
-    let idea_socket = fixture.path().join("idea.sock");
-    let headless_socket = fixture.path().join("headless.sock");
-    write_gradle_workspace(&workspace);
-    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
-    std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata(&workspace);
-    write_runtime_descriptors(
-        &home,
-        &[
-            (&workspace, &idea_socket, "idea"),
-            (&workspace, &headless_socket, "headless"),
-        ],
-    );
-    let idea = ObservedSemanticBackend::spawn(
-        bind_semantic_listener(&idea_socket),
-        workspace.clone(),
-        "idea",
-    );
-    let headless = ObservedSemanticBackend::spawn(
-        bind_semantic_listener(&headless_socket),
-        workspace.clone(),
-        "headless",
-    );
-
-    let verify = kast(&home, &config_home)
-        .args([
-            "--output",
-            "json",
-            "agent",
-            "verify",
-            "--workspace-root",
-            workspace.to_str().expect("workspace"),
-        ])
-        .output()
-        .expect("agent verify");
-
-    assert!(!verify.status.success(), "automatic ambiguity must fail");
-    let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
-    assert_eq!(output["error"]["code"], "SEMANTIC_BACKEND_AMBIGUOUS");
-    let mut candidate_names = output["error"]["details"]["semanticWorkspace"]["backendCandidates"]
-        .as_array()
-        .expect("candidate evidence")
-        .iter()
-        .map(|candidate| candidate["backendName"].as_str().expect("backend name"))
-        .collect::<Vec<_>>();
-    candidate_names.sort_unstable();
-    assert_eq!(candidate_names, vec!["headless", "idea"]);
-    assert_eq!(
-        output["error"]["details"]["semanticWorkspace"]["workspaceRoot"],
-        workspace.display().to_string()
-    );
-    assert!(!idea.finish().is_empty());
-    assert!(!headless.finish().is_empty());
-}
+include!("mutation_and_selection/selection.rs");

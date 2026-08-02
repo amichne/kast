@@ -10,9 +10,11 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
 import io.github.amichne.kast.api.client.fields.PathsDescriptorDir
 import io.github.amichne.kast.api.client.fields.PathsLogsDir
 import io.github.amichne.kast.api.client.fields.PathsSocketDir
+import io.github.amichne.kast.idea.backend.KastPluginBackend
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -59,6 +61,9 @@ class KastIdeaBackendRuntimeTest {
         val descriptorDirectory = tempDir.resolve("descriptors")
         val config = KastConfig.defaults().let { defaults ->
             defaults.copy(
+                indexing = defaults.indexing.copy(
+                    graph = defaults.indexing.graph.copy(batchSize = GraphIndexingBatchSize(7)),
+                ),
                 paths = defaults.paths.copy(
                     descriptorDir = PathsDescriptorDir(descriptorDirectory.toString()),
                     logsDir = PathsLogsDir(tempDir.resolve("logs").toString()),
@@ -72,13 +77,148 @@ class KastIdeaBackendRuntimeTest {
             workspaceRoot = workspaceRoot,
             socketPath = socketPath,
             config = config,
-            backendName = "headless",
         ).use { runtime ->
             assertEquals("headless", runtime.backend.capabilities().backendName)
             assertEquals("headless", runtime.backend.runtimeStatus().backendName)
-            assertEquals(socketPath, runtime.server.descriptor?.socketPath?.let(Path::of))
+            val delegateField = runtime.backend.javaClass.getDeclaredField("delegate").apply { isAccessible = true }
+            val pluginBackend = delegateField.get(runtime.backend) as KastPluginBackend
+            assertEquals(GraphIndexingBatchSize(7), pluginBackend.semanticGraphBatchSize)
+            pluginBackend.updateSemanticGraphBatchSize(GraphIndexingBatchSize(9))
+            assertEquals(GraphIndexingBatchSize(9), pluginBackend.semanticGraphBatchSize)
+            assertEquals(socketPath.toRealPath(), runtime.server.descriptor?.socketPath?.toPath())
             assertTrue(descriptorDirectory.resolve("daemons.json").exists())
         }
+    }
+
+    @Test
+    fun `graph failure does not block the reference indexing pass`() {
+        val project = projectFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = tempDir.resolve("independent-pipelines")
+        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot)
+        val store = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity).also { it.ensureSchema() }
+        val referencesRan = AtomicInteger()
+        val retryDelays = mutableListOf<Long>()
+        val indexing = KastIdeaProjectIndexing(
+            project = project,
+            workspaceIdentity = workspaceIdentity,
+            config = KastConfig.defaults(),
+            indexStore = store,
+            semanticAdmission = readyAdmission(project),
+            semanticGraphIndexer = { _, _ -> error("graph unavailable") },
+            runProjectIndexing = { _, graph ->
+                graph(
+                    IndexedSourceIdentifiers(
+                        paths = workspaceSourcePaths(
+                            workspaceRoot,
+                            listOf(workspaceRoot.resolve("src/main/App.kt").toString()),
+                        ),
+                        criticalPaths = emptySet(),
+                        unmatchedCriticalPatterns = emptyList(),
+                    ),
+                )
+                referencesRan.incrementAndGet()
+            },
+            waitForNextPass = { delay -> retryDelays += delay; false },
+        )
+
+        try {
+            indexing.start()
+            indexing.awaitTermination()
+            assertEquals(1, referencesRan.get())
+            assertEquals(listOf(250L), retryDelays)
+        } finally {
+            indexing.cancel()
+            store.close()
+        }
+    }
+
+    @Test
+    fun `automatic graph indexing forwards files removed from persisted scope`() {
+        val project = projectFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = tempDir.resolve("graph-tombstones")
+        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot)
+        val store = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity).also { it.ensureSchema() }
+        val removed = workspaceSourcePath(workspaceRoot, workspaceRoot.resolve("src/Removed.kt").toString()).rawPath
+        val observed = AtomicReference<IndexedSourceIdentifiers>()
+        val indexing = KastIdeaProjectIndexing(
+            project = project,
+            workspaceIdentity = workspaceIdentity,
+            config = KastConfig.defaults(),
+            indexStore = store,
+            semanticAdmission = readyAdmission(project),
+            semanticGraphIndexer = { scope, _ -> observed.set(scope) },
+            runProjectIndexing = { _, graph ->
+                graph(
+                    IndexedSourceIdentifiers(
+                        paths = emptyList(),
+                        criticalPaths = emptySet(),
+                        unmatchedCriticalPatterns = emptyList(),
+                        removedPaths = workspaceSourcePaths(workspaceRoot, listOf(removed)),
+                    ),
+                )
+            },
+            waitForNextPass = { false },
+        )
+
+        try {
+            indexing.start()
+            indexing.awaitTermination()
+            assertEquals(listOf(removed), observed.get().removedPaths.map { it.rawPath })
+        } finally {
+            indexing.cancel()
+            store.close()
+        }
+    }
+
+    @Test
+    fun `invalid live scope falls back to the last valid config`() {
+        val project = projectFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = tempDir.resolve("last-valid-scope")
+        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot)
+        val store = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity).also { it.ensureSchema() }
+        val initial = KastConfig.defaults()
+        val invalid = initial.copy(
+            indexing = initial.indexing.copy(
+                graph = initial.indexing.graph.copy(batchSize = GraphIndexingBatchSize(7)),
+            ),
+        )
+        val attemptedBatchSizes = mutableListOf<Int>()
+        val indexing = KastIdeaProjectIndexing(
+            project = project,
+            workspaceIdentity = workspaceIdentity,
+            config = initial,
+            indexStore = store,
+            semanticAdmission = readyAdmission(project),
+            liveConfigLoader = { _, _ -> invalid },
+            runProjectIndexing = { live, _ ->
+                attemptedBatchSizes += live.indexing.graph.batchSize.value
+                if (live.indexing.graph.batchSize.value == 7) {
+                    throw IndexingScopeConfigurationException.invalid("invalid live scope")
+                }
+            },
+            waitForNextPass = { false },
+        )
+
+        try {
+            indexing.start()
+            indexing.awaitTermination()
+            assertEquals(listOf(7, 32), attemptedBatchSizes)
+        } finally {
+            indexing.cancel()
+            store.close()
+        }
+    }
+
+    @Test
+    fun `indexing retry is bounded before periodic retry`() {
+        assertEquals(250, indexingRetryDelayMillis(1))
+        assertEquals(500, indexingRetryDelayMillis(2))
+        assertEquals(1_000, indexingRetryDelayMillis(3))
+        assertEquals(30_000, indexingRetryDelayMillis(4))
+        assertEquals(30_000, indexingRetryDelayMillis(100))
     }
 
     @Test
@@ -159,6 +299,11 @@ class KastIdeaBackendRuntimeTest {
             store.close()
         }
     }
+
+    private fun readyAdmission(project: Project): IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(
+        project = project,
+        inspectProject = { IdeaIndexSemanticAdmission.Inspection.Ready },
+    )
 
     @Test
     fun `blocking runtime cleanup leaves the IDEA dispatch thread`() {

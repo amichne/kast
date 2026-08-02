@@ -81,21 +81,8 @@ pub struct SetupArgs {
     #[arg(long)]
     pub force: bool,
     /// Extracted bundle directory or bundle .tar.gz archive.
-    #[arg(
-        long,
-        required_unless_present = "idea_plugin",
-        conflicts_with = "idea_plugin"
-    )]
-    pub source: Option<PathBuf>,
-    /// IDEA plugin ZIP to install with the running native CLI.
-    #[arg(long, required_unless_present = "source", conflicts_with = "source")]
-    pub idea_plugin: Option<PathBuf>,
-    /// IntelliJ IDEA or Android Studio plugins directory.
-    #[arg(long, requires = "idea_plugin")]
-    pub idea_plugins_dir: Option<PathBuf>,
-    /// TOML defaults selected by the interactive macOS installer.
-    #[arg(long, requires = "idea_plugin")]
-    pub config_defaults: Option<PathBuf>,
+    #[arg(long)]
+    pub source: PathBuf,
 }
 
 #[derive(Debug, Args, Clone)]

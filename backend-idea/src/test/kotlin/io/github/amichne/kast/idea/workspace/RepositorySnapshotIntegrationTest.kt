@@ -8,7 +8,6 @@ import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
-import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.snapshot.BuildClasspathFingerprint
@@ -19,6 +18,7 @@ import io.github.amichne.kast.indexstore.snapshot.SnapshotKey
 import io.github.amichne.kast.indexstore.snapshot.SnapshotManifest
 import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStoreAccess
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
@@ -112,7 +112,8 @@ class RepositorySnapshotIntegrationTest {
             val path = workspace.resolve("A.kt").toAbsolutePath().normalize().toString()
             store.reconcileFileInventory(
                 listOf(
-                    FileInventoryEntry(
+                    fileInventoryEntry(
+                        workspace,
                         path,
                         1,
                         FileContentHash.parse(sha256(workspace.resolve("A.kt"))),
@@ -192,6 +193,10 @@ class RepositorySnapshotIntegrationTest {
             store.ensureSchema()
             assertEquals(basePayload, store.readWorkspaceDiscovery("base-payload"))
             store.writeWorkspaceDiscovery("worktree-a", 1, "first")
+            assertEquals("first", store.readWorkspaceDiscovery("worktree-a"))
+        }
+        SqliteSourceIndexStore(identityFor(targetDatabase), SqliteSourceIndexStoreAccess.READ_ONLY).use { store ->
+            assertEquals(basePayload, store.readWorkspaceDiscovery("base-payload"))
             assertEquals("first", store.readWorkspaceDiscovery("worktree-a"))
         }
 

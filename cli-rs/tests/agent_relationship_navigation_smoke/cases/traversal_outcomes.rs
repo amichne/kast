@@ -12,7 +12,7 @@ fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
     let first_records = (0..4)
         .map(|index| call_relation_record("CALLER", index, &workspace))
         .collect::<Vec<_>>();
-    let first_backend = spawn_scripted_idea_backend(
+    let first_backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -72,7 +72,7 @@ fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
     assert!(first_requests[2]["params"]["pageToken"].is_null());
 
     let second_record = call_relation_record("CALLER", 4, &workspace);
-    let second_backend = spawn_scripted_idea_backend(
+    let second_backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -231,7 +231,7 @@ fn typed_relationship_commands_project_closed_non_available_outcomes() {
     .into_iter()
     .enumerate()
     {
-        let backend = spawn_scripted_idea_backend(
+        let backend = spawn_scripted_headless_backend(
             &home,
             &config,
             &workspace,
@@ -343,7 +343,7 @@ fn typed_relationship_commands_reject_inconsistent_non_available_identity_eviden
     .into_iter()
     .enumerate()
     {
-        let backend = spawn_scripted_idea_backend(
+        let backend = spawn_scripted_headless_backend(
             &home,
             &config,
             &workspace,

@@ -4,8 +4,8 @@ fn exact_symbol_does_not_publish_a_partial_identity() {
     let home = temp.path().join("home");
     let config = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket = temp.path().join("idea.sock");
-    let backend = spawn_scripted_idea_backend(
+    let socket = temp.path().join("headless.sock");
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -49,7 +49,7 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
     let home = temp.path().join("home");
     let config = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket = temp.path().join("idea.sock");
+    let socket = temp.path().join("headless.sock");
     let declaration_file = workspace.join("src/Service.kt");
     std::fs::create_dir_all(declaration_file.parent().expect("source parent"))
         .expect("source directory");
@@ -58,7 +58,7 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
     let canonical_declaration_file =
         std::fs::canonicalize(&declaration_file).expect("canonical declaration file");
     let backend_token = "00000000-0000-4000-8000-000000000337";
-    let backend = spawn_scripted_idea_backend(
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -150,7 +150,7 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
     assert!(requests[2]["params"]["pageToken"].is_null());
 
     let continuation_socket = temp.path().join("idea-continuation.sock");
-    let continuation_backend = spawn_scripted_idea_backend(
+    let continuation_backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -233,11 +233,11 @@ fn references_preserve_a_zero_known_minimum_while_search_remains_resumable() {
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::write(&declaration_file, "package sample\nclass Service\n").expect("source");
     let backend_token = "00000000-0000-4000-8000-000000000337";
-    let backend = spawn_scripted_idea_backend(
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
-        &temp.path().join("idea.sock"),
+        &temp.path().join("headless.sock"),
         vec![(
             "symbol/references",
             serde_json::json!({

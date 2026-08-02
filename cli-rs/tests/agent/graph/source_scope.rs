@@ -1,5 +1,5 @@
 #[test]
-fn agent_graph_source_scope_ignores_unrelated_partial_module_and_widens_incrementally() {
+fn agent_graph_source_scope_does_not_wait_for_relationship_stage() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -7,7 +7,7 @@ fn agent_graph_source_scope_ignores_unrelated_partial_module_and_widens_incremen
     let app_main = workspace.join("app/src/main/App.kt");
     let app_test = workspace.join("app/src/test/AppTest.kt");
     let lib_main = workspace.join("lib/src/main/Lib.kt");
-    let socket_path = temp.path().join("idea.sock");
+    let socket_path = temp.path().join("headless.sock");
     for source in [&app_main, &app_test, &lib_main] {
         std::fs::create_dir_all(source.parent().expect("source parent")).expect("source directory");
         std::fs::write(source, "package sample\nclass Sample\n").expect("source");
@@ -22,7 +22,7 @@ fn agent_graph_source_scope_ignores_unrelated_partial_module_and_widens_incremen
             [],
         )
         .expect("make unrelated lib relationship stage pending");
-    let handle = spawn_scripted_idea_backend(
+    let handle = spawn_scripted_headless_backend(
         &home,
         &config_home,
         &workspace,
@@ -82,21 +82,6 @@ fn agent_graph_source_scope_ignores_unrelated_partial_module_and_widens_incremen
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr)
     );
-    index
-        .connection()
-        .execute(
-            "INSERT INTO file_stage_outcomes(
-                 prefix_id, filename, stage, content_hash, stage_version,
-                 outcome_status, limitations_json
-             )
-             SELECT prefix_id, filename, 'RELATIONSHIPS', content_hash,
-                    desired_relationships_version, 'COMPLETE', '[]'
-             FROM file_manifest
-             WHERE filename = 'Lib.kt'",
-            [],
-        )
-        .expect("complete lib relationship stage");
-    index.seed_progress(":lib", "COMPLETE", 1, 1);
     let widened = kast(&home, &config_home)
         .args([
             "--output",
@@ -113,7 +98,7 @@ fn agent_graph_source_scope_ignores_unrelated_partial_module_and_widens_incremen
             "main",
         ])
         .output()
-        .expect("additive graph refresh");
+        .expect("graph refresh while relationship indexing is pending");
     assert!(
         widened.status.success(),
         "stdout={} stderr={}",

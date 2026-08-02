@@ -5,7 +5,7 @@
     "description": "Expanded release retry-isolation topology. Performance claims require a completed candidate release.",
     "observedAt": "2026-07-30",
     "source": ".github/workflows/release.yml",
-    "sourceSha256": "11593308810194b702762f266d66aa4ef15225afc46a2f62123bbfcc2cfe899a"
+    "sourceSha256": "12615e5aa3a30a1d25d24f34abed3f47007e1859a3558021a3f8bbd167484a18"
   },
   "tasks": [
     {
@@ -159,27 +159,6 @@
       "publishesMetadataAssets": false
     },
     {
-      "id": "build-idea-plugin",
-      "needs": [
-        "prepare-release"
-      ],
-      "outputs": []
-    },
-    {
-      "id": "publish-idea-plugin",
-      "needs": [
-        "prepare-release",
-        "build-idea-plugin"
-      ],
-      "outputs": [
-        "release-idea-plugin-assets"
-      ],
-      "consumesRetainedAssets": true,
-      "consumesProductBytes": true,
-      "publishesProductAssets": true,
-      "publishesMetadataAssets": false
-    },
-    {
       "id": "build-headless-backend",
       "needs": [
         "prepare-release"
@@ -191,8 +170,7 @@
       "needs": [
         "prepare-release",
         "build-cli-linux-x64",
-        "build-headless-backend",
-        "build-idea-plugin"
+        "build-headless-backend"
       ],
       "outputs": []
     },
@@ -215,7 +193,6 @@
       "needs": [
         "prepare-release",
         "build-cli-linux-x64",
-        "build-idea-plugin",
         "build-headless-backend"
       ],
       "outputs": []
@@ -226,7 +203,6 @@
         "prepare-release",
         "build-cli-linux-x64",
         "build-cli-linux-arm64",
-        "build-idea-plugin",
         "build-headless-backend"
       ],
       "outputs": []
@@ -237,7 +213,6 @@
         "prepare-release",
         "build-cli-linux-x64",
         "build-cli-macos-x64",
-        "build-idea-plugin",
         "build-headless-backend"
       ],
       "outputs": []
@@ -248,7 +223,6 @@
         "prepare-release",
         "build-cli-linux-x64",
         "build-cli-macos-arm64",
-        "build-idea-plugin",
         "build-headless-backend"
       ],
       "outputs": []
@@ -358,7 +332,6 @@
         "publish-cli-macos-x64",
         "publish-cli-macos-arm64",
         "publish-agent-resources",
-        "publish-idea-plugin",
         "publish-linux-headless-assets",
         "publish-setup-linux-x64",
         "publish-setup-linux-arm64",
@@ -412,7 +385,6 @@
     "release-cli-macos-x64-asset",
     "release-cli-macos-arm64-asset",
     "release-agent-resource-assets",
-    "release-idea-plugin-assets",
     "release-linux-headless-assets",
     "release-setup-linux-x64-asset",
     "release-setup-linux-x64-sidecar",

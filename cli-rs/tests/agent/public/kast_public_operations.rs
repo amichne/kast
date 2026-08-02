@@ -8,8 +8,9 @@ use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
 use support::{
-    ScriptedCliAuthority, spawn_scripted_idea_backend, spawn_scripted_idea_backend_for_invocations,
-    workspace_database_path_for_test, workspace_files::WorkspaceIndexFixture,
+    kast_at, spawn_scripted_headless_backend, spawn_scripted_headless_backend_for_invocations,
+    spawn_scripted_mutating_headless_backend, workspace_database_path_for_test,
+    workspace_files::WorkspaceIndexFixture, write_active_kast_for_test,
 };
 
 fn kast(home: &Path, config_home: &Path, workspace: &Path) -> Command {
@@ -21,6 +22,51 @@ fn kast(home: &Path, config_home: &Path, workspace: &Path) -> Command {
         .env("KAST_HOME", home.join(".local/share/kast"))
         .env("KAST_CONFIG_HOME", config_home);
     command
+}
+
+fn installed_public_kast(
+    binary: &Path,
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+) -> Command {
+    let mut command = kast_at(binary, home, config_home);
+    command
+        .arg0("kast")
+        .current_dir(workspace)
+        .env("KAST_HOME", home.join(".local/share/kast"));
+    command
+}
+
+fn acquire_workspace_lease(
+    binary: &Path,
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+) -> String {
+    let output = kast_at(binary, home, config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "lease",
+            "acquire",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("acquire workspace lease");
+    assert!(
+        output.status.success(),
+        "workspace lease acquisition should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let payload: Value = serde_json::from_slice(&output.stdout).expect("workspace lease JSON");
+    payload["result"]["leaseId"]
+        .as_str()
+        .expect("workspace lease id")
+        .to_string()
 }
 
 fn run_with_stdin(mut command: Command, stdin: &str) -> Output {
@@ -66,8 +112,9 @@ fn change_persists_a_private_root_bound_plan_and_apply_consumes_it_after_success
     )
     .expect("settings");
     let workspace = workspace.canonicalize().expect("canonical workspace");
+    let binary = write_active_kast_for_test(&home, &config_home);
 
-    let mut change = kast(&home, &config_home, &workspace);
+    let mut change = installed_public_kast(&binary, &home, &config_home, &workspace);
     change.args(["change", "add-file", "src/main/kotlin/Added.kt"]);
     let change = run_with_stdin(change, "package sample\nclass Added\n");
     assert!(
@@ -82,7 +129,7 @@ fn change_persists_a_private_root_bound_plan_and_apply_consumes_it_after_success
     assert_eq!(change["operation"], "add-file");
     assert_eq!(
         change["next"],
-        format!("kast apply {plan_id}"),
+        format!("kast apply {plan_id} --lease-id <LEASE_ID>"),
         "{change:#}"
     );
 
@@ -108,50 +155,71 @@ fn change_persists_a_private_root_bound_plan_and_apply_consumes_it_after_success
         0o600
     );
 
-    let other = fixture.path().join("other");
-    std::fs::create_dir_all(&other).expect("other root");
-    std::fs::write(other.join("settings.gradle.kts"), "").expect("other settings");
-    let wrong_root = kast(&home, &config_home, &other)
-        .args(["apply", plan_id])
-        .output()
-        .expect("wrong-root apply");
-    assert_eq!(wrong_root.status.code(), Some(1), "{wrong_root:?}");
-    assert!(plan_path.is_file(), "failed apply keeps plan");
-    assert!(content_path.is_file(), "failed apply keeps content");
-
-    let failed_socket = fixture.path().join("failed-apply.sock");
-    let failed_backend = spawn_scripted_idea_backend(
+    let socket = fixture.path().join("apply.sock");
+    let backend = spawn_scripted_mutating_headless_backend(
         &home,
         &config_home,
         &workspace,
-        &failed_socket,
-        vec![(
-            "mutation/submit",
-            json!({
-                "type": "FAILED",
-                "failure": {
-                    "type": "SCOPE_MUTATION_FAILURE",
-                    "response": {
-                        "stage": "APPLY",
-                        "error": {
-                            "requestId": "failed-request",
-                            "code": "WRITE_CONFLICT",
-                            "message": "The file changed after planning.",
-                            "retryable": true,
-                            "details": {"file": "Added.kt"}
-                        },
-                        "diagnostics": {"errorCount": 0, "warningCount": 0},
-                        "editCount": 0,
-                        "affectedFiles": [],
-                        "createdFiles": []
-                    }
-                },
-                "deduplicated": false
-            }),
-        )],
+        &socket,
+        vec![
+            (
+                "mutation/submit",
+                json!({
+                    "type": "FAILED",
+                    "failure": {
+                        "type": "SCOPE_MUTATION_FAILURE",
+                        "response": {
+                            "stage": "APPLY",
+                            "error": {
+                                "requestId": "failed-request",
+                                "code": "WRITE_CONFLICT",
+                                "message": "The file changed after planning.",
+                                "retryable": true,
+                                "details": {"file": "Added.kt"}
+                            },
+                            "diagnostics": {"errorCount": 0, "warningCount": 0},
+                            "editCount": 0,
+                            "affectedFiles": [],
+                            "createdFiles": []
+                        }
+                    },
+                    "deduplicated": false
+                }),
+            ),
+            (
+                "mutation/submit",
+                json!({
+                    "type": "SUCCEEDED",
+                    "result": {
+                        "type": "SCOPE_MUTATION_RESULT",
+                        "response": {
+                            "editCount": 1,
+                            "affectedFiles": [],
+                            "createdFiles": [workspace.join("src/main/kotlin/Added.kt")],
+                            "diagnostics": {"errorCount": 0, "warningCount": 0}
+                        }
+                    },
+                    "deduplicated": false
+                }),
+            ),
+        ],
     );
-    let failed_apply = kast(&home, &config_home, &workspace)
-        .args(["apply", plan_id])
+    let lease_id = acquire_workspace_lease(&binary, &home, &config_home, &workspace);
+
+    let other = fixture.path().join("other");
+    std::fs::create_dir_all(&other).expect("other root");
+    std::fs::write(other.join("settings.gradle.kts"), "").expect("other settings");
+    let wrong_root = installed_public_kast(&binary, &home, &config_home, &other)
+        .args(["apply", plan_id, "--lease-id", &lease_id])
+        .output()
+        .expect("wrong-root apply");
+    assert_eq!(wrong_root.status.code(), Some(1), "{wrong_root:?}");
+    assert_eq!(decode(&wrong_root)["error"], "KAST_PLAN_WORKSPACE_MISMATCH");
+    assert!(plan_path.is_file(), "failed apply keeps plan");
+    assert!(content_path.is_file(), "failed apply keeps content");
+
+    let failed_apply = installed_public_kast(&binary, &home, &config_home, &workspace)
+        .args(["apply", plan_id, "--lease-id", &lease_id])
         .output()
         .expect("failed apply");
     assert_eq!(failed_apply.status.code(), Some(1), "{failed_apply:?}");
@@ -165,35 +233,11 @@ fn change_persists_a_private_root_bound_plan_and_apply_consumes_it_after_success
         failure["execution"]["failure"]["retryable"], true,
         "{failure:#}"
     );
-    failed_backend.join().expect("failed apply backend");
     assert!(plan_path.is_file(), "typed failed apply keeps plan");
     assert!(content_path.is_file(), "typed failed apply keeps content");
 
-    let socket = fixture.path().join("apply.sock");
-    let backend = spawn_scripted_idea_backend(
-        &home,
-        &config_home,
-        &workspace,
-        &socket,
-        vec![(
-            "mutation/submit",
-            json!({
-                "type": "SUCCEEDED",
-                "result": {
-                    "type": "SCOPE_MUTATION_RESULT",
-                    "response": {
-                        "editCount": 1,
-                        "affectedFiles": [],
-                        "createdFiles": [workspace.join("src/main/kotlin/Added.kt")],
-                        "diagnostics": {"errorCount": 0, "warningCount": 0}
-                    }
-                },
-                "deduplicated": false
-            }),
-        )],
-    );
-    let apply = kast(&home, &config_home, &workspace)
-        .args(["apply", plan_id])
+    let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
+        .args(["apply", plan_id, "--lease-id", &lease_id])
         .output()
         .expect("apply");
     assert!(
@@ -205,15 +249,18 @@ fn change_persists_a_private_root_bound_plan_and_apply_consumes_it_after_success
     let applied = decode(&apply);
     assert_eq!(applied["execution"]["outcome"], "SUCCEEDED", "{applied:#}");
     let requests = backend.join().expect("apply backend");
-    let submit = requests
+    let submissions = requests
         .iter()
-        .find(|request| request["method"] == "mutation/submit")
-        .expect("mutation submission");
-    assert_eq!(submit["params"]["idempotencyKey"], plan_id);
-    assert_eq!(
-        submit["params"]["request"]["contentFile"],
-        content_path.display().to_string()
-    );
+        .filter(|request| request["method"] == "mutation/submit")
+        .collect::<Vec<_>>();
+    assert_eq!(submissions.len(), 2, "one submission per apply attempt");
+    for submit in submissions {
+        assert_eq!(submit["params"]["idempotencyKey"], plan_id);
+        assert_eq!(
+            submit["params"]["request"]["contentFile"],
+            content_path.display().to_string()
+        );
+    }
     assert!(!plan_path.exists(), "successful apply consumes plan");
     assert!(!content_path.exists(), "successful apply consumes content");
 }
@@ -233,15 +280,11 @@ fn refresh_keeps_relationship_failure_actionable_without_graph_extraction() {
     let source = source.canonicalize().expect("canonical source");
     let failure_id = uuid::Uuid::new_v4().hyphenated().to_string();
     let socket = fixture.path().join("refresh.sock");
-    let backend = spawn_scripted_idea_backend_for_invocations(
+    let backend = spawn_scripted_headless_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
         &socket,
-        ScriptedCliAuthority::new(
-            Path::new(env!("CARGO_BIN_EXE_kast")),
-            env!("CARGO_PKG_VERSION"),
-        ),
         2,
         vec![
             (

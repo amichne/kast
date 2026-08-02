@@ -8,7 +8,7 @@ fn call_relationships_fail_closed_on_over_depth_backend_evidence() {
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::write(&declaration_file, "package sample\nclass Service\n").expect("source");
     let socket = temp.path().join("idea-over-depth.sock");
-    let backend = spawn_scripted_idea_backend(
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,

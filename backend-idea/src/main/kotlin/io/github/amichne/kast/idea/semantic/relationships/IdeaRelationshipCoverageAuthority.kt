@@ -14,6 +14,7 @@ import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.RelationshipSearchLimitation
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileStageScopeCoverage
+import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import org.jetbrains.jps.model.java.JavaModuleSourceRootTypes
 import java.nio.file.Files
@@ -34,10 +35,11 @@ internal class IdeaRelationshipCoverageAuthority(
     ): RelationshipSearchCoverage {
         val liveCoverage = assess(completion)
         if (liveCoverage is RelationshipSearchCoverage.Limited) return liveCoverage
-        val persisted = sourceIndexStore?.fileStageScopeCoverage(
+        val persistedPath = sourceIndexStore?.sourcePath(Path.of(declarationFile)) ?: return liveCoverage
+        val persisted = sourceIndexStore.fileStageScopeCoverage(
             FileIndexStage.RELATIONSHIPS,
-            declarationFile,
-        ) ?: return liveCoverage
+            persistedPath,
+        )
         return combine(liveCoverage, persisted)
     }
 
@@ -64,7 +66,7 @@ internal class IdeaRelationshipCoverageAuthority(
             }
             PersistedScopeCandidates(
                 kotlinPaths = filesInWorkspace(kotlinFileType)
-                    .map(Path::toString)
+                    .mapNotNull(store::sourcePath)
                     .distinct()
                     .sorted()
                     .toList(),
@@ -84,7 +86,7 @@ internal class IdeaRelationshipCoverageAuthority(
     }
 
     private data class PersistedScopeCandidates(
-        val kotlinPaths: List<String>,
+        val kotlinPaths: List<WorkspaceSourcePath>,
         val hasJava: Boolean,
     )
 

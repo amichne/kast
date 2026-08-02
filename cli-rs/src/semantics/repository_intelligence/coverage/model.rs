@@ -42,24 +42,7 @@ impl SemanticGraphReadiness {
 struct SemanticFileRow {
     manifest_content_hash: Option<PersistedFileContentHash>,
     desired_stage_version: Option<PersistedFileStageVersion>,
-    desired_relationships_version: Option<PersistedFileStageVersion>,
-    relationship_boundary: Option<RelationshipExternalBoundary>,
     outcome: Option<SemanticFileOutcome>,
-}
-
-#[derive(Debug, Clone)]
-struct RelationshipExternalBoundary {
-    content_hash: PersistedFileContentHash,
-    stage_version: PersistedFileStageVersion,
-}
-
-impl SemanticFileRow {
-    fn has_current_external_boundary(&self) -> bool {
-        self.relationship_boundary.as_ref().is_some_and(|boundary| {
-            Some(&boundary.content_hash) == self.manifest_content_hash.as_ref()
-                && Some(&boundary.stage_version) == self.desired_relationships_version.as_ref()
-        })
-    }
 }
 
 #[derive(Debug, Clone)]

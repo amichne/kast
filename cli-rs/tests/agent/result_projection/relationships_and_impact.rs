@@ -40,7 +40,7 @@ fn symbol_relationships_bound_requests_and_compact_a_143k_token_result() {
             })
         })
         .collect::<Vec<_>>();
-    let verbose_backend = spawn_scripted_idea_backend(
+    let verbose_backend = spawn_scripted_headless_backend(
         &home,
         &config_home,
         &workspace,
@@ -134,7 +134,7 @@ fn symbol_relationships_bound_requests_and_compact_a_143k_token_result() {
     );
 
     let compact_socket_path = temp.path().join("idea-compact.sock");
-    let compact_backend = spawn_scripted_idea_backend(
+    let compact_backend = spawn_scripted_headless_backend(
         &home,
         &config_home,
         &workspace,
@@ -291,7 +291,7 @@ fn impact_default_is_typed_bounded_and_supports_selected_and_count_views() {
         let index = run_index.get();
         run_index.set(index + 1);
         let socket = temp.path().join(format!("impact-{index}.sock"));
-        let backend = spawn_scripted_idea_backend(
+        let backend = spawn_scripted_headless_backend(
             &home,
             &config_home,
             &workspace,

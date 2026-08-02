@@ -51,9 +51,10 @@ granular write and read contracts.
 
 <kast-view view-id="runtime-components" browser="true"></kast-view>
 
-The major boundary is the database, not the process boundary. The IDEA backend
-writes compiler evidence to the same workspace source index that the Rust CLI
-opens read-only. The query does not ask the IDE to recompute facts on demand.
+The major boundary is the database, not the process boundary. The admitted
+headless runtime writes compiler evidence to the same workspace source index
+that the Rust CLI opens read-only. A query does not ask a foreground IDE to
+recompute facts on demand.
 
 ## Authorities are deliberately separate
 
@@ -128,20 +129,20 @@ becoming a persuasive agent-facing answer merely because it is valid JSON.
 
 ## Evidence production from Kotlin to SQLite
 
-The write path is intentionally narrower than the query surface. IDEA extracts
-typed facts for selected Kotlin files and the index store replaces those files
-atomically.
+The write path is intentionally narrower than the query surface. The headless
+runtime extracts typed facts for selected Kotlin files and the index store
+replaces those files atomically.
 
 ```mermaid
 sequenceDiagram
-    participant Runtime as Exact-root IDEA runtime
+    participant Runtime as Exact-root headless runtime
     participant Operation as semanticGraphOperation
     participant Compiler as Kotlin analysis/read action
     participant Writer as SemanticGraphWriter
     participant DB as source-index.db
 
     Runtime->>Operation: validated file set
-    Operation->>Compiler: analyze in one IDEA read action
+    Operation->>Compiler: analyze in one IntelliJ read action
     Compiler-->>Operation: symbols, types, relations, diagnostics
     Operation->>Writer: replaceSemanticGraphFiles
     Writer->>DB: begin transaction
@@ -153,7 +154,7 @@ sequenceDiagram
 ```
 
 `SemanticGraphOperations.kt` hashes the selected file text and extracts facts
-inside the IDEA read action. `SemanticGraphWriter` then replaces those files in
+inside the private runtime read action. `SemanticGraphWriter` then replaces those files in
 one locked SQL transaction, removes superseded occurrences, repairs ownership,
 increments the shared generation, and commits. An exception rolls back both
 rows and generation. One exact workspace therefore owns one atomic persisted

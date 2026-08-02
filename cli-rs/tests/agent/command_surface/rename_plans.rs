@@ -4,7 +4,7 @@ fn agent_rename_without_apply_returns_identity_first_plan_without_applied_mutati
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("idea.sock");
+    let socket_path = temp.path().join("headless.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::write(
         workspace.join("settings.gradle.kts"),
@@ -16,7 +16,7 @@ fn agent_rename_without_apply_returns_identity_first_plan_without_applied_mutati
         "package io.example\nclass OrderService { fun process() = Unit }\n",
     )
     .expect("Kotlin rename fixture");
-    let backend = spawn_scripted_idea_backend(
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config_home,
         &workspace,
@@ -123,7 +123,7 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
     )
     .expect("Kotlin rename fixture");
     let selector_handle = "ksh1.rename-handle";
-    let plan_backend = spawn_scripted_idea_backend(
+    let plan_backend = spawn_scripted_headless_backend(
         &home,
         &config_home,
         &workspace,
@@ -235,35 +235,6 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
         serde_json::from_slice(&missing_key.stdout).expect("missing key error json");
     assert_eq!(missing_key["error"]["code"], "AGENT_USAGE");
 
-    let apply_socket_path = temp.path().join("rename-handle-apply.sock");
-    let apply_backend = spawn_scripted_idea_backend(
-        &home,
-        &config_home,
-        &workspace,
-        &apply_socket_path,
-        vec![(
-            "mutation/submit",
-            json!({
-                "type": "SUCCEEDED",
-                "result": {
-                    "type": "RENAME_RESULT",
-                    "response": {
-                        "ok": true,
-                        "editCount": 0,
-                        "affectedFiles": [],
-                        "applyResult": {
-                            "applied": [],
-                            "affectedFiles": [],
-                            "createdFiles": [],
-                            "deletedFiles": []
-                        },
-                        "diagnostics": {"errorCount": 0, "warningCount": 0}
-                    }
-                },
-                "deduplicated": false
-            }),
-        )],
-    );
     let apply = kast(&home, &config_home)
         .args([
             "--output",
@@ -281,28 +252,15 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
             "issue-392-rename",
         ])
         .output()
-        .expect("authorized selector handle rename");
+        .expect("selector handle rename without workspace lease");
     assert!(
-        apply.status.success(),
-        "rename submission should succeed: stdout={}, stderr={}",
+        !apply.status.success(),
+        "rename submission must require a workspace lease: stdout={}, stderr={}",
         String::from_utf8_lossy(&apply.stdout),
         String::from_utf8_lossy(&apply.stderr),
     );
-    let requests = apply_backend.join().expect("apply backend");
-    let submit = requests
-        .iter()
-        .find(|request| request["method"] == "mutation/submit")
-        .expect("mutation submission");
-    assert_eq!(submit["params"]["type"], "RENAME");
-    assert_eq!(submit["params"]["idempotencyKey"], "issue-392-rename");
-    assert_eq!(
-        submit["params"]["request"]["type"],
-        "RENAME_BY_SELECTOR_HANDLE_REQUEST",
-    );
-    assert_eq!(
-        submit["params"]["request"]["selectorHandle"],
-        selector_handle,
-    );
+    let apply: Value = serde_json::from_slice(&apply.stdout).expect("lease error json");
+    assert_eq!(apply["error"]["code"], "WORKSPACE_LEASE_REQUIRED");
 }
 
 #[test]
@@ -347,7 +305,7 @@ fn agent_rename_preview_rejects_duplicate_hash_rows_that_leave_an_affected_file_
         "affectedFiles": [first_file, second_file],
         "schemaVersion": 5,
     });
-    let backend = spawn_scripted_idea_backend(
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config_home,
         &workspace,

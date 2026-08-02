@@ -816,152 +816,6 @@ jobs:
               --asset "$asset"
           done
 
-  build-idea-plugin:
-    name: Build IDEA plugin
-    needs: [prepare-release]
-    if: always() && needs.prepare-release.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-
-      - name: Free disk for IDEA plugin build
-        shell: bash
-        run: |
-          set -euo pipefail
-          df -h /
-          sudo rm -rf \
-            /usr/local/lib/android \
-            /usr/share/dotnet \
-            /opt/ghc \
-            /opt/hostedtoolcache/CodeQL
-          df -h /
-
-      - uses: gradle/actions/setup-gradle@v5
-        with:
-          cache-cleanup: always
-
-      - name: Cache IDEA plugin build inputs
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.gradle/kast/shared-idea-distributions
-            ~/.gradle/kast/backend-idea-distributions
-            ~/.cache/pluginVerifier/ides
-          key: idea-plugin-inputs-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
-          restore-keys: |
-            idea-plugin-inputs-${{ runner.os }}-
-
-      - name: Build unsigned IDEA plugin
-        run: >
-          ./scripts/ci-gradle-retry.sh
-          ./gradlew
-          :backend-idea:buildPlugin
-          -Pversion="${{ needs.prepare-release.outputs.release_version }}"
-
-      - name: Stage IDEA plugin and update feed
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          version="${{ needs.prepare-release.outputs.release_version }}"
-          asset_name="kast-idea-${tag}.zip"
-          mapfile -t source_zips < <(
-            find backend-idea/build/distributions -maxdepth 1 -name '*.zip' -print | sort
-          )
-          [[ "${#source_zips[@]}" -eq 1 ]] || {
-            echo "Expected exactly one IDEA plugin zip, found ${#source_zips[@]}" >&2
-            exit 1
-          }
-          mkdir -p dist
-          asset_path="dist/${asset_name}"
-          feed_path="dist/updatePlugins.xml"
-          cp "${source_zips[0]}" "$asset_path"
-          sed \
-            -e "s/#tag#/${tag}/g" \
-            -e "s/#version#/${version}/g" \
-            packaging/jetbrains/updatePlugins.xml > "$feed_path"
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/build-ledger-idea-plugin.json \
-            --git-sha "$GITHUB_SHA" \
-            --source-ref "refs/tags/${tag}" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-idea-plugin \
-            --artifact-name "$asset_name" \
-            --artifact-path "$asset_path" \
-            --producer-job build-idea-plugin \
-            --build-command-id release-idea-plugin-build
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/build-ledger-idea-update-feed.json \
-            --git-sha "$GITHUB_SHA" \
-            --source-ref "refs/tags/${tag}" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-idea-update-feed \
-            --artifact-name updatePlugins.xml \
-            --artifact-path "$feed_path" \
-            --producer-job build-idea-plugin \
-            --build-command-id release-idea-update-feed
-
-      - name: Retain IDEA plugin assets
-        uses: actions/upload-artifact@v6
-        with:
-          name: idea-plugin-${{ github.run_id }}
-          path: dist/
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 30
-
-  publish-idea-plugin:
-    name: Publish IDEA plugin assets
-    needs:
-      - prepare-release
-      - build-idea-plugin
-    if: always() && needs.prepare-release.result == 'success' && needs.build-idea-plugin.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - name: Download retained IDEA plugin assets
-        uses: actions/download-artifact@v7
-        with:
-          name: idea-plugin-${{ github.run_id }}
-          path: dist
-
-      - name: Verify and publish retained IDEA plugin assets
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          asset_path="dist/kast-idea-${tag}.zip"
-          feed_path="dist/updatePlugins.xml"
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger dist/build-ledger-idea-plugin.json \
-            --ledger dist/build-ledger-idea-update-feed.json \
-            --git-sha "$GITHUB_SHA" \
-            --require-kind release-idea-plugin \
-            --require-kind release-idea-update-feed \
-            --artifact "release-idea-plugin=${asset_path}" \
-            --artifact "release-idea-update-feed=${feed_path}"
-          for asset in "$asset_path" "$feed_path"; do
-            .github/scripts/release/upload-immutable-release-asset.sh \
-              --tag "$tag" \
-              --asset "$asset"
-          done
-
   build-headless-backend:
     name: Build headless backend
     needs: [prepare-release]
@@ -1123,13 +977,11 @@ jobs:
       - prepare-release
       - build-cli-linux-x64
       - build-headless-backend
-      - build-idea-plugin
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
       needs.build-cli-linux-x64.result == 'success' &&
-      needs.build-headless-backend.result == 'success' &&
-      needs.build-idea-plugin.result == 'success'
+      needs.build-headless-backend.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -1150,12 +1002,6 @@ jobs:
           name: rust-cli-linux-x64-${{ github.run_id }}
           path: release-assets
 
-      - name: Download IDEA plugin artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: idea-plugin-${{ github.run_id }}
-          path: release-assets
-
       - name: Ensure zstd is available
         shell: bash
         run: |
@@ -1173,7 +1019,6 @@ jobs:
           version="${{ needs.prepare-release.outputs.release_version }}"
           cli_asset="release-assets/kast-${tag}-linux-x64.zip"
           backend_asset="headless-backend/headless.zip"
-          plugin_asset="release-assets/kast-idea-${tag}.zip"
           gradle_cache_dir="headless-backend/gradle-ro-cache"
           gradle_cache_asset="${gradle_cache_dir}/gradle-ro-dep-cache.tar.zst"
           gradle_cache_sidecar="${gradle_cache_dir}/gradle-ro-dep-cache.sha256"
@@ -1182,22 +1027,18 @@ jobs:
           rm -rf dist
           mkdir -p dist
           [[ -f "$backend_asset" ]] || { echo "Missing headless backend artifact: ${backend_asset}" >&2; exit 1; }
-          [[ -f "$plugin_asset" ]] || { echo "Missing IDEA plugin artifact: ${plugin_asset}" >&2; exit 1; }
           [[ -f "$gradle_cache_asset" ]] || { echo "Missing Gradle read-only cache artifact: ${gradle_cache_asset}" >&2; exit 1; }
           [[ -f "$gradle_cache_sidecar" ]] || { echo "Missing Gradle read-only cache checksum: ${gradle_cache_sidecar}" >&2; exit 1; }
           [[ -f "$gradle_cache_provenance" ]] || { echo "Missing Gradle read-only cache provenance: ${gradle_cache_provenance}" >&2; exit 1; }
           scripts/verify-ci-artifact-ledger.py verify \
             --ledger release-assets/build-ledger-cli-linux-x64.json \
-            --ledger release-assets/build-ledger-idea-plugin.json \
             --ledger headless-backend/build-ledger-headless-backend.json \
             --ledger "${gradle_cache_dir}/build-ledger-gradle-ro-cache.json" \
             --git-sha "$GITHUB_SHA" \
             --require-kind release-cli-linux-x64 \
-            --require-kind release-idea-plugin \
             --require-kind release-headless-backend \
             --require-kind release-gradle-ro-cache \
             --artifact "release-cli-linux-x64=${cli_asset}" \
-            --artifact "release-idea-plugin=${plugin_asset}" \
             --artifact "release-headless-backend=${backend_asset}" \
             --artifact "release-gradle-ro-cache=${gradle_cache_asset}"
           packager_dir="${RUNNER_TEMP}/kast-release-packager"
@@ -1213,7 +1054,6 @@ jobs:
             --repo-root "$PWD" \
             --cli-archive "$cli_asset" \
             --backend-archive "$backend_asset" \
-            --plugin-archive "$plugin_asset" \
             --version "$tag" \
             --bundle-output "$bundle_asset"
           ./scripts/packaging/package-headless-runtime.sh \
@@ -1454,13 +1294,11 @@ jobs:
     needs:
       - prepare-release
       - build-cli-linux-x64
-      - build-idea-plugin
       - build-headless-backend
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
       needs.build-cli-linux-x64.result == 'success' &&
-      needs.build-idea-plugin.result == 'success' &&
       needs.build-headless-backend.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -1481,14 +1319,12 @@ jobs:
       - prepare-release
       - build-cli-linux-x64
       - build-cli-linux-arm64
-      - build-idea-plugin
       - build-headless-backend
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
       needs.build-cli-linux-x64.result == 'success' &&
       needs.build-cli-linux-arm64.result == 'success' &&
-      needs.build-idea-plugin.result == 'success' &&
       needs.build-headless-backend.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -1509,14 +1345,12 @@ jobs:
       - prepare-release
       - build-cli-linux-x64
       - build-cli-macos-x64
-      - build-idea-plugin
       - build-headless-backend
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
       needs.build-cli-linux-x64.result == 'success' &&
       needs.build-cli-macos-x64.result == 'success' &&
-      needs.build-idea-plugin.result == 'success' &&
       needs.build-headless-backend.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -1537,14 +1371,12 @@ jobs:
       - prepare-release
       - build-cli-linux-x64
       - build-cli-macos-arm64
-      - build-idea-plugin
       - build-headless-backend
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
       needs.build-cli-linux-x64.result == 'success' &&
       needs.build-cli-macos-arm64.result == 'success' &&
-      needs.build-idea-plugin.result == 'success' &&
       needs.build-headless-backend.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -1734,7 +1566,6 @@ jobs:
       - publish-cli-macos-x64
       - publish-cli-macos-arm64
       - publish-agent-resources
-      - publish-idea-plugin
       - publish-linux-headless-assets
       - publish-setup-linux-x64
       - publish-setup-linux-arm64
@@ -1751,7 +1582,6 @@ jobs:
       needs.publish-cli-macos-x64.result == 'success' &&
       needs.publish-cli-macos-arm64.result == 'success' &&
       needs.publish-agent-resources.result == 'success' &&
-      needs.publish-idea-plugin.result == 'success' &&
       needs.publish-linux-headless-assets.result == 'success' &&
       needs.publish-setup-linux-x64.result == 'success' &&
       needs.publish-setup-linux-arm64.result == 'success' &&

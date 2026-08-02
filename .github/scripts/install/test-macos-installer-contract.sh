@@ -103,6 +103,18 @@ grep -Fq -- 'local bin_dir="${HOME}/.local/bin"' "$repo_root/install.sh"
 grep -Fq -- 'export PATH="$HOME/.local/bin:$PATH"' "$repo_root/install.sh"
 ! grep -Eiq -- 'homebrew|\bbrew\b|kast machine|kast repair' "$repo_root/install.sh"
 ! grep -Fiq -- 'kagent' "$repo_root/install.sh"
+if grep -Fq -- '--idea-plugin' "$repo_root/install.sh"; then
+  printf '%s\n' 'installer retains the retired public plugin setup option' >&2
+  exit 1
+fi
+if grep -Fq -- 'kast-idea-' "$repo_root/install.sh"; then
+  printf '%s\n' 'installer retains the retired public plugin download' >&2
+  exit 1
+fi
+if grep -Eq -- '(^|[^[:alnum:]_])(kill|open|ps)[[:space:]]' "$repo_root/install.sh"; then
+  printf '%s\n' 'installer retains foreground application process control' >&2
+  exit 1
+fi
 bash -n "$repo_root/install.sh"
 
 printf '%s\n' 'cross-platform setup bootstrap contract passed'

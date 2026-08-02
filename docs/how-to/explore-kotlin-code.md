@@ -70,7 +70,7 @@ of each relationship and the occurrence that connects them.
 Find the symbol and follow its exact identity:
 
 ```console
-kast symbol find IdeaIndexSemanticAdmission
+kast symbol find HeadlessGradleModelSettlementOutcome
 kast symbol show <symbol>
 ```
 

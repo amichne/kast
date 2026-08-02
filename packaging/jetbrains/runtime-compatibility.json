@@ -98,7 +98,7 @@
       "evidence": [
         ".github/scripts/runtime/test-runtime-compatibility-contract.sh",
         "analysis-api/src/test/kotlin/io/github/amichne/kast/api/contract/compatibility/RuntimeCompatibilityMatrixTest.kt",
-        "cli-rs/tests/runtime/compatibility_metadata.rs"
+        "cli-rs/tests/runtime/installed_idea_sidecar_smoke/main.rs"
       ]
     }
   ]

@@ -57,9 +57,6 @@ if kind in {
             mode = 0o644 if kind == "cli-non-executable-kast" else 0o755
             data = b"agent" if kind == "cli-mismatched-entrypoints" else b"cli"
             write_entry(archive, "kast", data, mode)
-elif kind == "idea":
-    with zipfile.ZipFile(asset_path, "w") as archive:
-        write_entry(archive, "backend-idea/lib/backend-idea.jar", b"plugin")
 else:
     raise SystemExit(f"unknown asset kind: {kind}")
 PY
@@ -75,7 +72,6 @@ write_expected_assets() {
   write_zip_asset "${release_dir}/kast-${tag}-linux-arm64.zip" cli
   write_zip_asset "${release_dir}/kast-${tag}-macos-x64.zip" cli
   write_zip_asset "${release_dir}/kast-${tag}-macos-arm64.zip" cli
-  write_zip_asset "${release_dir}/kast-idea-${tag}.zip" idea
   write_text_asset "${release_dir}/kast-headless-linux-x64.tar.zst"
   python3 - "${release_dir}/kast-runtime-manifest.json" "${release_dir}/kast-headless-linux-x64.tar.zst" <<'PY'
 import hashlib
@@ -323,13 +319,14 @@ grep -Fq "kastVersion" "${scratch_dir}/manifest-version.err" || die "wrong manif
 write_expected_assets
 write_sha256sums "$release_dir" "${assets[@]}"
 write_provenance
-extra_asset="${release_dir}/kast-${tag}-debug.zip"
+extra_asset="${release_dir}/kast-idea-${tag}.zip"
 write_text_asset "$extra_asset"
 printf '%s  %s\n' "$(compute_sha256 "$extra_asset")" "$(basename -- "$extra_asset")" >> "${release_dir}/SHA256SUMS"
 
 if "$verifier" --release-dir "$release_dir" --tag "$tag" >/dev/null 2>"${scratch_dir}/extra.err"; then
-  die "extra release asset unexpectedly verified"
+  die "retired public plugin asset unexpectedly verified"
 fi
-grep -Fq "unexpected release asset" "${scratch_dir}/extra.err" || die "extra asset failure did not mention unexpected release asset"
+grep -Fq "unexpected release asset" "${scratch_dir}/extra.err" \
+  || die "public plugin asset failure did not mention unexpected release asset"
 
 printf '%s\n' "Release asset verifier test passed"

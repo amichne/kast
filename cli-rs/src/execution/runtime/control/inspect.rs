@@ -1,27 +1,18 @@
-fn inspect_workspace(
+fn inspect_headless_workspace(
     workspace_root: &Path,
-    preference: RuntimeBackendPreference,
     stale_descriptor_policy: StaleDescriptorPolicy,
 ) -> Result<WorkspaceInspection> {
     let config = KastConfig::load(workspace_root)?;
-    inspect_workspace_with_config(
-        workspace_root,
-        &config,
-        preference,
-        stale_descriptor_policy,
-    )
+    inspect_headless_workspace_with_config(workspace_root, &config, stale_descriptor_policy)
 }
 
-fn inspect_workspace_with_config(
+fn inspect_headless_workspace_with_config(
     workspace_root: &Path,
     config: &KastConfig,
-    preference: RuntimeBackendPreference,
     stale_descriptor_policy: StaleDescriptorPolicy,
 ) -> Result<WorkspaceInspection> {
     let descriptor_directory = config.paths.descriptor_dir.clone();
-    let backend_name = preference.backend_filter();
-    let registered =
-        find_compatible_descriptors(&descriptor_directory, workspace_root, backend_name)?;
+    let registered = find_headless_descriptors(&descriptor_directory, workspace_root)?;
     let mut candidates = Vec::with_capacity(registered.len());
     for descriptor in registered {
         candidates.push(inspect_descriptor(
@@ -35,11 +26,9 @@ fn inspect_workspace_with_config(
             .cmp(&a.ready)
             .then_with(|| a.descriptor_path.cmp(&b.descriptor_path))
     });
-    let selected = select_status_candidate(&candidates, backend_name);
     Ok(WorkspaceInspection {
         descriptor_directory,
         candidates,
-        selected,
     })
 }
 
@@ -128,154 +117,6 @@ fn validate_runtime_status_identity(
     Ok(())
 }
 
-fn wait_for_servable(
-    workspace_root: &Path,
-    backend_name: Option<BackendName>,
-    accept_indexing: bool,
-    wait_timeout_ms: u64,
-) -> Result<RuntimeCandidateStatus> {
-    let deadline = Instant::now() + Duration::from_millis(wait_timeout_ms);
-    let preference = backend_name
-        .map(RuntimeBackendPreference::Fixed)
-        .unwrap_or(RuntimeBackendPreference::Automatic);
-    while Instant::now() < deadline {
-        let inspection = inspect_workspace(
-            workspace_root,
-            preference,
-            StaleDescriptorPolicy::Prune,
-        )?;
-        if let Some(selected) =
-            select_servable(&inspection.candidates, backend_name, accept_indexing)
-        {
-            return Ok(selected);
-        }
-        thread::sleep(Duration::from_millis(250));
-    }
-    Err(CliError::new(
-        "RUNTIME_TIMEOUT",
-        format!(
-            "Timed out waiting for {} runtime to become {} for {}",
-            backend_name.map(BackendName::canonical).unwrap_or("any"),
-            if accept_indexing { "servable" } else { "ready" },
-            workspace_root.display()
-        ),
-    ))
-}
-
-fn select_servable(
-    candidates: &[RuntimeCandidateStatus],
-    backend_name: Option<BackendName>,
-    accept_indexing: bool,
-) -> Option<RuntimeCandidateStatus> {
-    let mut matches: Vec<_> = candidates
-        .iter()
-        .filter(|candidate| {
-            backend_name
-                .is_none_or(|backend| candidate.descriptor.backend_name == backend.canonical())
-        })
-        .filter(|candidate| {
-            if accept_indexing {
-                candidate.runtime_status.as_ref().is_some_and(is_servable)
-            } else {
-                candidate.ready
-            }
-        })
-        .cloned()
-        .collect();
-    matches.sort_by(|a, b| {
-        (b.descriptor.backend_name == "idea")
-            .cmp(&(a.descriptor.backend_name == "idea"))
-            .then_with(|| {
-                (b.descriptor.backend_name == "headless")
-                    .cmp(&(a.descriptor.backend_name == "headless"))
-            })
-            .then_with(|| a.descriptor_path.cmp(&b.descriptor_path))
-    });
-    matches.into_iter().next()
-}
-
-fn reject_ambiguous_servable_backends(
-    candidates: &[RuntimeCandidateStatus],
-    preference: RuntimeBackendPreference,
-    accept_indexing: bool,
-) -> Result<()> {
-    if preference != RuntimeBackendPreference::Automatic {
-        return Ok(());
-    }
-    let mut matches = candidates
-        .iter()
-        .filter(|candidate| {
-            if accept_indexing {
-                candidate.runtime_status.as_ref().is_some_and(is_servable)
-            } else {
-                candidate.ready
-            }
-        })
-        .collect::<Vec<_>>();
-    matches.sort_by(|left, right| {
-        left.descriptor
-            .backend_name
-            .cmp(&right.descriptor.backend_name)
-    });
-    matches.dedup_by(|left, right| {
-        left.descriptor.backend_name == right.descriptor.backend_name
-    });
-    if matches.len() <= 1 {
-        return Ok(());
-    }
-    let mut error = CliError::new(
-        "SEMANTIC_BACKEND_AMBIGUOUS",
-        "More than one ready semantic backend matches the exact workspace root. Select --backend=idea or --backend=headless.",
-    );
-    error
-        .details
-        .insert("candidateCount".to_string(), matches.len().to_string());
-    for (index, candidate) in matches.into_iter().enumerate() {
-        error.details.insert(
-            format!("candidate{index}BackendName"),
-            candidate.descriptor.backend_name.clone(),
-        );
-        error.details.insert(
-            format!("candidate{index}BackendVersion"),
-            candidate.descriptor.backend_version.clone(),
-        );
-        error.details.insert(
-            format!("candidate{index}WorkspaceRoot"),
-            config::normalize(PathBuf::from(&candidate.descriptor.workspace_root))
-                .display()
-                .to_string(),
-        );
-    }
-    Err(error)
-}
-
-fn select_status_candidate(
-    candidates: &[RuntimeCandidateStatus],
-    backend_name: Option<BackendName>,
-) -> Option<RuntimeCandidateStatus> {
-    let mut matches: Vec<_> = candidates
-        .iter()
-        .filter(|candidate| {
-            backend_name
-                .is_none_or(|backend| candidate.descriptor.backend_name == backend.canonical())
-        })
-        .cloned()
-        .collect();
-    matches.sort_by(|a, b| {
-        b.ready
-            .cmp(&a.ready)
-            .then_with(|| {
-                (b.descriptor.backend_name == "idea").cmp(&(a.descriptor.backend_name == "idea"))
-            })
-            .then_with(|| {
-                (b.descriptor.backend_name == "headless")
-                    .cmp(&(a.descriptor.backend_name == "headless"))
-            })
-            .then_with(|| a.descriptor_path.cmp(&b.descriptor_path))
-    });
-    matches.into_iter().next()
-}
-
 fn is_servable(status: &RuntimeStatusResponse) -> bool {
     matches!(status.state, RuntimeState::Ready | RuntimeState::Indexing)
         && status.healthy
@@ -289,18 +130,15 @@ fn is_ready(status: &RuntimeStatusResponse) -> bool {
         && !status.indexing
 }
 
-fn find_compatible_descriptors(
+fn find_headless_descriptors(
     descriptor_directory: &Path,
     workspace_root: &Path,
-    backend_name: Option<BackendName>,
 ) -> Result<Vec<RegisteredDescriptor>> {
     let descriptors = read_descriptors(descriptor_directory)?;
     let normalized = config::normalize(workspace_root.to_path_buf());
     Ok(descriptors
         .into_iter()
-        .filter(|descriptor| {
-            backend_name.is_none_or(|backend| descriptor.backend_name == backend.canonical())
-        })
+        .filter(|descriptor| descriptor.backend_name == BackendName::Headless.canonical())
         .filter(|descriptor| descriptor_matches_workspace(descriptor, &normalized))
         .map(|descriptor| RegisteredDescriptor {
             id: descriptor_id(&descriptor),

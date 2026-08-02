@@ -16,12 +16,16 @@ for task in \
   ':stageDevelopmentControlCli' \
   ':packageDevelopmentCli' \
   ':backend-headless:portableDistZip' \
-  ':backend-idea:buildPlugin' \
   ':packageDevelopmentSetupBundle' \
   ':refreshDevelopmentMachine'; do
   grep -Fq "$task" <<<"$dry_run" || { printf 'error: missing development setup task %s\n' "$task" >&2; exit 1; }
   grep -Fq "$task" <<<"$clean_dry_run" || { printf 'error: clean development setup skipped task %s\n' "$task" >&2; exit 1; }
 done
+
+if grep -Fq ':backend-idea:buildPlugin' <<<"$dry_run"; then
+  printf '%s\n' 'error: development setup still builds the retired public IDEA plugin' >&2
+  exit 1
+fi
 
 for unwanted in \
   ':activateDevelopmentMachine' \

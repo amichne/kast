@@ -20,7 +20,9 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.FilePosition
+import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.NonNegativeInt
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.api.contract.SearchScope
 import io.github.amichne.kast.api.contract.SearchScopeKind
 import io.github.amichne.kast.api.contract.ServerLimits
@@ -134,7 +136,10 @@ internal class KastPluginBackendContractTestContinuation : KastPluginBackendCont
             )
         }
         val storeRoot = Files.createTempDirectory("kast-reference-generation")
-        SqliteSourceIndexStore(storeRoot).use { store ->
+        val workspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(referenceData.workspaceRoot).copy(
+            sourceIndexDatabasePath = NormalizedPath.ofAbsolute(storeRoot.resolve("source-index.db")),
+        )
+        SqliteSourceIndexStore(workspaceIdentity).use { store ->
             store.ensureSchema()
             store.upsertSymbolReference(
                 sourcePath = referenceData.declarationFilePath,

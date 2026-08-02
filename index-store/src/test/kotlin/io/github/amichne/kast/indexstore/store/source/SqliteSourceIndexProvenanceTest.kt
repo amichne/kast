@@ -55,7 +55,14 @@ class SqliteSourceIndexProvenanceTest {
             val path = workspaceRoot.resolve("A.kt").toAbsolutePath().normalize().toString()
             store.reconcileFileInventory(
                 listOf(
-                    FileInventoryEntry(path, 1, FileContentHash.parse("a".repeat(64)), "main", "main"),
+                    fileInventoryEntry(
+                        workspaceRoot,
+                        path,
+                        1,
+                        FileContentHash.parse("a".repeat(64)),
+                        "main",
+                        "main",
+                    ),
                 ),
                 FileStageVersions.CURRENT,
             )

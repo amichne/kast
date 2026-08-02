@@ -84,7 +84,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin warnings: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Active warning messages about the runtime environment. |
             | `#!kotlin sourceModuleNames: List<String>` :material-information-outline:{ title="Default: emptyList()" } | Names of source modules discovered in the workspace. |
             | `#!kotlin dependentModuleNamesBySourceModuleName: Map<String, List<String>>` :material-information-outline:{ title="Default: emptyMap()" } | Map from source module name to its dependency module names. |
-            | `#!kotlin referenceIndexReady: Boolean` :material-information-outline:{ title="Default: false" } | True when the symbol reference index is fully populated. |
+            | `#!kotlin referenceIndexReady: Boolean` :material-information-outline:{ title="Default: false" } | True when committed symbol-reference evidence is queryable, including qualified evidence. |
+            | `#!kotlin referenceCoverageState: ReferenceCoverageState` :material-information-outline:{ title="Default: COMPLETE when referenceIndexReady is true; otherwise UNAVAILABLE" } | Global persisted reference evidence state. This state is independent of runtime readiness. |
+            | `#!kotlin referenceCoverageLimitations: List<ReferenceCoverageLimitation>` :material-information-outline:{ title="Default: emptyList()" } | Typed limitations that qualify or prevent persisted reference evidence. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "Internal protocol"
 
@@ -117,6 +119,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "sourceModuleNames": [],
                     "dependentModuleNamesBySourceModuleName": {},
                     "referenceIndexReady": false,
+                    "referenceCoverageState": "UNAVAILABLE",
+                    "referenceCoverageLimitations": [],
                     "schemaVersion": 5
                 },
                 "id": 1,

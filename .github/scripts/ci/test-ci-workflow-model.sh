@@ -37,18 +37,18 @@ expected_replacements = {}
 actual_replacements = report["comparison"]["retiredProofOutputReplacements"]
 if actual_replacements != expected_replacements:
     raise SystemExit(f"this graph change must not retire proof outputs: {actual_replacements}")
-if report["comparison"]["taskCountIncrease"] != 1:
-    raise SystemExit("the IDEA artifact producer split must add exactly one execution node")
-if report["candidate"]["pullRequestTaskCount"] != report["baseline"]["pullRequestTaskCount"] + 1:
-    raise SystemExit("the candidate must add only the independent IDEA artifact producer")
+if report["comparison"]["taskCountIncrease"] != 0:
+    raise SystemExit("the headless-only candidate must not add an execution node")
+if report["candidate"]["pullRequestTaskCount"] != report["baseline"]["pullRequestTaskCount"]:
+    raise SystemExit("retiring the public plugin must keep the normalized task count stable")
 if report["candidate"]["fanoutGateSeconds"] > 90:
     raise SystemExit("the modeled static fanout gate must not exceed 90 seconds")
 if report["candidate"]["canaryTaskIds"]:
     raise SystemExit("pull-request CI must not model an off-path canary")
-if "test-idea-plugin" not in report["baseline"]["criticalPathTaskIds"]:
-    raise SystemExit("the baseline must expose the serialized IDEA test and artifact bottleneck")
-if "test-idea-plugin" in report["candidate"]["criticalPathTaskIds"]:
-    raise SystemExit("independent IDEA tests must not delay the artifact consumer path")
+if "test-intellij-runtime" not in report["baseline"]["criticalPathTaskIds"]:
+    raise SystemExit("the baseline must expose the serialized IntelliJ runtime test bottleneck")
+if "test-intellij-runtime" in report["candidate"]["criticalPathTaskIds"]:
+    raise SystemExit("independent IntelliJ runtime tests must not delay the artifact consumer path")
 
 candidate_tasks = {task["id"]: task for task in model["candidate"]["tasks"]}
 for graph_name in ("baseline", "candidate"):
@@ -69,9 +69,8 @@ if report["candidate"]["provisionalTaskIds"] != sorted(candidate_tasks):
     )
 if set(candidate_tasks["prepared-ubuntu-debian-bundle"]["needs"]) != {
     "prepared-generation",
-    "build-idea-plugin",
 }:
-    raise SystemExit("the prepared bundle must depend on the narrow IDEA artifact producer")
+    raise SystemExit("the prepared bundle must depend only on the prepared headless generation")
 if candidate_tasks["workflow-contracts"]["outputs"] != [
     "repository-shape-contract",
     "ci-local-source-snapshot",
@@ -99,17 +98,11 @@ if candidate_tasks["prepared-ubuntu-debian-bundle"]["outputs"] != [
     "ci-artifact-ledger-prepared-ubuntu-debian-bundle",
 ]:
     raise SystemExit("the prepared bundle must own its artifact and ledger proofs")
-if candidate_tasks["build-idea-plugin"]["outputs"] != [
-    "idea-plugin-distribution-verification",
-    "idea-plugin-artifact",
-    "ci-artifact-ledger-idea-plugin",
+if candidate_tasks["test-intellij-runtime"]["outputs"] != [
+    "intellij-runtime-tests",
+    "intellij-runtime-performance-baselines",
 ]:
-    raise SystemExit("the IDEA artifact producer must own only its artifact proofs")
-if candidate_tasks["test-idea-plugin"]["outputs"] != [
-    "idea-plugin-tests",
-    "idea-plugin-performance-baselines",
-]:
-    raise SystemExit("the IDEA test job must retain both test proof sets")
+    raise SystemExit("the shared IntelliJ runtime job must retain both test proof sets")
 PY
 
 blocking_required_task_model="${scratch_dir}/blocking-required-task-timing.json"

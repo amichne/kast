@@ -5,12 +5,13 @@ fn dependent_symbol_command_observes_the_completed_edit() {
         &fixture.home,
         &fixture.config_home,
         &fixture.workspace,
-        &fixture.temp.path().join("idea.sock"),
+        &fixture.temp.path().join("headless.sock"),
         Some(mutation_result(false)),
         true,
     );
-    assert!(fixture.apply("dependent-key").status.success());
-    let symbol = kast(&fixture.home, &fixture.config_home)
+    let lease_id = fixture.acquire_lease();
+    assert!(fixture.apply("dependent-key", &lease_id).status.success());
+    let symbol = kast_at(&fixture.binary, &fixture.home, &fixture.config_home)
         .args([
             "--output",
             "json",
@@ -38,6 +39,7 @@ struct MutationFixture {
     temp: tempfile::TempDir,
     home: std::path::PathBuf,
     config_home: std::path::PathBuf,
+    binary: std::path::PathBuf,
     workspace: std::path::PathBuf,
     content_file: std::path::PathBuf,
 }
@@ -56,18 +58,28 @@ impl MutationFixture {
         )
         .expect("settings");
         std::fs::write(&content_file, "class Added\n").expect("content");
-        write_current_cli_install_manifest_for_test(&home, &config_home);
+        let binary = write_active_kast_for_test(&home, &config_home);
         Self {
             temp,
             home,
             config_home,
+            binary,
             workspace,
             content_file,
         }
     }
 
-    fn apply(&self, key: &str) -> std::process::Output {
-        kast(&self.home, &self.config_home)
+    fn acquire_lease(&self) -> String {
+        acquire_workspace_lease(
+            &self.binary,
+            &self.home,
+            &self.config_home,
+            &self.workspace,
+        )
+    }
+
+    fn apply(&self, key: &str, lease_id: &str) -> std::process::Output {
+        kast_at(&self.binary, &self.home, &self.config_home)
             .args(["--output", "json", "agent", "add-file"])
             .arg("--workspace-root")
             .arg(&self.workspace)
@@ -75,7 +87,13 @@ impl MutationFixture {
             .arg(self.workspace.join("src/Added.kt"))
             .arg("--content-file")
             .arg(&self.content_file)
-            .args(["--apply", "--idempotency-key", key])
+            .args([
+                "--apply",
+                "--idempotency-key",
+                key,
+                "--lease-id",
+                lease_id,
+            ])
             .output()
             .expect("apply mutation")
     }
@@ -90,34 +108,27 @@ fn spawn_operation_backend(
     dependent_symbol: bool,
 ) -> std::thread::JoinHandle<Vec<Value>> {
     let descriptor_dir = default_descriptor_dir(home);
+    std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::create_dir_all(config_home).expect("config home");
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
-    write_macos_plugin_workspace_metadata(workspace);
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::write(
         config_home.join("config.toml"),
-        "[runtime]\ndefaultBackend = \"idea\"\n",
+        "[runtime]\ndefaultBackend = \"headless\"\n",
     )
     .expect("config");
+    let listener = UnixListener::bind(socket_path).expect("bind backend");
     std::fs::write(
         descriptor_dir.join("daemons.json"),
-        format!(
-            r#"[{{
-  "workspaceRoot": "{}",
-  "backendName": "idea",
-  "backendVersion": "test",
-  "transport": "uds",
-  "socketPath": "{}",
-  "pid": {},
-  "schemaVersion": 5
-}}]"#,
-            workspace.display(),
-            socket_path.display(),
-            std::process::id(),
-        ),
+        serde_json::to_vec_pretty(&json!([runtime_descriptor_for_test(
+            &workspace,
+            socket_path,
+            "headless",
+            "test",
+        )]))
+        .expect("descriptor JSON"),
     )
     .expect("descriptor");
-    let listener = UnixListener::bind(socket_path).expect("bind backend");
-    let workspace = workspace.to_path_buf();
     std::thread::spawn(move || {
         let mut requests = Vec::new();
         while requests.iter().all(|request: &Value| {
@@ -140,17 +151,19 @@ fn spawn_operation_backend(
                     "healthy": true,
                     "active": true,
                     "indexing": false,
-                    "backendName": "idea",
+                    "backendName": "headless",
                     "backendVersion": "test",
                     "workspaceRoot": workspace,
+                    "sourceModuleNames": [":fixture"],
+                    "referenceIndexReady": true,
                     "schemaVersion": 5
                 }),
                 "capabilities" => json!({
-                    "backendName": "idea",
+                    "backendName": "headless",
                     "backendVersion": "test",
                     "workspaceRoot": workspace,
-                    "readCapabilities": [],
-                    "mutationCapabilities": [],
+                    "readCapabilities": ["symbol/resolve"],
+                    "mutationCapabilities": ["APPLY_EDITS"],
                     "limits": {
                         "requestTimeoutMillis": 60000,
                         "maxResults": 1000,
@@ -206,6 +219,37 @@ fn spawn_operation_backend(
         }
         requests
     })
+}
+
+fn acquire_workspace_lease(
+    binary: &std::path::Path,
+    home: &std::path::Path,
+    config_home: &std::path::Path,
+    workspace: &std::path::Path,
+) -> String {
+    let output = kast_at(binary, home, config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "lease",
+            "acquire",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("acquire workspace lease");
+    assert!(
+        output.status.success(),
+        "workspace lease acquisition should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let payload: Value = serde_json::from_slice(&output.stdout).expect("workspace lease JSON");
+    payload["result"]["leaseId"]
+        .as_str()
+        .expect("workspace lease id")
+        .to_string()
 }
 
 fn mutation_result(deduplicated: bool) -> Value {

@@ -46,6 +46,14 @@ fn run_config(command: cli::ConfigCommand, output_format: OutputFormat) -> Resul
             &config::set_workspace_config(args.workspace_root, args.key, args.value)?,
             output_format,
         )?,
+        cli::ConfigCommand::Add(args) => output::print_structured(
+            &config::add_workspace_config(args.workspace_root, args.key, args.pattern)?,
+            output_format,
+        )?,
+        cli::ConfigCommand::Remove(args) => output::print_structured(
+            &config::remove_workspace_config(args.workspace_root, args.key, args.pattern)?,
+            output_format,
+        )?,
         cli::ConfigCommand::Unset(args) => output::print_structured(
             &config::unset_workspace_config(args.workspace_root, args.key)?,
             output_format,

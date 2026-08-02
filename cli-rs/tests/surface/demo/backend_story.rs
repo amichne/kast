@@ -4,8 +4,7 @@ fn demo_uses_a_ready_backend_when_the_source_index_is_missing() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("idea.sock");
-    write_macos_plugin_workspace_metadata(&workspace);
+    let socket_path = temp.path().join("headless.sock");
     let handle = spawn_ready_demo_backend(&home, &config_home, &workspace, &socket_path, 5, None);
 
     let demo = kast(&home, &config_home)
@@ -16,7 +15,7 @@ fn demo_uses_a_ready_backend_when_the_source_index_is_missing() {
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend",
-            "idea",
+            "headless",
             "--symbol",
             "lib.Foo",
         ])
@@ -53,8 +52,7 @@ fn backend_only_demo_requests_a_symbol_instead_of_inventing_a_ranked_story() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("idea.sock");
-    write_macos_plugin_workspace_metadata(&workspace);
+    let socket_path = temp.path().join("headless.sock");
     let handle = spawn_ready_demo_backend(&home, &config_home, &workspace, &socket_path, 2, None);
 
     let demo = kast(&home, &config_home)
@@ -65,7 +63,7 @@ fn backend_only_demo_requests_a_symbol_instead_of_inventing_a_ranked_story() {
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend",
-            "idea",
+            "headless",
         ])
         .output()
         .expect("backend-only demo without symbol");
@@ -88,8 +86,7 @@ fn backend_only_demo_fails_when_the_compiler_cannot_resolve_the_requested_symbol
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("idea.sock");
-    write_macos_plugin_workspace_metadata(&workspace);
+    let socket_path = temp.path().join("headless.sock");
     let handle = spawn_ready_demo_backend(
         &home,
         &config_home,
@@ -111,7 +108,7 @@ fn backend_only_demo_fails_when_the_compiler_cannot_resolve_the_requested_symbol
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend",
-            "idea",
+            "headless",
             "--symbol",
             "NoSuchSymbol",
         ])
@@ -151,8 +148,7 @@ fn backend_only_demo_handles_typed_not_found_and_ambiguous_resolve_outcomes() {
         let home = temp.path().join("home");
         let config_home = temp.path().join("config");
         let workspace = temp.path().join("workspace");
-        let socket_path = temp.path().join("idea.sock");
-        write_macos_plugin_workspace_metadata(&workspace);
+        let socket_path = temp.path().join("headless.sock");
         let handle = spawn_ready_demo_backend(
             &home,
             &config_home,
@@ -170,7 +166,7 @@ fn backend_only_demo_handles_typed_not_found_and_ambiguous_resolve_outcomes() {
                 "--workspace-root",
                 workspace.to_str().expect("workspace path"),
                 "--backend",
-                "idea",
+                "headless",
                 "--symbol",
                 "Foo",
             ])
@@ -190,7 +186,7 @@ fn demo_relations_use_canonical_resolved_symbol_identity() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("idea.sock");
+    let socket_path = temp.path().join("headless.sock");
     seed_source_index(&workspace);
     let canonical_fq_name = "canonical.lib.Foo";
     let handle = spawn_ready_demo_backend(
@@ -225,7 +221,7 @@ fn demo_relations_use_canonical_resolved_symbol_identity() {
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
             "--backend",
-            "idea",
+            "headless",
         ])
         .output()
         .expect("canonical relation demo");
@@ -253,33 +249,31 @@ fn spawn_ready_demo_backend(
     std::fs::create_dir_all(workspace).expect("workspace");
     std::fs::create_dir_all(config_home).expect("config home");
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
+    let settings = workspace.join("settings.gradle.kts");
+    if !settings.is_file() && !workspace.join("settings.gradle").is_file() {
+        std::fs::write(&settings, "rootProject.name = \"demo-fixture\"\n")
+            .expect("Gradle settings");
+    }
+    let server_workspace = workspace.canonicalize().expect("canonical workspace");
     std::fs::write(
         config_home.join("config.toml"),
-        "[runtime]\ndefaultBackend = \"idea\"\n",
+        "[runtime]\ndefaultBackend = \"headless\"\n",
     )
     .expect("config");
+    let listener = UnixListener::bind(socket_path).expect("bind fake backend");
     std::fs::write(
         descriptor_dir.join("daemons.json"),
-        format!(
-            r#"[{{
-  "workspaceRoot": "{}",
-  "backendName": "idea",
-  "backendVersion": "demo-test",
-  "transport": "uds",
-  "socketPath": "{}",
-  "pid": {},
-  "schemaVersion": 5
-}}]"#,
-            workspace.display(),
-            socket_path.display(),
-            std::process::id(),
-        ),
+        serde_json::to_vec_pretty(&serde_json::json!([runtime_descriptor_for_test(
+            &server_workspace,
+            socket_path,
+            "headless",
+            "demo-test",
+        )]))
+        .expect("descriptor JSON"),
     )
     .expect("descriptor");
 
-    let listener = UnixListener::bind(socket_path).expect("bind fake backend");
     listener.set_nonblocking(true).expect("nonblocking backend");
-    let server_workspace = workspace.to_path_buf();
     thread::spawn(move || {
         let mut requests = Vec::new();
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
@@ -304,18 +298,18 @@ fn spawn_ready_demo_backend(
                     "healthy": true,
                     "active": true,
                     "indexing": false,
-                    "backendName": "idea",
+                    "backendName": "headless",
                     "backendVersion": "demo-test",
                     "workspaceRoot": server_workspace.display().to_string(),
                     "referenceIndexReady": true,
                     "schemaVersion": 5
                 }),
                 "capabilities" => serde_json::json!({
-                    "backendName": "idea",
+                    "backendName": "headless",
                     "backendVersion": "demo-test",
                     "workspaceRoot": server_workspace.display().to_string(),
                     "readCapabilities": ["symbol/resolve", "symbol/references", "raw/diagnostics"],
-                    "mutationCapabilities": ["symbol/rename"],
+                    "mutationCapabilities": ["RENAME"],
                     "limits": {
                         "requestTimeoutMillis": 60000,
                         "maxResults": 1000,

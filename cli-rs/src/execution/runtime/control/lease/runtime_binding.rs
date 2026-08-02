@@ -3,39 +3,61 @@ fn ensure_lease_runtime(
     admission: &SemanticWorkspaceAdmission,
     wait_timeout_ms: u64,
 ) -> Result<WorkspaceEnsureResult> {
-    if admission.backend_name == BackendName::Idea {
-        let config = KastConfig::load(&admission.workspace_root)?;
-        let path_resolution = config::path_resolution_report(
-            &config,
-            Some(&admission.workspace_root),
-            config::PathResolutionMode::Cli,
-        )?;
-        let selected = wait_for_servable(
-            &admission.workspace_root,
-            Some(BackendName::Idea),
-            false,
-            wait_timeout_ms,
-        )?;
-        return Ok(WorkspaceEnsureResult {
-            workspace_root: admission.workspace_root.display().to_string(),
-            descriptor_directory: config.paths.descriptor_dir.display().to_string(),
-            path_resolution,
-            started: false,
-            launch_disposition: Some(LaunchDisposition::ReusedOpenProject),
-            log_file: None,
-            selected,
-            note: Some(
-                "Borrowed the exact IDEA-hosted runtime; acquisition never launches IDEA."
-                    .to_string(),
+    if !admission.candidate().ready {
+        let deadline = Instant::now() + Duration::from_millis(wait_timeout_ms);
+        while Instant::now() < deadline {
+            admission.validate_current()?;
+            let inspection =
+                inspect_headless_workspace(admission.workspace_root(), StaleDescriptorPolicy::Preserve)?;
+            if let Some(candidate) = inspection.candidates.into_iter().find(|candidate| {
+                candidate.descriptor_path == admission.candidate().descriptor_path
+                    && candidate.descriptor == admission.candidate().descriptor
+            }) {
+                if candidate.ready {
+                    return lease_runtime_result(admission, candidate);
+                }
+            } else {
+                return Err(CliError::new(
+                    "WORKSPACE_LEASE_RUNTIME_REPLACED",
+                    "The exact headless runtime changed while lease acquisition waited for READY.",
+                ));
+            }
+            thread::sleep(Duration::from_millis(25));
+        }
+        return Err(CliError::new(
+            "RUNTIME_TIMEOUT",
+            format!(
+                "Timed out waiting for the exact headless runtime for {} to reach READY.",
+                admission.workspace_root().display()
             ),
-            schema_version: SCHEMA_VERSION,
-        });
+        ));
     }
-    workspace_ensure(lease_runtime_args(
-        &admission.workspace_root,
-        admission.backend_name,
-        wait_timeout_ms,
-    ))
+    lease_runtime_result(admission, admission.candidate().clone())
+}
+
+fn lease_runtime_result(
+    admission: &SemanticWorkspaceAdmission,
+    candidate: RuntimeCandidateStatus,
+) -> Result<WorkspaceEnsureResult> {
+    let path_resolution = config::path_resolution_report(
+        admission.config(),
+        Some(admission.workspace_root()),
+        config::PathResolutionMode::Cli,
+    )?;
+    Ok(WorkspaceEnsureResult {
+        workspace_root: admission.workspace_root().display().to_string(),
+        descriptor_directory: admission.config().paths.descriptor_dir.display().to_string(),
+        path_resolution,
+        started: admission.started(),
+        log_file: admission.started().then(|| {
+            daemon_log_file(admission.config(), admission.workspace_root(), admission.backend())
+                .display()
+                .to_string()
+        }),
+        selected: candidate,
+        note: None,
+        schema_version: SCHEMA_VERSION,
+    })
 }
 
 fn lease_runtime_args(
@@ -48,7 +70,7 @@ fn lease_runtime_args(
         backend_name: Some(backend_name),
         idea_home: None,
         wait_timeout_ms,
-        accept_indexing: Some(false),
+        accept_indexing: Some(true),
         no_auto_start: Some(false),
         socket_path: None,
         module_name: None,
@@ -191,11 +213,9 @@ fn exact_runtime_observation(
     backend_name: BackendName,
     expected: &WorkspaceLeaseRuntimeIdentity,
 ) -> Result<ExactRuntimeObservation> {
-    let inspection = inspect_workspace(
-        workspace_root,
-        RuntimeBackendPreference::Fixed(backend_name),
-        StaleDescriptorPolicy::Preserve,
-    )?;
+    headless_authority::require_headless_backend(backend_name)?;
+    let inspection =
+        inspect_headless_workspace(workspace_root, StaleDescriptorPolicy::Preserve)?;
     for candidate in &inspection.candidates {
         if runtime_descriptor_matches(&candidate.descriptor, &candidate.descriptor_path, expected) {
             if !process_identity_is_live(&expected.process) {
@@ -282,27 +302,27 @@ fn stop_exact_runtime(
     backend_name: BackendName,
     expected: &WorkspaceLeaseRuntimeIdentity,
 ) -> Result<bool> {
-    if backend_name == BackendName::Idea {
-        return Ok(false);
-    }
-    let inspection = inspect_workspace(
-        workspace_root,
-        RuntimeBackendPreference::Fixed(backend_name),
-        StaleDescriptorPolicy::Preserve,
-    )?;
+    headless_authority::require_headless_backend(backend_name)?;
+    let inspection =
+        inspect_headless_workspace(workspace_root, StaleDescriptorPolicy::Preserve)?;
     let Some(candidate) = inspection.candidates.into_iter().find(|candidate| {
         runtime_descriptor_matches(&candidate.descriptor, &candidate.descriptor_path, expected)
             && process_identity_is_live(&expected.process)
     }) else {
         return Ok(false);
     };
-    let mut warnings = Vec::new();
-    let action = stop_candidate(
-        &inspection.descriptor_directory,
-        candidate,
-        false,
-        None,
-        &mut warnings,
-    )?;
-    Ok(action.terminated || action.descriptor_deleted)
+    if candidate.pid_alive {
+        terminate_process(candidate.descriptor.pid, false);
+        for _ in 0..20 {
+            if !is_process_alive(candidate.descriptor.pid) {
+                break;
+            }
+            thread::sleep(Duration::from_millis(250));
+        }
+        if is_process_alive(candidate.descriptor.pid) {
+            terminate_process(candidate.descriptor.pid, true);
+        }
+    }
+    delete_descriptor(&inspection.descriptor_directory, &candidate.descriptor)?;
+    Ok(true)
 }

@@ -26,7 +26,7 @@ mod coverage {
             assert_eq!(response["code"], "REPOSITORY_INDEX_INVALID", "{response:#}");
             assert_eq!(
                 response["details"]["remedy"],
-                "Run `kast developer runtime up --workspace-root \"$PWD\" --backend idea --accept-indexing`, then rebuild compiler graph evidence with `kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path <path-to-kotlin-file>`.",
+                "Run `kast developer runtime up --workspace-root \"$PWD\" --backend headless --accept-indexing`, then rebuild compiler graph evidence with `kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path <path-to-kotlin-file>`.",
                 "{response:#}"
             );
         }
@@ -196,7 +196,7 @@ fn limited_semantic_outcome_cannot_produce_exact_empty() {
 }
 
 #[test]
-fn external_relationship_boundary_is_qualified_instead_of_pending() {
+fn external_relationship_boundary_does_not_change_graph_coverage() {
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
     let failure_id = uuid::Uuid::new_v4().hyphenated().to_string();
     fixture
@@ -222,12 +222,116 @@ fn external_relationship_boundary_is_qualified_instead_of_pending() {
     );
 
     assert!(status.success(), "{response:#}");
-    assert_eq!(response["result"]["coverage"]["pending"], 0, "{response:#}");
-    assert_eq!(response["result"]["coverage"]["limited"], 1, "{response:#}");
-    assert_eq!(response["result"]["files"][0]["state"], "LIMITED", "{response:#}");
+    assert_eq!(response["result"]["coverage"]["pending"], 1, "{response:#}");
+    assert_eq!(response["result"]["coverage"]["limited"], 0, "{response:#}");
+    assert_eq!(response["result"]["files"][0]["state"], "PENDING", "{response:#}");
     assert_eq!(
         response["result"]["files"][0]["reasonCode"],
-        "SEMANTIC_GRAPH_EXTERNAL_BOUNDARY",
+        "SEMANTIC_GRAPH_MISSING",
         "{response:#}"
     );
+}
+
+#[test]
+fn critical_graph_stale_file_rejects_read_admission() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(2);
+    seed_repository_graph(&fixture);
+    write_critical_paths(&fixture, "src/main/kotlin/sample/Source0001.kt");
+    fixture
+        .connection()
+        .execute(
+            "UPDATE file_stage_outcomes
+             SET stage_version = 'semantic-graph-old'
+             WHERE stage = 'SEMANTIC_GRAPH' AND filename = 'Source0001.kt'",
+            [],
+        )
+        .expect("stale critical semantic graph version");
+
+    let (status, response) = graph_summary(&home, &config_home, &workspace);
+
+    assert!(!status.success(), "{response:#}");
+    assert_eq!(
+        response["error"], "GRAPH_EVIDENCE_INCOMPLETE",
+        "{response:#}"
+    );
+}
+
+#[test]
+fn critical_graph_unmatched_pattern_rejects_read_admission() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
+    seed_repository_graph(&fixture);
+    write_critical_paths(&fixture, "src/required/**");
+
+    let (status, response) = graph_summary(&home, &config_home, &workspace);
+
+    assert!(!status.success(), "{response:#}");
+    assert_eq!(
+        response["error"], "GRAPH_EVIDENCE_INCOMPLETE",
+        "{response:#}"
+    );
+}
+
+#[test]
+fn critical_graph_noncritical_stale_file_remains_qualified() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(2);
+    seed_repository_graph(&fixture);
+    fixture
+        .connection()
+        .execute(
+            "UPDATE file_stage_outcomes
+             SET stage_version = 'semantic-graph-old'
+             WHERE stage = 'SEMANTIC_GRAPH' AND filename = 'Source0001.kt'",
+            [],
+        )
+        .expect("stale noncritical semantic graph version");
+
+    let (status, response) = graph_summary(&home, &config_home, &workspace);
+
+    assert!(status.success(), "{response:#}");
+    assert_eq!(response["qualification"], "QUALIFIED", "{response:#}");
+}
+
+fn write_critical_paths(fixture: &WorkspaceIndexFixture, pattern: &str) {
+    let config_path = fixture
+        .database_path()
+        .parent()
+        .and_then(std::path::Path::parent)
+        .expect("workspace data directory")
+        .join("config.toml");
+    std::fs::write(
+        config_path,
+        format!("[indexing]\ncriticalPaths = [\"{pattern}\"]\n"),
+    )
+    .expect("critical path config");
+}
+
+fn graph_summary(
+    home: &std::path::Path,
+    config_home: &std::path::Path,
+    workspace: &std::path::Path,
+) -> (std::process::ExitStatus, serde_json::Value) {
+    use std::os::unix::process::CommandExt;
+
+    let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_kast"));
+    command.arg0("kast");
+    let output = command
+        .current_dir(workspace)
+        .env("HOME", home)
+        .env("KAST_CONFIG_HOME", config_home)
+        .args(["graph", "summary"])
+        .output()
+        .expect("graph summary");
+    let response = toon_format::decode_default(
+        std::str::from_utf8(&output.stdout)
+            .expect("graph summary UTF-8")
+            .trim(),
+    )
+    .unwrap_or_else(|error| {
+        panic!(
+            "graph summary TOON: {error}; stdout={} stderr={}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr),
+        )
+    });
+    (output.status, response)
 }

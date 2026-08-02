@@ -19,9 +19,10 @@ the same verified release bundles through `install.sh`.
 Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
 For release workflow changes, run `.github/scripts/release/test-release-workflow-contract.sh`.
-The release workflow owns the IDEA ZIP and the four platform setup bundles.
-Every bundle carries the verified plugin and enters validation through its
-private `libexec/kastctl setup`.
+The release workflow owns the private headless payload and the four platform
+setup bundles. Every bundle carries `idea-home/plugins/kast-headless` inside
+that payload and enters validation through its private `libexec/kastctl setup`.
+It must not publish a foreground IDEA ZIP or update feed.
 For CLI terminal command or executable example changes, run
 `.github/scripts/docs/test-terminal-command-contract.sh`.
 The local transactional setup gate lives in
@@ -63,19 +64,17 @@ they remain in the output inventory without inflating the required
 pull-request critical path. Run `.github/scripts/ci/test-ci-workflow-model.sh`
 whenever jobs, `needs` edges, proof owners, canary classification, or timing
 evidence change.
-Workstation semantic proof runs through an open IDEA project and the active
-setup CLI. Do not create a second installation authority for that proof.
+Workstation semantic proof runs through the exact-root isolated headless
+runtime and the active setup CLI. Foreground IDEA is not an installation,
+lifecycle, or semantic authority.
 Linux release headless packaging and action-runtime contracts remain separate
 CI/release concerns and must not be described as developer-machine authority.
 
-`packaging/jetbrains/updatePlugins.xml` is the hand-authored GitHub Release feed
-template. The release job substitutes its tag and version and uploads the feed
-beside the unsigned ZIP; docs workflows do not materialize or preserve a
-JetBrains Pages repository. `packaging/jetbrains/runtime-compatibility.json`
-separately owns typed runtime pairs and IDEA build ranges. It remains a source
-and admission contract, not a generated release asset. Run the dedicated
-runtime compatibility contract whenever that source or its metadata consumers
-change.
+`packaging/jetbrains/runtime-compatibility.json` owns typed installed-host
+runtime pairs and IntelliJ build ranges. It remains a non-semantic setup and
+admission input, not a readiness source or generated release asset. Run the
+dedicated runtime compatibility contract whenever that source or its metadata
+consumers change.
 
 Publishable CI artifacts are single-producer per commit. Producer jobs must
 write a `scripts/verify-ci-artifact-ledger.py` receipt for the artifact they
@@ -114,7 +113,7 @@ For setup authority changes, run:
 .github/scripts/install/test-setup-contract.sh
 ```
 
-For IDEA GitHub Release distribution changes, run:
+For installed-headless release distribution changes, run:
 
 ```console
 .github/scripts/runtime/test-runtime-compatibility-contract.sh

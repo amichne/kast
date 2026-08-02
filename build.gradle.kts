@@ -30,12 +30,6 @@ subprojects {
     version = rootProject.version
 }
 
-tasks.register("buildIdeaPlugin") {
-    group = "distribution"
-    description = "Builds the IDEA plugin zip under backend-idea/build/distributions."
-    dependsOn(":backend-idea:buildPlugin")
-}
-
 tasks.register("stageHeadlessDist") {
     group = "distribution"
     description =
@@ -89,9 +83,6 @@ fun resolveCargoExecutable(): String {
 val cliCompiledBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/kast")
 val cliDevelopmentBinary: RegularFile = layout.projectDirectory.file("cli-rs/target/debug/kastctl")
 val resolvedCargoExecutable = resolveCargoExecutable()
-val developmentIdeaPluginArchive: RegularFile = layout.projectDirectory.file(
-    "backend-idea/build/distributions/backend-idea-${version}.zip",
-)
 val developmentCliArchive = layout.buildDirectory.file("setup/kast-cli.zip")
 val developmentBundle = layout.buildDirectory.file(
     "setup/kast-ubuntu-debian-headless-x86_64-${version}.tar.gz",
@@ -135,7 +126,7 @@ val packageDevelopmentCli: TaskProvider<Zip> by tasks.registering(Zip::class) {
 val packageDevelopmentSetupBundle: TaskProvider<Exec> by tasks.registering(Exec::class) {
     group = "distribution"
     description = "Builds one complete development setup bundle."
-    dependsOn(packageDevelopmentCli, ":backend-headless:portableDistZip", ":backend-idea:buildPlugin")
+    dependsOn(packageDevelopmentCli, ":backend-headless:portableDistZip")
     val backendArchive = project(":backend-headless").tasks.named<Zip>("portableDistZip")
         .flatMap { task -> task.archiveFile }
     commandLine(
@@ -144,8 +135,6 @@ val packageDevelopmentSetupBundle: TaskProvider<Exec> by tasks.registering(Exec:
         "--repo-root", layout.projectDirectory.asFile.absolutePath,
         "--cli-archive", developmentCliArchive.get().asFile.absolutePath,
         "--backend-archive", backendArchive.get().asFile.absolutePath,
-        "--plugin-archive",
-        developmentIdeaPluginArchive.asFile.absolutePath,
         "--version", project.version.toString(),
         "--bundle-output", developmentBundle.get().asFile.absolutePath,
     )

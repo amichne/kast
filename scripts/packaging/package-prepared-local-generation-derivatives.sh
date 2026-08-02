@@ -8,7 +8,7 @@ die() {
 
 usage() {
   printf '%s\n' \
-    'Usage: scripts/packaging/package-prepared-local-generation-derivatives.sh --kind ubuntu-debian-bundle --source-root <checkout> --prepared-generation-archive <tar.zst> --dist-directory <directory> --plugin-archive <zip> --bundle-version <version>' \
+    'Usage: scripts/packaging/package-prepared-local-generation-derivatives.sh --kind ubuntu-debian-bundle --source-root <checkout> --prepared-generation-archive <tar.zst> --dist-directory <directory> --bundle-version <version>' \
     >&2
 }
 
@@ -17,7 +17,6 @@ source_root=""
 prepared_generation_archive=""
 dist_directory=""
 bundle_version=""
-plugin_archive=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --kind)
@@ -35,9 +34,6 @@ while [[ $# -gt 0 ]]; do
     --bundle-version)
       [[ $# -ge 2 ]] || die 'Missing value for --bundle-version'
       bundle_version="$2"; shift 2 ;;
-    --plugin-archive)
-      [[ $# -ge 2 ]] || die 'Missing value for --plugin-archive'
-      plugin_archive="$2"; shift 2 ;;
     --help|-h)
       usage; exit 0 ;;
     *)
@@ -50,9 +46,6 @@ done
   || { usage; die "Unsupported package kind: $package_kind"; }
 [[ -n "$bundle_version" ]] \
   || { usage; die '--bundle-version is required for ubuntu-debian-bundle'; }
-[[ -n "$plugin_archive" ]] \
-  || { usage; die '--plugin-archive is required for ubuntu-debian-bundle'; }
-[[ -f "$plugin_archive" ]] || die "IDEA plugin archive not found: $plugin_archive"
 [[ -n "$source_root" ]] || { usage; die '--source-root is required'; }
 [[ -n "$prepared_generation_archive" ]] || { usage; die '--prepared-generation-archive is required'; }
 [[ -n "$dist_directory" ]] || { usage; die '--dist-directory is required'; }
@@ -108,7 +101,6 @@ bundle_asset="${dist_directory}/kast-ubuntu-debian-headless-x86_64-${bundle_vers
   --repo-root "$source_root" \
   --cli-archive "$cli_archive" \
   --backend-archive "$backend_archive" \
-  --plugin-archive "$plugin_archive" \
   --version "$bundle_version" \
   --bundle-output "$bundle_asset"
 

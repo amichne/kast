@@ -142,3 +142,4 @@ __pycache__/
 skills-lock.json
 /AGENTS.local.md
 /.kast/
+/.graphify/

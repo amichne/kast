@@ -42,21 +42,17 @@ git rev-parse HEAD
 git worktree list --porcelain
 ```
 
-On macOS, admit the current root through the supported IDEA pathway:
+Admit the current root through the public headless pathway:
 
 ```console
-~/.local/share/kast/current/libexec/kastctl developer runtime up \
-  --workspace-root "$PWD" \
-  --backend idea \
-  --accept-indexing
+kast up
 ```
 
-An `INDEXING` response is progress, not green proof. Runtime readiness and
-persisted graph completeness are separate: require `selected.ready` to be
-`true`, then inspect the coverage returned by the repository or relationship
-operation under test. Runtime status does not report graph coverage. A runtime
-can be `READY` while the task result remains incomplete. Do not open another
-IDE process or substitute a runtime attached to another worktree.
+`kast up` waits for semantic readiness. Runtime readiness and persisted graph
+completeness are separate: inspect the coverage returned by the repository or
+relationship operation under test. Runtime status does not report graph
+coverage. A runtime can be `READY` while the task result remains incomplete.
+Do not use foreground IDE state or a runtime attached to another worktree.
 
 ## Route the change to its owner
 
@@ -75,7 +71,7 @@ usually needs proof for each affected boundary.
 | Repository context | `context/` | Context and root-authority tests. |
 | Agent-facing result shape | `cli-rs/src/agent/projection/repository/` | Repository projection-family and view tests. |
 | Host-neutral semantic graph model | `analysis-api/` | `./gradlew :analysis-api:test`. |
-| IDEA compiler extraction | `backend-idea/` | `./gradlew :backend-idea:test`. |
+| Private IntelliJ compiler extraction | `backend-idea/` | `./gradlew :backend-idea:test`. |
 | SQLite graph rows or generation | `index-store/` | `./gradlew :index-store:test`. |
 | Schema version generation | `build-logic/` and schema source | Generator test plus Rust schema smoke proof. |
 | Authored CLI protocol | `cli-rs/protocol/source/commands.json` | Generated-contract check; do not edit generated output. |
@@ -121,7 +117,7 @@ Trace the complete authority chain described in
 For Kotlin production changes, trace the other direction as well:
 
 1. `SemanticGraphQuery` parses exact Kotlin paths.
-2. IDEA resolves PSI and K2 facts in a read action.
+2. The headless runtime resolves PSI and K2 facts in an IntelliJ read action.
 3. Diagnostics and source hashes admit each file.
 4. `SemanticGraphFileIndexUpdate` carries the complete file replacement.
 5. `SemanticGraphWriter` updates rows and generation in one transaction.
@@ -185,15 +181,14 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked \
   --all-targets --all-features
 ```
 
-If compiler models, IDEA extraction, or persistence changed, run the affected
-Kotlin modules before the broad JVM gate:
+If compiler models, private extraction, or persistence changed, run the
+affected Kotlin modules before the broad JVM gate:
 
 ```console
 ./gradlew :analysis-api:test
 ./gradlew :backend-idea:test
 ./gradlew :index-store:test
 ./gradlew test --no-daemon
-./gradlew buildIdeaPlugin --no-daemon
 ```
 
 The repository shape gate enforces no more than 400 physical lines in tracked
@@ -251,10 +246,11 @@ loosening validation to make an error disappear.
 | Symptom or code | Inspect | Recovery |
 | --- | --- | --- |
 | Wrong canonical root | Command root and runtime identity. | Rerun from the intended exact worktree. |
-| `IDEA_PLUGIN_UPDATE_REQUIRED` | Installed CLI/plugin release pair. | Update Kast; restart only when the typed result requests it. |
-| `IDEA_VERSION_UNSUPPORTED` | JetBrains product and build. | Use a supported host build. |
-| `IDEA_HOST_AMBIGUOUS` | Running and configured supported hosts. | Select one exact supported host. |
-| `INDEXING` | Gradle import, smart mode, Kotlin admission, reference index. | Wait and retry readiness; do not bypass it. |
+| `IDEA_SEMANTIC_BACKEND_RETIRED` | Persisted legacy backend intent. | Run setup to migrate it to headless. |
+| `IDEA_VERSION_UNSUPPORTED` | Installed IntelliJ runtime source and build. | Use a supported build. |
+| `IDEA_HOST_AMBIGUOUS` | Installed supported runtime sources. | Configure one exact source; foreground state is irrelevant. |
+| `HEADLESS_RUNTIME_CONFLICT` | Exact-root descriptor identities. | Stop only the stale Kast-owned identity named by the result. |
+| `INDEXING` | Headless Gradle import, smart mode, Kotlin admission, reference index. | Wait and retry readiness; do not bypass it. |
 | `INVALID_REPOSITORY_SCOPE` | Requested Gradle project or source set. | Use an identity present in the workspace inventory. |
 | `AMBIGUOUS_REPOSITORY_SCOPE` | Included builds or repeated project names. | Supply the build-qualified identity. |
 | `GRAPH_COVERAGE_UNSTABLE` | Source-index generation movement. | Let indexing settle, then retry coverage. |
@@ -265,20 +261,16 @@ loosening validation to make an error disappear.
 | Invalid or stale label index | Path, artifact schema, key, and content hash. | Regenerate labels from the active compiler snapshot. |
 | `REPOSITORY_CONTEXT_CHANGED` | Context file replacement during read. | Retry after the working tree stops changing. |
 
-Terminal host errors remain blockers. Do not substitute headless analysis on
-macOS when the exact-root IDEA pathway reports an unsupported or ambiguous
-host.
+Runtime-source compatibility errors remain blockers. Do not route through a
+foreground IDE or weaken exact-root admission to bypass them.
 
 ## Recover compiler graph evidence
 
 Recovery must reestablish each authority in order. First bring up the exact
-workspace runtime:
+workspace runtime through public demand:
 
 ```console
-~/.local/share/kast/current/libexec/kastctl developer runtime up \
-  --workspace-root "$PWD" \
-  --backend idea \
-  --accept-indexing
+kast up
 ```
 
 Then inspect runtime and graph state:
@@ -286,7 +278,7 @@ Then inspect runtime and graph state:
 ```console
 ~/.local/share/kast/current/libexec/kastctl --output json status \
   --workspace-root "$PWD" \
-  --backend idea
+  --backend headless
 ```
 
 Continue when `selected.ready` is `true`. Rerun the failed repository or

@@ -3,15 +3,8 @@ pub fn backend_runtime_libs_dir(
     backend_name: BackendName,
     override_dir: Option<PathBuf>,
 ) -> Result<PathBuf> {
-    let configured = match backend_name {
-        BackendName::Headless => config.backends.headless.runtime_libs_dir.clone(),
-        BackendName::Idea => {
-            return Err(CliError::new(
-                "DAEMON_START_ERROR",
-                "The idea backend is hosted by IDEA and cannot be launched as a headless runtime.",
-            ));
-        }
-    };
+    crate::runtime::require_headless_backend(backend_name)?;
+    let configured = config.backends.headless.runtime_libs_dir.clone();
     override_dir.map(normalize).or(configured).ok_or_else(|| {
         CliError::new(
             "DAEMON_START_ERROR",

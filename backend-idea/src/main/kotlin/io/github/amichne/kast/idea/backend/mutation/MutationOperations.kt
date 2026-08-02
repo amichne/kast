@@ -205,6 +205,16 @@ internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuer
             }?.let { store ->
                 val requestContext = currentCoroutineContext()
                 requestContext.ensureActive()
+                val admittedSourcePaths = admittedPaths.map { path ->
+                    requireNotNull(store.sourcePath(java.nio.file.Path.of(path))) {
+                        "Admitted refresh path is outside the exact workspace root: $path"
+                    }
+                }
+                val removedSourcePaths = removedPaths.map { path ->
+                    requireNotNull(store.sourcePath(java.nio.file.Path.of(path))) {
+                        "Removed refresh path is outside the exact workspace root: $path"
+                    }
+                }
                 val outcomes = IdeaProjectIndexer(
                     project = project,
                     workspaceRoot = workspaceRoot,
@@ -214,7 +224,12 @@ internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuer
                     },
                     workspaceIdentity = sharedWorkspaceIdentity,
                     readGradleWorkspaceModel = workspaceModelReader,
-                ).refreshSymbolRelationships(admittedPaths, removedPaths)
+                    scopeCache = workspaceIndexingScopeCache,
+                ).refreshSymbolRelationships(
+                    admittedSourcePaths,
+                    removedSourcePaths,
+                    currentPersistedIndexingConfig(),
+                )
                 requestContext.ensureActive()
                 outcomes.map { outcome ->
                     val failure = requireNotNull(outcome.failure) {
@@ -222,7 +237,7 @@ internal suspend fun KastPluginBackend.refreshOperation(query: ParsedRefreshQuer
                     }
                     RefreshRelationshipFailure(
                         failureId = SemanticGraphExternalBoundaryFailureId.parse(failure.id.value),
-                        filePath = outcome.path,
+                        filePath = outcome.path.absolute.value.value,
                         code = when (failure.code) {
                             FileStageFailureCode.PSI_UNAVAILABLE ->
                                 SemanticGraphExternalBoundaryReason.PSI_UNAVAILABLE

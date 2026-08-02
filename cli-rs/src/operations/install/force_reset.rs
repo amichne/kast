@@ -1,14 +1,10 @@
 #[derive(Debug)]
 struct ForceResetPlan {
     targets: BTreeSet<PathBuf>,
-    requires_closed_ide: bool,
 }
 
 impl ForceResetPlan {
-    fn build(
-        targets: &ActivationTargetPaths,
-        selected_idea_plugins_dir: Option<&Path>,
-    ) -> Result<Self> {
+    fn build(targets: &ActivationTargetPaths) -> Result<Self> {
         let install_root = config::normalize(targets.resolved.install_root.clone());
         let home = normalized_existing_path(manifest::home_dir());
         let mut cleanup = BTreeSet::new();
@@ -49,12 +45,8 @@ impl ForceResetPlan {
         }
 
         let mut plugin_directories = supported_idea_plugins_dirs()?;
-        if let Some(selected) = selected_idea_plugins_dir {
-            plugin_directories.push(config::normalize(selected.to_path_buf()));
-        }
         plugin_directories.sort();
         plugin_directories.dedup();
-        let mut requires_closed_ide = false;
         for plugins in plugin_directories {
             let plugin = validated_child(&plugins, "kast", "Kast IDEA plugin")?;
             let profile = plugins.parent().ok_or_else(|| {
@@ -64,22 +56,14 @@ impl ForceResetPlan {
                 )
             })?;
             let backup = validated_child(profile, ".kast-plugin-backup", "Kast IDEA plugin backup")?;
-            requires_closed_ide |= fs::symlink_metadata(&plugin).is_ok()
-                || fs::symlink_metadata(&backup).is_ok();
             cleanup.insert(plugin);
             cleanup.insert(backup);
         }
 
-        Ok(Self {
-            targets: cleanup,
-            requires_closed_ide,
-        })
+        Ok(Self { targets: cleanup })
     }
 
     fn execute(self) -> Result<()> {
-        if self.requires_closed_ide {
-            require_jetbrains_ides_closed()?;
-        }
         for target in self.targets {
             manifest::remove_path(&target)?;
         }

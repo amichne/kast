@@ -27,13 +27,21 @@ fn execute_agent_steps(
         .count();
     let mut workspace_admission = None;
     if daemon_step_count > 0 {
-        match runtime::semantic_workspace_route(
-            runtime.workspace_root.clone(),
-            runtime.backend_name,
-        ) {
+        let route = if method == "agent/verify" {
+            runtime::semantic_workspace_route_reuse_only(
+                runtime.workspace_root.clone(),
+                runtime.backend_name,
+            )
+        } else {
+            runtime::semantic_workspace_route(
+                runtime.workspace_root.clone(),
+                runtime.backend_name,
+            )
+        };
+        match route {
             Ok(runtime::SemanticWorkspaceRoute::Admitted(admission)) => {
-                runtime.workspace_root = Some(admission.workspace_root.clone());
-                runtime.backend_name = Some(admission.backend_name);
+                runtime.workspace_root = Some(admission.workspace_root().to_path_buf());
+                runtime.backend_name = Some(admission.backend());
                 workspace_admission = Some(admission);
             }
             Ok(runtime::SemanticWorkspaceRoute::Rejected(rejection)) => {
@@ -48,24 +56,9 @@ fn execute_agent_steps(
             }
         }
     }
-    let session = if daemon_step_count > 1 {
-        let session = if method == "agent/verify" {
-            runtime::raw_rpc_session_reuse_only(
-                runtime.workspace_root.clone(),
-                runtime.backend_name,
-            )
-        } else {
-            runtime::raw_rpc_session(runtime.workspace_root.clone(), runtime.backend_name)
-        };
-        match session {
-            Ok(session) => Some(session),
-            Err(error) => {
-                return error_envelope(method.to_string(), None, AgentError::from_cli_error(error));
-            }
-        }
-    } else {
-        None
-    };
+    let session = workspace_admission
+        .as_ref()
+        .map(|admission| runtime::raw_rpc_session_for_admission(admission.as_ref().clone()));
     let mut step_results = Vec::with_capacity(steps.len());
     let mut issues = Vec::new();
     let mut semantic_analysis = None;
@@ -229,7 +222,7 @@ fn verification_semantic_graph_readiness(
                 .any(|capability| capability.as_str() == Some("SEMANTIC_GRAPH"))
         });
     advertised.then(|| {
-        crate::repository_intelligence::semantic_graph_readiness(&admission.workspace_root)
+        crate::repository_intelligence::semantic_graph_readiness(admission.workspace_root())
     })
 }
 

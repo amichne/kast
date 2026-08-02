@@ -67,15 +67,15 @@ fun socketPathForWorkspaceRoot(
     socketDirectory: Path,
 ): Path {
     val workspaceHash = FileHashing.sha256(
-        workspaceRoot.toAbsolutePath().normalize().toString(),
+        io.github.amichne.kast.api.contract.NormalizedPath.of(workspaceRoot).value,
     ).take(12)
     val configured = socketDirectory
-        .resolve("kast-$workspaceHash.sock")
+        .resolve("kast-headless-$workspaceHash.sock")
         .toAbsolutePath()
         .normalize()
     return if (configured.toString().toByteArray(StandardCharsets.UTF_8).size > maxUnixSocketPathBytes) {
         Path.of(System.getProperty("java.io.tmpdir"))
-            .resolve("kast-$workspaceHash.sock")
+            .resolve("kast-headless-$workspaceHash.sock")
             .toAbsolutePath()
             .normalize()
     } else {

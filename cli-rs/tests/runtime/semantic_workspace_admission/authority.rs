@@ -12,10 +12,9 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
     let config_home = fixture.primary().join("test-config");
     let socket_path = fixture.socket_path("primary.sock");
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata_at_home(&workspace, &home);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "idea");
     let listener = bind_semantic_listener(&socket_path);
-    let backend = spawn_verify_backend(listener, workspace.clone(), "idea", 10);
+    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
+    let backend = spawn_verify_backend(listener, workspace.clone(), "headless", 10);
 
     let verify = kast(&home, &config_home)
         .args([
@@ -25,7 +24,7 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
             "verify",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=idea",
+            "--backend=headless",
         ])
         .output()
         .expect("agent verify");
@@ -40,13 +39,12 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
     assert_eq!(
         output["result"]["semanticWorkspace"],
         serde_json::json!({
-            "backendName": "idea",
+            "backendName": "headless",
             "workspaceRoot": workspace.display().to_string(),
             "workspaceKind": "PRIMARY_CHECKOUT",
-            "sourceModuleNames": [":analysis-api", ":backend:idea"],
+            "sourceModuleNames": [":analysis-api", ":backend:headless"],
             "limitations": ["REFERENCE_INDEX_UNAVAILABLE"],
-            "evidenceQuality": "COMPILER_BACKED",
-            "nextActions": []
+            "evidenceQuality": "COMPILER_BACKED"
         })
     );
     let toon = kast(&home, &config_home)
@@ -57,7 +55,7 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
             "verify",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=idea",
+            "--backend=headless",
         ])
         .output()
         .expect("agent verify TOON");
@@ -97,14 +95,9 @@ fn prepared_linked_worktree_verify_views_retain_admission_evidence() {
     let config_home = fixture.linked().join("test-config");
     let socket_path = fixture.socket_path("linked-verify-views.sock");
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata_at_home(&workspace, &home);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "idea");
-    let backend = spawn_verify_backend(
-        bind_semantic_listener(&socket_path),
-        workspace.clone(),
-        "idea",
-        15,
-    );
+    let listener = bind_semantic_listener(&socket_path);
+    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
+    let backend = spawn_verify_backend(listener, workspace.clone(), "headless", 15);
     let views: [&[&str]; 3] = [&[], &["--fields", "health"], &["--count"]];
 
     for view in views {
@@ -116,7 +109,7 @@ fn prepared_linked_worktree_verify_views_retain_admission_evidence() {
                 "verify",
                 "--workspace-root",
                 workspace.to_str().expect("workspace path"),
-                "--backend=idea",
+                "--backend=headless",
             ])
             .args(view)
             .output()
@@ -156,13 +149,9 @@ fn unprepared_disposable_checkout_can_use_headless_read_only_workflows() {
     std::fs::create_dir_all(source_file.parent().expect("source parent")).expect("source dir");
     std::fs::write(&source_file, "class Foo\n").expect("source file");
     std::fs::create_dir_all(&home).expect("home");
+    let listener = bind_semantic_listener(&socket_path);
     write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
-    let backend = spawn_verify_backend(
-        bind_semantic_listener(&socket_path),
-        workspace.clone(),
-        "headless",
-        12,
-    );
+    let backend = spawn_verify_backend(listener, workspace.clone(), "headless", 12);
     let install_manifest = install_manifest_path(&home);
     let homebrew_receipt = home.join("Library/Application Support/Kast/homebrew-install.json");
     assert!(!install_manifest.exists());
@@ -262,9 +251,9 @@ fn prepared_linked_worktree_never_attaches_primary_checkout_descriptor() {
     let config_home = fixture.linked().join("test-config");
     let socket_path = fixture.socket_path("primary.sock");
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata_at_home(&linked, &home);
-    write_runtime_descriptor(&home, &primary, &socket_path, "idea");
-    let backend = spawn_verify_backend(bind_semantic_listener(&socket_path), primary, "idea", 0);
+    let listener = bind_semantic_listener(&socket_path);
+    write_runtime_descriptor(&home, &primary, &socket_path, "headless");
+    let backend = spawn_verify_backend(listener, primary, "headless", 0);
 
     let verify = kast(&home, &config_home)
         .args([
@@ -274,7 +263,7 @@ fn prepared_linked_worktree_never_attaches_primary_checkout_descriptor() {
             "verify",
             "--workspace-root",
             linked.to_str().expect("linked path"),
-            "--backend=idea",
+            "--backend=headless",
         ])
         .output()
         .expect("linked verify");
@@ -299,12 +288,9 @@ fn missing_workspace_authority_rejects_every_explicit_headless_mutation_before_r
     write_gradle_workspace(&workspace);
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::create_dir_all(&home).expect("home");
+    let listener = bind_semantic_listener(&socket_path);
     write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
-    let backend = ObservedSemanticBackend::spawn(
-        bind_semantic_listener(&socket_path),
-        workspace.clone(),
-        "headless",
-    );
+    let backend = ObservedSemanticBackend::spawn(listener, workspace.clone(), "headless");
     let content_file = fixture.path().join("content.kt");
     let target_file = workspace.join("src/main/kotlin/Added.kt");
     std::fs::write(&content_file, "fun added() = Unit\n").expect("content");
@@ -335,7 +321,7 @@ fn missing_workspace_authority_rejects_every_explicit_headless_mutation_before_r
             let output: serde_json::Value =
                 serde_json::from_slice(&mutation.stdout).expect("mutation JSON");
             assert_eq!(
-                output["error"]["code"], "SEMANTIC_MUTATION_AUTHORITY_REQUIRED",
+                output["error"]["code"], "WORKSPACE_LEASE_REQUIRED",
                 "view={view:?}: {output:#}",
             );
         }

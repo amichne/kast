@@ -4,12 +4,13 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let file = workspace.join("src/Added.kt");
-    let socket_path = temp.path().join("idea.sock");
+    let socket_path = temp.path().join("headless.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
     write_gradle_marker(&workspace);
-    write_current_cli_install_manifest_for_test(&home, &config_home);
-    let backend = spawn_scripted_idea_backend(
+    let workspace = workspace.canonicalize().expect("canonical workspace");
+    let file = workspace.join("src/Added.kt");
+    let binary = write_active_kast_for_test(&home, &config_home);
+    let backend = spawn_scripted_mutating_headless_backend(
         &home,
         &config_home,
         &workspace,
@@ -45,7 +46,8 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
             }),
         )],
     );
-    let output = kast(&home, &config_home)
+    let lease_id = acquire_projection_workspace_lease(&binary, &home, &config_home, &workspace);
+    let output = kast_at(&binary, &home, &config_home)
         .args([
             "--output",
             "json",
@@ -60,6 +62,8 @@ fn mutation_default_exposes_state_files_edits_and_diagnostic_summary() {
             "--apply",
             "--idempotency-key",
             "issue-337-rename",
+            "--lease-id",
+            &lease_id,
         ])
         .output()
         .expect("mutation");
@@ -91,24 +95,25 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("idea.sock");
+    let socket_path = temp.path().join("headless.sock");
     write_gradle_marker(&workspace);
+    let workspace = workspace.canonicalize().expect("canonical workspace");
     let runtime = json!({
         "state": "READY",
         "healthy": true,
         "active": true,
         "indexing": false,
-        "backendName": "idea",
+        "backendName": "headless",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "schemaVersion": 5
     });
     let capabilities = json!({
-        "backendName": "idea",
+        "backendName": "headless",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "readCapabilities": ["WORKSPACE_FILES", "symbol/resolve", "symbol/references"],
-        "mutationCapabilities": ["mutation/submit"],
+        "mutationCapabilities": ["RENAME"],
         "limits": {
             "requestTimeoutMillis": 60000,
             "maxResults": 1000,
@@ -121,7 +126,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
         ("runtime/status", runtime.clone()),
         ("capabilities", capabilities.clone()),
     ];
-    let backend = spawn_sequenced_idea_backend(
+    let backend = spawn_sequenced_headless_backend(
         &home,
         &config_home,
         &workspace,
@@ -158,7 +163,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
     assert_eq!(stdout["result"]["type"], "KAST_AGENT_VERIFY_RESULT");
     assert_eq!(stdout["result"]["health"]["ok"], true);
     assert_eq!(stdout["result"]["runtime"]["state"], "READY");
-    assert_eq!(stdout["result"]["runtime"]["backendName"], "idea");
+    assert_eq!(stdout["result"]["runtime"]["backendName"], "headless");
     assert_eq!(stdout["result"]["capabilities"]["readCount"], 3);
     assert_eq!(stdout["result"]["capabilities"]["mutationCount"], 1);
     assert_eq!(stdout["result"]["capabilities"]["publicReadCount"], 1);
@@ -171,6 +176,37 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
     );
     assert!(stdout["result"].get("steps").is_none(), "{stdout}");
     assert_output_budget(&raw, VERIFY_LINE_BUDGET, VERIFY_TOKEN_BUDGET);
+}
+
+fn acquire_projection_workspace_lease(
+    binary: &Path,
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+) -> String {
+    let output = kast_at(binary, home, config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "lease",
+            "acquire",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("acquire projection workspace lease");
+    assert!(
+        output.status.success(),
+        "workspace lease acquisition should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let payload: Value = serde_json::from_slice(&output.stdout).expect("workspace lease JSON");
+    payload["result"]["leaseId"]
+        .as_str()
+        .expect("workspace lease id")
+        .to_string()
 }
 
 fn assert_output_budget(output: &str, line_budget: usize, token_budget: usize) {

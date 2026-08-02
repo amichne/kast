@@ -50,16 +50,6 @@ pub enum RuntimeDefaultBackend {
     Headless,
 }
 
-impl RuntimeDefaultBackend {
-    pub fn backend_name(self) -> Option<BackendName> {
-        match self {
-            Self::Auto => None,
-            Self::Idea => Some(BackendName::Idea),
-            Self::Headless => Some(BackendName::Headless),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdeaLaunchConfig {
@@ -130,9 +120,18 @@ pub enum ProjectOpenProfile {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexingConfig {
+    pub critical_paths: Vec<String>,
+    pub ignored_paths: Vec<String>,
+    pub graph: GraphIndexingConfig,
     pub relationships: RelationshipIndexingConfig,
     pub identifier_index_wait_millis: u64,
     pub remote: RemoteIndexConfig,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GraphIndexingConfig {
+    pub batch_size: NonZeroU32,
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -84,7 +84,7 @@ class KastFocusedRelationshipRefreshTest {
                 workspaceIdentity = workspaceIdentity,
                 readGradleWorkspaceModel = { error("focused refresh recaptured complete inventory") },
                 onRelationshipFileScan = relationshipScans::add,
-            ).refreshSymbolRelationships(listOf(callerFile.virtualFile.path))
+            ).refreshSymbolRelationships(workspaceSourcePaths(workspaceRoot, listOf(callerFile.virtualFile.path)))
 
             assertTrue(relationshipScans.isEmpty(), "unchanged relationships must remain cached")
         }
@@ -130,12 +130,13 @@ class KastFocusedRelationshipRefreshTest {
                 readGradleWorkspaceModel = { error("deleted refresh recaptured complete inventory") },
             ).refreshSymbolRelationships(
                 filePaths = emptyList(),
-                removedFilePaths = listOf(targetPath),
+                removedFilePaths = workspaceSourcePaths(workspaceRoot, listOf(targetPath)),
             )
 
             assertFalse(store.loadManifest().orEmpty().containsKey(targetPath))
             assertFalse(
-                store.loadSourceIndexSnapshot().candidatePathsByIdentifier["target"].orEmpty().contains(targetPath),
+                store.loadSourceIndexSnapshot().candidatePathsByIdentifier["target"].orEmpty()
+                    .contains(workspaceSourcePath(workspaceRoot, targetPath)),
             )
             assertNull(store.fileStageOutcome(targetPath, FileIndexStage.RELATIONSHIPS))
             assertTrue(
@@ -144,7 +145,7 @@ class KastFocusedRelationshipRefreshTest {
                 },
             )
             assertTrue(
-                store.pendingFileStages(FileIndexStage.RELATIONSHIPS).any { work -> work.path == callerPath },
+                store.pendingFileStages(FileIndexStage.RELATIONSHIPS).any { work -> work.path.rawPath == callerPath },
             )
         }
     }

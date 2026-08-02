@@ -4,7 +4,7 @@ fn ready_runtime(workspace: &std::path::Path) -> serde_json::Value {
         "healthy": true,
         "active": true,
         "indexing": false,
-        "backendName": "idea",
+        "backendName": "headless",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "sourceModuleNames": ["app"],
@@ -15,7 +15,7 @@ fn ready_runtime(workspace: &std::path::Path) -> serde_json::Value {
 
 fn semantic_graph_capabilities(workspace: &std::path::Path) -> serde_json::Value {
     serde_json::json!({
-        "backendName": "idea",
+        "backendName": "headless",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "readCapabilities": ["SEMANTIC_GRAPH"],
@@ -40,11 +40,59 @@ fn remove_semantic_graph_coverage(fixture: &WorkspaceIndexFixture) {
 }
 
 #[test]
+fn compatible_store_without_committed_inventory_is_unavailable() {
+    let (_temp, home, config_home, workspace, fixture) = coverage_fixture_with_file_count(0);
+    fixture
+        .connection()
+        .execute_batch(
+            "UPDATE schema_version SET generation = 0;
+             DELETE FROM module_index_progress;",
+        )
+        .expect("uncommitted compatible store");
+
+    let (status, response) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "uncommitted-inventory",
+            "method": "graph/coverage",
+            "params": {"scope": {"language": "kotlin"}}
+        }),
+    );
+
+    assert!(!status.success(), "{response:#}");
+    assert_eq!(response["code"], "GRAPH_COVERAGE_UNAVAILABLE", "{response:#}");
+}
+
+#[test]
+fn committed_inventory_with_zero_eligible_files_is_complete() {
+    let (_temp, home, config_home, workspace, _fixture) = coverage_fixture_with_file_count(0);
+
+    let (status, response) = rpc(
+        &home,
+        &config_home,
+        &workspace,
+        serde_json::json!({
+            "jsonrpc": "2.0",
+            "id": "empty-inventory",
+            "method": "graph/coverage",
+            "params": {"scope": {"language": "kotlin"}}
+        }),
+    );
+
+    assert!(status.success(), "{response:#}");
+    assert_eq!(response["result"]["coverage"]["complete"], true, "{response:#}");
+    assert_eq!(response["result"]["coverage"]["total"], 0, "{response:#}");
+}
+
+#[test]
 fn status_separates_runtime_readiness_from_incomplete_semantic_graph_coverage() {
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
     remove_semantic_graph_coverage(&fixture);
     let socket_path = workspace.join("status.sock");
-    let backend = spawn_sequenced_idea_backend(
+    let backend = spawn_sequenced_headless_backend(
         &home,
         &config_home,
         &workspace,
@@ -92,11 +140,11 @@ fn status_separates_runtime_readiness_from_incomplete_semantic_graph_coverage() 
 }
 
 #[test]
-fn status_omits_semantic_graph_coverage_while_runtime_is_indexing() {
+fn status_reports_semantic_graph_coverage_separately_while_runtime_is_indexing() {
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
     std::fs::remove_file(fixture.database_path()).expect("remove graph database");
     let socket_path = workspace.join("status-indexing.sock");
-    let backend = spawn_sequenced_idea_backend(
+    let backend = spawn_sequenced_headless_backend(
         &home,
         &config_home,
         &workspace,
@@ -109,7 +157,7 @@ fn status_omits_semantic_graph_coverage_while_runtime_is_indexing() {
                     "healthy": true,
                     "active": true,
                     "indexing": true,
-                    "backendName": "idea",
+                    "backendName": "headless",
                     "backendVersion": "scripted-test",
                     "workspaceRoot": workspace.display().to_string(),
                     "sourceModuleNames": ["app"],
@@ -146,10 +194,7 @@ fn status_omits_semantic_graph_coverage_while_runtime_is_indexing() {
         "INDEXING",
         "{result}"
     );
-    assert!(
-        result.get("semanticGraph").is_none(),
-        "indexing status must not scan graph coverage: {result}"
-    );
+    assert_eq!(result["semanticGraph"]["state"], "UNAVAILABLE", "{result}");
 }
 
 #[test]
@@ -159,7 +204,7 @@ fn verify_fails_incomplete_semantic_graph_coverage_without_discarding_runtime_ev
     let socket_path = workspace.join("verify.sock");
     let runtime = ready_runtime(&workspace);
     let capabilities = semantic_graph_capabilities(&workspace);
-    let backend = spawn_sequenced_idea_backend(
+    let backend = spawn_sequenced_headless_backend(
         &home,
         &config_home,
         &workspace,
@@ -226,7 +271,7 @@ fn verify_verbose_reports_execution_level_semantic_graph_issue() {
     let socket_path = workspace.join("verify-verbose.sock");
     let runtime = ready_runtime(&workspace);
     let capabilities = semantic_graph_capabilities(&workspace);
-    let backend = spawn_sequenced_idea_backend(
+    let backend = spawn_sequenced_headless_backend(
         &home,
         &config_home,
         &workspace,

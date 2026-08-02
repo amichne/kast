@@ -10,6 +10,8 @@ import com.intellij.openapi.util.Disposer
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.ReferenceCoverageLimitation
+import io.github.amichne.kast.api.contract.ReferenceCoverage
 import java.nio.file.Path
 
 internal const val KAST_TOOL_WINDOW_ID = "Kast"
@@ -220,24 +222,35 @@ internal fun KastActivityEvent.isActionableTerminalFailure(): Boolean =
 
 internal fun RuntimeStatusResponse.withReferenceIndex(
     index: KastSourceIndexSummary,
-): RuntimeStatusResponse = when {
-    index.state == KastIndexState.FAILED -> copy(
-        state = io.github.amichne.kast.api.contract.RuntimeState.DEGRADED,
-        healthy = false,
-        indexing = false,
-        message = "Kast reference index failed: ${index.displayText()}",
-        referenceIndexReady = false,
-    )
-    index.state == KastIndexState.READY -> copy(referenceIndexReady = true)
-    index.state == KastIndexState.DEGRADED -> copy(
-        message = "Kast reference index is usable with graph boundaries: ${index.displayText()}",
-        referenceIndexReady = true,
-    )
-    state == io.github.amichne.kast.api.contract.RuntimeState.READY -> copy(
-        state = io.github.amichne.kast.api.contract.RuntimeState.INDEXING,
-        indexing = true,
-        message = "Kast reference index is ${index.displayText().lowercase()}",
-        referenceIndexReady = false,
-    )
-    else -> copy(referenceIndexReady = false)
+): RuntimeStatusResponse {
+    val limitations = index.referenceCoverageLimitations.ifEmpty {
+        when (index.state) {
+            KastIndexState.READY -> emptyList()
+            KastIndexState.INDEXING -> listOf(ReferenceCoverageLimitation.INDEXING_IN_PROGRESS)
+            KastIndexState.DEGRADED -> listOf(ReferenceCoverageLimitation.NONCRITICAL_STAGE_GAP)
+            KastIndexState.FAILED -> listOf(ReferenceCoverageLimitation.CRITICAL_STAGE_GAP)
+            KastIndexState.WAITING_FOR_IDE, KastIndexState.HYDRATING ->
+                listOf(ReferenceCoverageLimitation.PROJECT_MODEL_UNAVAILABLE)
+            KastIndexState.CANCELLED -> listOf(ReferenceCoverageLimitation.CANCELLED)
+            KastIndexState.IDLE -> listOf(ReferenceCoverageLimitation.INDEX_NOT_COMMITTED)
+        }
+    }
+    val coverage = when (index.state) {
+        KastIndexState.READY -> ReferenceCoverage.complete(limitations)
+        KastIndexState.INDEXING -> ReferenceCoverage.qualified(
+            limitations = limitations,
+            indexReady = false,
+        )
+        KastIndexState.DEGRADED -> ReferenceCoverage.qualified(
+            limitations = limitations,
+            indexReady = true,
+        )
+        KastIndexState.FAILED -> ReferenceCoverage.incomplete(limitations)
+        KastIndexState.IDLE,
+        KastIndexState.WAITING_FOR_IDE,
+        KastIndexState.HYDRATING,
+        KastIndexState.CANCELLED,
+        -> ReferenceCoverage.unavailable(limitations)
+    }
+    return withReferenceCoverage(coverage)
 }

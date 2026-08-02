@@ -13,18 +13,30 @@ internal class SourceIndexFileStore(
         updates: List<FileIndexUpdate>,
         manifest: Map<String, Long>,
     ) {
-        val eligibleUpdates = updates.filter { update -> SourceIndexFilePolicy.isEligible(update.path) }
-        val eligibleManifest = manifest.filterKeys(SourceIndexFilePolicy::isEligible)
+        val eligibleUpdates = updates
+            .mapNotNull(::parseUpdate)
+            .associateBy(ParsedFileIndexUpdate::path)
+            .values
+        val eligibleManifest = buildMap {
+            manifest.forEach { (rawPath, lastModifiedMillis) ->
+                state.sourceFilePolicy.sourcePath(Path.of(rawPath))
+                    ?.let { path -> put(path, lastModifiedMillis) }
+            }
+        }
         synchronized(state.writeLock) {
             val conn = state.connection()
             conn.autoCommit = false
             try {
-                mutations.internPathsInTransaction(conn, eligibleUpdates.map { it.path } + eligibleManifest.keys)
+                mutations.internPathsInTransaction(
+                    conn,
+                    eligibleUpdates.map { it.path.toDatabasePath() } +
+                        eligibleManifest.keys.map(WorkspaceSourcePath::toDatabasePath),
+                )
                 mutations.internFqNamesInTransaction(conn, eligibleUpdates.flatMapTo(mutableSetOf()) { update ->
                     buildList {
-                        mutations.packageFqName(update)?.let(::add)
-                        addAll(update.imports)
-                        addAll(update.wildcardImports)
+                        mutations.packageFqName(update.update)?.let(::add)
+                        addAll(update.update.imports)
+                        addAll(update.update.wildcardImports)
                     }
                 })
                 conn.createStatement().use { stmt ->
@@ -37,10 +49,11 @@ internal class SourceIndexFileStore(
                     stmt.execute("DELETE FROM file_manifest")
                 }
                 for (update in eligibleUpdates) {
-                    mutations.insertFileDataInTransaction(conn, update)
+                    mutations.insertFileDataInTransaction(conn, update.toDatabaseUpdate())
                 }
-                mutations.insertManifestInTransaction(conn, eligibleManifest)
-                mutations.pruneReferencesOutsideManifestInTransaction(conn, eligibleManifest.keys)
+                val databaseManifest = eligibleManifest.mapKeys { (path, _) -> path.toDatabasePath() }
+                mutations.insertManifestInTransaction(conn, databaseManifest)
+                mutations.pruneReferencesOutsideManifestInTransaction(conn, databaseManifest.keys)
                 state.removeIneligibleSourceIndexRows(conn)
                 conn.createStatement().use { stmt -> stmt.execute("DELETE FROM pending_updates") }
                 state.incrementGenerationInTransaction(conn)
@@ -55,17 +68,14 @@ internal class SourceIndexFileStore(
     }
 
     fun saveFileIndex(update: FileIndexUpdate) {
-        if (!SourceIndexFilePolicy.isEligible(update.path)) {
-            removeFile(update.path)
-            return
-        }
+        val parsedUpdate = parseUpdate(update) ?: return
         synchronized(state.writeLock) {
             val conn = state.connection()
             conn.autoCommit = false
             try {
-                mutations.internPathsInTransaction(conn, listOf(update.path))
+                mutations.internPathsInTransaction(conn, listOf(parsedUpdate.path.toDatabasePath()))
                 mutations.internFqNamesInTransaction(conn, mutations.fqNamesFor(update))
-                mutations.insertFileDataInTransaction(conn, update)
+                mutations.insertFileDataInTransaction(conn, parsedUpdate.toDatabaseUpdate())
                 state.incrementGenerationInTransaction(conn)
                 conn.commit()
             } catch (e: Exception) {
@@ -78,10 +88,11 @@ internal class SourceIndexFileStore(
     }
 
     fun removeFile(path: String) {
+        val sourcePath = state.sourceFilePolicy.sourcePath(Path.of(path)) ?: return
         synchronized(state.writeLock) {
             val conn = state.connection()
             state.loadInterningTables(conn)
-            val encodedPath = pathCodec.encodeIfInterned(path) ?: return
+            val encodedPath = pathCodec.encodeIfInterned(sourcePath.toDatabasePath()) ?: return
             conn.autoCommit = false
             try {
                 mutations.deleteFileRowsInTransaction(conn, encodedPath.first, encodedPath.second)
@@ -100,20 +111,20 @@ internal class SourceIndexFileStore(
         synchronized(state.writeLock) {
             val conn = state.connection()
             state.loadInterningTables(conn)
-            val candidatePathsByIdentifier = mutableMapOf<String, MutableList<String>>()
+            val candidatePathsByIdentifier = mutableMapOf<String, MutableList<WorkspaceSourcePath>>()
             conn.createStatement().use { stmt ->
                 val rs = stmt.executeQuery("SELECT identifier, prefix_id, filename FROM identifier_paths")
                 while (rs.next()) {
                     candidatePathsByIdentifier
                         .getOrPut(rs.getString(1)) { mutableListOf() }
-                        .add(pathCodec.decode(rs.getInt(2), rs.getString(3)))
+                        .add(decodeWorkspaceSourcePath(rs.getInt(2), rs.getString(3)))
                 }
             }
 
-            val moduleNameByPath = mutableMapOf<String, String>()
-            val packageByPath = mutableMapOf<String, String>()
-            val importsByPath = mutableMapOf<String, List<String>>()
-            val wildcardImportPackagesByPath = mutableMapOf<String, List<String>>()
+            val moduleByPath = mutableMapOf<WorkspaceSourcePath, SourceIndexModuleIdentity>()
+            val packageByPath = mutableMapOf<WorkspaceSourcePath, String>()
+            val importsByPath = mutableMapOf<WorkspaceSourcePath, List<String>>()
+            val wildcardImportPackagesByPath = mutableMapOf<WorkspaceSourcePath, List<String>>()
 
             conn.createStatement().use { stmt ->
                 val rs = stmt.executeQuery(
@@ -121,13 +132,12 @@ internal class SourceIndexFileStore(
                     "SELECT prefix_id, filename, package_fq_id, module_path, source_set FROM file_metadata",
                 )
                 while (rs.next()) {
-                    val path = pathCodec.decode(rs.getInt(1), rs.getString(2))
+                    val path = decodeWorkspaceSourcePath(rs.getInt(1), rs.getString(2))
                     rs.getNullableInt(3)?.let { packageByPath[path] = fqCodec.resolve(it) }
                     val modulePath = rs.getString(4)
                     val sourceSet = rs.getString(5)
-                    if (modulePath != null) {
-                        val reconstructed = if (sourceSet != null) "$modulePath[$sourceSet]" else modulePath
-                        moduleNameByPath[path] = reconstructed
+                    decodeSourceIndexModuleIdentity(modulePath, sourceSet)?.let { module ->
+                        moduleByPath[path] = module
                     }
 
                 }
@@ -138,7 +148,7 @@ internal class SourceIndexFileStore(
 
             return SourceIndexSnapshot(
                 candidatePathsByIdentifier = candidatePathsByIdentifier,
-                moduleNameByPath = moduleNameByPath,
+                moduleByPath = moduleByPath,
                 packageByPath = packageByPath,
                 importsByPath = importsByPath,
                 wildcardImportPackagesByPath = wildcardImportPackagesByPath,
@@ -235,4 +245,20 @@ internal class SourceIndexFileStore(
         }
     }
 
+    private fun parseUpdate(update: FileIndexUpdate): ParsedFileIndexUpdate? =
+        state.sourceFilePolicy.sourcePath(Path.of(update.path))
+            ?.let { path -> ParsedFileIndexUpdate(path, update) }
+
+    private fun decodeWorkspaceSourcePath(
+        prefixId: Int,
+        filename: String,
+    ): WorkspaceSourcePath = state.requireWorkspaceSourcePath(pathCodec.decode(prefixId, filename))
+
+}
+
+private data class ParsedFileIndexUpdate(
+    val path: WorkspaceSourcePath,
+    val update: FileIndexUpdate,
+) {
+    fun toDatabaseUpdate(): FileIndexUpdate = update.copy(path = path.toDatabasePath())
 }

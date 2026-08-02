@@ -27,6 +27,7 @@ import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.SymbolKind
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.TypeHierarchyDirection
+import io.github.amichne.kast.api.contract.MutationCapability
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
@@ -191,8 +192,9 @@ internal class KastPluginBackendContractTest : KastPluginBackendContractTestFixt
     }
 
     @Test
-    fun `all IntelliJ Platform products publish the shared IDEA backend identity`() = runBlocking {
-        assertEquals("idea", backend().capabilities().backendName)
+    fun `shared compiler implementation publishes only headless backend identity`() = runBlocking {
+        assertEquals("headless", backend().capabilities().backendName)
+        assertEquals(MutationCapability.entries.toSet(), backend().capabilities().mutationCapabilities)
     }
 
     @Test

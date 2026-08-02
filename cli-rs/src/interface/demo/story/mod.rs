@@ -165,10 +165,7 @@ fn should_run_public_demo_tui(
 }
 
 fn public_missing_index_error(request: &DemoRequest) -> CliError {
-    #[cfg(target_os = "macos")]
-    let remedy = "To continue, open this repository in IntelliJ IDEA or Android Studio with the Kast plugin enabled, wait for indexing, then rerun `kast demo`.";
-    #[cfg(not(target_os = "macos"))]
-    let remedy = "Start the backend from an installed headless distribution, then rerun `kast demo`.";
+    let remedy = "Start the installed headless runtime, wait for indexing, then rerun `kast demo`.";
     CliError::new(
         "DEMO_SOURCE_INDEX_MISSING",
         format!(

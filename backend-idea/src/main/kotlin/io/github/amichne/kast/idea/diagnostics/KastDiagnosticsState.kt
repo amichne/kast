@@ -5,6 +5,7 @@ import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
+import io.github.amichne.kast.api.contract.ReferenceCoverageLimitation
 import java.nio.file.Path
 import java.time.Instant
 import kotlin.math.max
@@ -75,7 +76,7 @@ internal class KastDiagnosticsState(
         title = "Kast config fallback",
         detail = "${path.fileName}: ${error.compactMessage()}",
     ) {
-        it.copy(message = "Config load failed; using defaults")
+        it.copy(message = "Config load failed; using last valid config")
     }
 
     fun recordCapabilities(capabilities: BackendCapabilities): KastActivityEvent = append(
@@ -299,6 +300,7 @@ internal data class KastSourceIndexSummary(
     val moduleCount: Int? = null,
     val importCount: Int? = null,
     val message: String? = null,
+    val referenceCoverageLimitations: List<ReferenceCoverageLimitation> = emptyList(),
 ) {
     fun displayText(): String {
         message?.let { return it }

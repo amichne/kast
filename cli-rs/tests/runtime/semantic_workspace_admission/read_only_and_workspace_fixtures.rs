@@ -6,14 +6,9 @@ fn prepared_linked_worktree_supports_read_only_symbol_resolution() {
     let config_home = fixture.linked().join("test-config");
     let socket_path = fixture.socket_path("linked-symbol.sock");
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata_at_home(&workspace, &home);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "idea");
-    let backend = spawn_verify_backend(
-        bind_semantic_listener(&socket_path),
-        workspace.clone(),
-        "idea",
-        3,
-    );
+    let listener = bind_semantic_listener(&socket_path);
+    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
+    let backend = spawn_verify_backend(listener, workspace.clone(), "headless", 3);
 
     let symbol = kast(&home, &config_home)
         .args([
@@ -25,7 +20,7 @@ fn prepared_linked_worktree_supports_read_only_symbol_resolution() {
             "Foo",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=idea",
+            "--backend=headless",
         ])
         .output()
         .expect("agent symbol");
@@ -55,17 +50,12 @@ fn prepared_linked_worktree_supports_read_only_diagnostics() {
     let config_home = fixture.linked().join("test-config");
     let socket_path = fixture.socket_path("linked-diagnostics.sock");
     std::fs::create_dir_all(&home).expect("home");
-    write_macos_plugin_workspace_metadata_at_home(&workspace, &home);
     let file = workspace.join("lib/Foo.kt");
     std::fs::create_dir_all(file.parent().expect("file parent")).expect("source dir");
     std::fs::write(&file, "package lib\n\nclass Foo\n").expect("source file");
-    write_runtime_descriptor(&home, &workspace, &socket_path, "idea");
-    let backend = spawn_verify_backend(
-        bind_semantic_listener(&socket_path),
-        workspace.clone(),
-        "idea",
-        4,
-    );
+    let listener = bind_semantic_listener(&socket_path);
+    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
+    let backend = spawn_verify_backend(listener, workspace.clone(), "headless", 4);
     let diagnostics = kast(&home, &config_home)
         .args([
             "--output",
@@ -76,7 +66,7 @@ fn prepared_linked_worktree_supports_read_only_diagnostics() {
             file.to_str().expect("file path"),
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=idea",
+            "--backend=headless",
         ])
         .output()
         .expect("agent diagnostics");
@@ -154,12 +144,11 @@ fn unsupported_project_reports_distinct_semantic_outcome() {
         output["error"]["details"]["semanticWorkspace"],
         serde_json::json!({
             "backendName": default_semantic_backend(),
-            "workspaceRoot": workspace.display().to_string(),
+            "workspaceRoot": std::fs::canonicalize(&workspace).expect("canonical unsupported workspace").display().to_string(),
             "workspaceKind": "UNSUPPORTED_PROJECT",
             "sourceModuleNames": [],
             "limitations": ["UNSUPPORTED_PROJECT"],
-            "evidenceQuality": "UNAVAILABLE",
-            "nextActions": []
+            "evidenceQuality": "UNAVAILABLE"
         })
     );
 }
@@ -185,9 +174,9 @@ fn assert_unprepared_route(workspace: &Path, expected_kind: &str) {
 
     assert!(!verify.status.success(), "unprepared workspace must fail");
     let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
-    assert_eq!(output["error"]["code"], "SEMANTIC_WORKSPACE_UNPREPARED");
+    assert_eq!(output["error"]["code"], "NO_BACKEND_AVAILABLE");
     let semantic_workspace = &output["error"]["details"]["semanticWorkspace"];
-    assert_eq!(semantic_workspace["backendName"], "idea");
+    assert_eq!(semantic_workspace["backendName"], "headless");
     assert_eq!(
         semantic_workspace["workspaceRoot"],
         workspace.display().to_string()
@@ -199,39 +188,14 @@ fn assert_unprepared_route(workspace: &Path, expected_kind: &str) {
     );
     assert_eq!(
         semantic_workspace["limitations"],
-        serde_json::json!(["WORKSPACE_UNPREPARED", "SOURCE_MODULES_UNAVAILABLE"])
+        serde_json::json!(["SOURCE_MODULES_UNAVAILABLE"])
     );
     assert_eq!(semantic_workspace["evidenceQuality"], "UNAVAILABLE");
-    assert_eq!(
-        semantic_workspace["nextActions"][0]["kind"],
-        "PREPARE_IDEA_WORKSPACE"
-    );
-    assert_eq!(
-        semantic_workspace["nextActions"][0]["mutatesGlobalInstallAuthority"],
-        false
-    );
-    assert!(
-        semantic_workspace["nextActions"][0]["command"]
-            .as_str()
-            .is_some_and(|command| command.contains(&workspace.display().to_string())),
-        "IDEA action must name the exact root: {semantic_workspace:#}"
-    );
-    assert_eq!(
-        semantic_workspace["nextActions"][1]["kind"],
-        "USE_HEADLESS_DISTRIBUTION"
-    );
-    assert_eq!(
-        semantic_workspace["nextActions"][1]["mutatesGlobalInstallAuthority"],
-        false
-    );
+    assert!(semantic_workspace.get("nextActions").is_none());
 }
 
 fn default_semantic_backend() -> &'static str {
-    if cfg!(target_os = "macos") {
-        "idea"
-    } else {
-        "headless"
-    }
+    "headless"
 }
 
 fn decode_toon(output: &[u8]) -> serde_json::Value {

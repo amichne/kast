@@ -1,7 +1,18 @@
 package io.github.amichne.kast.server
 
+import io.github.amichne.kast.api.client.DescriptorRegistryPath
 import io.github.amichne.kast.api.client.ServerInstanceDescriptor
+import io.github.amichne.kast.api.client.RuntimeInstanceId
+import io.github.amichne.kast.api.client.ProcessId
+import io.github.amichne.kast.api.client.ProcessStartEpochMillis
+import io.github.amichne.kast.api.client.SocketOwnerUid
+import io.github.amichne.kast.api.client.RuntimeProcessIdentity
+import io.github.amichne.kast.api.client.RuntimeSocketPath
+import io.github.amichne.kast.api.client.RuntimeWorkspaceRoot
+import io.github.amichne.kast.api.client.ServerInstanceOwnership
+import io.github.amichne.kast.api.client.SocketFileIdentity
 import io.github.amichne.kast.api.contract.AnalysisTransport
+import io.github.amichne.kast.api.contract.compatibility.RuntimeImplementationVersion
 import io.github.amichne.kast.api.contract.mutation.KastMutationExecutionResult
 import io.github.amichne.kast.api.contract.mutation.KastMutationIdempotencyKey
 import io.github.amichne.kast.api.contract.mutation.KastSemanticMutation
@@ -138,7 +149,7 @@ class AnalysisServerOwnershipTest {
 
     @Test
     fun `running server drains admitted requests before closing backend`() {
-        val socketPath = tempDir.resolve("run").resolve("drain-before-close.sock")
+        val socketPath = tempDir.resolve("d.sock")
         val backend = SuspendedStatusBackend(FakeAnalysisBackend.sample(tempDir))
         val runningServer = AnalysisServer(
             backend = backend,
@@ -182,19 +193,19 @@ class AnalysisServerOwnershipTest {
     fun `running server completes later close phases after earlier failures`() {
         val descriptorFile = tempDir.resolve("failure-instances").resolve("daemons.json")
         val descriptor = ServerInstanceDescriptor(
-            workspaceRoot = tempDir.toString(),
-            backendName = "fake",
-            backendVersion = "test",
-            socketPath = tempDir.resolve("failure.sock").toString(),
+            workspaceRoot = RuntimeWorkspaceRoot.canonicalize(tempDir),
+            backendVersion = RuntimeImplementationVersion("test"),
+            socketPath = RuntimeSocketPath.of(tempDir.resolve("failure.sock")),
+            ownership = ServerInstanceOwnership.LegacyWithoutProcessId,
         )
-        val descriptorStore = DescriptorStore(descriptorFile.toString()).also { it.write(descriptor) }
+        val descriptorStore = DescriptorStore(DescriptorRegistryPath.of(descriptorFile)).also { it.write(descriptor) }
         val closeEvents = mutableListOf<String>()
         val transportFailure = IllegalStateException("transport close failed")
         val backend = RecordingCloseBackend(
             delegate = FakeAnalysisBackend.sample(tempDir),
             closeEvents = closeEvents,
             beforeClose = {
-                assertTrue(Files.readString(descriptorFile).contains(descriptor.socketPath))
+                assertTrue(Files.readString(descriptorFile).contains(descriptor.socketPath.value))
             },
         )
         val runningServer = RunningAnalysisServer(
@@ -215,9 +226,46 @@ class AnalysisServerOwnershipTest {
         assertEquals(listOf("transport", "dispatcher", "backend"), closeEvents)
         assertEquals(1, backend.closeCount)
         assertFalse(
-            Files.exists(descriptorFile) && Files.readString(descriptorFile).contains(descriptor.socketPath),
+            Files.exists(descriptorFile) && Files.readString(descriptorFile).contains(descriptor.socketPath.value),
             "descriptor cleanup was skipped after an earlier close failure",
         )
+    }
+
+    @Test
+    fun `closing an old instance preserves a replacement descriptor`() {
+        val descriptorFile = tempDir.resolve("replacement-instances").resolve("daemons.json")
+        val first = ServerInstanceDescriptor(
+            workspaceRoot = RuntimeWorkspaceRoot.canonicalize(tempDir),
+            backendVersion = RuntimeImplementationVersion("test"),
+            socketPath = RuntimeSocketPath.of(tempDir.resolve("headless.sock")),
+            ownership = ServerInstanceOwnership.Owned(
+                runtimeInstanceId = RuntimeInstanceId.create(),
+                processIdentity = RuntimeProcessIdentity(
+                    processId = ProcessId.current(),
+                    processStartEpochMillis = ProcessStartEpochMillis.of(1),
+                ),
+                ownerUid = SocketOwnerUid.of(501),
+                socketFileIdentity = SocketFileIdentity(device = 1, inode = 1),
+            ),
+        )
+        val firstOwner = first.ownership as ServerInstanceOwnership.Owned
+        val replacementOwner = firstOwner.copy(runtimeInstanceId = RuntimeInstanceId.create())
+        val replacement = first.copy(ownership = replacementOwner)
+        val descriptorStore = DescriptorStore(DescriptorRegistryPath.of(descriptorFile)).also {
+            it.write(first)
+            it.write(replacement)
+        }
+        val runningServer = RunningAnalysisServer(
+            server = RecordingLocalRpcServer(mutableListOf()),
+            dispatcher = RecordingCloseable(mutableListOf(), "dispatcher"),
+            backend = CountingCloseBackend(FakeAnalysisBackend.sample(tempDir)),
+            descriptor = first,
+            descriptorStore = descriptorStore,
+        )
+
+        runningServer.close()
+
+        assertTrue(Files.readString(descriptorFile).contains(replacementOwner.runtimeInstanceId.value))
     }
     @Test
     fun `failed start preserves caller backend ownership and releases provisional server`() {

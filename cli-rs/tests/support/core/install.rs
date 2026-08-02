@@ -38,10 +38,18 @@ pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_h
     let control_binary = default_libexec_dir(home).join("kastctl");
     let agent_binary = default_bin_dir(home).join("kast");
     let config_root = install_root.join("current/config");
+    let backend_dir = install_root.join(format!(
+        "current/lib/backends/headless-{}",
+        env!("CARGO_PKG_VERSION")
+    ));
+    let runtime_libs_dir = backend_dir.join("runtime-libs");
     std::fs::create_dir_all(default_bin_dir(home)).expect("bin directory");
     std::fs::create_dir_all(default_libexec_dir(home)).expect("libexec directory");
     std::fs::create_dir_all(&install_root).expect("install root");
     std::fs::create_dir_all(&config_root).expect("config root");
+    std::fs::create_dir_all(&runtime_libs_dir).expect("headless runtime libs");
+    std::fs::write(runtime_libs_dir.join("classpath.txt"), "fixture.jar\n")
+        .expect("headless runtime classpath");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &control_binary).expect("active Kast control binary");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &agent_binary).expect("active Kast agent binary");
     std::fs::write(
@@ -71,7 +79,13 @@ pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_h
             },
             "schemas": {"manifest": 1, "workspaceRegistry": 1, "symbolIndex": 3},
             "version": env!("CARGO_PKG_VERSION"),
-            "components": ["cli"],
+            "components": ["cli", "backend:headless"],
+            "backends": [{
+                "name": "headless",
+                "version": "0.7.11",
+                "installDir": backend_dir.display().to_string(),
+                "runtimeLibsDir": runtime_libs_dir.display().to_string()
+            }],
             "schemaVersion": 3
         }))
         .expect("install manifest JSON"),

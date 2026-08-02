@@ -60,6 +60,7 @@ const REQUIRED_TABLE_COLUMNS: &[(&str, &[&str])] = &[
             "failure_id",
             "failure_code",
             "failure_message",
+            "failure_attempt_count",
         ],
     ),
     (

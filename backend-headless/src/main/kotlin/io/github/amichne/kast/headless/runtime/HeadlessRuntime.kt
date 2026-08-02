@@ -6,7 +6,6 @@ import io.github.amichne.kast.api.client.KastConfigOverride
 import io.github.amichne.kast.api.client.ServerLaunchOptions
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.idea.KastIdeaBackendRuntime
-import io.github.amichne.kast.idea.KastProjectOpenProfileAutoInit
 import io.github.amichne.kast.idea.RunningKastIdeaBackend
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Path
@@ -114,14 +113,11 @@ object HeadlessRuntime {
             workspaceRoot = workspaceRoot,
             overrides = KastConfigOverride(profiling = serverOptions.profilingOverride),
         )
-        val autoInitResult = KastProjectOpenProfileAutoInit.execute(workspaceRoot, config)
-        KastProjectOpenProfileAutoInit.log(autoInitResult)
         val backendRuntime = KastIdeaBackendRuntime.start(
             project = project,
             workspaceRoot = workspaceRoot,
             transport = serverOptions.transport,
             config = config,
-            backendName = "headless",
         )
         val status = runBlocking { backendRuntime.backend.runtimeStatus() }
         check(status.backendName == "headless") {

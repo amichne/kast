@@ -11,6 +11,8 @@ import io.github.amichne.kast.indexstore.api.index.GradleProjectPath
 import io.github.amichne.kast.indexstore.api.index.GradleSourceSetName
 import io.github.amichne.kast.indexstore.api.index.IndexedPackageEvidence
 import io.github.amichne.kast.indexstore.api.index.IndexedPackageUnprovenReason
+import io.github.amichne.kast.indexstore.api.index.SourceIndexModuleIdentity
+import io.github.amichne.kast.indexstore.api.index.SourceIndexModuleName
 import io.github.amichne.kast.indexstore.api.index.WorkspaceRelativeGradleBuildRoot
 import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import io.github.amichne.kast.indexstore.store.SourceIndexPageReadObserver
@@ -45,6 +47,7 @@ class SqliteSourceIndexSnapshotTest {
     fun `source index snapshot round-trips identifiers and metadata`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val callerPath = normalized.resolve("src/Caller.kt").toString()
+        val callerSourcePath = workspaceSourcePath(normalized, callerPath)
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
             store.saveFullIndex(
@@ -68,12 +71,18 @@ class SqliteSourceIndexSnapshotTest {
             val snapshot = store.loadSourceIndexSnapshot()
 
 
-            assertEquals(listOf(callerPath), snapshot.candidatePathsByIdentifier.getValue("Caller"))
-            assertEquals(":app[main]", snapshot.moduleNameByPath.getValue(callerPath))
-            assertEquals("consumer", snapshot.packageByPath.getValue(callerPath))
-            assertEquals(listOf("lib.Foo"), snapshot.importsByPath.getValue(callerPath))
-            assertEquals(listOf("lib.internal"), snapshot.wildcardImportPackagesByPath.getValue(callerPath))
-            assertEquals(mapOf(callerPath to 123L), store.loadManifest())
+            assertEquals(listOf(callerSourcePath), snapshot.candidatePathsByIdentifier.getValue("Caller"))
+            assertEquals(
+                SourceIndexModuleIdentity(
+                    name = SourceIndexModuleName.parse(":app"),
+                    sourceSet = GradleSourceSetName.parse("main"),
+                ),
+                snapshot.moduleByPath.getValue(callerSourcePath),
+            )
+            assertEquals("consumer", snapshot.packageByPath.getValue(callerSourcePath))
+            assertEquals(listOf("lib.Foo"), snapshot.importsByPath.getValue(callerSourcePath))
+            assertEquals(listOf("lib.internal"), snapshot.wildcardImportPackagesByPath.getValue(callerSourcePath))
+            assertEquals(mapOf(callerSourcePath.rawPath to 123L), store.loadManifest())
             assertEquals(1, store.manifestFileCount())
         }
     }
@@ -83,6 +92,8 @@ class SqliteSourceIndexSnapshotTest {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val callerPath = normalized.resolve("src/main/Caller.kt").toString()
         val targetPath = normalized.resolve("src/test/Target.kt").toString()
+        val callerSourcePath = workspaceSourcePath(normalized, callerPath)
+        val targetSourcePath = workspaceSourcePath(normalized, targetPath)
 
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
@@ -96,9 +107,12 @@ class SqliteSourceIndexSnapshotTest {
 
             val snapshot = store.loadSourceIndexSnapshot()
 
-            assertEquals(listOf(callerPath), snapshot.candidatePathsByIdentifier.getValue("Caller"))
-            assertEquals(listOf(targetPath), snapshot.candidatePathsByIdentifier.getValue("Target"))
-            assertEquals(mapOf(callerPath to 1L, targetPath to 2L), store.loadManifest())
+            assertEquals(listOf(callerSourcePath), snapshot.candidatePathsByIdentifier.getValue("Caller"))
+            assertEquals(listOf(targetSourcePath), snapshot.candidatePathsByIdentifier.getValue("Target"))
+            assertEquals(
+                mapOf(callerSourcePath.rawPath to 1L, targetSourcePath.rawPath to 2L),
+                store.loadManifest(),
+            )
         }
 
         DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(normalized)}").use { conn ->
@@ -126,6 +140,7 @@ class SqliteSourceIndexSnapshotTest {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val callerPath = normalized.resolve("src/Caller.kt").toString()
         val targetPath = normalized.resolve("src/Foo.kt").toString()
+        val callerSourcePath = workspaceSourcePath(normalized, callerPath)
 
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
@@ -150,9 +165,15 @@ class SqliteSourceIndexSnapshotTest {
 
             val snapshot = store.loadSourceIndexSnapshot()
 
-            assertEquals("consumer", snapshot.packageByPath.getValue(callerPath))
-            assertEquals(listOf("kotlin.collections.List", "lib.Foo"), snapshot.importsByPath.getValue(callerPath))
-            assertEquals(listOf("lib.internal"), snapshot.wildcardImportPackagesByPath.getValue(callerPath))
+            assertEquals("consumer", snapshot.packageByPath.getValue(callerSourcePath))
+            assertEquals(
+                listOf("kotlin.collections.List", "lib.Foo"),
+                snapshot.importsByPath.getValue(callerSourcePath),
+            )
+            assertEquals(
+                listOf("lib.internal"),
+                snapshot.wildcardImportPackagesByPath.getValue(callerSourcePath),
+            )
             assertEquals("lib.Foo", store.referencesToSymbol("lib.Foo").single().targetFqName)
         }
 
@@ -207,6 +228,7 @@ class SqliteSourceIndexSnapshotTest {
         val restoredRoot = workspaceRoot.resolve("restored").toAbsolutePath().normalize()
         val originalPath = originalRoot.resolve("src/Portable.kt").toString()
         val restoredPath = restoredRoot.resolve("src/Portable.kt").toString()
+        val restoredSourcePath = workspaceSourcePath(restoredRoot, restoredPath)
 
         SqliteSourceIndexStore(originalRoot).use { store ->
             store.ensureSchema()
@@ -221,30 +243,31 @@ class SqliteSourceIndexSnapshotTest {
             assertTrue(store.ensureSchema())
 
             assertEquals(
-                listOf(restoredPath),
+                listOf(restoredSourcePath),
                 store.loadSourceIndexSnapshot().candidatePathsByIdentifier.getValue("Portable")
             )
-            assertEquals(mapOf(restoredPath to 9L), store.loadManifest())
+            assertEquals(mapOf(restoredSourcePath.rawPath to 9L), store.loadManifest())
         }
     }
 
     @Test
-    fun `paths outside workspace root round-trip through absolute sentinel prefix`() {
+    fun `workspace paths round-trip through relative directory prefixes`() {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
-        val externalPath = normalized.parent.resolve("external/Outside.kt").normalize().toString()
+        val nestedPath = normalized.resolve("external/Outside.kt").normalize().toString()
+        val nestedSourcePath = workspaceSourcePath(normalized, nestedPath)
 
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
             store.saveFullIndex(
-                updates = listOf(fileUpdate(externalPath, "Outside")),
-                manifest = mapOf(externalPath to 4L),
+                updates = listOf(fileUpdate(nestedPath, "Outside")),
+                manifest = mapOf(nestedPath to 4L),
             )
 
             assertEquals(
-                listOf(externalPath),
+                listOf(nestedSourcePath),
                 store.loadSourceIndexSnapshot().candidatePathsByIdentifier.getValue("Outside")
             )
-            assertEquals(mapOf(externalPath to 4L), store.loadManifest())
+            assertEquals(mapOf(nestedSourcePath.rawPath to 4L), store.loadManifest())
         }
 
         DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(normalized)}").use { conn ->
@@ -253,7 +276,7 @@ class SqliteSourceIndexSnapshotTest {
                 val prefixes = buildList {
                     while (rs.next()) add(rs.getString(1))
                 }
-                assertTrue(prefixes.any { it.startsWith("__kast_abs__/") })
+                assertEquals(listOf("external"), prefixes)
             }
         }
     }
@@ -263,6 +286,8 @@ class SqliteSourceIndexSnapshotTest {
         val normalized = workspaceRoot.toAbsolutePath().normalize()
         val firstPath = normalized.resolve("first/One.kt").toString()
         val secondPath = normalized.resolve("second/Two.kt").toString()
+        val firstSourcePath = workspaceSourcePath(normalized, firstPath)
+        val secondSourcePath = workspaceSourcePath(normalized, secondPath)
 
         SqliteSourceIndexStore(normalized).use { store ->
             store.ensureSchema()
@@ -271,8 +296,8 @@ class SqliteSourceIndexSnapshotTest {
 
             val snapshot = store.loadSourceIndexSnapshot()
 
-            assertEquals(listOf(firstPath), snapshot.candidatePathsByIdentifier.getValue("One"))
-            assertEquals(listOf(secondPath), snapshot.candidatePathsByIdentifier.getValue("Two"))
+            assertEquals(listOf(firstSourcePath), snapshot.candidatePathsByIdentifier.getValue("One"))
+            assertEquals(listOf(secondSourcePath), snapshot.candidatePathsByIdentifier.getValue("Two"))
         }
 
         DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(normalized)}").use { conn ->
@@ -284,6 +309,39 @@ class SqliteSourceIndexSnapshotTest {
                 assertEquals(listOf("first", "second"), prefixes)
             }
 
+        }
+    }
+
+    @Test
+    fun `symlink aliases persist and load as one canonical workspace source path`() {
+        val normalized = workspaceRoot.toAbsolutePath().normalize()
+        val canonicalDirectory = normalized.resolve("canonical").also(Files::createDirectories)
+        val canonicalFile = writeKotlinFile(canonicalDirectory.resolve("App.kt"))
+        val aliasFile = normalized.resolve("alias")
+            .also { alias -> Files.createSymbolicLink(alias, canonicalDirectory) }
+            .resolve("App.kt")
+        val canonicalPath = workspaceSourcePath(normalized, canonicalFile.toString())
+
+        SqliteSourceIndexStore(normalized).use { store ->
+            store.ensureSchema()
+            store.saveFullIndex(
+                updates = listOf(
+                    fileUpdate(aliasFile.toString(), "App"),
+                    fileUpdate(canonicalFile.toString(), "App"),
+                ),
+                manifest = linkedMapOf(
+                    aliasFile.toString() to 1L,
+                    canonicalFile.toString() to 1L,
+                ),
+            )
+
+            val snapshot = store.loadSourceIndexSnapshot()
+
+            assertEquals(listOf(canonicalPath), snapshot.candidatePathsByIdentifier.getValue("App"))
+            assertEquals(setOf(canonicalPath), snapshot.moduleByPath.keys)
+            assertEquals(setOf(canonicalPath), snapshot.packageByPath.keys)
+            assertEquals(mapOf(canonicalPath.rawPath to 1L), store.loadManifest())
+            assertEquals(1, store.manifestFileCount())
         }
     }
 

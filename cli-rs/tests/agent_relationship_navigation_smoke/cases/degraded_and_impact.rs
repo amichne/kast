@@ -6,7 +6,7 @@ fn handle_backed_stale_relationship_preserves_known_minimum_and_limitations() {
     let workspace = temp.path().join("workspace");
     let declaration_file = workspace.join("Service.kt");
     let selector_handle = "ksh1.stale-relationship";
-    let backend = spawn_scripted_idea_backend(
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -147,7 +147,7 @@ fn selector_handle_drives_impact_without_position_resolution() {
     let declaration_file =
         std::fs::canonicalize(workspace.join("lib/Foo.kt")).expect("impact declaration");
     let selector_handle = "ksh1.test-impact-selector-handle";
-    let backend = spawn_scripted_idea_backend(
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -232,7 +232,7 @@ fn selector_handle_impact_preserves_rejection_before_sql() {
     let home = temp.path().join("home");
     let config = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let backend = spawn_scripted_idea_backend(
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -288,7 +288,7 @@ fn impact_pages_are_query_bound_and_do_not_overlap() {
     });
     let run_page = |index: usize, page_token: Option<&str>| {
         let socket = temp.path().join(format!("impact-page-{index}.sock"));
-        let backend = spawn_scripted_idea_backend(
+        let backend = spawn_scripted_headless_backend(
             &home,
             &config,
             &workspace,

@@ -14,7 +14,7 @@ class IdeaProjectIndexerReadActionTest {
             Path.of("backend-idea/src/main/kotlin/io/github/amichne/kast/idea/workspace/indexing/IdeaProjectIndexer.kt"),
         ).first(Files::exists)
         val source = Files.readString(sourcePath)
-            .substringAfter("fun indexSourceIdentifiers(): Collection<String> {")
+            .substringAfter("fun indexSourceIdentifiers(): Collection<WorkspaceSourcePath> {")
             .substringBefore("private fun indexSymbolRelationships")
 
         assertFalse(source.contains("runIdeaReadAction"))

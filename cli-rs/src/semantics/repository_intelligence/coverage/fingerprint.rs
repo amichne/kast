@@ -130,11 +130,6 @@ struct SemanticGraphOutcomeRow {
     filename: String,
     manifest_content_hash: Option<String>,
     desired_stage_version: Option<String>,
-    desired_relationships_version: Option<String>,
-    relationship_content_hash: Option<String>,
-    relationship_stage_version: Option<String>,
-    relationship_status: Option<String>,
-    relationship_failure_code: Option<String>,
     outcome_content_hash: Option<String>,
     outcome_stage_version: Option<String>,
     outcome_input_fingerprint: Option<String>,
@@ -149,9 +144,6 @@ fn semantic_graph_outcome_rows(
         .prepare(
             "SELECT prefixes.dir_path, manifest.filename,
                     manifest.content_hash, manifest.desired_semantic_graph_version,
-                    manifest.desired_relationships_version,
-                    relationships.content_hash, relationships.stage_version,
-                    relationships.outcome_status, relationships.failure_code,
                     outcomes.content_hash, outcomes.stage_version,
                     outcomes.stage_input_fingerprint, outcomes.outcome_status,
                     outcomes.limitations_json
@@ -161,10 +153,6 @@ fn semantic_graph_outcome_rows(
               ON outcomes.prefix_id = manifest.prefix_id
               AND outcomes.filename = manifest.filename
               AND outcomes.stage = 'SEMANTIC_GRAPH'
-             LEFT JOIN file_stage_outcomes relationships
-               ON relationships.prefix_id = manifest.prefix_id
-              AND relationships.filename = manifest.filename
-              AND relationships.stage = 'RELATIONSHIPS'
              ORDER BY prefixes.dir_path, manifest.filename",
         )
         .map_err(graph_coverage_unavailable)?;
@@ -175,16 +163,11 @@ fn semantic_graph_outcome_rows(
                 filename: row.get(1)?,
                 manifest_content_hash: row.get(2)?,
                 desired_stage_version: row.get(3)?,
-                desired_relationships_version: row.get(4)?,
-                relationship_content_hash: row.get(5)?,
-                relationship_stage_version: row.get(6)?,
-                relationship_status: row.get(7)?,
-                relationship_failure_code: row.get(8)?,
-                outcome_content_hash: row.get(9)?,
-                outcome_stage_version: row.get(10)?,
-                outcome_input_fingerprint: row.get(11)?,
-                outcome_status: row.get(12)?,
-                outcome_limitations: row.get(13)?,
+                outcome_content_hash: row.get(4)?,
+                outcome_stage_version: row.get(5)?,
+                outcome_input_fingerprint: row.get(6)?,
+                outcome_status: row.get(7)?,
+                outcome_limitations: row.get(8)?,
             })
         })
         .map_err(graph_coverage_unavailable)?
@@ -245,23 +228,6 @@ fn decode_semantic_graph_outcomes(
                 PersistedFileStageVersion::parse(value, &path, "desired stage version")
             })
             .transpose()?;
-        let desired_relationships_version = row
-            .desired_relationships_version
-            .map(|value| {
-                PersistedFileStageVersion::parse(
-                    value,
-                    &path,
-                    "desired relationships version",
-                )
-            })
-            .transpose()?;
-        let relationship_boundary = decode_relationship_boundary(
-            &path,
-            row.relationship_content_hash,
-            row.relationship_stage_version,
-            row.relationship_status,
-            row.relationship_failure_code,
-        )?;
         let outcome = decode_semantic_graph_outcome(
             &path,
             row.outcome_content_hash,
@@ -276,8 +242,6 @@ fn decode_semantic_graph_outcomes(
                 SemanticFileRow {
                     manifest_content_hash,
                     desired_stage_version,
-                    desired_relationships_version,
-                    relationship_boundary,
                     outcome,
                 },
             )
@@ -290,38 +254,6 @@ fn decode_semantic_graph_outcomes(
         }
     }
     Ok(semantic_files)
-}
-
-fn decode_relationship_boundary(
-    path: &str,
-    content_hash: Option<String>,
-    stage_version: Option<String>,
-    status: Option<String>,
-    failure_code: Option<String>,
-) -> Result<Option<RelationshipExternalBoundary>> {
-    if status.as_deref() != Some("EXTERNAL_BOUNDARY") {
-        return Ok(None);
-    }
-    let (Some(content_hash), Some(stage_version), Some("PSI_UNAVAILABLE")) =
-        (content_hash, stage_version, failure_code.as_deref())
-    else {
-        return Err(CliError::new(
-            "GRAPH_COVERAGE_UNAVAILABLE",
-            format!("external relationship boundary for `{path}` is incomplete"),
-        ));
-    };
-    Ok(Some(RelationshipExternalBoundary {
-        content_hash: PersistedFileContentHash::parse(
-            content_hash,
-            path,
-            "relationship outcome content hash",
-        )?,
-        stage_version: PersistedFileStageVersion::parse(
-            stage_version,
-            path,
-            "relationship outcome stage version",
-        )?,
-    }))
 }
 
 fn decode_semantic_graph_outcome(

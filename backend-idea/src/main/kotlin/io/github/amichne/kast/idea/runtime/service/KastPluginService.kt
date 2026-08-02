@@ -119,82 +119,9 @@ internal class KastPluginService(
     }
 
     private fun createBackend(start: KastPluginBackendStart): KastIdeaBackendHandle {
-        val workspaceRoot = start.workspaceRoot
-        val config = start.config
-        LOG.info("Starting kast idea backend for workspace: $workspaceRoot")
-        KastStructuredTrace.event(
-            eventName = "idea.backend.starting",
-            project = project,
-            workspaceRoot = workspaceRoot,
-            fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
+        throw UnsupportedOperationException(
+            "IDEA_SEMANTIC_BACKEND_RETIRED: foreground IDEA cannot start a Kast semantic runtime for ${start.workspaceRoot}",
         )
-        val diagnostics = KastDiagnosticsService.getInstance(project)
-        diagnostics.recordBackendStarting(workspaceRoot)
-        val socketPath = socketPathForWorkspaceRoot(
-            workspaceRoot = workspaceRoot,
-            socketDirectory = Path.of(config.paths.socketDir.value),
-        )
-        return runCatching {
-            requireSupportedIdeaHost()
-            val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
-                project = project,
-                workspaceRoot = workspaceRoot,
-                descriptorDirectory = config.paths.descriptorDir.toPath(),
-            )
-            val bootstrap = KastProjectOpenProfileAutoInit.prepareRequired(
-                workspaceRoot = workspaceRoot,
-                config = config,
-                prepareWorkspace = { request ->
-                    check(request.socketPath.toAbsolutePath().normalize() == socketPath.toAbsolutePath().normalize()) {
-                        "Kast compatibility metadata socket does not match the selected IDEA backend socket"
-                    }
-                    PluginWorkspaceBootstrap.prepare(request) { requestedRoot ->
-                        check(requestedRoot.toAbsolutePath().normalize() == workspaceRoot) {
-                            "Kast compatibility metadata must target the admitted exact workspace root"
-                        }
-                        workspaceIdentity.workspaceIdentity.workspaceDataDirectoryPath
-                    }
-                },
-            )
-            if (bootstrap is ProjectOpenProfileAutoInitResult.Failed) {
-                throw IllegalStateException(bootstrap.message)
-            }
-            check(bootstrap is ProjectOpenProfileAutoInitResult.Installed) {
-                "Required Kast compatibility metadata preparation was skipped"
-            }
-            KastIdeaBackendRuntime.startPrepared(
-                project = project,
-                workspaceIdentity = workspaceIdentity,
-                socketPath = socketPath,
-                config = config,
-                lifecycleController = lifecycleController(),
-                projectOpenController = KastRuntimeProjectOpenController(project, config),
-                indexAdmission = start.admission,
-            )
-        }.onSuccess { backend ->
-            KastStructuredTrace.event(
-                eventName = "idea.backend.started",
-                project = project,
-                workspaceRoot = workspaceRoot,
-                fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
-                outcome = "completed",
-                detail = mapOf("socketPath" to socketPath.toString()),
-            )
-            LOG.info("Kast idea backend started on socket: $socketPath")
-        }.onFailure { error ->
-            KastStructuredTrace.event(
-                eventName = "idea.backend.start_failed",
-                project = project,
-                workspaceRoot = workspaceRoot,
-                fields = KastStructuredTraceFields(agentRole = "idea-plugin"),
-                outcome = "failed",
-                detail = mapOf(
-                    "errorClass" to error::class.qualifiedName,
-                    "message" to error.message,
-                ),
-            )
-            diagnostics.recordBackendFailed(error)
-        }.getOrThrow()
     }
 
     private fun stopServer() {

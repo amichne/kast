@@ -2,7 +2,9 @@ package io.github.amichne.kast.indexstore.store
 
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.NonNegativeInt
+import io.github.amichne.kast.api.contract.NormalizedPath
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
+import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.snapshot.OverlayManifest
 import io.github.amichne.kast.indexstore.store.codec.PathInterningCodec
 import io.github.amichne.kast.indexstore.store.codec.StringInterningCodec
@@ -19,8 +21,11 @@ import java.util.concurrent.atomic.AtomicReference
 internal class SqliteSourceIndexStoreState(
     workspaceIdentity: WorkspaceIdentity,
     internal val pageReadObserver: SourceIndexPageReadObserver,
+    private val access: SqliteSourceIndexStoreAccess = SqliteSourceIndexStoreAccess.READ_WRITE,
 ) : AutoCloseable {
     internal val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
+    internal val normalizedWorkspaceRoot: NormalizedPath = NormalizedPath.of(workspaceRoot)
+    internal val sourceFilePolicy = SourceIndexFilePolicy.forWorkspace(workspaceRoot)
     internal val dbPath: Path = workspaceIdentity.sourceIndexDatabaseFile
     private val overlayManifest: OverlayManifest? = dbPath.resolveSibling(REPOSITORY_OVERLAY_FILE)
         .takeIf(Files::isRegularFile)
@@ -29,7 +34,7 @@ internal class SqliteSourceIndexStoreState(
         ?.let(Path::of)
         ?.toAbsolutePath()
         ?.normalize()
-    internal val pathCodec = PathInterningCodec(workspaceRoot)
+    internal val pathCodec = PathInterningCodec(normalizedWorkspaceRoot.toJavaPath())
     internal val fqCodec = StringInterningCodec(
         tableName = "fq_names",
         idColumn = "fq_id",
@@ -38,6 +43,8 @@ internal class SqliteSourceIndexStoreState(
     internal val connectionLock = Any()
     internal val writeLock = Any()
     internal val schema: SqliteSourceIndexSchema by lazy { SqliteSourceIndexSchema(this) }
+    private val writerLease: SourceIndexWriterLease? =
+        if (access == SqliteSourceIndexStoreAccess.READ_WRITE) SourceIndexWriterLease.acquire(dbPath) else null
 
     @Volatile
     private var cachedConnection: Connection? = null
@@ -86,22 +93,38 @@ internal class SqliteSourceIndexStoreState(
                 loadedInterningDataVersion = null
                 committedManifestFileCount.set(NonNegativeInt(0))
             }
-            Files.createDirectories(dbPath.parent)
+            check(access == SqliteSourceIndexStoreAccess.READ_WRITE || Files.isRegularFile(dbPath)) {
+                "Read-only source index does not exist: $dbPath"
+            }
+            if (access == SqliteSourceIndexStoreAccess.READ_WRITE) Files.createDirectories(dbPath.parent)
             SqliteJdbcDriverBootstrap.ensureRegistered()
-            val conn = DriverManager.getConnection("jdbc:sqlite:$dbPath")
+            val connectionUrl = if (access == SqliteSourceIndexStoreAccess.READ_ONLY) {
+                "jdbc:sqlite:${dbPath.toUri().toASCIIString()}?mode=ro"
+            } else {
+                "jdbc:sqlite:$dbPath"
+            }
+            val conn = DriverManager.getConnection(connectionUrl)
             try {
                 conn.createStatement().use { stmt ->
-                    stmt.execute("PRAGMA journal_mode=WAL")
-                    stmt.execute("PRAGMA synchronous=NORMAL")
+                    if (access == SqliteSourceIndexStoreAccess.READ_WRITE) {
+                        stmt.execute("PRAGMA journal_mode=WAL")
+                        stmt.execute("PRAGMA synchronous=NORMAL")
+                        stmt.execute("PRAGMA wal_autocheckpoint=1000")
+                    }
                     stmt.execute("PRAGMA busy_timeout=5000")
                     stmt.execute("PRAGMA cache_size=-64000")
                     stmt.execute("PRAGMA mmap_size=268435456")
                     stmt.execute("PRAGMA temp_store=MEMORY")
-                    stmt.execute("PRAGMA wal_autocheckpoint=1000")
                     stmt.execute("PRAGMA foreign_keys=ON")
+                    if (access == SqliteSourceIndexStoreAccess.READ_ONLY) {
+                        stmt.execute("PRAGMA query_only=ON")
+                    }
                 }
                 attachRepositoryBase(conn)
                 if (schema.readSchemaVersion(conn) == null) {
+                    check(access == SqliteSourceIndexStoreAccess.READ_WRITE) {
+                        "Read-only source index has no schema: $dbPath"
+                    }
                     conn.autoCommit = false
                     schema.createAllTables(conn)
                     conn.commit()
@@ -109,7 +132,7 @@ internal class SqliteSourceIndexStoreState(
                 }
                 if (requireCurrentSchema) {
                     schema.validateCurrentSchema(conn)
-                    initializeRepositoryOverlay(conn)
+                    if (access == SqliteSourceIndexStoreAccess.READ_WRITE) initializeRepositoryOverlay(conn)
                     reloadInterningTables(conn)
                     refreshManifestFileCount(conn)
                 }
@@ -189,13 +212,17 @@ internal class SqliteSourceIndexStoreState(
     internal fun isSchemaValidated(conn: Connection): Boolean = validatedSchemaConnection === conn
 
     override fun close() {
-        synchronized(connectionLock) {
-            cachedConnection?.let { conn ->
-                runCatching { conn.close() }
-                cachedConnection = null
-                validatedSchemaConnection = null
-                loadedInterningDataVersion = null
+        try {
+            synchronized(connectionLock) {
+                cachedConnection?.let { conn ->
+                    runCatching { conn.close() }
+                    cachedConnection = null
+                    validatedSchemaConnection = null
+                    loadedInterningDataVersion = null
+                }
             }
+        } finally {
+            writerLease?.close()
         }
     }
 
@@ -329,6 +356,3 @@ internal class SqliteSourceIndexStoreState(
         private const val REPOSITORY_OVERLAY_FILE = "repository-overlay.json"
     }
 }
-
-internal fun ResultSet.getNullableInt(column: Int): Int? =
-    getObject(column)?.let { (it as Number).toInt() }

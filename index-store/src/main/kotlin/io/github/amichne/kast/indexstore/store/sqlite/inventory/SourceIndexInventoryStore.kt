@@ -1,7 +1,7 @@
 package io.github.amichne.kast.indexstore.store
 
 import io.github.amichne.kast.indexstore.api.index.RelationshipIndexStatus
-import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
+import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import java.nio.file.Files
 import java.nio.file.Path
 
@@ -12,14 +12,20 @@ internal class SourceIndexInventoryStore(
 ) {
     private val pathCodec get() = state.pathCodec
     fun saveManifest(entries: Map<String, Long>) {
-        val eligibleEntries = entries.filterKeys(SourceIndexFilePolicy::isEligible)
+        val eligibleEntries = buildMap {
+            entries.forEach { (rawPath, lastModifiedMillis) ->
+                state.sourceFilePolicy.sourcePath(Path.of(rawPath))
+                    ?.let { path -> put(path, lastModifiedMillis) }
+            }
+        }
         synchronized(state.writeLock) {
             val conn = state.connection()
             conn.autoCommit = false
             try {
-                mutations.internPathsInTransaction(conn, eligibleEntries.keys)
+                val databaseEntries = eligibleEntries.mapKeys { (path, _) -> path.toDatabasePath() }
+                mutations.internPathsInTransaction(conn, databaseEntries.keys)
                 conn.createStatement().use { stmt -> stmt.execute("DELETE FROM file_manifest") }
-                mutations.insertManifestInTransaction(conn, eligibleEntries)
+                mutations.insertManifestInTransaction(conn, databaseEntries)
                 state.removeIneligibleSourceIndexRows(conn)
                 state.incrementGenerationInTransaction(conn)
                 state.commitManifestMutation(conn)
@@ -36,16 +42,14 @@ internal class SourceIndexInventoryStore(
         path: String,
         lastModifiedMillis: Long,
     ) {
-        if (!SourceIndexFilePolicy.isEligible(path)) {
-            fileStore.removeFile(path)
-            return
-        }
+        val sourcePath = state.sourceFilePolicy.sourcePath(Path.of(path)) ?: return
         synchronized(state.writeLock) {
             val conn = state.connection()
             conn.autoCommit = false
             try {
-                mutations.internPathsInTransaction(conn, listOf(path))
-                val (prefixId, filename) = pathCodec.encode(path)
+                val databasePath = sourcePath.toDatabasePath()
+                mutations.internPathsInTransaction(conn, listOf(databasePath))
+                val (prefixId, filename) = pathCodec.encode(databasePath)
                 conn.prepareStatement(
                     """INSERT OR REPLACE INTO file_manifest (prefix_id, filename, last_modified_millis)
                        VALUES (?, ?, ?)""",
@@ -111,7 +115,7 @@ internal class SourceIndexInventoryStore(
                         val path = Path.of(pathCodec.decode(rs.getInt(1), rs.getString(2)))
                             .toAbsolutePath()
                             .normalize()
-                        if (Files.isRegularFile(path) && SourceIndexFilePolicy.isEligible(path)) {
+                        if (Files.isRegularFile(path) && state.sourceFilePolicy.isEligible(path)) {
                             add(path)
                         }
                     }
@@ -174,7 +178,7 @@ internal class SourceIndexInventoryStore(
                             val path = Path.of(pathCodec.decode(rs.getInt("prefix_id"), rs.getString("filename")))
                                 .toAbsolutePath()
                                 .normalize()
-                            if (Files.isRegularFile(path) && SourceIndexFilePolicy.isEligible(path)) {
+                            if (Files.isRegularFile(path) && state.sourceFilePolicy.isEligible(path)) {
                                 add(path)
                             }
                         }

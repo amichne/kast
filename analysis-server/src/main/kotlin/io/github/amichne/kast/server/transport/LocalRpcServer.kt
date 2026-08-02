@@ -1,5 +1,7 @@
 package io.github.amichne.kast.server
 
+import io.github.amichne.kast.api.client.SocketFileIdentity
+import io.github.amichne.kast.api.client.SocketOwnerUid
 import kotlinx.coroutines.runBlocking
 import java.io.BufferedReader
 import java.io.BufferedWriter
@@ -17,6 +19,7 @@ import java.nio.channels.ServerSocketChannel
 import java.nio.channels.SocketChannel
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.util.Collections
 import java.util.concurrent.atomic.AtomicBoolean
@@ -27,6 +30,11 @@ internal interface LocalRpcServer : Closeable {
     fun await()
 }
 
+internal data class BoundSocketEvidence(
+    val socketFileIdentity: SocketFileIdentity,
+    val socketOwnerUid: SocketOwnerUid,
+)
+
 internal class UnixDomainSocketRpcServer(
     private val socketPath: Path,
     private val dispatcher: RpcAnalysisDispatcher,
@@ -35,6 +43,11 @@ internal class UnixDomainSocketRpcServer(
     private val handlers = Collections.synchronizedSet(mutableSetOf<Thread>())
     private val clients = mutableSetOf<SocketChannel>()
     private val serverChannel = ServerSocketChannel.open(StandardProtocolFamily.UNIX)
+    @Volatile
+    private var boundEvidence: BoundSocketEvidence? = null
+
+    val boundSocketEvidence: BoundSocketEvidence
+        get() = checkNotNull(boundEvidence) { "Unix domain socket is not bound" }
     private val acceptThread = thread(
         start = false,
         isDaemon = true,
@@ -46,8 +59,8 @@ internal class UnixDomainSocketRpcServer(
     fun start(): UnixDomainSocketRpcServer {
         try {
             Files.createDirectories(checkNotNull(socketPath.parent))
-            socketPath.deleteIfExists()
             serverChannel.bind(UnixDomainSocketAddress.of(socketPath))
+            boundEvidence = readBoundSocketEvidence(socketPath)
             acceptThread.start()
             return this
         } catch (startupFailure: Throwable) {
@@ -87,7 +100,9 @@ internal class UnixDomainSocketRpcServer(
             currentThread = currentThread,
             deadlineNanos = deadlineNanos,
         )
-        socketPath.deleteIfExists()
+        if (boundEvidence == readBoundSocketEvidenceOrNull(socketPath)) {
+            socketPath.deleteIfExists()
+        }
     }
 
     private fun acceptLoop() {
@@ -141,6 +156,24 @@ internal class UnixDomainSocketRpcServer(
         }
     }
 }
+
+internal fun readSocketFileIdentity(path: Path): SocketFileIdentity {
+    return readBoundSocketEvidence(path).socketFileIdentity
+}
+
+internal fun readBoundSocketEvidence(path: Path): BoundSocketEvidence {
+    val unix = Files.readAttributes(path, "unix:dev,ino,uid", LinkOption.NOFOLLOW_LINKS)
+    return BoundSocketEvidence(
+        socketFileIdentity = SocketFileIdentity(
+            device = (checkNotNull(unix["dev"]) as Number).toLong(),
+            inode = (checkNotNull(unix["ino"]) as Number).toLong(),
+        ),
+        socketOwnerUid = SocketOwnerUid.of((checkNotNull(unix["uid"]) as Number).toLong()),
+    )
+}
+
+private fun readBoundSocketEvidenceOrNull(path: Path): BoundSocketEvidence? =
+    runCatching { readBoundSocketEvidence(path) }.getOrNull()
 
 internal class StdioRpcServer(
     private val dispatcher: RpcAnalysisDispatcher,

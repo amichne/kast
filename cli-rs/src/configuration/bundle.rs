@@ -5,6 +5,7 @@ pub(crate) const BUNDLE_MANIFEST_SCHEMA_VERSION: u32 = 3;
 pub(crate) const BUNDLE_MANIFEST_KIND: &str = "KAST_INSTALL_BUNDLE";
 pub(crate) const UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID: &str = "ubuntu-debian-headless-x86_64";
 pub(crate) const UBUNTU_DEBIAN_HEADLESS_PROFILE: &str = "ubuntu-debian-headless";
+pub(crate) const MACOS_INSTALLED_IDEA_SIDECAR_PROFILE: &str = "macos-installed-idea-sidecar";
 pub(crate) const UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT: &str = "install.sh";
 pub(crate) const CONTROL_CLI_BUNDLE_PATH: &str = "libexec/kastctl";
 pub(crate) const AGENT_CLI_BUNDLE_PATH: &str = "bin/kast";
@@ -116,19 +117,30 @@ pub(crate) struct BundleArtifact {
 pub(crate) fn ubuntu_debian_headless_manifest(
     version: &str,
     platform: &str,
-    artifact_sha256: [String; 4],
+    artifact_sha256: [String; 3],
     build_commit: String,
 ) -> BundleManifest {
-    let [cli_sha256, agent_cli_sha256, backend_sha256, plugin_sha256] = artifact_sha256;
+    let [cli_sha256, agent_cli_sha256, backend_sha256] = artifact_sha256;
     let backend_install_name = format!("headless-{version}");
+    let installed_idea_sidecar = platform.starts_with("macos-");
     BundleManifest {
         schema_version: BUNDLE_MANIFEST_SCHEMA_VERSION,
         kind: BUNDLE_MANIFEST_KIND.to_string(),
-        profile: UBUNTU_DEBIAN_HEADLESS_PROFILE.to_string(),
+        profile: if installed_idea_sidecar {
+            MACOS_INSTALLED_IDEA_SIDECAR_PROFILE
+        } else {
+            UBUNTU_DEBIAN_HEADLESS_PROFILE
+        }
+        .to_string(),
         version: version.to_string(),
         platform: platform.to_string(),
         entrypoint: UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT.to_string(),
-        java_requirement: "Java 21 or newer available on PATH, or KAST_JAVA_CMD set".to_string(),
+        java_requirement: if installed_idea_sidecar {
+            "A supported installed IntelliJ IDEA or Android Studio host"
+        } else {
+            "Java 21 or newer available on PATH, or KAST_JAVA_CMD set"
+        }
+        .to_string(),
         build_commit,
         activation: BundleActivation {
             cli: BundleCliActivation {
@@ -166,13 +178,13 @@ pub(crate) fn ubuntu_debian_headless_manifest(
                 path: format!("lib/backends/{backend_install_name}"),
                 sha256: backend_sha256,
             },
-            BundleArtifact {
-                role: "plugin".to_string(),
-                path: "plugins/kast.zip".to_string(),
-                sha256: plugin_sha256,
-            },
         ],
     }
+}
+
+pub(crate) fn is_macos_installed_idea_sidecar(manifest: &BundleManifest) -> bool {
+    manifest.profile == MACOS_INSTALLED_IDEA_SIDECAR_PROFILE
+        && manifest.platform.starts_with("macos-")
 }
 
 pub(crate) fn normalize_version(value: &str) -> String {

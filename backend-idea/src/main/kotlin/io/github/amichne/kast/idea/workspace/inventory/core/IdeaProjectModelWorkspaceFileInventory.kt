@@ -15,6 +15,7 @@ import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.api.client.WorkspaceIdentity
+import io.github.amichne.kast.api.client.WorkspacePathPolicy
 import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
 import io.github.amichne.kast.api.protocol.WorkspaceProjectModelIncompleteException
 import io.github.amichne.kast.api.protocol.WorkspaceProjectModelIncompleteReason
@@ -199,9 +200,8 @@ internal class IdeaProjectModelWorkspaceFileInventory private constructor(
 
     private fun canonicalContainedPath(path: Path): String? {
         val normalized = path.toAbsolutePath().normalize()
-        return workspaceIdentity
-            .relativizeIfContained(normalized)
-            ?.let { normalized.toString() }
+        val relative = workspaceIdentity.relativizeIfContained(normalized) ?: return null
+        return normalized.toString().takeUnless { WorkspacePathPolicy.isHardExcluded(relative) }
     }
 
     private class ModuleEvidence private constructor(

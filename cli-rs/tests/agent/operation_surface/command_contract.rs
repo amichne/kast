@@ -118,7 +118,7 @@ fn applied_add_file_submits_typed_mutation_request() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("idea.sock");
+    let socket_path = temp.path().join("headless.sock");
     let content_file = temp.path().join("Added.kt");
     let target = workspace.join("src/Added.kt");
     std::fs::create_dir_all(&workspace).expect("workspace");
@@ -128,7 +128,7 @@ fn applied_add_file_submits_typed_mutation_request() {
     )
     .expect("settings");
     std::fs::write(&content_file, "class Added\n").expect("content");
-    write_current_cli_install_manifest_for_test(&home, &config_home);
+    let binary = write_active_kast_for_test(&home, &config_home);
     let canonical_target = workspace
         .canonicalize()
         .expect("canonical workspace")
@@ -141,8 +141,9 @@ fn applied_add_file_submits_typed_mutation_request() {
         Some(mutation_result(false)),
         false,
     );
+    let lease_id = acquire_workspace_lease(&binary, &home, &config_home, &workspace);
 
-    let output = kast(&home, &config_home)
+    let output = kast_at(&binary, &home, &config_home)
         .args([
             "--output",
             "json",
@@ -157,6 +158,8 @@ fn applied_add_file_submits_typed_mutation_request() {
             "--apply",
             "--idempotency-key",
             "issue-333-add-file",
+            "--lease-id",
+            &lease_id,
         ])
         .output()
         .expect("submit mutation");

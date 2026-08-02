@@ -28,8 +28,8 @@ the analysis contract to persisted evidence and typed projection.
 
 ## PSI, Analysis API, K2, and FIR stay behind the backend
 
-The IDEA backend uses the Program Structure Interface (PSI) to enumerate
-Kotlin elements and retain source ranges. The Kotlin Analysis API (AA) runs K2
+The private headless backend uses the Program Structure Interface (PSI) to
+enumerate Kotlin elements and retain source ranges. The Kotlin Analysis API (AA) runs K2
 compiler analysis over its Front-end Intermediate Representation (FIR) to
 resolve identities, types, diagnostics, and references.
 
@@ -80,14 +80,14 @@ communities, impact, and workspace summaries.
 
 Every query verifies the source-index schema and generation. Worktree overlays
 retain their base-database identity, and a generation change during a graph
-calculation fails instead of mixing snapshots. Plugins and backends derive the
-database location from the active CLI receipt, so an independently guessed
+calculation fails instead of mixing snapshots. The headless runtime derives
+the database location from the active CLI receipt, so an independently guessed
 cache path cannot become a second graph authority.
 
 ## Failures remain explicit
 
-Workspace admission reports `COMPILER_BACKED` only after the selected runtime
-matches the requested root and backend. Indexing, unavailable source modules,
-an unprepared workspace, ambiguous backend selection, and an unavailable
-reference index remain typed limitations. Kast fails closed when those facts
-would make a semantic claim unsafe.
+Workspace admission reports `COMPILER_BACKED` only after the selected headless
+runtime matches the requested root and exact identity. Indexing, unavailable
+source modules, an unprepared workspace, a conflicting runtime, and an
+unavailable reference index remain typed limitations. Kast fails closed when
+those facts would make a semantic claim unsafe.

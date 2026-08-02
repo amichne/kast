@@ -268,13 +268,13 @@ internal class SourceIndexFileMutations(
     internal fun loadFileFqNames(
         conn: Connection,
         tableName: String,
-        target: MutableMap<String, List<String>>,
+        target: MutableMap<WorkspaceSourcePath, List<String>>,
     ) {
-        val byPath = mutableMapOf<String, MutableList<String>>()
+        val byPath = mutableMapOf<WorkspaceSourcePath, MutableList<String>>()
         conn.createStatement().use { stmt ->
             val rs = stmt.executeQuery("SELECT prefix_id, filename, fq_id FROM $tableName")
             while (rs.next()) {
-                val path = pathCodec.decode(rs.getInt(1), rs.getString(2))
+                val path = state.requireWorkspaceSourcePath(pathCodec.decode(rs.getInt(1), rs.getString(2)))
                 val fqName = fqCodec.resolve(rs.getInt(3))
                 byPath.getOrPut(path) { mutableListOf() }.add(fqName)
             }

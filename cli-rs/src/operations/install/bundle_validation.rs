@@ -47,18 +47,20 @@ fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
     }
     require_directory(&backend_install_dir, "headless backend install directory")?;
     require_executable(&backend_launcher, "headless backend launcher")?;
-    require_file(
-        &runtime_libs_dir.join("classpath.txt"),
-        "headless runtime classpath",
-    )?;
-    require_file(
-        &idea_home.join("lib/nio-fs.jar"),
-        "headless IDEA nio-fs.jar",
-    )?;
-    require_file(
-        &idea_home.join("modules/module-descriptors.dat"),
-        "headless IDEA module descriptors",
-    )?;
+    if !is_macos_installed_idea_sidecar(&manifest) {
+        require_file(
+            &runtime_libs_dir.join("classpath.txt"),
+            "headless runtime classpath",
+        )?;
+        require_file(
+            &idea_home.join("lib/nio-fs.jar"),
+            "headless IDEA nio-fs.jar",
+        )?;
+        require_file(
+            &idea_home.join("modules/module-descriptors.dat"),
+            "headless IDEA module descriptors",
+        )?;
+    }
     require_directory(&required_plugin, "bundled kast-headless plugin")?;
 
     let release_digest = directory_sha256(root)?;
@@ -182,7 +184,7 @@ fn validate_bundle_artifacts(root: &Path, manifest: &BundleManifest) -> Result<(
         }
         roles.insert(artifact.role.as_str());
     }
-    for role in ["cli", "agent-cli", "headless-backend", "plugin"] {
+    for role in ["cli", "agent-cli", "headless-backend"] {
         if !roles.contains(role) {
             return Err(CliError::new(
                 "BUNDLE_MANIFEST_INVALID",

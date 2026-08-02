@@ -118,7 +118,7 @@ pub struct RuntimeCommandArgs {
 pub enum RuntimeCommand {
     /// Start or warm the workspace daemon.
     #[command(
-        after_help = "Examples:\n  kast developer runtime up --workspace-root \"$PWD\" --backend idea --accept-indexing\n  kast developer runtime up --workspace-root /workspace --backend idea --accept-indexing"
+        after_help = "Examples:\n  kast developer runtime up --workspace-root \"$PWD\" --backend headless --accept-indexing\n  kast developer runtime up --workspace-root /workspace --backend headless --accept-indexing"
     )]
     Up(RuntimeArgs),
     /// Check what backends are running.

@@ -17,36 +17,6 @@ class KastConfigTest {
     lateinit var tempDir: Path
 
     @Test
-    fun serverMaxResultsExposesSectionKeyAndTypedDefault() {
-        val maxResults = KastConfig.defaults().server.maxResults
-
-        assertEquals("server", maxResults.section)
-        assertEquals("maxResults", maxResults.key)
-        assertEquals(ConfigurationDefault(500), maxResults.default)
-        assertEquals(500, maxResults.value)
-    }
-
-    @Test
-    fun relationshipParallelismExposesRaisedTypedDefault() {
-        val parallelism = KastConfig.defaults().indexing.relationships.parallelism
-
-        assertEquals("indexing.relationships", parallelism.section)
-        assertEquals("parallelism", parallelism.key)
-        assertEquals(ConfigurationDefault(4), parallelism.default)
-        assertEquals(4, parallelism.value)
-    }
-
-    @Test
-    fun relationshipModulePriorityDepthExposesTypedDefault() {
-        val modulePriorityDepth = KastConfig.defaults().indexing.relationships.modulePriorityDepth
-
-        assertEquals("indexing.relationships", modulePriorityDepth.section)
-        assertEquals("modulePriorityDepth", modulePriorityDepth.key)
-        assertEquals(ConfigurationDefault(2), modulePriorityDepth.default)
-        assertEquals(2, modulePriorityDepth.value)
-    }
-
-    @Test
     fun `defaults expose paths and cli sections`() {
         val configFields = KastConfig::class.java.declaredFields.map { it.name }.toSet()
 
@@ -168,6 +138,9 @@ class KastConfigTest {
             "indexing.relationships" to "batchSize",
             "indexing.relationships" to "parallelism",
             "indexing.relationships" to "modulePriorityDepth",
+            "indexing" to "criticalPaths",
+            "indexing" to "ignoredPaths",
+            "indexing.graph" to "batchSize",
             "indexing" to "identifierIndexWaitMillis",
             "indexing.remote" to "enabled",
             "indexing.remote" to "sourceIndexUrl",
@@ -357,4 +330,5 @@ class KastConfigTest {
             thread.contextClassLoader = previous
         }
     }
+
 }

@@ -56,14 +56,14 @@ impl WorkspaceIndexFixture {
                          prefix_id, filename, last_modified_millis, content_hash,
                          desired_source_version, desired_relationships_version,
                          desired_semantic_graph_version, module_name, source_set
-                     ) VALUES (1, ?, 1, ?, 'source-1', 'relationships-1', 'semantic-graph-1', 'app', 'main')",
+                     ) VALUES (1, ?, 1, ?, 'source-1', 'relationships-1', 'semantic-graph-2', 'app', 'main')",
                     params![filename, content_hash],
                 )
                 .expect("source manifest row");
             for (stage, version) in [
                 ("SOURCE", "source-1"),
                 ("RELATIONSHIPS", "relationships-1"),
-                ("SEMANTIC_GRAPH", "semantic-graph-1"),
+                ("SEMANTIC_GRAPH", "semantic-graph-2"),
             ] {
                 transaction
                     .execute(
@@ -213,7 +213,7 @@ impl WorkspaceIndexFixture {
                      prefix_id, filename, last_modified_millis, content_hash,
                      desired_source_version, desired_relationships_version,
                      desired_semantic_graph_version
-                 ) VALUES (?, ?, 1, ?, 'source-1', 'relationships-1', 'semantic-graph-1')",
+                 ) VALUES (?, ?, 1, ?, 'source-1', 'relationships-1', 'semantic-graph-2')",
                 params![prefix_id, filename, content_hash],
             )
             .expect("manifest file");
@@ -225,7 +225,7 @@ impl WorkspaceIndexFixture {
             for (stage, version) in [
                 ("SOURCE", "source-1"),
                 ("RELATIONSHIPS", "relationships-1"),
-                ("SEMANTIC_GRAPH", "semantic-graph-1"),
+                ("SEMANTIC_GRAPH", "semantic-graph-2"),
             ] {
                 connection
                     .execute(

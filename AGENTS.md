@@ -82,28 +82,23 @@ Command:
 - None
 ````
 
-## macOS IDEA golden pathway
+## macOS headless pathway
 
-On a macOS developer workstation, treat the Codex session-start path as the
-normal runtime bootstrap. Invoke the active Kast CLI once for the canonical
+On a macOS developer workstation, explicit semantic demand is the normal
+runtime bootstrap. Invoke the active public Kast CLI from the canonical
 workspace root:
 
 ```shell
-kast developer runtime up \
-  --workspace-root "$PWD" \
-  --backend idea \
-  --accept-indexing
+kast up
 ```
 
-Kast reuses an exact-root IntelliJ IDEA or Android Studio project. Otherwise it
-background-opens the root in the sole supported host, bootstraps metadata,
-starts Gradle import and semantic indexing, and returns `INDEXING` when the
-runtime is reachable. Commands that need complete semantic evidence must still
-gate on `READY`.
+Kast reuses or starts one isolated headless runtime for the exact root. It
+starts Gradle import and semantic indexing without opening, closing, focusing,
+or routing through a foreground IDE project. `kast up` returns only when
+semantic evidence is ready, or it reports a typed blocker.
 
 Supported hosts are IntelliJ IDEA 2026.2/build 262 and Android Studio
-2026.1.2/build 261. Treat `IDEA_PLUGIN_UPDATE_REQUIRED`,
-`IDEA_VERSION_UNSUPPORTED`, and `IDEA_HOST_AMBIGUOUS` as terminal typed
-blockers. Do not manually open another IDE process, use `open -n`, focus or
-move project windows, suppress IDE notifications, or bypass the exact-root
-runtime.
+2026.1.2/build 261. A supported installation supplies matched IntelliJ runtime
+libraries to the isolated process. It is not a semantic backend and its open
+or closed foreground state is irrelevant. Do not control a foreground IDE to
+repair Kast. Resolve the typed headless-runtime blocker instead.

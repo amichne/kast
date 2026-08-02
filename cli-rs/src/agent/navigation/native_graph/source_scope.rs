@@ -3,7 +3,6 @@ struct NativeGraphSourceCandidate {
     projects: BTreeSet<BuildQualifiedGradleProjectIdentity>,
     source_sets: BTreeSet<BuildQualifiedGradleSourceSetIdentity>,
     ownership_unproven: bool,
-    relationship_stage_complete: bool,
     pending_update: bool,
 }
 
@@ -82,15 +81,6 @@ fn native_graph_source_scope_paths(
             "SELECT prefixes.dir_path, manifest.filename,
                     projects.build_root, projects.project_path,
                     source_sets.build_root, source_sets.project_path, source_sets.source_set_name,
-                    CASE
-                        WHEN manifest.content_hash IS NOT NULL
-                         AND manifest.desired_relationships_version IS NOT NULL
-                         AND outcomes.content_hash = manifest.content_hash
-                         AND outcomes.stage_version = manifest.desired_relationships_version
-                         AND outcomes.outcome_status = 'COMPLETE'
-                         AND outcomes.limitations_json = '[]'
-                        THEN 1 ELSE 0
-                    END,
                     CASE WHEN EXISTS (
                         SELECT 1
                         FROM pending_updates pending
@@ -100,10 +90,6 @@ fn native_graph_source_scope_paths(
                     ) THEN 1 ELSE 0 END
              FROM file_manifest manifest
              JOIN path_prefixes prefixes ON prefixes.prefix_id = manifest.prefix_id
-             LEFT JOIN file_stage_outcomes outcomes
-               ON outcomes.prefix_id = manifest.prefix_id
-              AND outcomes.filename = manifest.filename
-              AND outcomes.stage = 'RELATIONSHIPS'
              LEFT JOIN file_gradle_projects projects
                ON projects.prefix_id = manifest.prefix_id AND projects.filename = manifest.filename
              LEFT JOIN file_gradle_source_sets source_sets
@@ -170,12 +156,8 @@ fn native_graph_source_scope_paths(
             (None, None, None) => {}
             _ => candidate.ownership_unproven = true,
         }
-        candidate.relationship_stage_complete = row
-            .get::<_, i64>(7)
-            .map_err(|error| native_graph_sql_error("GRAPH_SOURCE_SCOPE_UNAVAILABLE", error))?
-            == 1;
         candidate.pending_update = row
-            .get::<_, i64>(8)
+            .get::<_, i64>(7)
             .map_err(|error| native_graph_sql_error("GRAPH_SOURCE_SCOPE_UNAVAILABLE", error))?
             == 1;
     }
@@ -218,13 +200,13 @@ fn native_graph_source_scope_paths(
             "The requested Gradle module/source-set scope matched no indexed Kotlin files.",
         ));
     }
-    if selected.iter().any(|(_, candidate)| {
-        !candidate.relationship_stage_complete || candidate.pending_update
-    })
+    if selected
+        .iter()
+        .any(|(_, candidate)| candidate.pending_update)
     {
         return Err(agent_error(
             "GRAPH_SOURCE_SCOPE_INCOMPLETE",
-            "The selected module/source-set has incomplete persisted relationship indexing.",
+            "The selected module/source-set has unapplied persisted source updates.",
         ));
     }
     Ok(selected

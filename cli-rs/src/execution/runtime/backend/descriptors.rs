@@ -19,8 +19,7 @@ fn delete_descriptor(
 ) -> Result<()> {
     let path = descriptor_directory.join("daemons.json");
     let mut descriptors = read_descriptors(descriptor_directory)?;
-    let id = descriptor_id(descriptor);
-    descriptors.retain(|candidate| descriptor_id(candidate) != id);
+    descriptors.retain(|candidate| candidate != descriptor);
     if descriptors.is_empty() {
         if path.exists() {
             fs::remove_file(path)?;
@@ -34,8 +33,12 @@ fn delete_descriptor(
 
 fn descriptor_id(descriptor: &ServerInstanceDescriptor) -> String {
     format!(
-        "{}:{}:{}",
-        descriptor.workspace_root, descriptor.backend_name, descriptor.pid
+        "{}:{}:{}:{}:{}",
+        descriptor.workspace_root,
+        descriptor.backend_name,
+        descriptor.pid,
+        descriptor.runtime_instance_id.as_deref().unwrap_or("legacy"),
+        descriptor.process_start_epoch_millis.unwrap_or_default(),
     )
 }
 
@@ -62,43 +65,4 @@ fn terminate_process(pid: u64, force: bool) {
 
 fn workspace_root(value: Option<PathBuf>) -> Result<PathBuf> {
     config::resolve_workspace_root(value)
-}
-
-fn no_backend_error(workspace_root: &Path, backend_name: Option<BackendName>) -> CliError {
-    let backend_name = backend_name.unwrap_or(BackendName::Headless);
-    let mut error = match backend_name {
-        BackendName::Headless => CliError::new(
-            "NO_BACKEND_AVAILABLE",
-            format!(
-                "No headless backend is installed or running for {}. Headless operation is supported through the Linux headless tarball. Install and extract that distribution, then acquire with: kast agent lease acquire --workspace-root <root> --backend=headless",
-                workspace_root.display()
-            ),
-        ),
-        BackendName::Idea => CliError::new(
-            "NO_BACKEND_AVAILABLE",
-            format!(
-                "No idea backend is installed or running for {}. Install or update the GitHub-hosted Kast plugin through JetBrains, open the project in IDEA or Android Studio, then acquire with: kast agent lease acquire --workspace-root <root> --backend=idea",
-                workspace_root.display()
-            ),
-        ),
-    };
-    match backend_name {
-        BackendName::Headless => {
-            error.details.insert(
-                "supportedDistribution".to_string(),
-                "linux-headless-tarball".to_string(),
-            );
-            error.details.insert(
-                "installHint".to_string(),
-                "Install and extract the Linux headless tarball; standalone headless backend installation is not a supported distribution path.".to_string(),
-            );
-        }
-        BackendName::Idea => {
-            error.details.insert(
-                "installHint".to_string(),
-                "Quit the IDE, run `install.sh install` to install the release-matched plugin through JetBrains, then reopen this exact project.".to_string(),
-            );
-        }
-    }
-    error
 }

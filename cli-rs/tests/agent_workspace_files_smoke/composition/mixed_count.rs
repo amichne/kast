@@ -31,7 +31,7 @@ fn mixed_count_keeps_the_script_group_exact_when_source_inventory_is_partial() {
             "--workspace-root",
             workspace.to_str().expect("UTF-8 workspace"),
             "--backend",
-            "idea",
+            "headless",
             "--count",
         ])
         .output()

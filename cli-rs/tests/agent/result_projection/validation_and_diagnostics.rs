@@ -87,8 +87,8 @@ fn diagnostics_default_keeps_completeness_and_actionable_records_without_steps()
     write_gradle_marker(&workspace);
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let file = workspace.join("src/App.kt");
-    let socket_path = temp.path().join("idea.sock");
-    let backend = spawn_scripted_idea_backend(
+    let socket_path = temp.path().join("headless.sock");
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config_home,
         &workspace,
@@ -184,7 +184,7 @@ fn diagnostics_default_bounds_real_high_cardinality_records_and_requests() {
     write_gradle_marker(&workspace);
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let file = workspace.join("src/App.kt");
-    let socket_path = temp.path().join("idea.sock");
+    let socket_path = temp.path().join("headless.sock");
     let diagnostics = (0..TOTAL_DIAGNOSTICS)
         .map(|index| {
             json!({
@@ -202,7 +202,7 @@ fn diagnostics_default_bounds_real_high_cardinality_records_and_requests() {
             })
         })
         .collect::<Vec<_>>();
-    let backend = spawn_scripted_idea_backend(
+    let backend = spawn_scripted_headless_backend(
         &home,
         &config_home,
         &workspace,

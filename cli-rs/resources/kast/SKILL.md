@@ -5,7 +5,9 @@ description: Use for compiler-backed Kotlin and Gradle discovery, reference inde
 
 # Kast
 
-Use `kast` as the only interface for Kotlin and Gradle semantic work.
+Use `kast` as the public interface for Kotlin and Gradle semantic work. Use the
+private `kastctl` interface only to acquire, inspect, or release the exact-root
+headless workspace lease required by a mutation.
 
 - Run `kast` to inspect current workspace readiness and suggested next actions.
 - Run `kast up` to start or reuse the semantic runtime.
@@ -21,8 +23,12 @@ Use `kast` as the only interface for Kotlin and Gradle semantic work.
 - When a result has `nextPage`, repeat the same `files`, symbol relationship,
   `graph nodes`, or `graph impact` command with `--page <nextPage>`.
 - Run `kast check [PATH...]` for compiler diagnostics.
-- Use `kast change` to create a validated plan and `kast apply <PLAN_ID>` to
-  apply it.
+- Before a mutation, run `kastctl agent lease acquire --workspace-root "$PWD"`
+  and retain its opaque `leaseId`.
+- Use `kast change` to create a validated plan, then run
+  `kast apply <PLAN_ID> --lease-id <LEASE_ID>`.
+- Run `kastctl agent lease release --workspace-root "$PWD" --lease-id
+  <LEASE_ID>` when the mutation session ends.
 
 Do not infer semantic success from an empty result. Read `limitation` and the
 suggested `next` commands when evidence is unavailable.

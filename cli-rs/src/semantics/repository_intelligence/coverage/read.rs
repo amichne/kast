@@ -108,14 +108,16 @@ pub(crate) fn semantic_graph_read_admission(
         .limitations
         .iter()
         .any(|limitation| limitation == "SOURCE_INVENTORY_INCOMPLETE");
+    let eligible_file_count = snapshot
+        .coverage
+        .counts
+        .total
+        .saturating_sub(snapshot.coverage.counts.excluded);
     let qualified = source_inventory_complete
         && snapshot.coverage.eligibility_proven
         && snapshot.coverage.pending_update_count == 0
-        && snapshot.coverage.counts.indexed + snapshot.coverage.counts.limited > 0
-        && snapshot.coverage.counts.pending == 0
-        && snapshot.coverage.counts.failed == 0
-        && snapshot.coverage.counts.stale == 0
-        && snapshot.coverage.counts.limited > 0;
+        && !has_critical_path_gap(&snapshot.coverage)
+        && eligible_file_count > 0;
     Ok(if qualified {
         SemanticGraphReadAdmission::Qualified {
             generation: snapshot.generation,
@@ -191,6 +193,12 @@ fn read_coverage_with_orphans(
             }
         };
         let generation = index.stamp().generation().value();
+        if generation == 0 {
+            return Err(CliError::new(
+                "GRAPH_COVERAGE_UNAVAILABLE",
+                "The compatible source-index store has no committed current inventory.",
+            ));
+        }
         let resolved_scope = resolve_repository_scope(scope.clone(), index.files())?;
         let PersistedSemanticCoverageRead {
             generation: semantic_generation,
@@ -213,7 +221,7 @@ fn read_coverage_with_orphans(
                 ),
             ));
         }
-        return Ok(classify_coverage(
+        let mut snapshot = classify_coverage(
             index,
             semantic_files,
             &scope_fingerprint,
@@ -221,7 +229,11 @@ fn read_coverage_with_orphans(
             resolved_scope,
             semantic_scope,
             orphaned_semantic_paths,
-        ));
+        );
+        if snapshot.scope.module.is_none() && snapshot.scope.source_set.is_none() {
+            apply_critical_path_coverage(workspace_root, &mut snapshot)?;
+        }
+        return Ok(snapshot);
     }
     Err(CliError::new(
         "GRAPH_COVERAGE_UNSTABLE",
@@ -229,138 +241,71 @@ fn read_coverage_with_orphans(
     ))
 }
 
-fn classify_coverage(
-    index: workspace_inventory::model::WorkspaceIndexSnapshot,
-    semantic_files: BTreeMap<String, SemanticFileRow>,
-    scope_fingerprint: &SemanticGraphStageInputFingerprint,
-    pending_updates: &[PersistedPendingUpdateTarget],
-    scope: ResolvedRepositoryScope,
-    semantic_scope: BTreeSet<String>,
-    orphaned_semantic_paths: Vec<String>,
-) -> CoverageSnapshot {
-    let mut files = Vec::new();
-    let mut eligibility_proven = true;
-    let filtered = index
-        .files()
-        .iter()
-        .filter(|file| {
-            let (matches, proven) = file_matches_scope(file, &scope);
-            eligibility_proven &= proven;
-            matches
-        })
-        .collect::<Vec<_>>();
-    for file in filtered {
-        files.push(classify_file(
-            file,
-            semantic_files.get(&file.path().to_string()),
-            scope_fingerprint,
-        ));
+fn apply_critical_path_coverage(
+    workspace_root: &Path,
+    snapshot: &mut CoverageSnapshot,
+) -> Result<()> {
+    let configured = config::KastConfig::load(workspace_root)?
+        .indexing
+        .critical_paths;
+    if configured.is_empty() {
+        return Ok(());
     }
-    files.sort_by(|left, right| left.path.cmp(&right.path));
-    eligibility_proven &= files.iter().all(|file| {
-        file.state != GraphFileState::Excluded
-            || matches!(
-                file.reason_code,
-                Some("GENERATED_SOURCE" | "NOT_COMPILATION_SOURCE")
+
+    let mut unmatched = false;
+    let mut incomplete = false;
+    for raw in configured {
+        let pattern = config::WorkspaceCollectionPattern::parse(&raw).map_err(|error| {
+            CliError::new(
+                "INDEXING_SCOPE_INVALID",
+                format!("invalid indexing.criticalPaths pattern `{raw}`: {error}"),
             )
-    });
-    let counts = count_states(files.iter().map(|file| file.state));
-    let modules = coverage_groups(files.iter().flat_map(|file| {
-        file.gradle_projects
+        })?;
+        let mut matched = false;
+        for file in snapshot
+            .files
             .iter()
-            .cloned()
-            .map(|name| (name, file.state))
-    }));
-    let compilations = coverage_groups(files.iter().flat_map(|file| {
-        file.source_sets
-            .iter()
-            .cloned()
-            .map(|name| (name, file.state))
-    }));
-    let index_modules = index
-        .stamp()
-        .module_progress()
-        .iter()
-        .map(|progress| IndexModuleCoverage {
-            name: progress.module_name().as_str().to_string(),
-            status: progress.status().canonical(),
-            indexed_file_count: progress.indexed_file_count(),
-            total_file_count: progress.total_file_count(),
-        })
-        .collect::<Vec<_>>();
-    let pending_update_count = scoped_pending_update_count(&index, &scope, pending_updates);
-    let inventory_complete = index.limitations().keys().all(|limitation| {
-        !matches!(
-            limitation,
-            WorkspaceInventoryLimitationCode::SourceIndexIncompatible
-                | WorkspaceInventoryLimitationCode::PathContainmentUnprovable
-                | WorkspaceInventoryLimitationCode::OutOfRootExcluded
-        )
-    });
-    let semantic_scope_proven = counts.indexed + counts.limited > 0;
-    let persisted_updates_complete = pending_update_count == 0;
-    let complete = inventory_complete
-        && eligibility_proven
-        && semantic_scope_proven
-        && persisted_updates_complete
-        && counts.pending == 0
-        && counts.limited == 0
-        && counts.failed == 0
-        && counts.stale == 0;
-    let mut limitations = Vec::new();
-    if !inventory_complete {
-        limitations.push("SOURCE_INVENTORY_INCOMPLETE".to_string());
+            .filter(|file| pattern.matches(&file.path))
+        {
+            matched = true;
+            incomplete |= matches!(
+                file.state,
+                GraphFileState::Pending
+                    | GraphFileState::Limited
+                    | GraphFileState::Failed
+                    | GraphFileState::Stale
+            );
+        }
+        if !matched {
+            unmatched = true;
+        }
     }
-    if !eligibility_proven {
-        limitations.push("SCOPE_OWNERSHIP_UNPROVEN".to_string());
+    if unmatched {
+        snapshot
+            .coverage
+            .limitations
+            .push("SEMANTIC_GRAPH_CRITICAL_PATH_UNMATCHED".to_string());
     }
-    if !semantic_scope_proven {
-        limitations.push("SEMANTIC_GRAPH_SCOPE_UNPROVEN".to_string());
+    if incomplete {
+        snapshot
+            .coverage
+            .limitations
+            .push("SEMANTIC_GRAPH_CRITICAL_PATH_INCOMPLETE".to_string());
     }
-    if !persisted_updates_complete {
-        limitations.push("SOURCE_INDEX_UPDATES_PENDING".to_string());
+    if unmatched || incomplete {
+        snapshot.coverage.complete = false;
+        snapshot.coverage.eligible_for_complete_negative = false;
     }
-    if counts.pending > 0 {
-        limitations.push("SEMANTIC_GRAPH_FILES_PENDING".to_string());
-    }
-    if counts.limited > 0 {
-        limitations.push("SEMANTIC_GRAPH_FILES_LIMITED".to_string());
-        limitations.extend(
-            files
-                .iter()
-                .filter(|file| file.state == GraphFileState::Limited)
-                .flat_map(|file| file.limitations.iter().cloned())
-                .collect::<BTreeSet<_>>(),
-        );
-    }
-    if counts.failed > 0 {
-        limitations.push("SEMANTIC_GRAPH_FILES_FAILED".to_string());
-    }
-    if counts.stale > 0 {
-        limitations.push("SEMANTIC_GRAPH_FILES_STALE".to_string());
-    }
-    let resolved_scope = ResolvedRepositoryScopeProof {
-        project: scope.project.as_ref().map(canonical_gradle_project),
-        source_set: scope.source_set.as_ref().map(canonical_gradle_source_set),
-    };
-    CoverageSnapshot {
-        generation: index.stamp().generation().value(),
-        scope: scope.request,
-        resolved_scope,
-        coverage: CoverageSummary {
-            complete,
-            eligible_for_complete_negative: complete,
-            counts,
-            accounted: counts.total,
-            eligibility_proven,
-            pending_update_count,
-            modules,
-            compilations,
-            index_modules,
-            limitations,
-        },
-        files,
-        semantic_scope,
-        orphaned_semantic_paths,
-    }
+    Ok(())
 }
+
+fn has_critical_path_gap(coverage: &CoverageSummary) -> bool {
+    coverage.limitations.iter().any(|limitation| {
+        matches!(
+            limitation.as_str(),
+            "SEMANTIC_GRAPH_CRITICAL_PATH_UNMATCHED" | "SEMANTIC_GRAPH_CRITICAL_PATH_INCOMPLETE"
+        )
+    })
+}
+
+include!("read/classify.rs");

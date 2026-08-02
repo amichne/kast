@@ -40,7 +40,7 @@ fn selector_handle_rejections_stay_distinct_and_actionable_in_cli_projection() {
     ];
 
     for (index, (command_name, method, reason, recovery)) in cases.into_iter().enumerate() {
-        let backend = spawn_scripted_idea_backend(
+        let backend = spawn_scripted_headless_backend(
             &home,
             &config,
             &workspace,
@@ -91,7 +91,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
         std::fs::canonicalize(workspace.join("lib/Bar.kt")).expect("declaration file");
     let selector = relation_identity("lib.Bar", "FUNCTION", &declaration_file, 1);
 
-    let resolve_backend = spawn_scripted_idea_backend(
+    let resolve_backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -129,7 +129,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
     let mut semantic_requests = resolve_backend.join().expect("resolve backend");
 
     let reference_handle = "00000000-0000-4000-8000-000000000337";
-    let first_reference_backend = spawn_scripted_idea_backend(
+    let first_reference_backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -182,7 +182,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
             .expect("first reference backend"),
     );
 
-    let second_reference_backend = spawn_scripted_idea_backend(
+    let second_reference_backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -225,7 +225,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
             .expect("second reference backend"),
     );
 
-    let caller_backend = spawn_scripted_idea_backend(
+    let caller_backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,
@@ -276,7 +276,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
     assert_eq!(callers_json["result"]["outcome"], "AVAILABLE");
     semantic_requests.extend(caller_backend.join().expect("callers backend"));
 
-    let impact_backend = spawn_scripted_idea_backend(
+    let impact_backend = spawn_scripted_headless_backend(
         &home,
         &config,
         &workspace,

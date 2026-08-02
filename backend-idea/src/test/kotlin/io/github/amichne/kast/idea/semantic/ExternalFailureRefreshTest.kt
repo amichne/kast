@@ -8,9 +8,10 @@ import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.result.RefreshExternalFailureStatus
 import io.github.amichne.kast.api.validation.parsed
+import io.github.amichne.kast.idea.fileInventoryEntry
+import io.github.amichne.kast.idea.fileStageOutcome
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
-import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
@@ -45,7 +46,8 @@ class ExternalFailureRefreshTest {
             store.ensureSchema()
             store.reconcileFileInventory(
                 entries = listOf(
-                    FileInventoryEntry(
+                    fileInventoryEntry(
+                        workspaceRoot = workspaceRoot,
                         path = failedPath.toString(),
                         lastModifiedMillis = 1,
                         contentHash = contentHash,

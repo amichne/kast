@@ -3,6 +3,7 @@ package io.github.amichne.kast.indexstore.store
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.NonNegativeInt
 import io.github.amichne.kast.api.contract.PositiveInt
+import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
 import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
@@ -16,10 +17,16 @@ import io.github.amichne.kast.indexstore.api.reference.*
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.api.stage.FileStageFailureUpdate
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageRemoval
+import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageFailureUpdate
 import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageUpdate
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
 import io.github.amichne.kast.indexstore.snapshot.*
 import java.nio.file.Path
+
+enum class SqliteSourceIndexStoreAccess {
+    READ_ONLY,
+    READ_WRITE,
+}
 
 /**
  * SQLite-backed store for the source identifier index, file manifest,
@@ -31,17 +38,29 @@ import java.nio.file.Path
 class SqliteSourceIndexStore private constructor(
     workspaceIdentity: WorkspaceIdentity,
     private val pageReadObserver: SourceIndexPageReadObserver,
+    access: SqliteSourceIndexStoreAccess,
 ) : AutoCloseable, SourceIndexWriter {
-    constructor(workspaceIdentity: WorkspaceIdentity) : this(workspaceIdentity, SourceIndexPageReadObserver.Disabled)
+    constructor(
+        workspaceIdentity: WorkspaceIdentity,
+        access: SqliteSourceIndexStoreAccess = SqliteSourceIndexStoreAccess.READ_WRITE,
+    ) : this(workspaceIdentity, SourceIndexPageReadObserver.Disabled, access)
 
-    constructor(workspaceRoot: Path) : this(WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot))
+    constructor(
+        workspaceRoot: Path,
+        access: SqliteSourceIndexStoreAccess = SqliteSourceIndexStoreAccess.READ_WRITE,
+    ) : this(WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot), access)
 
     internal constructor(
         workspaceRoot: Path,
         pageReadObserver: SourceIndexPageReadObserver,
-    ) : this(WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot), pageReadObserver)
+        access: SqliteSourceIndexStoreAccess = SqliteSourceIndexStoreAccess.READ_WRITE,
+    ) : this(
+        WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot),
+        pageReadObserver,
+        access,
+    )
 
-    private val state = SqliteSourceIndexStoreState(workspaceIdentity, pageReadObserver)
+    private val state = SqliteSourceIndexStoreState(workspaceIdentity, pageReadObserver, access)
     private val schema = state.schema
 
     private val fileMutations = SourceIndexFileMutations(state)
@@ -50,8 +69,8 @@ class SqliteSourceIndexStore private constructor(
     private val referenceQuery = SourceIndexReferenceQuery(state)
     private val references = SourceIndexReferenceStore(state, fileMutations, files)
     private val declarationStore = SourceIndexDeclarationStore(state, fileMutations)
-    private val fileStages = FileStageInventoryStore(state, fileMutations)
     private val semanticGraphWriter = SemanticGraphWriter(state)
+    private val fileStages = FileStageInventoryStore(state, fileMutations, semanticGraphWriter)
     private val fileStageBatches = FileStageBatchStore(
         state = state,
         mutations = fileMutations,
@@ -108,6 +127,10 @@ class SqliteSourceIndexStore private constructor(
 
     fun knownSourcePaths(): List<Path> = inventory.knownSourcePaths()
 
+    fun sourcePath(path: Path): WorkspaceSourcePath? = state.sourceFilePolicy.sourcePath(path)
+
+    fun sourcePath(path: SemanticGraphPath): WorkspaceSourcePath? = state.sourceFilePolicy.sourcePath(path)
+
     fun fileCountBySourceRoot(sourceRoots: Collection<Path>): Map<Path, Int> =
         inventory.fileCountBySourceRoot(sourceRoots)
 
@@ -122,39 +145,66 @@ class SqliteSourceIndexStore private constructor(
 
     fun completedModules(): Set<String> = inventory.completedModules()
 
-    fun reconcileFileInventory(entries: Collection<FileInventoryEntry>, versions: FileStageVersions) =
+    fun reconcileFileInventory(entries: Collection<FileInventoryEntry>, versions: FileStageVersions) {
+        entries.forEach { entry -> state.requireWorkspaceSourcePath(entry.path) }
         fileStages.reconcileFileInventory(entries, versions)
+    }
 
-    fun reconcileRemovedFileInventory(paths: Collection<String>) =
+    fun reconcileRemovedFileInventory(paths: Collection<WorkspaceSourcePath>) {
+        paths.forEach(state::requireWorkspaceSourcePath)
         fileStages.reconcileRemovedFileInventory(paths)
+    }
 
     fun pendingFileStages(stage: FileIndexStage): List<PendingFileStage> =
         fileStages.pendingFileStages(stage)
 
+    fun retryableLimitedRelationshipStages(): List<PendingFileStage> =
+        fileStages.retryableLimitedRelationshipStages()
+
+    fun retryableLimitedSemanticGraphStages(): List<PendingFileStage> =
+        fileStages.retryableLimitedSemanticGraphStages()
+
     fun pendingFileStage(
-        path: String,
+        path: WorkspaceSourcePath,
         contentHash: FileContentHash,
         stage: FileIndexStage,
         version: FileStageVersion,
         inputFingerprint: FileStageInputFingerprint? = null,
-    ): PendingFileStage? = fileStages.pendingFileStage(path, contentHash, stage, version, inputFingerprint)
+    ): PendingFileStage? = fileStages.pendingFileStage(
+        state.requireWorkspaceSourcePath(path),
+        contentHash,
+        stage,
+        version,
+        inputFingerprint,
+    )
 
-    fun fileStageOutcome(path: String, stage: FileIndexStage): FileStageOutcome? =
-        fileStages.fileStageOutcome(path, stage)
+    fun fileStageOutcome(path: WorkspaceSourcePath, stage: FileIndexStage): FileStageOutcome? =
+        fileStages.fileStageOutcome(state.requireWorkspaceSourcePath(path), stage)
 
-    fun fileStageScopeCoverage(stage: FileIndexStage, path: String): FileStageScopeCoverage =
-        fileStages.fileStageScopeCoverage(stage, path)
+    fun fileStageScopeCoverage(stage: FileIndexStage, path: WorkspaceSourcePath): FileStageScopeCoverage =
+        fileStages.fileStageScopeCoverage(stage, state.requireWorkspaceSourcePath(path))
 
-    fun fileStageScopeCoverage(stage: FileIndexStage, paths: Collection<String>): FileStageScopeCoverage =
-        fileStages.fileStageScopeCoverage(stage, paths)
+    fun fileStageScopeCoverage(
+        stage: FileIndexStage,
+        paths: Collection<WorkspaceSourcePath>,
+    ): FileStageScopeCoverage {
+        paths.forEach(state::requireWorkspaceSourcePath)
+        return fileStages.fileStageScopeCoverage(stage, paths)
+    }
 
-    fun commitSourceBatch(updates: List<SourceFileStageUpdate>) =
+    fun commitSourceBatch(updates: List<SourceFileStageUpdate>) {
+        updates.forEach { update -> state.requireWorkspaceSourcePath(update.work.path) }
         fileStageBatches.commitSourceBatch(updates)
+    }
 
     fun commitRelationshipBatch(
         updates: List<RelationshipFileStageUpdate>,
         failures: List<FileStageFailureUpdate> = emptyList(),
-    ) = fileStageBatches.commitRelationshipBatch(updates, failures)
+    ) {
+        updates.forEach { update -> state.requireWorkspaceSourcePath(update.work.path) }
+        failures.forEach { failure -> state.requireWorkspaceSourcePath(failure.work.path) }
+        fileStageBatches.commitRelationshipBatch(updates, failures)
+    }
 
     fun externalizeFileStageFailure(
         failureId: FileStageFailureId,
@@ -254,16 +304,23 @@ class SqliteSourceIndexStore private constructor(
 
     fun commitSemanticGraphBatchIfGeneration(
         expectedGeneration: SourceIndexGeneration,
-        updates: List<SemanticGraphFileStageUpdate>,
+        updates: List<SemanticGraphFileStageUpdate> = emptyList(),
         removals: List<SemanticGraphFileStageRemoval> = emptyList(),
-    ): SemanticGraphCommitResult = semanticGraphWriter.replaceSemanticGraphFilesIfGeneration(
-        expectedGeneration = expectedGeneration,
-        updates = updates.map(SemanticGraphFileStageUpdate::update),
-        removedPaths = removals.map(SemanticGraphFileStageRemoval::sourcePath),
-        commitStageState = { conn ->
-            fileStageBatches.commitSemanticStageStateInTransaction(conn, updates, removals)
-        },
-    )
+        failures: List<SemanticGraphFileStageFailureUpdate> = emptyList(),
+    ): SemanticGraphCommitResult {
+        updates.forEach { update -> state.requireWorkspaceSourcePath(update.work.path) }
+        removals.forEach { removal -> state.requireWorkspaceSourcePath(removal.outcomePath) }
+        failures.forEach { failure -> state.requireWorkspaceSourcePath(failure.work.path) }
+        return semanticGraphWriter.replaceSemanticGraphFilesIfGeneration(
+            expectedGeneration = expectedGeneration,
+            updates = updates.map(SemanticGraphFileStageUpdate::update),
+            removedPaths = removals.map(SemanticGraphFileStageRemoval::sourcePath) +
+                failures.map(SemanticGraphFileStageFailureUpdate::sourcePath),
+            commitStageState = { conn ->
+                fileStageBatches.commitSemanticStageStateInTransaction(conn, updates, failures, removals)
+            },
+        )
+    }
 
     fun readSemanticGraph(filePaths: Collection<SemanticGraphSourcePath>): SemanticGraphIndexSnapshot =
         semanticGraphReader.readSemanticGraph(filePaths)

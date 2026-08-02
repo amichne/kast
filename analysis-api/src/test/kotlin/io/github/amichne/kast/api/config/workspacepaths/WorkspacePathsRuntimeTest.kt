@@ -60,16 +60,17 @@ class WorkspacePathsRuntimeTest {
         }
 
         @Test
-        fun `workspace socket path is only the normalized root hash under its socket directory`() {
-            val workspaceRoot = tempDir.resolve("workspace/../workspace")
+        fun `workspace socket path is headless qualified and uses the canonical root hash`() {
+            val realWorkspaceRoot = Files.createDirectories(tempDir.resolve("real-workspace"))
+            val workspaceRoot = tempDir.resolve("workspace-link")
+            Files.createSymbolicLink(workspaceRoot, realWorkspaceRoot)
             val socketDirectory = Path.of("/runtime")
-            val normalizedRoot = workspaceRoot.toAbsolutePath().normalize()
             val expectedHash = io.github.amichne.kast.api.validation.FileHashing.sha256(
-                normalizedRoot.toString(),
+                realWorkspaceRoot.toRealPath().toString(),
             ).take(12)
 
             assertEquals(
-                socketDirectory.resolve("kast-$expectedHash.sock").toAbsolutePath().normalize(),
+                socketDirectory.resolve("kast-headless-$expectedHash.sock").toAbsolutePath().normalize(),
                 socketPathForWorkspaceRoot(workspaceRoot, socketDirectory),
             )
         }
@@ -128,6 +129,25 @@ class WorkspacePathsRuntimeTest {
             assertNotEquals(first.workspaceId, second.workspaceId)
             assertNotEquals(first.sourceIndexDatabasePath, second.sourceIndexDatabasePath)
             assertNotEquals(first.defaultSocketPath, second.defaultSocketPath)
+        }
+
+        @Test
+        fun `workspace aliases resolve to one canonical runtime identity`() {
+            val realWorkspaceRoot = Files.createDirectories(tempDir.resolve("real-workspace"))
+            val aliasWorkspaceRoot = tempDir.resolve("workspace-link")
+            Files.createSymbolicLink(aliasWorkspaceRoot, realWorkspaceRoot)
+            val resolver = WorkspaceDirectoryResolver(
+                dataRoot = { tempDir.resolve("data") },
+                gitWorkspaceResolver = { null },
+            )
+
+            val direct = resolver.workspaceIdentity(realWorkspaceRoot)
+            val alias = resolver.workspaceIdentity(aliasWorkspaceRoot)
+
+            assertEquals(direct.canonicalWorkspaceRoot, alias.canonicalWorkspaceRoot)
+            assertEquals(direct.workspaceId, alias.workspaceId)
+            assertEquals(direct.sourceIndexDatabasePath, alias.sourceIndexDatabasePath)
+            assertEquals(direct.defaultSocketPath, alias.defaultSocketPath)
         }
 
         @Test

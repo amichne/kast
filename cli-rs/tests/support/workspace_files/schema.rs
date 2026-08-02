@@ -50,6 +50,8 @@ impl WorkspaceIndexFixture {
                     failure_code TEXT
                         CHECK(failure_code IS NULL OR failure_code IN ('PSI_UNAVAILABLE')),
                     failure_message TEXT,
+                    failure_attempt_count INTEGER NOT NULL DEFAULT 0
+                        CHECK(failure_attempt_count >= 0),
                     CHECK(
                         (outcome_status IN ('COMPLETE','LIMITED')
                             AND failure_id IS NULL AND failure_code IS NULL AND failure_message IS NULL)

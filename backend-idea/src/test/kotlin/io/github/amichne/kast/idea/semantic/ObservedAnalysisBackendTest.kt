@@ -23,6 +23,7 @@ import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
 import io.github.amichne.kast.api.contract.skill.WrapperCallDirection
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Test
 
@@ -52,8 +53,11 @@ class ObservedAnalysisBackendTest {
             diagnostics.recordIndexFailed(IllegalStateException("Gradle import failed"))
             val observed = ObservedAnalysisBackend(delegate, diagnostics)
 
-            assertEquals(RuntimeState.DEGRADED, observed.runtimeStatus().state)
-            assertEquals(KastBackendUiState.DEGRADED, diagnostics.snapshot().backendState)
+            val status = observed.runtimeStatus()
+            assertEquals(RuntimeState.READY, status.state)
+            assertFalse(status.referenceIndexReady)
+            assertEquals(KastBackendUiState.READY, diagnostics.snapshot().backendState)
+            assertEquals(KastIndexState.FAILED, diagnostics.snapshot().indexSummary.state)
         } finally {
             com.intellij.openapi.util.Disposer.dispose(parentDisposable)
         }
