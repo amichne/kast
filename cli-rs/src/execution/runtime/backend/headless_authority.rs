@@ -63,6 +63,21 @@ pub(crate) enum SemanticRuntimeAvailability {
     StartIfMissing,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SupportedHeadlessDistribution {
+    #[cfg(any(not(target_os = "macos"), test))]
+    LinuxHeadlessTarball,
+}
+
+impl SupportedHeadlessDistribution {
+    pub(crate) const fn wire_value(self) -> &'static str {
+        match self {
+            #[cfg(any(not(target_os = "macos"), test))]
+            Self::LinuxHeadlessTarball => "linux-headless-tarball",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct SemanticRuntimeRequest {
     pub(crate) workspace_root: PathBuf,
@@ -79,7 +94,7 @@ pub(crate) struct SemanticRuntimeRequest {
 pub(crate) struct SemanticRuntimeRejection {
     pub(crate) code: &'static str,
     pub(crate) message: String,
-    pub(crate) details: std::collections::BTreeMap<String, String>,
+    pub(crate) supported_distribution: Option<SupportedHeadlessDistribution>,
     pub(crate) evidence: Box<SemanticWorkspaceEvidence>,
 }
 
@@ -163,7 +178,7 @@ fn retired_idea_rejection(
     SemanticRuntimeRejection {
         code: "IDEA_SEMANTIC_BACKEND_RETIRED",
         message: "The foreground IDEA semantic backend is retired. Remove --backend=idea or select --backend=headless.".to_string(),
-        details: std::collections::BTreeMap::new(),
+        supported_distribution: None,
         evidence: Box::new(unavailable_evidence(workspace_root, workspace_kind)),
     }
 }
@@ -239,9 +254,7 @@ pub(super) fn admit_headless_runtime(
             if request.availability == SemanticRuntimeAvailability::StartIfMissing
                 && matches!(rejection.code, "NO_BACKEND_AVAILABLE" | "RUNTIME_NOT_READY") =>
         {
-            start_headless_runtime(&request).map_err(|error| {
-                runtime_cli_rejection(&request.workspace_root, request.workspace_kind, error)
-            })?
+            start_headless_runtime(&request)?
         }
         Err(rejection) => return Err(rejection),
     };

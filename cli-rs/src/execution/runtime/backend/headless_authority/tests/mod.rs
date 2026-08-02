@@ -105,21 +105,21 @@ fn headless_authority_accepts_every_server_mutation_capability() {
 }
 
 #[test]
-fn runtime_rejection_retains_cli_error_details() {
-    let mut error = CliError::new("NO_BACKEND_AVAILABLE", "backend unavailable");
-    error.details.insert(
-        "supportedDistribution".to_string(),
-        "linux-headless-tarball".to_string(),
-    );
-
-    let rejection = runtime_cli_rejection(
+fn headless_distribution_rejection_projects_closed_distribution() {
+    let rejection = headless_distribution_unavailable_rejection(
         Path::new("/workspace"),
         SemanticWorkspaceKind::StandaloneGradleWorkspace,
-        error,
+    );
+    assert_eq!(
+        rejection.supported_distribution,
+        Some(SupportedHeadlessDistribution::LinuxHeadlessTarball)
     );
 
+    let error = super::super::semantic_workspace_rejection(rejection).into_cli_error();
+
     assert_eq!(
-        rejection.details.get("supportedDistribution"),
+        error.details.get("supportedDistribution"),
         Some(&"linux-headless-tarball".to_string())
     );
+    assert!(error.details.contains_key("semanticWorkspace"));
 }

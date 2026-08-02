@@ -176,8 +176,11 @@ fn validate_admitted_runtime_current(admission: &AdmittedHeadlessRuntime) -> Res
 
 fn start_headless_runtime(
     request: &SemanticRuntimeRequest,
-) -> Result<(RuntimeCandidateStatus, bool)> {
-    let _launch_lock = WorkspaceLaunchLock::acquire(&request.config, &request.workspace_root)?;
+) -> std::result::Result<(RuntimeCandidateStatus, bool), SemanticRuntimeRejection> {
+    let _launch_lock = WorkspaceLaunchLock::acquire(&request.config, &request.workspace_root)
+        .map_err(|error| {
+            runtime_cli_rejection(&request.workspace_root, request.workspace_kind, error)
+        })?;
     if let Ok(candidate) = admitted_candidate(request) {
         return Ok((candidate, false));
     }
@@ -192,7 +195,12 @@ fn start_headless_runtime(
             .runtime_libs_dir
             .clone()
             .filter(|path| path.is_dir())
-            .ok_or_else(|| headless_backend_unavailable_error(&request.workspace_root))?,
+            .ok_or_else(|| {
+                headless_distribution_unavailable_rejection(
+                    &request.workspace_root,
+                    request.workspace_kind,
+                )
+            })?,
     );
     let log_file = daemon_log_file(
         &request.config,
@@ -205,7 +213,9 @@ fn start_headless_runtime(
         runtime_libs_dir,
         ..DaemonStartArgs::from(request.runtime_args.clone())
     };
-    let mut child = daemon::spawn_background(daemon_args, &log_file)?;
+    let mut child = daemon::spawn_background(daemon_args, &log_file).map_err(|error| {
+        runtime_cli_rejection(&request.workspace_root, request.workspace_kind, error)
+    })?;
     thread::spawn(move || {
         let _ = child.wait();
     });
@@ -216,29 +226,33 @@ fn start_headless_runtime(
         }
         thread::sleep(Duration::from_millis(250));
     }
-    Err(CliError::new(
-        "RUNTIME_TIMEOUT",
-        format!(
-            "Timed out waiting for the headless runtime for {}.",
-            request.workspace_root.display()
+    Err(runtime_cli_rejection(
+        &request.workspace_root,
+        request.workspace_kind,
+        CliError::new(
+            "RUNTIME_TIMEOUT",
+            format!(
+                "Timed out waiting for the headless runtime for {}.",
+                request.workspace_root.display()
+            ),
         ),
     ))
 }
 
-#[cfg(not(target_os = "macos"))]
-fn headless_backend_unavailable_error(workspace_root: &Path) -> CliError {
-    let mut error = CliError::new(
-        "NO_BACKEND_AVAILABLE",
-        format!(
+#[cfg(any(not(target_os = "macos"), test))]
+fn headless_distribution_unavailable_rejection(
+    workspace_root: &Path,
+    workspace_kind: SemanticWorkspaceKind,
+) -> SemanticRuntimeRejection {
+    SemanticRuntimeRejection {
+        code: "NO_BACKEND_AVAILABLE",
+        message: format!(
             "No headless backend is installed or running for {}. Install the headless distribution, then retry.",
             workspace_root.display()
         ),
-    );
-    error.details.insert(
-        "supportedDistribution".to_string(),
-        "linux-headless-tarball".to_string(),
-    );
-    error
+        supported_distribution: Some(SupportedHeadlessDistribution::LinuxHeadlessTarball),
+        evidence: Box::new(unavailable_evidence(workspace_root, workspace_kind)),
+    }
 }
 
 fn canonical_existing_root(value: &str) -> Result<PathBuf> {
@@ -274,7 +288,7 @@ fn headless_conflict_rejection(
             "More than one healthy headless runtime owns the exact workspace root {}. Stop the conflicting runtime before retrying.",
             workspace_root.display()
         ),
-        details: std::collections::BTreeMap::new(),
+        supported_distribution: None,
         evidence: Box::new(evidence),
     }
 }
@@ -295,7 +309,7 @@ fn unavailable_rejection(
             if accept_indexing { "servable" } else { "READY" },
             workspace_root.display()
         ),
-        details: std::collections::BTreeMap::new(),
+        supported_distribution: None,
         evidence: Box::new(unavailable_evidence(workspace_root, workspace_kind)),
     }
 }
@@ -310,7 +324,7 @@ fn runtime_identity_rejection(
             "Headless runtime identity does not match the exact workspace root {}.",
             workspace_root.display()
         ),
-        details: std::collections::BTreeMap::new(),
+        supported_distribution: None,
         evidence: Box::new(unavailable_evidence(workspace_root, workspace_kind)),
     }
 }
@@ -320,15 +334,10 @@ fn runtime_cli_rejection(
     workspace_kind: SemanticWorkspaceKind,
     error: CliError,
 ) -> SemanticRuntimeRejection {
-    let CliError {
-        code,
-        message,
-        details,
-    } = error;
     SemanticRuntimeRejection {
-        code,
-        message,
-        details,
+        code: error.code,
+        message: error.message,
+        supported_distribution: None,
         evidence: Box::new(unavailable_evidence(workspace_root, workspace_kind)),
     }
 }
