@@ -227,9 +227,17 @@ fn with_descriptor_registry_lock<T>(path: &Path, operation: impl FnOnce() -> Res
         .truncate(false)
         .write(true)
         .open(PathBuf::from(lock_name))?;
-    set_descriptor_registry_lock(lock.as_raw_fd(), libc::F_WRLCK, libc::F_SETLKW)?;
+    set_descriptor_registry_lock(
+        lock.as_raw_fd(),
+        libc::c_int::from(libc::F_WRLCK),
+        libc::F_SETLKW,
+    )?;
     let result = operation();
-    let unlock = set_descriptor_registry_lock(lock.as_raw_fd(), libc::F_UNLCK, libc::F_SETLK);
+    let unlock = set_descriptor_registry_lock(
+        lock.as_raw_fd(),
+        libc::c_int::from(libc::F_UNLCK),
+        libc::F_SETLK,
+    );
     match (result, unlock) {
         (Err(error), _) => Err(error),
         (Ok(_), Err(error)) => Err(error),
@@ -237,9 +245,18 @@ fn with_descriptor_registry_lock<T>(path: &Path, operation: impl FnOnce() -> Res
     }
 }
 
-fn set_descriptor_registry_lock(fd: std::os::fd::RawFd, lock_type: i16, command: i32) -> Result<()> {
+fn set_descriptor_registry_lock(
+    fd: std::os::fd::RawFd,
+    lock_type: libc::c_int,
+    command: libc::c_int,
+) -> Result<()> {
     let mut lock = unsafe { std::mem::zeroed::<libc::flock>() };
-    lock.l_type = lock_type;
+    lock.l_type = libc::c_short::try_from(lock_type).map_err(|_| {
+        CliError::new(
+            "RUNTIME_DESCRIPTOR_LOCK_INVALID",
+            format!("POSIX lock type {lock_type} does not fit in c_short"),
+        )
+    })?;
     lock.l_whence = libc::SEEK_SET as _;
     lock.l_start = 0;
     lock.l_len = 0;
