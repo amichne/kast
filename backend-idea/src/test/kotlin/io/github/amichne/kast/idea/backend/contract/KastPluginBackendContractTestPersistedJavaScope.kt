@@ -43,9 +43,10 @@ internal class KastPluginBackendContractTestPersistedJavaScope : KastPluginBacke
                 internalDependentFileFixture.get().virtualFile.path,
             )
             JavaScopeInputs(
-                workspaceRoot = (kotlinPaths + javaSubtype.virtualFile.path)
-                    .reduce { first, second -> commonWorkspaceRoot(first, second).toString() }
-                    .let(java.nio.file.Path::of),
+                workspaceRoot = commonWorkspaceRoot(
+                    javaSubtype.virtualFile.path,
+                    kotlinPaths.last(),
+                ),
                 selector = KastExactSymbolSelector(
                     fqName = "demo.hierarchy.Shape",
                     declarationFile = declaration.virtualFile.path,
