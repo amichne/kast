@@ -22,7 +22,5 @@ include(
     ":analysis-api",
     ":analysis-server",
     ":index-store",
-    ":backend-headless",
-    ":backend-shared",
-    ":backend-idea"
+    ":indexer",
 )

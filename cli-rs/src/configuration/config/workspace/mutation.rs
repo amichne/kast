@@ -72,12 +72,7 @@ const MUTABLE_CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec::positive("server.maxResults"),
     ConfigFieldSpec::positive("server.requestTimeoutMillis"),
     ConfigFieldSpec::positive("server.maxConcurrentRequests"),
-    ConfigFieldSpec::new("runtime.defaultBackend", ConfigValueType::String),
-    ConfigFieldSpec::new("runtime.strictPluginMatching", ConfigValueType::Boolean),
-    ConfigFieldSpec::new("projectOpen.profileAutoInit", ConfigValueType::Boolean),
-    ConfigFieldSpec::new("projectOpen.profile", ConfigValueType::String),
-    ConfigFieldSpec::new("projectOpen.autoExcludeGit", ConfigValueType::Boolean),
-    ConfigFieldSpec::new("projectOpen.gradleLoadEnabled", ConfigValueType::Boolean),
+    ConfigFieldSpec::new("indexer.hostCommand", ConfigValueType::String),
     ConfigFieldSpec::new("codex.hooks.enabled", ConfigValueType::Boolean),
     ConfigFieldSpec::new("codex.hooks.sessionStart", ConfigValueType::Boolean),
     ConfigFieldSpec::new("codex.hooks.postToolUse", ConfigValueType::Boolean),
@@ -111,8 +106,6 @@ const MUTABLE_CONFIG_FIELDS: &[ConfigFieldSpec] = &[
     ConfigFieldSpec::new("profiling.modes", ConfigValueType::String),
     ConfigFieldSpec::positive("profiling.durationSeconds"),
     ConfigFieldSpec::new("profiling.emitManifest", ConfigValueType::Boolean),
-    ConfigFieldSpec::new("backends.headless.enabled", ConfigValueType::Boolean),
-    ConfigFieldSpec::new("backends.idea.enabled", ConfigValueType::Boolean),
     ConfigFieldSpec::new("cli.dynamicOutput", ConfigValueType::Boolean),
 ];
 

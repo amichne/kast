@@ -5,11 +5,11 @@ fn agent_graph_refresh_requires_ready_before_semantic_graph_rpc() {
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
     let source = workspace.join("Sample.kt");
-    let socket_path = temp.path().join("headless.sock");
+    let socket_path = temp.path().join("indexer.sock");
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
     std::fs::write(&source, "package sample\nclass Sample\n").expect("source");
-    let handle = spawn_sequenced_headless_backend(
+    let handle = spawn_sequenced_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -22,7 +22,7 @@ fn agent_graph_refresh_requires_ready_before_semantic_graph_rpc() {
                     "healthy": true,
                     "active": true,
                     "indexing": true,
-                    "backendName": "headless",
+                    "backendName": "indexer",
                     "backendVersion": "scripted-test",
                     "workspaceRoot": workspace.display().to_string(),
                     "schemaVersion": 5

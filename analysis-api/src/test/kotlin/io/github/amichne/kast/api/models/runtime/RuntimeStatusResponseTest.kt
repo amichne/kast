@@ -69,7 +69,7 @@ class RuntimeStatusResponseTest {
           "healthy": true,
           "active": true,
           "indexing": false,
-          "backendName": "headless",
+          "backendName": "indexer",
           "backendVersion": "test",
           "workspaceRoot": "/workspace",
           $coverageFacts
@@ -84,7 +84,7 @@ class RuntimeStatusResponseTest {
           "healthy": true,
           "active": true,
           "indexing": false,
-          "backendName": "headless",
+          "backendName": "indexer",
           "backendVersion": "test",
           "workspaceRoot": "/workspace",
           "referenceIndexReady": $referenceIndexReady,

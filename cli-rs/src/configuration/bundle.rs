@@ -3,18 +3,17 @@ use serde::{Deserialize, Serialize};
 pub(crate) const BUNDLE_MANIFEST_FILE: &str = "manifest.json";
 pub(crate) const BUNDLE_MANIFEST_SCHEMA_VERSION: u32 = 3;
 pub(crate) const BUNDLE_MANIFEST_KIND: &str = "KAST_INSTALL_BUNDLE";
-pub(crate) const UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID: &str = "ubuntu-debian-headless-x86_64";
-pub(crate) const UBUNTU_DEBIAN_HEADLESS_PROFILE: &str = "ubuntu-debian-headless";
-pub(crate) const MACOS_INSTALLED_IDEA_SIDECAR_PROFILE: &str = "macos-installed-idea-sidecar";
-pub(crate) const UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT: &str = "install.sh";
+pub(crate) const DEFAULT_SETUP_PLATFORM_ID: &str = "linux-x64";
+pub(crate) const INDEXER_PROFILE: &str = "indexer";
+pub(crate) const SETUP_ENTRYPOINT: &str = "install.sh";
 pub(crate) const CONTROL_CLI_BUNDLE_PATH: &str = "libexec/kastctl";
 pub(crate) const AGENT_CLI_BUNDLE_PATH: &str = "bin/kast";
-pub(crate) const HEADLESS_BACKEND_KIND: &str = "headless";
-pub(crate) const HEADLESS_BACKEND_NAME: &str = "headless";
-pub(crate) const HEADLESS_BACKEND_ROLE: &str = "headless-backend";
-pub(crate) const HEADLESS_BACKEND_ARCHIVE_ROOT: &str = "backend-headless";
-pub(crate) const HEADLESS_BACKEND_LAUNCHER: &str = "kast-headless";
-pub(crate) const HEADLESS_REQUIRED_JAVA_OPT: &str = "-Didea.force.use.core.classloader=true";
+pub(crate) const INDEXER_KIND: &str = "indexer";
+pub(crate) const INDEXER_NAME: &str = "indexer";
+pub(crate) const INDEXER_ROLE: &str = "indexer";
+pub(crate) const INDEXER_ARCHIVE_ROOT: &str = "indexer";
+pub(crate) const INDEXER_LAUNCHER: &str = "kast-indexer";
+pub(crate) const INDEXER_REQUIRED_JAVA_OPT: &str = "-Didea.force.use.core.classloader=true";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct BundleVersion(String);
@@ -114,28 +113,23 @@ pub(crate) struct BundleArtifact {
     pub(crate) sha256: String,
 }
 
-pub(crate) fn ubuntu_debian_headless_manifest(
+pub(crate) fn setup_bundle_manifest(
     version: &str,
     platform: &str,
     artifact_sha256: [String; 3],
     build_commit: String,
 ) -> BundleManifest {
-    let [cli_sha256, agent_cli_sha256, backend_sha256] = artifact_sha256;
-    let backend_install_name = format!("headless-{version}");
-    let installed_idea_sidecar = platform.starts_with("macos-");
+    let [cli_sha256, agent_cli_sha256, indexer_sha256] = artifact_sha256;
+    let indexer_install_name = format!("indexer-{version}");
+    let uses_installed_host = platform.starts_with("macos-");
     BundleManifest {
         schema_version: BUNDLE_MANIFEST_SCHEMA_VERSION,
         kind: BUNDLE_MANIFEST_KIND.to_string(),
-        profile: if installed_idea_sidecar {
-            MACOS_INSTALLED_IDEA_SIDECAR_PROFILE
-        } else {
-            UBUNTU_DEBIAN_HEADLESS_PROFILE
-        }
-        .to_string(),
+        profile: INDEXER_PROFILE.to_string(),
         version: version.to_string(),
         platform: platform.to_string(),
-        entrypoint: UBUNTU_DEBIAN_HEADLESS_ENTRYPOINT.to_string(),
-        java_requirement: if installed_idea_sidecar {
+        entrypoint: SETUP_ENTRYPOINT.to_string(),
+        java_requirement: if uses_installed_host {
             "A supported installed IntelliJ IDEA or Android Studio host"
         } else {
             "Java 21 or newer available on PATH, or KAST_JAVA_CMD set"
@@ -147,17 +141,17 @@ pub(crate) fn ubuntu_debian_headless_manifest(
                 path: CONTROL_CLI_BUNDLE_PATH.to_string(),
             },
             backend: BundleBackendActivation {
-                kind: HEADLESS_BACKEND_KIND.to_string(),
-                name: HEADLESS_BACKEND_NAME.to_string(),
+                kind: INDEXER_KIND.to_string(),
+                name: INDEXER_NAME.to_string(),
                 version: normalize_version(version),
-                install_dir: format!("lib/backends/{backend_install_name}"),
-                launcher: HEADLESS_BACKEND_LAUNCHER.to_string(),
+                install_dir: format!("lib/backends/{indexer_install_name}"),
+                launcher: INDEXER_LAUNCHER.to_string(),
                 runtime_libs_dir: "runtime-libs".to_string(),
                 idea_home: "idea-home".to_string(),
-                required_plugin: "idea-home/plugins/kast-headless".to_string(),
+                required_plugin: "idea-home/plugins/kast-indexer".to_string(),
             },
             shim: BundleShimActivation {
-                java_opts: vec![HEADLESS_REQUIRED_JAVA_OPT.to_string()],
+                java_opts: vec![INDEXER_REQUIRED_JAVA_OPT.to_string()],
                 exports_install_root: true,
                 exports_config_home: true,
             },
@@ -174,17 +168,16 @@ pub(crate) fn ubuntu_debian_headless_manifest(
                 sha256: agent_cli_sha256,
             },
             BundleArtifact {
-                role: HEADLESS_BACKEND_ROLE.to_string(),
-                path: format!("lib/backends/{backend_install_name}"),
-                sha256: backend_sha256,
+                role: INDEXER_ROLE.to_string(),
+                path: format!("lib/backends/{indexer_install_name}"),
+                sha256: indexer_sha256,
             },
         ],
     }
 }
 
-pub(crate) fn is_macos_installed_idea_sidecar(manifest: &BundleManifest) -> bool {
-    manifest.profile == MACOS_INSTALLED_IDEA_SIDECAR_PROFILE
-        && manifest.platform.starts_with("macos-")
+pub(crate) fn is_macos_indexer(manifest: &BundleManifest) -> bool {
+    manifest.profile == INDEXER_PROFILE && manifest.platform.starts_with("macos-")
 }
 
 pub(crate) fn normalize_version(value: &str) -> String {

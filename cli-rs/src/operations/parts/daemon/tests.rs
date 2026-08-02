@@ -4,7 +4,7 @@ mod tests {
     use std::io::Write;
 
     #[test]
-    fn java_command_uses_headless_classpath_entries_relative_to_runtime_libs() {
+    fn java_command_uses_indexer_classpath_entries_relative_to_runtime_libs() {
         let temp = tempfile::tempdir().unwrap();
         let libs = temp.path().join("runtime-libs");
         fs::create_dir_all(&libs).unwrap();
@@ -12,11 +12,10 @@ mod tests {
         writeln!(file, "a.jar\nlib/b.jar").unwrap();
         let idea_home = temp.path().join("idea-home");
         let mut config = KastConfig::defaults();
-        config.backends.headless.runtime_libs_dir = Some(libs.clone());
-        config.backends.headless.idea_home = Some(idea_home.clone());
+        config.indexer.runtime_libs_dir = Some(libs.clone());
+        config.indexer.host_home = Some(idea_home.clone());
         let args = DaemonStartArgs {
             workspace_root: Some(temp.path().to_path_buf()),
-            backend_name: None,
             runtime_libs_dir: None,
             idea_home: None,
             socket_path: Some(temp.path().join("kast.sock")),
@@ -32,32 +31,31 @@ mod tests {
             profile_duration: None,
             profile_otlp_endpoint: None,
         };
-        let command = linux_headless_java_command(&args, &config, BackendName::Headless).unwrap();
+        let command = linux_indexer_java_command(&args, &config).unwrap();
         assert!(command.contains(&"-cp".to_string()));
         let cp = command.iter().position(|arg| arg == "-cp").unwrap() + 1;
         assert!(command[cp].contains(&libs.join("a.jar").display().to_string()));
         assert!(command[cp].contains(&libs.join("lib/b.jar").display().to_string()));
-        assert!(command.contains(&HEADLESS_MAIN_CLASS.to_string()));
+        assert!(command.contains(&INDEXER_MAIN_CLASS.to_string()));
         assert!(command.contains(&format!("--idea-home={}", idea_home.display())));
     }
 
     #[test]
-    fn java_command_uses_headless_runtime_libs_main_class_and_idea_home() {
+    fn java_command_uses_indexer_runtime_libs_main_class_and_host_home() {
         let temp = tempfile::tempdir().unwrap();
-        let headless_libs = temp.path().join("headless-runtime-libs");
-        fs::create_dir_all(&headless_libs).unwrap();
-        fs::write(headless_libs.join("classpath.txt"), "headless.jar\n").unwrap();
+        let indexer_libs = temp.path().join("indexer-runtime-libs");
+        fs::create_dir_all(&indexer_libs).unwrap();
+        fs::write(indexer_libs.join("classpath.txt"), "indexer.jar\n").unwrap();
         let idea_home = temp.path().join("idea-home");
         let mut config = KastConfig::defaults();
         config.paths.cache_dir = temp.path().join("cache");
         config.paths.logs_dir = temp.path().join("logs");
         config.paths.descriptor_dir = temp.path().join("descriptors");
         config.paths.socket_dir = temp.path().join("sockets");
-        config.backends.headless.runtime_libs_dir = Some(headless_libs.clone());
-        config.backends.headless.idea_home = Some(idea_home.clone());
+        config.indexer.runtime_libs_dir = Some(indexer_libs.clone());
+        config.indexer.host_home = Some(idea_home.clone());
         let args = DaemonStartArgs {
             workspace_root: Some(temp.path().to_path_buf()),
-            backend_name: Some(crate::cli::BackendName::Headless),
             runtime_libs_dir: None,
             idea_home: None,
             socket_path: Some(temp.path().join("kast.sock")),
@@ -74,11 +72,11 @@ mod tests {
             profile_otlp_endpoint: None,
         };
 
-        let command = linux_headless_java_command(&args, &config, BackendName::Headless).unwrap();
+        let command = linux_indexer_java_command(&args, &config).unwrap();
 
         let cp = command.iter().position(|arg| arg == "-cp").unwrap() + 1;
-        assert!(command[cp].contains(&headless_libs.join("headless.jar").display().to_string()));
-        assert!(command.contains(&HEADLESS_MAIN_CLASS.to_string()));
+        assert!(command[cp].contains(&indexer_libs.join("indexer.jar").display().to_string()));
+        assert!(command.contains(&INDEXER_MAIN_CLASS.to_string()));
         assert!(command.contains(&format!("--idea-home={}", idea_home.display())));
         assert!(command.contains(&format!(
             "-Didea.config.path={}",
@@ -102,11 +100,11 @@ mod tests {
     }
 
     #[test]
-    fn java_command_writes_resolved_runtime_config_json_for_headless() {
+    fn java_command_writes_resolved_runtime_config_json_for_indexer() {
         let temp = tempfile::tempdir().unwrap();
-        let headless_libs = temp.path().join("headless-runtime-libs");
-        fs::create_dir_all(&headless_libs).unwrap();
-        fs::write(headless_libs.join("classpath.txt"), "headless.jar\n").unwrap();
+        let indexer_libs = temp.path().join("indexer-runtime-libs");
+        fs::create_dir_all(&indexer_libs).unwrap();
+        fs::write(indexer_libs.join("classpath.txt"), "indexer.jar\n").unwrap();
         let idea_home = temp.path().join("idea-home");
         let runtime_dir = temp.path().join("runtime");
         let mut config = KastConfig::defaults();
@@ -114,13 +112,11 @@ mod tests {
         config.paths.runtime_dir = runtime_dir.clone();
         config.paths.descriptor_dir = runtime_dir.join("daemons");
         config.paths.socket_dir = runtime_dir.clone();
-        config.backends.headless.runtime_libs_dir = Some(headless_libs.clone());
-        config.backends.headless.idea_home = Some(idea_home.clone());
+        config.indexer.runtime_libs_dir = Some(indexer_libs.clone());
+        config.indexer.host_home = Some(idea_home.clone());
         config.server.max_results = 42;
-        config.project_open.profile_auto_init = false;
         let args = DaemonStartArgs {
             workspace_root: Some(temp.path().to_path_buf()),
-            backend_name: Some(crate::cli::BackendName::Headless),
             runtime_libs_dir: None,
             idea_home: None,
             socket_path: Some(temp.path().join("kast.sock")),
@@ -137,7 +133,7 @@ mod tests {
             profile_otlp_endpoint: None,
         };
 
-        let command = linux_headless_java_command(&args, &config, BackendName::Headless).unwrap();
+        let command = linux_indexer_java_command(&args, &config).unwrap();
 
         let config_arg = command
             .iter()
@@ -147,8 +143,6 @@ mod tests {
             serde_json::from_str(&fs::read_to_string(config_arg).expect("runtime config json"))
                 .expect("runtime config payload");
         assert_eq!(payload["server"]["maxResults"], 42);
-        assert_eq!(payload["projectOpen"]["profileAutoInit"], false);
-        assert!(payload.get("project_open").is_none());
         assert_eq!(
             payload["paths"]["runtimeDir"],
             runtime_dir.display().to_string()
@@ -162,49 +156,13 @@ mod tests {
             runtime_dir.display().to_string()
         );
         assert_eq!(
-            payload["backends"]["headless"]["runtimeLibsDir"],
-            headless_libs.display().to_string()
+            payload["indexer"]["runtimeLibsDir"],
+            indexer_libs.display().to_string()
         );
         assert_eq!(
-            payload["backends"]["headless"]["ideaHome"],
+            payload["indexer"]["hostHome"],
             idea_home.display().to_string()
         );
-    }
-
-    #[test]
-    fn java_command_rejects_retired_idea_backend_before_launch() {
-        let temp = tempfile::tempdir().unwrap();
-        let libs = temp.path().join("runtime-libs");
-        fs::create_dir_all(&libs).unwrap();
-        fs::write(libs.join("classpath.txt"), "headless.jar\n").unwrap();
-        let mut config = KastConfig::defaults();
-        config.backends.headless.runtime_libs_dir = Some(libs);
-        let args = DaemonStartArgs {
-            workspace_root: Some(temp.path().to_path_buf()),
-            backend_name: Some(
-                <crate::cli::BackendName as clap::ValueEnum>::from_str("idea", true)
-                    .expect("legacy IDEA ingress remains parseable"),
-            ),
-            runtime_libs_dir: None,
-            idea_home: None,
-            socket_path: Some(temp.path().join("kast.sock")),
-            module_name: None,
-            source_roots: None,
-            classpath: None,
-            request_timeout_ms: None,
-            max_results: None,
-            max_concurrent_requests: None,
-            stdio: false,
-            profile: false,
-            profile_modes: None,
-            profile_duration: None,
-            profile_otlp_endpoint: None,
-        };
-
-        let error = java_command(&args, &config).unwrap_err();
-
-        assert_eq!(error.code, "IDEA_SEMANTIC_BACKEND_RETIRED");
-        assert!(error.message.contains("retired"));
     }
 
     #[cfg(target_os = "macos")]
@@ -247,12 +205,11 @@ mod tests {
         let payload = config
             .paths
             .install_root
-            .join("current/lib/backends/headless/current/idea-home/plugins/kast-headless/lib");
+            .join("current/lib/backends/indexer/current/idea-home/plugins/kast-indexer/lib");
         std::fs::create_dir_all(&payload).unwrap();
-        std::fs::write(payload.join("kast-headless.jar"), "fixture").unwrap();
+        std::fs::write(payload.join("kast-indexer.jar"), "fixture").unwrap();
         let args = DaemonStartArgs {
             workspace_root: Some(workspace.clone()),
-            backend_name: Some(BackendName::Headless),
             runtime_libs_dir: None,
             idea_home: None,
             socket_path: Some(temp.path().join("kast.sock")),
@@ -285,7 +242,7 @@ mod tests {
                 .to_string(),
         );
         assert!(command.contains(&"com.intellij.idea.Main".to_string()));
-        assert!(command.contains(&"kast-headless".to_string()));
+        assert!(command.contains(&"kast-indexer".to_string()));
         assert!(!command.contains(&"-Didea.force.use.core.classloader=true".to_string()));
         let sidecar_root = config
             .paths
@@ -300,7 +257,7 @@ mod tests {
             );
         }
         assert_eq!(
-            std::fs::canonicalize(sidecar_root.join("plugins/kast-headless")).unwrap(),
+            std::fs::canonicalize(sidecar_root.join("plugins/kast-indexer")).unwrap(),
             std::fs::canonicalize(payload.parent().unwrap()).unwrap(),
         );
     }
@@ -309,9 +266,9 @@ mod tests {
     #[test]
     fn isolated_sidecar_plugin_link_retargets_an_upgraded_payload() {
         let temp = tempfile::tempdir().unwrap();
-        let previous = temp.path().join("previous/kast-headless");
-        let current = temp.path().join("current/kast-headless");
-        let target = temp.path().join("sidecar/plugins/kast-headless");
+        let previous = temp.path().join("previous/kast-indexer");
+        let current = temp.path().join("current/kast-indexer");
+        let target = temp.path().join("sidecar/plugins/kast-indexer");
         std::fs::create_dir_all(&previous).unwrap();
         std::fs::create_dir_all(&current).unwrap();
         std::fs::create_dir_all(target.parent().unwrap()).unwrap();
@@ -329,9 +286,9 @@ mod tests {
     #[test]
     fn isolated_sidecar_plugin_link_recovers_from_a_dangling_owned_link() {
         let temp = tempfile::tempdir().unwrap();
-        let missing = temp.path().join("removed/kast-headless");
-        let current = temp.path().join("current/kast-headless");
-        let target = temp.path().join("sidecar/plugins/kast-headless");
+        let missing = temp.path().join("removed/kast-indexer");
+        let current = temp.path().join("current/kast-indexer");
+        let target = temp.path().join("sidecar/plugins/kast-indexer");
         std::fs::create_dir_all(&current).unwrap();
         std::fs::create_dir_all(target.parent().unwrap()).unwrap();
         std::os::unix::fs::symlink(missing, &target).unwrap();
@@ -348,8 +305,8 @@ mod tests {
     #[test]
     fn isolated_sidecar_plugin_link_preserves_a_non_symlink_path() {
         let temp = tempfile::tempdir().unwrap();
-        let source = temp.path().join("current/kast-headless");
-        let target = temp.path().join("sidecar/plugins/kast-headless");
+        let source = temp.path().join("current/kast-indexer");
+        let target = temp.path().join("sidecar/plugins/kast-indexer");
         std::fs::create_dir_all(&source).unwrap();
         std::fs::create_dir_all(&target).unwrap();
 

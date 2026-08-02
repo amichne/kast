@@ -1,10 +1,10 @@
 pub fn print_package_result(result: &PackageResult) -> Result<()> {
     match result {
-        PackageResult::UbuntuDebianBundle(result) => print_ubuntu_debian_bundle_package(result),
+        PackageResult::SetupBundle(result) => print_ubuntu_debian_bundle_package(result),
     }
 }
 
-fn print_ubuntu_debian_bundle_package(result: &UbuntuDebianBundlePackageResult) -> Result<()> {
+fn print_ubuntu_debian_bundle_package(result: &SetupBundlePackageResult) -> Result<()> {
     let mut document = MarkdownDocument::default();
     mdln!(document, "# Kast install bundle");
     mdln!(document);
@@ -37,7 +37,7 @@ pub fn print_workspace_status(result: &WorkspaceStatusResult) -> Result<()> {
         mdln!(document, "## Next steps");
         mdln!(
             document,
-            "- Start a backend through the Kast IDE plugin or an installed headless distribution."
+            "- Start the Kast indexer for the workspace."
         );
         mdln!(
             document,

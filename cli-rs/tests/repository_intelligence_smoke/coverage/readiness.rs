@@ -4,7 +4,7 @@ fn ready_runtime(workspace: &std::path::Path) -> serde_json::Value {
         "healthy": true,
         "active": true,
         "indexing": false,
-        "backendName": "headless",
+        "backendName": "indexer",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "sourceModuleNames": ["app"],
@@ -15,7 +15,7 @@ fn ready_runtime(workspace: &std::path::Path) -> serde_json::Value {
 
 fn semantic_graph_capabilities(workspace: &std::path::Path) -> serde_json::Value {
     serde_json::json!({
-        "backendName": "headless",
+        "backendName": "indexer",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "readCapabilities": ["SEMANTIC_GRAPH"],
@@ -92,7 +92,7 @@ fn status_separates_runtime_readiness_from_incomplete_semantic_graph_coverage() 
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
     remove_semantic_graph_coverage(&fixture);
     let socket_path = workspace.join("status.sock");
-    let backend = spawn_sequenced_headless_backend(
+    let backend = spawn_sequenced_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -144,7 +144,7 @@ fn status_reports_semantic_graph_coverage_separately_while_runtime_is_indexing()
     let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
     std::fs::remove_file(fixture.database_path()).expect("remove graph database");
     let socket_path = workspace.join("status-indexing.sock");
-    let backend = spawn_sequenced_headless_backend(
+    let backend = spawn_sequenced_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -157,7 +157,7 @@ fn status_reports_semantic_graph_coverage_separately_while_runtime_is_indexing()
                     "healthy": true,
                     "active": true,
                     "indexing": true,
-                    "backendName": "headless",
+                    "backendName": "indexer",
                     "backendVersion": "scripted-test",
                     "workspaceRoot": workspace.display().to_string(),
                     "sourceModuleNames": ["app"],
@@ -204,7 +204,7 @@ fn verify_fails_incomplete_semantic_graph_coverage_without_discarding_runtime_ev
     let socket_path = workspace.join("verify.sock");
     let runtime = ready_runtime(&workspace);
     let capabilities = semantic_graph_capabilities(&workspace);
-    let backend = spawn_sequenced_headless_backend(
+    let backend = spawn_sequenced_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -271,7 +271,7 @@ fn verify_verbose_reports_execution_level_semantic_graph_issue() {
     let socket_path = workspace.join("verify-verbose.sock");
     let runtime = ready_runtime(&workspace);
     let capabilities = semantic_graph_capabilities(&workspace);
-    let backend = spawn_sequenced_headless_backend(
+    let backend = spawn_sequenced_indexer_backend(
         &home,
         &config_home,
         &workspace,

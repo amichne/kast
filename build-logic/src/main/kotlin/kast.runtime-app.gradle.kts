@@ -87,7 +87,7 @@ val syncPortableDist by tasks.registering(Sync::class) {
     from(writeWrapperScript)
     // runtime-libs is intentionally absent here: consumers must explicitly wire their
     // own runtime-libs source so that classpath.txt references the correct daemon jars.
-    // See backend-headless/build.gradle.kts for the shipped daemon distribution.
+    // See indexer/build.gradle.kts for the shipped indexer distribution.
 }
 
 afterEvaluate {

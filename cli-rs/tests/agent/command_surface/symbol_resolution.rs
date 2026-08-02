@@ -65,8 +65,8 @@ fn agent_symbol_defaults_to_exact_and_returns_compiler_identity() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("headless.sock");
-    let handle = spawn_scripted_headless_backend(
+    let socket_path = temp.path().join("indexer.sock");
+    let handle = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -108,8 +108,8 @@ fn agent_symbol_not_found_and_ambiguous_do_not_discover() {
         let home = temp.path().join("home");
         let config_home = temp.path().join("config");
         let workspace = temp.path().join("workspace");
-        let socket_path = temp.path().join("headless.sock");
-        let handle = spawn_scripted_headless_backend(
+        let socket_path = temp.path().join("indexer.sock");
+        let handle = spawn_scripted_indexer_backend(
             &home,
             &config_home,
             &workspace,
@@ -359,8 +359,8 @@ fn agent_symbol_operational_resolve_failure_never_falls_back() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("headless.sock");
-    let handle = spawn_scripted_headless_backend(
+    let socket_path = temp.path().join("indexer.sock");
+    let handle = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,

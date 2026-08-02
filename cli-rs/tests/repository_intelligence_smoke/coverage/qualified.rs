@@ -26,7 +26,7 @@ mod coverage {
             assert_eq!(response["code"], "REPOSITORY_INDEX_INVALID", "{response:#}");
             assert_eq!(
                 response["details"]["remedy"],
-                "Run `kast developer runtime up --workspace-root \"$PWD\" --backend headless --accept-indexing`, then rebuild compiler graph evidence with `kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path <path-to-kotlin-file>`.",
+                "Run `kast developer runtime up --workspace-root \"$PWD\" --accept-indexing`, then rebuild compiler graph evidence with `kast agent graph --workspace-root \"$PWD\" --operation refresh --file-path <path-to-kotlin-file>`.",
                 "{response:#}"
             );
         }

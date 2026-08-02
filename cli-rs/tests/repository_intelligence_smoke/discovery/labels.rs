@@ -287,7 +287,7 @@ fn label_index_is_resolve_only_and_scope_independent() {
         .connection()
         .execute_batch(
             "UPDATE file_metadata
-                 SET module_path = 'idea.other.main'
+                 SET module_path = 'indexer.other.main'
                  WHERE filename = 'Source0001.kt';
              DELETE FROM file_gradle_source_sets
                  WHERE filename = 'Source0001.kt';

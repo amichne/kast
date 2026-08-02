@@ -1,41 +1,32 @@
 pub fn raw_request_passthrough(
     raw_request: String,
     requested_workspace_root: Option<PathBuf>,
-    backend_name: Option<BackendName>,
 ) -> Result<String> {
     if let Some(response) = try_handle_local_raw_rpc(&raw_request, requested_workspace_root.clone())?
     {
         return Ok(response);
     }
-    let session = raw_rpc_session(requested_workspace_root, backend_name)?;
+    let session = raw_rpc_session(requested_workspace_root)?;
     raw_request_passthrough_in_session(raw_request, None, &session)
 }
 
 #[derive(Debug, Clone)]
 pub struct RawRpcSession {
-    admission: AdmittedHeadlessRuntime,
+    admission: AdmittedIndexerRuntime,
     socket_path: PathBuf,
     response_timeout: Duration,
 }
 
 pub fn raw_rpc_session(
     requested_workspace_root: Option<PathBuf>,
-    backend_name: Option<BackendName>,
 ) -> Result<RawRpcSession> {
-    raw_rpc_session_from_route(semantic_workspace_route(
-        requested_workspace_root,
-        backend_name,
-    )?)
+    raw_rpc_session_from_route(semantic_workspace_route(requested_workspace_root)?)
 }
 
 pub fn raw_rpc_session_ready(
     requested_workspace_root: Option<PathBuf>,
-    backend_name: Option<BackendName>,
 ) -> Result<RawRpcSession> {
-    raw_rpc_session_from_route(semantic_workspace_route_ready(
-        requested_workspace_root,
-        backend_name,
-    )?)
+    raw_rpc_session_from_route(semantic_workspace_route_ready(requested_workspace_root)?)
 }
 
 fn raw_rpc_session_from_route(route: SemanticWorkspaceRoute) -> Result<RawRpcSession> {
@@ -48,7 +39,7 @@ fn raw_rpc_session_from_route(route: SemanticWorkspaceRoute) -> Result<RawRpcSes
 }
 
 pub(crate) fn raw_rpc_session_for_admission(
-    admission: AdmittedHeadlessRuntime,
+    admission: AdmittedIndexerRuntime,
 ) -> RawRpcSession {
     let advertised_timeout_millis = admission
         .candidate()

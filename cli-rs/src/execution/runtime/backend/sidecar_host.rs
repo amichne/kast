@@ -2,8 +2,8 @@ pub(crate) fn resolve_installed_idea_sidecar_app(
     _workspace_root: &Path,
     config: &KastConfig,
 ) -> Result<PathBuf> {
-    if config.runtime.idea_launch.command != Path::new("idea") {
-        return resolve_explicit_sidecar_host(&config.runtime.idea_launch.command);
+    if config.indexer.host_command != Path::new("idea") {
+        return resolve_explicit_sidecar_host(&config.indexer.host_command);
     }
     select_supported_sidecar_host(installed_sidecar_hosts())
 }
@@ -37,15 +37,15 @@ fn select_supported_sidecar_host(installed: Vec<PathBuf>) -> Result<PathBuf> {
         [app] => Ok(app.clone()),
         [] if !installed.is_empty() => Err(CliError::new(
             "IDEA_VERSION_UNSUPPORTED",
-            "The private headless runtime requires IntelliJ IDEA 2026.2/build 262 or Android Studio 2026.1.2/build 261; no supported installed bundle was found.",
+            "The Kast indexer requires IntelliJ IDEA 2026.2/build 262 or Android Studio 2026.1.2/build 261; no supported installed bundle was found.",
         )),
         [] => Err(CliError::new(
             "IDEA_HOST_NOT_FOUND",
-            "The private headless runtime could not find a supported IntelliJ IDEA or Android Studio installation.",
+            "The Kast indexer could not find a supported IntelliJ IDEA or Android Studio installation.",
         )),
         _ => Err(CliError::new(
             "IDEA_HOST_AMBIGUOUS",
-            "More than one supported runtime host is installed; set runtime.ideaLaunch.command to the exact application bundle.",
+            "More than one supported runtime host is installed; set indexer.hostCommand to the exact application bundle.",
         )),
     }
 }
@@ -67,7 +67,7 @@ fn resolve_explicit_sidecar_host(command: &Path) -> Result<PathBuf> {
         .ok_or_else(|| {
             CliError::new(
                 "IDEA_LAUNCH_CONFIG_INVALID",
-                "runtime.ideaLaunch.command must resolve inside a supported .app bundle on macOS.",
+                "indexer.hostCommand must resolve inside a supported .app bundle on macOS.",
             )
         })?;
     ensure_supported_sidecar_host(&app)?;

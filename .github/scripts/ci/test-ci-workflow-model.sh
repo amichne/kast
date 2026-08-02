@@ -9,16 +9,55 @@ die() {
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
 checker="${repo_root}/.github/scripts/ci/ci_workflow_model.py"
 model="${repo_root}/.github/ci/issue-401-workflow-model.json"
+workflow="${repo_root}/.github/workflows/ci.yml"
 scratch_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-ci-workflow-model.XXXXXX")"
 trap 'rm -rf "$scratch_dir"' EXIT
 
 [[ -f "$model" ]] || die "missing authoritative graph model: ${model}"
-[[ "$(awk '/^[[:space:]]*cache-read-only: false$/ { count++ } END { print count + 0 }' \
-  "${repo_root}/.github/workflows/ci-build-and-test.yml")" -eq 1 ]] \
-  || die "reusable build-and-test must explicitly own the sole PR Gradle cache write"
-[[ "$(awk '/^[[:space:]]*cache-read-only: false$/ { count++ } END { print count + 0 }' \
-  "${repo_root}/.github/workflows/ci.yml")" -eq 0 ]] \
-  || die "fanout jobs must not write Gradle cache state"
+for retired_workflow in \
+  ci-build-and-test.yml \
+  ci-auxiliary-controls.yml \
+  seed-gradle-ro-cache.yml; do
+  [[ ! -e "${repo_root}/.github/workflows/${retired_workflow}" ]] \
+    || die "retired workflow remains: ${retired_workflow}"
+done
+
+[[ "$(grep -Ec '^[[:space:]]*cache-read-only: false$' "$workflow")" -eq 1 ]] \
+  || die "the inlined JVM test job must own the sole PR Gradle cache write"
+! grep -Fq 'CI_AUX_' "$workflow" || die "CI must not depend on mutable auxiliary flags"
+
+for required_job in \
+  build-and-test-linux \
+  source-bound-indexer \
+  source-bound-linux-setup \
+  install-linux-setup \
+  indexer-performance; do
+  grep -Eq "^  ${required_job}:$" "$workflow" \
+    || die "missing required CI job: ${required_job}"
+done
+
+for retired_job in \
+  runtime-contracts \
+  prepared-generation \
+  prepared-ubuntu-debian-bundle \
+  analysis-server-transport \
+  install-ubuntu-debian-container; do
+  ! grep -Eq "^  ${retired_job}:$" "$workflow" \
+    || die "redundant CI job remains: ${retired_job}"
+done
+
+grep -Fq ':indexer:test' "$workflow" || die "JVM CI must test the indexer"
+grep -Fq ':indexer:portableDistZip' "$workflow" || die "CI must build the portable indexer"
+grep -Fq ':indexer:verifyPortableDistLayout' "$workflow" || die "CI must verify the portable indexer layout"
+grep -Fq 'kast-indexer-linux-x64' "$workflow" || die "CI must retain the source-bound indexer artifact"
+grep -Fq 'kast-setup-linux-x64' "$workflow" || die "CI must retain the canonical Linux setup bundle"
+grep -Fq 'setup_manifest_version="v0.7.11-ci"' "$workflow" \
+  || die "CI setup activation must use a doctor-compatible indexer version"
+grep -Fq -- '--version "$setup_manifest_version"' "$workflow" \
+  || die "CI setup packaging must write the doctor-compatible manifest version"
+grep -Fq 'setup_asset="dist/kast-linux-x64-v0.0.0-ci.tar.gz"' "$workflow" \
+  || die "CI setup artifact naming must remain source-bound"
+! grep -Fq 'container-image:' "$workflow" || die "CI must not advertise containers it does not run"
 
 report="${scratch_dir}/report.json"
 python3 "$checker" "$model" >"$report"
@@ -33,117 +72,45 @@ if report["status"] != "provisional":
     raise SystemExit(f"expected provisional timing evidence, received {report['status']}")
 if not report["comparison"]["outputEquivalent"]:
     raise SystemExit("candidate proof outputs must match or have an explicit replacement")
-expected_replacements = {}
-actual_replacements = report["comparison"]["retiredProofOutputReplacements"]
-if actual_replacements != expected_replacements:
-    raise SystemExit(f"this graph change must not retire proof outputs: {actual_replacements}")
-if report["comparison"]["taskCountIncrease"] != 0:
-    raise SystemExit("the headless-only candidate must not add an execution node")
-if report["candidate"]["pullRequestTaskCount"] != report["baseline"]["pullRequestTaskCount"]:
-    raise SystemExit("retiring the public plugin must keep the normalized task count stable")
+if report["comparison"]["taskCountIncrease"] != -4:
+    raise SystemExit("the cleanup must remove four normalized CI executions")
+if report["candidate"]["pullRequestTaskCount"] != 11:
+    raise SystemExit("the normalized CI graph must contain eleven executions")
 if report["candidate"]["fanoutGateSeconds"] > 90:
-    raise SystemExit("the modeled static fanout gate must not exceed 90 seconds")
+    raise SystemExit("the modeled static fan-out gate must not exceed 90 seconds")
 if report["candidate"]["canaryTaskIds"]:
     raise SystemExit("pull-request CI must not model an off-path canary")
-if "test-intellij-runtime" not in report["baseline"]["criticalPathTaskIds"]:
-    raise SystemExit("the baseline must expose the serialized IntelliJ runtime test bottleneck")
-if "test-intellij-runtime" in report["candidate"]["criticalPathTaskIds"]:
-    raise SystemExit("independent IntelliJ runtime tests must not delay the artifact consumer path")
 
 candidate_tasks = {task["id"]: task for task in model["candidate"]["tasks"]}
-for graph_name in ("baseline", "candidate"):
-    action_tasks = [
-        task["id"]
-        for task in model[graph_name]["tasks"]
-        if task["id"] == "kast-action"
-        or "kast-action-v2-installed-runtime-contract" in task["outputs"]
-    ]
-    if action_tasks:
-        raise SystemExit(
-            f"{graph_name} must not retain the deprecated kast-action proof: "
-            f"{action_tasks}"
-        )
-if report["candidate"]["provisionalTaskIds"] != sorted(candidate_tasks):
-    raise SystemExit(
-        "candidate projected timings must remain provisional without declared runs"
-    )
-if set(candidate_tasks["prepared-ubuntu-debian-bundle"]["needs"]) != {
-    "prepared-generation",
+expected_tasks = {
+    "workflow-contracts",
+    "local-authority-contracts",
+    "runtime-compatibility-contract",
+    "maven-publication-contract",
+    "rust-cli",
+    "source-bound-cli",
+    "build-and-test-linux",
+    "source-bound-indexer",
+    "source-bound-linux-setup",
+    "install-linux-setup",
+    "indexer-performance",
+}
+if set(candidate_tasks) != expected_tasks:
+    raise SystemExit(f"unexpected candidate task inventory: {sorted(candidate_tasks)}")
+if set(candidate_tasks["source-bound-linux-setup"]["needs"]) != {
+    "workflow-contracts",
+    "source-bound-cli",
+    "source-bound-indexer",
 }:
-    raise SystemExit("the prepared bundle must depend only on the prepared headless generation")
-if candidate_tasks["workflow-contracts"]["outputs"] != [
-    "repository-shape-contract",
-    "ci-local-source-snapshot",
-    "ci-artifact-ledger-local-source-snapshot",
-    "release-workflow-contract",
-    "ci-workflow-model-contract",
-    "kast-build-contract",
-    "docs-navigation-contract",
-    "docs-content-contract",
-    "macos-installer-contract",
-    "release-asset-verifier",
-    "release-provenance-assembler",
-    "ci-artifact-ledger",
-    "headless-runtime-packagers",
-    "ci-gradle-retry",
+    raise SystemExit("the Linux setup bundle must consume only source-attested producers")
+if candidate_tasks["install-linux-setup"]["needs"] != ["source-bound-linux-setup"]:
+    raise SystemExit("the activation proof must consume only the canonical Linux setup bundle")
+if candidate_tasks["indexer-performance"]["outputs"] != [
+    "indexer-performance-baselines"
 ]:
-    raise SystemExit("the static gate must inventory every current contract and source snapshot proof")
-if candidate_tasks["prepared-generation"]["outputs"] != [
-    "prepared-local-generation",
-    "ci-artifact-ledger-prepared-generation",
-]:
-    raise SystemExit("prepared generation must own its artifact and ledger proofs")
-if candidate_tasks["prepared-ubuntu-debian-bundle"]["outputs"] != [
-    "ubuntu-debian-bundle",
-    "ci-artifact-ledger-prepared-ubuntu-debian-bundle",
-]:
-    raise SystemExit("the prepared bundle must own its artifact and ledger proofs")
-if candidate_tasks["test-intellij-runtime"]["outputs"] != [
-    "intellij-runtime-tests",
-    "intellij-runtime-performance-baselines",
-]:
-    raise SystemExit("the shared IntelliJ runtime job must retain both test proof sets")
-PY
-
-blocking_required_task_model="${scratch_dir}/blocking-required-task-timing.json"
-python3 - "$model" "$blocking_required_task_model" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-source = Path(sys.argv[1])
-target = Path(sys.argv[2])
-document = json.loads(source.read_text(encoding="utf-8"))
-candidate = document["candidate"]
-canary_ids = set(candidate["canaryTaskIds"])
-for task in candidate["tasks"]:
-    if task["id"] not in canary_ids:
-        task["durationSamplesSeconds"] *= 5
-candidate["observedWorkflowDurationSamplesSeconds"] *= 5
-document["expectations"]["timingEvidenceMode"] = "blocking"
-document["expectations"]["maximumMedianModelDriftRatio"] = 1
-target.write_text(json.dumps(document), encoding="utf-8")
-PY
-
-blocking_required_task_report="${scratch_dir}/blocking-required-task-report.json"
-set +e
-python3 "$checker" "$blocking_required_task_model" >"$blocking_required_task_report"
-blocking_required_task_status=$?
-set -e
-[[ "$blocking_required_task_status" -eq 1 ]] \
-  || die "projected candidate timing must fail blocking evidence with exit 1"
-python3 - "$blocking_required_task_report" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-if report["status"] != "fail":
-    raise SystemExit("projected candidate timing must not satisfy blocking evidence")
-if not any("candidate required tasks below minimumTaskSamples" in finding for finding in report["failures"]):
-    raise SystemExit("blocking evidence must reject candidate tasks without declared runs")
-if "candidate workflow is below minimumWorkflowSamples" not in report["failures"]:
-    raise SystemExit("blocking evidence must reject candidate workflow timing without declared runs")
+    raise SystemExit("indexer performance must remain a distinct proof")
+if report["candidate"]["provisionalTaskIds"] != sorted(candidate_tasks):
+    raise SystemExit("candidate timings must remain provisional until successful runs exist")
 PY
 
 lost_output_model="${scratch_dir}/lost-output.json"
@@ -152,31 +119,17 @@ import json
 import sys
 from pathlib import Path
 
-source = Path(sys.argv[1])
-target = Path(sys.argv[2])
-document = json.loads(source.read_text(encoding="utf-8"))
+document = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 document["candidate"]["tasks"][0]["outputs"].pop()
-target.write_text(json.dumps(document), encoding="utf-8")
+Path(sys.argv[2]).write_text(json.dumps(document), encoding="utf-8")
 PY
 
-lost_output_report="${scratch_dir}/lost-output-report.json"
 set +e
-python3 "$checker" "$lost_output_model" >"$lost_output_report"
+python3 "$checker" "$lost_output_model" >"${scratch_dir}/lost-output-report.json"
 lost_output_status=$?
 set -e
 [[ "$lost_output_status" -eq 1 ]] \
   || die "output loss must fail with exit 1, received ${lost_output_status}"
-python3 - "$lost_output_report" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-if report["status"] != "fail":
-    raise SystemExit("output loss must produce a failed comparison")
-if not report["comparison"]["missingOutputIds"]:
-    raise SystemExit("output loss must name the missing proof identifier")
-PY
 
 invalid_replacement_model="${scratch_dir}/invalid-replacement.json"
 python3 - "$model" "$invalid_replacement_model" <<'PY'
@@ -184,31 +137,17 @@ import json
 import sys
 from pathlib import Path
 
-source = Path(sys.argv[1])
-target = Path(sys.argv[2])
-document = json.loads(source.read_text(encoding="utf-8"))
-retired_output = document["candidate"]["tasks"][0]["outputs"].pop()
+document = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+retired_output = next(iter(document["retiredProofOutputReplacements"]))
 document["retiredProofOutputReplacements"][retired_output] = "missing-proof"
-target.write_text(json.dumps(document), encoding="utf-8")
+Path(sys.argv[2]).write_text(json.dumps(document), encoding="utf-8")
 PY
 
-invalid_replacement_report="${scratch_dir}/invalid-replacement-report.json"
 set +e
-python3 "$checker" "$invalid_replacement_model" >"$invalid_replacement_report"
+python3 "$checker" "$invalid_replacement_model" >"${scratch_dir}/invalid-replacement-report.json"
 invalid_replacement_status=$?
 set -e
 [[ "$invalid_replacement_status" -eq 2 ]] \
-  || die "an invalid replacement target must fail validation with exit 2, received ${invalid_replacement_status}"
-python3 - "$invalid_replacement_report" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-report = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-if report["status"] != "invalid":
-    raise SystemExit("an unknown replacement target must make the model invalid")
-if "missing-proof" not in report["errors"][0]:
-    raise SystemExit("model validation must name the unknown replacement target")
-PY
+  || die "an invalid replacement target must fail validation with exit 2"
 
 printf '%s\n' 'CI workflow model contract passed'

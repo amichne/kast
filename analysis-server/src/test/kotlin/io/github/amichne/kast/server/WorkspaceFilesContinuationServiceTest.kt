@@ -168,7 +168,7 @@ class WorkspaceFilesContinuationServiceTest {
     private fun identity(kind: String): WorkspaceFilesPublicContinuationIdentity =
         WorkspaceFilesPublicContinuationIdentity(
             workspaceRoot = WorkspaceFilesPublicContinuationIdentity.WorkspaceRoot.parse("/workspace"),
-            backendName = WorkspaceFilesPublicContinuationIdentity.BackendName.parse("idea"),
+            backendName = WorkspaceFilesPublicContinuationIdentity.BackendName.parse("indexer"),
             normalizedQuery = WorkspaceFilesPublicContinuationIdentity.NormalizedQuery.parse("kind=$kind"),
             projection = WorkspaceFilesPublicContinuationIdentity.Projection.parse("compact:*"),
             limit = WorkspaceFilesPublicContinuationIdentity.Limit.of(20),

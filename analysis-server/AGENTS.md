@@ -23,7 +23,7 @@ Keep this unit focused on transport concerns around the backend interface.
   state, close the explicit `CloseableAnalysisBackend` once, and clean up
   descriptors even when one close step fails. Repeated runtime/server close must
   be idempotent; never rely on a cast to infer backend ownership. Runtime-owned
-  resources outside the backend contract, such as the IDEA source-index store,
+  resources outside the backend contract, such as the indexer source-index store,
   remain with their runtime orchestrator and close only after this server owner.
 - `WorkspaceFilesContinuationService` owns the internal
   `raw/workspace-files-continuation` issue/consume store. It may hold only the
@@ -37,7 +37,7 @@ Keep this unit focused on transport concerns around the backend interface.
   store, read semantic generation separately, reconstruct reference source or
   counters, or perform provider work outside the backend read-action boundary.
 - `RunningAnalysisServer` remains the single backend close owner after #338.
-  Relationship state drains through `KastPluginBackend.close()` and the shared
+  Relationship state drains through `KastIndexerBackend.close()` and the shared
   continuation disposer exactly once; this module must not add a parallel
   relationship service or close path.
 - Anchored relationship dispatch forwards the complete selector and handle to

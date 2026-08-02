@@ -110,8 +110,8 @@ pub struct ResolvedKastPaths {
     pub config_file: PathBuf,
     pub shim_path: PathBuf,
     pub active_binary: PathBuf,
-    pub headless_runtime_libs_dir: PathBuf,
-    pub headless_idea_home: Option<PathBuf>,
+    pub indexer_runtime_libs_dir: PathBuf,
+    pub indexer_host_home: Option<PathBuf>,
 }
 
 pub fn resolve_paths() -> Result<ResolvedKastPaths> {
@@ -149,8 +149,8 @@ pub fn default_resolved_paths() -> ResolvedKastPaths {
         config_root,
         shim_path: current.join(CONTROL_CLI_BUNDLE_PATH),
         active_binary: current.join(CONTROL_CLI_BUNDLE_PATH),
-        headless_runtime_libs_dir: lib_dir.join("backends/headless/current/runtime-libs"),
-        headless_idea_home: None,
+        indexer_runtime_libs_dir: lib_dir.join("backends/indexer/current/runtime-libs"),
+        indexer_host_home: None,
     }
 }
 
@@ -190,10 +190,10 @@ pub fn paths_from_manifest(manifest: &KastInstallManifest) -> Result<ResolvedKas
     let config_root = normalize(PathBuf::from(&manifest.roots.config));
     let runtime_dir = normalize(PathBuf::from(&manifest.roots.runtime));
     let lib_dir = install_root.join("current/lib");
-    let headless = manifest
+    let indexer = manifest
         .backends
         .iter()
-        .find(|backend| backend.name == "headless");
+        .find(|backend| backend.name == "indexer");
     Ok(ResolvedKastPaths {
         install_root: install_root.clone(),
         bin_dir: normalize(PathBuf::from(&manifest.roots.bin)),
@@ -209,10 +209,10 @@ pub fn paths_from_manifest(manifest: &KastInstallManifest) -> Result<ResolvedKas
         config_root,
         shim_path: normalize(PathBuf::from(&manifest.entrypoints.shim)),
         active_binary: normalize(PathBuf::from(&manifest.entrypoints.active_binary)),
-        headless_runtime_libs_dir: headless
+        indexer_runtime_libs_dir: indexer
             .map(|backend| normalize(PathBuf::from(&backend.runtime_libs_dir)))
-            .unwrap_or_else(|| lib_dir.join("backends/headless/current/runtime-libs")),
-        headless_idea_home: headless
+            .unwrap_or_else(|| lib_dir.join("backends/indexer/current/runtime-libs")),
+        indexer_host_home: indexer
             .and_then(|backend| backend.idea_home.as_ref())
             .map(|path| normalize(PathBuf::from(path))),
     })

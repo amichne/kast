@@ -15,17 +15,12 @@ for task in \
   ':buildDevelopmentCli' \
   ':stageDevelopmentControlCli' \
   ':packageDevelopmentCli' \
-  ':backend-headless:portableDistZip' \
+  ':indexer:portableDistZip' \
   ':packageDevelopmentSetupBundle' \
   ':refreshDevelopmentMachine'; do
   grep -Fq "$task" <<<"$dry_run" || { printf 'error: missing development setup task %s\n' "$task" >&2; exit 1; }
   grep -Fq "$task" <<<"$clean_dry_run" || { printf 'error: clean development setup skipped task %s\n' "$task" >&2; exit 1; }
 done
-
-if grep -Fq ':backend-idea:buildPlugin' <<<"$dry_run"; then
-  printf '%s\n' 'error: development setup still builds the retired public IDEA plugin' >&2
-  exit 1
-fi
 
 for unwanted in \
   ':activateDevelopmentMachine' \
@@ -45,7 +40,6 @@ grep -Fq '"setup",' <<<"$refresh_task"
 grep -Fq '"--source",' <<<"$refresh_task"
 grep -Fq 'kastDevelopmentClean' "$repo_root/build.gradle.kts"
 grep -Fq 'args("--force")' <<<"$refresh_task"
-! grep -Fq '"--idea-plugin",' <<<"$refresh_task"
 ! grep -Fq 'dependsOn("clean")' <<<"$refresh_task"
 
 printf '%s\n' 'local setup refresh contract passed'

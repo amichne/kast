@@ -114,7 +114,7 @@ runs:
           --artifact-kind "release-cli-${{ inputs.asset_id }}" \
           --artifact-name "$asset_name" \
           --artifact-path "dist/${asset_name}" \
-          --producer-job "build-cli-${{ inputs.asset_id }}" \
+          --producer-job build-cli \
           --build-command-id "release-rust-cli-${{ inputs.asset_id }}"
 
     - name: Retain CLI build artifact

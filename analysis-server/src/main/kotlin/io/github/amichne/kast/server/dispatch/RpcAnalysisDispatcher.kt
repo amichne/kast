@@ -34,7 +34,6 @@ class RpcAnalysisDispatcher(
     private val backend: AnalysisBackend,
     private val config: AnalysisServerConfig,
     private val lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
-    private val projectOpenController: RuntimeProjectOpenController = RuntimeProjectOpenController.Unavailable,
     private val json: Json = Json {
         encodeDefaults = true
         explicitNulls = false
@@ -45,7 +44,6 @@ class RpcAnalysisDispatcher(
         backend = backend,
         config = config,
         lifecycleController = lifecycleController,
-        projectOpenController = projectOpenController,
         json = json,
     )
     private val lifecycleLock = ReentrantLock()

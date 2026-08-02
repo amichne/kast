@@ -33,7 +33,3 @@ internal fun defaultConfigSocketDir(runtimeDir: String? = null): String =
 internal fun defaultConfigCliBinaryPath(binDir: String? = null): Path =
     binDir?.let(Path::of)?.resolve("kast")
         ?: resolveKastPathDefaults().cliBinary
-
-internal fun defaultConfigHeadlessRuntimeLibsDir(libDir: String? = null): Path =
-    libDir?.let(Path::of)?.resolve("backends/headless/current/runtime-libs")
-        ?: resolveKastPathDefaults().headlessRuntimeLibsDir

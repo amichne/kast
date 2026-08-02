@@ -1,99 +1,88 @@
 ---
 type: Explanation
 title: Kast Architecture
-description: How setup, agent routing, exact-root runtime admission, compiler backends, and typed results fit together.
-tags: [architecture, agents, headless, runtime]
+description: How setup, exact-root indexer admission, compiler evidence, and typed results fit together.
+tags: [architecture, agents, indexer, runtime]
 code_sources:
   - path: cli-rs/src/main.rs
   - path: cli-rs/src/operations/install/agent_resources.rs
   - path: cli-rs/src/execution/runtime/backend/workspace_admission.rs
   - path: analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt
-  - path: backend-headless/src/main/kotlin/io/github/amichne/kast/headless/runtime/HeadlessRuntime.kt
+  - path: indexer/src/main/kotlin/io/github/amichne/kast/indexer/KastIndexerRuntime.kt
 ---
 
 # Kast Architecture
 
-Kast separates its public agent interface, internal installation authority,
-and semantic runtime authority. That lets one verified release serve multiple
-exact workspaces without pretending that installing a binary also proves a
-compiler is ready.
+Kast separates its public agent interface, installation authority, exact-root
+indexer, and persisted evidence. One verified release can serve many
+workspaces without treating an installed binary as proof that compiler
+evidence is ready.
 
 The interactive landscape starts at Kast's public boundary. Select Kast to
-drill into the runtime components, or open the diagram browser to move between
-related views.
+drill into its components, or use the browser to move between related views.
 
 <kast-view view-id="system-landscape" browser="true"></kast-view>
 
 ## Setup chooses one release
 
-`install.sh` invokes the private release-local `libexec/kastctl setup` to stage
-a manifest-bound release containing the multicall executable and matched
-backend artifacts. The same bytes are installed as `libexec/kastctl` for
-administrative automation and `bin/kast` for agents; the invoked name selects
-the grammar. Only `kast` is linked onto `PATH`. Setup verifies the complete
-release before switching the active `current` link.
+`install.sh` invokes the release-local `libexec/kastctl setup`. Setup validates
+and stages the complete bundle before it switches the active `current` link.
+The same executable bytes provide `libexec/kastctl` for administration and
+`bin/kast` for agents; the invoked name selects the command grammar. Only
+`kast` is linked onto `PATH`.
 
-Release-matched Codex, Claude, and Copilot resources are embedded in that
-executable and registered from a digest-owned local directory. Their skill and
-hooks expose only `kast`; they do not become another semantic backend.
+The bundle contains the CLI, the matched indexer, and release-matched Codex,
+Claude, and Copilot resources. Harness resources adapt external events into
+`kast` commands. They do not become installation or semantic authorities.
 
 ## Admission chooses one exact workspace
 
 For each semantic task, `kast` discovers and normalizes the nearest Gradle
-workspace, then selects a compatible backend for that exact root. Agents do
-not supply backend names, output modes, schema versions, or transport details.
+workspace. Agents do not choose an implementation, schema version, transport,
+or output protocol.
 
-Automatic routing accepts one healthy headless candidate. A conflicting
-headless identity produces an actionable failure instead of a guess. A
-mutation additionally requires prepared workspace authority, so Kast does not
-apply compiler-based edits through a runtime attached to a different checkout.
+Kast first looks for an eligible healthy indexer bound to that canonical root.
+It reuses an exact match. If none exists, it creates one isolated indexer. A
+conflicting identity produces a typed failure instead of a guess.
 
-The exact-root headless admission path is the same on every platform:
+Each root has separate configuration, VFS state, descriptors, leases, sockets,
+and indexes. On macOS, a supported IntelliJ IDEA or Android Studio installation
+supplies compatible libraries. Kast does not install into or control the
+foreground application.
 
-<kast-view view-id="headless-runtime" browser="true"></kast-view>
+<kast-view view-id="indexer-runtime" browser="true"></kast-view>
 
-Each canonical root has separate configuration, VFS, descriptors, leases,
-sockets, and indexes. A supported JetBrains installation on macOS supplies
-compatible runtime libraries only. A foreground application has no Kast
-lifecycle, routing, or semantic edge.
+## The indexer owns compiler truth
 
-## The backend owns compiler truth
+The indexer owns the imported Gradle model, Kotlin PSI, compiler analysis,
+reference indexing, and semantic graph production. Admission remains pending
+until Kotlin modules, SDKs, dependencies, PSI, and diagnostics are usable.
 
-The isolated headless runtime owns project models, Kotlin PSI, indexing, and
-compiler analysis. Its semantic admission remains pending until Kotlin modules,
-SDKs, dependencies, PSI, and diagnostics are usable.
+`INDEXING` proves that the process is reachable. `READY` additionally requires
+Gradle settlement, IntelliJ smart mode, Kotlin semantic admission, and Kast
+reference-index completion. A failed phase produces a typed actionable cause.
 
-The runtime reports `INDEXING` as soon as the exact server is reachable. It
-reports `READY` only after Gradle completion, IntelliJ smart mode, Kotlin
-semantic admission, and Kast reference-index completion. One failed phase
-produces `DEGRADED` with an actionable cause.
+`READY` does not prove complete persisted graph coverage. Every operation
+reports that evidence separately.
 
-`READY` proves that direct compiler operations can run. Persisted semantic
-graph coverage is reported separately and can still be incomplete.
-
-The runtime returns the shared Kotlin models defined by `analysis-api`.
+The indexer returns the shared Kotlin models defined by `analysis-api`.
 Callers consume typed symbols, relationships, diagnostics, edits, and coverage
-instead of IntelliJ-specific PSI objects.
+instead of IntelliJ-specific objects.
 
 ## Results carry their limits
 
-Kast projects backend results into compact CLI views. Exact paths and symbol
-identity survive that projection. So do limitations: indexing, unavailable
-source modules, missing reference indexes, bounded relationship results, and
-unsupported capabilities remain visible instead of being converted into an
-empty success.
+Kast preserves exact paths and symbol identities when it projects indexer
+results into compact CLI views. It also preserves limitations. Indexing,
+unavailable source modules, bounded relationship results, and unsupported
+capabilities cannot become an empty success.
 
-Reference indexing retains eligible file-local failures instead of aborting
-the entire pass. When an agent explicitly externalizes a content-bound failure
-identifier, Kast atomically clears unsupported outgoing facts and records the
-file as an `UNKNOWN` graph boundary. Inbound references may still point to
-retained boundary symbols. Cancellation, corruption, and infrastructure
-failures remain terminal.
+Eligible file-local failures remain visible without aborting unrelated files.
+An explicitly accepted content-bound failure becomes an `UNKNOWN` graph
+boundary. Cancellation, corruption, protocol, and infrastructure failures
+remain terminal.
 
-The graph path adds generation-pinned traversal, topology, communities, and
+`kast graph` adds generation-pinned traversal, topology, communities, and
 impact over persisted compiler evidence. See
-[Repository intelligence architecture](repository-intelligence.md) for the
-underlying authority chain and current operating limits.
-
-For the complete public-command map and its source anchors, continue to
-[How Kast works](../internal/system-flow.md).
+[Repository intelligence](repository-intelligence.md) for that authority
+chain, or [How Kast works](../internal/system-flow.md) for the source-backed
+command map.

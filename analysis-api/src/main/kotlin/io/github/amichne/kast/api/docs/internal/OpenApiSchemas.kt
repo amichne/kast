@@ -15,8 +15,6 @@ internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
     registry.register("HealthResponse", HealthResponse.serializer())
     registry.register("RuntimeStatusResponse", RuntimeStatusResponse.serializer())
     registry.register("RuntimeLifecycleResponse", RuntimeLifecycleResponse.serializer())
-    registry.register("RuntimeOpenProjectRequest", RuntimeOpenProjectRequest.serializer())
-    registry.register("RuntimeOpenProjectResponse", RuntimeOpenProjectResponse.serializer())
     registry.register("BackendCapabilities", BackendCapabilities.serializer())
 
     // Shared types
@@ -33,54 +31,8 @@ internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
     registry.register("OutlineSymbol", OutlineSymbol.serializer())
     registry.register("WorkspaceModule", WorkspaceModule.serializer())
 
-    // Runtime compatibility negotiation vocabulary
-    registry.register("ProtocolRevision", ProtocolRevision.serializer())
-    registry.register("WorkspaceMetadataRevision", WorkspaceMetadataRevision.serializer())
-    registry.register("PluginImplementationVersion", PluginImplementationVersion.serializer())
-    registry.register("CliImplementationVersion", CliImplementationVersion.serializer())
+    // Runtime identity vocabulary
     registry.register("RuntimeImplementationVersion", RuntimeImplementationVersion.serializer())
-    registry.register("RuntimeBackendKind", RuntimeBackendKind.serializer())
-    registry.register("RuntimeCapability", RuntimeCapability.serializer())
-    registry.register("RuntimeCapability.Read", RuntimeCapability.Read.serializer())
-    registry.register("RuntimeCapability.Mutation", RuntimeCapability.Mutation.serializer())
-    registry.register("RuntimeIdentity", RuntimeIdentity.serializer())
-    registry.register("RuntimeCompatibilityFacts", RuntimeCompatibilityFacts.serializer())
-    registry.register("SupportedRuntimeCompatibilityPair", SupportedRuntimeCompatibilityPair.serializer())
-    registry.register("RuntimeCompatibilityMatrix", RuntimeCompatibilityMatrix.serializer())
-    registry.register(
-        "RuntimeCompatibilityUpdateRequirement",
-        RuntimeCompatibilityUpdateRequirement.serializer(),
-    )
-    registry.register(
-        "RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair",
-        RuntimeCompatibilityUpdateRequirement.UnsupportedReleasePair.serializer(),
-    )
-    registry.register(
-        "RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision",
-        RuntimeCompatibilityUpdateRequirement.UnsupportedProtocolRevision.serializer(),
-    )
-    registry.register(
-        "RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision",
-        RuntimeCompatibilityUpdateRequirement.UnsupportedWorkspaceMetadataRevision.serializer(),
-    )
-    registry.register(
-        "RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity",
-        RuntimeCompatibilityUpdateRequirement.UnsupportedRuntimeIdentity.serializer(),
-    )
-    registry.register(
-        "RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability",
-        RuntimeCompatibilityUpdateRequirement.MissingRequiredCapability.serializer(),
-    )
-    registry.register("RuntimeCompatibilityOutcome", RuntimeCompatibilityOutcome.serializer())
-    registry.register("RuntimeCompatibilityOutcome.Compatible", RuntimeCompatibilityOutcome.Compatible.serializer())
-    registry.register(
-        "RuntimeCompatibilityOutcome.UpdateRequired",
-        RuntimeCompatibilityOutcome.UpdateRequired.serializer(),
-    )
-    registry.register(
-        "RuntimeCompatibilityOutcome.MissingCapability",
-        RuntimeCompatibilityOutcome.MissingCapability.serializer(),
-    )
 
     // Read queries & results
     registry.register("SymbolQuery", SymbolQuery.serializer())

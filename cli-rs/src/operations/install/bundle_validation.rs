@@ -26,7 +26,7 @@ fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
         "activation.backend.requiredPlugin",
     )?;
 
-    validate_headless_activation(&manifest)?;
+    validate_indexer_activation(&manifest)?;
 
     let cli_path = root.join(&cli_relative);
     let agent_cli_path = root.join(AGENT_CLI_BUNDLE_PATH);
@@ -45,23 +45,23 @@ fn validate_bundle(root: &Path) -> Result<ValidatedBundle> {
             "Bundle kastctl and kast entrypoints must be byte-identical.",
         ));
     }
-    require_directory(&backend_install_dir, "headless backend install directory")?;
-    require_executable(&backend_launcher, "headless backend launcher")?;
-    if !is_macos_installed_idea_sidecar(&manifest) {
+    require_directory(&backend_install_dir, "indexer install directory")?;
+    require_executable(&backend_launcher, "indexer launcher")?;
+    if !is_macos_indexer(&manifest) {
         require_file(
             &runtime_libs_dir.join("classpath.txt"),
-            "headless runtime classpath",
+            "indexer runtime classpath",
         )?;
         require_file(
             &idea_home.join("lib/nio-fs.jar"),
-            "headless IDEA nio-fs.jar",
+            "indexer host nio-fs.jar",
         )?;
         require_file(
             &idea_home.join("modules/module-descriptors.dat"),
-            "headless IDEA module descriptors",
+            "indexer host module descriptors",
         )?;
     }
-    require_directory(&required_plugin, "bundled kast-headless plugin")?;
+    require_directory(&required_plugin, "bundled kast-indexer plugin")?;
 
     let release_digest = directory_sha256(root)?;
     let manifest_digest = manifest::sha256_file(&root.join(BUNDLE_MANIFEST_FILE))?;
@@ -126,8 +126,7 @@ fn validate_bundle_manifest_header(manifest: &BundleManifest) -> Result<BundleVe
     }
     if !matches!(
         manifest.platform.as_str(),
-        UBUNTU_DEBIAN_HEADLESS_PLATFORM_ID
-            | "linux-x64"
+        DEFAULT_SETUP_PLATFORM_ID
             | "linux-arm64"
             | "macos-x64"
             | "macos-arm64"
@@ -184,7 +183,7 @@ fn validate_bundle_artifacts(root: &Path, manifest: &BundleManifest) -> Result<(
         }
         roles.insert(artifact.role.as_str());
     }
-    for role in ["cli", "agent-cli", "headless-backend"] {
+    for role in ["cli", "agent-cli", "indexer"] {
         if !roles.contains(role) {
             return Err(CliError::new(
                 "BUNDLE_MANIFEST_INVALID",
@@ -195,13 +194,13 @@ fn validate_bundle_artifacts(root: &Path, manifest: &BundleManifest) -> Result<(
     Ok(())
 }
 
-fn validate_headless_activation(manifest: &BundleManifest) -> Result<()> {
+fn validate_indexer_activation(manifest: &BundleManifest) -> Result<()> {
     let backend = &manifest.activation.backend;
-    if backend.kind != HEADLESS_BACKEND_KIND || backend.name != HEADLESS_BACKEND_NAME {
+    if backend.kind != INDEXER_KIND || backend.name != INDEXER_NAME {
         return Err(CliError::new(
             "BUNDLE_BACKEND_UNSUPPORTED",
             format!(
-                "Unsupported bundle backend kind/name `{}/{}`; expected `{HEADLESS_BACKEND_KIND}/{HEADLESS_BACKEND_NAME}`.",
+                "Unsupported bundle backend kind/name `{}/{}`; expected `{INDEXER_KIND}/{INDEXER_NAME}`.",
                 backend.kind, backend.name
             ),
         ));
@@ -216,7 +215,7 @@ fn validate_headless_activation(manifest: &BundleManifest) -> Result<()> {
     if !shim.exports_install_root || !shim.exports_config_home {
         return Err(CliError::new(
             "BUNDLE_MANIFEST_INVALID",
-            "Headless bundle shim must export KAST_INSTALL_ROOT and KAST_CONFIG_HOME.",
+            "Indexer bundle shim must export KAST_INSTALL_ROOT and KAST_CONFIG_HOME.",
         ));
     }
     if !shim
@@ -226,7 +225,7 @@ fn validate_headless_activation(manifest: &BundleManifest) -> Result<()> {
     {
         return Err(CliError::new(
             "BUNDLE_MANIFEST_INVALID",
-            "Headless bundle shim must include -Didea.force.use.core.classloader=true.",
+            "Indexer bundle shim must include -Didea.force.use.core.classloader=true.",
         ));
     }
     Ok(())
@@ -247,7 +246,7 @@ fn activation_target_paths(
     let config_root = current_link.join("config");
     let bin_dir = current_link.join("bin");
     let previous_link = install_root.join("previous");
-    let headless_current_dir = version_dir.join("lib/backends/headless/current");
+    let indexer_current_dir = version_dir.join("lib/backends/indexer/current");
     let lib_dir = current_link.join("lib");
     let resolved = manifest::ResolvedKastPaths {
         install_root: install_root.clone(),
@@ -264,14 +263,14 @@ fn activation_target_paths(
         config_root,
         shim_path: current_link.join(&bundle.cli_relative),
         active_binary: current_link.join(&bundle.cli_relative),
-        headless_runtime_libs_dir: headless_current_dir.join("runtime-libs"),
-        headless_idea_home: Some(headless_current_dir.join("idea-home")),
+        indexer_runtime_libs_dir: indexer_current_dir.join("runtime-libs"),
+        indexer_host_home: Some(indexer_current_dir.join("idea-home")),
     };
     Ok(ActivationTargetPaths {
         resolved,
         version_dir,
         current_link,
         previous_link,
-        headless_current_dir,
+        indexer_current_dir,
     })
 }

@@ -1,0 +1,225 @@
+package io.github.amichne.kast.indexer.gradle.settlement
+
+import io.github.amichne.kast.indexer.gradle.bootstrap.GradleReloadState
+import io.github.amichne.kast.indexer.gradle.bootstrap.GradleResolveState
+import io.github.amichne.kast.indexer.project.IdeaIndexState
+import io.github.amichne.kast.indexer.project.ProjectLifecycleState
+import java.time.Duration
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertInstanceOf
+import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Test
+
+class GradleModelSettlementAwaiterTest {
+    @Test
+    fun `scheduled import progresses through indexing and settles after ten stable observations`() {
+        val observations =
+            listOf(
+                observation(reload = GradleReloadState.SCHEDULED),
+                observation(
+                    reload = GradleReloadState.IN_PROGRESS,
+                    resolve = GradleResolveState.IN_PROGRESS,
+                ),
+                observation(index = IdeaIndexState.DUMB),
+            ) + List(10) { observation() }
+        val harness = SettlementHarness(observations)
+        val observer: () -> GradleImportObservation = harness::observe
+
+        val outcome = harness.awaiter(stableObservations = 10).await(observer)
+
+        val settled = assertInstanceOf(GradleModelSettlementOutcome.Settled::class.java, outcome)
+        assertEquals(13, settled.evidence.totalObservations)
+        assertEquals(10, settled.evidence.stableObservations)
+        assertEquals(observation(), settled.evidence.lastObservation)
+        assertTrue(settled.evidence.totalTransitions > 0)
+    }
+
+    @Test
+    fun `constant in-progress import times out without transitions and preserves its last state`() {
+        val stalled =
+            observation(
+                reload = GradleReloadState.IN_PROGRESS,
+                resolve = GradleResolveState.IN_PROGRESS,
+                index = IdeaIndexState.DUMB,
+            )
+        val harness = SettlementHarness(listOf(stalled))
+
+        val outcome = harness.awaiter(timeoutMillis = 3).await(harness::observe)
+
+        val timedOut = assertInstanceOf(GradleModelSettlementOutcome.TimedOut::class.java, outcome)
+        assertEquals(stalled, timedOut.evidence.lastObservation)
+        assertEquals(0, timedOut.evidence.totalTransitions)
+    }
+
+    @Test
+    fun `changing import times out with transition evidence`() {
+        val first = observation(reload = GradleReloadState.SCHEDULED)
+        val second =
+            observation(
+                reload = GradleReloadState.IN_PROGRESS,
+                resolve = GradleResolveState.IN_PROGRESS,
+            )
+        val harness = SettlementHarness(listOf(first, second))
+
+        val outcome = harness.awaiter(timeoutMillis = 4).await(harness::observe)
+
+        val timedOut = assertInstanceOf(GradleModelSettlementOutcome.TimedOut::class.java, outcome)
+        assertTrue(timedOut.evidence.totalTransitions > 0)
+    }
+
+    @Test
+    fun `timeout exception renders the last observed import state`() {
+        val stalled =
+            observation(
+                reload = GradleReloadState.IN_PROGRESS,
+                resolve = GradleResolveState.IN_PROGRESS,
+                index = IdeaIndexState.DUMB,
+            )
+        val harness = SettlementHarness(listOf(stalled))
+        val outcome = harness.awaiter(timeoutMillis = 2).await(harness::observe)
+
+        val error = GradleModelSettlementException(outcome)
+        val message = error.message.orEmpty()
+
+        assertTrue(message.contains("lastObservation=$stalled"))
+        assertTrue(message.contains("totalTransitions=0"))
+        assertFalse(message.contains("transitionProgress"))
+    }
+
+    @Test
+    fun `a noncandidate observation resets the stable counter`() {
+        val ready = observation()
+        val busy = observation(resolve = GradleResolveState.IN_PROGRESS)
+        val harness = SettlementHarness(listOf(ready, busy, ready, ready))
+
+        val outcome = harness.awaiter(stableObservations = 2).await(harness::observe)
+
+        val settled = assertInstanceOf(GradleModelSettlementOutcome.Settled::class.java, outcome)
+        assertEquals(4, settled.evidence.totalObservations)
+        assertEquals(2, settled.evidence.stableObservations)
+    }
+
+    @Test
+    fun `transition trace remains bounded and retains the final observation`() {
+        val scheduled = observation(reload = GradleReloadState.SCHEDULED)
+        val resolving = observation(resolve = GradleResolveState.IN_PROGRESS)
+        val harness = SettlementHarness(listOf(scheduled, resolving))
+
+        val outcome =
+            harness
+                .awaiter(timeoutMillis = 6, maxTransitionTraceEntries = 2)
+                .await(harness::observe)
+
+        val timedOut = assertInstanceOf(GradleModelSettlementOutcome.TimedOut::class.java, outcome)
+        assertEquals(2, timedOut.evidence.recentTransitions.size)
+        assertEquals(timedOut.evidence.lastObservation, timedOut.evidence.recentTransitions.last().observation)
+        assertTrue(timedOut.evidence.totalTransitions > timedOut.evidence.recentTransitions.size.toLong())
+    }
+
+    @Test
+    fun `interruption preserves the thread flag and returns typed evidence`() {
+        val harness = SettlementHarness(listOf(observation(resolve = GradleResolveState.IN_PROGRESS)))
+        val awaiter =
+            GradleModelSettlementAwaiter(
+                policy = policy(),
+                nanoTime = harness::nanoTime,
+                pause = { throw InterruptedException("test interruption") },
+            )
+
+        try {
+            val outcome = awaiter.await(harness::observe)
+
+            assertInstanceOf(GradleModelSettlementOutcome.Interrupted::class.java, outcome)
+            assertTrue(Thread.currentThread().isInterrupted)
+        } finally {
+            Thread.interrupted()
+        }
+    }
+
+    @Test
+    fun `disposed project terminates immediately with typed evidence`() {
+        val disposed = observation(lifecycle = ProjectLifecycleState.DISPOSED)
+        val harness = SettlementHarness(listOf(disposed))
+
+        val outcome = harness.awaiter().await(harness::observe)
+
+        val failed = assertInstanceOf(GradleModelSettlementOutcome.ProjectDisposed::class.java, outcome)
+        assertEquals(disposed, failed.evidence.lastObservation)
+        assertEquals(1, failed.evidence.totalObservations)
+    }
+
+    @Test
+    fun `representative transition sequence settles deterministically`() {
+        val harness =
+            SettlementHarness(
+                listOf(
+                    observation(reload = GradleReloadState.SCHEDULED),
+                    observation(
+                        reload = GradleReloadState.IN_PROGRESS,
+                        resolve = GradleResolveState.IN_PROGRESS,
+                    ),
+                    observation(index = IdeaIndexState.DUMB),
+                    observation(),
+                    observation(),
+                ),
+            )
+
+        val outcome = harness.awaiter(stableObservations = 2).await(harness::observe)
+
+        assertInstanceOf(GradleModelSettlementOutcome.Settled::class.java, outcome)
+    }
+
+    private fun policy(
+        timeoutMillis: Long = 100,
+        stableObservations: Int = 2,
+        maxTransitionTraceEntries: Int = 16,
+    ) =
+        GradleModelSettlementPolicy(
+            timeout = Duration.ofMillis(timeoutMillis),
+            observationInterval = Duration.ofMillis(1),
+            requiredStableObservations = stableObservations,
+            maxTransitionTraceEntries = maxTransitionTraceEntries,
+        )
+
+    private fun SettlementHarness.awaiter(
+        timeoutMillis: Long = 100,
+        stableObservations: Int = 2,
+        maxTransitionTraceEntries: Int = 16,
+    ) =
+        GradleModelSettlementAwaiter(
+            policy = policy(timeoutMillis, stableObservations, maxTransitionTraceEntries),
+            nanoTime = ::nanoTime,
+            pause = ::pause,
+        )
+
+    private fun observation(
+        reload: GradleReloadState = GradleReloadState.COMPLETED,
+        resolve: GradleResolveState = GradleResolveState.IDLE,
+        index: IdeaIndexState = IdeaIndexState.SMART,
+        lifecycle: ProjectLifecycleState = ProjectLifecycleState.ACTIVE,
+    ) = GradleImportObservation(reload, resolve, index, lifecycle)
+}
+
+private class SettlementHarness(
+    private val observations: List<GradleImportObservation>,
+) {
+    private var observationIndex: Int = 0
+    private var currentNanos: Long = 0
+
+    init {
+        require(observations.isNotEmpty())
+    }
+
+    fun observe(): GradleImportObservation {
+        val observation = observations[observationIndex % observations.size]
+        observationIndex += 1
+        return observation
+    }
+
+    fun nanoTime(): Long = currentNanos
+
+    fun pause(duration: Duration) {
+        currentNanos += duration.toNanos()
+    }
+}

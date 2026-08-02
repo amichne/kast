@@ -36,7 +36,7 @@ fn backend_module_filter_is_partial_when_backend_page_is_incomplete() {
         "modules": [],
         "schemaVersion": 5
     });
-    let backend = spawn_scripted_headless_backend(
+    let backend = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -60,8 +60,6 @@ fn backend_module_filter_is_partial_when_backend_page_is_incomplete() {
             "workspace-files",
             "--workspace-root",
             workspace.to_str().expect("UTF-8 workspace"),
-            "--backend",
-            "headless",
             "--kind",
             "source",
             "--module",

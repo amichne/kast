@@ -33,8 +33,6 @@ fn gradle_module_filter_is_partial_when_candidate_ownership_is_unknown() {
             "workspace-files",
             "--workspace-root",
             workspace.to_str().expect("UTF-8 workspace"),
-            "--backend",
-            "headless",
             "--kind",
             "source",
             "--module",

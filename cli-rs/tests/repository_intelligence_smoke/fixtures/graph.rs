@@ -178,7 +178,7 @@ fn seed_out_of_scope_repository_target(fixture: &WorkspaceIndexFixture) {
         .execute(
             "INSERT INTO file_metadata
              (prefix_id, filename, package_fq_id, package_state, package_unproven_reason, module_path, source_set)
-             VALUES (2, 'OutsideScope.kt', 2, 'PROVEN_NAMED', NULL, 'idea.other.test', 'test')",
+             VALUES (2, 'OutsideScope.kt', 2, 'PROVEN_NAMED', NULL, 'indexer.other.test', 'test')",
             [],
         )
         .expect("outside metadata");

@@ -18,6 +18,10 @@ require_absent() {
   [[ ! -e "$1" ]] || die "obsolete public path exists: $1"
 }
 
+require_present() {
+  [[ -f "$1" ]] || die "required documentation file is missing: $1"
+}
+
 require_not_contains() {
   ! grep -R -Fq --exclude-dir=internal --include='*.md' -- "$2" "$1" || die "found '$2' under $1"
 }
@@ -71,7 +75,7 @@ require_contains "${docs_root}/how-to/install-or-update.md" "current/libexec/kas
 require_contains "${docs_root}/how-to/install-or-update.md" "./install.sh --force"
 require_contains "${docs_root}/how-to/install-or-update.md" "--harness codex"
 require_contains "${docs_root}/how-to/install-or-update.md" "No remote marketplace checkout is required"
-require_contains "${docs_root}/tutorials/first-compiler-backed-task.md" "HeadlessGradleModelSettlementOutcome"
+require_contains "${docs_root}/tutorials/first-compiler-backed-task.md" "GradleModelSettlementOutcome"
 require_contains "${docs_root}/how-to/explore-kotlin-code.md" "complete reported coverage"
 require_contains "${docs_root}/how-to/plan-safe-edits.md" "one exact compiler identity"
 for command in up refresh files symbol graph check change apply; do
@@ -128,7 +132,7 @@ require_contains "$hidden_system_map" "## Public API coverage"
 require_contains "$hidden_system_map" "## End-to-end system flow"
 require_contains "$hidden_system_map" '<kast-view'
 for view in \
-  system-landscape runtime-components headless-runtime compiler-read \
+  system-landscape runtime-components indexer-runtime compiler-read \
   compiler-evidence semantic-mutation; do
   require_contains "$hidden_system_map" "$view"
 done
@@ -155,19 +159,21 @@ for source in \
   cli-rs/resources/kast/claude/hooks.json \
   cli-rs/resources/kast/copilot/hooks.json \
   cli-rs/src/execution/runtime/backend/workspace.rs \
-  cli-rs/src/execution/runtime/backend/headless_authority.rs \
+  cli-rs/src/execution/runtime/backend/workspace_admission.rs \
   cli-rs/src/agent/core/dispatch/commands.rs \
   cli-rs/src/agent/core/request.rs \
   cli-rs/protocol/source/commands.json \
   analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract/backend/AnalysisBackend.kt \
   analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcAnalysisDispatcher.kt \
   analysis-server/src/main/kotlin/io/github/amichne/kast/server/dispatch/RpcMethodRouter.kt \
-  backend-idea/src/main/kotlin/io/github/amichne/kast/idea/backend/KastPluginBackend.kt \
-  backend-headless/src/main/kotlin/io/github/amichne/kast/headless/runtime/HeadlessRuntime.kt \
+  indexer/src/main/kotlin/io/github/amichne/kast/idea/backend/KastIndexerBackend.kt \
+  indexer/src/main/kotlin/io/github/amichne/kast/indexer/KastIndexerRuntime.kt \
   index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/SqliteSourceIndexStore.kt; do
   require_contains "$hidden_system_map" "path: ${source}"
 done
 require_absent "${repo_root}/.agents/adr/0032-macos-idea-golden-pathway.md"
+require_absent "${docs_root}/internal/idea-integration"
+require_present "${docs_root}/internal/indexer/index.md"
 for record in "${repo_root}"/.agents/adr/[0-9]*.md; do
   require_contains "$hidden_system_map" \
     "path: .agents/adr/$(basename "$record")"
@@ -182,8 +188,10 @@ require_not_contains "$docs_root" "kast machine"
 require_not_contains "$docs_root" "raw/semantic-graph"
 require_not_contains "$docs_root" "kast ready --for kotlin"
 require_not_contains "$docs_root" "semanticGraph.state"
+retired_selector='--back''end idea'
+retired_build_task='buildIdea''Plugin'
 for retired_idea_surface in \
-  "IDEA plugin" "--backend idea" "buildIdeaPlugin" "background-open"; do
+  "IDEA plugin" "$retired_selector" "$retired_build_task" "background-open"; do
   require_not_contains "$docs_root" "$retired_idea_surface"
   require_not_contains_file "$readme" "$retired_idea_surface"
 done

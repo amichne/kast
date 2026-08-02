@@ -84,7 +84,7 @@ pub(crate) fn installed_backend_diagnostic(
         install
             .backends
             .iter()
-            .find(|backend| backend.name == BackendName::Headless.canonical())
+            .find(|backend| backend.name == BackendName::Indexer.canonical())
             .map(|backend| (install, backend))
     }) {
         let source_path = effective_backend_source_path(install, backend);
@@ -125,21 +125,18 @@ fn live_backend_diagnostic(
     }
     let Some(workspace_root) = workspace_root else {
         issues.push(
-            "Agent and Kotlin readiness require --workspace-root for exact-root headless admission."
+            "Agent and Kotlin readiness require --workspace-root for exact-root indexer admission."
                 .to_string(),
         );
         return Ok(DoctorAgentBackendDiagnostic {
             state: AgentResourceState::Missing,
-            kind: Some(BackendName::Headless.canonical().to_string()),
+            kind: Some(BackendName::Indexer.canonical().to_string()),
             version: installed_backend.version.clone(),
             revision: None,
             source_path: installed_backend.source_path.clone(),
         });
     };
-    match runtime::semantic_workspace_route_reuse_only(
-        Some(workspace_root.to_path_buf()),
-        Some(BackendName::Headless),
-    )? {
+    match runtime::semantic_workspace_route_reuse_only(Some(workspace_root.to_path_buf()))? {
         runtime::SemanticWorkspaceRoute::Admitted(admission) => Ok(DoctorAgentBackendDiagnostic {
             state: AgentResourceState::Managed,
             kind: Some(admission.backend_name().to_string()),
@@ -151,7 +148,7 @@ fn live_backend_diagnostic(
             issues.push(rejection.message);
             Ok(DoctorAgentBackendDiagnostic {
                 state: AgentResourceState::Missing,
-                kind: Some(BackendName::Headless.canonical().to_string()),
+                kind: Some(BackendName::Indexer.canonical().to_string()),
                 version: installed_backend.version.clone(),
                 revision: None,
                 source_path: installed_backend.source_path.clone(),
@@ -165,10 +162,10 @@ fn effective_backend_source_path(
     backend: &manifest::BackendComponentState,
 ) -> PathBuf {
     #[cfg(target_os = "macos")]
-    if install.profile == MACOS_INSTALLED_IDEA_SIDECAR_PROFILE
+    if install.platform.starts_with("macos-")
         && let Some(idea_home) = &backend.idea_home
     {
-        return Path::new(idea_home).join("plugins/kast-headless");
+        return Path::new(idea_home).join("plugins/kast-indexer");
     }
     #[cfg(not(target_os = "macos"))]
     let _ = install;
@@ -181,7 +178,7 @@ fn effective_backend_payload_exists(
     source_path: &Path,
 ) -> bool {
     #[cfg(target_os = "macos")]
-    if install.profile == MACOS_INSTALLED_IDEA_SIDECAR_PROFILE {
+    if install.platform.starts_with("macos-") {
         let plugin_lib = source_path.join("lib");
         return plugin_lib.is_dir()
             && fs::read_dir(plugin_lib).is_ok_and(|entries| {
@@ -204,17 +201,14 @@ mod tests {
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn installed_idea_sidecar_plugin_is_a_managed_backend_without_runtime_classpath() {
+    fn installed_macos_indexer_payload_is_managed_without_runtime_classpath() {
         let temp = tempfile::tempdir().unwrap();
         let idea_home = temp.path().join("idea-home");
-        let plugin_lib = idea_home.join("plugins/kast-headless/lib");
+        let plugin_lib = idea_home.join("plugins/kast-indexer/lib");
         std::fs::create_dir_all(&plugin_lib).unwrap();
-        std::fs::write(plugin_lib.join("kast-headless.jar"), "fixture").unwrap();
-        let install = install_with_backend(
-            MACOS_INSTALLED_IDEA_SIDECAR_PROFILE,
-            &temp.path().join("runtime-libs"),
-            &idea_home,
-        );
+        std::fs::write(plugin_lib.join("kast-indexer.jar"), "fixture").unwrap();
+        let install =
+            install_with_backend("macos-arm64", &temp.path().join("runtime-libs"), &idea_home);
 
         let diagnostic = installed_backend_diagnostic(Some(&install));
 
@@ -222,26 +216,24 @@ mod tests {
     }
 
     #[test]
-    fn non_sidecar_backend_still_requires_runtime_classpath() {
+    fn linux_indexer_still_requires_runtime_classpath() {
         let temp = tempfile::tempdir().unwrap();
         let idea_home = temp.path().join("idea-home");
-        let plugin_lib = idea_home.join("plugins/kast-headless/lib");
+        let plugin_lib = idea_home.join("plugins/kast-indexer/lib");
         std::fs::create_dir_all(&plugin_lib).unwrap();
-        std::fs::write(plugin_lib.join("kast-headless.jar"), "fixture").unwrap();
-        let install = install_with_backend(
-            "ubuntu-debian-headless",
-            &temp.path().join("runtime-libs"),
-            &idea_home,
-        );
+        std::fs::write(plugin_lib.join("kast-indexer.jar"), "fixture").unwrap();
+        let install =
+            install_with_backend("linux-x64", &temp.path().join("runtime-libs"), &idea_home);
 
         let diagnostic = installed_backend_diagnostic(Some(&install));
 
         assert_eq!(diagnostic.state, AgentResourceState::Missing);
     }
 
-    fn install_with_backend(profile: &str, runtime_libs: &Path, idea_home: &Path) -> InstallState {
+    fn install_with_backend(platform: &str, runtime_libs: &Path, idea_home: &Path) -> InstallState {
         serde_json::from_value(serde_json::json!({
-            "profile": profile,
+            "profile": crate::bundle::INDEXER_PROFILE,
+            "platform": platform,
             "roots": {
                 "install": "/install",
                 "bin": "/install/current/bin",
@@ -257,7 +249,7 @@ mod tests {
                 "activeBinary": "/install/current/libexec/kastctl"
             },
             "backends": [{
-                "name": "headless",
+                "name": "indexer",
                 "version": "test",
                 "installDir": idea_home.parent().unwrap().display().to_string(),
                 "runtimeLibsDir": runtime_libs.display().to_string(),

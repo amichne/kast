@@ -1,5 +1,5 @@
 use crate::SCHEMA_VERSION;
-use crate::cli::{BackendName, OutputFormat, PublicDemoArgs, RuntimeArgs};
+use crate::cli::{OutputFormat, PublicDemoArgs, RuntimeArgs};
 use crate::config;
 use crate::error::{CliError, Result};
 use crate::output;

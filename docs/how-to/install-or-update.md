@@ -2,7 +2,7 @@
 type: How-to Guide
 title: How to Install or Update Kast
 description: Install one verified Kast release and connect the agent harnesses you use.
-tags: [install, update, macos, linux, headless, agents]
+tags: [install, update, macos, linux, indexer, agents]
 code_sources:
   - path: install.sh
   - path: cli-rs/src/operations/install/bundle_install.rs
@@ -45,17 +45,15 @@ The default installation root is `~/.local/share/kast`.
 Both entrypoints contain identical bytes; the invoked name selects the command
 surface.
 
-## Force a clean reinstall
+## Force installation replacement
 
 ```console
 ./install.sh --force
 ```
 
-Forced setup removes the prior Kast installation, databases, registered
-workspace `.kast` metadata, current-directory ancestor `.kast` metadata
-through the user home, and known legacy Kast IDE files before reinstalling. It
-does not search the user home, remove workspace source checkouts, or remove
-unrelated IDE extensions.
+Forced setup replaces validated Kast-owned installation state and managed user
+commands before reinstalling. It preserves workspace indexes, source
+checkouts, and unrelated IDE extensions.
 
 ## Install a local or pinned bundle
 
@@ -83,10 +81,9 @@ kast
 kast up
 ```
 
-`kast up` reuses or starts one isolated headless process for the exact root. It
-does not open, close, focus, or route through a foreground IDE. It returns only
-after usable semantic evidence is available, or reports the typed blocker to
-act on.
+`kast up` reuses an eligible exact-root indexer. If none exists, it creates one
+isolated process for the root. It returns only after usable semantic evidence
+is available, or reports the typed blocker to act on.
 
 Refresh after source changes:
 

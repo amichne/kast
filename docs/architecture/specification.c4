@@ -110,12 +110,6 @@ specification {
       color primary
     }
   }
-  deploymentNode ideHost {
-    notation "IDE host"
-    style {
-      color secondary
-    }
-  }
   deploymentNode process {
     notation "Process"
     style {

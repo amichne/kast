@@ -13,7 +13,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
     !!! abstract "At a glance"
 
-        6 operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required.
+        5 operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required.
 
     ??? example "health — Basic health check"
 
@@ -27,7 +27,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | Signature | Description |
             |-----------|-------------|
             | `#!kotlin status: String` :material-information-outline:{ title="Default: &quot;ok&quot;" } | Health status string, always "ok" when the daemon is responsive. |
-            | `#!kotlin backendName: String` | Identifier of the analysis backend (e.g. "headless" or "idea"). |
+            | `#!kotlin backendName: String` | Identifier of the analysis backend (for example, "indexer"). |
             | `#!kotlin backendVersion: String` | Version string of the analysis backend. |
             | `#!kotlin workspaceRoot: String` | Absolute path of the workspace root directory. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
@@ -64,7 +64,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
     ??? example "runtime/status — Detailed runtime state including indexing progress"
 
-        Returns the full runtime state including indexing progress, backend identity, and workspace root. Use this to verify readiness before running analysis commands.
+        Returns the full runtime state including indexing progress, indexer identity, and workspace root. Use this to verify readiness before running analysis commands.
 
         === "Input"
 
@@ -128,63 +128,9 @@ daemon, including input/output schemas, examples, and behavioral notes.
             }
             ```
 
-    ??? example "runtime/open-project — Open an authenticated exact-root project in this runtime host"
-
-        Consumes a local one-shot request and opens its canonical root in this compatible IDEA application without replacing an existing project.
-
-        === "Input: RuntimeOpenProjectRequest"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin canonicalRoot: String` | Canonical absolute root of the project to open. |
-            | `#!kotlin requestId: String` | One-shot UUID authenticating the project-open request. |
-        === "Output: RuntimeOpenProjectResponse"
-
-            | Signature | Description |
-            |-----------|-------------|
-            | `#!kotlin result: RuntimeOpenProjectResult` | Whether the exact root was already open or was opened in a new project frame. |
-            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
-        === "Internal protocol"
-
-            ```text
-            JSON-RPC method: runtime/open-project
-            Params: see Request tab
-            ```
-        === "Request"
-
-            ```json
-            {
-                "method": "runtime/open-project",
-                "params": {
-                    "canonicalRoot": "/workspace",
-                    "requestId": "00000000-0000-4000-8000-000000000032"
-                },
-                "id": 1,
-                "jsonrpc": "2.0"
-            }
-            ```
-        === "Response"
-
-            ```json
-            {
-                "result": {
-                    "result": "ALREADY_OPEN",
-                    "schemaVersion": 5
-                },
-                "id": 1,
-                "jsonrpc": "2.0"
-            }
-            ```
-        !!! note "Behavioral notes"
-
-            - The response is flushed before IDEA begins opening a new project frame.
-            - Requests are exact-root, one-shot, short-lived, and restricted to the selected local host.
-
-        **Error codes** &nbsp;·&nbsp; `IDEA_OPEN_REQUEST_REJECTED`, `IDEA_VERSION_UNSUPPORTED`, `IDEA_PROJECT_OPEN_FAILED`
-
     ??? example "runtime/shutdown — Request runtime host shutdown after the response is flushed"
 
-        Requests that the runtime host shut down the current backend after returning a JSON-RPC response. IDEA hosts stop the plugin backend server and indexer without killing the IDE process; headless daemon process lifecycle is handled by the top-level `kast stop` command.
+        Requests that the runtime host shut down the current indexer after returning a JSON-RPC response. The top-level `kast stop` command also handles stale endpoint state.
 
         === "Input"
 
@@ -236,13 +182,13 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
             - The response is flushed before the lifecycle action runs, so callers can observe an accepted request.
             - Hosts without lifecycle support return a capability-not-supported JSON-RPC error.
-            - Prefer the top-level `kast stop` command for operator workflows; it handles stale descriptors and backend-specific cleanup.
+            - Prefer the top-level `kast stop` command for operator workflows; it handles stale descriptors and cleanup.
 
         **Error codes** &nbsp;·&nbsp; `CAPABILITY_NOT_SUPPORTED`
 
     ??? example "runtime/restart — Request runtime host restart after the response is flushed"
 
-        Requests that the runtime host rebuild the current backend after returning a JSON-RPC response. IDEA hosts restart the plugin backend server and indexer in the open IDE; headless daemon rebuilds are handled by the top-level `kast restart` command.
+        Requests that the runtime host restart the current indexer after returning a JSON-RPC response. The top-level `kast restart` command also waits for readiness.
 
         === "Input"
 
@@ -300,7 +246,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
     ??? example "capabilities — Advertised read and mutation capabilities"
 
-        Lists every read and mutation capability the current backend advertises, along with server limits. Query this before calling an operation to confirm it is available.
+        Lists every read and mutation capability the current indexer advertises, along with server limits. Query this before calling an operation to confirm it is available.
 
         === "Input"
 
@@ -1433,7 +1379,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             ```
         !!! note "Behavioral notes"
 
-            - PSI is used only inside the IDEA backend for enumeration and source ranges; no PSI or Analysis API object crosses the contract boundary.
+            - PSI is used only inside the indexer for enumeration and source ranges; no PSI or Analysis API object crosses the contract boundary.
             - The result is an atomic refresh acknowledgement; enumerate native graph nodes separately with generation-pinned keyset queries.
             - Compiler-resolved library and JDK targets are omitted and counted in coverage evidence.
 

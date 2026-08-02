@@ -207,15 +207,14 @@ mod tests {
     #[test]
     fn source_modules_render_as_plain_text_tree() {
         let rendered = render_source_modules_for_test(&[
-            ":backend:idea",
             ":analysis-api",
-            ":backend:headless",
+            ":indexer",
             "secondary",
         ]);
 
         assert!(
             rendered.contains(
-                "Source modules\n--------------\n- analysis-api\n- backend\n  - headless\n  - idea\n- secondary\n"
+                "Source modules\n--------------\n- analysis-api\n- indexer\n- secondary\n"
             ),
             "source modules should render as a sorted tree: {rendered}"
         );

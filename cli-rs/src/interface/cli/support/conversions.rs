@@ -2,7 +2,6 @@ impl From<RuntimeArgs> for DaemonStartArgs {
     fn from(value: RuntimeArgs) -> Self {
         Self {
             workspace_root: value.workspace_root,
-            backend_name: value.backend_name,
             runtime_libs_dir: None,
             idea_home: value.idea_home,
             socket_path: value.socket_path,

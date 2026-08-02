@@ -6,10 +6,10 @@ fn agent_graph_refresh_routes_selected_files_through_compiler_graph() {
     let workspace = temp.path().join("workspace");
     let source = workspace.join("src/Sample.kt");
     let removed = workspace.join("src/Removed.kt");
-    let socket_path = temp.path().join("headless.sock");
+    let socket_path = temp.path().join("indexer.sock");
     std::fs::create_dir_all(source.parent().expect("source parent")).expect("source directory");
     std::fs::write(&source, "package sample\nclass Sample\n").expect("source");
-    let handle = spawn_scripted_headless_backend(
+    let handle = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,

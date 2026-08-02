@@ -18,10 +18,10 @@ class ServerInstanceDescriptorSerializationTest {
         val valid = """
             {
               "workspaceRoot": "/workspace",
-              "backendName": "headless",
+              "backendName": "indexer",
               "backendVersion": "test",
               "transport": "uds",
-              "socketPath": "/workspace/.kast/headless.sock",
+              "socketPath": "/workspace/.kast/indexer.sock",
               "pid": 42,
               "runtimeInstanceId": "550e8400-e29b-41d4-a716-446655440000",
               "processStartEpochMillis": 1,
@@ -41,13 +41,13 @@ class ServerInstanceDescriptorSerializationTest {
             ),
             valid.replace("\"workspaceRoot\": \"/workspace\"", "\"workspaceRoot\": \"workspace\""),
             valid.replace("\"workspaceRoot\": \"/workspace\"", "\"workspaceRoot\": \"/workspace/../workspace\""),
-            valid.replace("\"headless\"", "\"idea\""),
+            valid.replace("\"indexer\"", "\"idea\""),
             valid.replace("\"backendVersion\": \"test\"", "\"backendVersion\": \"\""),
             valid.replace("\"backendVersion\": \"test\"", "\"backendVersion\": \"bad version\""),
             valid.replace("\"uds\"", "\"tcp\""),
             valid.replace(
-                "\"socketPath\": \"/workspace/.kast/headless.sock\"",
-                "\"socketPath\": \"workspace/.kast/headless.sock\"",
+                "\"socketPath\": \"/workspace/.kast/indexer.sock\"",
+                "\"socketPath\": \"workspace/.kast/indexer.sock\"",
             ),
             valid.replace("\"pid\": 42", "\"pid\": 0"),
             valid.replace("\"processStartEpochMillis\": 1", "\"processStartEpochMillis\": 0"),
@@ -72,7 +72,7 @@ class ServerInstanceDescriptorSerializationTest {
         val descriptor = ServerInstanceDescriptor(
             workspaceRoot = RuntimeWorkspaceRoot.parse("/workspace"),
             backendVersion = RuntimeImplementationVersion("test"),
-            socketPath = RuntimeSocketPath.parse("/workspace/.kast/headless.sock"),
+            socketPath = RuntimeSocketPath.parse("/workspace/.kast/indexer.sock"),
             ownership = ServerInstanceOwnership.Owned(
                 runtimeInstanceId = RuntimeInstanceId.parse("550e8400-e29b-41d4-a716-446655440000"),
                 processIdentity = RuntimeProcessIdentity(
@@ -110,10 +110,10 @@ class ServerInstanceDescriptorSerializationTest {
         assertFalse("ownership" in encoded)
         assertFalse("processIdentity" in encoded)
         assertEquals(JsonPrimitive("/workspace"), encoded["workspaceRoot"])
-        assertEquals(JsonPrimitive("headless"), encoded["backendName"])
+        assertEquals(JsonPrimitive("indexer"), encoded["backendName"])
         assertEquals(JsonPrimitive("test"), encoded["backendVersion"])
         assertEquals(JsonPrimitive("uds"), encoded["transport"])
-        assertEquals(JsonPrimitive("/workspace/.kast/headless.sock"), encoded["socketPath"])
+        assertEquals(JsonPrimitive("/workspace/.kast/indexer.sock"), encoded["socketPath"])
         assertEquals(JsonPrimitive(42), encoded["pid"])
         assertEquals(JsonPrimitive(DescriptorSchemaVersion.CURRENT.value), encoded["schemaVersion"])
         assertEquals(
@@ -128,10 +128,10 @@ class ServerInstanceDescriptorSerializationTest {
             """
                 {
                   "workspaceRoot": "/workspace",
-                  "backendName": "headless",
+                  "backendName": "indexer",
                   "backendVersion": "test",
                   "transport": "uds",
-                  "socketPath": "/workspace/.kast/headless.sock",
+                  "socketPath": "/workspace/.kast/indexer.sock",
                   "pid": 42
                 }
             """.trimIndent(),
@@ -147,10 +147,10 @@ class ServerInstanceDescriptorSerializationTest {
             """
                 {
                   "workspaceRoot": "/workspace",
-                  "backendName": "headless",
+                  "backendName": "indexer",
                   "backendVersion": "test",
                   "transport": "uds",
-                  "socketPath": "/workspace/.kast/headless.sock"
+                  "socketPath": "/workspace/.kast/indexer.sock"
                 }
             """.trimIndent(),
         )
@@ -170,10 +170,10 @@ class ServerInstanceDescriptorSerializationTest {
                 """
                     {
                       "workspaceRoot": "/workspace",
-                      "backendName": "headless",
+                      "backendName": "indexer",
                       "backendVersion": "test",
                       "transport": "uds",
-                      "socketPath": "/workspace/.kast/headless.sock",
+                      "socketPath": "/workspace/.kast/indexer.sock",
                       "pid": 42,
                       "schemaVersion": $unsupportedSchemaVersion
                     }

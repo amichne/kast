@@ -1,7 +1,7 @@
 package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.client.DescriptorRegistryPath
-import io.github.amichne.kast.api.client.HeadlessBackendName
+import io.github.amichne.kast.api.client.IndexerBackendName
 import io.github.amichne.kast.api.client.ProcessId
 import io.github.amichne.kast.api.client.ProcessStartEpochMillis
 import io.github.amichne.kast.api.client.RuntimeInstanceId
@@ -65,8 +65,8 @@ class DescriptorStoreTest {
         val runDirectoryAlias = tempDir.resolve("run-alias")
         Files.createDirectories(runDirectory)
         Files.createSymbolicLink(runDirectoryAlias, runDirectory)
-        val socketPath = RuntimeSocketPath.of(runDirectory.resolve("headless.sock"))
-        val aliasedSocketPath = RuntimeSocketPath.of(runDirectoryAlias.resolve("headless.sock"))
+        val socketPath = RuntimeSocketPath.of(runDirectory.resolve("indexer.sock"))
+        val aliasedSocketPath = RuntimeSocketPath.of(runDirectoryAlias.resolve("indexer.sock"))
         assertEquals(socketPath, aliasedSocketPath, "Socket path aliases must share one lock identity")
         val firstStore = DescriptorStore(
             DescriptorRegistryPath.of(tempDir.resolve("first-instances/daemons.json")),
@@ -86,7 +86,7 @@ class DescriptorStoreTest {
             firstResult.set(
                 runCatching {
                     firstStore.launchEndpoint(launchRequest(socketPath, effectiveOwner)) {
-                        bindTestEndpoint(socketPath, runDirectory.resolve("headless.sock")).also {
+                        bindTestEndpoint(socketPath, runDirectory.resolve("indexer.sock")).also {
                             firstBound.countDown()
                             check(allowFirstRegistration.await(5, TimeUnit.SECONDS)) {
                                 "Timed out waiting to register the first descriptor"
@@ -104,7 +104,7 @@ class DescriptorStoreTest {
                 runCatching {
                     secondStore.launchEndpoint(launchRequest(aliasedSocketPath, effectiveOwner)) {
                         secondBindEntered.set(true)
-                        bindTestEndpoint(aliasedSocketPath, runDirectoryAlias.resolve("headless.sock"))
+                        bindTestEndpoint(aliasedSocketPath, runDirectoryAlias.resolve("indexer.sock"))
                     }
                 },
             )
@@ -181,7 +181,7 @@ class DescriptorStoreTest {
         effectiveOwner: EffectiveProcessOwnerUid,
     ): EndpointLaunchRequest = EndpointLaunchRequest(
         workspaceRoot = RuntimeWorkspaceRoot.canonicalize(tempDir),
-        backendName = HeadlessBackendName.HEADLESS,
+        backendName = IndexerBackendName.INDEXER,
         backendVersion = RuntimeImplementationVersion("test"),
         socketPath = socketPath,
         runtimeInstanceId = RuntimeInstanceId.create(),

@@ -1,10 +1,10 @@
 deployment {
   environment exactRoot {
-    title "Exact-root headless pathway"
+    title "Exact-root Kast indexer"
     metadata {
-      backend "headless"
+      processKind "indexer"
       readiness "INDEXING then READY"
-      foregroundIDE "not an authority"
+      foregroundEditor "not an authority"
     }
 
     process cliProcess {
@@ -14,10 +14,10 @@ deployment {
       rpcClient = instanceOf kast.rpcClient
     }
 
-    process headlessJvm {
-      bootstrap = instanceOf kast.backend.headless
-      platform = instanceOf ideaPlatform
-      backend = instanceOf kast.backend.idea
+    process indexerProcess {
+      runtime = instanceOf kast.indexer.runtime
+      serverRuntime = instanceOf kast.indexer.serverRuntime
+      compiler = instanceOf kast.indexer.compiler
       dispatcher = instanceOf kast.server.dispatcher
       router = instanceOf kast.server.router
       orchestrator = instanceOf kast.server.orchestrator
@@ -32,11 +32,11 @@ deployment {
 }
 
 views {
-  deployment view headless-runtime {
-    title "Exact-root headless runtime"
-    description "Every supported host runs one isolated semantic process; a foreground IDE has no lifecycle or routing edge."
+  deployment view indexer-runtime {
+    title "Exact-root Kast indexer"
+    description "Kast reuses an eligible exact-root process or creates one isolated indexer."
     include exactRoot.**
-    style exactRoot.headlessJvm {
+    style exactRoot.indexerProcess {
       color secondary
     }
     style exactRoot.localState {

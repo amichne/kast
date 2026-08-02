@@ -19,8 +19,8 @@ the same verified release bundles through `install.sh`.
 Run the narrowest script or workflow contract that covers the edit. For docs
 contract changes, run both docs contract scripts and `zensical build --clean`.
 For release workflow changes, run `.github/scripts/release/test-release-workflow-contract.sh`.
-The release workflow owns the private headless payload and the four platform
-setup bundles. Every bundle carries `idea-home/plugins/kast-headless` inside
+The release workflow owns the private indexer payload and the four platform
+setup bundles. Every bundle carries `idea-home/plugins/kast-indexer` inside
 that payload and enters validation through its private `libexec/kastctl setup`.
 It must not publish a foreground IDEA ZIP or update feed.
 For CLI terminal command or executable example changes, run
@@ -33,14 +33,14 @@ complete development bundle and invokes `libexec/kastctl setup --source`.
 Umbrella source contracts must not rerun focused owners. The setup contract
 owns source presence, activation, rollback, and retired-path assertions; the runtime compatibility contract owns
 deterministic source and manifest rendering only. Rust unit and integration tests run in `rust-cli`, Kotlin and
-IDEA tests run in their Gradle owners, documentation rendering runs in the
+indexer tests run in their Gradle owners, documentation rendering runs in the
 documentation workflow, and installer, release, provenance, and asset
 contracts run once in their named jobs. A focused Rust integration test must
 not return success by skipping when an outer installer environment variable is
 absent.
 
-The Linux build-and-test job exclusively owns the JVM backend test suite and
-its reports. The source-bound Linux backend job is the sole pull-request
+The Linux build-and-test job exclusively owns the JVM indexer test suite and
+its reports. The source-bound Linux indexer job is the sole pull-request
 portable-distribution producer and owns its no-fat-jar assertion, artifact,
 and ledger. Do not add a platform build for an archive that is neither shipped
 nor consumed. Production macOS and Linux installation authority is the active
@@ -64,13 +64,13 @@ they remain in the output inventory without inflating the required
 pull-request critical path. Run `.github/scripts/ci/test-ci-workflow-model.sh`
 whenever jobs, `needs` edges, proof owners, canary classification, or timing
 evidence change.
-Workstation semantic proof runs through the exact-root isolated headless
-runtime and the active setup CLI. Foreground IDEA is not an installation,
+Workstation semantic proof runs through the exact-root Kast indexer and the
+active setup CLI. Foreground IDEA is not an installation,
 lifecycle, or semantic authority.
-Linux release headless packaging and action-runtime contracts remain separate
+Linux release indexer packaging and action-runtime contracts remain separate
 CI/release concerns and must not be described as developer-machine authority.
 
-`packaging/jetbrains/runtime-compatibility.json` owns typed installed-host
+`packaging/indexer/runtime-compatibility.json` owns typed installed-host
 runtime pairs and IntelliJ build ranges. It remains a non-semantic setup and
 admission input, not a readiness source or generated release asset. Run the
 dedicated runtime compatibility contract whenever that source or its metadata
@@ -83,9 +83,9 @@ against the exact downloaded file before consuming it. Do not add a publishing
 job that rebuilds a receipt-owned artifact; add a new producer receipt or make
 the publisher consume an existing one. Pull-request Linux packaging is owned
 by explicit release layers. `source-bound-cli` and
-`source-bound-headless-backend` build the single release CLI and backend while
+`source-bound-indexer` build the single release CLI and indexer while
 their required Rust and Kotlin validation jobs run independently.
-Downstream Ubuntu/Debian packaging consumes the verified release components
+Downstream Linux packaging consumes the verified release components
 without creating a developer-machine generation.
 Raw CLI archives contain the revision-matched `kast` binary.
 
@@ -110,10 +110,9 @@ For setup authority changes, run:
 ```console
 .github/scripts/ci/test-ci-workflow-model.sh
 .github/scripts/install/test-local-development-refresh-contract.sh
-.github/scripts/install/test-setup-contract.sh
 ```
 
-For installed-headless release distribution changes, run:
+For installed-indexer release distribution changes, run:
 
 ```console
 .github/scripts/runtime/test-runtime-compatibility-contract.sh

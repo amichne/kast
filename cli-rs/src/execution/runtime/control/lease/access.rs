@@ -1,10 +1,6 @@
 pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceLeaseResult> {
     let requested_root = exact_lease_root(&args.workspace_root)?;
-    let admission = admitted_lease_workspace(
-        requested_root,
-        Some(BackendName::Headless),
-        args.wait_timeout_ms,
-    )?;
+    let admission = admitted_lease_workspace(requested_root, args.wait_timeout_ms)?;
     let initial_installation =
         lease_installation_identity(admission.workspace_root(), admission.backend())?;
     let paths = WorkspaceLeasePaths::resolve()?;
@@ -80,7 +76,7 @@ pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceL
         })();
 
         if finalization.is_err() && ownership == WorkspaceLeaseOwnership::Started {
-            let _ = stop_exact_runtime(admission.workspace_root(), admission.backend(), &runtime);
+            let _ = stop_exact_runtime(admission.workspace_root(), &runtime);
         }
         finalization
     })
@@ -97,7 +93,6 @@ pub fn workspace_lease_release(args: AgentLeaseAccessArgs) -> Result<WorkspaceLe
 pub fn validate_workspace_lease_for_command(
     lease_id: &AgentWorkspaceLeaseId,
     workspace_root: Option<&Path>,
-    backend_name: Option<BackendName>,
 ) -> Result<ValidatedWorkspaceLease> {
     let workspace_root = workspace_root.ok_or_else(|| {
         CliError::new(
@@ -105,9 +100,6 @@ pub fn validate_workspace_lease_for_command(
             "Leased semantic commands require an explicit --workspace-root.",
         )
     })?;
-    if let Some(backend_name) = backend_name {
-        headless_authority::require_headless_backend(backend_name)?;
-    }
     let args = AgentLeaseAccessArgs {
         lease_id: lease_id.clone(),
         workspace_root: workspace_root.to_path_buf(),
@@ -222,13 +214,10 @@ fn access_workspace_lease(
 
 fn admitted_lease_workspace(
     workspace_root: PathBuf,
-    backend_name: Option<BackendName>,
     wait_timeout_ms: u64,
 ) -> Result<SemanticWorkspaceAdmission> {
-    let backend_name = backend_name.unwrap_or(BackendName::Headless);
     match semantic_workspace_route_for_runtime(lease_runtime_args(
         &workspace_root,
-        backend_name,
         wait_timeout_ms,
     ))? {
         SemanticWorkspaceRoute::Admitted(admission) => Ok(*admission),
@@ -266,10 +255,10 @@ fn lease_installation_identity(
     {
         let mut error = CliError::new(
             "WORKSPACE_LEASE_ENVIRONMENT_NOT_READY",
-            "The effective installed headless environment is not ready for lease acquisition or use.",
+            "The installed Kast indexer is not ready for lease acquisition or use.",
         );
         let issues = if doctor.issues.is_empty() {
-            vec!["The active release has no managed headless backend payload.".to_string()]
+            vec!["The active release has no managed indexer payload.".to_string()]
         } else {
             doctor.issues.clone()
         };

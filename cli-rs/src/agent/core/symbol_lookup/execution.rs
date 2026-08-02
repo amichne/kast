@@ -1,5 +1,5 @@
 const INDEXED_EXACT_FALLBACK_CODES: [&str; 9] = [
-    "NO_BACKEND_AVAILABLE",
+    "NO_INDEXER_AVAILABLE",
     "IDEA_HOST_NOT_FOUND",
     "DAEMON_START_ERROR",
     "DAEMON_UNREACHABLE",
@@ -43,10 +43,7 @@ fn execute_agent_symbol_exact(args: AgentSymbolArgs) -> AgentEnvelope {
         "includeSurroundingMembers": detailed,
     }));
     let compiler_request = json_rpc_request("symbol/resolve", compiler_params);
-    let session = match runtime::raw_rpc_session(
-        args.runtime.workspace_root.clone(),
-        args.runtime.backend_name,
-    ) {
+    let session = match runtime::raw_rpc_session(args.runtime.workspace_root.clone()) {
         Ok(session) => session,
         Err(error) => {
             return indexed_exact_or_compiler_error(

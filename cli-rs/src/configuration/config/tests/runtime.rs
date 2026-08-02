@@ -1,41 +1,4 @@
     #[test]
-    fn parses_runtime_default_backend() {
-        let temp = tempfile::tempdir().unwrap();
-        let config_file = temp.path().join("config.toml");
-        fs::write(
-            &config_file,
-            r#"[runtime]
-defaultBackend = "auto"
-"#,
-        )
-        .unwrap();
-
-        let mut config = KastConfig::defaults();
-        config.apply(read_partial_config(&config_file).unwrap());
-
-        assert_eq!(config.runtime.default_backend, RuntimeDefaultBackend::Auto);
-    }
-
-    #[test]
-    fn parses_runtime_strict_plugin_matching() {
-        let temp = tempfile::tempdir().unwrap();
-        let config_file = temp.path().join("config.toml");
-        fs::write(
-            &config_file,
-            r#"[runtime]
-strictPluginMatching = false
-"#,
-        )
-        .unwrap();
-
-        let mut config = KastConfig::defaults();
-        assert!(config.runtime.strict_plugin_matching);
-        config.apply(read_partial_config(&config_file).unwrap());
-
-        assert!(!config.runtime.strict_plugin_matching);
-    }
-
-    #[test]
     fn codex_hooks_default_enabled_and_parse_independently() {
         let temp = tempfile::tempdir().unwrap();
         let config_file = temp.path().join("config.toml");
@@ -85,8 +48,8 @@ installRoot = "{}"
         assert_eq!(config.paths.socket_dir, defaults.paths.socket_dir);
         assert_eq!(config.cli.binary_path, defaults.cli.binary_path);
         assert_eq!(
-            config.backends.headless.runtime_libs_dir,
-            defaults.backends.headless.runtime_libs_dir
+            config.indexer.runtime_libs_dir,
+            defaults.indexer.runtime_libs_dir
         );
     }
 
@@ -103,7 +66,6 @@ installRoot = "{}"
         let explicit_descriptor = temp.path().join("runtime/descriptors");
         let explicit_socket = temp.path().join("runtime/socket");
         let explicit_binary = temp.path().join("custom/kast");
-        let explicit_runtime_libs = temp.path().join("custom/runtime-libs");
         let first_config = temp.path().join("first.toml");
         let second_config = temp.path().join("second.toml");
         fs::write(
@@ -119,9 +81,6 @@ runtimeDir = "{}"
 descriptorDir = "{}"
 socketDir = "{}"
 
-[backends.headless]
-runtimeLibsDir = "{}"
-
 [cli]
 binaryPath = "{}"
 "#,
@@ -133,7 +92,6 @@ binaryPath = "{}"
                 explicit_runtime.display(),
                 explicit_descriptor.display(),
                 explicit_socket.display(),
-                explicit_runtime_libs.display(),
                 explicit_binary.display()
             ),
         )
@@ -164,7 +122,7 @@ installRoot = "{}"
         assert_eq!(config.paths.socket_dir, defaults.paths.socket_dir);
         assert_eq!(config.cli.binary_path, defaults.cli.binary_path);
         assert_eq!(
-            config.backends.headless.runtime_libs_dir,
-            defaults.backends.headless.runtime_libs_dir
+            config.indexer.runtime_libs_dir,
+            defaults.indexer.runtime_libs_dir
         );
     }

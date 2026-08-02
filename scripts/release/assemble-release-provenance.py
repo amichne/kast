@@ -6,22 +6,12 @@ from pathlib import Path
 
 
 REQUIRED_PLATFORMS = {
-    "cli-linux-arm64",
-    "cli-linux-x64",
-    "cli-macos-arm64",
-    "cli-macos-x64",
-    "gradle-ro-cache",
-    "headless-linux-x64",
     "openapi",
-    "runtime-manifest",
     "setup-linux-arm64",
     "setup-linux-x64",
     "setup-macos-arm64",
     "setup-macos-x64",
-    "ubuntu-debian-headless-x86_64",
 }
-OPTIONAL_PLATFORMS: set[str] = set()
-SUPPORTED_PLATFORMS = REQUIRED_PLATFORMS | OPTIONAL_PLATFORMS
 
 
 def fail(message: str) -> None:
@@ -61,11 +51,21 @@ def stable_values(values: set[object]) -> list[object]:
     return sorted(values, key=lambda value: str(value))
 
 
+def required_assets(release_tag: str) -> dict[str, str]:
+    return {
+        "openapi": "openapi.yaml",
+        "setup-linux-arm64": f"kast-linux-arm64-{release_tag}.tar.gz",
+        "setup-linux-x64": f"kast-linux-x64-{release_tag}.tar.gz",
+        "setup-macos-arm64": f"kast-macos-arm64-{release_tag}.tar.gz",
+        "setup-macos-x64": f"kast-macos-x64-{release_tag}.tar.gz",
+    }
+
+
 def validate(entries: list[dict], *, release_tag: str) -> None:
     seen_platforms = [entry.get("platformId") for entry in entries]
     platform_set = set(seen_platforms)
     missing_provenance = REQUIRED_PLATFORMS - platform_set
-    unexpected_provenance = platform_set - SUPPORTED_PLATFORMS
+    unexpected_provenance = platform_set - REQUIRED_PLATFORMS
     duplicate_provenance = stable_values({
         platform for platform in platform_set if seen_platforms.count(platform) > 1
     })
@@ -78,18 +78,17 @@ def validate(entries: list[dict], *, release_tag: str) -> None:
             f"duplicate={duplicate_provenance}"
         )
 
+    expected_assets = required_assets(release_tag)
     for entry in entries:
         platform = entry.get("platformId", "<unknown>")
         asset_name = entry.get("assetName")
         asset_digest = entry.get("assetDigest")
-        if not isinstance(asset_name, str) or not (
-            asset_name.endswith(".zip")
-            or asset_name.endswith(".tar.gz")
-            or asset_name.endswith(".tar.zst")
-            or asset_name.endswith(".json")
-            or asset_name.endswith(".yaml")
-        ):
-            fail(f"provenance entry for {platform} has no supported assetName")
+        expected_asset = expected_assets.get(platform)
+        if asset_name != expected_asset:
+            fail(
+                f"provenance asset mismatch for {platform}: "
+                f"expected {expected_asset}, got {asset_name}"
+            )
         if (
             not isinstance(asset_digest, str)
             or not asset_digest.startswith("sha256:")

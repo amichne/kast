@@ -38,18 +38,23 @@ pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_h
     let control_binary = default_libexec_dir(home).join("kastctl");
     let agent_binary = default_bin_dir(home).join("kast");
     let config_root = install_root.join("current/config");
-    let backend_dir = install_root.join(format!(
-        "current/lib/backends/headless-{}",
+    let indexer_dir = install_root.join(format!(
+        "current/lib/backends/indexer-{}",
         env!("CARGO_PKG_VERSION")
     ));
-    let runtime_libs_dir = backend_dir.join("runtime-libs");
+    let runtime_libs_dir = indexer_dir.join("runtime-libs");
+    let host_home = indexer_dir.join("idea-home");
+    let indexer_payload_lib = host_home.join("plugins/kast-indexer/lib");
     std::fs::create_dir_all(default_bin_dir(home)).expect("bin directory");
     std::fs::create_dir_all(default_libexec_dir(home)).expect("libexec directory");
     std::fs::create_dir_all(&install_root).expect("install root");
     std::fs::create_dir_all(&config_root).expect("config root");
-    std::fs::create_dir_all(&runtime_libs_dir).expect("headless runtime libs");
+    std::fs::create_dir_all(&runtime_libs_dir).expect("indexer runtime libs");
+    std::fs::create_dir_all(&indexer_payload_lib).expect("indexer payload lib");
     std::fs::write(runtime_libs_dir.join("classpath.txt"), "fixture.jar\n")
-        .expect("headless runtime classpath");
+        .expect("indexer runtime classpath");
+    std::fs::write(indexer_payload_lib.join("kast-indexer.jar"), "fixture")
+        .expect("indexer payload jar");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &control_binary).expect("active Kast control binary");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &agent_binary).expect("active Kast agent binary");
     std::fs::write(
@@ -59,7 +64,7 @@ pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_h
             "installId": "current-cli-test-install",
             "releaseDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             "manifestDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            "profile": "user-local",
+            "profile": "indexer",
             "activeVersion": env!("CARGO_PKG_VERSION"),
             "createdAt": "unix:1",
             "updatedAt": "unix:1",
@@ -79,12 +84,14 @@ pub(crate) fn write_current_cli_install_manifest_for_test(home: &Path, _config_h
             },
             "schemas": {"manifest": 1, "workspaceRegistry": 1, "symbolIndex": 3},
             "version": env!("CARGO_PKG_VERSION"),
-            "components": ["cli", "backend:headless"],
+            "platform": if cfg!(target_os = "macos") { "macos-test" } else { "linux-test" },
+            "components": ["cli", "indexer", "manifest"],
             "backends": [{
-                "name": "headless",
+                "name": "indexer",
                 "version": "0.7.11",
-                "installDir": backend_dir.display().to_string(),
-                "runtimeLibsDir": runtime_libs_dir.display().to_string()
+                "installDir": indexer_dir.display().to_string(),
+                "runtimeLibsDir": runtime_libs_dir.display().to_string(),
+                "ideaHome": host_home.display().to_string()
             }],
             "schemaVersion": 3
         }))
@@ -155,118 +162,6 @@ pub(crate) fn write_legacy_local_install_for_test(home: &Path, config_home: &Pat
     shim
 }
 
-pub(crate) fn write_macos_plugin_workspace_metadata(workspace: &Path) {
-    write_macos_plugin_workspace_metadata_for_cli(
-        workspace,
-        Path::new(env!("CARGO_BIN_EXE_kast")),
-        env!("CARGO_PKG_VERSION"),
-    );
-}
-
-pub(crate) fn write_macos_plugin_workspace_metadata_at_home(workspace: &Path, home: &Path) {
-    write_macos_plugin_workspace_metadata_for_cli_at_home(
-        workspace,
-        home,
-        Path::new(env!("CARGO_BIN_EXE_kast")),
-        env!("CARGO_PKG_VERSION"),
-    );
-}
-
-pub(crate) fn write_macos_plugin_workspace_metadata_for_cli(
-    workspace: &Path,
-    cli_binary: &Path,
-    cli_version: &str,
-) {
-    let home = inferred_fixture_home(workspace);
-    write_macos_plugin_workspace_metadata_for_cli_at_home(
-        workspace,
-        &home,
-        cli_binary,
-        cli_version,
-    );
-}
-
-fn write_macos_plugin_workspace_metadata_for_cli_at_home(
-    workspace: &Path,
-    home: &Path,
-    cli_binary: &Path,
-    cli_version: &str,
-) {
-    #[cfg(target_os = "macos")]
-    {
-        let workspace: PathBuf = workspace.components().collect();
-        let metadata = macos_plugin_workspace_metadata_path_at_home(&workspace, home);
-        std::fs::create_dir_all(metadata.parent().expect("metadata parent")).expect("metadata dir");
-        std::fs::write(
-            metadata,
-            serde_json::to_string_pretty(&serde_json::json!({
-                "schemaVersion": 3,
-                "preparedBy": "kast-intellij-plugin",
-                "workspaceRoot": workspace.display().to_string(),
-                "cliBinary": cli_binary.display().to_string(),
-                "backend": "idea",
-                "socketPath": default_socket_path_for_test(&workspace).display().to_string(),
-                "compatibility": {
-                    "pluginVersion": cli_version,
-                    "cliVersion": cli_version,
-                    "protocolRevision": 2,
-                    "workspaceMetadataRevision": 3,
-                    "readCapabilities": [
-                        "RESOLVE_SYMBOL",
-                        "FIND_REFERENCES",
-                        "CALL_HIERARCHY",
-                        "TYPE_HIERARCHY",
-                        "SEMANTIC_INSERTION_POINT",
-                        "DIAGNOSTICS",
-                        "FILE_OUTLINE",
-                        "WORKSPACE_SYMBOL_SEARCH",
-                        "WORKSPACE_SEARCH",
-                        "WORKSPACE_FILES",
-                        "IMPLEMENTATIONS",
-                        "CODE_ACTIONS",
-                        "COMPLETIONS"
-                    ],
-                    "mutationCapabilities": [
-                        "RENAME",
-                        "APPLY_EDITS",
-                        "FILE_OPERATIONS",
-                        "OPTIMIZE_IMPORTS",
-                        "REFRESH_WORKSPACE"
-                    ],
-                    "runtimeIdentity": {
-                        "implementationVersion": cli_version,
-                        "backendKind": "IDEA"
-                    }
-                },
-                "requiredArtifacts": [
-                    "workspace.json"
-                ]
-            }))
-            .expect("metadata json"),
-        )
-        .expect("metadata");
-    }
-    #[cfg(not(target_os = "macos"))]
-    {
-        let _ = (workspace, home, cli_binary, cli_version);
-    }
-}
-
-#[cfg(target_os = "macos")]
-pub(crate) fn macos_plugin_workspace_metadata_path(workspace: &Path) -> PathBuf {
-    workspace_data_directory_for_test(workspace).join("workspace.json")
-}
-
-#[cfg(not(target_os = "macos"))]
-pub(crate) fn macos_plugin_workspace_metadata_path(workspace: &Path) -> PathBuf {
-    workspace.join("workspace.json")
-}
-
-#[cfg(target_os = "macos")]
-fn macos_plugin_workspace_metadata_path_at_home(workspace: &Path, home: &Path) -> PathBuf {
-    workspace_data_directory_for_test_at_home(workspace, home).join("workspace.json")
-}
-
 pub(crate) fn workspace_database_path_for_test(workspace: &Path) -> PathBuf {
     workspace_data_directory_for_test(workspace).join("cache/source-index.db")
 }
@@ -321,13 +216,10 @@ fn workspace_data_directory_for_test_at_home(workspace: &Path, home: &Path) -> P
         std::collections::BTreeMap::new()
     };
     let key = workspace.display().to_string();
-    let id = registry
-        .get(&key)
-        .cloned()
-        .unwrap_or_else(|| {
-            use sha2::{Digest, Sha256};
-            hex::encode(Sha256::digest(key.as_bytes()))[..12].to_string()
-        });
+    let id = registry.get(&key).cloned().unwrap_or_else(|| {
+        use sha2::{Digest, Sha256};
+        hex::encode(Sha256::digest(key.as_bytes()))[..12].to_string()
+    });
     let sanitized = sanitized_workspace_segment(&workspace.display().to_string());
     workspaces_root
         .join("local")

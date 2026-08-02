@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 2,
+  "runtimeBuildRange": {
+    "sinceBuild": "261",
+    "untilBuild": null
+  },
+  "supportedPairs": [
+    {
+      "relation": "same-release",
+      "indexerVersion": "{releaseVersion}",
+      "cliVersion": "{releaseVersion}",
+      "protocolRevision": 2,
+      "workspaceMetadataRevision": 3,
+      "runtime": {
+        "implementationVersion": "{releaseVersion}"
+      },
+      "requiredCapabilities": [
+        {
+          "kind": "READ",
+          "name": "DIAGNOSTICS"
+        },
+        {
+          "kind": "READ",
+          "name": "RESOLVE_SYMBOL"
+        },
+        {
+          "kind": "READ",
+          "name": "WORKSPACE_FILES"
+        },
+        {
+          "kind": "MUTATION",
+          "name": "APPLY_EDITS"
+        },
+        {
+          "kind": "MUTATION",
+          "name": "REFRESH_WORKSPACE"
+        },
+        {
+          "kind": "MUTATION",
+          "name": "RENAME"
+        }
+      ],
+      "optionalCapabilities": [
+        {
+          "kind": "READ",
+          "name": "CALL_HIERARCHY"
+        },
+        {
+          "kind": "READ",
+          "name": "CODE_ACTIONS"
+        },
+        {
+          "kind": "READ",
+          "name": "COMPLETIONS"
+        },
+        {
+          "kind": "READ",
+          "name": "FILE_OUTLINE"
+        },
+        {
+          "kind": "READ",
+          "name": "FIND_REFERENCES"
+        },
+        {
+          "kind": "READ",
+          "name": "IMPLEMENTATIONS"
+        },
+        {
+          "kind": "READ",
+          "name": "SEMANTIC_GRAPH"
+        },
+        {
+          "kind": "READ",
+          "name": "SEMANTIC_INSERTION_POINT"
+        },
+        {
+          "kind": "READ",
+          "name": "TYPE_HIERARCHY"
+        },
+        {
+          "kind": "READ",
+          "name": "WORKSPACE_SEARCH"
+        },
+        {
+          "kind": "READ",
+          "name": "WORKSPACE_SYMBOL_SEARCH"
+        },
+        {
+          "kind": "MUTATION",
+          "name": "FILE_OPERATIONS"
+        },
+        {
+          "kind": "MUTATION",
+          "name": "OPTIMIZE_IMPORTS"
+        }
+      ],
+      "evidence": [
+        ".github/scripts/runtime/test-runtime-compatibility-contract.sh",
+        "cli-rs/tests/runtime/installed_idea_sidecar_smoke/main.rs"
+      ]
+    }
+  ]
+}

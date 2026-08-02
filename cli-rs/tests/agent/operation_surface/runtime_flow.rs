@@ -5,7 +5,7 @@ fn dependent_symbol_command_observes_the_completed_edit() {
         &fixture.home,
         &fixture.config_home,
         &fixture.workspace,
-        &fixture.temp.path().join("headless.sock"),
+        &fixture.temp.path().join("indexer.sock"),
         Some(mutation_result(false)),
         true,
     );
@@ -114,7 +114,7 @@ fn spawn_operation_backend(
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::write(
         config_home.join("config.toml"),
-        "[runtime]\ndefaultBackend = \"headless\"\n",
+        "[indexer]\nhostCommand = \"idea\"\n",
     )
     .expect("config");
     let listener = UnixListener::bind(socket_path).expect("bind backend");
@@ -123,7 +123,7 @@ fn spawn_operation_backend(
         serde_json::to_vec_pretty(&json!([runtime_descriptor_for_test(
             &workspace,
             socket_path,
-            "headless",
+            "indexer",
             "test",
         )]))
         .expect("descriptor JSON"),
@@ -151,7 +151,7 @@ fn spawn_operation_backend(
                     "healthy": true,
                     "active": true,
                     "indexing": false,
-                    "backendName": "headless",
+                    "backendName": "indexer",
                     "backendVersion": "test",
                     "workspaceRoot": workspace,
                     "sourceModuleNames": [":fixture"],
@@ -159,7 +159,7 @@ fn spawn_operation_backend(
                     "schemaVersion": 5
                 }),
                 "capabilities" => json!({
-                    "backendName": "headless",
+                    "backendName": "indexer",
                     "backendVersion": "test",
                     "workspaceRoot": workspace,
                     "readCapabilities": ["symbol/resolve"],

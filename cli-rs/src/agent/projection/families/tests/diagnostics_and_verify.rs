@@ -139,7 +139,7 @@
                         "name": "runtime-status", "method": "runtime/status", "mutates": false,
                         "ok": true,
                         "result": {
-                            "state": "READY", "backendName": "headless",
+                            "state": "READY", "backendName": "indexer",
                             "backendVersion": "test", "workspaceRoot": "/workspace"
                         },
                         "error": null
@@ -202,7 +202,7 @@
                     "name": "runtime-status", "method": "runtime/status", "mutates": false,
                     "ok": true,
                     "result": {
-                        "state": "READY", "backendName": "headless",
+                        "state": "READY", "backendName": "indexer",
                         "backendVersion": "test", "workspaceRoot": "/workspace"
                     },
                     "error": null
@@ -213,7 +213,7 @@
                     "error": {
                         "code": "CAPABILITIES_UNAVAILABLE",
                         "message": "Capabilities are not ready",
-                        "details": {"backendName": "headless", "indexing": true}
+                        "details": {"backendName": "indexer", "indexing": true}
                     }
                 }),
             ],
@@ -225,7 +225,7 @@
         let error = projected.error.expect("capabilities error");
 
         assert_eq!(error.code, "CAPABILITIES_UNAVAILABLE");
-        assert_eq!(error.details["backendName"], "headless");
+        assert_eq!(error.details["backendName"], "indexer");
         assert_eq!(error.details["indexing"], true);
     }
 

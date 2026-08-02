@@ -64,7 +64,7 @@ fn admit_workspace_files_query(
         .collect();
     let admitted_query = AdmittedWorkspaceFilesQueryIdentity {
         canonical_workspace_root,
-        backend: args.runtime.backend_name.map(BackendName::canonical),
+        backend: None,
         filters,
         kind_domain: args.kind_domain().canonical(),
         view: workspace_files_view_name(&args.view),

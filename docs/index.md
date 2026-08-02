@@ -1,13 +1,14 @@
 # Kast
 
-Kast gives coding agents compiler-backed Kotlin evidence from one isolated
-headless runtime for the exact workspace. A foreground editor can be open or
-closed; it is not part of Kast routing or evidence production.
+Kast gives coding agents compiler-backed Kotlin evidence from one exact-root
+indexer. Kast reuses an eligible indexer for that workspace or creates an
+isolated one. A foreground editor is not part of routing or evidence
+production.
 
 ```mermaid
 flowchart LR
     task["Kotlin task in an agent"] --> route["Exact workspace route"]
-    route --> compiler["Exact-root headless compiler"]
+    route --> compiler["Exact-root Kast indexer"]
     compiler --> result["Typed, source-located evidence"]
     result --> task
 ```
@@ -50,7 +51,7 @@ Choose the page that matches what you need now.
     ---
 
     Learn why Kast binds compiler evidence to an exact workspace and how the
-    runtime layers fit together.
+    indexer and evidence layers fit together.
 
     [:octicons-arrow-right-24: Architecture](explanation/architecture.md)
 

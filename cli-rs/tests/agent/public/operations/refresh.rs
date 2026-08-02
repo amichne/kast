@@ -70,7 +70,7 @@ fn refresh_bootstraps_clean_pending_graph_files() {
     let source = workspace.join("src/main/kotlin/sample/Source0000.kt");
     let failure_id = uuid::Uuid::new_v4().hyphenated().to_string();
     let socket = fixture.path().join("clean-refresh.sock");
-    let backend = spawn_scripted_headless_backend_for_invocations(
+    let backend = spawn_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
@@ -116,7 +116,7 @@ fn refresh_external_projects_only_actionable_outcomes() {
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let socket = fixture.path().join("external.sock");
-    let backend = spawn_scripted_headless_backend(
+    let backend = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -186,7 +186,7 @@ fn refresh_external_not_found_is_an_actionable_failure() {
     std::fs::write(workspace.join("settings.gradle.kts"), "").expect("settings");
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let socket = fixture.path().join("external-not-found.sock");
-    let backend = spawn_scripted_headless_backend(
+    let backend = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,
@@ -235,7 +235,7 @@ fn refresh_removes_graph_facts_without_diagnosing_a_deleted_file() {
     let _index = seed_empty_graph_scope(&workspace);
     let removed = workspace.join("src/Removed.kt");
     let socket = fixture.path().join("removed-refresh.sock");
-    let backend = spawn_scripted_headless_backend_for_invocations(
+    let backend = spawn_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,

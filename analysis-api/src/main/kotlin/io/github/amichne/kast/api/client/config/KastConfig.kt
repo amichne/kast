@@ -7,15 +7,12 @@ import java.nio.file.Path
 
 data class KastConfig(
     val server: ServerConfig,
-    val runtime: RuntimeConfig,
-    val projectOpen: ProjectOpenConfig,
     val indexing: IndexingConfig,
     val cache: CacheConfig,
     val watcher: WatcherConfig,
     val gradle: GradleConfig,
     val telemetry: TelemetryConfig,
     val profiling: ProfilingConfig,
-    val backends: BackendsConfig,
     val paths: PathsConfig,
     val cli: CliConfig,
     val codex: CodexConfig = CodexConfig(),
@@ -50,21 +47,6 @@ data class KastConfig(
                     maxResults = ServerMaxResults(500),
                     requestTimeoutMillis = ServerRequestTimeoutMillis(30_000L),
                     maxConcurrentRequests = ServerMaxConcurrentRequests(4),
-                ),
-                runtime = RuntimeConfig(
-                    defaultBackend = RuntimeDefaultBackend("auto"),
-                    strictPluginMatching = RuntimeStrictPluginMatching(true),
-                    ideaLaunch = IdeaLaunchConfig(
-                        enabled = IdeaLaunchEnabled(false),
-                        command = IdeaLaunchCommand("idea"),
-                        waitTimeoutMillis = IdeaLaunchWaitTimeoutMillis(90_000L),
-                    ),
-                ),
-                projectOpen = ProjectOpenConfig(
-                    profileAutoInit = ProjectOpenProfileAutoInit(true),
-                    profile = ProjectOpenProfile(ProjectOpenProfile.JETBRAINS_PLUGIN),
-                    autoExcludeGit = ProjectOpenAutoExcludeGit(true),
-                    gradleLoadEnabled = ProjectOpenGradleLoadEnabled(true),
                 ),
                 codex = CodexConfig(
                     hooks = CodexHooksConfig(
@@ -114,16 +96,6 @@ data class KastConfig(
                     otlpEndpoint = ProfilingOtlpEndpoint(OptionalConfigString.Unset),
                     emitManifest = ProfilingEmitManifest(true),
                 ),
-                backends = BackendsConfig(
-                    headless = HeadlessBackendConfig(
-                        enabled = HeadlessBackendEnabled(true),
-                        runtimeLibsDir = HeadlessRuntimeLibsDir(
-                            OptionalConfigString(resolvedPaths.headlessRuntimeLibsDir.toString()),
-                        ),
-                        ideaHome = HeadlessIdeaHome(OptionalConfigString.Unset),
-                    ),
-                    idea = IdeaBackendConfig(enabled = IdeaBackendEnabled(true)),
-                ),
                 paths = paths,
                 cli = CliConfig(binaryPath = CliBinaryPath(resolvedPaths.cliBinary.toString())),
             )
@@ -152,39 +124,10 @@ data class KastConfig(
         }
 
         /**
-         * Loads config for the IDEA-hosted backend.
-         *
-         * Global config remains authoritative for install and runtime paths. The
-         * workspace config may only override IDEA-owned logical settings so a
-         * project-local config cannot redirect the IDE to a different binary,
-         * cache, descriptor, socket, or headless runtime layout.
-         */
-        fun loadIdea(
-            workspaceRoot: Path,
-            configHome: () -> Path = { kastConfigHome() },
-            workspaceDirectoryResolver: WorkspaceDirectoryResolver = WorkspaceDirectoryResolver(),
-            overrides: KastConfigOverride = KastConfigOverride(),
-        ): KastConfig {
-            val globalConfig = configHome().resolve("config.toml")
-            val workspaceConfig = workspaceDirectoryResolver.workspaceDataDirectory(workspaceRoot).resolve("config.toml")
-            val globalOverrides = listOf(globalConfig)
-                .filter(Files::isRegularFile)
-                .let(::loadConfigOverrides)
-            val workspaceOverrides = listOf(workspaceConfig)
-                .filter(Files::isRegularFile)
-                .let(::loadConfigOverrides)
-                .ideaWorkspaceOverride()
-            return defaults()
-                .merge(globalOverrides)
-                .merge(workspaceOverrides)
-                .merge(overrides)
-        }
-
-        /**
          * Loads the Rust CLI's fully resolved runtime configuration handoff.
          *
          * This path intentionally avoids TOML parsing in the JVM backend; the
-         * Rust CLI owns config file parsing and passes this JSON to headless.
+         * Rust CLI owns config file parsing and passes this JSON to the indexer.
          */
         fun loadResolvedJson(
             configFile: Path,

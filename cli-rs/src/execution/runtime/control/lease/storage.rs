@@ -236,7 +236,7 @@ mod workspace_lease_tests {
             generation: "generation-1".to_string(),
             environment_sha256: "a".repeat(64),
             workspace_root: PathBuf::from("/workspace"),
-            backend_name: BackendName::Headless,
+            backend_name: BackendName::Indexer,
             binding_sha256: "b".repeat(64),
             record_id: uuid::Uuid::new_v4(),
         };
@@ -276,7 +276,7 @@ mod workspace_lease_tests {
     fn fake_runtime_identity_rejects_same_pid_with_replaced_descriptor_or_registry_entry() {
         let descriptor = ServerInstanceDescriptor {
             workspace_root: "/workspace".to_string(),
-            backend_name: "headless".to_string(),
+            backend_name: "indexer".to_string(),
             backend_version: "revision-1".to_string(),
             runtime_instance_id: Some("instance-1".to_string()),
             process_start_epoch_millis: Some(1),
@@ -325,7 +325,7 @@ mod workspace_lease_tests {
             generation: "generation-1".to_string(),
             environment_sha256: "a".repeat(64),
             workspace_root: PathBuf::from("/workspace"),
-            backend_name: BackendName::Headless,
+            backend_name: BackendName::Indexer,
             binding_sha256: "b".repeat(64),
             record_id: uuid::Uuid::new_v4(),
         };
@@ -343,26 +343,7 @@ mod workspace_lease_tests {
     }
 
     #[test]
-    fn authenticated_retired_backend_claim_is_rejected_before_runtime_observation() {
-        let retired_backend = serde_json::from_str::<BackendName>("\"idea\"")
-            .expect("legacy backend remains parseable at ingress");
-        let claims = WorkspaceLeaseTokenClaims {
-            authority: WorkspaceLeaseInstallAuthority::ActiveRelease,
-            generation: "generation-1".to_string(),
-            environment_sha256: "a".repeat(64),
-            workspace_root: PathBuf::from("/workspace"),
-            backend_name: retired_backend,
-            binding_sha256: "b".repeat(64),
-            record_id: uuid::Uuid::new_v4(),
-        };
-        let secret = [7_u8; 32];
-        let token = sign_workspace_lease_token(&secret, &claims).expect("authenticated token");
-        let verified =
-            verify_workspace_lease_token(&secret, &token).expect("authenticated claims");
-
-        let error = validate_token_request_identity(&verified, Path::new("/workspace"))
-            .expect_err("retired backend claim must fail before runtime observation");
-
-        assert_eq!(error.code, "IDEA_SEMANTIC_BACKEND_RETIRED");
+    fn retired_backend_claim_cannot_enter_the_active_lease_type() {
+        assert!(serde_json::from_str::<BackendName>("\"idea\"").is_err());
     }
 }

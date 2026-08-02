@@ -28,7 +28,6 @@ on:
 
 permissions:
   contents: read
-  packages: write
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -78,17 +77,6 @@ jobs:
             | .id
           ' <<<"$ci_runs")" \
             || { printf 'error: exact source CI is not green for %s\n' "$GITHUB_SHA" >&2; exit 1; }
-          ci_jobs="$(gh api --method GET \
-            "repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run_id}/jobs" \
-            -f filter=latest \
-            -f per_page=100)"
-          jq -e '
-            any(.jobs[];
-              .name == "Runtime command and bundle contracts"
-              and .status == "completed"
-              and .conclusion == "success")
-          ' <<<"$ci_jobs" >/dev/null \
-            || { printf 'error: exact-source CI setup contract did not pass for %s\n' "$GITHUB_SHA" >&2; exit 1; }
           ci_artifacts="$(gh api --method GET \
             "repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run_id}/artifacts" \
             -f name=ci-artifact-ledger-maven-publication \
@@ -210,51 +198,6 @@ jobs:
               --generate-notes
           fi
 
-  validate-jvm:
-    name: Reuse JVM and Maven validation
-    needs: [prepare-release]
-    if: always() && needs.prepare-release.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - name: Download exact-source CI Maven validation ledger
-        uses: actions/download-artifact@v7
-        with:
-          name: ci-artifact-ledger-maven-publication
-          path: ci-ledgers
-          run-id: ${{ needs.prepare-release.outputs.source_ci_run_id }}
-          github-token: ${{ github.token }}
-
-      - name: Verify exact-source CI Maven validation ledger
-        env:
-          SOURCE_CI_RUN_ID: ${{ needs.prepare-release.outputs.source_ci_run_id }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          jq -e --arg run_id "$SOURCE_CI_RUN_ID" '
-            .workflowRunId == $run_id
-            and .sourceRef == "refs/heads/main"
-          ' ci-ledgers/maven-publication.json >/dev/null \
-            || { printf 'error: Maven ledger provenance does not match exact-source CI\n' >&2; exit 1; }
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger ci-ledgers/maven-publication.json \
-            --git-sha "$GITHUB_SHA" \
-            --require-kind ci-maven-publication-validation
-
-      - name: Retain exact-source CI Maven validation ledger
-        uses: actions/upload-artifact@v6
-        with:
-          name: release-artifact-ledger-maven-publication
-          path: ci-ledgers/maven-publication.json
-          if-no-files-found: error
-          retention-days: 30
-
   build-openapi-spec:
     name: Build OpenAPI spec
     needs:
@@ -375,12 +318,13 @@ jobs:
 
   publish-maven-central:
     name: Publish Maven Central
-    needs:
-      - prepare-release
-      - validate-jvm
-    if: always() && needs.prepare-release.result == 'success' && needs.validate-jvm.result == 'success'
+    needs: [prepare-release]
+    if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
     continue-on-error: true
+    permissions:
+      actions: read
+      contents: read
     steps:
       - uses: actions/checkout@v5
         with:
@@ -393,19 +337,29 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
-      - name: Download release Maven validation ledger
+      - name: Download exact-source CI Maven validation ledger
         uses: actions/download-artifact@v7
         with:
-          name: release-artifact-ledger-maven-publication
+          name: ci-artifact-ledger-maven-publication
           path: ci-ledgers
+          run-id: ${{ needs.prepare-release.outputs.source_ci_run_id }}
+          github-token: ${{ github.token }}
 
-      - name: Verify release Maven validation ledger
+      - name: Verify exact-source CI Maven validation ledger
+        env:
+          SOURCE_CI_RUN_ID: ${{ needs.prepare-release.outputs.source_ci_run_id }}
         shell: bash
-        run: >
-          scripts/verify-ci-artifact-ledger.py verify
-          --ledger ci-ledgers/maven-publication.json
-          --git-sha "$GITHUB_SHA"
-          --require-kind ci-maven-publication-validation
+        run: |
+          set -euo pipefail
+          jq -e --arg run_id "$SOURCE_CI_RUN_ID" '
+            .workflowRunId == $run_id
+            and .sourceRef == "refs/heads/main"
+          ' ci-ledgers/maven-publication.json >/dev/null \
+            || { printf 'error: Maven ledger provenance does not match exact-source CI\n' >&2; exit 1; }
+          scripts/verify-ci-artifact-ledger.py verify \
+            --ledger ci-ledgers/maven-publication.json \
+            --git-sha "$GITHUB_SHA" \
+            --require-kind ci-maven-publication-validation
 
       - name: Check Maven Central publication state
         id: maven-state
@@ -530,161 +484,44 @@ jobs:
             --attempts 30 \
             --delay-seconds 20
 
-  build-cli-linux-x64:
-    name: Build Rust CLI asset (linux-x64)
+  build-cli:
+    name: Build private CLI input (${{ matrix.asset_id }})
     needs: [prepare-release]
     if: always() && needs.prepare-release.result == 'success'
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.runner }}
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - asset_id: linux-x64
+            runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            cache_key: source-bound-cli-release
+          - asset_id: linux-arm64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            cache_key: release-cli-linux-arm64
+          - asset_id: macos-x64
+            runner: macos-15-intel
+            target: x86_64-apple-darwin
+            cache_key: release-cli-macos-x64
+          - asset_id: macos-arm64
+            runner: macos-14
+            target: aarch64-apple-darwin
+            cache_key: release-cli-macos-arm64
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
       - uses: ./.github/scripts/release/actions/build-cli
         with:
-          asset_id: linux-x64
-          target: x86_64-unknown-linux-gnu
-          cache_key: source-bound-cli-release
+          asset_id: ${{ matrix.asset_id }}
+          target: ${{ matrix.target }}
+          cache_key: ${{ matrix.cache_key }}
           release_tag: ${{ needs.prepare-release.outputs.release_tag }}
           release_version: ${{ needs.prepare-release.outputs.release_version }}
-
-  build-cli-linux-arm64:
-    name: Build Rust CLI asset (linux-arm64)
-    needs: [prepare-release]
-    if: always() && needs.prepare-release.result == 'success'
-    runs-on: ubuntu-24.04-arm
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/build-cli
-        with:
-          asset_id: linux-arm64
-          target: aarch64-unknown-linux-gnu
-          cache_key: release-cli-linux-arm64
-          release_tag: ${{ needs.prepare-release.outputs.release_tag }}
-          release_version: ${{ needs.prepare-release.outputs.release_version }}
-
-  build-cli-macos-x64:
-    name: Build Rust CLI asset (macos-x64)
-    needs: [prepare-release]
-    if: always() && needs.prepare-release.result == 'success'
-    runs-on: macos-15-intel
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/build-cli
-        with:
-          asset_id: macos-x64
-          target: x86_64-apple-darwin
-          cache_key: release-cli-macos-x64
-          release_tag: ${{ needs.prepare-release.outputs.release_tag }}
-          release_version: ${{ needs.prepare-release.outputs.release_version }}
-
-  build-cli-macos-arm64:
-    name: Build Rust CLI asset (macos-arm64)
-    needs: [prepare-release]
-    if: always() && needs.prepare-release.result == 'success'
-    runs-on: macos-14
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/build-cli
-        with:
-          asset_id: macos-arm64
-          target: aarch64-apple-darwin
-          cache_key: release-cli-macos-arm64
-          release_tag: ${{ needs.prepare-release.outputs.release_tag }}
-          release_version: ${{ needs.prepare-release.outputs.release_version }}
-
-  publish-cli-linux-x64:
-    name: Publish Rust CLI asset (linux-x64)
-    needs:
-      - prepare-release
-      - build-cli-linux-x64
-    if: always() && needs.prepare-release.result == 'success' && needs.build-cli-linux-x64.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/publish-cli
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        with:
-          asset_id: linux-x64
-          tag: ${{ needs.prepare-release.outputs.release_tag }}
-
-  publish-cli-linux-arm64:
-    name: Publish Rust CLI asset (linux-arm64)
-    needs:
-      - prepare-release
-      - build-cli-linux-arm64
-    if: always() && needs.prepare-release.result == 'success' && needs.build-cli-linux-arm64.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/publish-cli
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        with:
-          asset_id: linux-arm64
-          tag: ${{ needs.prepare-release.outputs.release_tag }}
-
-  publish-cli-macos-x64:
-    name: Publish Rust CLI asset (macos-x64)
-    needs:
-      - prepare-release
-      - build-cli-macos-x64
-    if: always() && needs.prepare-release.result == 'success' && needs.build-cli-macos-x64.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/publish-cli
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        with:
-          asset_id: macos-x64
-          tag: ${{ needs.prepare-release.outputs.release_tag }}
-
-  publish-cli-macos-arm64:
-    name: Publish Rust CLI asset (macos-arm64)
-    needs:
-      - prepare-release
-      - build-cli-macos-arm64
-    if: always() && needs.prepare-release.result == 'success' && needs.build-cli-macos-arm64.result == 'success'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/publish-cli
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        with:
-          asset_id: macos-arm64
-          tag: ${{ needs.prepare-release.outputs.release_tag }}
 
   build-agent-resources:
     name: Build agent resource assets
@@ -816,8 +653,8 @@ jobs:
               --asset "$asset"
           done
 
-  build-headless-backend:
-    name: Build headless backend
+  build-indexer:
+    name: Build indexer
     needs: [prepare-release]
     if: always() && needs.prepare-release.result == 'success'
     runs-on: ubuntu-latest
@@ -833,7 +670,7 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Free disk for headless backend release
+      - name: Free disk for indexer packaging
         shell: bash
         run: |
           set -euo pipefail
@@ -849,558 +686,96 @@ jobs:
         with:
           cache-cleanup: always
 
-      - name: Cache headless backend runtime inputs
-        uses: actions/cache@v5
-        with:
-          path: |
-            ~/.gradle/kast/headless-idea-distributions
-            ~/.gradle/kast/shared-idea-distributions
-            ~/.gradle/kast/backend-idea-distributions
-          key: intellij-runtime-all-${{ runner.os }}-${{ hashFiles('gradle/libs.versions.toml') }}
-          restore-keys: |
-            intellij-runtime-all-${{ runner.os }}-
-
-      - name: Build headless backend
+      - name: Build retained indexer
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf backend-headless/build/portable-dist backend-headless/build/distributions
+          rm -rf indexer/build/portable-dist indexer/build/distributions
           ./scripts/ci-gradle-retry.sh ./gradlew \
             -Pversion="${{ needs.prepare-release.outputs.release_version }}" \
-            -PkastHeadlessIdeaHomeProfile=full \
-            stageHeadlessDist \
-            :backend-headless:verifyHeadlessPortableDistLayout \
-            buildHeadlessPortableZip \
+            :indexer:syncRuntimeLibs \
+            :indexer:syncPortableDist \
+            :indexer:verifyPortableDistLayout \
+            :indexer:portableDistZip \
             --no-daemon
-          shopt -s nullglob
-          headless_zips=(backend-headless/build/distributions/backend-headless-*-portable.zip)
-          shopt -u nullglob
-          [[ "${#headless_zips[@]}" -eq 1 ]] \
-            || { echo "Expected one portable headless zip, found ${#headless_zips[@]}" >&2; exit 1; }
+          mapfile -t indexer_zips < <(find indexer/build/distributions -maxdepth 1 -type f -name 'indexer-*-portable.zip' -print)
+          [[ "${#indexer_zips[@]}" -eq 1 ]] \
+            || { echo "Expected one portable indexer zip, found ${#indexer_zips[@]}" >&2; exit 1; }
           mkdir -p dist
-          cp "${headless_zips[0]}" dist/headless.zip
-
-      - name: Ensure zstd is available
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! command -v zstd >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends zstd
-          fi
-
-      - name: Package Gradle read-only dependency cache
-        shell: bash
-        run: |
-          set -euo pipefail
-          cache_dir="dist/gradle-ro-cache"
-          gradle_user_home="$RUNNER_TEMP/gradle-ro-release-seed"
-          rm -rf "$cache_dir"
-          mkdir -p "$cache_dir"
-          rm -rf "$gradle_user_home"
-          mkdir -p "$gradle_user_home"
-          GRADLE_USER_HOME="$gradle_user_home" ./scripts/ci-gradle-retry.sh ./gradlew dependencies --no-daemon
-          GRADLE_USER_HOME="$gradle_user_home" ./scripts/ci-gradle-retry.sh ./gradlew buildEnvironment --no-daemon
-          ./scripts/packaging/package-gradle-ro-cache.sh \
-            --gradle-user-home "$gradle_user_home" \
-            --output "${cache_dir}/gradle-ro-dep-cache.tar.zst"
-          (cd "$cache_dir" && sha256sum -c gradle-ro-dep-cache.sha256)
-          cache_size="$(wc -c < "${cache_dir}/gradle-ro-dep-cache.tar.zst" | tr -d '[:space:]')"
-          if [[ "$cache_size" -gt 2147483647 ]]; then
-            echo "Gradle read-only cache artifact is too large for GitHub Releases: ${cache_size} bytes" >&2
-            exit 1
-          fi
-          check_dir="$RUNNER_TEMP/gradle-ro-release-check"
-          rm -rf "$check_dir"
-          mkdir -p "$check_dir"
-          tar --zstd -xf "${cache_dir}/gradle-ro-dep-cache.tar.zst" -C "$check_dir"
-          test -d "$check_dir/gradle-ro/modules-2"
-          if find "$check_dir/gradle-ro" \( -name '*.lock' -o -name 'gc.properties' \) -print -quit | grep -q .; then
-            echo "Gradle read-only cache artifact contains lock or GC metadata" >&2
-            exit 1
-          fi
-          python3 - "${cache_dir}/gradle-ro-dep-cache.tar.zst" "${cache_dir}/build-provenance-gradle-ro-cache.json" <<'PY'
-          import hashlib, json, os, sys
-          from pathlib import Path
-          asset = Path(sys.argv[1])
-          payload = {
-              "runId": os.environ["GITHUB_RUN_ID"],
-              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
-              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
-              "sha": os.environ["GITHUB_SHA"],
-              "ref": os.environ["GITHUB_REF"],
-              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
-              "actor": os.environ["GITHUB_ACTOR"],
-              "platformId": "gradle-ro-cache",
-              "assetName": asset.name,
-              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
-          }
-          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-          PY
-          [[ -f dist/headless.zip ]] || { echo "Missing headless backend artifact: dist/headless.zip" >&2; exit 1; }
+          cp "${indexer_zips[0]}" dist/indexer.zip
           scripts/verify-ci-artifact-ledger.py record \
-            --output dist/build-ledger-headless-backend.json \
+            --output dist/build-ledger-indexer.json \
             --git-sha "$GITHUB_SHA" \
             --source-ref "refs/tags/${{ needs.prepare-release.outputs.release_tag }}" \
             --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-headless-backend \
-            --artifact-name headless.zip \
-            --artifact-path dist/headless.zip \
-            --producer-job build-headless-backend \
-            --build-command-id release-headless-backend-build
-          scripts/verify-ci-artifact-ledger.py record \
-            --output "${cache_dir}/build-ledger-gradle-ro-cache.json" \
-            --git-sha "$GITHUB_SHA" \
-            --source-ref "refs/tags/${{ needs.prepare-release.outputs.release_tag }}" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-gradle-ro-cache \
-            --artifact-name gradle-ro-dep-cache.tar.zst \
-            --artifact-path "${cache_dir}/gradle-ro-dep-cache.tar.zst" \
-            --producer-job build-headless-backend \
-            --build-command-id release-gradle-ro-cache
+            --artifact-kind release-indexer \
+            --artifact-name indexer.zip \
+            --artifact-path dist/indexer.zip \
+            --producer-job build-indexer \
+            --build-command-id release-indexer-build
 
-      - name: Upload headless backend artifact
+      - name: Retain indexer
         uses: actions/upload-artifact@v6
         with:
-          name: headless-backend-${{ github.run_id }}
+          name: indexer-${{ github.run_id }}
           path: |
-            dist/headless.zip
-            dist/build-ledger-headless-backend.json
-            dist/gradle-ro-cache/
+            dist/indexer.zip
+            dist/build-ledger-indexer.json
           if-no-files-found: error
           compression-level: 0
           retention-days: 30
 
-  build-linux-headless-tarball:
-    name: Build Linux headless tarball
+  build-setup-bundles:
+    name: Build setup bundle (${{ matrix.platform }})
     needs:
       - prepare-release
-      - build-cli-linux-x64
-      - build-headless-backend
+      - build-cli
+      - build-indexer
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
-      needs.build-cli-linux-x64.result == 'success' &&
-      needs.build-headless-backend.result == 'success'
+      needs.build-cli.result == 'success' &&
+      needs.build-indexer.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux-x64
+          - linux-arm64
+          - macos-x64
+          - macos-arm64
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - name: Download headless backend artifact
-        uses: actions/download-artifact@v7
+      - uses: ./.github/scripts/release/actions/build-setup-bundle
         with:
-          name: headless-backend-${{ github.run_id }}
-          path: headless-backend
+          platform: ${{ matrix.platform }}
+          tag: ${{ needs.prepare-release.outputs.release_tag }}
 
-      - name: Download Linux CLI release artifact
-        uses: actions/download-artifact@v7
-        with:
-          name: rust-cli-linux-x64-${{ github.run_id }}
-          path: release-assets
-
-      - name: Ensure zstd is available
-        shell: bash
-        run: |
-          set -euo pipefail
-          if ! command -v zstd >/dev/null 2>&1; then
-            sudo apt-get update
-            sudo apt-get install -y --no-install-recommends zstd
-          fi
-
-      - name: Package Linux headless tarball
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          version="${{ needs.prepare-release.outputs.release_version }}"
-          cli_asset="release-assets/kast-${tag}-linux-x64.zip"
-          backend_asset="headless-backend/headless.zip"
-          gradle_cache_dir="headless-backend/gradle-ro-cache"
-          gradle_cache_asset="${gradle_cache_dir}/gradle-ro-dep-cache.tar.zst"
-          gradle_cache_sidecar="${gradle_cache_dir}/gradle-ro-dep-cache.sha256"
-          gradle_cache_provenance="${gradle_cache_dir}/build-provenance-gradle-ro-cache.json"
-          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
-          rm -rf dist
-          mkdir -p dist
-          [[ -f "$backend_asset" ]] || { echo "Missing headless backend artifact: ${backend_asset}" >&2; exit 1; }
-          [[ -f "$gradle_cache_asset" ]] || { echo "Missing Gradle read-only cache artifact: ${gradle_cache_asset}" >&2; exit 1; }
-          [[ -f "$gradle_cache_sidecar" ]] || { echo "Missing Gradle read-only cache checksum: ${gradle_cache_sidecar}" >&2; exit 1; }
-          [[ -f "$gradle_cache_provenance" ]] || { echo "Missing Gradle read-only cache provenance: ${gradle_cache_provenance}" >&2; exit 1; }
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger release-assets/build-ledger-cli-linux-x64.json \
-            --ledger headless-backend/build-ledger-headless-backend.json \
-            --ledger "${gradle_cache_dir}/build-ledger-gradle-ro-cache.json" \
-            --git-sha "$GITHUB_SHA" \
-            --require-kind release-cli-linux-x64 \
-            --require-kind release-headless-backend \
-            --require-kind release-gradle-ro-cache \
-            --artifact "release-cli-linux-x64=${cli_asset}" \
-            --artifact "release-headless-backend=${backend_asset}" \
-            --artifact "release-gradle-ro-cache=${gradle_cache_asset}"
-          packager_dir="${RUNNER_TEMP}/kast-release-packager"
-          rm -rf "$packager_dir"
-          mkdir -p "$packager_dir"
-          python3 -m zipfile -e "$cli_asset" "$packager_dir"
-          packager_bin="${packager_dir}/kastctl"
-          [[ -f "$packager_bin" ]] || { echo "Missing extracted Rust CLI binary: ${packager_bin}" >&2; exit 1; }
-          chmod 755 "$packager_bin"
-
-          "$packager_bin" \
-            developer release package ubuntu-debian-bundle \
-            --repo-root "$PWD" \
-            --cli-archive "$cli_asset" \
-            --backend-archive "$backend_asset" \
-            --version "$tag" \
-            --bundle-output "$bundle_asset"
-          ./scripts/packaging/package-headless-runtime.sh \
-            --cli-archive "$cli_asset" \
-            --backend-archive "$backend_asset" \
-            --version "$version" \
-            --output "dist/kast-headless-linux-x64.tar.zst" \
-            --manifest-output "dist/kast-runtime-manifest.json"
-          mkdir -p dist/provenance
-          cp "$gradle_cache_asset" dist/gradle-ro-dep-cache.tar.zst
-          cp "$gradle_cache_sidecar" dist/gradle-ro-dep-cache.sha256
-          cp "$gradle_cache_provenance" dist/provenance/build-provenance-gradle-ro-cache.json
-          (cd dist && sha256sum -c gradle-ro-dep-cache.sha256)
-          python3 - "$bundle_asset" "dist/provenance/build-provenance-ubuntu-debian-headless.json" <<'PY'
-          import hashlib, json, os, sys
-          from pathlib import Path
-          asset = Path(sys.argv[1])
-          payload = {
-              "runId": os.environ["GITHUB_RUN_ID"],
-              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
-              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
-              "sha": os.environ["GITHUB_SHA"],
-              "ref": os.environ["GITHUB_REF"],
-              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
-              "actor": os.environ["GITHUB_ACTOR"],
-              "platformId": "ubuntu-debian-headless-x86_64",
-              "assetName": asset.name,
-              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
-          }
-          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-          PY
-          python3 - "dist/kast-headless-linux-x64.tar.zst" "dist/provenance/build-provenance-headless-linux-x64.json" <<'PY'
-          import hashlib, json, os, sys
-          from pathlib import Path
-          asset = Path(sys.argv[1])
-          payload = {
-              "runId": os.environ["GITHUB_RUN_ID"],
-              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
-              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
-              "sha": os.environ["GITHUB_SHA"],
-              "ref": os.environ["GITHUB_REF"],
-              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
-              "actor": os.environ["GITHUB_ACTOR"],
-              "platformId": "headless-linux-x64",
-              "assetName": asset.name,
-              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
-          }
-          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-          PY
-          python3 - "dist/kast-runtime-manifest.json" "dist/provenance/build-provenance-runtime-manifest.json" <<'PY'
-          import hashlib, json, os, sys
-          from pathlib import Path
-          asset = Path(sys.argv[1])
-          payload = {
-              "runId": os.environ["GITHUB_RUN_ID"],
-              "runNumber": os.environ["GITHUB_RUN_NUMBER"],
-              "runAttempt": os.environ["GITHUB_RUN_ATTEMPT"],
-              "sha": os.environ["GITHUB_SHA"],
-              "ref": os.environ["GITHUB_REF"],
-              "workflowRef": os.environ["GITHUB_WORKFLOW_REF"],
-              "actor": os.environ["GITHUB_ACTOR"],
-              "platformId": "runtime-manifest",
-              "assetName": asset.name,
-              "assetDigest": "sha256:" + hashlib.sha256(asset.read_bytes()).hexdigest(),
-          }
-          Path(sys.argv[2]).write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
-          PY
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/build-ledger-ubuntu-debian-headless.json \
-            --git-sha "$GITHUB_SHA" \
-            --source-ref "refs/tags/${tag}" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-ubuntu-debian-headless-x86_64 \
-            --artifact-name "$(basename -- "$bundle_asset")" \
-            --artifact-path "$bundle_asset" \
-            --producer-job build-linux-headless-tarball \
-            --build-command-id release-ubuntu-debian-headless-package
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/build-ledger-headless-linux-x64.json \
-            --git-sha "$GITHUB_SHA" \
-            --source-ref "refs/tags/${tag}" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-headless-linux-x64 \
-            --artifact-name kast-headless-linux-x64.tar.zst \
-            --artifact-path dist/kast-headless-linux-x64.tar.zst \
-            --producer-job build-linux-headless-tarball \
-            --build-command-id release-headless-linux-x64-package
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/build-ledger-runtime-manifest.json \
-            --git-sha "$GITHUB_SHA" \
-            --source-ref "refs/tags/${tag}" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-runtime-manifest \
-            --artifact-name kast-runtime-manifest.json \
-            --artifact-path dist/kast-runtime-manifest.json \
-            --producer-job build-linux-headless-tarball \
-            --build-command-id release-runtime-manifest
-          scripts/verify-ci-artifact-ledger.py record \
-            --output dist/build-ledger-gradle-ro-cache.json \
-            --git-sha "$GITHUB_SHA" \
-            --source-ref "refs/tags/${tag}" \
-            --workflow-run-id "$GITHUB_RUN_ID" \
-            --artifact-kind release-gradle-ro-cache \
-            --artifact-name gradle-ro-dep-cache.tar.zst \
-            --artifact-path dist/gradle-ro-dep-cache.tar.zst \
-            --producer-job build-linux-headless-tarball \
-            --build-command-id release-gradle-ro-cache-promote
-
-      - name: Validate Linux headless tarball
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          for container_image in ubuntu:22.04 ubuntu:24.04; do
-            KAST_UBUNTU_DEBIAN_VERSION="$tag" \
-            KAST_UBUNTU_DEBIAN_CONTAINER_IMAGE="$container_image" \
-            KAST_UBUNTU_DEBIAN_JAVA_VERSION=21 \
-            ./scripts/verify-setup-bundle.sh \
-              "dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
-          done
-          (cd dist && sha256sum -c kast-headless-linux-x64.sha256)
-          (cd dist && sha256sum -c gradle-ro-dep-cache.sha256)
-          tar --zstd -tf dist/kast-headless-linux-x64.tar.zst | grep -F './bin/kast'
-          tar --zstd -tf dist/kast-headless-linux-x64.tar.zst | grep -F './libexec/kastctl'
-          runtime_check="$RUNNER_TEMP/kast-headless-entrypoints"
-          rm -rf "$runtime_check"
-          mkdir -p "$runtime_check"
-          tar --zstd -xf dist/kast-headless-linux-x64.tar.zst -C "$runtime_check"
-          cmp -s "$runtime_check/libexec/kastctl" "$runtime_check/bin/kast"
-          rm -rf "$RUNNER_TEMP/gradle-ro-release-check"
-          mkdir -p "$RUNNER_TEMP/gradle-ro-release-check"
-          tar --zstd -xf dist/gradle-ro-dep-cache.tar.zst -C "$RUNNER_TEMP/gradle-ro-release-check"
-          test -d "$RUNNER_TEMP/gradle-ro-release-check/gradle-ro/modules-2"
-          if find "$RUNNER_TEMP/gradle-ro-release-check/gradle-ro" \( -name '*.lock' -o -name 'gc.properties' \) -print -quit | grep -q .; then
-            echo "Gradle read-only cache artifact contains lock or GC metadata" >&2
-            exit 1
-          fi
-          python3 - dist/kast-runtime-manifest.json dist/kast-headless-linux-x64.tar.zst <<'PY'
-          import hashlib, json, sys
-          from pathlib import Path
-          manifest = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-          artifact_sha = hashlib.sha256(Path(sys.argv[2]).read_bytes()).hexdigest()
-          if manifest.get("artifactSha256") != artifact_sha:
-              raise SystemExit("runtime manifest artifactSha256 does not match tarball")
-          PY
-
-      - name: Retain Linux headless assets
-        uses: actions/upload-artifact@v6
-        with:
-          name: linux-headless-tarball-${{ github.run_id }}
-          path: |
-            dist/kast-ubuntu-debian-headless-x86_64-${{ needs.prepare-release.outputs.release_tag }}.tar.gz
-            dist/kast-ubuntu-debian-headless-x86_64-${{ needs.prepare-release.outputs.release_tag }}.tar.gz.sha256
-            dist/kast-headless-linux-x64.tar.zst
-            dist/kast-headless-linux-x64.sha256
-            dist/kast-runtime-manifest.json
-            dist/provenance/
-            dist/build-ledger-ubuntu-debian-headless.json
-            dist/build-ledger-headless-linux-x64.json
-            dist/build-ledger-runtime-manifest.json
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 30
-
-  publish-linux-headless-assets:
-    name: Publish Linux headless assets
+  publish-setup-bundles:
+    name: Publish setup bundle (${{ matrix.platform }})
     needs:
       - prepare-release
-      - build-linux-headless-tarball
-    if: always() && needs.prepare-release.result == 'success' && needs.build-linux-headless-tarball.result == 'success'
+      - build-setup-bundles
+    if: >-
+      always() &&
+      needs.prepare-release.result == 'success' &&
+      needs.build-setup-bundles.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-
-      - name: Download retained Linux headless assets
-        uses: actions/download-artifact@v7
-        with:
-          name: linux-headless-tarball-${{ github.run_id }}
-          path: dist
-
-      - name: Download retained headless build inputs
-        uses: actions/download-artifact@v7
-        with:
-          name: headless-backend-${{ github.run_id }}
-          path: headless-input
-
-      - name: Verify and publish retained Linux headless assets
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="${{ needs.prepare-release.outputs.release_tag }}"
-          bundle_asset="dist/kast-ubuntu-debian-headless-x86_64-${tag}.tar.gz"
-          scripts/verify-ci-artifact-ledger.py verify \
-            --ledger dist/build-ledger-ubuntu-debian-headless.json \
-            --ledger dist/build-ledger-headless-linux-x64.json \
-            --ledger dist/build-ledger-runtime-manifest.json \
-            --ledger headless-input/gradle-ro-cache/build-ledger-gradle-ro-cache.json \
-            --git-sha "$GITHUB_SHA" \
-            --require-kind release-ubuntu-debian-headless-x86_64 \
-            --require-kind release-headless-linux-x64 \
-            --require-kind release-runtime-manifest \
-            --require-kind release-gradle-ro-cache \
-            --artifact "release-ubuntu-debian-headless-x86_64=${bundle_asset}" \
-            --artifact release-headless-linux-x64=dist/kast-headless-linux-x64.tar.zst \
-            --artifact release-runtime-manifest=dist/kast-runtime-manifest.json \
-            --artifact release-gradle-ro-cache=headless-input/gradle-ro-cache/gradle-ro-dep-cache.tar.zst
-          for asset in \
-            "$bundle_asset" \
-            "${bundle_asset}.sha256" \
-            dist/kast-headless-linux-x64.tar.zst \
-            dist/kast-headless-linux-x64.sha256 \
-            dist/kast-runtime-manifest.json \
-            headless-input/gradle-ro-cache/gradle-ro-dep-cache.tar.zst \
-            headless-input/gradle-ro-cache/gradle-ro-dep-cache.sha256
-          do
-            .github/scripts/release/upload-immutable-release-asset.sh \
-              --tag "$tag" \
-              --asset "$asset"
-          done
-
-      - name: Retain Linux headless provenance
-        uses: actions/upload-artifact@v6
-        with:
-          name: linux-headless-provenance-${{ github.run_id }}
-          path: dist/provenance/
-          if-no-files-found: error
-          overwrite: true
-          retention-days: 30
-
-  build-setup-linux-x64:
-    name: Build setup bundle (linux-x64)
-    needs:
-      - prepare-release
-      - build-cli-linux-x64
-      - build-headless-backend
-    if: >-
-      always() &&
-      needs.prepare-release.result == 'success' &&
-      needs.build-cli-linux-x64.result == 'success' &&
-      needs.build-headless-backend.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/build-setup-bundle
-        with:
-          platform: linux-x64
-          tag: ${{ needs.prepare-release.outputs.release_tag }}
-
-  build-setup-linux-arm64:
-    name: Build setup bundle (linux-arm64)
-    needs:
-      - prepare-release
-      - build-cli-linux-x64
-      - build-cli-linux-arm64
-      - build-headless-backend
-    if: >-
-      always() &&
-      needs.prepare-release.result == 'success' &&
-      needs.build-cli-linux-x64.result == 'success' &&
-      needs.build-cli-linux-arm64.result == 'success' &&
-      needs.build-headless-backend.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/build-setup-bundle
-        with:
-          platform: linux-arm64
-          tag: ${{ needs.prepare-release.outputs.release_tag }}
-
-  build-setup-macos-x64:
-    name: Build setup bundle (macos-x64)
-    needs:
-      - prepare-release
-      - build-cli-linux-x64
-      - build-cli-macos-x64
-      - build-headless-backend
-    if: >-
-      always() &&
-      needs.prepare-release.result == 'success' &&
-      needs.build-cli-linux-x64.result == 'success' &&
-      needs.build-cli-macos-x64.result == 'success' &&
-      needs.build-headless-backend.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/build-setup-bundle
-        with:
-          platform: macos-x64
-          tag: ${{ needs.prepare-release.outputs.release_tag }}
-
-  build-setup-macos-arm64:
-    name: Build setup bundle (macos-arm64)
-    needs:
-      - prepare-release
-      - build-cli-linux-x64
-      - build-cli-macos-arm64
-      - build-headless-backend
-    if: >-
-      always() &&
-      needs.prepare-release.result == 'success' &&
-      needs.build-cli-linux-x64.result == 'success' &&
-      needs.build-cli-macos-arm64.result == 'success' &&
-      needs.build-headless-backend.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/build-setup-bundle
-        with:
-          platform: macos-arm64
-          tag: ${{ needs.prepare-release.outputs.release_tag }}
-
-  publish-setup-linux-x64:
-    name: Publish setup bundle (linux-x64)
-    needs:
-      - prepare-release
-      - build-setup-linux-x64
-    if: always() && needs.prepare-release.result == 'success' && needs.build-setup-linux-x64.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux-x64
+          - linux-arm64
+          - macos-x64
+          - macos-arm64
     steps:
       - uses: actions/checkout@v5
         with:
@@ -1409,82 +784,19 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
         with:
-          platform: linux-x64
+          platform: ${{ matrix.platform }}
           tag: ${{ needs.prepare-release.outputs.release_tag }}
 
-  publish-setup-linux-arm64:
-    name: Publish setup bundle (linux-arm64)
-    needs:
-      - prepare-release
-      - build-setup-linux-arm64
-    if: always() && needs.prepare-release.result == 'success' && needs.build-setup-linux-arm64.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/publish-setup-bundle
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        with:
-          platform: linux-arm64
-          tag: ${{ needs.prepare-release.outputs.release_tag }}
-
-  publish-setup-macos-x64:
-    name: Publish setup bundle (macos-x64)
-    needs:
-      - prepare-release
-      - build-setup-macos-x64
-    if: always() && needs.prepare-release.result == 'success' && needs.build-setup-macos-x64.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/publish-setup-bundle
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        with:
-          platform: macos-x64
-          tag: ${{ needs.prepare-release.outputs.release_tag }}
-
-  publish-setup-macos-arm64:
-    name: Publish setup bundle (macos-arm64)
-    needs:
-      - prepare-release
-      - build-setup-macos-arm64
-    if: always() && needs.prepare-release.result == 'success' && needs.build-setup-macos-arm64.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.prepare-release.outputs.release_tag }}
-      - uses: ./.github/scripts/release/actions/publish-setup-bundle
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN || github.token }}
-        with:
-          platform: macos-arm64
-          tag: ${{ needs.prepare-release.outputs.release_tag }}
 
   real-repository-indexing:
     name: Index ${{ matrix.name }}
     needs:
       - prepare-release
-      - build-linux-headless-tarball
+      - build-setup-bundles
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
-      needs.build-linux-headless-tarball.result == 'success' &&
-      vars.CI_AUX_IDEA_PERFORMANCE != 'optional'
+      needs.build-setup-bundles.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -1532,10 +844,10 @@ jobs:
           path: ${{ runner.temp }}/kast-real-repository-cache
           key: kast-real-repository-${{ matrix.name }}-${{ matrix.revision }}
 
-      - name: Download Linux headless tarball
+      - name: Download canonical Linux setup bundle
         uses: actions/download-artifact@v7
         with:
-          name: linux-headless-tarball-${{ github.run_id }}
+          name: setup-bundle-linux-x64-${{ github.run_id }}
           path: release-bundle
 
       - name: Index pinned repository
@@ -1544,7 +856,7 @@ jobs:
           GRADLE_JAVA_HOME: ${{ steps.gradle-java.outputs.path }}
         run: |
           set -euo pipefail
-          bundle="$(find release-bundle -maxdepth 1 -name 'kast-ubuntu-debian-headless-x86_64-*.tar.gz' -print -quit)"
+          bundle="$(find release-bundle -maxdepth 1 -name 'kast-linux-x64-*.tar.gz' -print -quit)"
           [[ -n "$bundle" ]] || { echo "Linux setup bundle not found" >&2; exit 1; }
           scripts/release/benchmark-real-repositories.sh \
             --name "${{ matrix.name }}" \
@@ -1555,64 +867,27 @@ jobs:
             --bundle "$bundle" \
             --cache-root "${{ runner.temp }}/kast-real-repository-cache"
 
+
   build-release-metadata:
     name: Build release metadata
     needs:
       - prepare-release
-      - validate-jvm
       - publish-openapi-spec
-      - publish-cli-linux-x64
-      - publish-cli-linux-arm64
-      - publish-cli-macos-x64
-      - publish-cli-macos-arm64
       - publish-agent-resources
-      - publish-linux-headless-assets
-      - publish-setup-linux-x64
-      - publish-setup-linux-arm64
-      - publish-setup-macos-x64
-      - publish-setup-macos-arm64
+      - publish-setup-bundles
       - real-repository-indexing
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
-      needs.validate-jvm.result == 'success' &&
       needs.publish-openapi-spec.result == 'success' &&
-      needs.publish-cli-linux-x64.result == 'success' &&
-      needs.publish-cli-linux-arm64.result == 'success' &&
-      needs.publish-cli-macos-x64.result == 'success' &&
-      needs.publish-cli-macos-arm64.result == 'success' &&
       needs.publish-agent-resources.result == 'success' &&
-      needs.publish-linux-headless-assets.result == 'success' &&
-      needs.publish-setup-linux-x64.result == 'success' &&
-      needs.publish-setup-linux-arm64.result == 'success' &&
-      needs.publish-setup-macos-x64.result == 'success' &&
-      needs.publish-setup-macos-arm64.result == 'success' &&
-      (
-        needs.real-repository-indexing.result == 'success' ||
-        (
-          vars.CI_AUX_IDEA_PERFORMANCE == 'optional' &&
-          needs.real-repository-indexing.result == 'skipped'
-        )
-      )
+      needs.publish-setup-bundles.result == 'success' &&
+      needs.real-repository-indexing.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v5
-
-      - name: Download CLI provenance
-        uses: actions/download-artifact@v7
-        with:
-          path: provenance-cli
-          pattern: cli-provenance-*-${{ github.run_id }}
-          merge-multiple: true
-
-      - name: Download Linux headless tarball provenance
-        uses: actions/download-artifact@v7
-        with:
-          path: provenance-linux-headless
-          pattern: linux-headless-provenance-*
-          merge-multiple: true
 
       - name: Download OpenAPI provenance
         uses: actions/download-artifact@v7
@@ -1635,8 +910,6 @@ jobs:
           python3 scripts/release/assemble-release-provenance.py \
             --output dist/build-provenance.json \
             --tag "${{ needs.prepare-release.outputs.release_tag }}" \
-            provenance-cli \
-            provenance-linux-headless \
             provenance-openapi \
             provenance-setup
 
@@ -1682,6 +955,7 @@ jobs:
             dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 30
+
 
   publish-release:
     name: Publish release

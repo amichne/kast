@@ -1,4 +1,3 @@
-use std::os::unix::fs::PermissionsExt;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
@@ -13,8 +12,8 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
     let socket_path = fixture.socket_path("primary.sock");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
-    let backend = spawn_verify_backend(listener, workspace.clone(), "headless", 10);
+    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 10);
 
     let verify = kast(&home, &config_home)
         .args([
@@ -24,7 +23,6 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
             "verify",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=headless",
         ])
         .output()
         .expect("agent verify");
@@ -39,10 +37,10 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
     assert_eq!(
         output["result"]["semanticWorkspace"],
         serde_json::json!({
-            "backendName": "headless",
+            "backendName": "indexer",
             "workspaceRoot": workspace.display().to_string(),
             "workspaceKind": "PRIMARY_CHECKOUT",
-            "sourceModuleNames": [":analysis-api", ":backend:headless"],
+            "sourceModuleNames": [":analysis-api", ":indexer"],
             "limitations": ["REFERENCE_INDEX_UNAVAILABLE"],
             "evidenceQuality": "COMPILER_BACKED"
         })
@@ -55,7 +53,6 @@ fn prepared_primary_checkout_reports_compiler_backed_workspace_evidence() {
             "verify",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=headless",
         ])
         .output()
         .expect("agent verify TOON");
@@ -96,8 +93,8 @@ fn prepared_linked_worktree_verify_views_retain_admission_evidence() {
     let socket_path = fixture.socket_path("linked-verify-views.sock");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
-    let backend = spawn_verify_backend(listener, workspace.clone(), "headless", 15);
+    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 15);
     let views: [&[&str]; 3] = [&[], &["--fields", "health"], &["--count"]];
 
     for view in views {
@@ -109,7 +106,6 @@ fn prepared_linked_worktree_verify_views_retain_admission_evidence() {
                 "verify",
                 "--workspace-root",
                 workspace.to_str().expect("workspace path"),
-                "--backend=headless",
             ])
             .args(view)
             .output()
@@ -137,12 +133,12 @@ fn prepared_linked_worktree_verify_views_retain_admission_evidence() {
 
 #[test]
 #[cfg(not(target_os = "macos"))]
-fn unprepared_disposable_checkout_can_use_headless_read_only_workflows() {
-    let fixture = tempfile::tempdir().expect("headless fixture");
+fn unprepared_disposable_checkout_can_use_indexer_read_only_workflows() {
+    let fixture = tempfile::tempdir().expect("indexer fixture");
     let workspace = fixture.path().join("disposable");
     let home = fixture.path().join("home");
     let config_home = fixture.path().join("config");
-    let socket_path = fixture.path().join("headless.sock");
+    let socket_path = fixture.path().join("indexer.sock");
     write_gradle_workspace(&workspace);
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     let source_file = workspace.join("src/main/kotlin/Foo.kt");
@@ -150,8 +146,8 @@ fn unprepared_disposable_checkout_can_use_headless_read_only_workflows() {
     std::fs::write(&source_file, "class Foo\n").expect("source file");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
-    let backend = spawn_verify_backend(listener, workspace.clone(), "headless", 12);
+    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let backend = spawn_verify_backend(listener, workspace.clone(), "indexer", 12);
     let install_manifest = install_manifest_path(&home);
     let homebrew_receipt = home.join("Library/Application Support/Kast/homebrew-install.json");
     assert!(!install_manifest.exists());
@@ -165,21 +161,20 @@ fn unprepared_disposable_checkout_can_use_headless_read_only_workflows() {
             "verify",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=headless",
         ])
         .output()
-        .expect("headless verify");
+        .expect("indexer verify");
 
     assert!(
         verify.status.success(),
-        "exact-root headless verify should succeed without IDEA metadata: stdout={}, stderr={}",
+        "exact-root indexer verify should succeed without host metadata: stdout={}, stderr={}",
         String::from_utf8_lossy(&verify.stdout),
         String::from_utf8_lossy(&verify.stderr)
     );
     let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
     assert_eq!(
         output["result"]["semanticWorkspace"]["backendName"],
-        "headless"
+        "indexer"
     );
     assert_eq!(
         output["result"]["semanticWorkspace"]["workspaceRoot"],
@@ -200,13 +195,12 @@ fn unprepared_disposable_checkout_can_use_headless_read_only_workflows() {
             "Foo",
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=headless",
         ])
         .output()
-        .expect("headless symbol");
+        .expect("indexer symbol");
     assert!(
         symbol.status.success(),
-        "headless symbol should succeed: stdout={}, stderr={}",
+        "indexer symbol should succeed: stdout={}, stderr={}",
         String::from_utf8_lossy(&symbol.stdout),
         String::from_utf8_lossy(&symbol.stderr)
     );
@@ -221,13 +215,12 @@ fn unprepared_disposable_checkout_can_use_headless_read_only_workflows() {
             source_file.to_str().expect("source path"),
             "--workspace-root",
             workspace.to_str().expect("workspace path"),
-            "--backend=headless",
         ])
         .output()
-        .expect("headless diagnostics");
+        .expect("indexer diagnostics");
     assert!(
         diagnostics.status.success(),
-        "headless diagnostics should succeed: stdout={}, stderr={}",
+        "indexer diagnostics should succeed: stdout={}, stderr={}",
         String::from_utf8_lossy(&diagnostics.stdout),
         String::from_utf8_lossy(&diagnostics.stderr)
     );
@@ -252,8 +245,8 @@ fn prepared_linked_worktree_never_attaches_primary_checkout_descriptor() {
     let socket_path = fixture.socket_path("primary.sock");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &primary, &socket_path, "headless");
-    let backend = spawn_verify_backend(listener, primary, "headless", 0);
+    write_runtime_descriptor(&home, &primary, &socket_path, "indexer");
+    let backend = spawn_verify_backend(listener, primary, "indexer", 0);
 
     let verify = kast(&home, &config_home)
         .args([
@@ -263,7 +256,6 @@ fn prepared_linked_worktree_never_attaches_primary_checkout_descriptor() {
             "verify",
             "--workspace-root",
             linked.to_str().expect("linked path"),
-            "--backend=headless",
         ])
         .output()
         .expect("linked verify");
@@ -273,24 +265,24 @@ fn prepared_linked_worktree_never_attaches_primary_checkout_descriptor() {
         "other checkout must not serve verify"
     );
     let output: serde_json::Value = serde_json::from_slice(&verify.stdout).expect("verify JSON");
-    assert_eq!(output["error"]["code"], "NO_BACKEND_AVAILABLE");
+    assert_eq!(output["error"]["code"], "NO_INDEXER_AVAILABLE");
     assert!(backend.join().expect("backend thread").is_empty());
 }
 
 #[cfg(target_os = "macos")]
 #[test]
-fn missing_workspace_authority_rejects_every_explicit_headless_mutation_before_rpc() {
+fn missing_workspace_authority_rejects_every_indexer_mutation_before_rpc() {
     let fixture = tempfile::tempdir().expect("mutation fixture");
     let workspace = fixture.path().join("workspace");
     let home = fixture.path().join("home");
     let config_home = fixture.path().join("config");
-    let socket_path = fixture.path().join("headless.sock");
+    let socket_path = fixture.path().join("indexer.sock");
     write_gradle_workspace(&workspace);
     let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
     std::fs::create_dir_all(&home).expect("home");
     let listener = bind_semantic_listener(&socket_path);
-    write_runtime_descriptor(&home, &workspace, &socket_path, "headless");
-    let backend = ObservedSemanticBackend::spawn(listener, workspace.clone(), "headless");
+    write_runtime_descriptor(&home, &workspace, &socket_path, "indexer");
+    let backend = ObservedSemanticBackend::spawn(listener, workspace.clone(), "indexer");
     let content_file = fixture.path().join("content.kt");
     let target_file = workspace.join("src/main/kotlin/Added.kt");
     std::fs::write(&content_file, "fun added() = Unit\n").expect("content");
@@ -307,7 +299,6 @@ fn missing_workspace_authority_rejects_every_explicit_headless_mutation_before_r
                 "authority-test".to_string(),
                 "--workspace-root".to_string(),
                 workspace.display().to_string(),
-                "--backend=headless".to_string(),
             ]);
             let mutation = kast(&home, &config_home)
                 .args(["--output", "json"])

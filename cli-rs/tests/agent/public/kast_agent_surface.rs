@@ -10,10 +10,7 @@ use sha2::{Digest, Sha256};
 use support::workspace_database_path_for_test;
 use support::workspace_files::WorkspaceIndexFixture;
 #[cfg(target_os = "macos")]
-use support::{
-    default_bin_dir, default_libexec_dir, write_current_cli_install_manifest_for_test,
-    write_macos_plugin_workspace_metadata_for_cli as write_workspace_metadata,
-};
+use support::{default_bin_dir, write_current_cli_install_manifest_for_test};
 
 fn named(name: &str) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_kast"));
@@ -122,7 +119,7 @@ fn home_reports_live_workspace_state_without_protocol_cruft() {
 }
 
 #[cfg(target_os = "macos")]
-fn installed_public_home(unrelated_legacy_plugin_authority: bool) -> String {
+fn installed_public_home() -> String {
     let fixture = tempfile::tempdir().expect("temporary install");
     let home = fixture.path().join("home");
     let config_home = fixture.path().join("config");
@@ -132,16 +129,6 @@ fn installed_public_home(unrelated_legacy_plugin_authority: bool) -> String {
     let workspace = workspace.canonicalize().expect("canonical workspace");
     write_current_cli_install_manifest_for_test(&home, &config_home);
     let public_binary = default_bin_dir(&home).join("kast");
-    let control_binary = if unrelated_legacy_plugin_authority {
-        let binary = fixture.path().join("unrelated/kastctl");
-        std::fs::create_dir_all(binary.parent().expect("unrelated parent"))
-            .expect("unrelated directory");
-        std::fs::copy(&public_binary, &binary).expect("unrelated control binary");
-        binary
-    } else {
-        default_libexec_dir(&home).join("kastctl")
-    };
-    write_workspace_metadata(&workspace, &control_binary, env!("CARGO_PKG_VERSION"));
 
     let output = Command::new(public_binary)
         .arg0("kast")
@@ -159,13 +146,7 @@ fn installed_public_home(unrelated_legacy_plugin_authority: bool) -> String {
 #[cfg(target_os = "macos")]
 #[test]
 fn installed_public_entrypoint_uses_private_kastctl_libexec() {
-    assert!(!installed_public_home(false).contains("does not match the running Kast executable"));
-}
-
-#[cfg(target_os = "macos")]
-#[test]
-fn installed_public_entrypoint_ignores_retired_plugin_control_binary_metadata() {
-    assert!(!installed_public_home(true).contains("does not match the running Kast executable"));
+    assert!(!installed_public_home().contains("does not match the running Kast executable"));
 }
 
 #[test]

@@ -32,8 +32,7 @@ value class NormalizedPath private constructor(val value: String) : Comparable<N
         /**
          * Full normalization with symlink resolution.
          *
-         * Equivalent to the former `normalizeHeadlessPath`: resolves the
-         * path to an absolute form, then attempts `toRealPath()` to resolve
+         * Resolves the path to an absolute form, then attempts `toRealPath()` to resolve
          * symlinks.  If the file does not exist, walks up to the nearest
          * existing ancestor, resolves that, and re-appends the relative tail.
          */
@@ -47,7 +46,6 @@ value class NormalizedPath private constructor(val value: String) : Comparable<N
         /**
          * Light normalization — absolute + normalize only, no symlink resolution.
          *
-         * Equivalent to the former `normalizeHeadlessModelPath`.
          * Use when the path may not exist on disk yet (e.g. model paths in
          * edits or create-file operations).
          */

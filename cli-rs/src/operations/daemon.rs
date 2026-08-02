@@ -1,4 +1,4 @@
-use crate::cli::{BackendName, DaemonStartArgs};
+use crate::cli::DaemonStartArgs;
 use crate::config::{self, KastConfig};
 use crate::error::{CliError, Result};
 use std::env;
@@ -6,14 +6,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 
-const HEADLESS_MAIN_CLASS: &str = "io.github.amichne.kast.headless.HeadlessMainKt";
+const INDEXER_MAIN_CLASS: &str = "io.github.amichne.kast.indexer.KastIndexerMainKt";
 #[cfg(target_os = "macos")]
-const HEADLESS_STARTER_COMMAND: &str = "kast-headless";
+const INDEXER_STARTER_COMMAND: &str = "kast-indexer";
 
 pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<Child> {
     let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
     let config = KastConfig::load(&workspace_root)?;
-    let backend_name = args.backend_name.unwrap_or(BackendName::Headless);
     let command = java_command(&args, &config)?;
     if let Some(parent) = log_file.parent() {
         fs::create_dir_all(parent)?;
@@ -32,18 +31,12 @@ pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<Child>
         .map_err(|error| {
             CliError::new(
                 "DAEMON_START_ERROR",
-                format!(
-                    "Failed to auto-start the {} backend: {error}",
-                    backend_name.canonical()
-                ),
+                format!("Failed to auto-start the indexer: {error}",),
             )
         })
 }
 
 pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<String>> {
-    let backend_name = args.backend_name.unwrap_or(BackendName::Headless);
-    crate::runtime::require_headless_backend(backend_name)?;
-
     #[cfg(target_os = "macos")]
     {
         let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
@@ -53,18 +46,13 @@ pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<S
 
     #[cfg(not(target_os = "macos"))]
     {
-        linux_headless_java_command(args, config, backend_name)
+        linux_indexer_java_command(args, config)
     }
 }
 
 #[cfg_attr(target_os = "macos", allow(dead_code))]
-fn linux_headless_java_command(
-    args: &DaemonStartArgs,
-    config: &KastConfig,
-    backend_name: BackendName,
-) -> Result<Vec<String>> {
-    let runtime_libs_dir =
-        config::backend_runtime_libs_dir(config, backend_name, args.runtime_libs_dir.clone())?;
+fn linux_indexer_java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<String>> {
+    let runtime_libs_dir = config::indexer_runtime_libs_dir(config, args.runtime_libs_dir.clone())?;
     let classpath = read_classpath(&runtime_libs_dir)?;
     let java_exec = env::var("JAVA_HOME")
         .ok()
@@ -78,21 +66,16 @@ fn linux_headless_java_command(
         .unwrap_or_else(|| "java".to_string());
 
     let mut command = vec![java_exec];
-    let idea_home = headless_idea_home(args, config)?;
-    let runtime_config_file = write_runtime_config_file(
-        backend_name,
-        args,
-        config,
-        Some(&runtime_libs_dir),
-        &idea_home,
-    )?;
-    command.extend(headless_jvm_args(&idea_home, config));
+    let idea_home = indexer_host_home(args, config)?;
+    let runtime_config_file =
+        write_runtime_config_file(args, config, Some(&runtime_libs_dir), &idea_home)?;
+    command.extend(indexer_jvm_args(&idea_home, config));
     if let Ok(java_opts) = env::var("JAVA_OPTS") {
         command.extend(java_opts.split_whitespace().map(ToOwned::to_owned));
     }
     command.push("-cp".to_string());
     command.push(classpath);
-    command.push(HEADLESS_MAIN_CLASS.to_string());
+    command.push(INDEXER_MAIN_CLASS.to_string());
     command.extend(config::server_launch_args(args, config)?);
     command.push(format!("--idea-home={}", idea_home.display()));
     command.push(format!(
@@ -105,7 +88,6 @@ fn linux_headless_java_command(
 include!("parts/daemon/installed_idea.rs");
 
 fn write_runtime_config_file(
-    backend_name: BackendName,
     args: &DaemonStartArgs,
     config: &KastConfig,
     runtime_libs_dir: Option<&Path>,
@@ -117,11 +99,11 @@ fn write_runtime_config_file(
     let runtime_config_file = runtime_config_dir.join(format!(
         "{}-{}.json",
         config::workspace_hash(&workspace_root),
-        backend_name.canonical(),
+        "indexer",
     ));
     let mut runtime_config = config.clone();
-    runtime_config.backends.headless.runtime_libs_dir = runtime_libs_dir.map(Path::to_path_buf);
-    runtime_config.backends.headless.idea_home = Some(idea_home.to_path_buf());
+    runtime_config.indexer.runtime_libs_dir = runtime_libs_dir.map(Path::to_path_buf);
+    runtime_config.indexer.host_home = Some(idea_home.to_path_buf());
     if let Some(value) = args.request_timeout_ms {
         runtime_config.server.request_timeout_millis = value;
     }
@@ -160,20 +142,20 @@ fn daemon_environment() -> [(&'static str, PathBuf); 1] {
     [("KAST_CONFIG_HOME", config::kast_config_home())]
 }
 
-fn headless_idea_home(args: &DaemonStartArgs, config: &KastConfig) -> Result<PathBuf> {
+fn indexer_host_home(args: &DaemonStartArgs, config: &KastConfig) -> Result<PathBuf> {
     args.idea_home
         .clone()
         .map(config::normalize)
-        .or_else(|| config.backends.headless.idea_home.clone())
+        .or_else(|| config.indexer.host_home.clone())
         .ok_or_else(|| {
             CliError::new(
                 "DAEMON_START_ERROR",
-                "Cannot locate IDEA home for the manifest-backed headless backend. Rerun `kast setup --source <bundle>`, or pass --idea-home for this launch.",
+                "Cannot locate the platform home for the installed indexer. Rerun `kast setup --source <bundle>`, or pass --idea-home for this launch.",
             )
         })
 }
 
-fn headless_jvm_args(idea_home: &Path, config: &KastConfig) -> Vec<String> {
+fn indexer_jvm_args(idea_home: &Path, config: &KastConfig) -> Vec<String> {
     let jna_arch = match env::consts::ARCH {
         "aarch64" => "aarch64",
         _ => "amd64",
@@ -186,7 +168,7 @@ fn headless_jvm_args(idea_home: &Path, config: &KastConfig) -> Vec<String> {
         "-Djava.system.class.loader=com.intellij.util.lang.PathClassLoader".to_string(),
         "-Didea.force.use.core.classloader=true".to_string(),
         "-Didea.vendor.name=JetBrains".to_string(),
-        "-Didea.paths.selector=KastHeadless".to_string(),
+        "-Didea.paths.selector=KastIndexer".to_string(),
         format!(
             "-Didea.config.path={}",
             config.paths.cache_dir.join("idea-config").display()

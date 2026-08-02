@@ -134,9 +134,9 @@ fn path_resolution_entries(
             mode,
         ),
     ];
-    if let Some(runtime_libs_dir) = &config.backends.headless.runtime_libs_dir {
+    if let Some(runtime_libs_dir) = &config.indexer.runtime_libs_dir {
         entries.push(path_entry(
-            "backends.headless.runtimeLibsDir",
+            "indexer.runtimeLibsDir",
             runtime_libs_dir,
             "directory",
             Some("paths.libDir"),
@@ -144,17 +144,17 @@ fn path_resolution_entries(
             mode,
         ));
         entries.push(path_entry(
-            "backends.headless.runtimeLibsClasspath",
+            "indexer.runtimeLibsClasspath",
             &runtime_libs_dir.join("classpath.txt"),
             "file",
-            Some("backends.headless.runtimeLibsDir"),
+            Some("indexer.runtimeLibsDir"),
             context.install_root_source,
             mode,
         ));
     }
-    if let Some(idea_home) = &config.backends.headless.idea_home {
+    if let Some(idea_home) = &config.indexer.host_home {
         entries.push(path_entry(
-            "backends.headless.ideaHome",
+            "indexer.hostHome",
             idea_home,
             "directory",
             None,
@@ -241,7 +241,7 @@ fn path_owner(key: &str) -> &'static str {
     match key {
         "cli.binaryPath" => "install",
         key if key.starts_with("paths.") => "install",
-        key if key.starts_with("backends.headless.") => "install",
+        key if key.starts_with("indexer.") => "install",
         _ => "runtime",
     }
 }
@@ -269,8 +269,8 @@ fn install_owned_config_key(key: &str) -> bool {
     key.starts_with("paths.")
         || key == "cli.binarypath"
         || key.starts_with("install.")
-        || key == "backends.headless.runtimelibsdir"
-        || key == "backends.headless.ideahome"
+        || key == "indexer.runtimelibsdir"
+        || key == "indexer.hosthome"
 }
 
 fn config_keys(path: &Path) -> Result<BTreeSet<String>> {

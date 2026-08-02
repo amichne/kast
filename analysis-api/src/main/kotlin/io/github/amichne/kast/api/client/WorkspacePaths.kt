@@ -3,8 +3,6 @@ package io.github.amichne.kast.api.client
 import io.github.amichne.kast.api.protocol.AnalysisException
 import io.github.amichne.kast.api.validation.FileHashing
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.nio.charset.StandardCharsets
@@ -24,7 +22,6 @@ internal data class KastPathDefaults(
     val descriptorDir: Path,
     val socketDir: Path,
     val cliBinary: Path,
-    val headlessRuntimeLibsDir: Path,
 )
 
 fun kastConfigHome(): Path = kastConfigHome(System::getenv, defaultUserHome())
@@ -70,12 +67,12 @@ fun socketPathForWorkspaceRoot(
         io.github.amichne.kast.api.contract.NormalizedPath.of(workspaceRoot).value,
     ).take(12)
     val configured = socketDirectory
-        .resolve("kast-headless-$workspaceHash.sock")
+        .resolve("kast-indexer-$workspaceHash.sock")
         .toAbsolutePath()
         .normalize()
     return if (configured.toString().toByteArray(StandardCharsets.UTF_8).size > maxUnixSocketPathBytes) {
         Path.of(System.getProperty("java.io.tmpdir"))
-            .resolve("kast-headless-$workspaceHash.sock")
+            .resolve("kast-indexer-$workspaceHash.sock")
             .toAbsolutePath()
             .normalize()
     } else {
@@ -113,7 +110,6 @@ private fun fallbackPathDefaults(installRoot: Path): KastPathDefaults {
         descriptorDir = runtimeDir.resolve("daemons"),
         socketDir = runtimeDir,
         cliBinary = binDir.resolve("kast"),
-        headlessRuntimeLibsDir = libDir.resolve("backends/headless/current/runtime-libs"),
     )
 }
 
@@ -144,18 +140,6 @@ private fun parseActiveCliReceipt(receiptPath: Path): KastPathDefaults {
         val runtimeDir = roots.requiredPath("runtime")
         val cliBinary = receipt.getValue("entrypoints").jsonObject.requiredPath("shim")
         val libDir = installRoot.resolve("current/lib")
-        val headlessRuntimeLibsDir = receipt["backends"]
-            ?.jsonArray
-            ?.asSequence()
-            ?.map { backend -> backend.jsonObject }
-            ?.firstOrNull { backend -> backend["name"]?.jsonPrimitive?.contentOrNull == "headless" }
-            ?.get("runtimeLibsDir")
-            ?.jsonPrimitive
-            ?.contentOrNull
-            ?.let(Path::of)
-            ?.toAbsolutePath()
-            ?.normalize()
-            ?: libDir.resolve("backends/headless/current/runtime-libs")
         KastPathDefaults(
             installRoot = installRoot,
             binDir = binDir,
@@ -168,7 +152,6 @@ private fun parseActiveCliReceipt(receiptPath: Path): KastPathDefaults {
             descriptorDir = runtimeDir.resolve("daemons"),
             socketDir = runtimeDir,
             cliBinary = cliBinary,
-            headlessRuntimeLibsDir = headlessRuntimeLibsDir,
         )
     }.getOrElse { cause ->
         throw AnalysisException(

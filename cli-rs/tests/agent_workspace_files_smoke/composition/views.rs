@@ -38,8 +38,6 @@ fn selected_verbose_and_explain_views_add_only_their_typed_evidence() {
                 "workspace-files",
                 "--workspace-root",
                 workspace.to_str().expect("UTF-8 workspace"),
-                "--backend",
-                "headless",
             ])
             .args(view_args)
             .output()

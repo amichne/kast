@@ -1,18 +1,18 @@
-fn inspect_headless_workspace(
+fn inspect_indexer_workspace(
     workspace_root: &Path,
     stale_descriptor_policy: StaleDescriptorPolicy,
 ) -> Result<WorkspaceInspection> {
     let config = KastConfig::load(workspace_root)?;
-    inspect_headless_workspace_with_config(workspace_root, &config, stale_descriptor_policy)
+    inspect_indexer_workspace_with_config(workspace_root, &config, stale_descriptor_policy)
 }
 
-fn inspect_headless_workspace_with_config(
+fn inspect_indexer_workspace_with_config(
     workspace_root: &Path,
     config: &KastConfig,
     stale_descriptor_policy: StaleDescriptorPolicy,
 ) -> Result<WorkspaceInspection> {
     let descriptor_directory = config.paths.descriptor_dir.clone();
-    let registered = find_headless_descriptors(&descriptor_directory, workspace_root)?;
+    let registered = find_indexer_descriptors(&descriptor_directory, workspace_root)?;
     let mut candidates = Vec::with_capacity(registered.len());
     for descriptor in registered {
         candidates.push(inspect_descriptor(
@@ -130,7 +130,7 @@ fn is_ready(status: &RuntimeStatusResponse) -> bool {
         && !status.indexing
 }
 
-fn find_headless_descriptors(
+fn find_indexer_descriptors(
     descriptor_directory: &Path,
     workspace_root: &Path,
 ) -> Result<Vec<RegisteredDescriptor>> {
@@ -138,7 +138,7 @@ fn find_headless_descriptors(
     let normalized = config::normalize(workspace_root.to_path_buf());
     Ok(descriptors
         .into_iter()
-        .filter(|descriptor| descriptor.backend_name == BackendName::Headless.canonical())
+        .filter(|descriptor| descriptor.backend_name == BackendName::Indexer.canonical())
         .filter(|descriptor| descriptor_matches_workspace(descriptor, &normalized))
         .map(|descriptor| RegisteredDescriptor {
             id: descriptor_id(&descriptor),

@@ -86,8 +86,6 @@ fn session_start_with_runner(
         OsString::from("up"),
         OsString::from("--workspace-root"),
         workspace.as_os_str().to_os_string(),
-        OsString::from("--backend"),
-        OsString::from("headless"),
         OsString::from("--accept-indexing"),
     ];
     match runner(&args) {
@@ -115,8 +113,6 @@ fn post_tool_use_with_runner(
         OsString::from("status"),
         OsString::from("--workspace-root"),
         workspace.as_os_str().to_os_string(),
-        OsString::from("--backend"),
-        OsString::from("headless"),
     ];
     if !matches!(runner(&status_args), Ok(status) if status_is_healthy(&status, workspace)) {
         return json!({});
@@ -134,7 +130,7 @@ fn post_tool_use_with_runner(
     additional_context(CodexHookEvent::PostToolUse, diagnostics)
 }
 
-fn diagnostics_args(workspace: &Path, path: &str) -> [OsString; 10] {
+fn diagnostics_args(workspace: &Path, path: &str) -> [OsString; 8] {
     [
         OsString::from("--output"),
         OsString::from("json"),
@@ -142,8 +138,6 @@ fn diagnostics_args(workspace: &Path, path: &str) -> [OsString; 10] {
         OsString::from("diagnostics"),
         OsString::from("--workspace-root"),
         workspace.as_os_str().to_os_string(),
-        OsString::from("--backend"),
-        OsString::from("headless"),
         OsString::from("--file-path"),
         OsString::from(path),
     ]

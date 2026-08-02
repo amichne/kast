@@ -69,7 +69,7 @@ sealed interface ServerInstanceOwnership {
 @Serializable(with = ServerInstanceDescriptor.Serializer::class)
 data class ServerInstanceDescriptor(
     val workspaceRoot: RuntimeWorkspaceRoot,
-    val backendName: HeadlessBackendName = HeadlessBackendName.HEADLESS,
+    val backendName: IndexerBackendName = IndexerBackendName.INDEXER,
     val backendVersion: RuntimeImplementationVersion,
     val transport: UnixDomainSocketTransport = UnixDomainSocketTransport.UDS,
     val socketPath: RuntimeSocketPath,
@@ -101,7 +101,7 @@ private data class SocketFileIdentityWire(
 @SerialName("io.github.amichne.kast.api.client.ServerInstanceDescriptor")
 private data class ServerInstanceDescriptorWire(
     val workspaceRoot: RuntimeWorkspaceRoot,
-    val backendName: HeadlessBackendName,
+    val backendName: IndexerBackendName,
     val backendVersion: RuntimeImplementationVersion,
     val transport: UnixDomainSocketTransport = UnixDomainSocketTransport.UDS,
     val socketPath: RuntimeSocketPath,

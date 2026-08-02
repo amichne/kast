@@ -175,7 +175,7 @@ fn ready_flags_installed_backend_below_embedded_minimum() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let install_root = default_install_root(&home);
-    let install_dir = install_root.join("current/lib/backends/headless/headless-0.0.1");
+    let install_dir = install_root.join("current/lib/backends/indexer/indexer-0.0.1");
     let runtime_libs = install_dir.join("runtime-libs");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::create_dir_all(&runtime_libs).expect("runtime libs");
@@ -211,10 +211,10 @@ fn ready_flags_installed_backend_below_embedded_minimum() {
             },
             "schemas": {"manifest": 1, "workspaceRegistry": 1, "symbolIndex": 3},
             "version": env!("CARGO_PKG_VERSION"),
-            "components": ["backend:headless"],
-            "managedPaths": ["current/lib/backends/headless"],
+            "components": ["backend:indexer"],
+            "managedPaths": ["current/lib/backends/indexer"],
             "backends": [{
-                "name": "headless",
+                "name": "indexer",
                 "version": "0.0.1",
                 "installDir": install_dir.display().to_string(),
                 "runtimeLibsDir": runtime_libs.display().to_string()

@@ -82,7 +82,7 @@ Command:
 - None
 ````
 
-## macOS headless pathway
+## macOS indexer pathway
 
 On a macOS developer workstation, explicit semantic demand is the normal
 runtime bootstrap. Invoke the active public Kast CLI from the canonical
@@ -92,7 +92,7 @@ workspace root:
 kast up
 ```
 
-Kast reuses or starts one isolated headless runtime for the exact root. It
+Kast reuses or starts one isolated indexer for the exact root. It
 starts Gradle import and semantic indexing without opening, closing, focusing,
 or routing through a foreground IDE project. `kast up` returns only when
 semantic evidence is ready, or it reports a typed blocker.
@@ -101,4 +101,4 @@ Supported hosts are IntelliJ IDEA 2026.2/build 262 and Android Studio
 2026.1.2/build 261. A supported installation supplies matched IntelliJ runtime
 libraries to the isolated process. It is not a semantic backend and its open
 or closed foreground state is irrelevant. Do not control a foreground IDE to
-repair Kast. Resolve the typed headless-runtime blocker instead.
+repair Kast. Resolve the typed indexer blocker instead.

@@ -25,11 +25,11 @@ runs:
         name: rust-cli-${{ inputs.platform }}-${{ github.run_id }}
         path: provenance-cli
 
-    - name: Download headless backend artifact
+    - name: Download indexer artifact
       uses: actions/download-artifact@v7
       with:
-        name: headless-backend-${{ github.run_id }}
-        path: headless-backend
+        name: indexer-${{ github.run_id }}
+        path: indexer
 
     - name: Build setup bundle
       shell: bash
@@ -39,14 +39,14 @@ runs:
         platform="${{ inputs.platform }}"
         cli_asset="provenance-cli/kast-${tag}-${platform}.zip"
         packager_archive="provenance-cli/kast-${tag}-linux-x64.zip"
-        backend_asset="headless-backend/headless.zip"
+        indexer_asset="indexer/indexer.zip"
         work="$RUNNER_TEMP/kast-setup-bundle"
         asset="dist/kast-${platform}-${tag}.tar.gz"
         rm -rf "$work" dist
         mkdir -p "$work/packager" dist/provenance
         [[ -f "$cli_asset" ]] || { echo "Missing platform CLI asset: ${cli_asset}" >&2; exit 1; }
         [[ -f "$packager_archive" ]] || { echo "Missing Linux packager CLI: ${packager_archive}" >&2; exit 1; }
-        [[ -f "$backend_asset" ]] || { echo "Missing headless backend asset: ${backend_asset}" >&2; exit 1; }
+        [[ -f "$indexer_asset" ]] || { echo "Missing indexer asset: ${indexer_asset}" >&2; exit 1; }
         cli_evidence=(
           --ledger provenance-cli/build-ledger-cli-linux-x64.json
           --require-kind release-cli-linux-x64
@@ -61,18 +61,18 @@ runs:
         fi
         scripts/verify-ci-artifact-ledger.py verify \
           "${cli_evidence[@]}" \
-          --ledger headless-backend/build-ledger-headless-backend.json \
+          --ledger indexer/build-ledger-indexer.json \
           --git-sha "$GITHUB_SHA" \
-          --require-kind release-headless-backend \
-          --artifact "release-headless-backend=${backend_asset}"
+          --require-kind release-indexer \
+          --artifact "release-indexer=${indexer_asset}"
         python3 -m zipfile -e "$packager_archive" "$work/packager"
         packager_bin="$work/packager/kastctl"
         [[ -f "$packager_bin" ]] || { echo "Missing extracted Rust CLI binary: ${packager_bin}" >&2; exit 1; }
         chmod 755 "$packager_bin"
-        "$packager_bin" developer release package ubuntu-debian-bundle \
+        "$packager_bin" developer release package setup-bundle \
           --repo-root "$PWD" \
           --cli-archive "$cli_asset" \
-          --backend-archive "$backend_asset" \
+          --indexer-archive "$indexer_asset" \
           --platform "$platform" \
           --version "$tag" \
           --bundle-output "$asset"
@@ -102,7 +102,7 @@ runs:
           --artifact-kind "release-setup-${platform}" \
           --artifact-name "$(basename -- "$asset")" \
           --artifact-path "$asset" \
-          --producer-job "build-setup-${platform}" \
+          --producer-job build-setup-bundles \
           --build-command-id "release-setup-${platform}-package"
         scripts/verify-ci-artifact-ledger.py verify \
           --ledger "dist/provenance/build-ledger-setup-${platform}.json" \

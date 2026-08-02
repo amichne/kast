@@ -41,21 +41,6 @@ internal fun assertConfigLoaderMerging(tempDir: Path) {
             [server]
             max-results = 75
 
-            [runtime]
-            default-backend = "idea"
-
-            [runtime.idea-launch]
-            enabled = true
-            command = "/Applications/IntelliJ IDEA.app/Contents/MacOS/idea"
-            wait-timeout-millis = 12345
-            require-installed-plugin = false
-
-            [project-open]
-            profile-auto-init = true
-            profile = "jetbrains-plugin"
-            auto-exclude-git = false
-            gradle-load-enabled = false
-
             [cache]
             enabled = false
 
@@ -63,8 +48,6 @@ internal fun assertConfigLoaderMerging(tempDir: Path) {
             enabled = true
             source-index-url = "file:///tmp/kast/source-index.db"
 
-            [backends.headless]
-            idea-home = "/Applications/IDEA CE.app/Contents"
             """.trimIndent(),
         )
     }
@@ -76,15 +59,6 @@ internal fun assertConfigLoaderMerging(tempDir: Path) {
     )
 
     assertEquals(75, config.server.maxResults.value)
-    assertEquals("idea", config.runtime.defaultBackend.value)
-    assertEquals(true, config.runtime.ideaLaunch.enabled.value)
-    assertEquals("/Applications/IntelliJ IDEA.app/Contents/MacOS/idea", config.runtime.ideaLaunch.command.value)
-    assertEquals(12_345L, config.runtime.ideaLaunch.waitTimeoutMillis.value)
-    assertEquals(true, config.projectOpen.profileAutoInit.value)
-    assertEquals("jetbrains-plugin", config.projectOpen.profile.value)
-    assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
-    assertEquals(false, config.projectOpen.autoExcludeGit.value)
-    assertEquals(false, config.projectOpen.gradleLoadEnabled.value)
     assertEquals(45_000L, config.server.requestTimeoutMillis.value)
     assertEquals(
         KastConfig.defaults().server.maxConcurrentRequests.value,
@@ -93,109 +67,10 @@ internal fun assertConfigLoaderMerging(tempDir: Path) {
     assertEquals(false, config.cache.enabled.value)
     assertEquals(true, config.indexing.remote.enabled.value)
     assertEquals("file:///tmp/kast/source-index.db", config.indexing.remote.sourceIndexUrl.value.orNull)
-    assertEquals(OptionalConfigString.Unset, config.backends.headless.ideaHome.value)
     assertEquals(true, config.telemetry.enabled.value)
     assertEquals("references,rename", config.telemetry.scopes.value)
     assertEquals(config.server.maxResults.value, config.toServerLimits().maxResults)
     assertEquals(config.server.requestTimeoutMillis.value, config.toServerLimits().requestTimeoutMillis)
-
-}
-
-internal fun assertIdeaConfigIsolation(tempDir: Path) {
-    val configHome = tempDir.resolve("config-home")
-    val workspaceRoot = tempDir.resolve("workspace")
-    val resolver = WorkspaceDirectoryResolver(
-        installRoot = { tempDir.resolve("manifest-root") },
-        gitWorkspaceResolver = {
-            GitWorkspace(
-                toplevel = workspaceRoot,
-                commonDir = tempDir.resolve("main.git"),
-                gitDir = tempDir.resolve("main.git").resolve("worktrees").resolve("workspace"),
-                remote = GitRemote(host = "github.com", owner = "amichne", repo = "kast"),
-            )
-        },
-    )
-    configHome.resolve("config.toml").apply {
-        parent.toFile().mkdirs()
-        writeText(
-            """
-            [paths]
-            installRoot = "/global/should-not-win"
-
-            [cli]
-            binaryPath = "/global/bin/kast"
-            """.trimIndent(),
-        )
-    }
-    resolver.workspaceDataDirectory(workspaceRoot).resolve("config.toml").apply {
-        parent.toFile().mkdirs()
-        writeText(
-            """
-            [paths]
-            installRoot = "/workspace/should-not-win"
-            cacheDir = "/workspace/cache"
-            runtimeDir = "/workspace/runtime"
-            descriptorDir = "/workspace/descriptors"
-            socketDir = "/workspace/socket"
-
-            [cli]
-            binaryPath = "/workspace/bin/kast"
-
-            [backends.headless]
-            runtimeLibsDir = "/workspace/runtime-libs"
-            ideaHome = "/workspace/idea-home"
-
-            [runtime]
-            defaultBackend = "idea"
-
-            [server]
-            maxResults = 75
-
-            [indexing.relationships]
-            parallelism = 2
-
-            [cache]
-            enabled = false
-
-            [projectOpen]
-            profileAutoInit = true
-            profile = "jetbrains-plugin"
-            autoExcludeGit = false
-            gradleLoadEnabled = false
-
-            [backends.idea]
-            enabled = false
-            """.trimIndent(),
-        )
-    }
-
-    val config = KastConfig.loadIdea(
-        workspaceRoot = workspaceRoot,
-        configHome = { configHome },
-        workspaceDirectoryResolver = resolver,
-    )
-
-    val defaults = KastConfig.defaults()
-    assertEquals(defaults.paths.installRoot.value, config.paths.installRoot.value)
-    assertEquals(defaults.paths.cacheDir.value, config.paths.cacheDir.value)
-    assertEquals(defaults.paths.runtimeDir.value, config.paths.runtimeDir.value)
-    assertEquals(defaults.paths.descriptorDir.value, config.paths.descriptorDir.value)
-    assertEquals(defaults.paths.socketDir.value, config.paths.socketDir.value)
-    assertEquals(defaults.cli.binaryPath.value, config.cli.binaryPath.value)
-    assertEquals(
-        defaults.backends.headless.runtimeLibsDir.value.orNull,
-        config.backends.headless.runtimeLibsDir.value.orNull,
-    )
-    assertEquals(OptionalConfigString.Unset, config.backends.headless.ideaHome.value)
-    assertEquals("idea", config.runtime.defaultBackend.value)
-    assertEquals(75, config.server.maxResults.value)
-    assertEquals(2, config.indexing.relationships.parallelism.value)
-    assertEquals(false, config.cache.enabled.value)
-    assertEquals(true, config.projectOpen.profileAutoInit.value)
-    assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
-    assertEquals(false, config.projectOpen.autoExcludeGit.value)
-    assertEquals(false, config.projectOpen.gradleLoadEnabled.value)
-    assertEquals(false, config.backends.idea.enabled.value)
 
 }
 
@@ -252,30 +127,6 @@ internal fun assertResolvedRuntimeConfigLoading(tempDir: Path) {
                 "otlpEndpoint": "http://localhost:4317",
                 "emitManifest": false
               },
-              "runtime": {
-                "defaultBackend": "headless",
-                "ideaLaunch": {
-                  "enabled": true,
-                  "command": "/usr/local/bin/idea",
-                  "waitTimeoutMillis": 45678
-                }
-              },
-              "projectOpen": {
-                "profileAutoInit": true,
-                "profile": "jetbrains-plugin",
-                "autoExcludeGit": false,
-                "gradleLoadEnabled": false
-              },
-              "backends": {
-                "headless": {
-                  "enabled": true,
-                  "runtimeLibsDir": "/opt/kast/runtime-libs",
-                  "ideaHome": "/opt/kast/idea-home"
-                },
-                "idea": {
-                  "enabled": false
-                }
-              },
               "paths": {
                 "installRoot": "/opt/kast",
                 "binDir": "/opt/kast/bin",
@@ -291,8 +142,8 @@ internal fun assertResolvedRuntimeConfigLoading(tempDir: Path) {
               },
               "install": {
                 "managedPaths": [
-                  "lib/backends/headless/headless-v0.8.0",
-                  "lib/backends/headless/current"
+                  "lib/backends/indexer/indexer-v0.8.0",
+                  "lib/backends/indexer/current"
                 ]
               }
             }
@@ -336,18 +187,6 @@ internal fun assertResolvedRuntimeConfigLoading(tempDir: Path) {
     assertEquals("/tmp/profiles", config.profiling.outputDir.value)
     assertEquals("http://localhost:4317", config.profiling.otlpEndpoint.value.orNull)
     assertEquals(false, config.profiling.emitManifest.value)
-    assertEquals("headless", config.runtime.defaultBackend.value)
-    assertEquals(true, config.runtime.ideaLaunch.enabled.value)
-    assertEquals("/usr/local/bin/idea", config.runtime.ideaLaunch.command.value)
-    assertEquals(45_678L, config.runtime.ideaLaunch.waitTimeoutMillis.value)
-    assertEquals(true, config.projectOpen.profileAutoInit.value)
-    assertEquals("jetbrains-plugin", config.projectOpen.profile.value)
-    assertEquals(ProjectOpenProfileKind.JETBRAINS_PLUGIN, config.projectOpen.profile.kind)
-    assertEquals(false, config.projectOpen.autoExcludeGit.value)
-    assertEquals(false, config.projectOpen.gradleLoadEnabled.value)
-    assertEquals("/opt/kast/runtime-libs", config.backends.headless.runtimeLibsDir.value.orNull)
-    assertEquals("/opt/kast/idea-home", config.backends.headless.ideaHome.value.orNull)
-    assertEquals(false, config.backends.idea.enabled.value)
     assertEquals("/opt/kast/cache", config.paths.cacheDir.value)
     assertEquals("/opt/kast/runtime", config.paths.runtimeDir.value)
     assertEquals("/opt/kast/bin/kast", config.cli.binaryPath.value)

@@ -1,5 +1,4 @@
 use crate::SCHEMA_VERSION;
-use crate::bundle::MACOS_INSTALLED_IDEA_SIDECAR_PROFILE;
 use crate::cli;
 use crate::cli::ReadyTarget;
 use crate::config::{self, PathResolutionReport};
@@ -162,7 +161,7 @@ pub fn doctor(target: ReadyTarget, workspace_root: Option<&Path>) -> Result<Self
             } else {
                 backend.name.trim()
             };
-            if install.profile != MACOS_INSTALLED_IDEA_SIDECAR_PROFILE
+            if !install.platform.starts_with("macos-")
                 && !Path::new(&backend.runtime_libs_dir)
                     .join("classpath.txt")
                     .is_file()
@@ -258,7 +257,7 @@ fn apply_ready_target_checks(
         ReadyTarget::Kotlin => {
             if install.is_none_or(|install| install.backends.is_empty()) {
                 issues.push(
-                    "Kotlin readiness requires an installed headless semantic backend in the manifest"
+                    "Kotlin readiness requires an installed Kast indexer in the manifest"
                         .to_string(),
                 );
             }

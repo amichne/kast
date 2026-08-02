@@ -13,7 +13,7 @@ fn impact_stops_before_sql_for_mismatched_and_unsupported_subjects() {
         std::fs::write(&declaration_file, "package sample\nclass Service\n").expect("source");
         let canonical = std::fs::canonicalize(&declaration_file).expect("canonical source");
         let socket = temp.path().join(format!("impact-closed-{index}.sock"));
-        let backend = spawn_scripted_headless_backend(
+        let backend = spawn_scripted_indexer_backend(
             &home,
             &config,
             &workspace,
@@ -103,9 +103,9 @@ fn exact_symbol_returns_one_reusable_anchored_identity() {
     let home = temp.path().join("home");
     let config = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket = temp.path().join("headless.sock");
+    let socket = temp.path().join("indexer.sock");
     let declaration_file = workspace.join("Service.kt");
-    let backend = spawn_scripted_headless_backend(
+    let backend = spawn_scripted_indexer_backend(
         &home,
         &config,
         &workspace,
@@ -167,7 +167,7 @@ fn selector_handle_resolves_once_and_reuses_identity_for_references() {
     let selector_handle = "ksh1.test-issued-selector-handle";
     let selector = relation_identity("sample.Service.run", "FUNCTION", &declaration_file, 42);
 
-    let resolve_backend = spawn_scripted_headless_backend(
+    let resolve_backend = spawn_scripted_indexer_backend(
         &home,
         &config,
         &workspace,
@@ -210,7 +210,7 @@ fn selector_handle_resolves_once_and_reuses_identity_for_references() {
     );
     let mut requests = resolve_backend.join().expect("resolve backend");
 
-    let references_backend = spawn_scripted_headless_backend(
+    let references_backend = spawn_scripted_indexer_backend(
         &home,
         &config,
         &workspace,
@@ -324,7 +324,7 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
     ];
 
     for (index, (command_name, method, extra_args, response)) in cases.into_iter().enumerate() {
-        let backend = spawn_scripted_headless_backend(
+        let backend = spawn_scripted_indexer_backend(
             &home,
             &config,
             &workspace,

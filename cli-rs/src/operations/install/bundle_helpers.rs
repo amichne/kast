@@ -167,13 +167,13 @@ fn directory_sha256(root: &Path) -> Result<String> {
     Ok(hex::encode(digest.finalize()))
 }
 
-fn link_active_headless_backend(
+fn link_active_indexer(
     bundle: &ValidatedBundle,
     release_root: &Path,
 ) -> Result<()> {
-    let stable_backend_dir = release_root.join("lib/backends/headless");
-    fs::create_dir_all(&stable_backend_dir)?;
-    let current = stable_backend_dir.join("current");
+    let stable_indexer_dir = release_root.join("lib/backends/indexer");
+    fs::create_dir_all(&stable_indexer_dir)?;
+    let current = stable_indexer_dir.join("current");
     manifest::remove_path(&current)?;
     let backend_name = bundle.backend_install_relative.file_name().ok_or_else(|| {
         CliError::new(
@@ -193,7 +193,7 @@ fn link_active_headless_backend(
     Ok(())
 }
 
-fn write_headless_config(config_file: &Path) -> Result<()> {
+fn write_indexer_config(config_file: &Path) -> Result<()> {
     if let Some(parent) = config_file.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -203,12 +203,6 @@ fn write_headless_config(config_file: &Path) -> Result<()> {
 maxResults = 500
 requestTimeoutMillis = 30000
 maxConcurrentRequests = 4
-
-[runtime]
-defaultBackend = "headless"
-
-[backends.headless]
-enabled = true
 "#,
     )?;
     Ok(())

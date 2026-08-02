@@ -1,7 +1,7 @@
 package io.github.amichne.kast.server
 
 import io.github.amichne.kast.api.client.DescriptorRegistryPath
-import io.github.amichne.kast.api.client.HeadlessBackendName
+import io.github.amichne.kast.api.client.IndexerBackendName
 import io.github.amichne.kast.api.client.ProcessId
 import io.github.amichne.kast.api.client.ProcessStartEpochMillis
 import io.github.amichne.kast.api.client.RuntimeInstanceId
@@ -22,7 +22,6 @@ class AnalysisServer(
     private val backend: CloseableAnalysisBackend,
     private val config: AnalysisServerConfig,
     private val lifecycleController: RuntimeLifecycleController = RuntimeLifecycleController.Unavailable,
-    private val projectOpenController: RuntimeProjectOpenController = RuntimeProjectOpenController.Unavailable,
 ) {
     fun start(): RunningAnalysisServer {
         val capabilities = runBlocking {
@@ -32,7 +31,6 @@ class AnalysisServer(
             backend,
             config,
             lifecycleController,
-            projectOpenController,
         )
         var transportServer: LocalRpcServer? = null
         var descriptor: ServerInstanceDescriptor? = null
@@ -56,7 +54,7 @@ class AnalysisServer(
                     val launch = startedDescriptorStore.launchEndpoint(
                         EndpointLaunchRequest(
                             workspaceRoot = canonicalWorkspaceRoot,
-                            backendName = HeadlessBackendName.HEADLESS,
+                            backendName = IndexerBackendName.INDEXER,
                             backendVersion = RuntimeImplementationVersion(capabilities.backendVersion),
                             socketPath = socketPath,
                             runtimeInstanceId = instanceId,

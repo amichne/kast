@@ -4,8 +4,6 @@ internal fun KastConfig.merge(override: KastConfigOverride): KastConfig {
     val mergedPaths = paths.merge(override.paths)
     return copy(
         server = server.merge(override.server),
-        runtime = runtime.merge(override.runtime),
-        projectOpen = projectOpen.merge(override.projectOpen),
         codex = codex.merge(override.codex),
         indexing = indexing.merge(override.indexing),
         cache = cache.merge(override.cache),
@@ -13,7 +11,6 @@ internal fun KastConfig.merge(override: KastConfigOverride): KastConfig {
         gradle = gradle.merge(override.gradle),
         telemetry = telemetry.merge(override.telemetry),
         profiling = profiling.merge(override.profiling),
-        backends = backends.merge(override.backends),
         paths = mergedPaths,
         cli = cli.merge(override.cli),
     )
@@ -29,47 +26,10 @@ private fun CodexHooksConfig.merge(override: CodexHooksConfigOverride?): CodexHo
     postToolUse = override?.postToolUse ?: postToolUse,
 )
 
-internal fun KastConfigOverride.ideaWorkspaceOverride(): KastConfigOverride = KastConfigOverride(
-    server = server,
-    runtime = runtime?.let {
-        RuntimeConfigOverride(
-            defaultBackend = it.defaultBackend,
-            strictPluginMatching = it.strictPluginMatching,
-        )
-    },
-    projectOpen = projectOpen,
-    indexing = indexing,
-    cache = cache,
-    watcher = watcher,
-    gradle = gradle,
-    telemetry = telemetry,
-    profiling = profiling,
-    backends = BackendsConfigOverride(idea = backends?.idea).takeIf { it.idea != null },
-)
-
 private fun ServerConfig.merge(override: ServerConfigOverride?): ServerConfig = copy(
     maxResults = override?.maxResults ?: maxResults,
     requestTimeoutMillis = override?.requestTimeoutMillis ?: requestTimeoutMillis,
     maxConcurrentRequests = override?.maxConcurrentRequests ?: maxConcurrentRequests,
-)
-
-private fun RuntimeConfig.merge(override: RuntimeConfigOverride?): RuntimeConfig = copy(
-    defaultBackend = override?.defaultBackend ?: defaultBackend,
-    strictPluginMatching = override?.strictPluginMatching ?: strictPluginMatching,
-    ideaLaunch = ideaLaunch.merge(override?.ideaLaunch),
-)
-
-private fun ProjectOpenConfig.merge(override: ProjectOpenConfigOverride?): ProjectOpenConfig = copy(
-    profileAutoInit = override?.profileAutoInit ?: profileAutoInit,
-    profile = override?.profile ?: profile,
-    autoExcludeGit = override?.autoExcludeGit ?: autoExcludeGit,
-    gradleLoadEnabled = override?.gradleLoadEnabled ?: gradleLoadEnabled,
-)
-
-private fun IdeaLaunchConfig.merge(override: IdeaLaunchConfigOverride?): IdeaLaunchConfig = copy(
-    enabled = override?.enabled ?: enabled,
-    command = override?.command ?: command,
-    waitTimeoutMillis = override?.waitTimeoutMillis ?: waitTimeoutMillis,
 )
 
 private fun IndexingConfig.merge(override: IndexingConfigOverride?): IndexingConfig = copy(
@@ -127,21 +87,6 @@ private fun ProfilingConfig.merge(override: ProfilingConfigOverride?): Profiling
     outputDir = override?.outputDir ?: outputDir,
     otlpEndpoint = override?.otlpEndpoint ?: otlpEndpoint,
     emitManifest = override?.emitManifest ?: emitManifest,
-)
-
-private fun BackendsConfig.merge(
-    override: BackendsConfigOverride?,
-): BackendsConfig = copy(
-    headless = headless.merge(override?.headless),
-    idea = idea.merge(override?.idea),
-)
-
-private fun HeadlessBackendConfig.merge(override: HeadlessBackendConfigOverride?): HeadlessBackendConfig = copy(
-    enabled = override?.enabled ?: enabled,
-)
-
-private fun IdeaBackendConfig.merge(override: IdeaBackendConfigOverride?): IdeaBackendConfig = copy(
-    enabled = override?.enabled ?: enabled,
 )
 
 private fun PathsConfig.merge(override: PathsConfigOverride?): PathsConfig = copy(

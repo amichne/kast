@@ -120,7 +120,7 @@
         assert_eq!(
             default_socket_path_for_config(&config, &workspace_root),
             PathBuf::from(format!(
-                "/home/agent/.cache/kast/workspaces/kast-main/kast-{}.sock",
+                "/home/agent/.cache/kast/workspaces/kast-main/kast-indexer-{}.sock",
                 workspace_hash(&workspace_root)
             )),
         );
@@ -139,7 +139,7 @@
             &config
                 .paths
                 .socket_dir
-                .join(format!("kast-{}.sock", workspace_hash(&workspace_root)))
+                .join(format!("kast-indexer-{}.sock", workspace_hash(&workspace_root)))
         ));
         assert_eq!(
             default_socket_path_for_config(&config, &workspace_root),
@@ -157,6 +157,6 @@
             config
                 .paths
                 .socket_dir
-                .join(format!("kast-{}.sock", workspace_hash(&workspace_root))),
+                .join(format!("kast-indexer-{}.sock", workspace_hash(&workspace_root))),
         );
     }

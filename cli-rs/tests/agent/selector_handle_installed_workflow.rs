@@ -2,7 +2,7 @@
 mod support;
 
 use support::metrics::seed_source_index;
-use support::{kast_at, spawn_scripted_headless_backend_for_invocations};
+use support::{kast_at, spawn_scripted_indexer_backend_for_invocations};
 
 fn decode_default_toon(
     operation: &str,
@@ -70,11 +70,11 @@ fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operation
         "declarationFile": declaration_file,
         "declarationStartOffset": 1
     });
-    let backend = spawn_scripted_headless_backend_for_invocations(
+    let backend = spawn_scripted_indexer_backend_for_invocations(
         &home,
         &config_home,
         &workspace,
-        &temp.path().join("headless.sock"),
+        &temp.path().join("indexer.sock"),
         3,
         vec![
             (

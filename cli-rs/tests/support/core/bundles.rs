@@ -1,23 +1,23 @@
-pub(crate) fn write_backend_archive(root: &Path, backend: &str, version: &str) -> PathBuf {
-    assert_eq!(backend, "headless", "unsupported backend fixture");
-    let staging = root.join(format!("{backend}-staging"));
-    let archive = root.join(format!("{backend}.zip"));
-    let archive_root = "backend-headless";
+pub(crate) fn write_indexer_archive(root: &Path, indexer: &str, version: &str) -> PathBuf {
+    assert_eq!(indexer, "indexer", "unsupported indexer fixture");
+    let staging = root.join(format!("{indexer}-staging"));
+    let archive = root.join(format!("{indexer}.zip"));
+    let archive_root = "indexer";
     let runtime_libs = staging.join(archive_root).join("runtime-libs");
     std::fs::create_dir_all(&runtime_libs).expect("runtime libs");
     std::fs::write(runtime_libs.join("classpath.txt"), "kast-test.jar\n").expect("classpath");
     std::fs::write(runtime_libs.join("kast-test.jar"), b"fake jar").expect("jar");
-    let launcher = staging.join(archive_root).join(format!("kast-{backend}"));
+    let launcher = staging.join(archive_root).join(format!("kast-{indexer}"));
     std::fs::write(&launcher, "#!/bin/sh\n").expect("launcher");
-    std::fs::create_dir_all(staging.join(archive_root).join("idea-home/lib")).expect("idea lib");
+    std::fs::create_dir_all(staging.join(archive_root).join("idea-home/lib")).expect("host lib");
     std::fs::create_dir_all(staging.join(archive_root).join("idea-home/modules"))
-        .expect("idea modules");
+        .expect("host modules");
     std::fs::create_dir_all(
         staging
             .join(archive_root)
-            .join("idea-home/plugins/kast-headless"),
+            .join("idea-home/plugins/kast-indexer"),
     )
-    .expect("headless plugin");
+    .expect("indexer runtime payload");
     std::fs::write(
         staging.join(archive_root).join("idea-home/lib/nio-fs.jar"),
         b"nio",
@@ -39,7 +39,7 @@ pub(crate) fn write_backend_archive(root: &Path, backend: &str, version: &str) -
         status.success(),
         "zip command should create fixture archive"
     );
-    assert!(archive.is_file(), "archive fixture for {backend} {version}");
+    assert!(archive.is_file(), "archive fixture for {indexer} {version}");
     archive
 }
 
@@ -70,23 +70,23 @@ pub(crate) fn write_cli_archive(root: &Path) -> PathBuf {
 }
 
 pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf {
-    let platform = "ubuntu-debian-headless-x86_64";
+    let platform = "linux-x64";
     let bundle = root.join(format!("kast-{platform}-{version}"));
-    let backend_dir = bundle.join(format!("lib/backends/headless-{version}"));
+    let backend_dir = bundle.join(format!("lib/backends/indexer-{version}"));
     std::fs::create_dir_all(bundle.join("bin")).expect("bundle bin");
     std::fs::create_dir_all(bundle.join("libexec")).expect("bundle libexec");
     std::fs::create_dir_all(backend_dir.join("runtime-libs")).expect("runtime libs");
-    std::fs::create_dir_all(backend_dir.join("idea-home/lib")).expect("idea lib");
-    std::fs::create_dir_all(backend_dir.join("idea-home/modules")).expect("idea modules");
-    std::fs::create_dir_all(backend_dir.join("idea-home/plugins/kast-headless"))
-        .expect("kast-headless plugin");
+    std::fs::create_dir_all(backend_dir.join("idea-home/lib")).expect("host lib");
+    std::fs::create_dir_all(backend_dir.join("idea-home/modules")).expect("host modules");
+    std::fs::create_dir_all(backend_dir.join("idea-home/plugins/kast-indexer"))
+        .expect("kast-indexer plugin");
 
     let bundled_control = bundle.join("libexec/kastctl");
     let bundled_kast = bundle.join("bin/kast");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &bundled_control)
         .expect("copy test kastctl binary");
     std::fs::copy(env!("CARGO_BIN_EXE_kast"), &bundled_kast).expect("copy test kast binary");
-    std::fs::write(backend_dir.join("kast-headless"), "#!/bin/sh\n").expect("launcher");
+    std::fs::write(backend_dir.join("kast-indexer"), "#!/bin/sh\n").expect("launcher");
     std::fs::write(
         backend_dir.join("runtime-libs/classpath.txt"),
         "kast-test.jar\n",
@@ -102,7 +102,7 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
     std::fs::write(bundle.join("install.sh"), "#!/usr/bin/env bash\n").expect("bootstrap script");
     set_executable_for_test(&bundled_control);
     set_executable_for_test(&bundled_kast);
-    set_executable_for_test(&backend_dir.join("kast-headless"));
+    set_executable_for_test(&backend_dir.join("kast-indexer"));
     set_executable_for_test(&bundle.join("install.sh"));
 
     let normalized_version = version.trim_start_matches('v');
@@ -111,7 +111,7 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
         serde_json::to_string_pretty(&serde_json::json!({
             "schemaVersion": 3,
             "kind": "KAST_INSTALL_BUNDLE",
-            "profile": "ubuntu-debian-headless",
+            "profile": "indexer",
             "version": version,
             "platform": platform,
             "entrypoint": "install.sh",
@@ -120,14 +120,14 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
             "activation": {
                 "cli": {"path": "libexec/kastctl"},
                 "backend": {
-                    "kind": "headless",
-                    "name": "headless",
+                    "kind": "indexer",
+                    "name": "indexer",
                     "version": normalized_version,
-                    "installDir": format!("lib/backends/headless-{version}"),
-                    "launcher": "kast-headless",
+                    "installDir": format!("lib/backends/indexer-{version}"),
+                    "launcher": "kast-indexer",
                     "runtimeLibsDir": "runtime-libs",
                     "ideaHome": "idea-home",
-                    "requiredPlugin": "idea-home/plugins/kast-headless"
+                    "requiredPlugin": "idea-home/plugins/kast-indexer"
                 },
                 "shim": {
                     "javaOpts": ["-Didea.force.use.core.classloader=true"],
@@ -147,8 +147,8 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
                     "sha256": test_path_sha256(&bundled_kast)
                 },
                 {
-                    "role": "headless-backend",
-                    "path": format!("lib/backends/headless-{version}"),
+                    "role": "indexer",
+                    "path": format!("lib/backends/indexer-{version}"),
                     "sha256": test_path_sha256(&backend_dir)
                 }
             ]

@@ -8,7 +8,7 @@ fn ensure_lease_runtime(
         while Instant::now() < deadline {
             admission.validate_current()?;
             let inspection =
-                inspect_headless_workspace(admission.workspace_root(), StaleDescriptorPolicy::Preserve)?;
+                inspect_indexer_workspace(admission.workspace_root(), StaleDescriptorPolicy::Preserve)?;
             if let Some(candidate) = inspection.candidates.into_iter().find(|candidate| {
                 candidate.descriptor_path == admission.candidate().descriptor_path
                     && candidate.descriptor == admission.candidate().descriptor
@@ -19,7 +19,7 @@ fn ensure_lease_runtime(
             } else {
                 return Err(CliError::new(
                     "WORKSPACE_LEASE_RUNTIME_REPLACED",
-                    "The exact headless runtime changed while lease acquisition waited for READY.",
+                    "The exact indexer changed while lease acquisition waited for READY.",
                 ));
             }
             thread::sleep(Duration::from_millis(25));
@@ -27,7 +27,7 @@ fn ensure_lease_runtime(
         return Err(CliError::new(
             "RUNTIME_TIMEOUT",
             format!(
-                "Timed out waiting for the exact headless runtime for {} to reach READY.",
+                "Timed out waiting for the exact indexer for {} to reach READY.",
                 admission.workspace_root().display()
             ),
         ));
@@ -62,12 +62,10 @@ fn lease_runtime_result(
 
 fn lease_runtime_args(
     workspace_root: &Path,
-    backend_name: BackendName,
     wait_timeout_ms: u64,
 ) -> RuntimeArgs {
     RuntimeArgs {
         workspace_root: Some(workspace_root.to_path_buf()),
-        backend_name: Some(backend_name),
         idea_home: None,
         wait_timeout_ms,
         accept_indexing: Some(true),
@@ -213,9 +211,8 @@ fn exact_runtime_observation(
     backend_name: BackendName,
     expected: &WorkspaceLeaseRuntimeIdentity,
 ) -> Result<ExactRuntimeObservation> {
-    headless_authority::require_headless_backend(backend_name)?;
     let inspection =
-        inspect_headless_workspace(workspace_root, StaleDescriptorPolicy::Preserve)?;
+        inspect_indexer_workspace(workspace_root, StaleDescriptorPolicy::Preserve)?;
     for candidate in &inspection.candidates {
         if runtime_descriptor_matches(&candidate.descriptor, &candidate.descriptor_path, expected) {
             if !process_identity_is_live(&expected.process) {
@@ -279,11 +276,7 @@ fn release_active_binding(binding: &WorkspaceLeaseBinding) -> Result<WorkspaceLe
             (false, WorkspaceLeaseReleaseReason::BorrowedRuntimePreserved)
         }
         WorkspaceLeaseOwnership::Started => {
-            if stop_exact_runtime(
-                &binding.workspace_root,
-                binding.backend_name,
-                &binding.runtime,
-            )? {
+            if stop_exact_runtime(&binding.workspace_root, &binding.runtime)? {
                 (true, WorkspaceLeaseReleaseReason::OwnedRuntimeStopped)
             } else {
                 (false, WorkspaceLeaseReleaseReason::ExactRuntimeUnavailable)
@@ -299,12 +292,10 @@ fn release_active_binding(binding: &WorkspaceLeaseBinding) -> Result<WorkspaceLe
 
 fn stop_exact_runtime(
     workspace_root: &Path,
-    backend_name: BackendName,
     expected: &WorkspaceLeaseRuntimeIdentity,
 ) -> Result<bool> {
-    headless_authority::require_headless_backend(backend_name)?;
     let inspection =
-        inspect_headless_workspace(workspace_root, StaleDescriptorPolicy::Preserve)?;
+        inspect_indexer_workspace(workspace_root, StaleDescriptorPolicy::Preserve)?;
     let Some(candidate) = inspection.candidates.into_iter().find(|candidate| {
         runtime_descriptor_matches(&candidate.descriptor, &candidate.descriptor_path, expected)
             && process_identity_is_live(&expected.process)

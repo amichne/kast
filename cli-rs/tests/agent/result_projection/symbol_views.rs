@@ -60,8 +60,8 @@ fn run_symbol(extra_args: &[&str]) -> (Value, String, Vec<Value>) {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
-    let socket_path = temp.path().join("headless.sock");
-    let backend = spawn_scripted_headless_backend(
+    let socket_path = temp.path().join("indexer.sock");
+    let backend = spawn_scripted_indexer_backend(
         &home,
         &config_home,
         &workspace,

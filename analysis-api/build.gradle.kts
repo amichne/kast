@@ -44,7 +44,7 @@ val workspaceFilesContinuationSamples = rootProject.layout.projectDirectory.dir(
     "cli-rs/protocol/source/requests/raw/workspace-files-continuation",
 )
 val runtimeCompatibilitySource = rootProject.layout.projectDirectory.file(
-    "packaging/jetbrains/runtime-compatibility.json",
+    "packaging/indexer/runtime-compatibility.json",
 )
 
 tasks.named<Test>("test") {

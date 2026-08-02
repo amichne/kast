@@ -33,7 +33,7 @@ global {
 views {
   view system-landscape {
     title "Kast system landscape"
-    description "Public callers and adapters enter one Kast boundary; compiler and workspace state remain explicit dependencies."
+    description "Public callers enter one Kast boundary; compiler libraries and workspace state remain explicit dependencies."
     include *
     global style semantic-boundaries
     style kast {
@@ -45,13 +45,13 @@ views {
 
   view runtime-components of kast {
     title "Kast runtime components"
-    description "Drill into CLI dispatch, runtime admission, server routing, compiler backend, and proof-carrying output."
+    description "CLI dispatch, exact-root admission, one indexer, and proof-carrying output."
     include *
     include kast.server.*
-    include kast.backend.*
+    include kast.indexer.*
     include kast.evidence.*
     global style semantic-boundaries
-    style kast.server, kast.backend, kast.evidence {
+    style kast.server, kast.indexer, kast.evidence {
       color secondary
     }
     autoLayout LeftRight 110 70
@@ -59,7 +59,7 @@ views {
 
   view compiler-evidence {
     title "Compiler evidence pipeline"
-    description "Exact request path from the public CLI to compiler semantics, persisted facts, and typed result projection."
+    description "Exact request path from the CLI to compiler semantics, persisted facts, and typed projection."
     include developer
     include kast.cli
     include kast.agent
@@ -67,14 +67,12 @@ views {
     include kast.server.dispatcher
     include kast.server.router
     include kast.server.orchestrator
-    include kast.backend.api
-    include kast.backend.headless
-    include kast.backend.idea
+    include kast.indexer.compiler
     include kotlinCompiler
     include kast.evidence.index
     include kast.evidence.projection
     global style semantic-boundaries
-    style kast.backend.api, kast.backend.headless, kast.backend.idea, kotlinCompiler {
+    style kast.indexer.compiler, kotlinCompiler {
       color indigo
     }
     style kast.evidence.index, kast.evidence.projection {
@@ -85,7 +83,7 @@ views {
 
   view public-entrypoints {
     title "Public entry points"
-    description "The installer and Codex hooks are adapters; `kast` remains the only public command contract."
+    description "The installer and harness hooks are adapters; kast remains the public command contract."
     include developer
     include installer
     include codexHooks
@@ -97,26 +95,19 @@ views {
   }
 
   view indexing-landscape {
-    title "Indexing / Landscape"
-    description "Private headless IntelliJ and Kotlin state feeds two independently refreshed, generation-bound SQLite products."
+    title "Indexing landscape"
+    description "One indexer turns Gradle and compiler state into generation-bound SQLite evidence."
     include developer
     include codexHooks
     include kast.cli
     include kast.control
-    include kast.backend.headless
-    include kast.backend.idea
-    include ideaPlatform
+    include kast.indexer
+    include runtimeLibraries
     include kotlinCompiler
-    include kast.indexing
     include kast.evidence.index
-    exclude kast.backend.idea -> kast.evidence.index
     global style semantic-boundaries
-    style ideaPlatform, kotlinCompiler, kast.backend.headless, kast.backend.idea {
+    style runtimeLibraries, kotlinCompiler, kast.indexer {
       color indigo
-    }
-    style kast.indexing {
-      color blue
-      size xl
     }
     style kast.evidence.index {
       color green
@@ -126,75 +117,61 @@ views {
   }
 
   dynamic view indexing-guide {
-    title "Indexing / Explore the pipelines"
-    description "Start high-level, then follow the interaction into exact headless bootstrap, SQLite, or refresh sequence."
+    title "Explore indexing pipelines"
+    description "Follow indexer admission, retained SQLite evidence, or focused refresh."
 
-    kast.control -> kast.indexing.projectOpen "starts exact-root headless indexing" {
+    kast.control -> kast.indexer.runtime "admits exact-root indexer" {
       navigateTo reference-indexing
     }
-    kast.agent -> kast.evidence.index "queries retained generation-bound evidence" {
+    kast.indexer.compiler -> kast.evidence.index "reads indexed facts" {
       navigateTo sqlite-pipeline
     }
-    codexHooks -> kast.cli "refreshes focused Kotlin evidence after a successful write" {
+    codexHooks -> kast.cli "refreshes changed Kotlin evidence" {
       navigateTo refresh-lifecycle
     }
   }
 
-  view headless-semantic-pipeline {
-    title "Headless / Live semantic pipeline"
-    description "Private headless IntelliJ admission reaches PSI, the Analysis API, K2, and FIR; consumers retain provider-neutral facts, never compiler objects."
-
-    include kast.backend.headless
-    include kast.backend.idea
-    include kast.backend.ideaAdmission
-    include kast.backend.ideaRefresh
-    include kast.backend.ideaDiagnostics
-    include ideaPlatform.*
+  view indexer-pipeline {
+    title "Live indexer pipeline"
+    description "The isolated indexer reaches PSI and K2, then retains provider-neutral facts."
+    include kast.indexer.runtime
+    include kast.indexer.serverRuntime
+    include kast.indexer.compiler
+    include kast.indexer.admission
+    include kast.indexer.refresh
+    include kast.indexer.diagnostics
+    include runtimeLibraries
     include kotlinCompiler.*
-    include kast.indexing.referenceScanner
-    include kast.indexing.declarationScanner
-    include kast.indexing.graphExtractor
-    include kast.indexing.refreshStatus
-
+    include kast.indexer.referenceScanner
+    include kast.indexer.declarationScanner
+    include kast.indexer.graphExtractor
+    include kast.indexer.refreshStatus
     global style semantic-boundaries
-    style ideaPlatform.*, kotlinCompiler.* {
+    style runtimeLibraries, kotlinCompiler.* {
       color indigo
     }
-    style kast.indexing.referenceScanner, kast.indexing.declarationScanner, kast.indexing.graphExtractor {
+    style kast.indexer.referenceScanner, kast.indexer.declarationScanner, kast.indexer.graphExtractor {
       color blue
     }
     autoLayout LeftRight 100 70
   }
 
   view retained-evidence {
-    title "SQLite / Retained evidence"
-    description "One WAL database stores separately refreshed inventory, references, semantic graph facts, generations, and reusable snapshots."
-
-    include kast.indexing.sourceScanner
-    include kast.indexing.referenceIndexer
-    include kast.indexing.graphWriter
-    include kast.indexing.snapshotCoordinator
-    include kast.evidence.index.writer
-    include kast.evidence.index.interning
-    include kast.evidence.index.inventory
-    include kast.evidence.index.relationships
-    include kast.evidence.index.moduleProgress
-    include kast.evidence.index.semanticGraph
-    include kast.evidence.index.generation
-    include kast.evidence.index.snapshots
-    include kast.indexing.referenceLookup
+    title "Retained evidence"
+    description "One WAL database stores inventory, references, graph facts, generations, and snapshots."
+    include kast.indexer.sourceScanner
+    include kast.indexer.referenceIndexer
+    include kast.indexer.graphWriter
+    include kast.indexer.snapshotCoordinator
+    include kast.evidence.index.*
     include kotlinCompiler.psi
     include kast.evidence.projection
-
     global style semantic-boundaries
     style kast.evidence.index.* {
       color green
     }
-    style kast.indexing.sourceScanner, kast.indexing.referenceIndexer, kast.indexing.graphWriter {
+    style kast.indexer.sourceScanner, kast.indexer.referenceIndexer, kast.indexer.graphWriter {
       color blue
-    }
-    style kotlinCompiler.psi {
-      color indigo
     }
     autoLayout LeftRight 105 70
   }

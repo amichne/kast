@@ -104,7 +104,7 @@ configure_gradle_java_paths "$gradle_user_dir" "${GRADLE_JAVA_HOME:-}" "${JAVA_H
 
 cleanup() {
   if [[ -n "${kastctl_bin:-}" && -x "${kastctl_bin:-}" && -n "$workspace" && -d "$workspace" ]]; then
-    kastctl developer runtime stop --backend headless --workspace-root "$workspace" >/dev/null 2>&1 || true
+    kastctl developer runtime stop --workspace-root "$workspace" >/dev/null 2>&1 || true
   fi
   git -C "$repository_cache" worktree remove --force "$repository_worktree" >/dev/null 2>&1 || true
   rm -rf "$scratch"
@@ -149,24 +149,20 @@ fi
 kastctl config set gradle.toolingApiTimeoutMillis "$wait_timeout_ms" --workspace-root "$workspace" >/dev/null
 kastctl config list --workspace-root "$workspace" >"$scratch/effective-config.toon"
 if ! kastctl --output json developer runtime up \
-    --backend headless \
     --workspace-root "$workspace" \
     --wait-timeout-ms "$wait_timeout_ms" >"$scratch/runtime.json"; then
   cat "$scratch/runtime.json" >&2
   exit 1
 fi
 kastctl --output json agent workspace-files \
-  --backend headless \
   --workspace-root "$workspace" \
   --count >"$scratch/workspace-files.json"
 kastctl --output json agent graph \
-  --backend headless \
   --workspace-root "$workspace" \
   --operation refresh \
   --file-path "$scoped_graph_file" \
   --exclusive >"$scratch/graph-refresh.json"
 kastctl --output json agent graph \
-  --backend headless \
   --workspace-root "$workspace" \
   --operation summary >"$scratch/graph.json"
 

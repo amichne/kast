@@ -43,8 +43,6 @@ fn compact_groups_only_consecutive_globally_sorted_identical_evidence() {
             "workspace-files",
             "--workspace-root",
             workspace.to_str().expect("UTF-8 workspace"),
-            "--backend",
-            "headless",
             "--kind",
             "source",
         ])

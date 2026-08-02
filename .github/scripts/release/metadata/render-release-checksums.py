@@ -47,21 +47,11 @@ def expected_sidecar(asset_name: str) -> str | None:
 
 def expected_assets(tag: str) -> dict[str, str]:
     return {
-        "cli-linux-arm64": f"kast-{tag}-linux-arm64.zip",
-        "cli-linux-x64": f"kast-{tag}-linux-x64.zip",
-        "cli-macos-arm64": f"kast-{tag}-macos-arm64.zip",
-        "cli-macos-x64": f"kast-{tag}-macos-x64.zip",
-        "gradle-ro-cache": "gradle-ro-dep-cache.tar.zst",
-        "headless-linux-x64": "kast-headless-linux-x64.tar.zst",
         "openapi": "openapi.yaml",
-        "runtime-manifest": "kast-runtime-manifest.json",
         "setup-linux-arm64": f"kast-linux-arm64-{tag}.tar.gz",
         "setup-linux-x64": f"kast-linux-x64-{tag}.tar.gz",
         "setup-macos-arm64": f"kast-macos-arm64-{tag}.tar.gz",
         "setup-macos-x64": f"kast-macos-x64-{tag}.tar.gz",
-        "ubuntu-debian-headless-x86_64": (
-            f"kast-ubuntu-debian-headless-x86_64-{tag}.tar.gz"
-        ),
     }
 
 

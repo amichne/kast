@@ -1,7 +1,7 @@
 # Index store agent guide
 
-`index-store` owns the backend-private SQLite source index, workspace cache
-persistence, and headless/indexer hydration APIs shared across Kast runtimes.
+`index-store` owns the indexer-private SQLite source index, workspace cache
+persistence, and hydration APIs used by the Kast indexer.
 The database is not a public compatibility surface. Its location follows the
 active CLI receipt under
 `.agents/adr/0031-cli-install-and-data-authority.md`; no backend or plugin may
@@ -41,14 +41,14 @@ Keep this unit focused on storage concerns and schema continuity.
   Kotlin PSI/compiler evidence, including escaped/backticked/Unicode names.
 - Bootstrap `sqlite-jdbc` inside this module before `DriverManager` access.
   IDEA and other plugin classloaders require explicit driver registration.
-- Keep this unit runtime-agnostic. `backend-shared` may use IntelliJ/Kotlin PSI,
+- Keep this unit runtime-agnostic. The indexer may use IntelliJ/Kotlin PSI,
   but it must convert package semantics to host-neutral
   `IndexedPackageEvidence` before constructing `FileIndexUpdate`; no PSI type
   crosses into this module. CLI process management and JSON-RPC transport code
   live in their CLI and server owners.
 - Treat schema resets, additive migrations, and cache hydration changes as
   contract-sensitive. Backend-hosted Kotlin may read SQLite for semantic
-  operations, headless hydration, or targeted indexer/cache behavior. Existing
+  operations, process hydration, or targeted indexer/cache behavior. Existing
   Rust operational readers use the same CLI-owned path; do not add another
   cross-process path or schema authority.
 - Return paged index evidence and its generation atomically under the same
@@ -68,7 +68,7 @@ Keep this unit focused on storage concerns and schema continuity.
 Prove storage changes here before relying on higher-level runtime tests.
 
 - Run `./gradlew :index-store:test`.
-- For page/generation changes, also run `./gradlew :backend-idea:test` to prove
+- For page/generation changes, also run `./gradlew :indexer:test` to prove
   production continuation invalidation rather than only store-local behavior.
 - For generation/progress/pending changes, prove rollback atomicity and
   before/after generation behavior in `SqliteSourceIndexStoreTest`.
@@ -80,9 +80,9 @@ Prove storage changes here before relying on higher-level runtime tests.
   alignment, version-7 rejection/reset, required version-8 structures, a custom
   `integrationTest` source root, and no null-to-root package collapse.
 - If you change schema bootstrap, connection setup, or hydration reads, exercise
-  `SqliteSourceIndexStoreTest` and the affected headless/indexer tests.
+  `SqliteSourceIndexStoreTest` and the affected indexer tests.
 - Final acceptance for the cross-module workspace discovery contract also runs
-  `./gradlew test` and `./gradlew buildIdeaPlugin`.
+  `./gradlew test`.
 - Exact-reference and impact changes also require production-store overload,
   null-offset, and target-anchor regression cases in
   `SqliteSourceIndexStoreTest`.

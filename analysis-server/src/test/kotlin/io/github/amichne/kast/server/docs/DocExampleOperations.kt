@@ -3,9 +3,6 @@ package io.github.amichne.kast.server
 import io.github.amichne.kast.api.contract.CallDirection
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.FilePosition
-import io.github.amichne.kast.api.contract.RuntimeOpenProjectRequest
-import io.github.amichne.kast.api.contract.RuntimeOpenProjectRequestId
-import io.github.amichne.kast.api.contract.RuntimeOpenProjectRoot
 import io.github.amichne.kast.api.contract.SemanticInsertionQuery
 import io.github.amichne.kast.api.contract.SemanticInsertionTarget
 import io.github.amichne.kast.api.contract.TextEdit
@@ -36,7 +33,6 @@ import io.github.amichne.kast.api.validation.FileHashing
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
-import java.nio.file.Path
 
 internal fun buildOperations(
     json: Json,
@@ -53,18 +49,6 @@ internal fun buildOperations(
     // System operations (no params)
     ops += "health" to request("health")
     ops += "runtimeStatus" to request("runtime/status")
-    ops += "runtimeOpenProject" to request(
-        "runtime/open-project",
-        json.encodeToJsonElement(
-            RuntimeOpenProjectRequest.serializer(),
-            RuntimeOpenProjectRequest(
-                canonicalRoot = RuntimeOpenProjectRoot.of(Path.of(sampleFile).parent.parent),
-                requestId = RuntimeOpenProjectRequestId.parse(
-                    "00000000-0000-4000-8000-000000000032",
-                ),
-            ),
-        ),
-    )
     ops += "runtimeShutdown" to request("runtime/shutdown")
     ops += "runtimeRestart" to request("runtime/restart")
     ops += "capabilities" to request("capabilities")

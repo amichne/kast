@@ -8,7 +8,7 @@ use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-use support::{default_install_root, spawn_ready_headless_backend_after_marker};
+use support::{default_install_root, spawn_ready_indexer_backend_after_marker};
 
 const SIDECAR_LAUNCH_MARKER: &str = "__KAST_SIDECAR_LAUNCH__";
 
@@ -22,9 +22,9 @@ fn public_up_launches_an_isolated_sidecar_from_a_supported_installed_idea() {
     let contents = app.join("Contents");
     let java = contents.join("jbr/Contents/Home/bin/java");
     let marker = fixture.path().join("sidecar-launch.txt");
-    let socket = fixture.path().join("headless.sock");
+    let socket = fixture.path().join("indexer.sock");
     let sidecar_home =
-        default_install_root(&home).join("current/lib/backends/headless/current/idea-home");
+        default_install_root(&home).join("current/lib/backends/indexer/current/idea-home");
 
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::write(
@@ -66,25 +66,21 @@ fn public_up_launches_an_isolated_sidecar_from_a_supported_installed_idea() {
     )
     .expect("fake JBR");
     std::fs::set_permissions(&java, std::fs::Permissions::from_mode(0o755)).expect("JBR mode");
-    std::fs::create_dir_all(sidecar_home.join("plugins/kast-headless/lib"))
+    std::fs::create_dir_all(sidecar_home.join("plugins/kast-indexer/lib"))
         .expect("sidecar payload");
     std::fs::write(
-        sidecar_home.join("plugins/kast-headless/lib/kast-headless.jar"),
+        sidecar_home.join("plugins/kast-indexer/lib/kast-indexer.jar"),
         b"fixture",
     )
     .expect("sidecar jar");
     std::fs::create_dir_all(&config_home).expect("config home");
     std::fs::write(
         config_home.join("config.toml"),
-        format!(
-            "[runtime]\ndefaultBackend = \"headless\"\n\n[runtime.ideaLaunch]\nenabled = true\ncommand = \"{}\"\nwaitTimeoutMillis = 5000\n\n[backends.headless]\nenabled = true\nideaHome = \"{}\"\n",
-            toml_path(&app),
-            toml_path(&sidecar_home),
-        ),
+        format!("[indexer]\nhostCommand = \"{}\"\n", toml_path(&app)),
     )
     .expect("config");
 
-    let backend = spawn_ready_headless_backend_after_marker(
+    let backend = spawn_ready_indexer_backend_after_marker(
         &home,
         &config_home,
         &workspace,
@@ -114,7 +110,7 @@ fn public_up_launches_an_isolated_sidecar_from_a_supported_installed_idea() {
     for output in [&first_output, &second_output] {
         let stdout = String::from_utf8_lossy(&output.stdout);
         assert!(stdout.contains("ready: true"), "{stdout}");
-        assert!(stdout.contains("backend: headless"), "{stdout}");
+        assert!(stdout.contains("backend: indexer"), "{stdout}");
     }
     let launch = std::fs::read_to_string(&marker).expect("launch marker");
     assert_eq!(
@@ -129,14 +125,14 @@ fn public_up_launches_an_isolated_sidecar_from_a_supported_installed_idea() {
         launch.contains(&format!("\n{}\n", java.canonicalize().unwrap().display())),
         "{launch}",
     );
-    assert!(launch.contains("\nkast-headless\n"), "{launch}");
+    assert!(launch.contains("\nkast-indexer\n"), "{launch}");
     assert!(launch.contains("--workspace-root="), "{launch}");
     assert!(launch.contains("--runtime-config-file="), "{launch}");
     for path in [
         "idea-config",
         "idea-system",
         "idea-log",
-        "plugins/kast-headless",
+        "plugins/kast-indexer",
     ] {
         assert!(launch.contains(path), "missing isolated {path}: {launch}");
     }

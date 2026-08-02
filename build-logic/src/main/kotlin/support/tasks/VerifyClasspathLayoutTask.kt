@@ -68,7 +68,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
             )
             if (forbiddenPortableDistJars.isNotEmpty()) {
                 throw GradleException(
-                    "Headless portable distribution must not include fat jars: " +
+                    "Indexer portable distribution must not include fat jars: " +
                         forbiddenPortableDistJars.joinToString(),
                 )
             }
@@ -84,7 +84,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         )
         if (forbiddenRuntimeEntries.isNotEmpty()) {
             throw GradleException(
-                "Headless runtime-libs classpath must not include plugin runtime jars: " +
+                "Indexer runtime-libs classpath must not include private payload jars: " +
                     forbiddenRuntimeEntries.joinToString(),
             )
         }
@@ -96,7 +96,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         )
         if (missingRuntimeClasses.isNotEmpty()) {
             throw GradleException(
-                "Headless runtime-libs classpath is missing launcher or platform classes: " +
+                "Indexer runtime-libs classpath is missing launcher or platform classes: " +
                     missingRuntimeClasses.joinToString(),
             )
         }
@@ -113,7 +113,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         }
         if (forbiddenPluginDescriptors.isNotEmpty()) {
             throw GradleException(
-                "Headless plugin lib directory must not include nested plugin descriptors outside allowed jars: " +
+                "Indexer payload must not include nested plugin descriptors outside allowed jars: " +
                     forbiddenPluginDescriptors.joinToString(),
             )
         }
@@ -124,7 +124,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         )
         if (missingPluginJarPrefixes.isNotEmpty()) {
             throw GradleException(
-                "Headless plugin lib directory is missing plugin runtime jars with prefixes: " +
+                "Indexer payload is missing runtime jars with prefixes: " +
                     missingPluginJarPrefixes.joinToString(),
             )
         }
@@ -136,7 +136,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
         )
         if (missingPluginClasses.isNotEmpty()) {
             throw GradleException(
-                "Headless plugin lib directory is missing required plugin classes: " +
+                "Indexer payload is missing required classes: " +
                     missingPluginClasses.joinToString(),
             )
         }
@@ -144,7 +144,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
 
     private fun classpathEntries(classpathPath: Path): List<String> {
         if (!Files.isRegularFile(classpathPath)) {
-            throw GradleException("Headless runtime classpath file is missing: $classpathPath")
+            throw GradleException("Indexer runtime classpath file is missing: $classpathPath")
         }
         return Files.readAllLines(classpathPath)
             .map(String::trim)
@@ -153,7 +153,7 @@ abstract class VerifyClasspathLayoutTask : DefaultTask() {
 
     private fun jarEntries(directory: Path): List<String> {
         if (!Files.isDirectory(directory)) {
-            throw GradleException("Headless plugin lib directory is missing: $directory")
+            throw GradleException("Indexer payload directory is missing: $directory")
         }
         return Files.list(directory).use { paths ->
             paths
