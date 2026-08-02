@@ -17,7 +17,7 @@ include!("config/load.rs");
 include!("config/path_resolution.rs");
 include!("config/launch.rs");
 include!("config/filesystem.rs");
-include!("config/pattern.rs");
+include!("config/model/pattern.rs");
 include!("config/workspace/git.rs");
 include!("config/workspace/mutation.rs");
 

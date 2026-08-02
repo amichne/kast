@@ -1,19 +1,11 @@
 package io.github.amichne.kast.idea
 
-import com.intellij.openapi.module.Module
-import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ProjectFileIndex
-import com.intellij.openapi.roots.ModuleRootManager
-import com.intellij.openapi.module.ModuleManager
-import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.psi.PsiFile
 import io.github.amichne.kast.api.client.IndexingConfig
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.WorkspaceIdentity
-import io.github.amichne.kast.api.client.WorkspaceRelativePath
 import io.github.amichne.kast.api.client.fields.RelationshipIndexingBatchSize
 import io.github.amichne.kast.api.client.fields.RelationshipIndexingParallelism
 import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
@@ -24,8 +16,6 @@ import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcome
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
-import io.github.amichne.kast.indexstore.api.index.GradleSourceSetName
-import io.github.amichne.kast.indexstore.api.index.SourceIndexModuleIdentity
 import io.github.amichne.kast.indexstore.api.index.SourceIndexModuleName
 import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
@@ -56,6 +46,7 @@ internal class IdeaProjectIndexer(
 ) {
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
     private val sourceFilePolicy = SourceIndexFilePolicy.forWorkspace(this.workspaceRoot)
+    private val moduleResolver = IdeaSourceIndexModuleResolver(project, this.workspaceRoot, sourceFilePolicy)
     private val environment = IdeaReferenceIndexEnvironment(
         project = project,
         workspaceIdentity = workspaceIdentity,
@@ -76,11 +67,11 @@ internal class IdeaProjectIndexer(
         val indexedSources = indexSourceIdentifiersAndScope(config.indexing)
         onSourceScopeReady(indexedSources)
         if (config.indexing.relationships.enabled.value && !environment.isCancelled()) {
-            val moduleSpecs = runIdeaReadAction { discoverModuleSpecs() }
+            val moduleSpecs = runIdeaReadAction { moduleResolver.discoverModuleSpecs() }
             val modulePriorityOrder = computeModulePriorityOrder(
                 activeModule = null,
                 moduleSpecs = moduleSpecs,
-                dependentModuleGraph = buildIdeaDependencyGraph(moduleSpecs),
+                dependentModuleGraph = moduleResolver.dependencyGraph(moduleSpecs),
                 depth = config.indexing.relationships.modulePriorityDepth,
             ).map(SourceIndexModuleName::parse)
             indexSymbolRelationships(
@@ -144,7 +135,7 @@ internal class IdeaProjectIndexer(
     private fun currentSourcePaths(filePaths: Collection<WorkspaceSourcePath>): List<WorkspaceSourcePath>? {
         val scanner = PsiSourceIndexScanner(
             environment = environment,
-            moduleNameForFile = ::moduleNameForFile,
+            moduleNameForFile = moduleResolver::moduleNameForFile,
         )
         return buildList {
             for (path in filePaths.distinct()) {
@@ -177,7 +168,7 @@ internal class IdeaProjectIndexer(
         val captured = inventory.snapshotWithGradleModel(WorkspaceFileKindDomain.MIXED)
         val gradleProvenance = IdeaGradleFileProvenance.fromWorkspaceModel(captured.gradleModel, ideaWorkspaceIdentity)
         val inventorySnapshot = captured.inventory
-        val ownerModuleNamesByPath = referenceIndexOwnersByPath(inventorySnapshot)
+        val ownerModuleNamesByPath = moduleResolver.referenceIndexOwnersByPath(inventorySnapshot)
         val scope = scopeCache.resolve(
             workspaceRoot = workspaceRoot,
             config = config,
@@ -187,7 +178,7 @@ internal class IdeaProjectIndexer(
         val inventoryEntries = buildFileInventoryEntries(
             ownerModuleNamesByPath = ownerModuleNamesByPath.filterKeys(includedPaths::contains),
             isCancelled = environment::isCancelled,
-            sourceSetForPath = ::legacySourceSetLabelForFile,
+            sourceSetForPath = moduleResolver::legacySourceSetLabelForFile,
         )
         if (environment.isCancelled()) return IndexedSourceIdentifiers(emptyList(), emptySet(), emptyList())
         store.reconcileFileInventory(inventoryEntries, FileStageVersions.CURRENT)
@@ -203,7 +194,7 @@ internal class IdeaProjectIndexer(
         )
         val scanner = PsiSourceIndexScanner(
             environment = environment,
-            moduleNameForFile = ::moduleNameForFile,
+            moduleNameForFile = moduleResolver::moduleNameForFile,
         )
         for (batch in orderedPendingPaths.map(workByPath::getValue).chunked(SOURCE_INDEX_BATCH_SIZE)) {
             if (environment.isCancelled()) break
@@ -263,7 +254,7 @@ internal class IdeaProjectIndexer(
         val fileModuleByPath = pendingFilePaths
             .associateWith { filePath ->
                 environment.findPsiFile(filePath.absolute.value.value)
-                    ?.let { psiFile -> moduleIdentityForFile(psiFile, filePath) }
+                    ?.let { psiFile -> moduleResolver.moduleIdentityForFile(psiFile, filePath) }
             }
         val filesByModule = pendingFilePaths
             .map { filePath -> IndexingPriorityEntry(filePath, fileModuleByPath[filePath]) }
@@ -277,7 +268,7 @@ internal class IdeaProjectIndexer(
         val scanner = PsiReferenceScanner(
             environment = environment,
             moduleNameForFile = { path ->
-                environment.findPsiFile(path)?.let(::moduleNameForFile)
+                environment.findPsiFile(path)?.let(moduleResolver::moduleNameForFile)
             },
         )
         ReferenceIndexer(
@@ -306,97 +297,6 @@ internal class IdeaProjectIndexer(
             isCancelled = environment::isCancelled,
         )
     }
-
-    private fun discoverModuleSpecs(): List<IdeaModuleSpec> {
-        val moduleSpecs = ModuleManager.getInstance(project).modules
-            .sortedBy(::indexedModuleNameForModule)
-            .map { module ->
-                val rootManager = ModuleRootManager.getInstance(module)
-                IdeaModuleSpec(
-                    name = indexedModuleNameForModule(module),
-                    dependencyModuleNames = rootManager.dependencies.map(::indexedModuleNameForModule).sorted(),
-                )
-            }
-        return mergeModuleSpecsByName(moduleSpecs)
-    }
-
-    private fun buildIdeaDependencyGraph(moduleSpecs: List<IdeaModuleSpec>): Map<String, Set<String>> =
-        mergeModuleSpecsByName(moduleSpecs)
-            .associate { module ->
-                module.name to module.dependencyModuleNames.toSet()
-            }
-
-    private fun moduleNameForFile(psiFile: PsiFile): String? = runIdeaReadAction {
-        val virtualFile = psiFile.virtualFile
-        val sourcePath = sourceFilePolicy.sourcePath(Path.of(virtualFile.path)) ?: return@runIdeaReadAction null
-        moduleIdentityForFile(psiFile, sourcePath)?.toLegacyModuleName()
-    }
-
-    private fun moduleIdentityForFile(
-        psiFile: PsiFile,
-        sourcePath: WorkspaceSourcePath,
-    ): SourceIndexModuleIdentity? = runIdeaReadAction {
-        val module = ModuleUtilCore.findModuleForFile(psiFile.virtualFile, project) ?: return@runIdeaReadAction null
-        indexedModuleIdentityForFilePath(
-            ideaModule = IdeaWorkspaceModuleIdentity.of(module.name),
-            filePath = sourcePath,
-            sourceSet = legacySourceSetLabelForFile(sourcePath),
-        )
-    }
-
-    private fun indexedModuleNameForModule(module: Module): String {
-        val rootManager = ModuleRootManager.getInstance(module)
-        return rootManager.sourceRoots
-            .asSequence()
-            .mapNotNull { root -> WorkspaceRelativePath.resolve(workspaceRoot, Path.of(root.path)) }
-            .mapNotNull(::legacyGradleProjectPathForWorkspacePath)
-            .sorted()
-            .firstOrNull()
-            ?.value
-            ?: module.name
-    }
-
-    private fun referenceIndexOwnersByPath(
-        snapshot: IdeaWorkspaceFileInventorySnapshot,
-    ): Map<WorkspaceSourcePath, Set<IdeaWorkspaceModuleIdentity>> {
-        val ownersByPath = sortedMapOf<WorkspaceSourcePath, MutableSet<IdeaWorkspaceModuleIdentity>>()
-        snapshot.modules.forEach { module ->
-            module.allFilePaths
-                .asSequence()
-                .map { filePath -> Path.of(filePath).toAbsolutePath().normalize() }
-                .mapNotNull(sourceFilePolicy::sourcePath)
-                .forEach { path ->
-                    ownersByPath
-                        .getOrPut(path, ::linkedSetOf)
-                        .add(module.identity)
-                }
-        }
-        return ownersByPath.mapValues { (_, owners) -> owners.toSortedSet() }
-    }
-
-    private fun legacySourceSetLabelForFile(path: WorkspaceSourcePath): GradleSourceSetName? {
-        val normalizedPath = path.relative.value
-        return when {
-            normalizedPath.startsWith("src/main/") || "/src/main/" in normalizedPath ->
-                GradleSourceSetName.parse("main")
-            normalizedPath.startsWith("src/testFixtures/") || "/src/testFixtures/" in normalizedPath ->
-                GradleSourceSetName.parse("testFixtures")
-            normalizedPath.startsWith("src/test/") || "/src/test/" in normalizedPath ->
-                GradleSourceSetName.parse("test")
-            else -> runIdeaReadAction {
-                val virtualFile = LocalFileSystem.getInstance()
-                    .findFileByNioFile(path.absolute.value.toJavaPath())
-                    ?: return@runIdeaReadAction null
-                ProjectFileIndex.getInstance(project)
-                    .getSourceRootForFile(virtualFile)
-                    ?.name
-                    ?.let(GradleSourceSetName::parse)
-            }
-        }
-    }
-
-    private fun SourceIndexModuleIdentity.toLegacyModuleName(): String =
-        sourceSet?.let { "${name.value}[${it.value}]" } ?: name.value
 
     private fun workspaceIdentityForIdea(): IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(
         project = project,

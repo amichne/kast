@@ -2,17 +2,8 @@ package io.github.amichne.kast.indexstore
 
 import io.github.amichne.kast.api.contract.NonBlankString
 import io.github.amichne.kast.api.contract.PositiveInt
-import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
-import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
-import io.github.amichne.kast.indexstore.api.index.FileStageLimitation
-import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.api.index.FileStageScopeCoverage
-import io.github.amichne.kast.indexstore.api.index.FileStageVersion
-import io.github.amichne.kast.indexstore.api.index.FileStageVersions
-import io.github.amichne.kast.indexstore.api.index.FileIndexUpdate
-import io.github.amichne.kast.indexstore.api.index.IndexedPackageEvidence
-import io.github.amichne.kast.indexstore.api.index.RelationshipIndexStatus
 import io.github.amichne.kast.indexstore.api.reference.DeclarationKind
 import io.github.amichne.kast.indexstore.api.reference.DeclarationRow
 import io.github.amichne.kast.indexstore.api.reference.DeclarationVisibility
@@ -20,35 +11,14 @@ import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.stage.RelationshipFileStageUpdate
 import io.github.amichne.kast.indexstore.api.stage.SourceFileStageUpdate
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
-import io.github.amichne.kast.indexstore.store.cache.sourceIndexDatabasePath
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
-import java.sql.DriverManager
-import java.sql.SQLException
 
-class DurableFileStageIndexingTest {
-    @TempDir
-    lateinit var workspaceRoot: Path
-
-    @Test
-    fun `file stage limitations use their typed kotlinx serializer`() {
-        val limitations = listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP)
-
-        val encoded = Json.encodeToString(limitations)
-
-        assertEquals("[\"UNRESOLVED_RELATIONSHIP\"]", encoded)
-        assertEquals(limitations, Json.decodeFromString<List<FileStageLimitation>>(encoded))
-    }
-
+class DurableFileStageIndexingTest : DurableFileStageTestFixture() {
     @Test
     fun `restart reuses unchanged outcomes and invalidates only affected file stages`() {
         val paths = listOf(file("src/A.kt"), file("src/B.kt"))
@@ -89,111 +59,6 @@ class DurableFileStageIndexingTest {
                 paths,
                 store.pendingFileStages(FileIndexStage.RELATIONSHIPS).map { work -> work.path.rawPath },
             )
-        }
-    }
-
-    @Test
-    fun `failed relationship batch rolls back facts limitations progress and generation`() {
-        val path = file("src/App.kt")
-        val entries = listOf(inventory(path, hash('a'), ":app[main]"))
-
-        SqliteSourceIndexStore(workspaceRoot).use { store ->
-            store.ensureSchema()
-            store.reconcileFileInventory(entries, versions("1"))
-            commitSources(store, FileIndexStage.SOURCE, listOf(path))
-            val firstWork = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).single()
-            store.commitRelationshipBatch(
-                listOf(
-                    RelationshipFileStageUpdate(
-                        work = firstWork, scannedContentHash = firstWork.contentHash,
-                        references = listOf(reference(path, "demo.Preserved")),
-                        declarations = emptyList(),
-                    ),
-                ),
-            )
-            store.reconcileFileInventory(entries, versions("1").copy(relationships = version("2")))
-            val generation = store.readGeneration()
-            val status = store.moduleIndexStatus(":app[main]")
-            val outcome = store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS)
-            val references = store.referencesFromFile(path)
-
-            DriverManager.getConnection("jdbc:sqlite:${sourceIndexDatabasePath(workspaceRoot)}").use { connection ->
-                connection.createStatement().use { statement ->
-                    statement.execute(
-                        """CREATE TRIGGER reject_relationship_outcome
-                           BEFORE INSERT ON file_stage_outcomes
-                           WHEN NEW.stage = 'RELATIONSHIPS'
-                           BEGIN
-                               SELECT RAISE(FAIL, 'injected relationship outcome failure');
-                           END""",
-                    )
-                }
-            }
-
-            val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).single()
-            assertThrows(SQLException::class.java) {
-                store.commitRelationshipBatch(
-                    listOf(
-                        RelationshipFileStageUpdate(
-                            work = work, scannedContentHash = work.contentHash,
-                            references = listOf(reference(path, "demo.Replacement")),
-                            declarations = emptyList(),
-                            limitations = listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP),
-                        ),
-                    ),
-                )
-            }
-
-            assertEquals(references, store.referencesFromFile(path))
-            assertEquals(outcome, store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS))
-            assertEquals(FileStageOutcomeStatus.COMPLETE, outcome?.status)
-            assertEquals(status, store.moduleIndexStatus(":app[main]"))
-            assertEquals(generation, store.readGeneration())
-        }
-    }
-
-    @Test
-    fun `limited file keeps valid facts and completes a usable degraded scope`() {
-        val path = file("src/App.kt")
-        val entries = listOf(inventory(path, hash('a'), ":app[main]"))
-
-        SqliteSourceIndexStore(workspaceRoot).use { store ->
-            store.ensureSchema()
-            store.reconcileFileInventory(entries, versions("1"))
-            commitSources(store, FileIndexStage.SOURCE, listOf(path))
-            val work = store.pendingFileStages(FileIndexStage.RELATIONSHIPS).single()
-            store.commitRelationshipBatch(
-                listOf(
-                    RelationshipFileStageUpdate(
-                        work = work, scannedContentHash = work.contentHash,
-                        references = listOf(reference(path, "demo.Valid")),
-                        declarations = emptyList(),
-                        limitations = listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP),
-                    ),
-                ),
-            )
-
-            assertEquals(1, store.referencesToSymbol("demo.Valid").size)
-            val outcome = store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS)
-            assertEquals(FileStageOutcomeStatus.LIMITED, outcome?.status)
-            assertEquals(listOf(FileStageLimitation.UNRESOLVED_RELATIONSHIP), outcome?.limitations)
-            assertTrue(
-                store.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, path) is
-                    FileStageScopeCoverage.Limited,
-            )
-            assertEquals(RelationshipIndexStatus.DEGRADED, store.moduleIndexStatus(":app[main]"))
-            assertEquals(setOf(":app[main]"), store.completedModules())
-        }
-
-        SqliteSourceIndexStore(workspaceRoot).use { reopened ->
-            assertEquals(1, reopened.referencesToSymbol("demo.Valid").size)
-            assertTrue(reopened.pendingFileStages(FileIndexStage.RELATIONSHIPS).isEmpty())
-            assertTrue(
-                reopened.fileStageScopeCoverage(FileIndexStage.RELATIONSHIPS, path) is
-                    FileStageScopeCoverage.Limited,
-            )
-            assertEquals(RelationshipIndexStatus.DEGRADED, reopened.moduleIndexStatus(":app[main]"))
-            assertEquals(setOf(":app[main]"), reopened.completedModules())
         }
     }
 
@@ -398,93 +263,6 @@ class DurableFileStageIndexingTest {
         }
     }
 
-    private fun commitSources(
-        store: SqliteSourceIndexStore,
-        stage: FileIndexStage,
-        paths: Collection<String>,
-    ) {
-        val workByPath = store.pendingFileStages(stage).associateBy { work -> work.path.rawPath }
-        store.commitSourceBatch(
-            paths.map { path ->
-                SourceFileStageUpdate(
-                    work = workByPath.getValue(path), scannedContentHash = workByPath.getValue(path).contentHash,
-                    update = sourceUpdate(path),
-                )
-            },
-        )
-    }
-
-    private fun commitRelationships(store: SqliteSourceIndexStore, paths: Collection<String>) {
-        val workByPath = store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
-            .associateBy { work -> work.path.rawPath }
-        store.commitRelationshipBatch(
-            paths.map { path ->
-                RelationshipFileStageUpdate(
-                    work = workByPath.getValue(path), scannedContentHash = workByPath.getValue(path).contentHash,
-                    references = listOf(reference(path, "demo.${Path.of(path).fileName}")),
-                    declarations = emptyList(),
-                )
-            },
-        )
-    }
-
-    private fun inventory(path: String, hash: FileContentHash, moduleName: String): FileInventoryEntry =
-        inventory(workspaceRoot, path, hash, moduleName)
-
-    private fun inventory(
-        root: Path,
-        path: String,
-        hash: FileContentHash,
-        moduleName: String,
-    ): FileInventoryEntry =
-        fileInventoryEntry(
-            workspaceRoot = root,
-            path = path,
-            lastModifiedMillis = 1,
-            contentHash = hash,
-            moduleName = moduleName,
-            sourceSet = "main",
-        )
-
-    private fun sourceUpdate(path: String): FileIndexUpdate =
-        FileIndexUpdate(
-            path = path,
-            identifiers = setOf(Path.of(path).fileName.toString().removeSuffix(".kt")),
-            packageName = "demo",
-            modulePath = ":app",
-            sourceSet = "main",
-            imports = emptySet(),
-            wildcardImports = emptySet(),
-            packageEvidence = IndexedPackageEvidence.ProvenNamed(
-                IndexedPackageEvidence.CanonicalName.parse("demo"),
-            ),
-        )
-
-    private fun reference(path: String, target: String, targetPath: String? = null): SymbolReferenceRow =
-        SymbolReferenceRow(
-            sourcePath = path,
-            sourceOffset = 1,
-            targetFqName = target,
-            targetPath = targetPath,
-            targetOffset = targetPath?.let { 1 },
-        )
-
-    private fun file(relative: String): String {
-        val path = workspaceRoot.resolve(relative).toAbsolutePath().normalize()
-        Files.createDirectories(path.parent)
-        Files.writeString(path, "package demo")
-        return workspaceSourceRawPath(workspaceRoot, path.toString())
-    }
-
-    private fun versions(value: String): FileStageVersions =
-        FileStageVersions(
-            source = version(value),
-            relationships = version(value),
-            semanticGraph = version(value),
-        )
-
-    private fun version(value: String): FileStageVersion = FileStageVersion.parse("test-$value")
-    private fun hash(character: Char): FileContentHash = FileContentHash.parse(character.toString().repeat(64))
     private data class PersistedFacts(
         val references: Map<String, List<SymbolReferenceRow>>,
         val completedModules: Set<String>,
