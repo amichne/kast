@@ -69,6 +69,10 @@ internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
         "RelationshipResultEvidence.Limited",
         RelationshipResultEvidence.Limited.serializer(),
     )
+    registry.register("ContainingSymbolEvidence", ContainingSymbolEvidence.serializer())
+    registry.register("ContainingSymbolEvidence.Known", ContainingSymbolEvidence.Known.serializer())
+    registry.register("ContainingSymbolEvidence.TopLevel", ContainingSymbolEvidence.TopLevel.serializer())
+    registry.register("ContainingSymbolEvidence.Unavailable", ContainingSymbolEvidence.Unavailable.serializer())
     registry.register("ReferencesResult", ReferencesResult.serializer())
     registry.register("CallHierarchyQuery", CallHierarchyQuery.serializer())
     registry.register("CallHierarchyResult", CallHierarchyResult.serializer())
@@ -126,8 +130,45 @@ internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
     registry.register("RenameQuery", RenameQuery.serializer())
     registry.register("RenameResult", RenameResult.serializer())
     registry.register("ReplacementPlanQuery", ReplacementPlanQuery.serializer())
+    registry.register("ReplacementDeclarationSignature", ReplacementDeclarationSignature.serializer())
+    registry.register(
+        "ReplacementDeclarationSignature.Function",
+        ReplacementFunctionSignature.serializer(),
+    )
+    registry.register(
+        "ReplacementDeclarationSignature.Property",
+        ReplacementPropertySignature.serializer(),
+    )
+    registry.register("ReplacementOutboundEvidence", ReplacementOutboundEvidence.serializer())
+    registry.register("ReplacementProofDimension", ReplacementProofDimension.serializer())
+    registry.register(
+        "ReplacementOutboundEvidence.Complete",
+        ReplacementOutboundEvidence.Complete.serializer(),
+    )
+    registry.register(
+        "ReplacementOutboundEvidence.Limited",
+        ReplacementOutboundEvidence.Limited.serializer(),
+    )
+    registry.register("ReplacementOutboundTarget", ReplacementOutboundTarget.serializer())
+    registry.register("ReplacementOutboundTarget.Source", ReplacementOutboundTarget.Source.serializer())
+    registry.register("ReplacementOutboundTarget.External", ReplacementOutboundTarget.External.serializer())
     registry.register("ReplacementPlanResult", ReplacementPlanResult.serializer())
     registry.register("AddFilePlanQuery", AddFilePlanQuery.serializer())
+    registry.register("AdditionKotlinPackage", AdditionKotlinPackage.serializer())
+    registry.register("AdditionKotlinPackage.Root", AdditionKotlinPackage.Root.serializer())
+    registry.register("AdditionKotlinPackage.Named", AdditionKotlinPackage.Named.serializer())
+    registry.register("AdditionResolvedTarget", AdditionResolvedTarget.serializer())
+    registry.register("AdditionResolvedTarget.Source", AdditionResolvedTarget.Source.serializer())
+    registry.register("AdditionResolvedTarget.External", AdditionResolvedTarget.External.serializer())
+    registry.register("AdditionRebindingCurrentTarget", AdditionRebindingCurrentTarget.serializer())
+    registry.register(
+        "AdditionRebindingCurrentTarget.Resolved",
+        AdditionRebindingCurrentTarget.Resolved.serializer(),
+    )
+    registry.register(
+        "AdditionRebindingCurrentTarget.Unresolved",
+        AdditionRebindingCurrentTarget.Unresolved.serializer(),
+    )
     registry.register("AddFilePlanResult", AddFilePlanResult.serializer())
     registry.register("AddDeclarationPlanQuery", AddDeclarationPlanQuery.serializer())
     registry.register("AddDeclarationPlanResult", AddDeclarationPlanResult.serializer())

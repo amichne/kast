@@ -1,0 +1,93 @@
+{
+    "result": {
+        "proposedDeclaration": "class AddedDeclaration",
+        "proposedContent": "package sample\n\nfun greet() = \"hi\"\n\nfun use() = greet()\n\nclass AddedDeclaration\n",
+        "image": {
+            "filePath": "/workspace/src/Sample.kt",
+            "preimage": {
+                "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQo=",
+                "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+            },
+            "postimage": {
+                "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQoKY2xhc3MgQWRkZWREZWNsYXJhdGlvbgo=",
+                "sha256": "e4f06f41dc5594c4d462820a6c7b518b038c2ca0d689bc2f3eb44cb9ae33d38d"
+            }
+        },
+        "proof": {
+            "targetPath": "/workspace/src/Sample.kt",
+            "targetPreimageSha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72",
+            "owner": {
+                "sourceRoot": "/workspace/src",
+                "ideaModuleName": "fake-module",
+                "gradleBuildRoot": "/workspace",
+                "gradleProjectPath": ":",
+                "sourceSetName": "main"
+            },
+            "packageIdentity": {
+                "type": "NAMED",
+                "segments": [
+                    "sample"
+                ]
+            },
+            "declaration": {
+                "packageIdentity": {
+                    "type": "NAMED",
+                    "segments": [
+                        "sample"
+                    ]
+                },
+                "name": "AddedDeclaration",
+                "kind": "CLASS",
+                "relativeRange": {
+                    "startOffset": 0,
+                    "endOffset": 22
+                },
+                "collisionSignature": "e64171523428714b6d5dca5a3d8739f3265e6b267e52ac315ace72295350fe89"
+            },
+            "insertion": {
+                "offset": 56
+            },
+            "newlinePolicy": "PRESERVE_EXISTING_APPEND_BLANK_LINE_FINAL_LF",
+            "context": {
+                "requiredGeneration": 1,
+                "projectModelFingerprint": "c607333230003cbcf63e833b44fc64f58b24a42aa76f582b76fa61c3c2f2807e",
+                "classpathFingerprint": "c1511bc29bf5e76224f2b435f95ead72025c15f10967d8703d195ced3eeb9dc7",
+                "contextFileHashes": [
+                    {
+                        "filePath": "/workspace/src/Sample.kt",
+                        "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+                    }
+                ]
+            },
+            "collisionEvidence": {
+                "declarationCardinality": 1,
+                "dimensions": [
+                    "EXACT_DECLARATION_IDENTITIES",
+                    "COMPLETE_OWNING_SOURCE_SCOPE",
+                    "COMPLETE_DEPENDENT_SCOPE",
+                    "NO_COMPILER_COLLISION"
+                ]
+            },
+            "outboundEvidence": {
+                "cardinality": 0,
+                "occurrences": []
+            },
+            "rebindingBaseline": {
+                "cardinality": 0,
+                "dimensions": [
+                    "EXACT_OCCURRENCE_CARDINALITY",
+                    "COMPLETE_DEPENDENT_SCOPE",
+                    "COMPLETE_IMPLICIT_LOOKUP_SCOPE",
+                    "COMPLETE_JAVA_LOOKUP_SCOPE",
+                    "EVERY_CURRENT_BINDING_CAPTURED",
+                    "VIRTUAL_PROPOSED_BINDINGS_EQUAL_BASELINE"
+                ],
+                "occurrences": []
+            },
+            "postimageSha256": "e4f06f41dc5594c4d462820a6c7b518b038c2ca0d689bc2f3eb44cb9ae33d38d"
+        },
+        "schemaVersion": 6
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

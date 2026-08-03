@@ -1,0 +1,29 @@
+{
+    "method": "raw/recover-mutation-scratch",
+    "params": {
+        "mutationAttemptId": "00000000-0000-4000-8000-000000000004",
+        "action": "RESTORE_PREIMAGE",
+        "scratchDirection": "RESTORE_PREIMAGE",
+        "targetFilePath": "/workspace/src/Sample.kt",
+        "preimage": {
+            "state": "PRESENT",
+            "image": {
+                "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQo=",
+                "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+            }
+        },
+        "postimage": {
+            "contentBase64": "Ly8gZXhhY3QgaW1hZ2UgZXhhbXBsZQpwYWNrYWdlIHNhbXBsZQoKZnVuIGdyZWV0KCkgPSAiaGkiCgpmdW4gdXNlKCkgPSBncmVldCgpCg==",
+            "sha256": "b95525cb10f61f05f8d701ea043b498d31551050ae5ba67eea1bf59a6370f9f5"
+        },
+        "scratch": {
+            "targetFilePath": "/workspace/src/Sample.kt",
+            "quarantinePath": "/workspace/src/.kast-quarantine-00000000-0000-4000-8000-000000000004-0",
+            "preparedPath": "/workspace/src/.kast-prepared-00000000-0000-4000-8000-000000000004-0.tmp",
+            "preparedCleanupPath": "/workspace/src/.kast-cleanup-00000000-0000-4000-8000-000000000004-0-prepared",
+            "quarantineCleanupPath": "/workspace/src/.kast-cleanup-00000000-0000-4000-8000-000000000004-0-quarantine"
+        }
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

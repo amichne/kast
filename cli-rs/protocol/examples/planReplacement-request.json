@@ -1,0 +1,14 @@
+{
+    "method": "raw/plan-replacement",
+    "params": {
+        "target": {
+            "fqName": "sample.greet",
+            "kind": "FUNCTION",
+            "declarationFile": "/workspace/src/Sample.kt",
+            "declarationStartOffset": 20
+        },
+        "proposedDeclaration": "fun greet() = \"hello\""
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

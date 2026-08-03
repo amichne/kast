@@ -1,0 +1,78 @@
+{
+    "result": {
+        "proposedContent": "package sample\n\nclass Generated\n",
+        "postimage": {
+            "contentBase64": "cGFja2FnZSBzYW1wbGUKCmNsYXNzIEdlbmVyYXRlZAo=",
+            "sha256": "abe691db3b6164d00c64654569267637709942f01c9a174a267a8ac044206a2a"
+        },
+        "proof": {
+            "targetPath": "/workspace/src/Generated.kt",
+            "targetState": "ABSENT",
+            "owner": {
+                "sourceRoot": "/workspace/src",
+                "ideaModuleName": "fake-module",
+                "gradleBuildRoot": "/workspace",
+                "gradleProjectPath": ":",
+                "sourceSetName": "main"
+            },
+            "packageIdentity": {
+                "type": "NAMED",
+                "segments": [
+                    "sample"
+                ]
+            },
+            "declarations": [
+                {
+                    "packageIdentity": {
+                        "type": "NAMED",
+                        "segments": [
+                            "sample"
+                        ]
+                    },
+                    "name": "Generated",
+                    "kind": "CLASS",
+                    "relativeRange": {
+                        "startOffset": 16,
+                        "endOffset": 31
+                    },
+                    "collisionSignature": "87cc059ff6a5a0e01e501b755c7aeccfe87c039f5d28fa48732935f25a930e56"
+                }
+            ],
+            "context": {
+                "requiredGeneration": 1,
+                "projectModelFingerprint": "c607333230003cbcf63e833b44fc64f58b24a42aa76f582b76fa61c3c2f2807e",
+                "classpathFingerprint": "c1511bc29bf5e76224f2b435f95ead72025c15f10967d8703d195ced3eeb9dc7",
+                "contextFileHashes": []
+            },
+            "collisionEvidence": {
+                "declarationCardinality": 1,
+                "dimensions": [
+                    "EXACT_DECLARATION_IDENTITIES",
+                    "COMPLETE_OWNING_SOURCE_SCOPE",
+                    "COMPLETE_DEPENDENT_SCOPE",
+                    "NO_COMPILER_COLLISION"
+                ]
+            },
+            "outboundEvidence": {
+                "cardinality": 0,
+                "occurrences": []
+            },
+            "rebindingBaseline": {
+                "cardinality": 0,
+                "dimensions": [
+                    "EXACT_OCCURRENCE_CARDINALITY",
+                    "COMPLETE_DEPENDENT_SCOPE",
+                    "COMPLETE_IMPLICIT_LOOKUP_SCOPE",
+                    "COMPLETE_JAVA_LOOKUP_SCOPE",
+                    "EVERY_CURRENT_BINDING_CAPTURED",
+                    "VIRTUAL_PROPOSED_BINDINGS_EQUAL_BASELINE"
+                ],
+                "occurrences": []
+            },
+            "postimageSha256": "abe691db3b6164d00c64654569267637709942f01c9a174a267a8ac044206a2a"
+        },
+        "schemaVersion": 6
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

@@ -126,8 +126,8 @@ private fun SecureWorkspaceMutation.restoreUnopenedQuarantineAfterFailure(
         restoreUnopenedQuarantine(parent, fileName, quarantineName, target, platform)
     } catch (restorationFailure: Exception) {
         val evidence = UnsafeWorkspaceMutationException(
-            message = "The unopened quarantine could not be restored after cancellation",
-            details = failureDetails(target, "restore-unopened-quarantine-cancellation") + mapOf(
+            message = "The unopened quarantine could not be restored after a preparation failure",
+            details = failureDetails(target, "restore-unopened-quarantine") + mapOf(
                 "cause" to failure.failureReason(),
                 "restorationFailure" to restorationFailure.failureReason(),
                 "recoveryFilePath" to target.parent.resolve(quarantineName).toString(),
@@ -135,7 +135,9 @@ private fun SecureWorkspaceMutation.restoreUnopenedQuarantineAfterFailure(
         )
         failure.rethrowIfMutationCancellation(evidence)
         restorationFailure.rethrowIfMutationCancellation(evidence)
-        throw restorationFailure
+        evidence.initCause(failure)
+        evidence.addSuppressed(restorationFailure)
+        throw evidence
     }
     throw failure
 }

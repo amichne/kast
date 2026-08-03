@@ -217,16 +217,13 @@ class MutationScratchRecoveryOperationTest {
         Files.write(fixture.target, AFTER)
         Files.write(fixture.prepared, BEFORE)
         val cancellation = ProcessCanceledException()
-        var finalCommitCalls = 0
         val mutation = SecureWorkspaceMutation(
             workspaceRoot = fixture.root,
             beforeNoReplaceRename = { _, phase ->
-                if (phase == SecureWorkspaceRenamePhase.FINAL_COMMIT) {
-                    finalCommitCalls += 1
-                    when (finalCommitCalls) {
-                        2 -> error("force desired-image move failure")
-                        3 -> throw cancellation
-                    }
+                when (phase) {
+                    SecureWorkspaceRenamePhase.FINAL_COMMIT -> error("force desired-image move failure")
+                    SecureWorkspaceRenamePhase.RESTORE_TARGET -> throw cancellation
+                    else -> Unit
                 }
             },
         )
@@ -304,7 +301,8 @@ class MutationScratchRecoveryOperationTest {
         }
 
         assertSame(cancellation, thrown)
-        assertTrue(thrown.suppressed.single() is UnsafeWorkspaceMutationException)
+        assertEquals(2, thrown.suppressed.size)
+        assertTrue(thrown.suppressed.all { evidence -> evidence is UnsafeWorkspaceMutationException })
         assertArrayEquals(AFTER, Files.readAllBytes(fixture.target))
         assertArrayEquals(BEFORE, Files.readAllBytes(fixture.quarantineCleanup))
     }

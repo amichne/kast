@@ -284,16 +284,30 @@ fn write_private_file(path: &Path, bytes: &[u8]) -> Result<()> {
 }
 
 fn rename_private_file(from: &Path, to: &Path) -> Result<()> {
-    if to.exists() {
-        return Err(CliError::new(
-            "KAST_PLAN_ALREADY_EXISTS",
-            format!(
-                "Refusing to overwrite private plan data at {}.",
-                to.display()
-            ),
-        ));
+    match fs::symlink_metadata(to) {
+        Ok(_) => {
+            return Err(CliError::new(
+                "KAST_PLAN_ALREADY_EXISTS",
+                format!(
+                    "Refusing to overwrite private plan data at {}.",
+                    to.display()
+                ),
+            ));
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error.into()),
     }
     fs::rename(from, to)?;
+    if MutationFailurePoint::RecoveryJournalDirectorySync.active()
+        && to
+            .to_string_lossy()
+            .ends_with(".recovery.json")
+    {
+        return Err(CliError::new(
+            "KAST_TEST_RECOVERY_JOURNAL_DIRECTORY_SYNC_FAILED",
+            "Recovery journal directory sync failed at the deterministic post-rename test seam.",
+        ));
+    }
     sync_directory(
         to.parent()
             .expect("private plan files always have a parent directory"),
@@ -371,53 +385,7 @@ fn sync_directory(path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn projected_result(envelope: &Value) -> Result<&Value> {
-    envelope.get("result").ok_or_else(|| {
-        CliError::new(
-            "KAST_INVALID_AGENT_RESULT",
-            "The validated change completed without a result.",
-        )
-    })
-}
-
-fn public_plan(preview: &Value) -> Value {
-    let mut plan = preview.get("plan").cloned().unwrap_or_else(|| json!({}));
-    if let Some(fields) = plan.as_object_mut() {
-        for key in [
-            "contentFile",
-            "help",
-            "method",
-            "mutates",
-            "ok",
-            "schemaVersion",
-            "applyRequired",
-            "type",
-        ] {
-            fields.remove(key);
-        }
-    }
-    redact_exact_image_bytes(plan)
-}
-
-fn redact_exact_image_bytes(value: Value) -> Value {
-    match value {
-        Value::Object(fields) => Value::Object(
-            fields
-                .into_iter()
-                .filter_map(|(key, value)| {
-                    (key != "contentBase64").then(|| (key, redact_exact_image_bytes(value)))
-                })
-                .collect(),
-        ),
-        Value::Array(items) => Value::Array(
-            items
-                .into_iter()
-                .map(redact_exact_image_bytes)
-                .collect(),
-        ),
-        scalar => scalar,
-    }
-}
+include!("parts/storage/projection.rs");
 
 fn remove_if_exists(path: &Path) {
     let _ = fs::remove_file(path);

@@ -109,6 +109,7 @@ fn write_legacy_headless_descriptor(
         "legacy-test",
         pid,
     );
+    descriptor["schemaVersion"] = prior_api_schema_version().into();
     if let Some(process_start_epoch_millis) = process_start_override {
         descriptor["processStartEpochMillis"] = process_start_epoch_millis.into();
     }

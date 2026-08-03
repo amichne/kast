@@ -58,7 +58,9 @@ data class MutationScratchObservation(
 
 @Serializable
 data class MutationScratchInspectResult(
+    @DocField(description = "Canonical UUID-v4 mutation attempt admitted by the inspection.")
     val mutationAttemptId: MutationAttemptId,
+    @DocField(description = "Descriptor-secure scratch observations in deterministic path order.")
     val observations: List<MutationScratchObservation>,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
@@ -84,11 +86,17 @@ enum class MutationScratchTargetState {
 
 @Serializable
 data class MutationScratchRecoveryResult(
+    @DocField(description = "Canonical UUID-v4 mutation attempt admitted by recovery.")
     val mutationAttemptId: MutationAttemptId,
+    @DocField(description = "Closed recovery action that completed.")
     val action: MutationScratchRecoveryAction,
+    @DocField(description = "Closed successful outcome that matches the recovery action.")
     val outcome: MutationScratchRecoveryOutcome,
+    @DocField(description = "Exact target state after successful recovery.")
     val targetState: MutationScratchTargetState,
+    @DocField(description = "Exact target SHA-256 when the recovered target is present.")
     val targetSha256: ExactFileImageSha256? = null,
+    @DocField(description = "Four absent owned scratch observations in journal role order.")
     val scratchObservations: List<MutationScratchObservation>,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,

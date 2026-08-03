@@ -363,21 +363,6 @@ internal suspend fun <T> IdeaEditApplier.withVcsFileOperationConfirmationsSuppre
         }
     }
 
-internal class VcsConfirmationOverride(
-        private val option: VcsShowConfirmationOption,
-        private val suppressedValue: VcsShowConfirmationOption.Value,
-    ) {
-        private val previousValue: VcsShowConfirmationOption.Value = option.value
-
-        fun apply() {
-            option.value = suppressedValue
-        }
-
-        fun restore() {
-            option.value = previousValue
-        }
-    }
-
 internal fun IdeaEditApplier.requireWorkspaceTarget(
         workspaceIdentity: IdeaWorkspaceIdentity,
         filePath: String,

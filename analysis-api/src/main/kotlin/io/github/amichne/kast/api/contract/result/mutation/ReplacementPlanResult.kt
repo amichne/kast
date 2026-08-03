@@ -37,6 +37,23 @@ class ReplacementPlanResult private constructor(
         require(FileHashing.sha256(edit.newText) == proof.proposedDeclarationHash.value) {
             "Replacement edit must match the proven declaration hash"
         }
+        val declarationStart = proof.declarationSlice.startOffset.value
+        val declarationEnd = proof.declarationSlice.endOffset.value
+        val declarationText = edit.newText.substring(declarationStart, declarationEnd)
+        require(edit.newText.substring(0, declarationStart).isBlank() &&
+            edit.newText.substring(declarationEnd).isBlank()
+        ) {
+            "Replacement edit may contain only whitespace outside the proven declaration slice"
+        }
+        require(declarationText.isNotBlank() && declarationText == declarationText.trim()) {
+            "Replacement declaration slice must contain the exact non-blank declaration"
+        }
+        require(proof.outboundReferences.all { reference ->
+            edit.newText.substring(reference.relativeStartOffset, reference.relativeEndOffset) ==
+                reference.sourceText
+        }) {
+            "Replacement outbound references must match the exact full proposed edit"
+        }
         require(storedFileImages.size == 1 && storedFileImages.single().filePath.value == edit.filePath) {
             "Replacement result requires one exact file image for its edit path"
         }

@@ -73,6 +73,13 @@ internal data class ClosedMutationSchema(
 )
 
 internal val closedMutationSchemas = mapOf(
+    "ContainingSymbolEvidence" to ClosedMutationSchema("type", listOf("KNOWN", "TOP_LEVEL", "UNAVAILABLE")),
+    "ReplacementDeclarationSignature" to ClosedMutationSchema("type", listOf("function", "property")),
+    "ReplacementOutboundEvidence" to ClosedMutationSchema("type", listOf("complete", "limited")),
+    "ReplacementOutboundTarget" to ClosedMutationSchema("type", listOf("source", "external")),
+    "AdditionKotlinPackage" to ClosedMutationSchema("type", listOf("ROOT", "NAMED")),
+    "AdditionResolvedTarget" to ClosedMutationSchema("type", listOf("SOURCE", "EXTERNAL")),
+    "AdditionRebindingCurrentTarget" to ClosedMutationSchema("type", listOf("RESOLVED", "UNRESOLVED")),
     "RawExactFileObservationResult" to ClosedMutationSchema("type", listOf("ABSENT", "PRESENT")),
     "MutationScratchRecoveryPreimage" to ClosedMutationSchema("state", listOf("ABSENT", "PRESENT")),
     "MutationPostconditionAuthority" to ClosedMutationSchema(

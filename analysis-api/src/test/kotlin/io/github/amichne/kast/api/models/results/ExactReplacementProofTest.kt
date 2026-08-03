@@ -12,6 +12,7 @@ import io.github.amichne.kast.api.contract.result.ExactReplacementOutboundRefere
 import io.github.amichne.kast.api.contract.result.ExactReplacementProof
 import io.github.amichne.kast.api.contract.result.MutationSemanticGeneration
 import io.github.amichne.kast.api.contract.result.ReplacementDeclarationSha256
+import io.github.amichne.kast.api.contract.result.ReplacementDeclarationSlice
 import io.github.amichne.kast.api.contract.result.ReplacementCompilerTargetSignature
 import io.github.amichne.kast.api.contract.result.ReplacementFunctionSignature
 import io.github.amichne.kast.api.contract.result.ReplacementModality
@@ -68,6 +69,29 @@ class ExactReplacementProofTest {
     }
 
     @Test
+    fun `proof requires every outbound occurrence inside the declaration slice`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            proof(
+                outboundReferences = listOf(outboundReference()),
+                declarationSlice = ReplacementDeclarationSlice(NonNegativeInt(2), NonNegativeInt(50)),
+            )
+        }
+    }
+
+    @Test
+    fun `deserialization requires the nominal declaration slice`() {
+        val encoded = json.encodeToJsonElement(
+            ExactReplacementProof.serializer(),
+            proof(outboundReferences = listOf(outboundReference())),
+        ).jsonObject
+        val missingSlice = JsonObject(encoded.filterKeys { key -> key != "declarationSlice" })
+
+        assertThrows(Exception::class.java) {
+            json.decodeFromJsonElement(ExactReplacementProof.serializer(), missingSlice)
+        }
+    }
+
+    @Test
     fun `limited evidence names the failed operation-relative dimension`() {
         val evidence = ReplacementProofFailureEvidence.of(
             ReplacementProofLimitation.GENERATION_CHANGED,
@@ -96,6 +120,25 @@ class ExactReplacementProofTest {
 
         assertEquals(listOf(image), result.fileImages)
         assertNotSame(mutableImages, result.fileImages)
+    }
+
+    @Test
+    fun `replacement result preserves a whitespace envelope outside its declaration slice`() {
+        val proposed = "\nfun greet(value: String): String = value\n"
+        val image = exactImage(proposed)
+        val proof = resultProof(
+            proposed = proposed,
+            fileHash = image.preimage.sha256.value,
+            declarationSlice = ReplacementDeclarationSlice(
+                NonNegativeInt(1),
+                NonNegativeInt(proposed.length - 1),
+            ),
+        )
+
+        val result = ReplacementPlanResult.of(replacementEdit(proposed), proof, listOf(image))
+
+        assertEquals(proposed, result.edit.newText)
+        assertEquals(proof.declarationSlice, result.proof.declarationSlice)
     }
 
     @Test
@@ -195,6 +238,8 @@ class ExactReplacementProofTest {
     private fun proof(
         evidence: ReplacementOutboundEvidence.Complete = ReplacementOutboundEvidence.Complete.of(1),
         outboundReferences: List<ExactReplacementOutboundReference>,
+        declarationSlice: ReplacementDeclarationSlice =
+            ReplacementDeclarationSlice(NonNegativeInt(0), NonNegativeInt(50)),
     ): ExactReplacementProof {
         val signature = signature()
         return ExactReplacementProof.of(
@@ -218,6 +263,7 @@ class ExactReplacementProofTest {
             proposedSignature = signature,
             proposedDeclarationHash = ReplacementDeclarationSha256("0".repeat(64)),
             proposedDeclarationLength = 50,
+            declarationSlice = declarationSlice,
             evidence = evidence,
             outboundReferences = outboundReferences,
         )
@@ -270,7 +316,12 @@ class ExactReplacementProofTest {
         newText = proposed,
     )
 
-    private fun resultProof(proposed: String, fileHash: String): ExactReplacementProof {
+    private fun resultProof(
+        proposed: String,
+        fileHash: String,
+        declarationSlice: ReplacementDeclarationSlice =
+            ReplacementDeclarationSlice(NonNegativeInt(0), NonNegativeInt(proposed.length)),
+    ): ExactReplacementProof {
         val signature = signature()
         return ExactReplacementProof.of(
             target = SymbolIdentity(
@@ -293,6 +344,7 @@ class ExactReplacementProofTest {
             proposedSignature = signature,
             proposedDeclarationHash = ReplacementDeclarationSha256(FileHashing.sha256(proposed)),
             proposedDeclarationLength = proposed.length,
+            declarationSlice = declarationSlice,
             evidence = ReplacementOutboundEvidence.Complete.of(0),
             outboundReferences = emptyList(),
         )

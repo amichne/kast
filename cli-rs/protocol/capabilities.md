@@ -512,16 +512,16 @@ category. Expand any operation to see its input and output schemas.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin authority: MutationPostconditionAuthority` |  |
+            | `#!kotlin authority: MutationPostconditionAuthority` | Persisted proof and exact file images authorized for postcondition verification. |
         === "Output: MutationPostconditionResult"
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin status: MutationPostconditionStatus` |  |
-            | `#!kotlin operation: MutationPostconditionOperation` |  |
-            | `#!kotlin currentGeneration: MutationSemanticGeneration` |  |
-            | `#!kotlin postimages: List<VerifiedMutationPostimage>` |  |
-            | `#!kotlin evidence: MutationPostconditionEvidence` |  |
+            | `#!kotlin status: MutationPostconditionStatus` | Closed successful postcondition status. |
+            | `#!kotlin operation: MutationPostconditionOperation` | Mutation operation verified by this result. |
+            | `#!kotlin currentGeneration: MutationSemanticGeneration` | Semantic source generation that verified the postcondition. |
+            | `#!kotlin postimages: List<VerifiedMutationPostimage>` | Exact verified hash for every mutation postimage. |
+            | `#!kotlin evidence: MutationPostconditionEvidence` | Operation-specific compiler evidence for the verified postcondition. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
     ??? info "raw/exact-file-observation — Observe one file as an exact byte image or proven absence"
@@ -580,8 +580,8 @@ category. Expand any operation to see its input and output schemas.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin mutationAttemptId: MutationAttemptId` |  |
-            | `#!kotlin observations: List<MutationScratchObservation>` |  |
+            | `#!kotlin mutationAttemptId: MutationAttemptId` | Canonical UUID-v4 mutation attempt admitted by the inspection. |
+            | `#!kotlin observations: List<MutationScratchObservation>` | Descriptor-secure scratch observations in deterministic path order. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
     ??? info "raw/recover-mutation-scratch — Restore or finalize one journal-owned mutation scratch set"
@@ -603,12 +603,12 @@ category. Expand any operation to see its input and output schemas.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin mutationAttemptId: MutationAttemptId` |  |
-            | `#!kotlin action: MutationScratchRecoveryAction` |  |
-            | `#!kotlin outcome: MutationScratchRecoveryOutcome` |  |
-            | `#!kotlin targetState: MutationScratchTargetState` |  |
-            | `#!kotlin targetSha256: ExactFileImageSha256?` |  |
-            | `#!kotlin scratchObservations: List<MutationScratchObservation>` |  |
+            | `#!kotlin mutationAttemptId: MutationAttemptId` | Canonical UUID-v4 mutation attempt admitted by recovery. |
+            | `#!kotlin action: MutationScratchRecoveryAction` | Closed recovery action that completed. |
+            | `#!kotlin outcome: MutationScratchRecoveryOutcome` | Closed successful outcome that matches the recovery action. |
+            | `#!kotlin targetState: MutationScratchTargetState` | Exact target state after successful recovery. |
+            | `#!kotlin targetSha256: ExactFileImageSha256?` | Exact target SHA-256 when the recovered target is present. |
+            | `#!kotlin scratchObservations: List<MutationScratchObservation>` | Four absent owned scratch observations in journal role order. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
     ??? info "raw/optimize-imports — Optimize imports for one or more files"

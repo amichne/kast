@@ -40,7 +40,10 @@ sealed interface MutationScratchRecoveryPreimage {
 
     @Serializable
     @SerialName("PRESENT")
-    data class Present(val image: ExactByteImage) : MutationScratchRecoveryPreimage
+    data class Present(
+        @DocField(description = "Exact target preimage bytes to restore.")
+        val image: ExactByteImage,
+    ) : MutationScratchRecoveryPreimage
 }
 
 @Serializable

@@ -1763,6 +1763,76 @@ components:
         - type
         - cardinality
         - coverage
+    ContainingSymbolEvidence:
+      oneOf:
+        - "$ref": "#/components/schemas/ContainingSymbolEvidence.Known"
+        - "$ref": "#/components/schemas/ContainingSymbolEvidence.TopLevel"
+        - "$ref": "#/components/schemas/ContainingSymbolEvidence.Unavailable"
+      discriminator:
+        propertyName: type
+        mapping:
+          KNOWN: "#/components/schemas/ContainingSymbolEvidence.Known"
+          TOP_LEVEL: "#/components/schemas/ContainingSymbolEvidence.TopLevel"
+          UNAVAILABLE: "#/components/schemas/ContainingSymbolEvidence.Unavailable"
+    ContainingSymbolEvidence.Known:
+      type: object
+      properties:
+        type:
+          type: string
+          const: KNOWN
+        symbol:
+          "$ref": "#/components/schemas/SymbolIdentity"
+      additionalProperties: false
+      required:
+        - type
+        - symbol
+    SymbolIdentity:
+      type: object
+      properties:
+        fqName:
+          type: string
+        kind:
+          "$ref": "#/components/schemas/SymbolKind"
+        declarationFile:
+          type: string
+        declarationStartOffset:
+          type: integer
+          format: int32
+        containingType:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - fqName
+        - kind
+        - declarationFile
+        - declarationStartOffset
+    ContainingSymbolEvidence.TopLevel:
+      type: object
+      properties:
+        type:
+          type: string
+          const: TOP_LEVEL
+      additionalProperties: false
+      required:
+        - type
+    ContainingSymbolEvidence.Unavailable:
+      type: object
+      properties:
+        type:
+          type: string
+          const: UNAVAILABLE
+        reason:
+          "$ref": "#/components/schemas/ContainingSymbolUnavailableReason"
+      additionalProperties: false
+      required:
+        - type
+        - reason
+    ContainingSymbolUnavailableReason:
+      type: string
+      enum:
+        - NO_SEMANTIC_OWNER
     ReferencesResult:
       type: object
       properties:
@@ -1802,8 +1872,6 @@ components:
       required:
         - location
         - containingSymbol
-    ContainingSymbolEvidence:
-      type: object
     CallHierarchyQuery:
       type: object
       properties:
@@ -2875,28 +2943,6 @@ components:
         - requiredGeneration
         - evidence
         - occurrences
-    SymbolIdentity:
-      type: object
-      properties:
-        fqName:
-          type: string
-        kind:
-          "$ref": "#/components/schemas/SymbolKind"
-        declarationFile:
-          type: string
-        declarationStartOffset:
-          type: integer
-          format: int32
-        containingType:
-          anyOf:
-            - type: string
-            - type: "null"
-      additionalProperties: false
-      required:
-        - fqName
-        - kind
-        - declarationFile
-        - declarationStartOffset
     MutationSemanticGeneration:
       type: integer
       format: int64
@@ -2929,6 +2975,344 @@ components:
       required:
         - target
         - proposedDeclaration
+    ReplacementDeclarationSignature:
+      oneOf:
+        - "$ref": "#/components/schemas/ReplacementDeclarationSignature.Function"
+        - "$ref": "#/components/schemas/ReplacementDeclarationSignature.Property"
+      discriminator:
+        propertyName: type
+        mapping:
+          function: "#/components/schemas/ReplacementDeclarationSignature.Function"
+          property: "#/components/schemas/ReplacementDeclarationSignature.Property"
+    ReplacementDeclarationSignature.Function:
+      type: object
+      properties:
+        type:
+          type: string
+          const: function
+        name:
+          type: string
+        receiverType:
+          anyOf:
+            - type: string
+            - type: "null"
+        contextReceiverTypes:
+          type: array
+          items:
+            type: string
+        typeParameters:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ReplacementTypeParameterSignature"
+        valueParameters:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ReplacementValueParameterSignature"
+        returnType:
+          type: string
+        visibility:
+          "$ref": "#/components/schemas/ReplacementVisibility"
+        modality:
+          "$ref": "#/components/schemas/ReplacementModality"
+        hasStableParameterNames:
+          type: boolean
+        suspend:
+          type: boolean
+        operator:
+          type: boolean
+        inline:
+          type: boolean
+        override:
+          type: boolean
+        infix:
+          type: boolean
+        static:
+          type: boolean
+        tailrec:
+          type: boolean
+        external:
+          type: boolean
+        expect:
+          type: boolean
+        actual:
+          type: boolean
+      additionalProperties: false
+      required:
+        - type
+        - name
+        - contextReceiverTypes
+        - typeParameters
+        - valueParameters
+        - returnType
+        - visibility
+        - modality
+        - hasStableParameterNames
+        - suspend
+        - operator
+        - inline
+        - override
+        - infix
+        - static
+        - tailrec
+        - external
+        - expect
+        - actual
+    ReplacementTypeParameterSignature:
+      type: object
+      properties:
+        name:
+          type: string
+        upperBounds:
+          type: string
+        variance:
+          "$ref": "#/components/schemas/ReplacementTypeVariance"
+        reified:
+          type: boolean
+      additionalProperties: false
+      required:
+        - name
+        - upperBounds
+        - variance
+        - reified
+    ReplacementTypeVariance:
+      type: string
+      enum:
+        - INVARIANT
+        - IN
+        - OUT
+    ReplacementValueParameterSignature:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+        vararg:
+          type: boolean
+        hasDefaultValue:
+          type: boolean
+        noinline:
+          type: boolean
+        crossinline:
+          type: boolean
+      additionalProperties: false
+      required:
+        - name
+        - type
+        - vararg
+        - hasDefaultValue
+        - noinline
+        - crossinline
+    ReplacementVisibility:
+      type: string
+      enum:
+        - PUBLIC
+        - PROTECTED
+        - INTERNAL
+        - PACKAGE_PROTECTED
+        - PACKAGE_PRIVATE
+        - PRIVATE
+        - LOCAL
+    ReplacementModality:
+      type: string
+      enum:
+        - FINAL
+        - SEALED
+        - OPEN
+        - ABSTRACT
+    ReplacementDeclarationSignature.Property:
+      type: object
+      properties:
+        type:
+          type: string
+          const: property
+        name:
+          type: string
+        receiverType:
+          anyOf:
+            - type: string
+            - type: "null"
+        contextReceiverTypes:
+          type: array
+          items:
+            type: string
+        typeParameters:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ReplacementTypeParameterSignature"
+        returnType:
+          type: string
+        visibility:
+          "$ref": "#/components/schemas/ReplacementVisibility"
+        modality:
+          "$ref": "#/components/schemas/ReplacementModality"
+        getterVisibility:
+          "$ref": "#/components/schemas/ReplacementVisibility"
+        setterVisibility:
+          anyOf:
+            - "$ref": "#/components/schemas/ReplacementVisibility"
+            - type: "null"
+        hasGetter:
+          type: boolean
+        hasSetter:
+          type: boolean
+        hasBackingField:
+          type: boolean
+        isVal:
+          type: boolean
+        const:
+          type: boolean
+        lateinit:
+          type: boolean
+        delegated:
+          type: boolean
+        override:
+          type: boolean
+        static:
+          type: boolean
+        external:
+          type: boolean
+        expect:
+          type: boolean
+        actual:
+          type: boolean
+      additionalProperties: false
+      required:
+        - type
+        - name
+        - contextReceiverTypes
+        - typeParameters
+        - returnType
+        - visibility
+        - modality
+        - getterVisibility
+        - hasGetter
+        - hasSetter
+        - hasBackingField
+        - isVal
+        - const
+        - lateinit
+        - delegated
+        - override
+        - static
+        - external
+        - expect
+        - actual
+    ReplacementOutboundEvidence:
+      oneOf:
+        - "$ref": "#/components/schemas/ReplacementOutboundEvidence.Complete"
+        - "$ref": "#/components/schemas/ReplacementOutboundEvidence.Limited"
+      discriminator:
+        propertyName: type
+        mapping:
+          complete: "#/components/schemas/ReplacementOutboundEvidence.Complete"
+          limited: "#/components/schemas/ReplacementOutboundEvidence.Limited"
+    ReplacementProofDimension:
+      type: string
+      enum:
+        - EXACT_TARGET_IDENTITY
+        - SUPPORTED_TARGET_KIND
+        - SINGLE_SUPPORTED_PROPOSED_DECLARATION
+        - COMPILER_SIGNATURE_EQUAL
+        - PROPOSED_PSI_TRAVERSAL_EXHAUSTIVE
+        - EVERY_REFERENCE_COMPILER_RESOLVED
+        - EVERY_REFERENCE_TARGET_MATCHED
+        - EVERY_CALL_EXACT
+        - NO_UNSUPPORTED_REFERENCE_KIND
+        - EXACT_OUTBOUND_CARDINALITY
+        - SOURCE_CONTEXT_HASH_BOUND
+        - SEMANTIC_GENERATION_UNCHANGED
+    ReplacementOutboundEvidence.Complete:
+      type: object
+      properties:
+        type:
+          type: string
+          const: complete
+        cardinality:
+          "$ref": "#/components/schemas/EXACT"
+        dimensions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ReplacementProofDimension"
+          minItems: 12
+          uniqueItems: true
+          maxItems: 12
+      additionalProperties: false
+      required:
+        - type
+        - cardinality
+        - dimensions
+    ReplacementOutboundEvidence.Limited:
+      type: object
+      properties:
+        type:
+          type: string
+          const: limited
+        cardinality:
+          "$ref": "#/components/schemas/KNOWN_MINIMUM"
+        dimensions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ReplacementProofDimension"
+          minItems: 1
+          uniqueItems: true
+      additionalProperties: false
+      required:
+        - type
+        - cardinality
+        - dimensions
+    ReplacementOutboundTarget:
+      oneOf:
+        - "$ref": "#/components/schemas/ReplacementOutboundTarget.Source"
+        - "$ref": "#/components/schemas/ReplacementOutboundTarget.External"
+      discriminator:
+        propertyName: type
+        mapping:
+          source: "#/components/schemas/ReplacementOutboundTarget.Source"
+          external: "#/components/schemas/ReplacementOutboundTarget.External"
+    ReplacementOutboundTarget.Source:
+      type: object
+      properties:
+        type:
+          type: string
+          const: source
+        symbol:
+          "$ref": "#/components/schemas/SymbolIdentity"
+      additionalProperties: false
+      required:
+        - type
+        - symbol
+    ReplacementOutboundTarget.External:
+      type: object
+      properties:
+        type:
+          type: string
+          const: external
+        fqName:
+          type: string
+        kind:
+          "$ref": "#/components/schemas/ReplacementCompilerSymbolKind"
+        signature:
+          "$ref": "#/components/schemas/ReplacementCompilerTargetSignature"
+      additionalProperties: false
+      required:
+        - type
+        - fqName
+        - kind
+        - signature
+    ReplacementCompilerSymbolKind:
+      type: string
+      enum:
+        - FUNCTION
+        - PROPERTY
+        - CONSTRUCTOR
+        - CLASS
+        - TYPE_ALIAS
+        - PARAMETER
+        - TYPE_PARAMETER
+        - PACKAGE
+    ReplacementCompilerTargetSignature:
+      type: string
     ReplacementPlanResult:
       type: object
       properties:
@@ -2970,8 +3354,10 @@ components:
         proposedDeclarationLength:
           type: integer
           format: int32
+        declarationSlice:
+          "$ref": "#/components/schemas/ReplacementDeclarationSlice"
         evidence:
-          "$ref": "#/components/schemas/complete"
+          "$ref": "#/components/schemas/ReplacementOutboundEvidence.Complete"
         outboundReferences:
           type: array
           items:
@@ -2986,40 +3372,22 @@ components:
         - proposedSignature
         - proposedDeclarationHash
         - proposedDeclarationLength
+        - declarationSlice
         - evidence
         - outboundReferences
-    ReplacementDeclarationSignature:
-      type: object
     ReplacementDeclarationSha256:
       type: string
-    complete:
+    ReplacementDeclarationSlice:
       type: object
       properties:
-        cardinality:
-          "$ref": "#/components/schemas/EXACT"
-        dimensions:
-          type: array
-          items:
-            "$ref": "#/components/schemas/ReplacementProofDimension"
+        startOffset:
+          "$ref": "#/components/schemas/NonNegativeInt"
+        endOffset:
+          "$ref": "#/components/schemas/NonNegativeInt"
       additionalProperties: false
       required:
-        - cardinality
-        - dimensions
-    ReplacementProofDimension:
-      type: string
-      enum:
-        - EXACT_TARGET_IDENTITY
-        - SUPPORTED_TARGET_KIND
-        - SINGLE_SUPPORTED_PROPOSED_DECLARATION
-        - COMPILER_SIGNATURE_EQUAL
-        - PROPOSED_PSI_TRAVERSAL_EXHAUSTIVE
-        - EVERY_REFERENCE_COMPILER_RESOLVED
-        - EVERY_REFERENCE_TARGET_MATCHED
-        - EVERY_CALL_EXACT
-        - NO_UNSUPPORTED_REFERENCE_KIND
-        - EXACT_OUTBOUND_CARDINALITY
-        - SOURCE_CONTEXT_HASH_BOUND
-        - SEMANTIC_GENERATION_UNCHANGED
+        - startOffset
+        - endOffset
     ExactReplacementOutboundReference:
       type: object
       properties:
@@ -3042,8 +3410,6 @@ components:
         - sourceText
         - resolvedTarget
         - provenance
-    ReplacementOutboundTarget:
-      type: object
     ReplacementOccurrenceProvenance:
       type: string
       enum:
@@ -3061,6 +3427,120 @@ components:
         - proposedContent
     AdditionTargetPath:
       type: string
+    AdditionKotlinPackage:
+      oneOf:
+        - "$ref": "#/components/schemas/AdditionKotlinPackage.Root"
+        - "$ref": "#/components/schemas/AdditionKotlinPackage.Named"
+      discriminator:
+        propertyName: type
+        mapping:
+          ROOT: "#/components/schemas/AdditionKotlinPackage.Root"
+          NAMED: "#/components/schemas/AdditionKotlinPackage.Named"
+    AdditionKotlinPackage.Root:
+      type: object
+      properties:
+        type:
+          type: string
+          const: ROOT
+      additionalProperties: false
+      required:
+        - type
+    AdditionKotlinPackage.Named:
+      type: object
+      properties:
+        type:
+          type: string
+          const: NAMED
+        segments:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AdditionKotlinPackageSegment"
+          minItems: 1
+      additionalProperties: false
+      required:
+        - type
+        - segments
+    AdditionKotlinPackageSegment:
+      type: string
+    AdditionResolvedTarget:
+      oneOf:
+        - "$ref": "#/components/schemas/AdditionResolvedTarget.Source"
+        - "$ref": "#/components/schemas/AdditionResolvedTarget.External"
+      discriminator:
+        propertyName: type
+        mapping:
+          SOURCE: "#/components/schemas/AdditionResolvedTarget.Source"
+          EXTERNAL: "#/components/schemas/AdditionResolvedTarget.External"
+    AdditionResolvedTarget.Source:
+      type: object
+      properties:
+        type:
+          type: string
+          const: SOURCE
+        identity:
+          "$ref": "#/components/schemas/SymbolIdentity"
+      additionalProperties: false
+      required:
+        - type
+        - identity
+    AdditionResolvedTarget.External:
+      type: object
+      properties:
+        type:
+          type: string
+          const: EXTERNAL
+        fqName:
+          type: string
+        kind:
+          "$ref": "#/components/schemas/SymbolKind"
+        compilerSignature:
+          "$ref": "#/components/schemas/AdditionCompilerTargetSignature"
+      additionalProperties: false
+      required:
+        - type
+        - fqName
+        - kind
+        - compilerSignature
+    AdditionCompilerTargetSignature:
+      type: string
+    AdditionRebindingCurrentTarget:
+      oneOf:
+        - "$ref": "#/components/schemas/AdditionRebindingCurrentTarget.Resolved"
+        - "$ref": "#/components/schemas/AdditionRebindingCurrentTarget.Unresolved"
+      discriminator:
+        propertyName: type
+        mapping:
+          RESOLVED: "#/components/schemas/AdditionRebindingCurrentTarget.Resolved"
+          UNRESOLVED: "#/components/schemas/AdditionRebindingCurrentTarget.Unresolved"
+    AdditionRebindingCurrentTarget.Resolved:
+      type: object
+      properties:
+        type:
+          type: string
+          const: RESOLVED
+        target:
+          "$ref": "#/components/schemas/AdditionResolvedTarget"
+      additionalProperties: false
+      required:
+        - type
+        - target
+    AdditionRebindingCurrentTarget.Unresolved:
+      type: object
+      properties:
+        type:
+          type: string
+          const: UNRESOLVED
+        reason:
+          "$ref": "#/components/schemas/AdditionRebindingUnresolvedReason"
+      additionalProperties: false
+      required:
+        - type
+        - reason
+    AdditionRebindingUnresolvedReason:
+      type: string
+      enum:
+        - NOT_FOUND
+        - AMBIGUOUS
     AddFilePlanResult:
       type: object
       properties:
@@ -3149,8 +3629,6 @@ components:
       type: string
     AdditionGradleSourceSetName:
       type: string
-    AdditionKotlinPackage:
-      type: object
     AdditionTopLevelDeclaration:
       type: object
       properties:
@@ -3285,8 +3763,6 @@ components:
         - range
         - resolvedTarget
         - provenance
-    AdditionResolvedTarget:
-      type: object
     AdditionOccurrenceProvenance:
       type: string
       enum:
@@ -3346,8 +3822,6 @@ components:
         - filePath
         - startOffset
         - endOffset
-    AdditionRebindingCurrentTarget:
-      type: object
     AdditionPostimageSha256:
       type: string
     AddDeclarationPlanQuery:
@@ -3625,7 +4099,7 @@ components:
         signature:
           "$ref": "#/components/schemas/ReplacementDeclarationSignature"
         outboundEvidence:
-          "$ref": "#/components/schemas/complete"
+          "$ref": "#/components/schemas/ReplacementOutboundEvidence.Complete"
         outboundReferences:
           type: array
           items:

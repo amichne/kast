@@ -4,76 +4,8 @@ package io.github.amichne.kast.api.docs
 
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.compatibility.*
-import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
-import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
-import io.github.amichne.kast.api.contract.query.CodeActionsQuery
-import io.github.amichne.kast.api.contract.query.CompletionsQuery
-import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
-import io.github.amichne.kast.api.contract.query.FileOutlineQuery
-import io.github.amichne.kast.api.contract.query.ImplementationsQuery
-import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
-import io.github.amichne.kast.api.contract.query.ReferencesQuery
-import io.github.amichne.kast.api.contract.query.RefreshQuery
-import io.github.amichne.kast.api.contract.query.RenameQuery
-import io.github.amichne.kast.api.contract.query.SemanticGraphPath
-import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
-import io.github.amichne.kast.api.contract.query.SymbolQuery
-import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
-import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationQuery
-import io.github.amichne.kast.api.contract.query.WorkspaceFilesPublicContinuationIdentity
-import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
-import io.github.amichne.kast.api.contract.query.WorkspaceSearchQuery
-import io.github.amichne.kast.api.contract.query.WorkspaceSymbolQuery
-import io.github.amichne.kast.api.contract.result.ApplyEditsResult
-import io.github.amichne.kast.api.contract.result.CallHierarchyResult
-import io.github.amichne.kast.api.contract.result.CallHierarchyStats
-import io.github.amichne.kast.api.contract.result.CodeAction
-import io.github.amichne.kast.api.contract.result.CodeActionsResult
-import io.github.amichne.kast.api.contract.result.CompletionItem
-import io.github.amichne.kast.api.contract.result.CompletionsResult
-import io.github.amichne.kast.api.contract.result.DiagnosticsResult
-import io.github.amichne.kast.api.contract.result.FileOutlineResult
-import io.github.amichne.kast.api.contract.result.FileAnalysisStatus
-import io.github.amichne.kast.api.contract.result.ImplementationsResult
-import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
-import io.github.amichne.kast.api.contract.result.ReferencesResult
-import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
-import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
-import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
-import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
-import io.github.amichne.kast.api.contract.result.ResultCardinality
-import io.github.amichne.kast.api.contract.result.DiagnosticSeverityCounts
-import io.github.amichne.kast.api.contract.result.RefreshResult
-import io.github.amichne.kast.api.contract.result.RefreshExternalFailureOutcome
-import io.github.amichne.kast.api.contract.result.RefreshRelationshipFailure
-import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
-import io.github.amichne.kast.api.contract.result.RenameResult
-import io.github.amichne.kast.api.contract.result.ExactRenameOccurrence
-import io.github.amichne.kast.api.contract.result.ExactRenameProof
-import io.github.amichne.kast.api.contract.result.SymbolResult
-import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
-import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
-import io.github.amichne.kast.api.contract.result.TypeHierarchyStats
-import io.github.amichne.kast.api.contract.result.TypeHierarchyTruncation
-import io.github.amichne.kast.api.contract.result.WorkspaceFilesContinuationResult
-import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationProjection
-import io.github.amichne.kast.api.contract.result.WorkspaceFilesPublicContinuationState
-import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
-import io.github.amichne.kast.api.contract.result.WorkspaceModule
-import io.github.amichne.kast.api.contract.result.WorkspaceSearchResult
-import io.github.amichne.kast.api.contract.result.SearchMatch
-import io.github.amichne.kast.api.contract.result.SemanticGraphCoverage
-import io.github.amichne.kast.api.contract.result.SemanticGraphDiagnosticEvidence
-import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundary
-import io.github.amichne.kast.api.contract.result.SemanticGraphFileCoverage
-import io.github.amichne.kast.api.contract.result.SemanticGraphGeneration
-import io.github.amichne.kast.api.contract.result.SemanticGraphRelation
-import io.github.amichne.kast.api.contract.result.SemanticGraphResult
-import io.github.amichne.kast.api.contract.result.SemanticGraphSha256
-import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
-import io.github.amichne.kast.api.contract.result.SemanticGraphSymbol
-import io.github.amichne.kast.api.contract.result.SemanticGraphSymbolKey
-import io.github.amichne.kast.api.contract.result.WorkspaceSymbolResult
+import io.github.amichne.kast.api.contract.query.*
+import io.github.amichne.kast.api.contract.result.*
 import io.github.amichne.kast.api.protocol.*
 import io.github.amichne.kast.api.contract.skill.KastExactSymbolSelector
 import io.github.amichne.kast.api.validation.WorkspaceFilesPublicPageToken
@@ -130,6 +62,9 @@ class DocFieldCoverageTest {
         "KastExactSymbolSelector" to KastExactSymbolSelector.serializer(),
         "ReferenceOccurrence" to ReferenceOccurrence.serializer(),
         "ContainingSymbolEvidence" to ContainingSymbolEvidence.serializer(),
+        "ContainingSymbolEvidence.Known" to ContainingSymbolEvidence.Known.serializer(),
+        "ContainingSymbolEvidence.TopLevel" to ContainingSymbolEvidence.TopLevel.serializer(),
+        "ContainingSymbolEvidence.Unavailable" to ContainingSymbolEvidence.Unavailable.serializer(),
         "EXACT" to ResultCardinality.Exact.serializer(),
         "KNOWN_MINIMUM" to ResultCardinality.KnownMinimum.serializer(),
         "RelationshipSearchCoverage.Complete" to RelationshipSearchCoverage.Complete.serializer(),
@@ -209,6 +144,74 @@ class DocFieldCoverageTest {
         "RenameResult" to RenameResult.serializer(),
         "ExactRenameProof" to ExactRenameProof.serializer(),
         "ExactRenameOccurrence" to ExactRenameOccurrence.serializer(),
+        "ExactFileImage" to ExactFileImage.serializer(),
+        "ExactByteImage" to ExactByteImage.serializer(),
+        "ReplacementPlanQuery" to ReplacementPlanQuery.serializer(),
+        "ReplacementPlanResult" to ReplacementPlanResult.serializer(),
+        "ExactReplacementProof" to ExactReplacementProof.serializer(),
+        "ReplacementDeclarationSignature" to ReplacementDeclarationSignature.serializer(),
+        "ReplacementDeclarationSignature.Function" to ReplacementFunctionSignature.serializer(),
+        "ReplacementTypeParameterSignature" to ReplacementTypeParameterSignature.serializer(),
+        "ReplacementValueParameterSignature" to ReplacementValueParameterSignature.serializer(),
+        "ReplacementDeclarationSignature.Property" to ReplacementPropertySignature.serializer(),
+        "ReplacementDeclarationSlice" to ReplacementDeclarationSlice.serializer(),
+        "ReplacementOutboundEvidence.Complete" to ReplacementOutboundEvidence.Complete.serializer(),
+        "ReplacementOutboundEvidence.Limited" to ReplacementOutboundEvidence.Limited.serializer(),
+        "ExactReplacementOutboundReference" to ExactReplacementOutboundReference.serializer(),
+        "ReplacementOutboundTarget" to ReplacementOutboundTarget.serializer(),
+        "ReplacementOutboundTarget.Source" to ReplacementOutboundTarget.Source.serializer(),
+        "ReplacementOutboundTarget.External" to ReplacementOutboundTarget.External.serializer(),
+        "AddFilePlanQuery" to AddFilePlanQuery.serializer(),
+        "AddFilePlanResult" to AddFilePlanResult.serializer(),
+        "ExactAddFileProof" to ExactAddFileProof.serializer(),
+        "AdditionSourceOwner" to AdditionSourceOwner.serializer(),
+        "AdditionKotlinPackage" to AdditionKotlinPackage.serializer(),
+        "AdditionKotlinPackage.Root" to AdditionKotlinPackage.Root.serializer(),
+        "AdditionKotlinPackage.Named" to AdditionKotlinPackage.Named.serializer(),
+        "AdditionTopLevelDeclaration" to AdditionTopLevelDeclaration.serializer(),
+        "AdditionRelativeRange" to AdditionRelativeRange.serializer(),
+        "ExactAdditionProofContext" to ExactAdditionProofContext.serializer(),
+        "ExactAdditionContextFileHash" to ExactAdditionContextFileHash.serializer(),
+        "ExactAdditionCollisionEvidence" to ExactAdditionCollisionEvidence.serializer(),
+        "ExactAdditionOutboundEvidence" to ExactAdditionOutboundEvidence.serializer(),
+        "ExactAdditionOutboundOccurrence" to ExactAdditionOutboundOccurrence.serializer(),
+        "AdditionResolvedTarget" to AdditionResolvedTarget.serializer(),
+        "AdditionResolvedTarget.Source" to AdditionResolvedTarget.Source.serializer(),
+        "AdditionResolvedTarget.External" to AdditionResolvedTarget.External.serializer(),
+        "ExactAdditionRebindingBaseline" to ExactAdditionRebindingBaseline.serializer(),
+        "ExactAdditionRebindingOccurrence" to ExactAdditionRebindingOccurrence.serializer(),
+        "AdditionWorkspaceRange" to AdditionWorkspaceRange.serializer(),
+        "AdditionRebindingCurrentTarget" to AdditionRebindingCurrentTarget.serializer(),
+        "AdditionRebindingCurrentTarget.Resolved" to AdditionRebindingCurrentTarget.Resolved.serializer(),
+        "AdditionRebindingCurrentTarget.Unresolved" to AdditionRebindingCurrentTarget.Unresolved.serializer(),
+        "AddDeclarationPlanQuery" to AddDeclarationPlanQuery.serializer(),
+        "AddDeclarationPlanResult" to AddDeclarationPlanResult.serializer(),
+        "ExactAddDeclarationProof" to ExactAddDeclarationProof.serializer(),
+        "CompilerFileBottomInsertion" to CompilerFileBottomInsertion.serializer(),
+        "MutationPostconditionQuery" to MutationPostconditionQuery.serializer(),
+        "MutationPostconditionAuthority.Rename" to MutationPostconditionAuthority.Rename.serializer(),
+        "MutationPostconditionAuthority.Replacement" to MutationPostconditionAuthority.Replacement.serializer(),
+        "MutationPostconditionAuthority.AddFile" to MutationPostconditionAuthority.AddFile.serializer(),
+        "MutationPostconditionAuthority.AddDeclaration" to MutationPostconditionAuthority.AddDeclaration.serializer(),
+        "MutationPostconditionResult" to MutationPostconditionResult.serializer(),
+        "VerifiedMutationPostimage" to VerifiedMutationPostimage.serializer(),
+        "MutationPostconditionEvidence.Rename" to MutationPostconditionEvidence.Rename.serializer(),
+        "MutationPostconditionEvidence.Replacement" to MutationPostconditionEvidence.Replacement.serializer(),
+        "MutationPostconditionEvidence.AddFile" to MutationPostconditionEvidence.AddFile.serializer(),
+        "MutationPostconditionEvidence.AddDeclaration" to MutationPostconditionEvidence.AddDeclaration.serializer(),
+        "RawExactFileObservationQuery" to RawExactFileObservationQuery.serializer(),
+        "RawExactFileObservationResult.Absent" to RawExactFileObservationResult.Absent.serializer(),
+        "RawExactFileObservationResult.Present" to RawExactFileObservationResult.Present.serializer(),
+        "ExactFileImageQuery" to ExactFileImageQuery.serializer(),
+        "MutationScratchSet" to MutationScratchSet.serializer(),
+        "ExactFileImageResult" to ExactFileImageResult.serializer(),
+        "MutationScratchInspectQuery" to MutationScratchInspectQuery.serializer(),
+        "MutationScratchInspectResult" to MutationScratchInspectResult.serializer(),
+        "MutationScratchObservation" to MutationScratchObservation.serializer(),
+        "MutationScratchRecoveryQuery" to MutationScratchRecoveryQuery.serializer(),
+        "MutationScratchRecoveryPreimage.Absent" to MutationScratchRecoveryPreimage.Absent.serializer(),
+        "MutationScratchRecoveryPreimage.Present" to MutationScratchRecoveryPreimage.Present.serializer(),
+        "MutationScratchRecoveryResult" to MutationScratchRecoveryResult.serializer(),
         "ImportOptimizeQuery" to ImportOptimizeQuery.serializer(),
         "ImportOptimizeResult" to ImportOptimizeResult.serializer(),
         "ApplyEditsQuery" to ApplyEditsQuery.serializer(),

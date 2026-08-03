@@ -18,7 +18,9 @@ enum class MutationPostconditionOperation { RENAME, REPLACEMENT, ADD_FILE, ADD_D
 
 @Serializable
 data class VerifiedMutationPostimage(
+    @DocField(description = "Normalized absolute path of the verified postimage.")
     val filePath: ExactFileImagePath,
+    @DocField(description = "SHA-256 of the exact verified postimage bytes.")
     val sha256: ExactFileImageSha256,
 )
 
@@ -27,8 +29,12 @@ sealed interface MutationPostconditionEvidence {
     @Serializable
     @SerialName("RENAME")
     data class Rename(
+        @DocField(description = "Compiler-resolved identity of the renamed declaration after mutation.")
         val resultingTarget: SymbolIdentity,
+        @DocField(description = "Complete compiler-backed relationship evidence after rename.")
+        @Serializable(with = RelationshipResultEvidence.CompleteSerializer::class)
         val evidence: RelationshipResultEvidence.Complete,
+        @DocField(description = "Every exact compiler-resolved rename occurrence after mutation.")
         val occurrences: List<ExactRenameOccurrence>,
     ) : MutationPostconditionEvidence {
         init {
@@ -44,10 +50,16 @@ sealed interface MutationPostconditionEvidence {
     @Serializable
     @SerialName("REPLACEMENT")
     data class Replacement(
+        @DocField(description = "Compiler-resolved identity of the replaced declaration after mutation.")
         val resultingTarget: SymbolIdentity,
+        @DocField(description = "Exact full source range of the replaced declaration after mutation.")
         val sourceRange: Location,
+        @DocField(description = "Compiler-observed declaration signature after mutation.")
         val signature: ReplacementDeclarationSignature,
+        @DocField(description = "Complete compiler-backed outbound reference evidence after replacement.")
+        @Serializable(with = ReplacementOutboundEvidence.CompleteSerializer::class)
         val outboundEvidence: ReplacementOutboundEvidence.Complete,
+        @DocField(description = "Every exact compiler-resolved outbound reference after replacement.")
         val outboundReferences: List<ExactReplacementOutboundReference>,
     ) : MutationPostconditionEvidence {
         init {
@@ -64,9 +76,13 @@ sealed interface MutationPostconditionEvidence {
     @Serializable
     @SerialName("ADD_FILE")
     data class AddFile(
+        @DocField(description = "Imported source owner of the added file after mutation.")
         val owner: AdditionSourceOwner,
+        @DocField(description = "Parsed Kotlin package of the added file after mutation.")
         val packageIdentity: AdditionKotlinPackage,
+        @DocField(description = "Every compiler-observed top-level declaration in the added file.")
         val declarations: List<AdditionTopLevelDeclaration>,
+        @DocField(description = "Complete compiler-backed outbound reference evidence after file addition.")
         val outboundEvidence: ExactAdditionOutboundEvidence,
     ) : MutationPostconditionEvidence {
         init {
@@ -79,9 +95,13 @@ sealed interface MutationPostconditionEvidence {
     @Serializable
     @SerialName("ADD_DECLARATION")
     data class AddDeclaration(
+        @DocField(description = "Imported source owner of the target file after mutation.")
         val owner: AdditionSourceOwner,
+        @DocField(description = "Parsed Kotlin package of the added declaration after mutation.")
         val packageIdentity: AdditionKotlinPackage,
+        @DocField(description = "Compiler-observed top-level declaration after mutation.")
         val declaration: AdditionTopLevelDeclaration,
+        @DocField(description = "Complete compiler-backed outbound reference evidence after declaration addition.")
         val outboundEvidence: ExactAdditionOutboundEvidence,
     ) : MutationPostconditionEvidence {
         init {
@@ -93,10 +113,15 @@ sealed interface MutationPostconditionEvidence {
 
 @Serializable
 class MutationPostconditionResult private constructor(
+    @DocField(description = "Closed successful postcondition status.")
     val status: MutationPostconditionStatus,
+    @DocField(description = "Mutation operation verified by this result.")
     val operation: MutationPostconditionOperation,
+    @DocField(description = "Semantic source generation that verified the postcondition.")
     val currentGeneration: MutationSemanticGeneration,
+    @DocField(description = "Exact verified hash for every mutation postimage.")
     val postimages: List<VerifiedMutationPostimage>,
+    @DocField(description = "Operation-specific compiler evidence for the verified postcondition.")
     val evidence: MutationPostconditionEvidence,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,

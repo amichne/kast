@@ -15,7 +15,8 @@
                 "hash": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
             }
         ],
-        "fileOperations": []
+        "fileOperations": [],
+        "mutationScratchSets": []
     },
     "id": 1,
     "jsonrpc": "2.0"

@@ -39,6 +39,7 @@ class ExactRenameProof private constructor(
     @DocField(description = "Semantic source generation required by this rename proof.")
     val requiredGeneration: MutationSemanticGeneration,
     @DocField(description = "Complete relationship coverage and exact occurrence cardinality.")
+    @Serializable(with = RelationshipResultEvidence.CompleteSerializer::class)
     val evidence: RelationshipResultEvidence.Complete,
     @SerialName("occurrences")
     @DocField(description = "Compiler-proven reference occurrences bound to the target declaration.")

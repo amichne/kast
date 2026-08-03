@@ -306,7 +306,14 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "APPLY_EDITS",
                         "FILE_OPERATIONS",
                         "OPTIMIZE_IMPORTS",
-                        "REFRESH_WORKSPACE"
+                        "REFRESH_WORKSPACE",
+                        "PLAN_REPLACEMENT",
+                        "PLAN_ADD_FILE",
+                        "PLAN_ADD_DECLARATION",
+                        "VERIFY_MUTATION_POSTCONDITION",
+                        "EXACT_FILE_OBSERVATION",
+                        "EXACT_FILE_IMAGE_CAS",
+                        "MUTATION_SCRATCH_RECOVERY"
                     ],
                     "limits": {
                         "maxResults": 100,
@@ -1767,6 +1774,71 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "affectedFiles": [
                         "/workspace/src/Sample.kt"
                     ],
+                    "fileImages": [
+                        {
+                            "filePath": "/workspace/src/Sample.kt",
+                            "preimage": {
+                                "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQo=",
+                                "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+                            },
+                            "postimage": {
+                                "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biB3ZWxjb21lKCkgPSAiaGkiCgpmdW4gdXNlKCkgPSB3ZWxjb21lKCkK",
+                                "sha256": "0998f81963528b681154b7853e16f00d43148a6b5042651c1cabdf89a6e0922e"
+                            }
+                        }
+                    ],
+                    "proof": {
+                        "target": {
+                            "fqName": "sample.greet",
+                            "kind": "FUNCTION",
+                            "declarationFile": "/workspace/src/Sample.kt",
+                            "declarationStartOffset": 20,
+                            "containingType": "sample"
+                        },
+                        "requiredGeneration": 0,
+                        "evidence": {
+                            "type": "COMPLETE",
+                            "cardinality": {
+                                "type": "EXACT",
+                                "totalCount": 1
+                            },
+                            "coverage": {
+                                "type": "COMPLETE",
+                                "identity": "COMPLETE",
+                                "projectScope": "COMPLETE",
+                                "sourceSetScope": "COMPLETE",
+                                "indexFreshness": "COMPLETE",
+                                "backend": "COMPLETE",
+                                "requestedFamily": "COMPLETE",
+                                "limitations": []
+                            }
+                        },
+                        "occurrences": [
+                            {
+                                "reference": {
+                                    "location": {
+                                        "filePath": "/workspace/src/Sample.kt",
+                                        "startOffset": 48,
+                                        "endOffset": 53,
+                                        "startLine": 4,
+                                        "startColumn": 13,
+                                        "preview": "greet"
+                                    },
+                                    "containingSymbol": {
+                                        "type": "TOP_LEVEL"
+                                    }
+                                },
+                                "resolvedTarget": {
+                                    "fqName": "sample.greet",
+                                    "kind": "FUNCTION",
+                                    "declarationFile": "/workspace/src/Sample.kt",
+                                    "declarationStartOffset": 20,
+                                    "containingType": "sample"
+                                },
+                                "provenance": "COMPILER"
+                            }
+                        ]
+                    },
                     "schemaVersion": 6
                 },
                 "id": 1,
@@ -1806,6 +1878,147 @@ daemon, including input/output schemas, examples, and behavioral notes.
             JSON-RPC method: raw/plan-replacement
             Params: see Request tab
             ```
+        === "Request"
+
+            ```json
+            {
+                "method": "raw/plan-replacement",
+                "params": {
+                    "target": {
+                        "fqName": "sample.greet",
+                        "kind": "FUNCTION",
+                        "declarationFile": "/workspace/src/Sample.kt",
+                        "declarationStartOffset": 20
+                    },
+                    "proposedDeclaration": "fun greet() = \"hello\""
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "edit": {
+                        "filePath": "/workspace/src/Sample.kt",
+                        "startOffset": 16,
+                        "endOffset": 34,
+                        "newText": "fun greet() = \"hello\""
+                    },
+                    "proof": {
+                        "target": {
+                            "fqName": "sample.greet",
+                            "kind": "FUNCTION",
+                            "declarationFile": "/workspace/src/Sample.kt",
+                            "declarationStartOffset": 20
+                        },
+                        "requiredGeneration": 1,
+                        "sourceRange": {
+                            "filePath": "/workspace/src/Sample.kt",
+                            "startOffset": 16,
+                            "endOffset": 34,
+                            "startLine": 3,
+                            "startColumn": 1,
+                            "preview": "fun greet() = \"hi\""
+                        },
+                        "fileHashes": [
+                            {
+                                "filePath": "/workspace/src/Sample.kt",
+                                "hash": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+                            }
+                        ],
+                        "oldSignature": {
+                            "type": "function",
+                            "name": "greet",
+                            "contextReceiverTypes": [],
+                            "typeParameters": [],
+                            "valueParameters": [],
+                            "returnType": "kotlin.String",
+                            "visibility": "PUBLIC",
+                            "modality": "FINAL",
+                            "hasStableParameterNames": true,
+                            "suspend": false,
+                            "operator": false,
+                            "inline": false,
+                            "override": false,
+                            "infix": false,
+                            "static": false,
+                            "tailrec": false,
+                            "external": false,
+                            "expect": false,
+                            "actual": false
+                        },
+                        "proposedSignature": {
+                            "type": "function",
+                            "name": "greet",
+                            "contextReceiverTypes": [],
+                            "typeParameters": [],
+                            "valueParameters": [],
+                            "returnType": "kotlin.String",
+                            "visibility": "PUBLIC",
+                            "modality": "FINAL",
+                            "hasStableParameterNames": true,
+                            "suspend": false,
+                            "operator": false,
+                            "inline": false,
+                            "override": false,
+                            "infix": false,
+                            "static": false,
+                            "tailrec": false,
+                            "external": false,
+                            "expect": false,
+                            "actual": false
+                        },
+                        "proposedDeclarationHash": "51900255787d6207ba81f6bb21decc089f5201c89d9d4028e19a94b8a0a30ee7",
+                        "proposedDeclarationLength": 21,
+                        "declarationSlice": {
+                            "startOffset": 0,
+                            "endOffset": 21
+                        },
+                        "evidence": {
+                            "type": "complete",
+                            "cardinality": {
+                                "type": "EXACT",
+                                "totalCount": 0
+                            },
+                            "dimensions": [
+                                "EXACT_TARGET_IDENTITY",
+                                "SUPPORTED_TARGET_KIND",
+                                "SINGLE_SUPPORTED_PROPOSED_DECLARATION",
+                                "COMPILER_SIGNATURE_EQUAL",
+                                "PROPOSED_PSI_TRAVERSAL_EXHAUSTIVE",
+                                "EVERY_REFERENCE_COMPILER_RESOLVED",
+                                "EVERY_REFERENCE_TARGET_MATCHED",
+                                "EVERY_CALL_EXACT",
+                                "NO_UNSUPPORTED_REFERENCE_KIND",
+                                "EXACT_OUTBOUND_CARDINALITY",
+                                "SOURCE_CONTEXT_HASH_BOUND",
+                                "SEMANTIC_GENERATION_UNCHANGED"
+                            ]
+                        },
+                        "outboundReferences": []
+                    },
+                    "fileImages": [
+                        {
+                            "filePath": "/workspace/src/Sample.kt",
+                            "preimage": {
+                                "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQo=",
+                                "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+                            },
+                            "postimage": {
+                                "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhlbGxvIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQo=",
+                                "sha256": "83133a5e5cd2b76cd821245c5b53e107fa810ad1d45edb35d27b17cc1ced704f"
+                            }
+                        }
+                    ],
+                    "schemaVersion": 6
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
         !!! note "Behavioral notes"
 
             - Only a compiler-proven function or property with an unchanged observable signature is supported.
@@ -1838,6 +2051,101 @@ daemon, including input/output schemas, examples, and behavioral notes.
             ```text
             JSON-RPC method: raw/plan-add-file
             Params: see Request tab
+            ```
+        === "Request"
+
+            ```json
+            {
+                "method": "raw/plan-add-file",
+                "params": {
+                    "targetPath": "/workspace/src/Generated.kt",
+                    "proposedContent": "package sample\n\nclass Generated\n"
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "proposedContent": "package sample\n\nclass Generated\n",
+                    "postimage": {
+                        "contentBase64": "cGFja2FnZSBzYW1wbGUKCmNsYXNzIEdlbmVyYXRlZAo=",
+                        "sha256": "abe691db3b6164d00c64654569267637709942f01c9a174a267a8ac044206a2a"
+                    },
+                    "proof": {
+                        "targetPath": "/workspace/src/Generated.kt",
+                        "targetState": "ABSENT",
+                        "owner": {
+                            "sourceRoot": "/workspace/src",
+                            "ideaModuleName": "fake-module",
+                            "gradleBuildRoot": "/workspace",
+                            "gradleProjectPath": ":",
+                            "sourceSetName": "main"
+                        },
+                        "packageIdentity": {
+                            "type": "NAMED",
+                            "segments": [
+                                "sample"
+                            ]
+                        },
+                        "declarations": [
+                            {
+                                "packageIdentity": {
+                                    "type": "NAMED",
+                                    "segments": [
+                                        "sample"
+                                    ]
+                                },
+                                "name": "Generated",
+                                "kind": "CLASS",
+                                "relativeRange": {
+                                    "startOffset": 16,
+                                    "endOffset": 31
+                                },
+                                "collisionSignature": "87cc059ff6a5a0e01e501b755c7aeccfe87c039f5d28fa48732935f25a930e56"
+                            }
+                        ],
+                        "context": {
+                            "requiredGeneration": 1,
+                            "projectModelFingerprint": "c607333230003cbcf63e833b44fc64f58b24a42aa76f582b76fa61c3c2f2807e",
+                            "classpathFingerprint": "c1511bc29bf5e76224f2b435f95ead72025c15f10967d8703d195ced3eeb9dc7",
+                            "contextFileHashes": []
+                        },
+                        "collisionEvidence": {
+                            "declarationCardinality": 1,
+                            "dimensions": [
+                                "EXACT_DECLARATION_IDENTITIES",
+                                "COMPLETE_OWNING_SOURCE_SCOPE",
+                                "COMPLETE_DEPENDENT_SCOPE",
+                                "NO_COMPILER_COLLISION"
+                            ]
+                        },
+                        "outboundEvidence": {
+                            "cardinality": 0,
+                            "occurrences": []
+                        },
+                        "rebindingBaseline": {
+                            "cardinality": 0,
+                            "dimensions": [
+                                "EXACT_OCCURRENCE_CARDINALITY",
+                                "COMPLETE_DEPENDENT_SCOPE",
+                                "COMPLETE_IMPLICIT_LOOKUP_SCOPE",
+                                "COMPLETE_JAVA_LOOKUP_SCOPE",
+                                "EVERY_CURRENT_BINDING_CAPTURED",
+                                "VIRTUAL_PROPOSED_BINDINGS_EQUAL_BASELINE"
+                            ],
+                            "occurrences": []
+                        },
+                        "postimageSha256": "abe691db3b6164d00c64654569267637709942f01c9a174a267a8ac044206a2a"
+                    },
+                    "schemaVersion": 6
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
             ```
         !!! note "Behavioral notes"
 
@@ -1874,6 +2182,117 @@ daemon, including input/output schemas, examples, and behavioral notes.
             JSON-RPC method: raw/plan-add-declaration
             Params: see Request tab
             ```
+        === "Request"
+
+            ```json
+            {
+                "method": "raw/plan-add-declaration",
+                "params": {
+                    "targetPath": "/workspace/src/Sample.kt",
+                    "expectedCurrentSha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72",
+                    "proposedDeclaration": "class AddedDeclaration"
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "proposedDeclaration": "class AddedDeclaration",
+                    "proposedContent": "package sample\n\nfun greet() = \"hi\"\n\nfun use() = greet()\n\nclass AddedDeclaration\n",
+                    "image": {
+                        "filePath": "/workspace/src/Sample.kt",
+                        "preimage": {
+                            "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQo=",
+                            "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+                        },
+                        "postimage": {
+                            "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQoKY2xhc3MgQWRkZWREZWNsYXJhdGlvbgo=",
+                            "sha256": "e4f06f41dc5594c4d462820a6c7b518b038c2ca0d689bc2f3eb44cb9ae33d38d"
+                        }
+                    },
+                    "proof": {
+                        "targetPath": "/workspace/src/Sample.kt",
+                        "targetPreimageSha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72",
+                        "owner": {
+                            "sourceRoot": "/workspace/src",
+                            "ideaModuleName": "fake-module",
+                            "gradleBuildRoot": "/workspace",
+                            "gradleProjectPath": ":",
+                            "sourceSetName": "main"
+                        },
+                        "packageIdentity": {
+                            "type": "NAMED",
+                            "segments": [
+                                "sample"
+                            ]
+                        },
+                        "declaration": {
+                            "packageIdentity": {
+                                "type": "NAMED",
+                                "segments": [
+                                    "sample"
+                                ]
+                            },
+                            "name": "AddedDeclaration",
+                            "kind": "CLASS",
+                            "relativeRange": {
+                                "startOffset": 0,
+                                "endOffset": 22
+                            },
+                            "collisionSignature": "e64171523428714b6d5dca5a3d8739f3265e6b267e52ac315ace72295350fe89"
+                        },
+                        "insertion": {
+                            "offset": 56
+                        },
+                        "newlinePolicy": "PRESERVE_EXISTING_APPEND_BLANK_LINE_FINAL_LF",
+                        "context": {
+                            "requiredGeneration": 1,
+                            "projectModelFingerprint": "c607333230003cbcf63e833b44fc64f58b24a42aa76f582b76fa61c3c2f2807e",
+                            "classpathFingerprint": "c1511bc29bf5e76224f2b435f95ead72025c15f10967d8703d195ced3eeb9dc7",
+                            "contextFileHashes": [
+                                {
+                                    "filePath": "/workspace/src/Sample.kt",
+                                    "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+                                }
+                            ]
+                        },
+                        "collisionEvidence": {
+                            "declarationCardinality": 1,
+                            "dimensions": [
+                                "EXACT_DECLARATION_IDENTITIES",
+                                "COMPLETE_OWNING_SOURCE_SCOPE",
+                                "COMPLETE_DEPENDENT_SCOPE",
+                                "NO_COMPILER_COLLISION"
+                            ]
+                        },
+                        "outboundEvidence": {
+                            "cardinality": 0,
+                            "occurrences": []
+                        },
+                        "rebindingBaseline": {
+                            "cardinality": 0,
+                            "dimensions": [
+                                "EXACT_OCCURRENCE_CARDINALITY",
+                                "COMPLETE_DEPENDENT_SCOPE",
+                                "COMPLETE_IMPLICIT_LOOKUP_SCOPE",
+                                "COMPLETE_JAVA_LOOKUP_SCOPE",
+                                "EVERY_CURRENT_BINDING_CAPTURED",
+                                "VIRTUAL_PROPOSED_BINDINGS_EQUAL_BASELINE"
+                            ],
+                            "occurrences": []
+                        },
+                        "postimageSha256": "e4f06f41dc5594c4d462820a6c7b518b038c2ca0d689bc2f3eb44cb9ae33d38d"
+                    },
+                    "schemaVersion": 6
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
         !!! note "Behavioral notes"
 
             - The current target bytes must match expectedCurrentSha256.
@@ -1891,22 +2310,163 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin authority: MutationPostconditionAuthority` |  |
+            | `#!kotlin authority: MutationPostconditionAuthority` | Persisted proof and exact file images authorized for postcondition verification. |
         === "Output: MutationPostconditionResult"
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin status: MutationPostconditionStatus` |  |
-            | `#!kotlin operation: MutationPostconditionOperation` |  |
-            | `#!kotlin currentGeneration: MutationSemanticGeneration` |  |
-            | `#!kotlin postimages: List<VerifiedMutationPostimage>` |  |
-            | `#!kotlin evidence: MutationPostconditionEvidence` |  |
+            | `#!kotlin status: MutationPostconditionStatus` | Closed successful postcondition status. |
+            | `#!kotlin operation: MutationPostconditionOperation` | Mutation operation verified by this result. |
+            | `#!kotlin currentGeneration: MutationSemanticGeneration` | Semantic source generation that verified the postcondition. |
+            | `#!kotlin postimages: List<VerifiedMutationPostimage>` | Exact verified hash for every mutation postimage. |
+            | `#!kotlin evidence: MutationPostconditionEvidence` | Operation-specific compiler evidence for the verified postcondition. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "Internal protocol"
 
             ```text
             JSON-RPC method: raw/verify-mutation-postcondition
             Params: see Request tab
+            ```
+        === "Request"
+
+            ```json
+            {
+                "method": "raw/verify-mutation-postcondition",
+                "params": {
+                    "authority": {
+                        "type": "ADD_FILE",
+                        "proof": {
+                            "targetPath": "/workspace/src/Generated.kt",
+                            "targetState": "ABSENT",
+                            "owner": {
+                                "sourceRoot": "/workspace/src",
+                                "ideaModuleName": "fake-module",
+                                "gradleBuildRoot": "/workspace",
+                                "gradleProjectPath": ":",
+                                "sourceSetName": "main"
+                            },
+                            "packageIdentity": {
+                                "type": "NAMED",
+                                "segments": [
+                                    "sample"
+                                ]
+                            },
+                            "declarations": [
+                                {
+                                    "packageIdentity": {
+                                        "type": "NAMED",
+                                        "segments": [
+                                            "sample"
+                                        ]
+                                    },
+                                    "name": "Generated",
+                                    "kind": "CLASS",
+                                    "relativeRange": {
+                                        "startOffset": 16,
+                                        "endOffset": 31
+                                    },
+                                    "collisionSignature": "87cc059ff6a5a0e01e501b755c7aeccfe87c039f5d28fa48732935f25a930e56"
+                                }
+                            ],
+                            "context": {
+                                "requiredGeneration": 1,
+                                "projectModelFingerprint": "c607333230003cbcf63e833b44fc64f58b24a42aa76f582b76fa61c3c2f2807e",
+                                "classpathFingerprint": "c1511bc29bf5e76224f2b435f95ead72025c15f10967d8703d195ced3eeb9dc7",
+                                "contextFileHashes": []
+                            },
+                            "collisionEvidence": {
+                                "declarationCardinality": 1,
+                                "dimensions": [
+                                    "EXACT_DECLARATION_IDENTITIES",
+                                    "COMPLETE_OWNING_SOURCE_SCOPE",
+                                    "COMPLETE_DEPENDENT_SCOPE",
+                                    "NO_COMPILER_COLLISION"
+                                ]
+                            },
+                            "outboundEvidence": {
+                                "cardinality": 0,
+                                "occurrences": []
+                            },
+                            "rebindingBaseline": {
+                                "cardinality": 0,
+                                "dimensions": [
+                                    "EXACT_OCCURRENCE_CARDINALITY",
+                                    "COMPLETE_DEPENDENT_SCOPE",
+                                    "COMPLETE_IMPLICIT_LOOKUP_SCOPE",
+                                    "COMPLETE_JAVA_LOOKUP_SCOPE",
+                                    "EVERY_CURRENT_BINDING_CAPTURED",
+                                    "VIRTUAL_PROPOSED_BINDINGS_EQUAL_BASELINE"
+                                ],
+                                "occurrences": []
+                            },
+                            "postimageSha256": "abe691db3b6164d00c64654569267637709942f01c9a174a267a8ac044206a2a"
+                        },
+                        "postimage": {
+                            "contentBase64": "cGFja2FnZSBzYW1wbGUKCmNsYXNzIEdlbmVyYXRlZAo=",
+                            "sha256": "abe691db3b6164d00c64654569267637709942f01c9a174a267a8ac044206a2a"
+                        }
+                    }
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "status": "VERIFIED",
+                    "operation": "ADD_FILE",
+                    "currentGeneration": 2,
+                    "postimages": [
+                        {
+                            "filePath": "/workspace/src/Generated.kt",
+                            "sha256": "abe691db3b6164d00c64654569267637709942f01c9a174a267a8ac044206a2a"
+                        }
+                    ],
+                    "evidence": {
+                        "type": "ADD_FILE",
+                        "owner": {
+                            "sourceRoot": "/workspace/src",
+                            "ideaModuleName": "fake-module",
+                            "gradleBuildRoot": "/workspace",
+                            "gradleProjectPath": ":",
+                            "sourceSetName": "main"
+                        },
+                        "packageIdentity": {
+                            "type": "NAMED",
+                            "segments": [
+                                "sample"
+                            ]
+                        },
+                        "declarations": [
+                            {
+                                "packageIdentity": {
+                                    "type": "NAMED",
+                                    "segments": [
+                                        "sample"
+                                    ]
+                                },
+                                "name": "Generated",
+                                "kind": "CLASS",
+                                "relativeRange": {
+                                    "startOffset": 16,
+                                    "endOffset": 31
+                                },
+                                "collisionSignature": "87cc059ff6a5a0e01e501b755c7aeccfe87c039f5d28fa48732935f25a930e56"
+                            }
+                        ],
+                        "outboundEvidence": {
+                            "cardinality": 0,
+                            "occurrences": []
+                        }
+                    },
+                    "schemaVersion": 6
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
             ```
         !!! note "Behavioral notes"
 
@@ -1938,6 +2498,34 @@ daemon, including input/output schemas, examples, and behavioral notes.
             ```text
             JSON-RPC method: raw/exact-file-observation
             Params: see Request tab
+            ```
+        === "Request"
+
+            ```json
+            {
+                "method": "raw/exact-file-observation",
+                "params": {
+                    "filePath": "src/Sample.kt"
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "type": "PRESENT",
+                    "filePath": "src/Sample.kt",
+                    "image": {
+                        "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQo=",
+                        "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+                    }
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
             ```
         !!! note "Behavioral notes"
 
@@ -1977,6 +2565,36 @@ daemon, including input/output schemas, examples, and behavioral notes.
             JSON-RPC method: raw/exact-file-image-cas
             Params: see Request tab
             ```
+        === "Request"
+
+            ```json
+            {
+                "method": "raw/exact-file-image-cas",
+                "params": {
+                    "filePath": "/workspace/src/Sample.kt",
+                    "expectedCurrentSha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72",
+                    "contentBase64": "Ly8gZXhhY3QgaW1hZ2UgZXhhbXBsZQpwYWNrYWdlIHNhbXBsZQoKZnVuIGdyZWV0KCkgPSAiaGkiCgpmdW4gdXNlKCkgPSBncmVldCgpCg==",
+                    "expectedResultSha256": "b95525cb10f61f05f8d701ea043b498d31551050ae5ba67eea1bf59a6370f9f5"
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "filePath": "/workspace/src/Sample.kt",
+                    "status": "COMMITTED",
+                    "previousSha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72",
+                    "resultSha256": "b95525cb10f61f05f8d701ea043b498d31551050ae5ba67eea1bf59a6370f9f5",
+                    "schemaVersion": 6
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
         !!! note "Behavioral notes"
 
             - Verified mutation requests supply a predeclared scratch set owned by the durable journal.
@@ -2001,14 +2619,76 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin mutationAttemptId: MutationAttemptId` |  |
-            | `#!kotlin observations: List<MutationScratchObservation>` |  |
+            | `#!kotlin mutationAttemptId: MutationAttemptId` | Canonical UUID-v4 mutation attempt admitted by the inspection. |
+            | `#!kotlin observations: List<MutationScratchObservation>` | Descriptor-secure scratch observations in deterministic path order. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "Internal protocol"
 
             ```text
             JSON-RPC method: raw/inspect-mutation-scratch
             Params: see Request tab
+            ```
+        === "Request"
+
+            ```json
+            {
+                "method": "raw/inspect-mutation-scratch",
+                "params": {
+                    "mutationAttemptId": "00000000-0000-4000-8000-000000000004",
+                    "workspaceRelativeParentPaths": [
+                        "src"
+                    ],
+                    "ownedScratchSets": [
+                        {
+                            "targetFilePath": "/workspace/src/Sample.kt",
+                            "quarantinePath": "/workspace/src/.kast-quarantine-00000000-0000-4000-8000-000000000004-0",
+                            "preparedPath": "/workspace/src/.kast-prepared-00000000-0000-4000-8000-000000000004-0.tmp",
+                            "preparedCleanupPath": "/workspace/src/.kast-cleanup-00000000-0000-4000-8000-000000000004-0-prepared",
+                            "quarantineCleanupPath": "/workspace/src/.kast-cleanup-00000000-0000-4000-8000-000000000004-0-quarantine"
+                        }
+                    ]
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "mutationAttemptId": "00000000-0000-4000-8000-000000000004",
+                    "observations": [
+                        {
+                            "filePath": "/workspace/src/.kast-cleanup-00000000-0000-4000-8000-000000000004-0-prepared",
+                            "ownership": "OWNED",
+                            "role": "PREPARED_CLEANUP",
+                            "state": "ABSENT"
+                        },
+                        {
+                            "filePath": "/workspace/src/.kast-cleanup-00000000-0000-4000-8000-000000000004-0-quarantine",
+                            "ownership": "OWNED",
+                            "role": "QUARANTINE_CLEANUP",
+                            "state": "ABSENT"
+                        },
+                        {
+                            "filePath": "/workspace/src/.kast-prepared-00000000-0000-4000-8000-000000000004-0.tmp",
+                            "ownership": "OWNED",
+                            "role": "PREPARED",
+                            "state": "ABSENT"
+                        },
+                        {
+                            "filePath": "/workspace/src/.kast-quarantine-00000000-0000-4000-8000-000000000004-0",
+                            "ownership": "OWNED",
+                            "role": "QUARANTINE",
+                            "state": "ABSENT"
+                        }
+                    ],
+                    "schemaVersion": 6
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
             ```
         !!! note "Behavioral notes"
 
@@ -2038,18 +2718,93 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin mutationAttemptId: MutationAttemptId` |  |
-            | `#!kotlin action: MutationScratchRecoveryAction` |  |
-            | `#!kotlin outcome: MutationScratchRecoveryOutcome` |  |
-            | `#!kotlin targetState: MutationScratchTargetState` |  |
-            | `#!kotlin targetSha256: ExactFileImageSha256?` |  |
-            | `#!kotlin scratchObservations: List<MutationScratchObservation>` |  |
+            | `#!kotlin mutationAttemptId: MutationAttemptId` | Canonical UUID-v4 mutation attempt admitted by recovery. |
+            | `#!kotlin action: MutationScratchRecoveryAction` | Closed recovery action that completed. |
+            | `#!kotlin outcome: MutationScratchRecoveryOutcome` | Closed successful outcome that matches the recovery action. |
+            | `#!kotlin targetState: MutationScratchTargetState` | Exact target state after successful recovery. |
+            | `#!kotlin targetSha256: ExactFileImageSha256?` | Exact target SHA-256 when the recovered target is present. |
+            | `#!kotlin scratchObservations: List<MutationScratchObservation>` | Four absent owned scratch observations in journal role order. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "Internal protocol"
 
             ```text
             JSON-RPC method: raw/recover-mutation-scratch
             Params: see Request tab
+            ```
+        === "Request"
+
+            ```json
+            {
+                "method": "raw/recover-mutation-scratch",
+                "params": {
+                    "mutationAttemptId": "00000000-0000-4000-8000-000000000004",
+                    "action": "RESTORE_PREIMAGE",
+                    "scratchDirection": "RESTORE_PREIMAGE",
+                    "targetFilePath": "/workspace/src/Sample.kt",
+                    "preimage": {
+                        "state": "PRESENT",
+                        "image": {
+                            "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQo=",
+                            "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+                        }
+                    },
+                    "postimage": {
+                        "contentBase64": "Ly8gZXhhY3QgaW1hZ2UgZXhhbXBsZQpwYWNrYWdlIHNhbXBsZQoKZnVuIGdyZWV0KCkgPSAiaGkiCgpmdW4gdXNlKCkgPSBncmVldCgpCg==",
+                        "sha256": "b95525cb10f61f05f8d701ea043b498d31551050ae5ba67eea1bf59a6370f9f5"
+                    },
+                    "scratch": {
+                        "targetFilePath": "/workspace/src/Sample.kt",
+                        "quarantinePath": "/workspace/src/.kast-quarantine-00000000-0000-4000-8000-000000000004-0",
+                        "preparedPath": "/workspace/src/.kast-prepared-00000000-0000-4000-8000-000000000004-0.tmp",
+                        "preparedCleanupPath": "/workspace/src/.kast-cleanup-00000000-0000-4000-8000-000000000004-0-prepared",
+                        "quarantineCleanupPath": "/workspace/src/.kast-cleanup-00000000-0000-4000-8000-000000000004-0-quarantine"
+                    }
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
+            ```
+        === "Response"
+
+            ```json
+            {
+                "result": {
+                    "mutationAttemptId": "00000000-0000-4000-8000-000000000004",
+                    "action": "RESTORE_PREIMAGE",
+                    "outcome": "RESTORED_PREIMAGE",
+                    "targetState": "PRESENT",
+                    "targetSha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72",
+                    "scratchObservations": [
+                        {
+                            "filePath": "/workspace/src/.kast-quarantine-00000000-0000-4000-8000-000000000004-0",
+                            "ownership": "OWNED",
+                            "role": "QUARANTINE",
+                            "state": "ABSENT"
+                        },
+                        {
+                            "filePath": "/workspace/src/.kast-prepared-00000000-0000-4000-8000-000000000004-0.tmp",
+                            "ownership": "OWNED",
+                            "role": "PREPARED",
+                            "state": "ABSENT"
+                        },
+                        {
+                            "filePath": "/workspace/src/.kast-cleanup-00000000-0000-4000-8000-000000000004-0-prepared",
+                            "ownership": "OWNED",
+                            "role": "PREPARED_CLEANUP",
+                            "state": "ABSENT"
+                        },
+                        {
+                            "filePath": "/workspace/src/.kast-cleanup-00000000-0000-4000-8000-000000000004-0-quarantine",
+                            "ownership": "OWNED",
+                            "role": "QUARANTINE_CLEANUP",
+                            "state": "ABSENT"
+                        }
+                    ],
+                    "schemaVersion": 6
+                },
+                "id": 1,
+                "jsonrpc": "2.0"
+            }
             ```
         !!! note "Behavioral notes"
 
@@ -2167,7 +2922,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "hash": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
                         }
                     ],
-                    "fileOperations": []
+                    "fileOperations": [],
+                    "mutationScratchSets": []
                 },
                 "id": 1,
                 "jsonrpc": "2.0"

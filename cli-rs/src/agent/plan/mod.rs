@@ -24,8 +24,8 @@ use std::io::{IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
 use uuid::{Uuid, Version};
 
-const PLAN_SCHEMA_VERSION: u32 = 5;
-const RECOVERY_SCHEMA_VERSION: u32 = 4;
+const PLAN_SCHEMA_VERSION: u32 = 6;
+const RECOVERY_SCHEMA_VERSION: u32 = 5;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]

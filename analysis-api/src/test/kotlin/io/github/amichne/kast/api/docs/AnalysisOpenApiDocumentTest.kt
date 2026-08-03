@@ -124,6 +124,7 @@ class AnalysisOpenApiDocumentTest {
                 if (schema == null) {
                     add("$name: missing closed schema")
                 } else {
+                    if (schema.trim() == "type: object") add("$name: proof-critical schema is an unconstrained object")
                     if ("oneOf:" !in schema || "propertyName: ${expected.discriminator}" !in schema) {
                         add("$name: missing ${expected.discriminator} discriminated union")
                     }
