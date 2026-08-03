@@ -843,6 +843,22 @@ def validate_requirement_graph(
             )
             if expected_boundary_test not in requirement.evidence_references:
                 reject(f"{identifier} must reference the exact KPS-01 boundary test command")
+        delivery = admitted_deliveries.get(expected_owner)
+        expected_delivery = (
+            None
+            if delivery is None
+            else EvidenceReference(EvidenceKind.DELIVERY, delivery.url)
+        )
+        delivery_references = {
+            reference
+            for reference in requirement.evidence_references
+            if reference.kind is EvidenceKind.DELIVERY
+        }
+        allowed_delivery_references = (
+            set() if expected_delivery is None else {expected_delivery}
+        )
+        if not delivery_references <= allowed_delivery_references:
+            reject(f"{identifier} must not reference unadmitted delivery evidence")
         for prerequisite in requirement.prerequisites:
             if prerequisite.kind is PrerequisiteKind.REQUIREMENT:
                 assert prerequisite.requirement_id is not None

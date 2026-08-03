@@ -13,6 +13,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+import generate_requirement_ledger as generator
 import verify_requirement_ledger as validator
 
 
@@ -94,14 +95,22 @@ class RequirementLedgerValidatorTest(unittest.TestCase):
     def validate_with_test_deliveries(self, payload: dict, owners: set[str]) -> None:
         registry = {}
         records = []
-        for owner in sorted(owners):
+        completed_owners = {
+            requirement["primaryOwner"]["draftKey"]
+            for requirement in payload["requirements"]
+            if requirement["completionState"]["state"] == "complete"
+        }
+        for owner in sorted(owners | completed_owners):
             owner_number = int(owner.removeprefix("KPS-"))
-            delivery = {
-                "issue": 507 + owner_number,
-                "pullRequest": 1000 + owner_number,
-                "url": f"https://github.com/amichne/kast/pull/{1000 + owner_number}",
-                "headRefName": f"test/{owner.lower()}",
-            }
+            delivery = copy.deepcopy(
+                validator.EXPECTED_OWNER_DELIVERIES.get(owner)
+                or {
+                    "issue": 507 + owner_number,
+                    "pullRequest": 1000 + owner_number,
+                    "url": f"https://github.com/amichne/kast/pull/{1000 + owner_number}",
+                    "headRefName": f"test/{owner.lower()}",
+                }
+            )
             registry[owner] = delivery
             records.append({"primaryOwner": owner, **delivery})
         payload["admittedDeliveries"] = records
@@ -233,7 +242,7 @@ class RequirementLedgerValidatorTest(unittest.TestCase):
         result = self.run_validator(payload)
 
         self.assertEqual(result.returncode, 1)
-        self.assertIn("CTL-001 completion must cite the admitted KPS-01 delivery", result.stderr)
+        self.assertIn("CTL-001 must not reference unadmitted delivery evidence", result.stderr)
 
     def test_completion_without_delivery_evidence_is_rejected(self) -> None:
         payload = copy.deepcopy(self.valid_payload)
@@ -250,13 +259,29 @@ class RequirementLedgerValidatorTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("SYS-001 completion must cite the admitted KPS-02 delivery", result.stderr)
 
-    def test_checked_in_completion_starts_incomplete(self) -> None:
-        requirement_states = {
-            item["completionState"]["state"] for item in self.valid_payload["requirements"]
-        }
+    def test_checked_in_completion_matches_the_delivered_owner_frontier(self) -> None:
+        delivered = [
+            item
+            for item in self.valid_payload["requirements"]
+            if item["primaryOwner"]["draftKey"] == "KPS-01"
+        ]
+        pending = [
+            item
+            for item in self.valid_payload["requirements"]
+            if item["primaryOwner"]["draftKey"] != "KPS-01"
+        ]
         gate_states = {item["completionState"]["state"] for item in self.valid_payload["gates"]}
 
-        self.assertEqual(requirement_states, {"incomplete"})
+        self.assertEqual(len(delivered), 5)
+        self.assertEqual(
+            {item["completionState"]["state"] for item in delivered},
+            {"complete"},
+        )
+        self.assertEqual(len(pending), 224)
+        self.assertEqual(
+            {item["completionState"]["state"] for item in pending},
+            {"incomplete"},
+        )
         self.assertEqual(gate_states, {"incomplete"})
 
     def test_boolean_schema_version_is_rejected(self) -> None:
@@ -286,9 +311,14 @@ class RequirementLedgerValidatorTest(unittest.TestCase):
             if requirement["gate"] <= "G6":
                 owner = requirement["primaryOwner"]["draftKey"]
                 owner_number = int(owner.removeprefix("KPS-"))
+                delivery_url = (
+                    "https://github.com/amichne/kast/pull/549"
+                    if owner == "KPS-01"
+                    else f"https://github.com/amichne/kast/pull/{1000 + owner_number}"
+                )
                 self.mark_complete(
                     requirement,
-                    f"https://github.com/amichne/kast/pull/{1000 + owner_number}",
+                    delivery_url,
                 )
                 completed_owners.add(owner)
         for gate in payload["gates"]:
@@ -308,7 +338,14 @@ class RequirementLedgerValidatorTest(unittest.TestCase):
     def test_same_gate_completion_rejects_another_incomplete_requirement(self) -> None:
         payload = copy.deepcopy(self.valid_payload)
         requirement = self.requirement(payload, "OUT-007")
-        self.mark_complete(requirement)
+        requirement["completionState"] = {
+            "state": "complete",
+            "evidence": [
+                reference
+                for reference in requirement["evidenceReferences"]
+                if reference["kind"] in {"command", "test"}
+            ],
+        }
 
         result = self.run_validator(payload)
 
@@ -322,7 +359,14 @@ class RequirementLedgerValidatorTest(unittest.TestCase):
         payload = copy.deepcopy(self.valid_payload)
         requirement = self.requirement(payload, "OUT-012")
         requirement["gate"] = "G7"
-        self.mark_complete(requirement)
+        requirement["completionState"] = {
+            "state": "complete",
+            "evidence": [
+                reference
+                for reference in requirement["evidenceReferences"]
+                if reference["kind"] in {"command", "test"}
+            ],
+        }
 
         result = self.run_validator(payload)
 
@@ -339,6 +383,78 @@ class RequirementLedgerValidatorTest(unittest.TestCase):
             self.mark_complete(requirement, "https://github.com/amichne/kast/pull/1036")
 
         self.validate_with_test_deliveries(payload, {"KPS-36"})
+
+    def test_completion_transition_requires_an_admitted_owner_delivery(self) -> None:
+        payload = copy.deepcopy(self.valid_payload)
+
+        with self.assertRaisesRegex(
+            generator.GenerationError,
+            "KPS-02 has no admitted delivery",
+        ):
+            generator.complete_owner(payload, "KPS-02")
+
+    def test_completion_transition_records_all_kps01_evidence(self) -> None:
+        payload = copy.deepcopy(self.valid_payload)
+        for requirement in payload["requirements"]:
+            if requirement["primaryOwner"]["draftKey"] != "KPS-01":
+                continue
+            requirement["evidenceReferences"] = [
+                reference
+                for reference in requirement["evidenceReferences"]
+                if reference["kind"] != "delivery"
+            ]
+            requirement["completionState"] = {"state": "incomplete", "evidence": []}
+        validator.validate_payload(payload)
+
+        generator.complete_owner(payload, "KPS-01")
+        validator.validate_payload(payload)
+
+        owned = [
+            requirement
+            for requirement in payload["requirements"]
+            if requirement["primaryOwner"]["draftKey"] == "KPS-01"
+        ]
+        self.assertEqual(len(owned), 5)
+        self.assertEqual(
+            {requirement["completionState"]["state"] for requirement in owned},
+            {"complete"},
+        )
+        self.assertTrue(
+            all(
+                {
+                    "kind": "delivery",
+                    "reference": "https://github.com/amichne/kast/pull/549",
+                }
+                in requirement["completionState"]["evidence"]
+                for requirement in owned
+            )
+        )
+
+    def test_regeneration_preserves_valid_completion_state(self) -> None:
+        previous = copy.deepcopy(self.valid_payload)
+        generator.complete_owner(previous, "KPS-01")
+        generated = copy.deepcopy(self.valid_payload)
+        for requirement in generated["requirements"]:
+            if requirement["primaryOwner"]["draftKey"] == "KPS-01":
+                requirement["evidenceReferences"] = [
+                    reference
+                    for reference in requirement["evidenceReferences"]
+                    if reference["kind"] != "delivery"
+                ]
+                requirement["completionState"] = {"state": "incomplete", "evidence": []}
+
+        generator.preserve_completion_state(generated, previous)
+        validator.validate_payload(generated)
+
+        owned = [
+            requirement
+            for requirement in generated["requirements"]
+            if requirement["primaryOwner"]["draftKey"] == "KPS-01"
+        ]
+        self.assertEqual(
+            {requirement["completionState"]["state"] for requirement in owned},
+            {"complete"},
+        )
 
     def test_completion_before_requirement_prerequisite_is_rejected(self) -> None:
         payload = copy.deepcopy(self.valid_payload)

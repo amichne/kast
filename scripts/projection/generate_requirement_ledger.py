@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import re
@@ -27,6 +28,7 @@ from verify_requirement_ledger import (
     SAME_GATE_PREREQUISITE_RULE,
     SCHEMA_VERSION,
     VERIFICATION_METHOD_DESCRIPTIONS,
+    load_payload,
     validate_payload,
 )
 
@@ -340,12 +342,81 @@ def make_ledger(
     }
 
 
+def preserve_completion_state(
+    generated: dict[str, Any],
+    previous: dict[str, Any],
+) -> None:
+    validate_payload(generated)
+    validate_payload(previous)
+    generated_requirements = {
+        requirement["id"]: requirement for requirement in generated["requirements"]
+    }
+    previous_requirements = {
+        requirement["id"]: requirement for requirement in previous["requirements"]
+    }
+    if set(generated_requirements) != set(previous_requirements):
+        reject("cannot preserve completion state across a requirement set change")
+    admitted_urls = {
+        delivery["url"] for delivery in generated["admittedDeliveries"]
+    }
+    for identifier, generated_requirement in generated_requirements.items():
+        previous_requirement = previous_requirements[identifier]
+        generated_requirement["evidenceReferences"].extend(
+            copy.deepcopy(reference)
+            for reference in previous_requirement["evidenceReferences"]
+            if reference["kind"] == "delivery"
+            and reference["reference"] in admitted_urls
+            and reference not in generated_requirement["evidenceReferences"]
+        )
+        generated_requirement["completionState"] = copy.deepcopy(
+            previous_requirement["completionState"]
+        )
+    generated_gates = {gate["id"]: gate for gate in generated["gates"]}
+    previous_gates = {gate["id"]: gate for gate in previous["gates"]}
+    for identifier, generated_gate in generated_gates.items():
+        generated_gate["completionState"] = copy.deepcopy(
+            previous_gates[identifier]["completionState"]
+        )
+    validate_payload(generated)
+
+
+def complete_owner(ledger: dict[str, Any], primary_owner: str) -> None:
+    validate_payload(ledger)
+    delivery = EXPECTED_OWNER_DELIVERIES.get(primary_owner)
+    if delivery is None:
+        reject(f"{primary_owner} has no admitted delivery")
+    delivery_reference = {
+        "kind": "delivery",
+        "reference": delivery["url"],
+    }
+    owned = [
+        requirement
+        for requirement in ledger["requirements"]
+        if requirement["primaryOwner"]["draftKey"] == primary_owner
+    ]
+    if not owned:
+        reject(f"{primary_owner} owns no active requirements")
+    for requirement in owned:
+        if delivery_reference not in requirement["evidenceReferences"]:
+            requirement["evidenceReferences"].append(copy.deepcopy(delivery_reference))
+        requirement["completionState"] = {
+            "state": "complete",
+            "evidence": [
+                copy.deepcopy(reference)
+                for reference in requirement["evidenceReferences"]
+                if reference["kind"] in {"command", "test", "delivery"}
+            ],
+        }
+    validate_payload(ledger)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--repository", default="amichne/kast")
     parser.add_argument("--parent-issue", type=int, default=548)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--complete-owner", action="append", default=[])
     return parser.parse_args()
 
 
@@ -356,6 +427,10 @@ def main() -> None:
         parse_source(args.source),
         parse_owners(fetch_child_issues(args.repository, args.parent_issue)),
     )
+    if args.output.is_file():
+        preserve_completion_state(ledger, load_payload(args.output))
+    for primary_owner in args.complete_owner:
+        complete_owner(ledger, primary_owner)
     validate_payload(ledger)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(ledger, indent=2) + "\n", encoding="utf-8")

@@ -238,11 +238,32 @@
         {
           "kind": "test",
           "reference": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/projection -p 'test_*.py' -v"
+        },
+        {
+          "kind": "delivery",
+          "reference": "https://github.com/amichne/kast/pull/549"
         }
       ],
       "completionState": {
-        "state": "incomplete",
-        "evidence": []
+        "state": "complete",
+        "evidence": [
+          {
+            "kind": "command",
+            "reference": "python3 scripts/projection/verify_requirement_ledger.py"
+          },
+          {
+            "kind": "test",
+            "reference": "git rev-parse HEAD && git status --short"
+          },
+          {
+            "kind": "test",
+            "reference": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/projection -p 'test_*.py' -v"
+          },
+          {
+            "kind": "delivery",
+            "reference": "https://github.com/amichne/kast/pull/549"
+          }
+        ]
       }
     },
     {
@@ -275,11 +296,32 @@
         {
           "kind": "test",
           "reference": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/projection -p 'test_*.py' -v"
+        },
+        {
+          "kind": "delivery",
+          "reference": "https://github.com/amichne/kast/pull/549"
         }
       ],
       "completionState": {
-        "state": "incomplete",
-        "evidence": []
+        "state": "complete",
+        "evidence": [
+          {
+            "kind": "command",
+            "reference": "python3 scripts/projection/verify_requirement_ledger.py"
+          },
+          {
+            "kind": "test",
+            "reference": "git rev-parse HEAD && git status --short"
+          },
+          {
+            "kind": "test",
+            "reference": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/projection -p 'test_*.py' -v"
+          },
+          {
+            "kind": "delivery",
+            "reference": "https://github.com/amichne/kast/pull/549"
+          }
+        ]
       }
     },
     {
@@ -318,11 +360,32 @@
         {
           "kind": "test",
           "reference": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/projection -p 'test_*.py' -v"
+        },
+        {
+          "kind": "delivery",
+          "reference": "https://github.com/amichne/kast/pull/549"
         }
       ],
       "completionState": {
-        "state": "incomplete",
-        "evidence": []
+        "state": "complete",
+        "evidence": [
+          {
+            "kind": "command",
+            "reference": "python3 scripts/projection/verify_requirement_ledger.py"
+          },
+          {
+            "kind": "test",
+            "reference": "git rev-parse HEAD && git status --short"
+          },
+          {
+            "kind": "test",
+            "reference": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/projection -p 'test_*.py' -v"
+          },
+          {
+            "kind": "delivery",
+            "reference": "https://github.com/amichne/kast/pull/549"
+          }
+        ]
       }
     },
     {
@@ -360,11 +423,32 @@
         {
           "kind": "test",
           "reference": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/projection -p 'test_*.py' -v"
+        },
+        {
+          "kind": "delivery",
+          "reference": "https://github.com/amichne/kast/pull/549"
         }
       ],
       "completionState": {
-        "state": "incomplete",
-        "evidence": []
+        "state": "complete",
+        "evidence": [
+          {
+            "kind": "command",
+            "reference": "python3 scripts/projection/verify_requirement_ledger.py"
+          },
+          {
+            "kind": "test",
+            "reference": "git rev-parse HEAD && git status --short"
+          },
+          {
+            "kind": "test",
+            "reference": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/projection -p 'test_*.py' -v"
+          },
+          {
+            "kind": "delivery",
+            "reference": "https://github.com/amichne/kast/pull/549"
+          }
+        ]
       }
     },
     {
@@ -403,11 +487,32 @@
         {
           "kind": "test",
           "reference": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/projection -p 'test_*.py' -v"
+        },
+        {
+          "kind": "delivery",
+          "reference": "https://github.com/amichne/kast/pull/549"
         }
       ],
       "completionState": {
-        "state": "incomplete",
-        "evidence": []
+        "state": "complete",
+        "evidence": [
+          {
+            "kind": "command",
+            "reference": "python3 scripts/projection/verify_requirement_ledger.py"
+          },
+          {
+            "kind": "test",
+            "reference": "git rev-parse HEAD && git status --short"
+          },
+          {
+            "kind": "test",
+            "reference": "PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s scripts/projection -p 'test_*.py' -v"
+          },
+          {
+            "kind": "delivery",
+            "reference": "https://github.com/amichne/kast/pull/549"
+          }
+        ]
       }
     },
     {
