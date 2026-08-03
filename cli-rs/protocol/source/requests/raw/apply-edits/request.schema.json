@@ -50,6 +50,40 @@
             "type": "object"
           },
           "type": "array"
+        },
+        "mutationAttemptId": {
+          "type": "string"
+        },
+        "mutationScratchSets": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "preparedCleanupPath": {
+                "type": "string"
+              },
+              "preparedPath": {
+                "type": "string"
+              },
+              "quarantineCleanupPath": {
+                "type": "string"
+              },
+              "quarantinePath": {
+                "type": "string"
+              },
+              "targetFilePath": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "targetFilePath",
+              "quarantinePath",
+              "preparedPath",
+              "preparedCleanupPath",
+              "quarantineCleanupPath"
+            ],
+            "type": "object"
+          },
+          "type": "array"
         }
       },
       "required": [

@@ -113,7 +113,7 @@ fn execute_agent_rename_symbol_preview(
                 );
             }
         };
-    let Some(position) = resolved.rename_position() else {
+    let Some(expected_target) = resolved.rename_target_identity() else {
         return error_envelope(
             "agent/rename".to_string(),
             Some(identity_request),
@@ -127,7 +127,7 @@ fn execute_agent_rename_symbol_preview(
         args,
         identity_request,
         &session,
-        position,
+        expected_target,
         "resolution",
         resolved_value,
         "Run `kast agent rename --symbol <fq-name> --new-name <name> --apply --workspace-root <repo>` to apply this verified rename plan.",
@@ -259,9 +259,15 @@ fn execute_agent_rename_handle_preview(
             ),
         );
     }
-    let position = AgentRenamePosition {
-        file_path: identity.declaration_file.clone(),
-        offset: identity.declaration_start_offset as u32,
+    let Some(expected_target) = AgentExactRenameSymbolIdentity::from_relation(&identity) else {
+        return error_envelope(
+            "agent/rename".to_string(),
+            Some(identity_request),
+            agent_error(
+                "INVALID_SELECTOR_IDENTITY",
+                "Authenticated selector identity could not become an exact rename target.",
+            ),
+        );
     };
     let identity = match serde_json::to_value(identity) {
         Ok(identity) => identity,
@@ -280,7 +286,7 @@ fn execute_agent_rename_handle_preview(
         args,
         identity_request,
         &session,
-        position,
+        expected_target,
         "identity",
         identity,
         "Run `kast agent rename --selector-handle <handle> --new-name <name> --apply --idempotency-key <stable-key> --workspace-root <repo>` to submit this verified rename.",
@@ -291,11 +297,12 @@ fn execute_agent_rename_preview_at_position(
     args: AgentRenameArgs,
     identity_request: Value,
     session: &runtime::RawRpcSession,
-    position: AgentRenamePosition,
+    expected_target: AgentExactRenameSymbolIdentity,
     evidence_name: &'static str,
     evidence: Value,
     help: &'static str,
 ) -> AgentEnvelope {
+    let position = expected_target.position();
     let preview_request = json_rpc_request(
         "raw/rename",
         json!({
@@ -342,7 +349,7 @@ fn execute_agent_rename_preview_at_position(
             );
         }
     };
-    if let Err(message) = preview.validate() {
+    if let Err(message) = preview.validate_for_target(&expected_target) {
         return error_envelope(
             "agent/rename".to_string(),
             Some(identity_request),

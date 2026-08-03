@@ -19,13 +19,13 @@ fn spawn_small_mixed_workspace_files_backend(
                 "fileCount": 2,
                 "nextPageToken": null
             }],
-            "schemaVersion": 5
+            "schemaVersion": api_schema_version()
         })
     };
     let validation = serde_json::json!({
         "snapshotToken": "snapshot-mixed",
         "modules": [],
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     });
     spawn_scripted_indexer_backend(
         home,
@@ -82,13 +82,13 @@ fn spawn_structured_filter_workspace_files_backend(
                 "fileCount": 5,
                 "nextPageToken": null
             }],
-            "schemaVersion": 5
+            "schemaVersion": api_schema_version()
         })
     };
     let validation = serde_json::json!({
         "snapshotToken": "snapshot-structured-filters",
         "modules": [],
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     });
     spawn_scripted_indexer_backend(
         home,
@@ -126,13 +126,13 @@ fn spawn_single_owned_workspace_files_backend(
                 "fileCount": 1,
                 "nextPageToken": null
             }],
-            "schemaVersion": 5
+            "schemaVersion": api_schema_version()
         })
     };
     let validation = serde_json::json!({
         "snapshotToken": "snapshot-composition",
         "modules": [],
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     });
     spawn_scripted_indexer_backend(
         home,

@@ -1,9 +1,13 @@
 package io.github.amichne.kast.idea.mutation
 
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.sun.jna.Native
 import io.github.amichne.kast.api.protocol.ConflictException
+import io.github.amichne.kast.api.contract.ExactFileImageSha256
+import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.api.protocol.UnsafeWorkspaceMutationException
 import java.nio.file.Path
+import java.util.concurrent.CancellationException
 import io.github.amichne.kast.idea.*
 
 internal fun Exception.rollbackDetails(): Map<String, String> =
@@ -23,7 +27,19 @@ internal fun SecureWorkspaceMutation.conflictWithRestoration(
         restoration: Restoration? = null,
         cleanup: CleanupResult = CleanupResult.Removed,
     ): ConflictException {
-        val effectiveRestoration = restoration ?: restoreDetached(parent, fileName, detached, target, platform)
+        val effectiveRestoration = restoration ?: try {
+            restoreDetached(parent, fileName, detached, target, platform)
+        } catch (restorationFailure: Exception) {
+            restorationFailure.rethrowIfMutationCancellation(
+                UnsafeWorkspaceMutationException(
+                    message = "The detached workspace entry could not be restored after a conflict cancellation",
+                    details = failureDetails(target, "conflict-restoration-cancellation") +
+                        mapOf("recoveryFilePath" to target.parent.resolve(detached.name).toString()) +
+                        detached.status.identity.details(),
+                ),
+            )
+            throw restorationFailure
+        }
         val restorationDetails = when (effectiveRestoration) {
             Restoration.RESTORED -> mapOf("restoration" to "restored")
             Restoration.QUARANTINED -> mapOf(
@@ -108,6 +124,8 @@ internal fun SecureWorkspaceMutation.removeExactNamedEntry(
         target: Path,
         api: PosixFileApi,
         platform: PosixPlatform,
+        cleanupName: String? = null,
+        expectedSha256: ExactFileImageSha256? = null,
     ): CleanupResult = removeExactName(
         parent = parent,
         sourceName = entry.name,
@@ -115,6 +133,8 @@ internal fun SecureWorkspaceMutation.removeExactNamedEntry(
         target = target,
         api = api,
         platform = platform,
+        exactCleanupName = cleanupName,
+        expectedSha256 = expectedSha256,
     )
 
 internal fun SecureWorkspaceMutation.releaseFinalReservation(
@@ -124,6 +144,7 @@ internal fun SecureWorkspaceMutation.releaseFinalReservation(
         target: Path,
         api: PosixFileApi,
         platform: PosixPlatform,
+        exactCleanupName: String? = null,
     ): FinalReservationRelease {
         val targetPath = target.parent.resolve(fileName)
         val cleanupName = try {
@@ -140,8 +161,12 @@ internal fun SecureWorkspaceMutation.releaseFinalReservation(
                         details = failureDetails(target, "delete-reservation-source-missing"),
                     )
                 },
+                exactDestinationName = exactCleanupName,
             )
         } catch (exception: Exception) {
+            if (exception is ProcessCanceledException || exception is CancellationException) {
+                return FinalReservationRelease.Cancelled(targetPath, exception)
+            }
             return FinalReservationRelease.Blocked(
                 entryRecoveryFilePath = targetPath,
                 restoredToFinalName = true,
@@ -164,6 +189,12 @@ internal fun SecureWorkspaceMutation.releaseFinalReservation(
                     reason = reason,
                 ),
             )
+        fun releasedWithRecovery(failure: Exception): FinalReservationRelease.Released =
+            if (failure is ProcessCanceledException || failure is CancellationException) {
+                FinalReservationRelease.Released(CleanupResult.Cancelled.of(cleanupPath, failure))
+            } else {
+                releasedWithRecovery(failure.failureReason())
+            }
 
         val cleanupDescriptorValue = api.openat(parent.value, cleanupName, platform.readFileFlags, 0)
         if (cleanupDescriptorValue < 0) {
@@ -183,7 +214,7 @@ internal fun SecureWorkspaceMutation.releaseFinalReservation(
         try {
             beforeCleanupUnlink(cleanupPath)
         } catch (exception: Exception) {
-            return releasedWithRecovery(exception.failureReason())
+            return releasedWithRecovery(exception)
         }
 
         val finalDescriptorValue = api.openat(parent.value, cleanupName, platform.readFileFlags, 0)
@@ -214,6 +245,8 @@ internal fun SecureWorkspaceMutation.removeExactName(
         target: Path,
         api: PosixFileApi,
         platform: PosixPlatform,
+        exactCleanupName: String? = null,
+        expectedSha256: ExactFileImageSha256? = null,
     ): CleanupResult {
         val sourcePath = target.parent.resolve(sourceName)
         val cleanupName = try {
@@ -230,18 +263,33 @@ internal fun SecureWorkspaceMutation.removeExactName(
                         details = failureDetails(target, "cleanup-source-missing") + expectedIdentity.details(),
                     )
                 },
+                exactDestinationName = exactCleanupName,
             )
         } catch (exception: Exception) {
-            return CleanupResult.Retained(
-                recoveryFilePath = sourcePath,
-                reason = exception.failureReason(),
-            )
+            return retainedCleanup(sourcePath, exception)
         }
         val cleanupPath = target.parent.resolve(cleanupName)
         fun retained(reason: String): CleanupResult.Retained = CleanupResult.Retained(
             recoveryFilePath = restoreCleanupName(parent, sourceName, cleanupName, target, platform),
             reason = reason,
         )
+        fun retained(failure: Exception): CleanupResult {
+            val recoveryFilePath = try {
+                restoreCleanupName(parent, sourceName, cleanupName, target, platform)
+            } catch (restorationFailure: Exception) {
+                failure.rethrowIfMutationCancellation(
+                    UnsafeWorkspaceMutationException(
+                        message = "Secure workspace cleanup retained recovery evidence after cancellation",
+                        details = failureDetails(target, "cleanup-restoration-cancellation") + mapOf(
+                            "recoveryFilePath" to cleanupPath.toString(),
+                            "restorationFailure" to restorationFailure.failureReason(),
+                        ),
+                    ),
+                )
+                throw restorationFailure
+            }
+            return retainedCleanup(recoveryFilePath, failure)
+        }
 
         val cleanupDescriptorValue = api.openat(parent.value, cleanupName, platform.readFileFlags, 0)
         if (cleanupDescriptorValue < 0) {
@@ -252,7 +300,7 @@ internal fun SecureWorkspaceMutation.removeExactName(
             val cleanupStatus = try {
                 descriptorStatus(api, platform, cleanupDescriptor.value, target)
             } catch (exception: Exception) {
-                return retained(exception.failureReason())
+                return retained(exception)
             }
             if (cleanupStatus.identity != expectedIdentity) {
                 return retained("cleanup identity did not match the descriptor-validated entry")
@@ -262,7 +310,7 @@ internal fun SecureWorkspaceMutation.removeExactName(
         try {
             beforeCleanupUnlink(cleanupPath)
         } catch (exception: Exception) {
-            return retained(exception.failureReason())
+            return retained(exception)
         }
 
         val finalDescriptorValue = api.openat(parent.value, cleanupName, platform.readFileFlags, 0)
@@ -274,10 +322,20 @@ internal fun SecureWorkspaceMutation.removeExactName(
             val finalStatus = try {
                 descriptorStatus(api, platform, finalDescriptor.value, target)
             } catch (exception: Exception) {
-                return retained(exception.failureReason())
+                return retained(exception)
             }
             if (finalStatus.identity != expectedIdentity) {
                 return retained("cleanup identity changed before unlink")
+            }
+            if (expectedSha256 != null) {
+                val finalSha256 = try {
+                    ExactFileImageSha256(FileHashing.sha256(readFullyBytes(api, finalDescriptor.value, target)))
+                } catch (exception: Exception) {
+                    return retained(exception)
+                }
+                if (finalSha256 != expectedSha256) {
+                    return retained("cleanup bytes changed before unlink")
+                }
             }
         }
 
@@ -287,6 +345,49 @@ internal fun SecureWorkspaceMutation.removeExactName(
         }
         return CleanupResult.Removed
     }
+
+internal fun SecureWorkspaceMutation.rethrowCommittedCancellation(
+    cleanup: CleanupResult,
+    target: Path,
+    mutation: IdeaWorkspaceMutation,
+) = rethrowCommittedCancellation(listOf(cleanup), target, mutation)
+
+internal fun SecureWorkspaceMutation.rethrowCommittedCancellation(
+    cleanups: List<CleanupResult>,
+    target: Path,
+    mutation: IdeaWorkspaceMutation,
+) {
+    val cancelled = cleanups.filterIsInstance<CleanupResult.Cancelled>()
+    if (cancelled.isEmpty()) return
+    val recoveryPaths = cleanups.flatMap(CleanupResult::recoveryFilePaths).distinct().sorted()
+    val cancellation = cancelled.first().cancellation
+    cancellation.addSuppressed(
+        UnsafeWorkspaceMutationException(
+            message = "Secure workspace mutation retained recovery evidence after cancellation",
+            details = buildMap {
+                putAll(failureDetails(target, "post-commit-cancellation"))
+                putAll(
+                    mapOf(
+                    "committed" to "true",
+                    "mutation" to mutation.wireName,
+                    ),
+                )
+                put("recoveryFilePathCount", recoveryPaths.size.toString())
+                recoveryPaths.forEachIndexed { index, path -> put("recoveryFilePath.$index", path.toString()) }
+            },
+        ),
+    )
+    throw cancellation
+}
+
+private fun retainedCleanup(
+    recoveryFilePath: Path,
+    failure: Exception,
+): CleanupResult = when (failure) {
+    is ProcessCanceledException -> CleanupResult.Cancelled.of(recoveryFilePath, failure)
+    is CancellationException -> CleanupResult.Cancelled.of(recoveryFilePath, failure)
+    else -> CleanupResult.Retained(recoveryFilePath, failure.failureReason())
+}
 
 internal fun SecureWorkspaceMutation.restoreCleanupName(
         parent: NativeDescriptor,
@@ -311,10 +412,28 @@ internal fun SecureWorkspaceMutation.restoreCleanupName(
                 RenameNoReplaceOutcome.MOVED -> sourcePath
                 RenameNoReplaceOutcome.DESTINATION_EXISTS, RenameNoReplaceOutcome.SOURCE_MISSING -> cleanupPath
             }
-        } catch (_: Exception) {
+        } catch (exception: Exception) {
+            exception.rethrowIfMutationCancellation(
+                UnsafeWorkspaceMutationException(
+                    message = "Secure workspace cleanup restoration retained recovery evidence after cancellation",
+                    details = failureDetails(target, "restore-cleanup-cancellation") +
+                        mapOf("recoveryFilePath" to cleanupPath.toString()),
+                ),
+            )
             cleanupPath
         }
     }
+
+internal fun Throwable.rethrowIfMutationCancellation(evidence: RuntimeException) {
+    if (this !is ProcessCanceledException && this !is CancellationException) return
+    addSuppressed(evidence)
+    throw this
+}
+
+internal fun CleanupResult.rethrowIfMutationCancellation(evidence: RuntimeException) {
+    if (this !is CleanupResult.Cancelled) return
+    cancellation.rethrowIfMutationCancellation(evidence)
+}
 
 internal fun SecureWorkspaceMutation.preCommitFailure(
         target: Path,

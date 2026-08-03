@@ -113,7 +113,23 @@ fn caller_process_identity() -> Result<WorkspaceLeaseOwnerIdentity> {
     Ok(WorkspaceLeaseOwnerIdentity {
         process,
         session_sha256,
+        scope: WorkspaceLeaseOwnerScope::CallerSession,
     })
+}
+
+fn current_process_owner_identity() -> Result<WorkspaceLeaseOwnerIdentity> {
+    Ok(WorkspaceLeaseOwnerIdentity {
+        process: process_identity(u64::from(std::process::id()))?,
+        session_sha256: None,
+        scope: WorkspaceLeaseOwnerScope::CurrentProcess,
+    })
+}
+
+fn lease_owner_identity(scope: WorkspaceLeaseOwnerScope) -> Result<WorkspaceLeaseOwnerIdentity> {
+    match scope {
+        WorkspaceLeaseOwnerScope::CallerSession => caller_process_identity(),
+        WorkspaceLeaseOwnerScope::CurrentProcess => current_process_owner_identity(),
+    }
 }
 
 fn parent_process(pid: u64) -> Option<(u64, String)> {
@@ -171,7 +187,8 @@ fn owner_identity_is_live(identity: &WorkspaceLeaseOwnerIdentity) -> bool {
 }
 
 fn require_current_lease_owner(identity: &WorkspaceLeaseOwnerIdentity) -> Result<()> {
-    if caller_process_identity()? == *identity {
+    let current = lease_owner_identity(identity.scope)?;
+    if current == *identity {
         Ok(())
     } else {
         Err(CliError::new(

@@ -3,6 +3,8 @@ package io.github.amichne.kast.api.validation
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.*
 import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryFailureId
+import io.github.amichne.kast.api.contract.result.AdditionTargetPath
+import io.github.amichne.kast.api.contract.result.AdditionTargetPreimageSha256
 import io.github.amichne.kast.api.protocol.*
 import java.nio.file.FileSystems
 
@@ -65,6 +67,7 @@ sealed interface ParsedFileOperation {
     data class CreateFile(
         override val filePath: NormalizedPath,
         val content: String,
+        val parentPolicy: CreateFileParentPolicy,
     ) : ParsedFileOperation
 
     data class DeleteFile(
@@ -106,6 +109,31 @@ data class ParsedRenameQuery(
     val dryRun: Boolean,
 ) : PositionQuery
 
+data class ParsedReplacementPlanQuery(
+    val target: SymbolIdentity,
+    val proposedDeclaration: NonBlankString,
+)
+
+data class ParsedAddFilePlanQuery(
+    val targetPath: AdditionTargetPath,
+    val proposedContent: NonBlankString,
+)
+
+data class ParsedAddDeclarationPlanQuery(
+    val targetPath: AdditionTargetPath,
+    val expectedCurrentSha256: AdditionTargetPreimageSha256,
+    val proposedDeclaration: NonBlankString,
+)
+
+data class ParsedExactFileImageQuery(
+    val filePath: NormalizedPath,
+    val expectedCurrentSha256: ExactFileImageSha256,
+    val content: ExactByteImage,
+    val expectedResultSha256: ExactFileImageSha256,
+    val mutationAttemptId: MutationAttemptId? = null,
+    val mutationScratch: ParsedMutationScratchSet? = null,
+)
+
 data class ParsedImportOptimizeQuery(
     val filePaths: NonEmptyList<NormalizedPath>,
 )
@@ -114,6 +142,8 @@ data class ParsedApplyEditsQuery(
     val edits: List<ParsedTextEdit>,
     val fileHashes: List<ParsedFileHash>,
     val fileOperations: List<ParsedFileOperation>,
+    val mutationAttemptId: MutationAttemptId? = null,
+    val mutationScratchSets: List<ParsedMutationScratchSet> = emptyList(),
 )
 
 data class ParsedRefreshQuery(
@@ -197,6 +227,7 @@ fun FileOperation.parsed(): ParsedFileOperation = when (this) {
     is FileOperation.CreateFile -> ParsedFileOperation.CreateFile(
         filePath = NormalizedPath.parse(filePath),
         content = content,
+        parentPolicy = parentPolicy,
     )
 
     is FileOperation.DeleteFile -> ParsedFileOperation.DeleteFile(
@@ -267,6 +298,65 @@ fun RenameQuery.parsed(): ParsedRenameQuery = validationBoundary {
     )
 }
 
+fun ReplacementPlanQuery.parsed(): ParsedReplacementPlanQuery = validationBoundary {
+    ParsedReplacementPlanQuery(
+        target = target,
+        proposedDeclaration = NonBlankString(proposedDeclaration),
+    )
+}
+
+fun AddFilePlanQuery.parsed(): ParsedAddFilePlanQuery = validationBoundary {
+    requireStrictNormalizedKotlinText(proposedContent, allowFinalLf = true)
+    ParsedAddFilePlanQuery(targetPath, NonBlankString(proposedContent))
+}
+
+fun AddDeclarationPlanQuery.parsed(): ParsedAddDeclarationPlanQuery = validationBoundary {
+    requireStrictNormalizedKotlinText(proposedDeclaration, allowFinalLf = false)
+    ParsedAddDeclarationPlanQuery(
+        targetPath = targetPath,
+        expectedCurrentSha256 = expectedCurrentSha256,
+        proposedDeclaration = NonBlankString(proposedDeclaration),
+    )
+}
+
+private fun requireStrictNormalizedKotlinText(value: String, allowFinalLf: Boolean) {
+    require('\r' !in value && '\uFEFF' !in value) {
+        "Inline Kotlin source must use normalized LF text without a byte-order mark"
+    }
+    if (!allowFinalLf) require(!value.endsWith('\n')) {
+        "Inline Kotlin declaration must not contain a final line break"
+    }
+    require(runCatching {
+        java.nio.charset.StandardCharsets.UTF_8.newEncoder()
+            .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+            .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+            .encode(java.nio.CharBuffer.wrap(value))
+    }.isSuccess) { "Inline Kotlin source must be strict UTF-8 encodable" }
+}
+
+fun ExactFileImageQuery.parsed(): ParsedExactFileImageQuery = validationBoundary {
+    val content = ExactByteImage.of(
+        bytes = contentBase64.copyBytes(),
+        expectedSha256 = expectedResultSha256.value,
+    )
+    val attemptId = mutationAttemptId?.let(MutationAttemptId::parse)
+    require((attemptId == null) == (mutationScratch == null)) {
+        "Exact file-image CAS requires scratch if and only if mutationAttemptId is present"
+    }
+    val target = NormalizedPath.parse(filePath.value)
+    ParsedExactFileImageQuery(
+        filePath = target,
+        expectedCurrentSha256 = expectedCurrentSha256,
+        content = content,
+        expectedResultSha256 = expectedResultSha256,
+        mutationAttemptId = attemptId,
+        mutationScratch = mutationScratch?.parsed(
+            expectedOwnerAttemptId = requireNotNull(attemptId),
+            expectedTarget = target,
+        ),
+    )
+}
+
 fun ImportOptimizeQuery.parsed(): ParsedImportOptimizeQuery = validationBoundary {
     ParsedImportOptimizeQuery(
         filePaths = NonEmptyList(filePaths.map(NormalizedPath::parse)),
@@ -274,10 +364,41 @@ fun ImportOptimizeQuery.parsed(): ParsedImportOptimizeQuery = validationBoundary
 }
 
 fun ApplyEditsQuery.parsed(): ParsedApplyEditsQuery = validationBoundary {
+    val parsedOperations = fileOperations.map(FileOperation::parsed)
+    val attemptId = mutationAttemptId?.let(MutationAttemptId::parse)
+    require(attemptId == null || edits.isEmpty()) {
+        "Verified apply-edits accepts file operations only; verified text replacement uses exact CAS"
+    }
+    require(if (attemptId == null) mutationScratchSets.isEmpty() else mutationScratchSets.size == parsedOperations.size) {
+        "Verified apply-edits requires exactly one scratch set per file operation; legacy apply accepts none"
+    }
+    require(attemptId == null || parsedOperations.all { operation ->
+        operation !is ParsedFileOperation.CreateFile ||
+            operation.parentPolicy == CreateFileParentPolicy.REQUIRE_EXISTING_PARENTS
+    }) { "Verified file creation requires existing parent directories" }
+    val parsedScratchSets = if (attemptId == null) {
+        emptyList()
+    } else {
+        mutationScratchSets.mapIndexed { index, scratch ->
+            scratch.parsed(
+                expectedOwnerAttemptId = attemptId,
+                expectedTarget = parsedOperations[index].filePath,
+            )
+        }.also { scratchSets ->
+            require(scratchSets.map(ParsedMutationScratchSet::transitionIndex).distinct().size == scratchSets.size) {
+                "Verified apply-edits mutation scratch transition indices must be globally unique"
+            }
+            require(scratchSets.flatMap(ParsedMutationScratchSet::ownedPaths).distinct().size == scratchSets.size * 4) {
+                "Verified apply-edits mutation scratch role paths must be unique across the batch"
+            }
+        }
+    }
     ParsedApplyEditsQuery(
         edits = edits.map(TextEdit::parsed),
         fileHashes = fileHashes.map(FileHash::parsed),
-        fileOperations = fileOperations.map(FileOperation::parsed),
+        fileOperations = parsedOperations,
+        mutationAttemptId = attemptId,
+        mutationScratchSets = parsedScratchSets,
     )
 }
 

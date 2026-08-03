@@ -287,7 +287,7 @@ fn spawn_ready_demo_backend(
                     "backendVersion": "demo-test",
                     "workspaceRoot": server_workspace.display().to_string(),
                     "referenceIndexReady": true,
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
                 "capabilities" => serde_json::json!({
                     "backendName": "indexer",
@@ -300,7 +300,7 @@ fn spawn_ready_demo_backend(
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
                 "symbol/resolve" => resolve_result.clone().unwrap_or_else(|| serde_json::json!({
                         "type": "RESOLVE_SUCCESS",
@@ -343,7 +343,7 @@ fn spawn_ready_demo_backend(
                 }),
                 "raw/diagnostics" => serde_json::json!({
                     "diagnostics": [],
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
                 other => panic!("unexpected demo method: {other}"),
             };

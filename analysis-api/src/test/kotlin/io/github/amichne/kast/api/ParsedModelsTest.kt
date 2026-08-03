@@ -3,7 +3,12 @@ package io.github.amichne.kast.api.validation
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.*
 import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryFailureId
+import io.github.amichne.kast.api.contract.result.AdditionTargetPath
+import io.github.amichne.kast.api.contract.result.AdditionTargetPreimageSha256
 import io.github.amichne.kast.api.protocol.*
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertInstanceOf
@@ -11,6 +16,32 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 
 class ParsedModelsTest {
+
+    @Test
+    fun `addition queries parse strict inline normalized Kotlin content`() {
+        val target = AdditionTargetPath.parse("/workspace/src/Added.kt")
+        assertEquals(
+            "package sample\n\nclass Added\n",
+            AddFilePlanQuery(target, "package sample\n\nclass Added\n").parsed().proposedContent.value,
+        )
+        assertEquals(
+            "class Added",
+            AddDeclarationPlanQuery(
+                target,
+                AdditionTargetPreimageSha256.of("1".repeat(64)),
+                "class Added",
+            ).parsed().proposedDeclaration.value,
+        )
+        assertThrows<ValidationException> { AddFilePlanQuery(target, "class Added\r\n").parsed() }
+        assertThrows<ValidationException> { AddFilePlanQuery(target, "class Bad\uD800").parsed() }
+        assertThrows<ValidationException> {
+            AddDeclarationPlanQuery(
+                target,
+                AdditionTargetPreimageSha256.of("1".repeat(64)),
+                "class Added\n",
+            ).parsed()
+        }
+    }
 
     @Test
     fun `FilePosition parsed validates path and offset`() {
@@ -86,6 +117,29 @@ class ParsedModelsTest {
             newText = "x",
         )
         assertThrows<ValidationException> { edit.parsed() }
+    }
+
+    @Test
+    fun `wire offsets preserve IntelliJ UTF-16 code units around non-BMP text`() {
+        val prefix = "a😀"
+        val utf16Offset = prefix.length
+        val utf8Offset = prefix.toByteArray(Charsets.UTF_8).size
+        check(utf16Offset != utf8Offset)
+        val path = "/workspace/src/Main.kt"
+
+        val position = Json.decodeFromString<FilePosition>(
+            Json.encodeToString(FilePosition(path, utf16Offset)),
+        )
+        val location = Json.decodeFromString<Location>(
+            Json.encodeToString(Location(path, utf16Offset, utf16Offset + 1, 1, utf16Offset + 1, "b")),
+        )
+        val edit = Json.decodeFromString<TextEdit>(
+            Json.encodeToString(TextEdit(path, utf16Offset, utf16Offset + 1, "c")),
+        )
+
+        assertEquals(utf16Offset, position.parsed().offset.value)
+        assertEquals(utf16Offset, location.parsed().startOffset.value)
+        assertEquals(utf16Offset, edit.parsed().startOffset.value)
     }
 
     @Test

@@ -289,6 +289,9 @@ fn run_developer(command: cli::DeveloperCommand, output_format: OutputFormat) ->
         cli::DeveloperCommand::Runtime(args) => run_runtime(args.command, output_format),
         cli::DeveloperCommand::Inspect(args) => run_inspect(args.command, output_format),
         cli::DeveloperCommand::Release(args) => run_release(args.command, output_format),
+        cli::DeveloperCommand::AgentHook(args) => {
+            codex::run(cli::CodexCommand::Hook(args), output_format)
+        }
         cli::DeveloperCommand::Codex(args) => codex::run(args.command, output_format),
     }
 }

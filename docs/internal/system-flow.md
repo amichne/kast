@@ -160,15 +160,19 @@ terminal.
 
 ### Mutations and hooks
 
-`kast change` resolves a target and validates an edit. `kast apply` reloads the
-opaque plan, rechecks its root and lease, and applies it with retry-safe
-idempotency. A stale identity or incomplete analysis remains a failure.
+`kast change` resolves a target and persists a proof-carrying plan.
+`kast apply` owns the workspace lease, revalidates the plan, and journals
+exact recovery authority. It applies the write and verifies the compiler
+postcondition. `kast recover` either completes verification or restores the
+exact pre-state after an interrupted apply. A stale identity or incomplete
+analysis remains a failure.
 
 <kast-view view-id="semantic-mutation" browser="true" dynamic-variant="sequence"></kast-view>
 
-Codex, Claude, and Copilot hooks invoke the public CLI from the active
-workspace. Hook failures add advisory context; they do not run setup or claim
-compiler proof.
+Codex, Claude, and Copilot hooks invoke the release-matched private control
+bridge for activation checks. Codex and Claude can reject startup. Copilot
+denies tool use at its first blocking hook when activation is incompatible.
+Hooks do not run setup or claim compiler proof.
 
 <kast-view view-id="refresh-lifecycle" browser="true" dynamic-variant="sequence"></kast-view>
 

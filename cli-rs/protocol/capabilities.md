@@ -212,7 +212,7 @@ category. Expand any operation to see its input and output schemas.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin insertionOffset: Int` | Zero-based byte offset where new code should be inserted. |
+            | `#!kotlin insertionOffset: Int` | Zero-based IntelliJ UTF-16 code-unit offset into normalized file text where new code should be inserted. |
             | `#!kotlin filePath: String` | Absolute path of the file containing the insertion point. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
@@ -420,7 +420,7 @@ category. Expand any operation to see its input and output schemas.
 
     !!! abstract "At a glance"
 
-        4 operations that modify workspace state: rename, optimize imports, apply edits, and refresh.
+        12 operations for verified mutation planning, application, observation, recovery, and refresh.
 
     ??? info "raw/rename — Plan a symbol rename (dry-run by default)"
 
@@ -440,7 +440,175 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin edits: List<TextEdit>` | Text edits needed to perform the rename across the workspace. |
             | `#!kotlin fileHashes: List<FileHash>` | File hashes at edit-plan time for conflict detection. |
             | `#!kotlin affectedFiles: List<String>` | Absolute paths of all files that would be modified. |
+            | `#!kotlin fileImages: List<ExactFileImage>` | Exact immutable preimage and postimage bytes for every affected file. |
+            | `#!kotlin proof: ExactRenameProof` | Exact semantic identity, generation, coverage, and occurrence proof for this rename. |
             | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the rename search. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+
+    ??? info "raw/plan-replacement — Plan an identity-preserving function or property replacement"
+
+        **Capability** &nbsp;·&nbsp; `PLAN_REPLACEMENT`
+
+        === "Input: ReplacementPlanQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin target: SymbolIdentity` | Exact compiler-resolved identity of the declaration to replace. |
+            | `#!kotlin proposedDeclaration: String` | One complete proposed Kotlin function or property declaration. |
+        === "Output: ReplacementPlanResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin edit: TextEdit` | Single non-mutating edit that replaces the exact source declaration. |
+            | `#!kotlin proof: ExactReplacementProof` | Required compiler-backed proof for the replacement plan. |
+            | `#!kotlin fileImages: List<ExactFileImage>` | Exact immutable preimage and postimage bytes for the replacement file. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+
+    ??? info "raw/plan-add-file — Plan a compiler-proven Kotlin source file addition"
+
+        **Capability** &nbsp;·&nbsp; `PLAN_ADD_FILE`
+
+        === "Input: AddFilePlanQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin targetPath: AdditionTargetPath` | Normalized absolute .kt path for the absent target. |
+            | `#!kotlin proposedContent: String` | Complete inline Kotlin source proposed for the new file. |
+        === "Output: AddFilePlanResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin proposedContent: String` | Exact proposed Kotlin source content. |
+            | `#!kotlin postimage: ExactByteImage` | Exact UTF-8 postimage authorized for the absent target. |
+            | `#!kotlin proof: ExactAddFileProof` | Complete compiler-backed add-file proof. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+
+    ??? info "raw/plan-add-declaration — Plan a compiler-proven top-level Kotlin declaration addition"
+
+        **Capability** &nbsp;·&nbsp; `PLAN_ADD_DECLARATION`
+
+        === "Input: AddDeclarationPlanQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin targetPath: AdditionTargetPath` | Normalized absolute .kt path of the existing target file. |
+            | `#!kotlin expectedCurrentSha256: AdditionTargetPreimageSha256` | Required SHA-256 of the exact current target bytes. |
+            | `#!kotlin proposedDeclaration: String` | One complete inline top-level Kotlin declaration in normalized LF form. |
+        === "Output: AddDeclarationPlanResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin proposedDeclaration: String` | Exact normalized LF Kotlin declaration supplied by the caller. |
+            | `#!kotlin proposedContent: String` | Exact decoded postimage content, including its original line-separator form. |
+            | `#!kotlin image: ExactFileImage` | Exact target preimage and authorized postimage. |
+            | `#!kotlin proof: ExactAddDeclarationProof` | Complete compiler-backed add-declaration proof. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+
+    ??? info "raw/verify-mutation-postcondition — Verify one exact mutation postcondition"
+
+        **Capability** &nbsp;·&nbsp; `VERIFY_MUTATION_POSTCONDITION`
+
+        === "Input: MutationPostconditionQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin authority: MutationPostconditionAuthority` |  |
+        === "Output: MutationPostconditionResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin status: MutationPostconditionStatus` |  |
+            | `#!kotlin operation: MutationPostconditionOperation` |  |
+            | `#!kotlin currentGeneration: MutationSemanticGeneration` |  |
+            | `#!kotlin postimages: List<VerifiedMutationPostimage>` |  |
+            | `#!kotlin evidence: MutationPostconditionEvidence` |  |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+
+    ??? info "raw/exact-file-observation — Observe one file as an exact byte image or proven absence"
+
+        **Capability** &nbsp;·&nbsp; `EXACT_FILE_OBSERVATION`
+
+        === "Input: RawExactFileObservationQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin filePath: String` | Canonical normalized path relative to the exact workspace root. |
+            | `#!kotlin mutationAttemptId: String?` | Optional canonical UUID-v4 active mutation attempt required by this observation. |
+        === "Output: RawExactFileObservationResult"
+
+            | Variant |
+            |---------|
+            | `Absent` |
+            | `Present` |
+
+    ??? info "raw/exact-file-image-cas — Commit one exact file byte image with compare-and-swap"
+
+        **Capability** &nbsp;·&nbsp; `EXACT_FILE_IMAGE_CAS`
+
+        === "Input: ExactFileImageQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin filePath: ExactFileImagePath` | Normalized absolute path of the existing file to replace. |
+            | `#!kotlin expectedCurrentSha256: ExactFileImageSha256` | Required SHA-256 of the exact current file bytes. |
+            | `#!kotlin contentBase64: ExactFileImageBase64` | Canonical Base64 encoding of the exact replacement bytes. |
+            | `#!kotlin expectedResultSha256: ExactFileImageSha256` | Required SHA-256 of the decoded replacement bytes. |
+            | `#!kotlin mutationAttemptId: String?` | Optional canonical UUID-v4 verified mutation attempt. |
+            | `#!kotlin mutationScratch: MutationScratchSet?` | Required predeclared scratch authority when mutationAttemptId is present. |
+        === "Output: ExactFileImageResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin filePath: ExactFileImagePath` | Normalized absolute path whose exact byte image committed. |
+            | `#!kotlin status: ExactFileImageStatus` | Closed successful terminal status. Conflicts and unsafe states are typed protocol errors. |
+            | `#!kotlin previousSha256: ExactFileImageSha256` | SHA-256 of the exact preimage bytes accepted by compare-and-swap. |
+            | `#!kotlin resultSha256: ExactFileImageSha256` | SHA-256 of the exact postimage bytes verified after commit. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+
+    ??? info "raw/inspect-mutation-scratch — Fence a mutation attempt and inspect its exact scratch namespace"
+
+        **Capability** &nbsp;·&nbsp; `MUTATION_SCRATCH_RECOVERY`
+
+        === "Input: MutationScratchInspectQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin mutationAttemptId: String` | Required canonical UUID-v4 attempt admitted by this inspection. |
+            | `#!kotlin workspaceRelativeParentPaths: List<String>` | Nonempty sorted unique canonical workspace-relative parent paths to inspect. |
+            | `#!kotlin ownedScratchSets: List<MutationScratchSet>` | Journal-owned scratch sets sorted uniquely by targetFilePath. |
+        === "Output: MutationScratchInspectResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin mutationAttemptId: MutationAttemptId` |  |
+            | `#!kotlin observations: List<MutationScratchObservation>` |  |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+
+    ??? info "raw/recover-mutation-scratch — Restore or finalize one journal-owned mutation scratch set"
+
+        **Capability** &nbsp;·&nbsp; `MUTATION_SCRATCH_RECOVERY`
+
+        === "Input: MutationScratchRecoveryQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin mutationAttemptId: String` | Required active canonical UUID-v4 mutation attempt. |
+            | `#!kotlin action: MutationScratchRecoveryAction` | Closed recovery action applied only to supplied journal authority. |
+            | `#!kotlin scratchDirection: MutationScratchDirection` | Closed direction that defines the exact image authorized for each scratch role. |
+            | `#!kotlin targetFilePath: String` | Normalized absolute recovery target path. |
+            | `#!kotlin preimage: MutationScratchRecoveryPreimage` | Exact target preimage, including explicit absence. |
+            | `#!kotlin postimage: ExactByteImage` | Exact target postimage. |
+            | `#!kotlin scratch: MutationScratchSet` | Exact journal-supplied scratch authority for this transition. |
+        === "Output: MutationScratchRecoveryResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin mutationAttemptId: MutationAttemptId` |  |
+            | `#!kotlin action: MutationScratchRecoveryAction` |  |
+            | `#!kotlin outcome: MutationScratchRecoveryOutcome` |  |
+            | `#!kotlin targetState: MutationScratchTargetState` |  |
+            | `#!kotlin targetSha256: ExactFileImageSha256?` |  |
+            | `#!kotlin scratchObservations: List<MutationScratchObservation>` |  |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
 
     ??? info "raw/optimize-imports — Optimize imports for one or more files"
@@ -472,6 +640,8 @@ category. Expand any operation to see its input and output schemas.
             | `#!kotlin edits: List<TextEdit>` | Text edits to apply, typically from a prior rename or code action. |
             | `#!kotlin fileHashes: List<FileHash>` | Expected file hashes for conflict detection before writing. |
             | `#!kotlin fileOperations: List<FileOperation>` :material-information-outline:{ title="Default: emptyList()" } | Optional file create or delete operations to perform. |
+            | `#!kotlin mutationAttemptId: String?` | Optional canonical UUID-v4 verified mutation attempt. |
+            | `#!kotlin mutationScratchSets: List<MutationScratchSet>` :material-information-outline:{ title="Default: emptyList()" } | One predeclared scratch set per verified file operation. |
         === "Output: ApplyEditsResult"
 
             | Signature | Description |

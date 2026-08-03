@@ -1,7 +1,11 @@
 package io.github.amichne.kast.api.docs.internal
 
 import io.github.amichne.kast.api.contract.FileOperation
+import io.github.amichne.kast.api.contract.query.MutationPostconditionAuthority
+import io.github.amichne.kast.api.contract.query.MutationScratchRecoveryPreimage
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesContinuationQuery
+import io.github.amichne.kast.api.contract.result.MutationPostconditionEvidence
+import io.github.amichne.kast.api.contract.result.RawExactFileObservationResult
 import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
 import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.ResultCardinality
@@ -22,6 +26,80 @@ internal fun SchemaRegistry.manualUnionSchema(componentName: String): Map<String
         "FileOperation.DeleteFile" -> subtypeWithDiscriminator(
             FileOperation.DeleteFile.serializer(),
             discriminatorValue = "DELETE_FILE",
+        )
+        "RawExactFileObservationResult" -> discriminatedUnion(
+            "type",
+            "ABSENT" to "RawExactFileObservationResult.Absent",
+            "PRESENT" to "RawExactFileObservationResult.Present",
+        )
+        "RawExactFileObservationResult.Absent" -> subtypeWithDiscriminator(
+            RawExactFileObservationResult.Absent.serializer(),
+            discriminatorValue = "ABSENT",
+        )
+        "RawExactFileObservationResult.Present" -> subtypeWithDiscriminator(
+            RawExactFileObservationResult.Present.serializer(),
+            discriminatorValue = "PRESENT",
+        )
+        "MutationScratchRecoveryPreimage" -> discriminatedUnion(
+            "state",
+            "ABSENT" to "MutationScratchRecoveryPreimage.Absent",
+            "PRESENT" to "MutationScratchRecoveryPreimage.Present",
+        )
+        "MutationScratchRecoveryPreimage.Absent" -> subtypeWithDiscriminator(
+            MutationScratchRecoveryPreimage.Absent.serializer(),
+            discriminatorValue = "ABSENT",
+            discriminatorName = "state",
+        )
+        "MutationScratchRecoveryPreimage.Present" -> subtypeWithDiscriminator(
+            MutationScratchRecoveryPreimage.Present.serializer(),
+            discriminatorValue = "PRESENT",
+            discriminatorName = "state",
+        )
+        "MutationPostconditionAuthority" -> discriminatedUnion(
+            "type",
+            "RENAME" to "MutationPostconditionAuthority.Rename",
+            "REPLACEMENT" to "MutationPostconditionAuthority.Replacement",
+            "ADD_FILE" to "MutationPostconditionAuthority.AddFile",
+            "ADD_DECLARATION" to "MutationPostconditionAuthority.AddDeclaration",
+        )
+        "MutationPostconditionAuthority.Rename" -> subtypeWithDiscriminator(
+            MutationPostconditionAuthority.Rename.serializer(),
+            discriminatorValue = "RENAME",
+        )
+        "MutationPostconditionAuthority.Replacement" -> subtypeWithDiscriminator(
+            MutationPostconditionAuthority.Replacement.serializer(),
+            discriminatorValue = "REPLACEMENT",
+        )
+        "MutationPostconditionAuthority.AddFile" -> subtypeWithDiscriminator(
+            MutationPostconditionAuthority.AddFile.serializer(),
+            discriminatorValue = "ADD_FILE",
+        )
+        "MutationPostconditionAuthority.AddDeclaration" -> subtypeWithDiscriminator(
+            MutationPostconditionAuthority.AddDeclaration.serializer(),
+            discriminatorValue = "ADD_DECLARATION",
+        )
+        "MutationPostconditionEvidence" -> discriminatedUnion(
+            "type",
+            "RENAME" to "MutationPostconditionEvidence.Rename",
+            "REPLACEMENT" to "MutationPostconditionEvidence.Replacement",
+            "ADD_FILE" to "MutationPostconditionEvidence.AddFile",
+            "ADD_DECLARATION" to "MutationPostconditionEvidence.AddDeclaration",
+        )
+        "MutationPostconditionEvidence.Rename" -> subtypeWithDiscriminator(
+            MutationPostconditionEvidence.Rename.serializer(),
+            discriminatorValue = "RENAME",
+        )
+        "MutationPostconditionEvidence.Replacement" -> subtypeWithDiscriminator(
+            MutationPostconditionEvidence.Replacement.serializer(),
+            discriminatorValue = "REPLACEMENT",
+        )
+        "MutationPostconditionEvidence.AddFile" -> subtypeWithDiscriminator(
+            MutationPostconditionEvidence.AddFile.serializer(),
+            discriminatorValue = "ADD_FILE",
+        )
+        "MutationPostconditionEvidence.AddDeclaration" -> subtypeWithDiscriminator(
+            MutationPostconditionEvidence.AddDeclaration.serializer(),
+            discriminatorValue = "ADD_DECLARATION",
         )
         "ResultCardinality" -> discriminatedUnion(
             "type",
@@ -189,25 +267,26 @@ private fun SchemaRegistry.continuationQueryVariant(
 private fun SchemaRegistry.subtypeWithDiscriminator(
     serializer: KSerializer<*>,
     discriminatorValue: String,
+    discriminatorName: String = "type",
     nonEmptyCollections: Set<String> = emptySet(),
 ): Map<String, Any?> {
     val base = objectSchema(serializer.descriptor) as LinkedHashMap<String, Any?>
 
     @Suppress("UNCHECKED_CAST")
     val props = base["properties"] as LinkedHashMap<String, Any?>
-    val typeProperty = linkedMapOf<String, Any?>("type" to "string", "const" to discriminatorValue)
-    val withType = linkedMapOf<String, Any?>("type" to typeProperty)
-    withType.putAll(props)
+    val discriminatorProperty = linkedMapOf<String, Any?>("type" to "string", "const" to discriminatorValue)
+    val withDiscriminator = linkedMapOf<String, Any?>(discriminatorName to discriminatorProperty)
+    withDiscriminator.putAll(props)
     nonEmptyCollections.forEach { field ->
         @Suppress("UNCHECKED_CAST")
-        val collection = withType[field] as? LinkedHashMap<String, Any?>
+        val collection = withDiscriminator[field] as? LinkedHashMap<String, Any?>
             ?: error("Non-empty collection field is not an array schema: $field")
         collection["minItems"] = 1
     }
-    base["properties"] = withType
+    base["properties"] = withDiscriminator
     @Suppress("UNCHECKED_CAST")
     val required = (base["required"] as? MutableList<String>) ?: mutableListOf()
-    if ("type" !in required) required.add(0, "type")
+    if (discriminatorName !in required) required.add(0, discriminatorName)
     base["required"] = required
     return base
 }

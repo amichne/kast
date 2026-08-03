@@ -25,7 +25,7 @@ fn agent_graph_refresh_requires_ready_before_semantic_graph_rpc() {
                     "backendName": "indexer",
                     "backendVersion": "scripted-test",
                     "workspaceRoot": workspace.display().to_string(),
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
             ),
         ],

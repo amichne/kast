@@ -179,7 +179,7 @@ fn explicit_references_fail_closed_on_response_provenance_mismatch() {
             "subject": other_subject,
             "references": [],
             "evidence": complete_relationship_evidence(0),
-            "schemaVersion": 5
+            "schemaVersion": api_schema_version()
         }),
         serde_json::json!({
             "type": "DEGRADED",
@@ -187,20 +187,20 @@ fn explicit_references_fail_closed_on_response_provenance_mismatch() {
             "subject": other_subject,
             "reason": "REFERENCES_UNAVAILABLE",
             "evidence": excluded_source_set_evidence(0),
-            "schemaVersion": 5
+            "schemaVersion": api_schema_version()
         }),
         serde_json::json!({
             "type": "CURSOR_STALE",
             "selector": other_selector,
             "reason": "GENERATION_CHANGED",
             "evidence": excluded_source_set_evidence(0),
-            "schemaVersion": 5
+            "schemaVersion": api_schema_version()
         }),
         serde_json::json!({
             "type": "SELECTOR_HANDLE_REJECTED",
             "reason": "STALE",
             "recovery": "RESOLVE_AGAIN",
-            "schemaVersion": 5
+            "schemaVersion": api_schema_version()
         }),
     ];
 

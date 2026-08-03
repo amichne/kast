@@ -24,6 +24,12 @@ import java.nio.file.StandardOpenOption.CREATE
 
 internal enum class IdeaTelemetryScope {
     RENAME,
+    PLAN_REPLACEMENT,
+    PLAN_ADD_FILE,
+    PLAN_ADD_DECLARATION,
+    VERIFY_MUTATION_POSTCONDITION,
+    EXACT_FILE_OBSERVATION,
+    EXACT_FILE_IMAGE_CAS,
     REFERENCES,
     CALL_HIERARCHY,
     TYPE_HIERARCHY,
@@ -45,6 +51,13 @@ internal enum class IdeaTelemetryScope {
     companion object {
         fun parse(rawValue: String): IdeaTelemetryScope? = when (rawValue.trim().lowercase()) {
             "rename" -> RENAME
+            "plan-replacement", "plan_replacement", "planreplacement" -> PLAN_REPLACEMENT
+            "plan-add-file", "plan_add_file", "planaddfile" -> PLAN_ADD_FILE
+            "plan-add-declaration", "plan_add_declaration", "planadddeclaration" -> PLAN_ADD_DECLARATION
+            "verify-mutation-postcondition", "verify_mutation_postcondition", "verifymutationpostcondition" ->
+                VERIFY_MUTATION_POSTCONDITION
+            "exact-file-observation", "exact_file_observation", "exactfileobservation" -> EXACT_FILE_OBSERVATION
+            "exact-file-image-cas", "exact_file_image_cas", "exactfileimagecas" -> EXACT_FILE_IMAGE_CAS
             "references", "find-references", "find_references" -> REFERENCES
             "call-hierarchy", "call_hierarchy", "callhierarchy" -> CALL_HIERARCHY
             "type-hierarchy", "type_hierarchy", "typehierarchy" -> TYPE_HIERARCHY

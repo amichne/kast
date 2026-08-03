@@ -222,7 +222,7 @@ fn selector_handle_resolves_once_and_reuses_identity_for_references() {
                 "subject": selector,
                 "references": [],
                 "evidence": complete_relationship_evidence(0),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
@@ -282,7 +282,7 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
                 "subject": function,
                 "records": [],
                 "page": exact_relation_page(0),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         ),
         (
@@ -294,7 +294,7 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
                 "subject": function,
                 "records": [],
                 "page": exact_relation_page(0),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         ),
         (
@@ -306,7 +306,7 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
                 "subject": interface,
                 "records": [],
                 "page": exact_relation_page(0),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         ),
         (
@@ -318,7 +318,7 @@ fn selector_handle_drives_all_relationship_commands_without_explicit_identity() 
                 "subject": interface,
                 "records": [],
                 "page": exact_relation_page(0),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         ),
     ];

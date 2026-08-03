@@ -165,7 +165,8 @@ fn run_kast_agent(cli: KastCli) -> Result<i32> {
         KastCommand::Check(args) => agent_adapter::run_check(args),
         KastCommand::Refresh(args) => agent_adapter::run_refresh(args),
         KastCommand::Change(args) => agent_plan::run_change(args),
-        KastCommand::Apply { plan_id, lease_id } => agent_plan::run_apply(plan_id, lease_id),
+        KastCommand::Apply { plan_id } => agent_plan::run_apply(plan_id),
+        KastCommand::Recover { recovery_id } => agent_plan::run_recover(recovery_id),
     }
 }
 

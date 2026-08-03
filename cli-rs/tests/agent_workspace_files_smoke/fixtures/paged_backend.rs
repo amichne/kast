@@ -34,7 +34,7 @@ fn workspace_files_session_responses(
         "backendName": "indexer",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     });
     let capabilities = serde_json::json!({
         "backendName": "indexer",
@@ -47,7 +47,7 @@ fn workspace_files_session_responses(
             "maxResults": 1000,
             "maxConcurrentRequests": 4
         },
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     });
     vec![("runtime/status", runtime), ("capabilities", capabilities)]
 }
@@ -80,18 +80,18 @@ fn append_paged_workspace_files_collection(
                 "nextPageToken": next_page_token,
                 "files": files
             }],
-            "schemaVersion": 5
+            "schemaVersion": api_schema_version()
         })
     };
     let collection_validation = serde_json::json!({
         "snapshotToken": "snapshot-500",
         "modules": [],
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     });
     let barrier_validation = serde_json::json!({
         "snapshotToken": revalidation_snapshot_token,
         "modules": [],
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     });
     responses.extend([
         (
@@ -109,7 +109,7 @@ fn append_paged_workspace_files_collection(
                     "nextPageToken": null,
                     "files": []
                 }],
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         ),
         ("raw/workspace-files", page(0..200, Some("raw-page-2"))),

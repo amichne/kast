@@ -25,14 +25,17 @@ import com.intellij.testFramework.junit5.fixture.tempPathFixture
 import com.intellij.testFramework.junit5.fixture.testFixture
 import io.github.amichne.kast.api.client.workspaceDataDirectory
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
+import io.github.amichne.kast.api.contract.CreateFileParentPolicy
 import io.github.amichne.kast.api.contract.FileHash
 import io.github.amichne.kast.api.contract.FileOperation
+import io.github.amichne.kast.api.contract.MutationScratchSet
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.PartialApplyException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.protocol.UnsafeWorkspaceMutationException
+import io.github.amichne.kast.api.contract.query.MutationScratchInspectQuery
 import io.github.amichne.kast.api.validation.EditPlanValidator
 import io.github.amichne.kast.idea.edit.withVcsFileOperationConfirmationsSuppressed
 import kotlinx.coroutines.CompletableDeferred
@@ -211,6 +214,92 @@ internal class IdeaEditApplicationTest : IdeaEditApplicationTestFixture() {
     }
 
     @Test
+    fun `applyEdits existing parent policy rejects a missing parent without writing`() = runBlocking {
+        ensureProjectReady()
+
+        val workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize()
+        val missingParent = workspaceRoot.resolve("must-exist")
+        val newFile = missingParent.resolve("CreatedInside.kt")
+
+        val failure = runCatching {
+            backend(workspaceRoot).applyEdits(
+                ApplyEditsQuery(
+                    edits = emptyList(),
+                    fileHashes = emptyList(),
+                    fileOperations = listOf(
+                        FileOperation.CreateFile(
+                            filePath = newFile.toString(),
+                            content = "class CreatedInside\n",
+                            parentPolicy = CreateFileParentPolicy.REQUIRE_EXISTING_PARENTS,
+                        ),
+                    ),
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(
+            failure is UnsafeWorkspaceMutationException,
+            "Expected UnsafeWorkspaceMutationException, got ${failure?.let { it::class.qualifiedName } ?: "success"}",
+        )
+        assertFalse(Files.exists(missingParent), "The explicit existing-parent policy must not create a directory")
+        assertFalse(Files.exists(newFile), "The rejected file must remain absent")
+    }
+
+    @Test
+    fun `verified apply preflights every scratch parent before its first file write`() = runBlocking {
+        ensureProjectReady()
+
+        val workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize()
+        val firstParent = Files.createDirectory(workspaceRoot.resolve("batch-first"))
+        val secondParent = Files.createDirectory(workspaceRoot.resolve("batch-second"))
+        val firstTarget = firstParent.resolve("First.kt")
+        val secondTarget = secondParent.resolve("Second.kt")
+        val attemptId = "123e4567-e89b-42d3-a456-426614174000"
+        val firstScratch = mutationScratch(firstTarget, attemptId, 4)
+        val secondScratch = mutationScratch(secondTarget, attemptId, 9)
+        val collision = Path.of(secondScratch.preparedPath)
+        val collisionBytes = "occupied".toByteArray()
+        Files.write(collision, collisionBytes)
+        val backend = backend(workspaceRoot)
+        backend.inspectMutationScratch(
+            MutationScratchInspectQuery(
+                mutationAttemptId = attemptId,
+                workspaceRelativeParentPaths = listOf("batch-first", "batch-second"),
+                ownedScratchSets = listOf(firstScratch, secondScratch),
+            ),
+        )
+
+        val failure = runCatching {
+            backend.applyEdits(
+                ApplyEditsQuery(
+                    edits = emptyList(),
+                    fileHashes = emptyList(),
+                    fileOperations = listOf(
+                        FileOperation.CreateFile(
+                            firstTarget.toString(),
+                            "class First\n",
+                            CreateFileParentPolicy.REQUIRE_EXISTING_PARENTS,
+                        ),
+                        FileOperation.CreateFile(
+                            secondTarget.toString(),
+                            "class Second\n",
+                            CreateFileParentPolicy.REQUIRE_EXISTING_PARENTS,
+                        ),
+                    ),
+                    mutationAttemptId = attemptId,
+                    mutationScratchSets = listOf(firstScratch, secondScratch),
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(failure is ConflictException, "Expected collision conflict, got ${failure?.let { it::class }}")
+        assertFalse(Files.exists(firstTarget), "A later scratch collision must block the first batch write")
+        assertFalse(Files.exists(secondTarget))
+        assertTrue(Files.exists(collision))
+        assertTrue(Files.readAllBytes(collision).contentEquals(collisionBytes))
+    }
+
+    @Test
     fun `add file create fails closed when validated ancestor becomes escaping symlink at write boundary`() = runBlocking {
         ensureProjectReady()
 
@@ -356,4 +445,15 @@ internal class IdeaEditApplicationTest : IdeaEditApplicationTestFixture() {
         assertEquals(original, Files.readString(Path.of(conflict.details.getValue("recoveryFilePath"))))
     }
 
+}
+
+private fun mutationScratch(target: Path, attemptId: String, transitionIndex: Int): MutationScratchSet {
+    val parent = requireNotNull(target.parent)
+    return MutationScratchSet(
+        targetFilePath = target.toString(),
+        quarantinePath = parent.resolve(".kast-quarantine-$attemptId-$transitionIndex").toString(),
+        preparedPath = parent.resolve(".kast-prepared-$attemptId-$transitionIndex.tmp").toString(),
+        preparedCleanupPath = parent.resolve(".kast-cleanup-$attemptId-$transitionIndex-prepared").toString(),
+        quarantineCleanupPath = parent.resolve(".kast-cleanup-$attemptId-$transitionIndex-quarantine").toString(),
+    )
 }

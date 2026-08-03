@@ -48,6 +48,8 @@ import io.github.amichne.kast.api.contract.result.RefreshExternalFailureOutcome
 import io.github.amichne.kast.api.contract.result.RefreshRelationshipFailure
 import io.github.amichne.kast.api.contract.result.SemanticAdmissionStatus
 import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.ExactRenameOccurrence
+import io.github.amichne.kast.api.contract.result.ExactRenameProof
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyNode
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
@@ -110,6 +112,7 @@ class DocFieldCoverageTest {
         "FilePosition" to FilePosition.serializer(),
         "Location" to Location.serializer(),
         "Symbol" to Symbol.serializer(),
+        "SymbolIdentity" to SymbolIdentity.serializer(),
         "ParameterInfo" to ParameterInfo.serializer(),
         "PageInfo" to PageInfo.serializer(),
         "SearchScope" to SearchScope.serializer(),
@@ -204,6 +207,8 @@ class DocFieldCoverageTest {
         // Mutation queries & results
         "RenameQuery" to RenameQuery.serializer(),
         "RenameResult" to RenameResult.serializer(),
+        "ExactRenameProof" to ExactRenameProof.serializer(),
+        "ExactRenameOccurrence" to ExactRenameOccurrence.serializer(),
         "ImportOptimizeQuery" to ImportOptimizeQuery.serializer(),
         "ImportOptimizeResult" to ImportOptimizeResult.serializer(),
         "ApplyEditsQuery" to ApplyEditsQuery.serializer(),

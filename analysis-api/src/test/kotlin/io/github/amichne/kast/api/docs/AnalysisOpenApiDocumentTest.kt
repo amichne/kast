@@ -97,6 +97,50 @@ class AnalysisOpenApiDocumentTest {
     }
 
     @Test
+    fun `verified mutation OpenAPI retains exact paths schemas capabilities and closed variants`() {
+        val yaml = OpenApiDocument.renderYaml()
+        val failures = buildList {
+            verifiedMutationDocsContracts.forEach { expected ->
+                val operation = yaml.jsonRpcOperation(expected.method)
+                if (operation == null) {
+                    add("${expected.method}: missing OpenAPI path")
+                } else {
+                    if ("operationId: ${expected.operationId}" !in operation) {
+                        add("${expected.method}: wrong operationId")
+                    }
+                    if ("x-kast-required-capability: ${expected.capability}" !in operation) {
+                        add("${expected.method}: wrong capability")
+                    }
+                    if ("#/components/schemas/${expected.requestSchema}" !in operation) {
+                        add("${expected.method}: missing request schema ${expected.requestSchema}")
+                    }
+                    if ("#/components/schemas/${expected.responseSchema}" !in operation) {
+                        add("${expected.method}: missing response schema ${expected.responseSchema}")
+                    }
+                }
+            }
+            closedMutationSchemas.forEach { (name, expected) ->
+                val schema = yaml.componentSchemaOrNull(name)
+                if (schema == null) {
+                    add("$name: missing closed schema")
+                } else {
+                    if ("oneOf:" !in schema || "propertyName: ${expected.discriminator}" !in schema) {
+                        add("$name: missing ${expected.discriminator} discriminated union")
+                    }
+                    expected.variants.forEach { variant ->
+                        if ("$variant:" !in schema) add("$name: missing $variant variant")
+                    }
+                }
+            }
+        }
+
+        assertTrue(
+            failures.isEmpty(),
+            "Verified mutation OpenAPI drifted:\n${failures.joinToString("\n")}",
+        )
+    }
+
+    @Test
     fun `system operations have no capability requirement`() {
         val yaml = OpenApiDocument.renderYaml()
         val lines = yaml.lines()
@@ -314,6 +358,25 @@ class AnalysisOpenApiDocumentTest {
         require(afterStart.isNotEmpty()) { "OpenAPI component $name was not found" }
         val nextComponent = Regex("\\n {4}[A-Za-z0-9_.]+:").find(afterStart)?.range?.first
         return nextComponent?.let { index -> afterStart.substring(0, index) } ?: afterStart
+    }
+
+    private fun String.componentSchemaOrNull(name: String): String? {
+        val start = "    $name:"
+        val startIndex = indexOf(start)
+        if (startIndex < 0) return null
+        val afterStart = substring(startIndex + start.length)
+        val nextComponent = Regex("\\n {4}[A-Za-z0-9_.]+:").find(afterStart)?.range?.first
+        return nextComponent?.let { index -> afterStart.substring(0, index) } ?: afterStart
+    }
+
+    private fun String.jsonRpcOperation(method: String): String? {
+        val marker = "      x-jsonrpc-method: $method"
+        val markerIndex = indexOf(marker)
+        if (markerIndex < 0) return null
+        val startIndex = lastIndexOf("\n  \"/rpc/", markerIndex).takeIf { it >= 0 } ?: 0
+        val endIndex = indexOf("\n  \"/rpc/", markerIndex + marker.length)
+            .takeIf { it >= 0 } ?: length
+        return substring(startIndex, endIndex)
     }
 
     private fun JsonObject.scalar(name: String) {

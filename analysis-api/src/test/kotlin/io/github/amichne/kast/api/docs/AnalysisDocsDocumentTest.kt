@@ -44,6 +44,47 @@ class AnalysisDocsDocumentTest {
     }
 
     @Test
+    fun `verified mutation methods publish exact documentation contracts`() {
+        val operations = OperationDocRegistry.all().associateBy(OperationDoc::jsonRpcMethod)
+        val serializers = DocsDocument.schemaSerializersForTesting().keys
+        val failures = verifiedMutationDocsContracts.flatMap { expected ->
+            val operation = operations[expected.method]
+            buildList {
+                if (operation == null) {
+                    add("${expected.method}: missing operation documentation")
+                } else {
+                    if (operation.operationId != expected.operationId) {
+                        add("${expected.method}: operationId=${operation.operationId}")
+                    }
+                    if (operation.tag != "mutation") {
+                        add("${expected.method}: tag=${operation.tag}")
+                    }
+                    if (operation.capability != expected.capability) {
+                        add("${expected.method}: capability=${operation.capability}")
+                    }
+                    if (operation.requestSchema != expected.requestSchema) {
+                        add("${expected.method}: requestSchema=${operation.requestSchema}")
+                    }
+                    if (operation.responseSchema != expected.responseSchema) {
+                        add("${expected.method}: responseSchema=${operation.responseSchema}")
+                    }
+                }
+                if (expected.requestSchema !in serializers) {
+                    add("${expected.method}: missing request serializer ${expected.requestSchema}")
+                }
+                if (expected.responseSchema !in serializers) {
+                    add("${expected.method}: missing response serializer ${expected.responseSchema}")
+                }
+            }
+        }
+
+        assertTrue(
+            failures.isEmpty(),
+            "Verified mutation documentation drifted:\n${failures.joinToString("\n")}",
+        )
+    }
+
+    @Test
     fun `semantic graph documentation describes atomic persistence rather than paging`() {
         val operation = OperationDocRegistry.all().single { it.jsonRpcMethod == "raw/semantic-graph" }
         val prose = (listOf(operation.summary, operation.description) + operation.behavioralNotes)
@@ -63,6 +104,25 @@ class AnalysisDocsDocumentTest {
         assertTrue(markdown.contains("=== \"Internal protocol\""))
         assertTrue(!markdown.contains("=== \"CLI\""), "Removed internal calls must not render as public CLI examples")
         assertTrue(!markdown.contains("kast agent call"), "Removed raw-call commands must not appear in generated docs")
+    }
+
+    @Test
+    fun `generated position documentation uses normalized IntelliJ UTF-16 offsets`() {
+        val apiReference = DocsDocument.renderApiReference()
+        val capabilities = DocsDocument.renderCapabilities()
+        val insertionDescription =
+            "Zero-based IntelliJ UTF-16 code-unit offset into normalized file text where new code should be inserted."
+
+        assertTrue(
+            apiReference.contains(
+                "The position must be an absolute file path with a zero-based IntelliJ UTF-16 code-unit offset " +
+                    "into normalized file text.",
+            ),
+        )
+        assertTrue(apiReference.contains(insertionDescription))
+        assertTrue(capabilities.contains(insertionDescription))
+        assertTrue(!apiReference.contains("zero-based byte offset", ignoreCase = true))
+        assertTrue(!capabilities.contains("zero-based byte offset", ignoreCase = true))
     }
 
     @Test

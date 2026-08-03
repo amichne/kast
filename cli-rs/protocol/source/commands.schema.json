@@ -133,6 +133,16 @@
         "fields": {
           "$ref": "#/$defs/fields"
         },
+        "variantDiscriminator": {
+          "$ref": "#/$defs/fieldName"
+        },
+        "variants": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/$defs/request"
+          }
+        },
         "required": {
           "type": "array",
           "items": {
@@ -201,6 +211,17 @@
         "fields": {
           "$ref": "#/$defs/fields"
         },
+        "variantDiscriminator": {
+          "$ref": "#/$defs/fieldName",
+          "description": "Field that discriminates nested object variants. Defaults to type when omitted."
+        },
+        "variants": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/$defs/request"
+          }
+        },
         "required": {
           "type": "array",
           "items": {
@@ -211,7 +232,33 @@
         "sample": {
           "description": "Concrete value used by generated request samples when the field shape alone cannot produce a valid wire value."
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["variantDiscriminator"]
+          },
+          "then": {
+            "required": ["variants"]
+          }
+        },
+        {
+          "if": {
+            "required": ["variants"]
+          },
+          "then": {
+            "required": ["fields"],
+            "properties": {
+              "type": {
+                "enum": ["object"]
+              },
+              "nullable": {
+                "enum": [false]
+              }
+            }
+          }
+        }
+      ]
     },
     "tool": {
       "type": "object",

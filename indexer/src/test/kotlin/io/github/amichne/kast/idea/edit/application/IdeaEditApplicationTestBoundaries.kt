@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.progress.ProcessCanceledException
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.edit.IdeaEditApplier
 import io.github.amichne.kast.idea.mutation.*
@@ -34,14 +35,83 @@ import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNotEquals
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
+import java.util.concurrent.CancellationException
 
 @TestApplication
 internal class IdeaEditApplicationTestBoundaries : IdeaEditApplicationTestFixture() {
+    @Test
+    fun `verified create preserves IDEA cancellation at the application boundary`() = runBlocking {
+        ensureProjectReady()
+        val workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize()
+        val target = workspaceRoot.resolve("ApplicationCreateCancellation.kt")
+        val cancellation = ProcessCanceledException()
+
+        val failure = runCatching {
+            IdeaEditApplier(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                beforeSecureMutation = { _, _ -> throw cancellation },
+            ).apply(
+                ApplyEditsQuery(
+                    edits = emptyList(),
+                    fileHashes = emptyList(),
+                    fileOperations = listOf(FileOperation.CreateFile(target.toString(), "class Cancelled\n")),
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertSame(cancellation, failure)
+        assertTrue(failure!!.suppressed.single() is PartialApplyException)
+        assertFalse(Files.exists(target))
+    }
+
+    @Test
+    fun `verified replacement preserves task cancellation at the application boundary`() = runBlocking {
+        ensureProjectReady()
+        val workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize()
+        val target = workspaceRoot.resolve("ApplicationReplaceCancellation.kt")
+        val original = "package demo\n\nfun applicationReplaceCancellation(): Int = 1\n"
+        val cancellation = CancellationException("cancel replacement boundary")
+        Files.writeString(target, original)
+        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(target)
+
+        val failure = runCatching {
+            IdeaEditApplier(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                beforeSecureMutation = { _, _ -> throw cancellation },
+            ).apply(
+                ApplyEditsQuery(
+                    edits = listOf(
+                        TextEdit(
+                            filePath = target.toString(),
+                            startOffset = original.indexOf('1'),
+                            endOffset = original.indexOf('1') + 1,
+                            newText = "2",
+                        ),
+                    ),
+                    fileHashes = listOf(
+                        FileHash(
+                            target.toString(),
+                            io.github.amichne.kast.api.validation.FileHashing.sha256(original),
+                        ),
+                    ),
+                    fileOperations = emptyList(),
+                ),
+            )
+        }.exceptionOrNull()
+
+        assertSame(cancellation, failure)
+        assertTrue(failure!!.suppressed.single() is PartialApplyException)
+        assertEquals(original, Files.readString(target))
+    }
+
     @Test
     fun `secure text edit preserves existing source permissions`() = runBlocking {
         ensureProjectReady()
@@ -142,7 +212,9 @@ internal class IdeaEditApplicationTestBoundaries : IdeaEditApplicationTestFixtur
         val partial = failure as PartialApplyException
         assertEquals(target.toString(), partial.details["appliedFiles"], partial.details.toString())
         assertEquals(target.toString(), partial.details["deletedFiles"], partial.details.toString())
-        assertEquals(original, Files.readString(Path.of(partial.details.getValue("recoveryFilePaths"))))
+        assertEquals("1", partial.details["recoveryFilePathCount"])
+        assertFalse(partial.details.containsKey("recoveryFilePaths"))
+        assertEquals(original, Files.readString(Path.of(partial.details.getValue("recoveryFilePath.0"))))
         assertFalse(Files.exists(target), "The deletion must remain committed")
     }
 

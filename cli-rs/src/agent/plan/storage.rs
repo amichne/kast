@@ -2,6 +2,8 @@ struct PlanPaths {
     directory: PathBuf,
     plan: PathBuf,
     content: PathBuf,
+    recovery: PathBuf,
+    lock: PathBuf,
     preview_content: PathBuf,
 }
 
@@ -12,8 +14,64 @@ impl PlanPaths {
         Self {
             plan: directory.join(format!("{id}.json")),
             content: directory.join(format!("{id}.content")),
+            recovery: directory.join(format!("{id}.recovery.json")),
+            lock: directory.join(format!("{id}.lock")),
             preview_content: directory.join(format!(".{id}.preview-{}.content", Uuid::new_v4())),
             directory,
+        }
+    }
+}
+
+struct PlanOperationLock {
+    file: File,
+}
+
+impl PlanOperationLock {
+    fn acquire(path: &Path) -> Result<Self> {
+        let mut options = OpenOptions::new();
+        options.read(true).write(true).create(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
+        }
+        let file = options.open(path)?;
+        if !file.metadata()?.is_file() {
+            return Err(CliError::new(
+                "KAST_PLAN_LOCK_INVALID",
+                "The per-plan mutation lock is not a regular file.",
+            ));
+        }
+        set_mode(path, 0o600)?;
+        file.sync_all()?;
+        sync_directory(
+            path.parent()
+                .expect("private plan locks always have a parent directory"),
+        )?;
+        #[cfg(unix)]
+        {
+            use std::os::fd::AsRawFd;
+            if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } != 0 {
+                let error = std::io::Error::last_os_error();
+                if error.kind() == std::io::ErrorKind::WouldBlock {
+                    return Err(CliError::new(
+                        "KAST_PLAN_BUSY",
+                        "Another apply or recover process owns this plan's exclusive lock.",
+                    ));
+                }
+                return Err(error.into());
+            }
+        }
+        Ok(Self { file })
+    }
+}
+
+impl Drop for PlanOperationLock {
+    fn drop(&mut self) {
+        #[cfg(unix)]
+        {
+            use std::os::fd::AsRawFd;
+            let _ = unsafe { libc::flock(self.file.as_raw_fd(), libc::LOCK_UN) };
         }
     }
 }
@@ -67,7 +125,36 @@ fn validate_plan(plan: &StoredPlan, expected_id: Uuid) -> Result<()> {
             "The stored change plan has inconsistent content evidence.",
         ));
     }
+    plan.operation.validate().map_err(|message| {
+        CliError::new(
+            "KAST_PLAN_INVALID",
+            format!("The stored change authority is invalid: {message}"),
+        )
+    })?;
+    plan.operation
+        .validate_content_sha256(plan.content_sha256.as_deref())
+        .map_err(|message| {
+            CliError::new(
+                "KAST_PLAN_INVALID",
+                format!("The stored content authority is invalid: {message}"),
+            )
+        })?;
+    if let StoredPlanState::Terminal { receipt } = &plan.state {
+        receipt.validate_for(plan)?;
+    }
     Ok(())
+}
+
+fn read_plan(path: &Path, plan_id: Uuid) -> Result<StoredPlan> {
+    let bytes = read_private_file(path, "KAST_PLAN_UNAVAILABLE")?;
+    let plan: StoredPlan = serde_json::from_slice(&bytes).map_err(|error| {
+        CliError::new(
+            "KAST_PLAN_INVALID",
+            format!("The stored change plan is malformed: {error}"),
+        )
+    })?;
+    validate_plan(&plan, plan_id)?;
+    Ok(plan)
 }
 
 fn read_stdin() -> Result<Vec<u8>> {
@@ -115,6 +202,65 @@ fn write_plan(path: &Path, plan: &StoredPlan) -> Result<()> {
         return Err(error);
     }
     Ok(())
+}
+
+fn replace_plan(path: &Path, plan: &StoredPlan) -> Result<()> {
+    let mut encoded = serde_json::to_vec(plan)?;
+    encoded.push(b'\n');
+    let temporary = path.with_extension(format!("json.tmp-{}", Uuid::new_v4()));
+    write_private_file(&temporary, &encoded)?;
+    if let Err(error) = fs::rename(&temporary, path).map_err(CliError::from) {
+        remove_if_exists(&temporary);
+        return Err(error);
+    }
+    sync_directory(
+        path.parent()
+            .expect("private plan files always have a parent directory"),
+    )
+}
+
+fn write_recovery(path: &Path, journal: &RecoveryJournal) -> Result<()> {
+    let mut encoded = serde_json::to_vec(journal)?;
+    encoded.push(b'\n');
+    let temporary = path.with_extension(format!("json.tmp-{}", Uuid::new_v4()));
+    write_private_file(&temporary, &encoded)?;
+    if let Err(error) = rename_private_file(&temporary, path) {
+        remove_if_exists(&temporary);
+        return Err(error);
+    }
+    Ok(())
+}
+
+fn replace_recovery(path: &Path, journal: &RecoveryJournal) -> Result<()> {
+    let mut encoded = serde_json::to_vec(journal)?;
+    encoded.push(b'\n');
+    let temporary = path.with_extension(format!("json.tmp-{}", Uuid::new_v4()));
+    write_private_file(&temporary, &encoded)?;
+    if let Err(error) = fs::rename(&temporary, path).map_err(CliError::from) {
+        remove_if_exists(&temporary);
+        return Err(error);
+    }
+    sync_directory(
+        path.parent()
+            .expect("private recovery files always have a parent directory"),
+    )
+}
+
+fn read_recovery(path: &Path, recovery_id: Uuid, plan: &StoredPlan) -> Result<RecoveryJournal> {
+    let bytes = read_private_file(path, "KAST_RECOVERY_UNAVAILABLE")?;
+    let journal: RecoveryJournal = serde_json::from_slice(&bytes).map_err(|error| {
+        CliError::new(
+            "KAST_RECOVERY_INVALID",
+            format!("The stored recovery journal is malformed: {error}"),
+        )
+    })?;
+    journal.validate(recovery_id, plan).map_err(|error| {
+        CliError::new(
+            "KAST_RECOVERY_INVALID",
+            format!("The stored recovery journal failed validation: {}", error.message),
+        )
+    })?;
+    Ok(journal)
 }
 
 fn write_private_file(path: &Path, bytes: &[u8]) -> Result<()> {
@@ -235,32 +381,40 @@ fn projected_result(envelope: &Value) -> Result<&Value> {
 }
 
 fn public_plan(preview: &Value) -> Value {
-    let plan = preview.get("plan").cloned().unwrap_or_else(|| json!({}));
-    strip_private_fields(plan)
+    let mut plan = preview.get("plan").cloned().unwrap_or_else(|| json!({}));
+    if let Some(fields) = plan.as_object_mut() {
+        for key in [
+            "contentFile",
+            "help",
+            "method",
+            "mutates",
+            "ok",
+            "schemaVersion",
+            "applyRequired",
+            "type",
+        ] {
+            fields.remove(key);
+        }
+    }
+    redact_exact_image_bytes(plan)
 }
 
-fn strip_private_fields(value: Value) -> Value {
+fn redact_exact_image_bytes(value: Value) -> Value {
     match value {
         Value::Object(fields) => Value::Object(
             fields
                 .into_iter()
                 .filter_map(|(key, value)| {
-                    (!matches!(
-                        key.as_str(),
-                        "contentFile"
-                            | "help"
-                            | "method"
-                            | "mutates"
-                            | "ok"
-                            | "schemaVersion"
-                            | "applyRequired"
-                            | "type"
-                    ))
-                    .then(|| (key, strip_private_fields(value)))
+                    (key != "contentBase64").then(|| (key, redact_exact_image_bytes(value)))
                 })
                 .collect(),
         ),
-        Value::Array(items) => Value::Array(items.into_iter().map(strip_private_fields).collect()),
+        Value::Array(items) => Value::Array(
+            items
+                .into_iter()
+                .map(redact_exact_image_bytes)
+                .collect(),
+        ),
         scalar => scalar,
     }
 }

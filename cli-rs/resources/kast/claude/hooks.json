@@ -4,7 +4,7 @@
       {
         "hooks": [
           {
-            "command": "\"${HOME}/.local/bin/kast\"",
+            "command": "KAST_AGENT_PROVIDER=claude KAST_AGENT_RESOURCE_ROOT=\"${CLAUDE_PLUGIN_ROOT}\" \"${KAST_HOME:-${HOME}/.local/share/kast}/current/libexec/kastctl\" developer agent-hook session-start",
             "timeout": 30,
             "type": "command"
           }

@@ -5,9 +5,7 @@ description: Use for compiler-backed Kotlin and Gradle discovery, reference inde
 
 # Kast
 
-Use `kast` as the public interface for Kotlin and Gradle semantic work. Use the
-private `kastctl` interface only to acquire, inspect, or release the exact-root
-indexer workspace lease required by a mutation.
+Use `kast` as the public interface for Kotlin and Gradle semantic work.
 
 - Run `kast` to inspect current workspace readiness and suggested next actions.
 - Run `kast up` to start or reuse the semantic runtime.
@@ -23,12 +21,16 @@ indexer workspace lease required by a mutation.
 - When a result has `nextPage`, repeat the same `files`, symbol relationship,
   `graph nodes`, or `graph impact` command with `--page <nextPage>`.
 - Run `kast check [PATH...]` for compiler diagnostics.
-- Before a mutation, run `kastctl agent lease acquire --workspace-root "$PWD"`
-  and retain its opaque `leaseId`.
-- Use `kast change` to create a validated plan, then run
-  `kast apply <PLAN_ID> --lease-id <LEASE_ID>`.
-- Run `kastctl agent lease release --workspace-root "$PWD" --lease-id
-  <LEASE_ID>` when the mutation session ends.
+- Run `kast change` with `rename`, `replace`, `add-file`, or `add-declaration`
+  to create a root-bound plan. Review its preview, proof, and limitations.
+- Run `kast apply <PLAN_ID>`. Kast owns the workspace lease, revalidates the
+  plan, applies it, and verifies the postcondition before it returns a receipt.
+- Treat only `VERIFIED` as success. Read `REJECTED`, `CONFLICTED`,
+  `ROLLED_BACK`, or `RECOVERY_REQUIRED` as typed non-success outcomes.
+- After `RECOVERY_REQUIRED`, run `kast recover <RECOVERY_ID>`. Recovery can run
+  in a new process and either verifies the intended result or restores the
+  exact source pre-state.
+- Retrying a terminal plan or recovery receipt does not repeat source writes.
 
 Do not infer semantic success from an empty result. Read `limitation` and the
 suggested `next` commands when evidence is unavailable.

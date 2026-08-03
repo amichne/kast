@@ -22,6 +22,7 @@ pub struct CodexHookArgs {
 #[serde(rename_all = "kebab-case")]
 pub enum CodexHookEvent {
     SessionStart,
+    PreToolUse,
     PostToolUse,
 }
 
@@ -29,6 +30,7 @@ impl CodexHookEvent {
     pub(crate) fn codex_name(self) -> &'static str {
         match self {
             Self::SessionStart => "SessionStart",
+            Self::PreToolUse => "PreToolUse",
             Self::PostToolUse => "PostToolUse",
         }
     }

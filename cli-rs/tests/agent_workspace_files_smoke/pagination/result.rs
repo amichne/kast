@@ -28,7 +28,7 @@ fn exact_root_inventory_returns_a_bounded_compact_public_result() {
                 "fileCount": 1,
                 "nextPageToken": null
             }],
-            "schemaVersion": 5
+            "schemaVersion": api_schema_version()
         })
     };
     let server = spawn_scripted_indexer_backend(
@@ -47,7 +47,7 @@ fn exact_root_inventory_returns_a_bounded_compact_public_result() {
                 serde_json::json!({
                     "snapshotToken": "snapshot-one",
                     "modules": [],
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
             ),
             (
@@ -55,7 +55,7 @@ fn exact_root_inventory_returns_a_bounded_compact_public_result() {
                 serde_json::json!({
                     "snapshotToken": "snapshot-one",
                     "modules": [],
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
             ),
         ],

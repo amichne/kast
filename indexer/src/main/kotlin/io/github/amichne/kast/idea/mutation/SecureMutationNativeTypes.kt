@@ -4,6 +4,7 @@ import com.sun.jna.Library
 import com.sun.jna.Memory
 import com.sun.jna.NativeLong
 import com.sun.jna.Platform
+import com.sun.jna.Pointer
 import java.nio.file.Path
 import io.github.amichne.kast.idea.*
 
@@ -41,6 +42,12 @@ internal interface PosixFileApi : Library {
     fun fstat(descriptor: Int, status: com.sun.jna.Pointer): Int
 
     fun close(descriptor: Int): Int
+
+    fun fdopendir(descriptor: Int): Pointer?
+
+    fun readdir(directory: Pointer): Pointer?
+
+    fun closedir(directory: Pointer): Int
 }
 
 internal interface MacRenameApi : Library {
@@ -76,6 +83,7 @@ internal data class PosixPlatform(
     val statModeEncoding: NativeScalarEncoding,
     val notFoundErrno: Int = 2,
     val alreadyExistsErrno: Int = 17,
+    val directoryEntryNameOffset: Long,
 ) {
     fun readStatus(status: Memory): NativeFileStatus {
         val modeBits = readScalar(status, statModeOffset, statModeEncoding).toInt()
@@ -110,6 +118,7 @@ internal data class PosixPlatform(
                 statInodeOffset = 8,
                 statModeOffset = 4,
                 statModeEncoding = NativeScalarEncoding.UNSIGNED_SHORT,
+                directoryEntryNameOffset = 21,
             )
 
             Platform.isLinux() && Platform.is64Bit() && (Platform.isARM() || Platform.isIntel()) -> PosixPlatform(
@@ -123,6 +132,7 @@ internal data class PosixPlatform(
                 statInodeOffset = 8,
                 statModeOffset = if (Platform.isARM()) 16 else 24,
                 statModeEncoding = NativeScalarEncoding.INT,
+                directoryEntryNameOffset = 19,
             )
 
             else -> null
@@ -174,10 +184,47 @@ internal sealed interface CleanupResult {
             "cleanupFailure" to reason,
         )
     }
+
+    class Cancelled private constructor(
+        val recoveryFilePath: Path,
+        val cancellation: RuntimeException,
+    ) : CleanupResult {
+        override val recoveryFilePaths: List<Path> = listOf(recoveryFilePath)
+
+        override fun conflictDetails(): Map<String, String> = mapOf(
+            "cleanupRecoveryFilePath" to recoveryFilePath.toString(),
+            "cleanupFailure" to (cancellation.message ?: cancellation::class.java.simpleName),
+        )
+
+        companion object {
+            fun of(
+                recoveryFilePath: Path,
+                cancellation: RuntimeException,
+            ): Cancelled {
+                require(
+                    cancellation is com.intellij.openapi.progress.ProcessCanceledException ||
+                        cancellation is java.util.concurrent.CancellationException,
+                ) { "Cancelled cleanup evidence requires a cancellation exception" }
+                return Cancelled(recoveryFilePath, cancellation)
+            }
+        }
+    }
 }
 
 internal sealed interface FinalReservationRelease {
     data class Released(val cleanup: CleanupResult) : FinalReservationRelease
+
+    data class Cancelled(
+        val entryRecoveryFilePath: Path,
+        val cancellation: RuntimeException,
+    ) : FinalReservationRelease {
+        init {
+            require(
+                cancellation is com.intellij.openapi.progress.ProcessCanceledException ||
+                    cancellation is java.util.concurrent.CancellationException,
+            ) { "Cancelled reservation release requires a cancellation exception" }
+        }
+    }
 
     data class Blocked(
         val entryRecoveryFilePath: Path,

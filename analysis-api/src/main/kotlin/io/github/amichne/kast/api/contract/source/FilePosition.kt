@@ -11,6 +11,6 @@ import kotlinx.serialization.Serializable
 data class FilePosition(
     @DocField(description = "Absolute path to the source file.")
     val filePath: String,
-    @DocField(description = "Zero-based byte offset into the file content.")
+    @DocField(description = "Zero-based IntelliJ UTF-16 code-unit offset into normalized file text.")
     val offset: Int,
 )

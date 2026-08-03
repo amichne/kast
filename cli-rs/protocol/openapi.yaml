@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Kast Analysis API
-  version: "5.0.0"
+  version: "6.0.0"
   description: >
     JSON-RPC 2.0 analysis protocol for the Kast daemon. Each operation is
     modelled as a logical POST whose request body is the JSON-RPC params
@@ -557,6 +557,222 @@ paths:
             "application/json":
               schema:
                 "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/raw/plan-replacement":
+    post:
+      operationId: planReplacement
+      summary: Plan an identity-preserving function or property replacement
+      tags:
+        - mutation
+      x-jsonrpc-method: raw/plan-replacement
+      x-kast-required-capability: PLAN_REPLACEMENT
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ReplacementPlanQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/ReplacementPlanResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/raw/plan-add-file":
+    post:
+      operationId: planAddFile
+      summary: Plan a compiler-proven Kotlin source file addition
+      tags:
+        - mutation
+      x-jsonrpc-method: raw/plan-add-file
+      x-kast-required-capability: PLAN_ADD_FILE
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/AddFilePlanQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/AddFilePlanResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/raw/plan-add-declaration":
+    post:
+      operationId: planAddDeclaration
+      summary: Plan a compiler-proven top-level Kotlin declaration addition
+      tags:
+        - mutation
+      x-jsonrpc-method: raw/plan-add-declaration
+      x-kast-required-capability: PLAN_ADD_DECLARATION
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/AddDeclarationPlanQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/AddDeclarationPlanResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/raw/verify-mutation-postcondition":
+    post:
+      operationId: verifyMutationPostcondition
+      summary: Verify one exact mutation postcondition
+      tags:
+        - mutation
+      x-jsonrpc-method: raw/verify-mutation-postcondition
+      x-kast-required-capability: VERIFY_MUTATION_POSTCONDITION
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/MutationPostconditionQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/MutationPostconditionResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/raw/exact-file-observation":
+    post:
+      operationId: exactFileObservation
+      summary: Observe one file as an exact byte image or proven absence
+      tags:
+        - mutation
+      x-jsonrpc-method: raw/exact-file-observation
+      x-kast-required-capability: EXACT_FILE_OBSERVATION
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/RawExactFileObservationQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/RawExactFileObservationResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/raw/exact-file-image-cas":
+    post:
+      operationId: exactFileImageCas
+      summary: Commit one exact file byte image with compare-and-swap
+      tags:
+        - mutation
+      x-jsonrpc-method: raw/exact-file-image-cas
+      x-kast-required-capability: EXACT_FILE_IMAGE_CAS
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/ExactFileImageQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/ExactFileImageResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/raw/inspect-mutation-scratch":
+    post:
+      operationId: inspectMutationScratch
+      summary: Fence a mutation attempt and inspect its exact scratch namespace
+      tags:
+        - mutation
+      x-jsonrpc-method: raw/inspect-mutation-scratch
+      x-kast-required-capability: MUTATION_SCRATCH_RECOVERY
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/MutationScratchInspectQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/MutationScratchInspectResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
+  "/rpc/raw/recover-mutation-scratch":
+    post:
+      operationId: recoverMutationScratch
+      summary: Restore or finalize one journal-owned mutation scratch set
+      tags:
+        - mutation
+      x-jsonrpc-method: raw/recover-mutation-scratch
+      x-kast-required-capability: MUTATION_SCRATCH_RECOVERY
+      requestBody:
+        required: true
+        content:
+          "application/json":
+            schema:
+              "$ref": "#/components/schemas/MutationScratchRecoveryQuery"
+      responses:
+        200:
+          description: JSON-RPC success result
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/MutationScratchRecoveryResult"
+        default:
+          description: JSON-RPC error response
+          content:
+            "application/json":
+              schema:
+                "$ref": "#/components/schemas/JsonRpcErrorResponse"
   "/rpc/raw/optimize-imports":
     post:
       operationId: optimizeImports
@@ -907,6 +1123,13 @@ components:
       type: string
       enum:
         - RENAME
+        - PLAN_REPLACEMENT
+        - PLAN_ADD_FILE
+        - PLAN_ADD_DECLARATION
+        - VERIFY_MUTATION_POSTCONDITION
+        - EXACT_FILE_OBSERVATION
+        - EXACT_FILE_IMAGE_CAS
+        - MUTATION_SCRATCH_RECOVERY
         - APPLY_EDITS
         - FILE_OPERATIONS
         - OPTIMIZE_IMPORTS
@@ -1356,6 +1579,7 @@ components:
         - TIMED_OUT
         - CANCELLED
         - GENERATION_CHANGED
+        - SOURCE_IMAGE_UNPROVEN
         - CONTINUATION_EXPIRED
         - CONTINUATION_INVALID
     RelationshipSearchCoverage:
@@ -2581,6 +2805,12 @@ components:
           type: array
           items:
             type: string
+        fileImages:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ExactFileImage"
+        proof:
+          "$ref": "#/components/schemas/ExactRenameProof"
         searchScope:
           anyOf:
             - "$ref": "#/components/schemas/SearchScope"
@@ -2593,6 +2823,1165 @@ components:
         - edits
         - fileHashes
         - affectedFiles
+        - fileImages
+        - proof
+    ExactFileImage:
+      type: object
+      properties:
+        filePath:
+          "$ref": "#/components/schemas/ExactFileImagePath"
+        preimage:
+          "$ref": "#/components/schemas/ExactByteImage"
+        postimage:
+          "$ref": "#/components/schemas/ExactByteImage"
+      additionalProperties: false
+      required:
+        - filePath
+        - preimage
+        - postimage
+    ExactFileImagePath:
+      type: string
+    ExactByteImage:
+      type: object
+      properties:
+        contentBase64:
+          "$ref": "#/components/schemas/ExactFileImageBase64"
+        sha256:
+          "$ref": "#/components/schemas/ExactFileImageSha256"
+      additionalProperties: false
+      required:
+        - contentBase64
+        - sha256
+    ExactFileImageBase64:
+      type: string
+    ExactFileImageSha256:
+      type: string
+    ExactRenameProof:
+      type: object
+      properties:
+        target:
+          "$ref": "#/components/schemas/SymbolIdentity"
+        requiredGeneration:
+          "$ref": "#/components/schemas/MutationSemanticGeneration"
+        evidence:
+          "$ref": "#/components/schemas/RelationshipResultEvidence.Complete"
+        occurrences:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ExactRenameOccurrence"
+      additionalProperties: false
+      required:
+        - target
+        - requiredGeneration
+        - evidence
+        - occurrences
+    SymbolIdentity:
+      type: object
+      properties:
+        fqName:
+          type: string
+        kind:
+          "$ref": "#/components/schemas/SymbolKind"
+        declarationFile:
+          type: string
+        declarationStartOffset:
+          type: integer
+          format: int32
+        containingType:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - fqName
+        - kind
+        - declarationFile
+        - declarationStartOffset
+    MutationSemanticGeneration:
+      type: integer
+      format: int64
+    ExactRenameOccurrence:
+      type: object
+      properties:
+        reference:
+          "$ref": "#/components/schemas/ReferenceOccurrence"
+        resolvedTarget:
+          "$ref": "#/components/schemas/SymbolIdentity"
+        provenance:
+          "$ref": "#/components/schemas/RenameOccurrenceProvenance"
+      additionalProperties: false
+      required:
+        - reference
+        - resolvedTarget
+        - provenance
+    RenameOccurrenceProvenance:
+      type: string
+      enum:
+        - COMPILER
+    ReplacementPlanQuery:
+      type: object
+      properties:
+        target:
+          "$ref": "#/components/schemas/SymbolIdentity"
+        proposedDeclaration:
+          type: string
+      additionalProperties: false
+      required:
+        - target
+        - proposedDeclaration
+    ReplacementPlanResult:
+      type: object
+      properties:
+        edit:
+          "$ref": "#/components/schemas/TextEdit"
+        proof:
+          "$ref": "#/components/schemas/ExactReplacementProof"
+        fileImages:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ExactFileImage"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - edit
+        - proof
+        - fileImages
+    ExactReplacementProof:
+      type: object
+      properties:
+        target:
+          "$ref": "#/components/schemas/SymbolIdentity"
+        requiredGeneration:
+          "$ref": "#/components/schemas/MutationSemanticGeneration"
+        sourceRange:
+          "$ref": "#/components/schemas/Location"
+        fileHashes:
+          type: array
+          items:
+            "$ref": "#/components/schemas/FileHash"
+        oldSignature:
+          "$ref": "#/components/schemas/ReplacementDeclarationSignature"
+        proposedSignature:
+          "$ref": "#/components/schemas/ReplacementDeclarationSignature"
+        proposedDeclarationHash:
+          "$ref": "#/components/schemas/ReplacementDeclarationSha256"
+        proposedDeclarationLength:
+          type: integer
+          format: int32
+        evidence:
+          "$ref": "#/components/schemas/complete"
+        outboundReferences:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ExactReplacementOutboundReference"
+      additionalProperties: false
+      required:
+        - target
+        - requiredGeneration
+        - sourceRange
+        - fileHashes
+        - oldSignature
+        - proposedSignature
+        - proposedDeclarationHash
+        - proposedDeclarationLength
+        - evidence
+        - outboundReferences
+    ReplacementDeclarationSignature:
+      type: object
+    ReplacementDeclarationSha256:
+      type: string
+    complete:
+      type: object
+      properties:
+        cardinality:
+          "$ref": "#/components/schemas/EXACT"
+        dimensions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ReplacementProofDimension"
+      additionalProperties: false
+      required:
+        - cardinality
+        - dimensions
+    ReplacementProofDimension:
+      type: string
+      enum:
+        - EXACT_TARGET_IDENTITY
+        - SUPPORTED_TARGET_KIND
+        - SINGLE_SUPPORTED_PROPOSED_DECLARATION
+        - COMPILER_SIGNATURE_EQUAL
+        - PROPOSED_PSI_TRAVERSAL_EXHAUSTIVE
+        - EVERY_REFERENCE_COMPILER_RESOLVED
+        - EVERY_REFERENCE_TARGET_MATCHED
+        - EVERY_CALL_EXACT
+        - NO_UNSUPPORTED_REFERENCE_KIND
+        - EXACT_OUTBOUND_CARDINALITY
+        - SOURCE_CONTEXT_HASH_BOUND
+        - SEMANTIC_GENERATION_UNCHANGED
+    ExactReplacementOutboundReference:
+      type: object
+      properties:
+        relativeStartOffset:
+          type: integer
+          format: int32
+        relativeEndOffset:
+          type: integer
+          format: int32
+        sourceText:
+          type: string
+        resolvedTarget:
+          "$ref": "#/components/schemas/ReplacementOutboundTarget"
+        provenance:
+          "$ref": "#/components/schemas/ReplacementOccurrenceProvenance"
+      additionalProperties: false
+      required:
+        - relativeStartOffset
+        - relativeEndOffset
+        - sourceText
+        - resolvedTarget
+        - provenance
+    ReplacementOutboundTarget:
+      type: object
+    ReplacementOccurrenceProvenance:
+      type: string
+      enum:
+        - COMPILER
+    AddFilePlanQuery:
+      type: object
+      properties:
+        targetPath:
+          "$ref": "#/components/schemas/AdditionTargetPath"
+        proposedContent:
+          type: string
+      additionalProperties: false
+      required:
+        - targetPath
+        - proposedContent
+    AdditionTargetPath:
+      type: string
+    AddFilePlanResult:
+      type: object
+      properties:
+        proposedContent:
+          type: string
+        postimage:
+          "$ref": "#/components/schemas/ExactByteImage"
+        proof:
+          "$ref": "#/components/schemas/ExactAddFileProof"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - proposedContent
+        - postimage
+        - proof
+    ExactAddFileProof:
+      type: object
+      properties:
+        targetPath:
+          "$ref": "#/components/schemas/AdditionTargetPath"
+        targetState:
+          "$ref": "#/components/schemas/AddFileTargetState"
+        owner:
+          "$ref": "#/components/schemas/AdditionSourceOwner"
+        packageIdentity:
+          "$ref": "#/components/schemas/AdditionKotlinPackage"
+        declarations:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AdditionTopLevelDeclaration"
+        context:
+          "$ref": "#/components/schemas/ExactAdditionProofContext"
+        collisionEvidence:
+          "$ref": "#/components/schemas/ExactAdditionCollisionEvidence"
+        outboundEvidence:
+          "$ref": "#/components/schemas/ExactAdditionOutboundEvidence"
+        rebindingBaseline:
+          "$ref": "#/components/schemas/ExactAdditionRebindingBaseline"
+        postimageSha256:
+          "$ref": "#/components/schemas/AdditionPostimageSha256"
+      additionalProperties: false
+      required:
+        - targetPath
+        - targetState
+        - owner
+        - packageIdentity
+        - declarations
+        - context
+        - collisionEvidence
+        - outboundEvidence
+        - rebindingBaseline
+        - postimageSha256
+    AddFileTargetState:
+      type: string
+      enum:
+        - ABSENT
+    AdditionSourceOwner:
+      type: object
+      properties:
+        sourceRoot:
+          "$ref": "#/components/schemas/AdditionSourceRoot"
+        ideaModuleName:
+          "$ref": "#/components/schemas/AdditionIdeaModuleName"
+        gradleBuildRoot:
+          "$ref": "#/components/schemas/AdditionGradleBuildRoot"
+        gradleProjectPath:
+          "$ref": "#/components/schemas/AdditionGradleProjectPath"
+        sourceSetName:
+          "$ref": "#/components/schemas/AdditionGradleSourceSetName"
+      additionalProperties: false
+      required:
+        - sourceRoot
+        - ideaModuleName
+        - gradleBuildRoot
+        - gradleProjectPath
+        - sourceSetName
+    AdditionSourceRoot:
+      type: string
+    AdditionIdeaModuleName:
+      type: string
+    AdditionGradleBuildRoot:
+      type: string
+    AdditionGradleProjectPath:
+      type: string
+    AdditionGradleSourceSetName:
+      type: string
+    AdditionKotlinPackage:
+      type: object
+    AdditionTopLevelDeclaration:
+      type: object
+      properties:
+        packageIdentity:
+          "$ref": "#/components/schemas/AdditionKotlinPackage"
+        name:
+          "$ref": "#/components/schemas/AdditionDeclarationName"
+        kind:
+          "$ref": "#/components/schemas/AdditionTopLevelDeclarationKind"
+        relativeRange:
+          "$ref": "#/components/schemas/AdditionRelativeRange"
+        collisionSignature:
+          "$ref": "#/components/schemas/AdditionDeclarationCollisionSignature"
+      additionalProperties: false
+      required:
+        - packageIdentity
+        - name
+        - kind
+        - relativeRange
+        - collisionSignature
+    AdditionDeclarationName:
+      type: string
+    AdditionTopLevelDeclarationKind:
+      type: string
+      enum:
+        - CLASS
+        - INTERFACE
+        - OBJECT
+        - ENUM_CLASS
+        - ANNOTATION_CLASS
+        - FUNCTION
+        - PROPERTY
+        - TYPE_ALIAS
+    AdditionRelativeRange:
+      type: object
+      properties:
+        startOffset:
+          "$ref": "#/components/schemas/NonNegativeInt"
+        endOffset:
+          "$ref": "#/components/schemas/NonNegativeInt"
+      additionalProperties: false
+      required:
+        - startOffset
+        - endOffset
+    AdditionDeclarationCollisionSignature:
+      type: string
+    ExactAdditionProofContext:
+      type: object
+      properties:
+        requiredGeneration:
+          "$ref": "#/components/schemas/MutationSemanticGeneration"
+        projectModelFingerprint:
+          "$ref": "#/components/schemas/AdditionProjectModelFingerprint"
+        classpathFingerprint:
+          "$ref": "#/components/schemas/AdditionClasspathFingerprint"
+        contextFileHashes:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ExactAdditionContextFileHash"
+      additionalProperties: false
+      required:
+        - requiredGeneration
+        - projectModelFingerprint
+        - classpathFingerprint
+        - contextFileHashes
+    AdditionProjectModelFingerprint:
+      type: string
+    AdditionClasspathFingerprint:
+      type: string
+    ExactAdditionContextFileHash:
+      type: object
+      properties:
+        filePath:
+          "$ref": "#/components/schemas/AdditionContextFilePath"
+        sha256:
+          "$ref": "#/components/schemas/AdditionContextFileSha256"
+      additionalProperties: false
+      required:
+        - filePath
+        - sha256
+    AdditionContextFilePath:
+      type: string
+    AdditionContextFileSha256:
+      type: string
+    ExactAdditionCollisionEvidence:
+      type: object
+      properties:
+        declarationCardinality:
+          "$ref": "#/components/schemas/ExactAdditionCardinality"
+        dimensions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AdditionCollisionDimension"
+      additionalProperties: false
+      required:
+        - declarationCardinality
+        - dimensions
+    ExactAdditionCardinality:
+      type: integer
+      format: int32
+    AdditionCollisionDimension:
+      type: string
+      enum:
+        - EXACT_DECLARATION_IDENTITIES
+        - COMPLETE_OWNING_SOURCE_SCOPE
+        - COMPLETE_DEPENDENT_SCOPE
+        - NO_COMPILER_COLLISION
+    ExactAdditionOutboundEvidence:
+      type: object
+      properties:
+        cardinality:
+          "$ref": "#/components/schemas/ExactAdditionCardinality"
+        occurrences:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ExactAdditionOutboundOccurrence"
+      additionalProperties: false
+      required:
+        - cardinality
+        - occurrences
+    ExactAdditionOutboundOccurrence:
+      type: object
+      properties:
+        range:
+          "$ref": "#/components/schemas/AdditionRelativeRange"
+        resolvedTarget:
+          "$ref": "#/components/schemas/AdditionResolvedTarget"
+        provenance:
+          "$ref": "#/components/schemas/AdditionOccurrenceProvenance"
+      additionalProperties: false
+      required:
+        - range
+        - resolvedTarget
+        - provenance
+    AdditionResolvedTarget:
+      type: object
+    AdditionOccurrenceProvenance:
+      type: string
+      enum:
+        - COMPILER
+    ExactAdditionRebindingBaseline:
+      type: object
+      properties:
+        cardinality:
+          "$ref": "#/components/schemas/ExactAdditionCardinality"
+        dimensions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AdditionRebindingDimension"
+        occurrences:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ExactAdditionRebindingOccurrence"
+      additionalProperties: false
+      required:
+        - cardinality
+        - dimensions
+        - occurrences
+    AdditionRebindingDimension:
+      type: string
+      enum:
+        - EXACT_OCCURRENCE_CARDINALITY
+        - COMPLETE_DEPENDENT_SCOPE
+        - COMPLETE_IMPLICIT_LOOKUP_SCOPE
+        - COMPLETE_JAVA_LOOKUP_SCOPE
+        - EVERY_CURRENT_BINDING_CAPTURED
+        - VIRTUAL_PROPOSED_BINDINGS_EQUAL_BASELINE
+    ExactAdditionRebindingOccurrence:
+      type: object
+      properties:
+        range:
+          "$ref": "#/components/schemas/AdditionWorkspaceRange"
+        currentTarget:
+          "$ref": "#/components/schemas/AdditionRebindingCurrentTarget"
+        provenance:
+          "$ref": "#/components/schemas/AdditionOccurrenceProvenance"
+      additionalProperties: false
+      required:
+        - range
+        - currentTarget
+        - provenance
+    AdditionWorkspaceRange:
+      type: object
+      properties:
+        filePath:
+          "$ref": "#/components/schemas/AdditionContextFilePath"
+        startOffset:
+          "$ref": "#/components/schemas/NonNegativeInt"
+        endOffset:
+          "$ref": "#/components/schemas/NonNegativeInt"
+      additionalProperties: false
+      required:
+        - filePath
+        - startOffset
+        - endOffset
+    AdditionRebindingCurrentTarget:
+      type: object
+    AdditionPostimageSha256:
+      type: string
+    AddDeclarationPlanQuery:
+      type: object
+      properties:
+        targetPath:
+          "$ref": "#/components/schemas/AdditionTargetPath"
+        expectedCurrentSha256:
+          "$ref": "#/components/schemas/AdditionTargetPreimageSha256"
+        proposedDeclaration:
+          type: string
+      additionalProperties: false
+      required:
+        - targetPath
+        - expectedCurrentSha256
+        - proposedDeclaration
+    AdditionTargetPreimageSha256:
+      type: string
+    AddDeclarationPlanResult:
+      type: object
+      properties:
+        proposedDeclaration:
+          type: string
+        proposedContent:
+          type: string
+        image:
+          "$ref": "#/components/schemas/ExactFileImage"
+        proof:
+          "$ref": "#/components/schemas/ExactAddDeclarationProof"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - proposedDeclaration
+        - proposedContent
+        - image
+        - proof
+    ExactAddDeclarationProof:
+      type: object
+      properties:
+        targetPath:
+          "$ref": "#/components/schemas/AdditionTargetPath"
+        targetPreimageSha256:
+          "$ref": "#/components/schemas/AdditionTargetPreimageSha256"
+        owner:
+          "$ref": "#/components/schemas/AdditionSourceOwner"
+        packageIdentity:
+          "$ref": "#/components/schemas/AdditionKotlinPackage"
+        declaration:
+          "$ref": "#/components/schemas/AdditionTopLevelDeclaration"
+        insertion:
+          "$ref": "#/components/schemas/CompilerFileBottomInsertion"
+        newlinePolicy:
+          "$ref": "#/components/schemas/AdditionNewlinePolicy"
+        context:
+          "$ref": "#/components/schemas/ExactAdditionProofContext"
+        collisionEvidence:
+          "$ref": "#/components/schemas/ExactAdditionCollisionEvidence"
+        outboundEvidence:
+          "$ref": "#/components/schemas/ExactAdditionOutboundEvidence"
+        rebindingBaseline:
+          "$ref": "#/components/schemas/ExactAdditionRebindingBaseline"
+        postimageSha256:
+          "$ref": "#/components/schemas/AdditionPostimageSha256"
+      additionalProperties: false
+      required:
+        - targetPath
+        - targetPreimageSha256
+        - owner
+        - packageIdentity
+        - declaration
+        - insertion
+        - newlinePolicy
+        - context
+        - collisionEvidence
+        - outboundEvidence
+        - rebindingBaseline
+        - postimageSha256
+    CompilerFileBottomInsertion:
+      type: object
+      properties:
+        offset:
+          "$ref": "#/components/schemas/NonNegativeInt"
+      additionalProperties: false
+      required:
+        - offset
+    AdditionNewlinePolicy:
+      type: string
+      enum:
+        - PRESERVE_EXISTING_APPEND_BLANK_LINE_FINAL_LF
+    MutationPostconditionQuery:
+      type: object
+      properties:
+        authority:
+          "$ref": "#/components/schemas/MutationPostconditionAuthority"
+      additionalProperties: false
+      required:
+        - authority
+    MutationPostconditionAuthority:
+      oneOf:
+        - "$ref": "#/components/schemas/MutationPostconditionAuthority.Rename"
+        - "$ref": "#/components/schemas/MutationPostconditionAuthority.Replacement"
+        - "$ref": "#/components/schemas/MutationPostconditionAuthority.AddFile"
+        - "$ref": "#/components/schemas/MutationPostconditionAuthority.AddDeclaration"
+      discriminator:
+        propertyName: type
+        mapping:
+          RENAME: "#/components/schemas/MutationPostconditionAuthority.Rename"
+          REPLACEMENT: "#/components/schemas/MutationPostconditionAuthority.Replacement"
+          ADD_FILE: "#/components/schemas/MutationPostconditionAuthority.AddFile"
+          ADD_DECLARATION: "#/components/schemas/MutationPostconditionAuthority.AddDeclaration"
+    MutationPostconditionAuthority.Rename:
+      type: object
+      properties:
+        type:
+          type: string
+          const: RENAME
+        proof:
+          "$ref": "#/components/schemas/ExactRenameProof"
+        edits:
+          type: array
+          items:
+            "$ref": "#/components/schemas/TextEdit"
+        images:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ExactFileImage"
+      additionalProperties: false
+      required:
+        - type
+        - proof
+        - edits
+        - images
+    MutationPostconditionAuthority.Replacement:
+      type: object
+      properties:
+        type:
+          type: string
+          const: REPLACEMENT
+        proof:
+          "$ref": "#/components/schemas/ExactReplacementProof"
+        edit:
+          "$ref": "#/components/schemas/TextEdit"
+        images:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ExactFileImage"
+      additionalProperties: false
+      required:
+        - type
+        - proof
+        - edit
+        - images
+    MutationPostconditionAuthority.AddFile:
+      type: object
+      properties:
+        type:
+          type: string
+          const: ADD_FILE
+        proof:
+          "$ref": "#/components/schemas/ExactAddFileProof"
+        postimage:
+          "$ref": "#/components/schemas/ExactByteImage"
+      additionalProperties: false
+      required:
+        - type
+        - proof
+        - postimage
+    MutationPostconditionAuthority.AddDeclaration:
+      type: object
+      properties:
+        type:
+          type: string
+          const: ADD_DECLARATION
+        proof:
+          "$ref": "#/components/schemas/ExactAddDeclarationProof"
+        image:
+          "$ref": "#/components/schemas/ExactFileImage"
+      additionalProperties: false
+      required:
+        - type
+        - proof
+        - image
+    MutationPostconditionResult:
+      type: object
+      properties:
+        status:
+          "$ref": "#/components/schemas/MutationPostconditionStatus"
+        operation:
+          "$ref": "#/components/schemas/MutationPostconditionOperation"
+        currentGeneration:
+          "$ref": "#/components/schemas/MutationSemanticGeneration"
+        postimages:
+          type: array
+          items:
+            "$ref": "#/components/schemas/VerifiedMutationPostimage"
+        evidence:
+          "$ref": "#/components/schemas/MutationPostconditionEvidence"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - status
+        - operation
+        - currentGeneration
+        - postimages
+        - evidence
+    MutationPostconditionStatus:
+      type: string
+      enum:
+        - VERIFIED
+    MutationPostconditionOperation:
+      type: string
+      enum:
+        - RENAME
+        - REPLACEMENT
+        - ADD_FILE
+        - ADD_DECLARATION
+    VerifiedMutationPostimage:
+      type: object
+      properties:
+        filePath:
+          "$ref": "#/components/schemas/ExactFileImagePath"
+        sha256:
+          "$ref": "#/components/schemas/ExactFileImageSha256"
+      additionalProperties: false
+      required:
+        - filePath
+        - sha256
+    MutationPostconditionEvidence:
+      oneOf:
+        - "$ref": "#/components/schemas/MutationPostconditionEvidence.Rename"
+        - "$ref": "#/components/schemas/MutationPostconditionEvidence.Replacement"
+        - "$ref": "#/components/schemas/MutationPostconditionEvidence.AddFile"
+        - "$ref": "#/components/schemas/MutationPostconditionEvidence.AddDeclaration"
+      discriminator:
+        propertyName: type
+        mapping:
+          RENAME: "#/components/schemas/MutationPostconditionEvidence.Rename"
+          REPLACEMENT: "#/components/schemas/MutationPostconditionEvidence.Replacement"
+          ADD_FILE: "#/components/schemas/MutationPostconditionEvidence.AddFile"
+          ADD_DECLARATION: "#/components/schemas/MutationPostconditionEvidence.AddDeclaration"
+    MutationPostconditionEvidence.Rename:
+      type: object
+      properties:
+        type:
+          type: string
+          const: RENAME
+        resultingTarget:
+          "$ref": "#/components/schemas/SymbolIdentity"
+        evidence:
+          "$ref": "#/components/schemas/RelationshipResultEvidence.Complete"
+        occurrences:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ExactRenameOccurrence"
+      additionalProperties: false
+      required:
+        - type
+        - resultingTarget
+        - evidence
+        - occurrences
+    MutationPostconditionEvidence.Replacement:
+      type: object
+      properties:
+        type:
+          type: string
+          const: REPLACEMENT
+        resultingTarget:
+          "$ref": "#/components/schemas/SymbolIdentity"
+        sourceRange:
+          "$ref": "#/components/schemas/Location"
+        signature:
+          "$ref": "#/components/schemas/ReplacementDeclarationSignature"
+        outboundEvidence:
+          "$ref": "#/components/schemas/complete"
+        outboundReferences:
+          type: array
+          items:
+            "$ref": "#/components/schemas/ExactReplacementOutboundReference"
+      additionalProperties: false
+      required:
+        - type
+        - resultingTarget
+        - sourceRange
+        - signature
+        - outboundEvidence
+        - outboundReferences
+    MutationPostconditionEvidence.AddFile:
+      type: object
+      properties:
+        type:
+          type: string
+          const: ADD_FILE
+        owner:
+          "$ref": "#/components/schemas/AdditionSourceOwner"
+        packageIdentity:
+          "$ref": "#/components/schemas/AdditionKotlinPackage"
+        declarations:
+          type: array
+          items:
+            "$ref": "#/components/schemas/AdditionTopLevelDeclaration"
+        outboundEvidence:
+          "$ref": "#/components/schemas/ExactAdditionOutboundEvidence"
+      additionalProperties: false
+      required:
+        - type
+        - owner
+        - packageIdentity
+        - declarations
+        - outboundEvidence
+    MutationPostconditionEvidence.AddDeclaration:
+      type: object
+      properties:
+        type:
+          type: string
+          const: ADD_DECLARATION
+        owner:
+          "$ref": "#/components/schemas/AdditionSourceOwner"
+        packageIdentity:
+          "$ref": "#/components/schemas/AdditionKotlinPackage"
+        declaration:
+          "$ref": "#/components/schemas/AdditionTopLevelDeclaration"
+        outboundEvidence:
+          "$ref": "#/components/schemas/ExactAdditionOutboundEvidence"
+      additionalProperties: false
+      required:
+        - type
+        - owner
+        - packageIdentity
+        - declaration
+        - outboundEvidence
+    RawExactFileObservationQuery:
+      type: object
+      properties:
+        filePath:
+          type: string
+        mutationAttemptId:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - filePath
+    RawExactFileObservationResult:
+      oneOf:
+        - "$ref": "#/components/schemas/RawExactFileObservationResult.Absent"
+        - "$ref": "#/components/schemas/RawExactFileObservationResult.Present"
+      discriminator:
+        propertyName: type
+        mapping:
+          ABSENT: "#/components/schemas/RawExactFileObservationResult.Absent"
+          PRESENT: "#/components/schemas/RawExactFileObservationResult.Present"
+    RawExactFileObservationResult.Absent:
+      type: object
+      properties:
+        type:
+          type: string
+          const: ABSENT
+        filePath:
+          "$ref": "#/components/schemas/RawExactFileObservationPath"
+      additionalProperties: false
+      required:
+        - type
+        - filePath
+    RawExactFileObservationPath:
+      type: string
+    RawExactFileObservationResult.Present:
+      type: object
+      properties:
+        type:
+          type: string
+          const: PRESENT
+        filePath:
+          "$ref": "#/components/schemas/RawExactFileObservationPath"
+        image:
+          "$ref": "#/components/schemas/ExactByteImage"
+      additionalProperties: false
+      required:
+        - type
+        - filePath
+        - image
+    ExactFileImageQuery:
+      type: object
+      properties:
+        filePath:
+          "$ref": "#/components/schemas/ExactFileImagePath"
+        expectedCurrentSha256:
+          "$ref": "#/components/schemas/ExactFileImageSha256"
+        contentBase64:
+          "$ref": "#/components/schemas/ExactFileImageBase64"
+        expectedResultSha256:
+          "$ref": "#/components/schemas/ExactFileImageSha256"
+        mutationAttemptId:
+          anyOf:
+            - type: string
+            - type: "null"
+        mutationScratch:
+          anyOf:
+            - "$ref": "#/components/schemas/MutationScratchSet"
+            - type: "null"
+      additionalProperties: false
+      required:
+        - filePath
+        - expectedCurrentSha256
+        - contentBase64
+        - expectedResultSha256
+    MutationScratchSet:
+      type: object
+      properties:
+        targetFilePath:
+          type: string
+        quarantinePath:
+          type: string
+        preparedPath:
+          type: string
+        preparedCleanupPath:
+          type: string
+        quarantineCleanupPath:
+          type: string
+      additionalProperties: false
+      required:
+        - targetFilePath
+        - quarantinePath
+        - preparedPath
+        - preparedCleanupPath
+        - quarantineCleanupPath
+    ExactFileImageResult:
+      type: object
+      properties:
+        filePath:
+          "$ref": "#/components/schemas/ExactFileImagePath"
+        status:
+          "$ref": "#/components/schemas/ExactFileImageStatus"
+        previousSha256:
+          "$ref": "#/components/schemas/ExactFileImageSha256"
+        resultSha256:
+          "$ref": "#/components/schemas/ExactFileImageSha256"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - filePath
+        - status
+        - previousSha256
+        - resultSha256
+    ExactFileImageStatus:
+      type: string
+      enum:
+        - COMMITTED
+    MutationScratchInspectQuery:
+      type: object
+      properties:
+        mutationAttemptId:
+          type: string
+        workspaceRelativeParentPaths:
+          type: array
+          items:
+            type: string
+        ownedScratchSets:
+          type: array
+          items:
+            "$ref": "#/components/schemas/MutationScratchSet"
+      additionalProperties: false
+      required:
+        - mutationAttemptId
+        - workspaceRelativeParentPaths
+        - ownedScratchSets
+    MutationScratchInspectResult:
+      type: object
+      properties:
+        mutationAttemptId:
+          "$ref": "#/components/schemas/MutationAttemptId"
+        observations:
+          type: array
+          items:
+            "$ref": "#/components/schemas/MutationScratchObservation"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - mutationAttemptId
+        - observations
+    MutationAttemptId:
+      type: string
+    MutationScratchObservation:
+      type: object
+      properties:
+        filePath:
+          type: string
+        ownership:
+          "$ref": "#/components/schemas/MutationScratchOwnership"
+        role:
+          "$ref": "#/components/schemas/MutationScratchRole"
+        state:
+          "$ref": "#/components/schemas/MutationScratchState"
+        sha256:
+          anyOf:
+            - "$ref": "#/components/schemas/ExactFileImageSha256"
+            - type: "null"
+      additionalProperties: false
+      required:
+        - filePath
+        - ownership
+        - role
+        - state
+    MutationScratchOwnership:
+      type: string
+      enum:
+        - OWNED
+        - UNOWNED
+    MutationScratchRole:
+      type: string
+      enum:
+        - QUARANTINE
+        - PREPARED
+        - PREPARED_CLEANUP
+        - QUARANTINE_CLEANUP
+        - UNOWNED_INTERNAL
+    MutationScratchState:
+      type: string
+      enum:
+        - ABSENT
+        - PRESENT
+        - UNSAFE
+    MutationScratchRecoveryQuery:
+      type: object
+      properties:
+        mutationAttemptId:
+          type: string
+        action:
+          "$ref": "#/components/schemas/MutationScratchRecoveryAction"
+        scratchDirection:
+          "$ref": "#/components/schemas/MutationScratchDirection"
+        targetFilePath:
+          type: string
+        preimage:
+          "$ref": "#/components/schemas/MutationScratchRecoveryPreimage"
+        postimage:
+          "$ref": "#/components/schemas/ExactByteImage"
+        scratch:
+          "$ref": "#/components/schemas/MutationScratchSet"
+      additionalProperties: false
+      required:
+        - mutationAttemptId
+        - action
+        - scratchDirection
+        - targetFilePath
+        - preimage
+        - postimage
+        - scratch
+    MutationScratchRecoveryAction:
+      type: string
+      enum:
+        - RESTORE_PREIMAGE
+        - FINALIZE_POSTIMAGE
+    MutationScratchDirection:
+      type: string
+      enum:
+        - FORWARD
+        - RESTORE_PREIMAGE
+    MutationScratchRecoveryPreimage:
+      oneOf:
+        - "$ref": "#/components/schemas/MutationScratchRecoveryPreimage.Absent"
+        - "$ref": "#/components/schemas/MutationScratchRecoveryPreimage.Present"
+      discriminator:
+        propertyName: state
+        mapping:
+          ABSENT: "#/components/schemas/MutationScratchRecoveryPreimage.Absent"
+          PRESENT: "#/components/schemas/MutationScratchRecoveryPreimage.Present"
+    MutationScratchRecoveryPreimage.Absent:
+      type: object
+      properties:
+        state:
+          type: string
+          const: ABSENT
+      additionalProperties: false
+      required:
+        - state
+    MutationScratchRecoveryPreimage.Present:
+      type: object
+      properties:
+        state:
+          type: string
+          const: PRESENT
+        image:
+          "$ref": "#/components/schemas/ExactByteImage"
+      additionalProperties: false
+      required:
+        - state
+        - image
+    MutationScratchRecoveryResult:
+      type: object
+      properties:
+        mutationAttemptId:
+          "$ref": "#/components/schemas/MutationAttemptId"
+        action:
+          "$ref": "#/components/schemas/MutationScratchRecoveryAction"
+        outcome:
+          "$ref": "#/components/schemas/MutationScratchRecoveryOutcome"
+        targetState:
+          "$ref": "#/components/schemas/MutationScratchTargetState"
+        targetSha256:
+          anyOf:
+            - "$ref": "#/components/schemas/ExactFileImageSha256"
+            - type: "null"
+        scratchObservations:
+          type: array
+          items:
+            "$ref": "#/components/schemas/MutationScratchObservation"
+        schemaVersion:
+          type: integer
+          format: int32
+      additionalProperties: false
+      required:
+        - mutationAttemptId
+        - action
+        - outcome
+        - targetState
+        - scratchObservations
+    MutationScratchRecoveryOutcome:
+      type: string
+      enum:
+        - RESTORED_PREIMAGE
+        - FINALIZED_POSTIMAGE
+    MutationScratchTargetState:
+      type: string
+      enum:
+        - ABSENT
+        - PRESENT
     ImportOptimizeQuery:
       type: object
       properties:
@@ -2641,6 +4030,14 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/FileOperation"
+        mutationAttemptId:
+          anyOf:
+            - type: string
+            - type: "null"
+        mutationScratchSets:
+          type: array
+          items:
+            "$ref": "#/components/schemas/MutationScratchSet"
       additionalProperties: false
       required:
         - edits
@@ -2843,11 +4240,18 @@ components:
           type: string
         content:
           type: string
+        parentPolicy:
+          "$ref": "#/components/schemas/CreateFileParentPolicy"
       additionalProperties: false
       required:
         - type
         - filePath
         - content
+    CreateFileParentPolicy:
+      type: string
+      enum:
+        - CREATE_MISSING_PARENTS
+        - REQUIRE_EXISTING_PARENTS
     FileOperation.DeleteFile:
       type: object
       properties:

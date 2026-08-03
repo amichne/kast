@@ -21,6 +21,7 @@ fun ParsedFileOperation.toWire(): FileOperation = when (this) {
     is ParsedFileOperation.CreateFile -> FileOperation.CreateFile(
         filePath = filePath.value,
         content = content,
+        parentPolicy = parentPolicy,
     )
 
     is ParsedFileOperation.DeleteFile -> FileOperation.DeleteFile(
@@ -33,4 +34,6 @@ fun ParsedApplyEditsQuery.toWire(): ApplyEditsQuery = ApplyEditsQuery(
     edits = edits.map(ParsedTextEdit::toWire),
     fileHashes = fileHashes.map(ParsedFileHash::toWire),
     fileOperations = fileOperations.map(ParsedFileOperation::toWire),
+    mutationAttemptId = mutationAttemptId?.value,
+    mutationScratchSets = mutationScratchSets.map(ParsedMutationScratchSet::toWire),
 )

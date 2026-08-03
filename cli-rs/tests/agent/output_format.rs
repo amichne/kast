@@ -1,6 +1,8 @@
 #[path = "../support/mod.rs"]
 mod support;
 
+use base64::{Engine as _, engine::general_purpose::STANDARD as STANDARD_BASE64};
+use sha2::{Digest as _, Sha256};
 use support::*;
 
 fn rename_backend(
@@ -21,6 +23,12 @@ fn rename_backend(
         "package io.example\nclass OrderService { fun process() = Unit }\n",
     )
     .expect("Kotlin fixture");
+    let preimage = std::fs::read(&file_path).expect("Kotlin fixture bytes");
+    let postimage = String::from_utf8(preimage.clone())
+        .expect("UTF-8 fixture")
+        .replace("process", "processSafely")
+        .into_bytes();
+    let preimage_hash = hex::encode(Sha256::digest(&preimage));
     let file_path = file_path.display().to_string();
     spawn_scripted_indexer_backend(
         home,
@@ -56,10 +64,45 @@ fn rename_backend(
                     }],
                     "fileHashes": [{
                         "filePath": file_path,
-                        "hash": "a".repeat(64),
+                        "hash": preimage_hash,
                     }],
                     "affectedFiles": [file_path],
-                    "schemaVersion": 5,
+                    "proof": {
+                        "target": {
+                            "fqName": "io.example.OrderService.process",
+                            "kind": "FUNCTION",
+                            "declarationFile": file_path,
+                            "declarationStartOffset": 44
+                        },
+                        "requiredGeneration": 7,
+                        "evidence": {
+                            "type": "COMPLETE",
+                            "cardinality": {"type": "EXACT", "totalCount": 0},
+                            "coverage": {
+                                "type": "COMPLETE",
+                                "identity": "COMPLETE",
+                                "projectScope": "COMPLETE",
+                                "sourceSetScope": "COMPLETE",
+                                "indexFreshness": "COMPLETE",
+                                "backend": "COMPLETE",
+                                "requestedFamily": "COMPLETE",
+                                "limitations": []
+                            }
+                        },
+                        "occurrences": []
+                    },
+                    "fileImages": [{
+                        "filePath": file_path,
+                        "preimage": {
+                            "contentBase64": STANDARD_BASE64.encode(&preimage),
+                            "sha256": preimage_hash,
+                        },
+                        "postimage": {
+                            "contentBase64": STANDARD_BASE64.encode(&postimage),
+                            "sha256": hex::encode(Sha256::digest(&postimage)),
+                        },
+                    }],
+                    "schemaVersion": api_schema_version(),
                 }),
             ),
         ],

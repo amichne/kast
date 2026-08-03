@@ -31,7 +31,7 @@ fn backend_result(
     Ok(serde_json::json!({
         "snapshotToken": snapshot,
         "modules": modules,
-        "schemaVersion": 5
+        "schemaVersion": crate::SCHEMA_VERSION
     }))
 }
 

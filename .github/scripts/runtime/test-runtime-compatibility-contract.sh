@@ -96,8 +96,34 @@ if any(pair.get("indexerVersion") != "0.13.0" for pair in pairs):
     raise SystemExit("same-release indexer template was not resolved")
 if any(pair.get("cliVersion") != "0.13.0" for pair in pairs):
     raise SystemExit("same-release CLI template was not resolved")
+if any(pair.get("protocolRevision") != 3 for pair in pairs):
+    raise SystemExit("verified-mutation protocol revision drifted")
 if any(set(pair.get("runtime", {})) != {"implementationVersion"} for pair in pairs):
     raise SystemExit("runtime identity must contain only its implementation version")
+required_mutations = {
+    "APPLY_EDITS",
+    "EXACT_FILE_IMAGE_CAS",
+    "EXACT_FILE_OBSERVATION",
+    "FILE_OPERATIONS",
+    "MUTATION_SCRATCH_RECOVERY",
+    "PLAN_ADD_DECLARATION",
+    "PLAN_ADD_FILE",
+    "PLAN_REPLACEMENT",
+    "REFRESH_WORKSPACE",
+    "RENAME",
+    "VERIFY_MUTATION_POSTCONDITION",
+}
+for pair in pairs:
+    actual = {
+        capability.get("name")
+        for capability in pair.get("requiredCapabilities", [])
+        if capability.get("kind") == "MUTATION"
+    }
+    if actual != required_mutations:
+        raise SystemExit(
+            "same-release verified mutation capabilities must be required: "
+            f"expected={sorted(required_mutations)} actual={sorted(actual)}"
+        )
 PY
 
 python3 - "$source_file" "$scratch_dir" <<'PY'

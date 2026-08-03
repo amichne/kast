@@ -52,7 +52,10 @@ internal class IdeaEditApplier(
      * @param query The edit query with edits, hashes, and file operations
      * @return Result with applied edits and affected files
      */
-    suspend fun apply(query: ApplyEditsQuery): ApplyEditsResult {
+    suspend fun apply(
+        query: ApplyEditsQuery,
+        mutationScratchSets: List<io.github.amichne.kast.api.validation.ParsedMutationScratchSet> = emptyList(),
+    ): ApplyEditsResult {
         if (query.edits.isEmpty() && query.fileOperations.isEmpty()) {
             throw ValidationException("At least one text edit or file operation is required")
         }
@@ -97,6 +100,7 @@ internal class IdeaEditApplier(
                 validatedFileOperations,
                 invocationId,
                 normalizedWorkspaceRoot,
+                mutationScratchSets,
             )
         }
 
@@ -188,6 +192,16 @@ internal class IdeaEditApplier(
                 )
             } catch (exception: Exception) {
                 if (exception is PartialApplyException) throw exception
+                exception.rethrowIfMutationCancellation(
+                    partialApplyFailure(
+                        failedFile = plan.filePath,
+                        appliedFiles = affectedFiles + editAffectedFiles,
+                        createdFiles = createdFiles,
+                        deletedFiles = deletedFiles,
+                        exception = exception,
+                        committedMutation = committedMutation,
+                    ),
+                )
                 if (
                     exception.isTypedSecureMutationFailure() &&
                     affectedFiles.isEmpty() &&

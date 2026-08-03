@@ -97,7 +97,7 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
                     "truncated": true,
                     "nextPageToken": backend_token
                 },
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
@@ -167,7 +167,7 @@ fn references_send_the_exact_anchor_and_project_occurrence_evidence() {
                 },
                 "references": [],
                 "evidence": complete_relationship_evidence(1),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
@@ -254,7 +254,7 @@ fn references_preserve_a_zero_known_minimum_while_search_remains_resumable() {
                     "truncated": true,
                     "nextPageToken": backend_token
                 },
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );

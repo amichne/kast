@@ -19,6 +19,8 @@ sealed interface FileOperation {
         override val filePath: String,
         @DocField(description = "Full text content to write to the new file.")
         val content: String,
+        @DocField(description = "Policy for parent directories that are missing when the file is created.")
+        val parentPolicy: CreateFileParentPolicy = CreateFileParentPolicy.CREATE_MISSING_PARENTS,
     ) : FileOperation
 
     @Serializable

@@ -26,7 +26,10 @@ data class SemanticInsertionQuery(
 
 @Serializable
 data class SemanticInsertionResult(
-    @DocField(description = "Zero-based byte offset where new code should be inserted.")
+    @DocField(
+        description = "Zero-based IntelliJ UTF-16 code-unit offset into normalized file text " +
+            "where new code should be inserted.",
+    )
     val insertionOffset: Int,
     @DocField(description = "Absolute path of the file containing the insertion point.")
     val filePath: String,

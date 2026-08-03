@@ -66,7 +66,7 @@ fn spawn_legacy_headless_status_server(
                         "backendName": "headless",
                         "backendVersion": "legacy-test",
                         "workspaceRoot": workspace.display().to_string(),
-                        "schemaVersion": 5
+                        "schemaVersion": prior_api_schema_version()
                     }
                 })
             )

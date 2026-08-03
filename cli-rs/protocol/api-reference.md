@@ -55,7 +55,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "backendName": "fake",
                     "backendVersion": "0.1.0-test",
                     "workspaceRoot": "/workspace",
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -121,7 +121,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "referenceIndexReady": false,
                     "referenceCoverageState": "UNAVAILABLE",
                     "referenceCoverageLimitations": [],
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -172,7 +172,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "backendVersion": "0.1.0-test",
                     "workspaceRoot": "/workspace",
                     "message": "Runtime shutdown accepted; action will run after this response is flushed.",
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -230,7 +230,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "backendVersion": "0.1.0-test",
                     "workspaceRoot": "/workspace",
                     "message": "Runtime restart accepted; action will run after this response is flushed.",
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -316,7 +316,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "continuationTtlMillis": 60000,
                         "continuationCapacity": 256
                     },
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -398,7 +398,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "documentation": "/** Greets the provided name. */",
                         "containingDeclaration": "sample"
                     },
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -406,7 +406,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             ```
         !!! note "Behavioral notes"
 
-            - The position must be an absolute file path with a zero-based byte offset.
+            - The position must be an absolute file path with a zero-based IntelliJ UTF-16 code-unit offset into normalized file text.
             - If the offset does not land on a symbol, the daemon returns a NOT_FOUND error.
             - Optional fields like `declarationScope` and `documentation` are only populated when the corresponding query flags are set.
 
@@ -521,7 +521,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "limitations": []
                         }
                     },
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -648,7 +648,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "maxChildrenPerNodeReached": false,
                         "filesVisited": 1
                     },
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -772,7 +772,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "maxDepthReached": 1,
                         "truncated": false
                     },
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -801,7 +801,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
             | Signature | Description |
             |-----------|-------------|
-            | `#!kotlin insertionOffset: Int` | Zero-based byte offset where new code should be inserted. |
+            | `#!kotlin insertionOffset: Int` | Zero-based IntelliJ UTF-16 code-unit offset into normalized file text where new code should be inserted. |
             | `#!kotlin filePath: String` | Absolute path of the file containing the insertion point. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "Internal protocol"
@@ -833,7 +833,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                 "result": {
                     "insertionOffset": 56,
                     "filePath": "/workspace/src/Sample.kt",
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -926,7 +926,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         "type": "EXACT",
                         "totalCount": 0
                     },
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1008,7 +1008,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             "children": []
                         }
                     ],
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1137,7 +1137,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                             ]
                         }
                     ],
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1216,7 +1216,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "truncated": false,
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1295,7 +1295,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "snapshotToken": "00000000-0000-4000-8000-000000000002",
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1539,7 +1539,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "exhaustive": true,
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1597,7 +1597,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
             {
                 "result": {
                     "actions": [],
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1673,7 +1673,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                         }
                     ],
                     "exhaustive": true,
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1690,7 +1690,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
 
     !!! abstract "At a glance"
 
-        4 operations that modify workspace state: rename, optimize imports, apply edits, and refresh.
+        12 operations for verified mutation planning, application, observation, recovery, and refresh.
 
     ??? example "raw/rename — Plan a symbol rename (dry-run by default)"
 
@@ -1712,6 +1712,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin edits: List<TextEdit>` | Text edits needed to perform the rename across the workspace. |
             | `#!kotlin fileHashes: List<FileHash>` | File hashes at edit-plan time for conflict detection. |
             | `#!kotlin affectedFiles: List<String>` | Absolute paths of all files that would be modified. |
+            | `#!kotlin fileImages: List<ExactFileImage>` | Exact immutable preimage and postimage bytes for every affected file. |
+            | `#!kotlin proof: ExactRenameProof` | Exact semantic identity, generation, coverage, and occurrence proof for this rename. |
             | `#!kotlin searchScope: SearchScope?` | Describes the scope and exhaustiveness of the rename search. |
             | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
         === "Internal protocol"
@@ -1765,7 +1767,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "affectedFiles": [
                         "/workspace/src/Sample.kt"
                     ],
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1777,6 +1779,284 @@ daemon, including input/output schemas, examples, and behavioral notes.
             - Pair with `raw/apply-edits` to execute the rename after review.
 
         **Error codes** &nbsp;·&nbsp; `NOT_FOUND`
+
+    ??? example "raw/plan-replacement — Plan an identity-preserving function or property replacement"
+
+        Plans one Kotlin function or property replacement without writing. The result binds the exact compiler identity, declaration signature, references, and file images.
+
+        **Capability** &nbsp;·&nbsp; `PLAN_REPLACEMENT`
+
+        === "Input: ReplacementPlanQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin target: SymbolIdentity` | Exact compiler-resolved identity of the declaration to replace. |
+            | `#!kotlin proposedDeclaration: String` | One complete proposed Kotlin function or property declaration. |
+        === "Output: ReplacementPlanResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin edit: TextEdit` | Single non-mutating edit that replaces the exact source declaration. |
+            | `#!kotlin proof: ExactReplacementProof` | Required compiler-backed proof for the replacement plan. |
+            | `#!kotlin fileImages: List<ExactFileImage>` | Exact immutable preimage and postimage bytes for the replacement file. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+        === "Internal protocol"
+
+            ```text
+            JSON-RPC method: raw/plan-replacement
+            Params: see Request tab
+            ```
+        !!! note "Behavioral notes"
+
+            - Only a compiler-proven function or property with an unchanged observable signature is supported.
+            - A limited or inconsistent proof fails before any source write.
+
+        **Error codes** &nbsp;·&nbsp; `NOT_FOUND`, `REPLACEMENT_PROOF_INCOMPLETE`
+
+    ??? example "raw/plan-add-file — Plan a compiler-proven Kotlin source file addition"
+
+        Plans one Kotlin source file addition without writing. The result proves source ownership, target absence, declarations, bindings, and the exact postimage.
+
+        **Capability** &nbsp;·&nbsp; `PLAN_ADD_FILE`
+
+        === "Input: AddFilePlanQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin targetPath: AdditionTargetPath` | Normalized absolute .kt path for the absent target. |
+            | `#!kotlin proposedContent: String` | Complete inline Kotlin source proposed for the new file. |
+        === "Output: AddFilePlanResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin proposedContent: String` | Exact proposed Kotlin source content. |
+            | `#!kotlin postimage: ExactByteImage` | Exact UTF-8 postimage authorized for the absent target. |
+            | `#!kotlin proof: ExactAddFileProof` | Complete compiler-backed add-file proof. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+        === "Internal protocol"
+
+            ```text
+            JSON-RPC method: raw/plan-add-file
+            Params: see Request tab
+            ```
+        !!! note "Behavioral notes"
+
+            - The target must belong to one proven Kotlin source root and must not exist.
+            - Collision or rebinding uncertainty fails before any source write.
+
+        **Error codes** &nbsp;·&nbsp; `ADDITION_PROOF_INCOMPLETE`, `CONFLICT`
+
+    ??? example "raw/plan-add-declaration — Plan a compiler-proven top-level Kotlin declaration addition"
+
+        Plans one top-level Kotlin declaration at compiler-proven file bottom without writing. The result binds the exact target preimage, insertion policy, semantic proof, and postimage.
+
+        **Capability** &nbsp;·&nbsp; `PLAN_ADD_DECLARATION`
+
+        === "Input: AddDeclarationPlanQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin targetPath: AdditionTargetPath` | Normalized absolute .kt path of the existing target file. |
+            | `#!kotlin expectedCurrentSha256: AdditionTargetPreimageSha256` | Required SHA-256 of the exact current target bytes. |
+            | `#!kotlin proposedDeclaration: String` | One complete inline top-level Kotlin declaration in normalized LF form. |
+        === "Output: AddDeclarationPlanResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin proposedDeclaration: String` | Exact normalized LF Kotlin declaration supplied by the caller. |
+            | `#!kotlin proposedContent: String` | Exact decoded postimage content, including its original line-separator form. |
+            | `#!kotlin image: ExactFileImage` | Exact target preimage and authorized postimage. |
+            | `#!kotlin proof: ExactAddDeclarationProof` | Complete compiler-backed add-declaration proof. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+        === "Internal protocol"
+
+            ```text
+            JSON-RPC method: raw/plan-add-declaration
+            Params: see Request tab
+            ```
+        !!! note "Behavioral notes"
+
+            - The current target bytes must match expectedCurrentSha256.
+            - The closed append policy preserves existing bytes and adds one final LF.
+
+        **Error codes** &nbsp;·&nbsp; `ADDITION_PROOF_INCOMPLETE`, `CONFLICT`
+
+    ??? example "raw/verify-mutation-postcondition — Verify one exact mutation postcondition"
+
+        Verifies the exact postimages and compiler evidence for one rename, replacement, file addition, or declaration addition authority.
+
+        **Capability** &nbsp;·&nbsp; `VERIFY_MUTATION_POSTCONDITION`
+
+        === "Input: MutationPostconditionQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin authority: MutationPostconditionAuthority` |  |
+        === "Output: MutationPostconditionResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin status: MutationPostconditionStatus` |  |
+            | `#!kotlin operation: MutationPostconditionOperation` |  |
+            | `#!kotlin currentGeneration: MutationSemanticGeneration` |  |
+            | `#!kotlin postimages: List<VerifiedMutationPostimage>` |  |
+            | `#!kotlin evidence: MutationPostconditionEvidence` |  |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+        === "Internal protocol"
+
+            ```text
+            JSON-RPC method: raw/verify-mutation-postcondition
+            Params: see Request tab
+            ```
+        !!! note "Behavioral notes"
+
+            - The authority is a closed operation-specific proof retained from planning.
+            - Only VERIFIED with matching exact postimages is a successful result.
+
+        **Error codes** &nbsp;·&nbsp; `MUTATION_POSTCONDITION_FAILED`, `CONFLICT`
+
+    ??? example "raw/exact-file-observation — Observe one file as an exact byte image or proven absence"
+
+        Observes one canonical workspace-relative file through the secure exact-root boundary.
+
+        **Capability** &nbsp;·&nbsp; `EXACT_FILE_OBSERVATION`
+
+        === "Input: RawExactFileObservationQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin filePath: String` | Canonical normalized path relative to the exact workspace root. |
+            | `#!kotlin mutationAttemptId: String?` | Optional canonical UUID-v4 active mutation attempt required by this observation. |
+        === "Output: RawExactFileObservationResult"
+
+            | Variant |
+            |---------|
+            | `Absent` |
+            | `Present` |
+        === "Internal protocol"
+
+            ```text
+            JSON-RPC method: raw/exact-file-observation
+            Params: see Request tab
+            ```
+        !!! note "Behavioral notes"
+
+            - The closed result is ABSENT or PRESENT with canonical Base64 and lowercase SHA-256 evidence.
+            - A mutation attempt identifier applies the active backend fence.
+
+        **Error codes** &nbsp;·&nbsp; `VALIDATION_ERROR`, `CONFLICT`
+
+    ??? example "raw/exact-file-image-cas — Commit one exact file byte image with compare-and-swap"
+
+        Replaces one exact file image only when its current SHA-256 and mutation authority match.
+
+        **Capability** &nbsp;·&nbsp; `EXACT_FILE_IMAGE_CAS`
+
+        === "Input: ExactFileImageQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin filePath: ExactFileImagePath` | Normalized absolute path of the existing file to replace. |
+            | `#!kotlin expectedCurrentSha256: ExactFileImageSha256` | Required SHA-256 of the exact current file bytes. |
+            | `#!kotlin contentBase64: ExactFileImageBase64` | Canonical Base64 encoding of the exact replacement bytes. |
+            | `#!kotlin expectedResultSha256: ExactFileImageSha256` | Required SHA-256 of the decoded replacement bytes. |
+            | `#!kotlin mutationAttemptId: String?` | Optional canonical UUID-v4 verified mutation attempt. |
+            | `#!kotlin mutationScratch: MutationScratchSet?` | Required predeclared scratch authority when mutationAttemptId is present. |
+        === "Output: ExactFileImageResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin filePath: ExactFileImagePath` | Normalized absolute path whose exact byte image committed. |
+            | `#!kotlin status: ExactFileImageStatus` | Closed successful terminal status. Conflicts and unsafe states are typed protocol errors. |
+            | `#!kotlin previousSha256: ExactFileImageSha256` | SHA-256 of the exact preimage bytes accepted by compare-and-swap. |
+            | `#!kotlin resultSha256: ExactFileImageSha256` | SHA-256 of the exact postimage bytes verified after commit. |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+        === "Internal protocol"
+
+            ```text
+            JSON-RPC method: raw/exact-file-image-cas
+            Params: see Request tab
+            ```
+        !!! note "Behavioral notes"
+
+            - Verified mutation requests supply a predeclared scratch set owned by the durable journal.
+            - A hash conflict or unsafe retained file state fails without reporting a commit.
+
+        **Error codes** &nbsp;·&nbsp; `VALIDATION_ERROR`, `CONFLICT`
+
+    ??? example "raw/inspect-mutation-scratch — Fence a mutation attempt and inspect its exact scratch namespace"
+
+        Admits one active mutation attempt and inspects only its journal-declared scratch sets and Kast-prefixed entries in the supplied target parents.
+
+        **Capability** &nbsp;·&nbsp; `MUTATION_SCRATCH_RECOVERY`
+
+        === "Input: MutationScratchInspectQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin mutationAttemptId: String` | Required canonical UUID-v4 attempt admitted by this inspection. |
+            | `#!kotlin workspaceRelativeParentPaths: List<String>` | Nonempty sorted unique canonical workspace-relative parent paths to inspect. |
+            | `#!kotlin ownedScratchSets: List<MutationScratchSet>` | Journal-owned scratch sets sorted uniquely by targetFilePath. |
+        === "Output: MutationScratchInspectResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin mutationAttemptId: MutationAttemptId` |  |
+            | `#!kotlin observations: List<MutationScratchObservation>` |  |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+        === "Internal protocol"
+
+            ```text
+            JSON-RPC method: raw/inspect-mutation-scratch
+            Params: see Request tab
+            ```
+        !!! note "Behavioral notes"
+
+            - Owned observations bind exact role paths; unowned Kast-prefixed entries remain explicit blockers.
+            - The result is strictly ordered and does not infer absence outside the inspected parents.
+
+        **Error codes** &nbsp;·&nbsp; `VALIDATION_ERROR`, `CONFLICT`
+
+    ??? example "raw/recover-mutation-scratch — Restore or finalize one journal-owned mutation scratch set"
+
+        Restores the exact preimage or finalizes the exact postimage using only one supplied journal-owned scratch set under the active mutation fence.
+
+        **Capability** &nbsp;·&nbsp; `MUTATION_SCRATCH_RECOVERY`
+
+        === "Input: MutationScratchRecoveryQuery"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin mutationAttemptId: String` | Required active canonical UUID-v4 mutation attempt. |
+            | `#!kotlin action: MutationScratchRecoveryAction` | Closed recovery action applied only to supplied journal authority. |
+            | `#!kotlin scratchDirection: MutationScratchDirection` | Closed direction that defines the exact image authorized for each scratch role. |
+            | `#!kotlin targetFilePath: String` | Normalized absolute recovery target path. |
+            | `#!kotlin preimage: MutationScratchRecoveryPreimage` | Exact target preimage, including explicit absence. |
+            | `#!kotlin postimage: ExactByteImage` | Exact target postimage. |
+            | `#!kotlin scratch: MutationScratchSet` | Exact journal-supplied scratch authority for this transition. |
+        === "Output: MutationScratchRecoveryResult"
+
+            | Signature | Description |
+            |-----------|-------------|
+            | `#!kotlin mutationAttemptId: MutationAttemptId` |  |
+            | `#!kotlin action: MutationScratchRecoveryAction` |  |
+            | `#!kotlin outcome: MutationScratchRecoveryOutcome` |  |
+            | `#!kotlin targetState: MutationScratchTargetState` |  |
+            | `#!kotlin targetSha256: ExactFileImageSha256?` |  |
+            | `#!kotlin scratchObservations: List<MutationScratchObservation>` |  |
+            | `#!kotlin schemaVersion: Int` | Protocol schema version for forward compatibility. |
+        === "Internal protocol"
+
+            ```text
+            JSON-RPC method: raw/recover-mutation-scratch
+            Params: see Request tab
+            ```
+        !!! note "Behavioral notes"
+
+            - scratchDirection defines which exact image each scratch role can contain.
+            - Success proves the selected target state and all four supplied scratch roles absent.
+
+        **Error codes** &nbsp;·&nbsp; `VALIDATION_ERROR`, `CONFLICT`
 
     ??? example "raw/optimize-imports — Optimize imports for one or more files"
 
@@ -1825,7 +2105,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "edits": [],
                     "fileHashes": [],
                     "affectedFiles": [],
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -1850,6 +2130,8 @@ daemon, including input/output schemas, examples, and behavioral notes.
             | `#!kotlin edits: List<TextEdit>` | Text edits to apply, typically from a prior rename or code action. |
             | `#!kotlin fileHashes: List<FileHash>` | Expected file hashes for conflict detection before writing. |
             | `#!kotlin fileOperations: List<FileOperation>` :material-information-outline:{ title="Default: emptyList()" } | Optional file create or delete operations to perform. |
+            | `#!kotlin mutationAttemptId: String?` | Optional canonical UUID-v4 verified mutation attempt. |
+            | `#!kotlin mutationScratchSets: List<MutationScratchSet>` :material-information-outline:{ title="Default: emptyList()" } | One predeclared scratch set per verified file operation. |
         === "Output: ApplyEditsResult"
 
             | Signature | Description |
@@ -1909,7 +2191,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     ],
                     "createdFiles": [],
                     "deletedFiles": [],
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"
@@ -2005,7 +2287,7 @@ daemon, including input/output schemas, examples, and behavioral notes.
                     "removedFileCount": 0,
                     "attemptCount": 1,
                     "elapsedMillis": 0,
-                    "schemaVersion": 5
+                    "schemaVersion": 6
                 },
                 "id": 1,
                 "jsonrpc": "2.0"

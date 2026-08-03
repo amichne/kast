@@ -367,4 +367,105 @@ mod tests {
 
         assert_eq!(first_type, "BY_OFFSET");
     }
+
+    #[test]
+    fn nested_variant_objects_reject_cross_variant_and_unknown_fields() {
+        let catalog = json!({
+            "commands": {
+                "raw/verify-mutation-postcondition": {
+                    "request": {
+                        "fields": {
+                            "authority": {
+                                "type": "object",
+                                "variantDiscriminator": "type",
+                                "fields": {
+                                    "type": {
+                                        "type": "string",
+                                        "enum": ["RENAME", "ADD_FILE"]
+                                    }
+                                },
+                                "variants": {
+                                    "RENAME": {
+                                        "fields": {
+                                            "proof": {"type": "object"},
+                                            "edits": {"type": "array", "items": "object"}
+                                        }
+                                    },
+                                    "ADD_FILE": {
+                                        "fields": {
+                                            "proof": {"type": "object"},
+                                            "postimage": {"type": "object"}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+        let schema = request_schema(&catalog, "raw/verify-mutation-postcondition")
+            .expect("nested variant schema");
+        let validator = jsonschema::validator_for(&schema).expect("schema compiles");
+        let request = |authority| json!({
+            "jsonrpc": "2.0",
+            "method": "raw/verify-mutation-postcondition",
+            "params": {"authority": authority},
+            "id": 1
+        });
+
+        assert!(validator.validate(&request(json!({
+            "type": "ADD_FILE",
+            "proof": {},
+            "postimage": {}
+        }))).is_ok());
+        assert!(validator.validate(&request(json!({
+            "type": "ADD_FILE",
+            "proof": {},
+            "edits": []
+        }))).is_err());
+        assert!(validator.validate(&request(json!({
+            "type": "RENAME",
+            "proof": {},
+            "edits": [],
+            "unexpected": true
+        }))).is_err());
+    }
+
+    #[test]
+    fn nested_variant_objects_reject_unprojected_common_fields() {
+        let catalog = json!({
+            "commands": {
+                "raw/verify-mutation-postcondition": {
+                    "request": {
+                        "fields": {
+                            "authority": {
+                                "type": "object",
+                                "fields": {
+                                    "type": {
+                                        "type": "string",
+                                        "enum": ["ADD_FILE"]
+                                    },
+                                    "workspaceRoot": {"type": "string"}
+                                },
+                                "variants": {
+                                    "ADD_FILE": {
+                                        "fields": {
+                                            "proof": {"type": "object"}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        let error = request_schema(&catalog, "raw/verify-mutation-postcondition")
+            .expect_err("unprojected common field must fail closed");
+
+        assert_eq!(error.code, "RPC_CATALOG_INVALID");
+        assert!(error.message.contains("only its discriminator"), "{error:?}");
+    }
 }

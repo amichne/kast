@@ -3,10 +3,13 @@ package io.github.amichne.kast.idea
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.application.readAction
+import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiManager
 import com.intellij.testFramework.DumbModeTestUtils
 import com.intellij.testFramework.junit5.TestApplication
 import com.intellij.testFramework.junit5.fixture.TestFixture
@@ -15,18 +18,25 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.contract.FileOperation
+import io.github.amichne.kast.api.contract.ExactFileImageBase64
+import io.github.amichne.kast.api.contract.ExactFileImagePath
+import io.github.amichne.kast.api.contract.ExactFileImageSha256
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.query.ExactFileImageQuery
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.result.AnalysisAvailabilityState
 import io.github.amichne.kast.api.contract.result.FileAnalysisState
 import io.github.amichne.kast.api.contract.result.FileSystemDiscoveryState
+import io.github.amichne.kast.api.contract.result.ExactFileImageStatus
 import io.github.amichne.kast.api.contract.result.IndexAdmissionState
 import io.github.amichne.kast.api.contract.result.SemanticAnalysisOutcome
 import io.github.amichne.kast.api.contract.result.SourceModuleOwnershipState
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.api.validation.FileHashing
 import kotlinx.coroutines.runBlocking
+import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -36,6 +46,7 @@ import org.jetbrains.kotlin.psi.KtFile
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
+import java.util.Base64
 import kotlin.system.measureTimeMillis
 
 @TestApplication
@@ -60,7 +71,7 @@ class KastSemanticAdmissionRefreshTest {
         """
     }
 
-    private val projectFixture: TestFixture<Project> = projectFixture()
+    private val projectFixture: TestFixture<Project> = projectFixture(openAfterCreation = true)
     private val moduleFixture: TestFixture<Module> = projectFixture.moduleFixture("main")
     private val productionRootFixture: TestFixture<PsiDirectory> = moduleFixture.sourceRootFixture()
     private val testRootFixture: TestFixture<PsiDirectory> = moduleFixture.sourceRootFixture(isTestSource = true)
@@ -252,6 +263,7 @@ class KastSemanticAdmissionRefreshTest {
     fun `file created through Kast edit application crosses the admission barrier`() = runBlocking {
         ensureProjectReady()
         val createdFile = productionRoot.resolve("KastCreated.kt")
+        val createdSource = "package admission\n\nfun caller(): Int = callee()\nfun callee(): Int = 2\n"
         val backend = backend()
 
         try {
@@ -259,7 +271,7 @@ class KastSemanticAdmissionRefreshTest {
                 ApplyEditsQuery(
                     edits = emptyList(),
                     fileHashes = emptyList(),
-                    fileOperations = listOf(FileOperation.CreateFile(createdFile.toString(), newSource)),
+                    fileOperations = listOf(FileOperation.CreateFile(createdFile.toString(), createdSource)),
                 ),
             )
             val refresh = backend.refresh(RefreshQuery(filePaths = listOf(createdFile.toString())))
@@ -267,9 +279,53 @@ class KastSemanticAdmissionRefreshTest {
 
             assertEquals(SemanticAnalysisOutcome.COMPLETE, refresh.semanticOutcome)
             assertEquals(FileAnalysisState.ANALYZED, diagnostics.fileStatuses.single().state)
+            assertEquals(0, diagnostics.severityCounts.error)
         } finally {
             Files.deleteIfExists(createdFile)
         }
+    }
+
+    @Test
+    fun `exact image CAS refreshes committed compiler PSI`() = runBlocking {
+        ensureProjectReady()
+        val seedFile = seedFileFixture.get().virtualFile
+        val filePath = Path.of(seedFile.path).toAbsolutePath().normalize()
+        val before = Files.readAllBytes(filePath)
+        val afterText = "package admission\n\nfun caller(): Int = callee()\nfun callee(): Int = 2\n"
+        val after = afterText.toByteArray()
+        val backend = backend()
+        readAction {
+            requireNotNull(FileDocumentManager.getInstance().getDocument(seedFile))
+        }
+        assertEquals(
+            SemanticAnalysisOutcome.COMPLETE,
+            backend.diagnostics(DiagnosticsQuery(filePaths = listOf(filePath.toString()))).semanticOutcome,
+        )
+
+        val result = backend.exactFileImageCas(
+            ExactFileImageQuery(
+                filePath = ExactFileImagePath(filePath.toString()),
+                expectedCurrentSha256 = ExactFileImageSha256(FileHashing.sha256(before)),
+                contentBase64 = ExactFileImageBase64(Base64.getEncoder().encodeToString(after)),
+                expectedResultSha256 = ExactFileImageSha256(FileHashing.sha256(after)),
+            ),
+        )
+        assertEquals(ExactFileImageStatus.COMMITTED, result.status)
+        assertArrayEquals(after, Files.readAllBytes(filePath))
+        assertEquals(
+            afterText,
+            readAction {
+                val current = requireNotNull(PsiManager.getInstance(project).findFile(seedFile))
+                (current as KtFile).text
+            },
+        )
+
+        val refresh = backend.refresh(RefreshQuery(filePaths = listOf(filePath.toString())))
+        val diagnostics = backend.diagnostics(DiagnosticsQuery(filePaths = listOf(filePath.toString())))
+
+        assertEquals(SemanticAnalysisOutcome.COMPLETE, refresh.semanticOutcome)
+        assertEquals(SemanticAnalysisOutcome.COMPLETE, diagnostics.semanticOutcome)
+        assertEquals(0, diagnostics.severityCounts.error)
     }
 
     @Test

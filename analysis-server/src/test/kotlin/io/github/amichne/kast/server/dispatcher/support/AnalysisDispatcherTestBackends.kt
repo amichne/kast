@@ -148,6 +148,8 @@ internal class MissingRefreshRenameBackend(
         return RenameResult.of(
             edits = result.edits,
             fileHashes = result.fileHashes,
+            fileImages = result.fileImages,
+            proof = result.proof,
             searchScope = result.searchScope,
         )
     }

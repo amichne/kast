@@ -3,6 +3,7 @@ package io.github.amichne.kast.idea.edit
 import com.intellij.openapi.vcs.ProjectLevelVcsManager
 import com.intellij.openapi.vcs.VcsConfiguration
 import com.intellij.openapi.vcs.VcsShowConfirmationOption
+import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.protocol.ConflictException
@@ -10,10 +11,14 @@ import io.github.amichne.kast.api.protocol.NotFoundException
 import io.github.amichne.kast.api.protocol.PartialApplyException
 import io.github.amichne.kast.api.protocol.UnsafeWorkspaceMutationException
 import io.github.amichne.kast.api.protocol.ValidationException
+import io.github.amichne.kast.api.contract.CreateFileParentPolicy
 import io.github.amichne.kast.api.validation.ValidatedFileEdits
 import io.github.amichne.kast.api.validation.ValidatedFileOperation
+import io.github.amichne.kast.api.validation.ParsedMutationScratchSet
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import org.jetbrains.kotlin.analysis.api.KaPlatformInterface
+import org.jetbrains.kotlin.analysis.api.platform.modification.publishGlobalSourceOutOfBlockModificationEvent
 import java.nio.file.Path
 import java.util.WeakHashMap
 import io.github.amichne.kast.idea.*
@@ -30,12 +35,17 @@ internal suspend fun IdeaEditApplier.applyFileOperations(
         operations: List<ValidatedFileOperation>,
         invocationId: String,
         workspaceRoot: Path,
+        mutationScratchSets: List<ParsedMutationScratchSet> = emptyList(),
     ): Triple<MutableList<String>, MutableList<String>, MutableList<String>> {
+        if (mutationScratchSets.isNotEmpty()) {
+            secureWorkspaceMutation.requireScratchBatchAbsent(mutationScratchSets)
+        }
         val affectedFiles = mutableListOf<String>()
         val createdFiles = mutableListOf<String>()
         val deletedFiles = mutableListOf<String>()
 
-        operations.forEach { operation ->
+        operations.forEachIndexed { operationIndex, operation ->
+            val scratch = mutationScratchSets.getOrNull(operationIndex)
             var committedMutation: SecureWorkspaceMutationResult? = null
             try {
                 when (operation) {
@@ -53,7 +63,26 @@ internal suspend fun IdeaEditApplier.applyFileOperations(
                         runFileOperationWriteAction {
                             val filePath = Path.of(operation.filePath).toAbsolutePath().normalize()
                             beforeSecureMutation(filePath, IdeaWorkspaceMutation.CREATE_FILE)
-                            val mutationResult = secureWorkspaceMutation.createFile(filePath, operation.content)
+                            val mutationResult = when (operation.parentPolicy) {
+                                CreateFileParentPolicy.CREATE_MISSING_PARENTS ->
+                                    check(scratch == null) {
+                                        "Parsed verified file creation cannot create parent directories"
+                                    }.let { secureWorkspaceMutation.createFile(filePath, operation.content) }
+
+                                CreateFileParentPolicy.REQUIRE_EXISTING_PARENTS ->
+                                    if (scratch == null) {
+                                        secureWorkspaceMutation.createFileRequiringExistingParents(
+                                            filePath,
+                                            operation.content,
+                                        )
+                                    } else {
+                                        secureWorkspaceMutation.createFileRequiringExistingParents(
+                                            filePath,
+                                            operation.content,
+                                            scratch,
+                                        )
+                                    }
+                            }
                             committedMutation = mutationResult
                             createdFiles += operation.filePath
                             affectedFiles += operation.filePath
@@ -65,11 +94,7 @@ internal suspend fun IdeaEditApplier.applyFileOperations(
                             expectedContent = operation.content,
                             mutation = IdeaWorkspaceMutation.CREATE_FILE,
                         )
-                        LocalFileSystem.getInstance().refreshAndFindFileByNioFile(Path.of(operation.filePath))
-                            ?: throw ValidationException(
-                                message = "Kast IDEA could not refresh the securely created file",
-                                details = mapOf("filePath" to operation.filePath),
-                            )
+                        admitCreatedFile(operation.filePath)
                         verifyPostWrite(
                             filePath = operation.filePath,
                             mutation = IdeaWorkspaceMutation.CREATE_FILE,
@@ -111,7 +136,11 @@ internal suspend fun IdeaEditApplier.applyFileOperations(
                         runFileOperationWriteAction {
                             val filePath = Path.of(operation.filePath).toAbsolutePath().normalize()
                             beforeSecureMutation(filePath, IdeaWorkspaceMutation.DELETE_FILE)
-                            val mutationResult = secureWorkspaceMutation.deleteFile(filePath, operation.expectedHash)
+                            val mutationResult = secureWorkspaceMutation.deleteFile(
+                                filePath,
+                                operation.expectedHash,
+                                scratch,
+                            )
                             committedMutation = mutationResult
                             deletedFiles += operation.filePath
                             affectedFiles += operation.filePath
@@ -151,6 +180,16 @@ internal suspend fun IdeaEditApplier.applyFileOperations(
                 }
             } catch (exception: Exception) {
                 if (exception is PartialApplyException) throw exception
+                exception.rethrowIfMutationCancellation(
+                    partialApplyFailure(
+                        failedFile = operation.filePath,
+                        appliedFiles = affectedFiles,
+                        createdFiles = createdFiles,
+                        deletedFiles = deletedFiles,
+                        exception = exception,
+                        committedMutation = committedMutation,
+                    ),
+                )
                 if (exception.isTypedSecureMutationFailure() && affectedFiles.isEmpty()) {
                     throw exception
                 }
@@ -220,9 +259,8 @@ internal fun SecureWorkspaceMutationResult.requireNoRecovery(
                 "appliedFiles" to appliedFiles.joinToString(","),
                 "createdFiles" to createdFiles.joinToString(","),
                 "deletedFiles" to deletedFiles.joinToString(","),
-                "recoveryFilePaths" to recoveryFilePaths.joinToString(","),
                 "reason" to "Committed filesystem mutation retained recovery entries",
-            ),
+            ) + indexedRecoveryFilePaths(recoveryFilePaths),
         )
     }
 
@@ -262,10 +300,31 @@ internal fun IdeaEditApplier.partialApplyDetails(
 
 internal fun SecureWorkspaceMutationResult?.recoveryDetails(): Map<String, String> =
         if (this is SecureWorkspaceMutationResult.CommittedWithRecovery) {
-            mapOf("recoveryFilePaths" to recoveryFilePaths.joinToString(","))
+            indexedRecoveryFilePaths(recoveryFilePaths)
         } else {
             emptyMap()
         }
+
+private fun indexedRecoveryFilePaths(paths: List<Path>): Map<String, String> = buildMap {
+    put("recoveryFilePathCount", paths.size.toString())
+    paths.forEachIndexed { index, path ->
+        put("recoveryFilePath.$index", path.toString())
+    }
+}
+
+@OptIn(KaPlatformInterface::class)
+private fun IdeaEditApplier.admitCreatedFile(filePath: String) {
+    val target = Path.of(filePath).toAbsolutePath().normalize()
+    if (LocalFileSystem.getInstance().refreshAndFindFileByNioFile(target) == null) {
+        throw ValidationException(
+            message = "Kast IDEA could not refresh the securely created file",
+            details = mapOf("filePath" to filePath),
+        )
+    }
+    WriteAction.runAndWait<RuntimeException> {
+        project.publishGlobalSourceOutOfBlockModificationEvent()
+    }
+}
 
 internal suspend fun <T> IdeaEditApplier.withVcsFileOperationConfirmationsSuppressed(
         fileOperations: List<ValidatedFileOperation>,

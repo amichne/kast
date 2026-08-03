@@ -1,4 +1,4 @@
-use crate::cli::CodexHookEvent;
+use crate::cli::{CodexHookEvent, KastHarness};
 use crate::config::{CodexHooksConfig, KastConfig};
 use crate::error::{CliError, Result};
 use serde::Deserialize;
@@ -11,6 +11,87 @@ use std::process::Command;
 
 const KOTLIN_SOURCE_SUFFIX: &str = concat!(".", "kt");
 const KOTLIN_SCRIPT_SUFFIX: &str = concat!(".", "kts");
+const AGENT_PROVIDER_ENV: &str = "KAST_AGENT_PROVIDER";
+const AGENT_RESOURCE_ROOT_ENV: &str = "KAST_AGENT_RESOURCE_ROOT";
+
+#[derive(Debug)]
+struct AgentHarnessActivation {
+    harness: KastHarness,
+    plugin_root: PathBuf,
+}
+
+#[derive(Debug)]
+struct AgentHarnessActivationFailure {
+    harness: Option<KastHarness>,
+    error: CliError,
+}
+
+impl AgentHarnessActivation {
+    fn from_environment(
+        event: CodexHookEvent,
+    ) -> std::result::Result<Option<Self>, AgentHarnessActivationFailure> {
+        if !matches!(
+            event,
+            CodexHookEvent::SessionStart | CodexHookEvent::PreToolUse
+        ) {
+            return Ok(None);
+        }
+        let provider = std::env::var_os(AGENT_PROVIDER_ENV).ok_or_else(|| {
+            activation_identity_failure(
+                None,
+                "Kast agent-harness provider identity is required for activation.",
+            )
+        })?;
+        let harness = match provider.to_str() {
+            Some("codex") => KastHarness::Codex,
+            Some("claude") => KastHarness::Claude,
+            Some("copilot") => KastHarness::Copilot,
+            Some(provider) => {
+                return Err(activation_identity_failure(
+                    None,
+                    format!("Unknown agent harness `{provider}`."),
+                ));
+            }
+            None => {
+                return Err(activation_identity_failure(
+                    None,
+                    "Kast agent-harness provider identity must be UTF-8.",
+                ));
+            }
+        };
+        let plugin_root = std::env::var_os(AGENT_RESOURCE_ROOT_ENV).ok_or_else(|| {
+            activation_identity_failure(
+                Some(harness),
+                "Kast agent-harness resource-root identity is required for activation.",
+            )
+        })?;
+        let plugin_root = PathBuf::from(plugin_root);
+        if !plugin_root.is_absolute() {
+            return Err(activation_identity_failure(
+                Some(harness),
+                "Kast agent-harness resource-root identity must be absolute.",
+            ));
+        }
+        Ok(Some(Self {
+            harness,
+            plugin_root,
+        }))
+    }
+
+    fn validate(&self) -> Result<()> {
+        crate::install::validate_agent_harness_activation(self.harness, &self.plugin_root)
+    }
+}
+
+fn activation_identity_failure(
+    harness: Option<KastHarness>,
+    message: impl Into<String>,
+) -> AgentHarnessActivationFailure {
+    AgentHarnessActivationFailure {
+        harness,
+        error: CliError::new("KAST_AGENT_RESOURCES_INCOMPATIBLE", message),
+    }
+}
 
 #[derive(Debug, Deserialize)]
 struct HookInput {
@@ -25,19 +106,79 @@ struct HookInput {
 }
 
 pub(crate) fn run(event: CodexHookEvent) -> Result<i32> {
-    let output = evaluate(event).unwrap_or_else(|error| {
-        additional_context(event, format!("{}: {}", error.code, error.message))
-    });
+    let activation = match AgentHarnessActivation::from_environment(event) {
+        Ok(activation) => activation,
+        Err(failure) => {
+            print_json(&activation_rejection(
+                event,
+                failure.harness,
+                &failure.error,
+            ))?;
+            return Ok(0);
+        }
+    };
+    let harness = activation.as_ref().map(|activation| activation.harness);
+    let output = activation
+        .as_ref()
+        .map(AgentHarnessActivation::validate)
+        .transpose()
+        .and_then(|_| evaluate(event))
+        .unwrap_or_else(|error| {
+            if error.code == "KAST_AGENT_RESOURCES_INCOMPATIBLE" {
+                activation_rejection(event, harness, &error)
+            } else {
+                additional_context(event, format!("{}: {}", error.code, error.message))
+            }
+        });
     print_json(&output)?;
     Ok(0)
 }
 
 fn evaluate(event: CodexHookEvent) -> Result<Value> {
+    if event == CodexHookEvent::PreToolUse {
+        return Ok(json!({}));
+    }
     if !hook_enabled(&KastConfig::load_global()?.codex.hooks, event) {
         return Ok(json!({}));
     }
     let input = read_input()?;
     evaluate_with_runner(event, input, run_kast)
+}
+
+fn activation_rejection(
+    event: CodexHookEvent,
+    harness: Option<KastHarness>,
+    error: &CliError,
+) -> Value {
+    let details = error
+        .details
+        .iter()
+        .map(|(key, value)| format!("{key}: {value}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let message = if details.is_empty() {
+        format!("{}: {}", error.code, error.message)
+    } else {
+        format!("{}: {}\n{details}", error.code, error.message)
+    };
+    if event == CodexHookEvent::PreToolUse {
+        json!({
+            "permissionDecision": "deny",
+            "permissionDecisionReason": message,
+        })
+    } else if harness == Some(KastHarness::Copilot) {
+        json!({"additionalContext": message})
+    } else {
+        json!({
+            "continue": false,
+            "stopReason": error.message,
+            "systemMessage": message,
+            "hookSpecificOutput": {
+                "hookEventName": event.codex_name(),
+                "additionalContext": message
+            }
+        })
+    }
 }
 
 fn evaluate_with_runner(
@@ -51,6 +192,7 @@ fn evaluate_with_runner(
     };
     Ok(match event {
         CodexHookEvent::SessionStart => session_start_with_runner(&workspace, runner),
+        CodexHookEvent::PreToolUse => json!({}),
         CodexHookEvent::PostToolUse => post_tool_use_with_runner(&input, &workspace, &cwd, runner),
     })
 }
@@ -59,6 +201,7 @@ fn hook_enabled(config: &CodexHooksConfig, event: CodexHookEvent) -> bool {
     config.enabled
         && match event {
             CodexHookEvent::SessionStart => config.session_start,
+            CodexHookEvent::PreToolUse => true,
             CodexHookEvent::PostToolUse => config.post_tool_use,
         }
 }

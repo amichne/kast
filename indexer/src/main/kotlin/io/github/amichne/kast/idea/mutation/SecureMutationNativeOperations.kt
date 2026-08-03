@@ -4,7 +4,10 @@ import com.sun.jna.Memory
 import com.sun.jna.Native
 import com.sun.jna.NativeLong
 import io.github.amichne.kast.api.protocol.UnsafeWorkspaceMutationException
+import io.github.amichne.kast.api.protocol.ConflictException
 import java.io.ByteArrayOutputStream
+import java.nio.CharBuffer
+import java.nio.charset.CodingErrorAction
 import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.util.UUID
@@ -17,8 +20,30 @@ internal fun SecureWorkspaceMutation.moveToUniqueName(
         target: Path,
         platform: PosixPlatform,
         phase: SecureWorkspaceRenamePhase,
-        sourceMissing: () -> Nothing,
-    ): String {
+    sourceMissing: () -> Nothing,
+    exactDestinationName: String? = null,
+): String {
+        if (exactDestinationName != null) {
+            return when (
+                renameNoReplace(
+                    parent = parent,
+                    sourceName = sourceName,
+                    destinationName = exactDestinationName,
+                    target = target,
+                    platform = platform,
+                    phase = phase,
+                )
+            ) {
+                RenameNoReplaceOutcome.MOVED -> exactDestinationName
+                RenameNoReplaceOutcome.DESTINATION_EXISTS -> throw ConflictException(
+                    message = "A predeclared mutation scratch path is already occupied",
+                    details = failureDetails(target, "scratch-destination-exists") + mapOf(
+                        "scratchFilePath" to target.parent.resolve(exactDestinationName).toString(),
+                    ),
+                )
+                RenameNoReplaceOutcome.SOURCE_MISSING -> sourceMissing()
+            }
+        }
         repeat(MAX_UNIQUE_NAME_ATTEMPTS) {
             val destinationName = "$prefix${UUID.randomUUID()}"
             when (
@@ -186,7 +211,7 @@ internal fun SecureWorkspaceMutation.writeFully(api: PosixFileApi, descriptor: I
         }
     }
 
-internal fun SecureWorkspaceMutation.readFully(api: PosixFileApi, descriptor: Int, target: Path): String {
+internal fun SecureWorkspaceMutation.readFullyBytes(api: PosixFileApi, descriptor: Int, target: Path): ByteArray {
         val output = ByteArrayOutputStream()
         val buffer = Memory(BUFFER_SIZE.toLong())
         while (true) {
@@ -197,7 +222,17 @@ internal fun SecureWorkspaceMutation.readFully(api: PosixFileApi, descriptor: In
             }
             output.write(buffer.getByteArray(0, read.toInt()))
         }
-        return output.toString(StandardCharsets.UTF_8)
+        return output.toByteArray()
+    }
+
+internal fun strictUtf8Bytes(content: String): ByteArray = try {
+        val encoded = StandardCharsets.UTF_8.newEncoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT)
+            .encode(CharBuffer.wrap(content))
+        ByteArray(encoded.remaining()).also(encoded::get)
+    } catch (exception: Exception) {
+        throw IllegalArgumentException("Workspace mutation text must be strict UTF-8", exception)
     }
 
 internal fun SecureWorkspaceMutation.descriptorStatus(

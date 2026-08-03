@@ -1,0 +1,9 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "raw/plan-add-file",
+  "params": {
+    "proposedContent": "example-proposedContent",
+    "targetPath": "example-targetPath"
+  }
+}

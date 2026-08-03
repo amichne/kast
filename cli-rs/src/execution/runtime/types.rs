@@ -70,10 +70,17 @@ pub enum ReferenceCoverageState {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SemanticMutationCapability {
     ApplyEdits,
+    ExactFileObservation,
+    ExactFileImageCas,
     FileOperations,
     OptimizeImports,
+    PlanAddDeclaration,
+    PlanAddFile,
+    PlanReplacement,
     RefreshWorkspace,
     Rename,
+    MutationScratchRecovery,
+    VerifyMutationPostcondition,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

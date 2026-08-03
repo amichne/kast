@@ -7,37 +7,7 @@ fn agent_scope_mutations_without_apply_return_typed_request_plans() {
     std::fs::write(&content_file, "fun added() = Unit\n").expect("snippet");
     let workspace = temp.path().join("workspace");
     std::fs::create_dir_all(&workspace).expect("workspace");
-    let target_file = workspace.join("Added.kt");
-
     let cases = [
-        (
-            "add-file",
-            vec![
-                "agent",
-                "add-file",
-                "--file-path",
-                target_file.to_str().expect("target"),
-                "--content-file",
-                content_file.to_str().expect("snippet"),
-            ],
-            "agent/add-file",
-            "symbol/add-file",
-        ),
-        (
-            "add-declaration",
-            vec![
-                "agent",
-                "add-declaration",
-                "--inside-file",
-                target_file.to_str().expect("target"),
-                "--at",
-                "file-bottom",
-                "--content-file",
-                content_file.to_str().expect("snippet"),
-            ],
-            "agent/add-declaration",
-            "symbol/add-declaration",
-        ),
         (
             "add-implementation",
             vec![
@@ -67,21 +37,6 @@ fn agent_scope_mutations_without_apply_return_typed_request_plans() {
             ],
             "agent/add-statement",
             "symbol/add-statement",
-        ),
-        (
-            "replace-declaration",
-            vec![
-                "agent",
-                "replace-declaration",
-                "--symbol",
-                "sample.greet",
-                "--kind",
-                "function",
-                "--content-file",
-                content_file.to_str().expect("snippet"),
-            ],
-            "agent/replace-declaration",
-            "symbol/replace-declaration",
         ),
     ];
 
@@ -142,6 +97,7 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("replace-handle.sock");
     let content_file = temp.path().join("replacement.kt");
     std::fs::create_dir_all(&workspace).expect("workspace");
     std::fs::write(
@@ -149,8 +105,40 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
         "rootProject.name = \"replace-handle\"\n",
     )
     .expect("Gradle workspace marker");
-    std::fs::write(&content_file, "fun greet() = \"replacement\"\n").expect("replacement");
+    let source = "class OrderService { fun process(): String = \"old\" }\n";
+    let proposed = "fun process(): String = \"😀\" + helper()\n";
+    std::fs::write(workspace.join("Keywords.kt"), source).expect("source fixture");
+    std::fs::write(workspace.join("Helpers.kt"), "fun helper() = \"ok\"\n")
+        .expect("helper fixture");
+    std::fs::write(&content_file, proposed).expect("replacement");
     let selector_handle = "ksh1.replace-handle";
+    let canonical_workspace = workspace.canonicalize().expect("canonical workspace");
+    let backend = spawn_scripted_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        vec![
+            (
+                "selector/identity",
+                json!({
+                    "type": "AVAILABLE",
+                    "identity": {
+                        "fqName": "io.example.OrderService.process",
+                        "kind": "FUNCTION",
+                        "declarationFile": workspace.join("Keywords.kt").display().to_string(),
+                        "declarationStartOffset": 10,
+                        "containingType": "io.example.OrderService",
+                    },
+                    "schemaVersion": api_schema_version(),
+                }),
+            ),
+            (
+                "raw/plan-replacement",
+                exact_replacement_preview(&canonical_workspace, source, proposed),
+            ),
+        ],
+    );
 
     let plan = kast(&home, &config_home)
         .args([
@@ -184,10 +172,18 @@ fn selector_handle_replace_declaration_preserves_plan_and_distinct_apply_authori
         "REPLACE_DECLARATION_BY_SELECTOR_HANDLE_REQUEST",
     );
     assert_eq!(plan["result"]["plan"]["selectorHandle"], selector_handle,);
+    assert_eq!(
+        plan["result"]["plan"]["preview"]["proof"]["target"]["fqName"],
+        "io.example.OrderService.process",
+    );
     assert!(
         plan["result"]["plan"].get("symbol").is_none(),
         "handle plan must not reconstruct a symbol selector: {plan}",
     );
+    let requests = backend.join().expect("replace handle backend");
+    assert_eq!(requests[2]["method"], "selector/identity");
+    assert_eq!(requests[2]["params"]["family"], "REPLACE_DECLARATION",);
+    assert_eq!(requests[3]["method"], "raw/plan-replacement");
 
     let missing_key = kast(&home, &config_home)
         .args([
@@ -259,32 +255,6 @@ fn relative_file_targets_are_canonical_in_mutation_plans() {
         .to_string();
 
     let cases = [
-        (
-            "add-file",
-            vec![
-                "agent",
-                "add-file",
-                "--file-path",
-                "src/generated/New File.kt",
-                "--content-file",
-                content_file.to_str().expect("snippet"),
-            ],
-            &["filePath"][..],
-        ),
-        (
-            "add-declaration",
-            vec![
-                "agent",
-                "add-declaration",
-                "--inside-file",
-                "src/generated/New File.kt",
-                "--at",
-                "file-bottom",
-                "--content-file",
-                content_file.to_str().expect("snippet"),
-            ],
-            &["placement", "scope", "insideFile"][..],
-        ),
         (
             "add-implementation",
             vec![

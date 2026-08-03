@@ -11,9 +11,9 @@ import kotlinx.serialization.Serializable
 data class Location(
     @DocField(description = "Absolute path to the source file containing this location.")
     val filePath: String,
-    @DocField(description = "Zero-based byte offset of the start of the symbol.")
+    @DocField(description = "Zero-based IntelliJ UTF-16 code-unit offset of the start of the symbol.")
     val startOffset: Int,
-    @DocField(description = "Zero-based byte offset one past the end of the symbol.")
+    @DocField(description = "Zero-based IntelliJ UTF-16 code-unit offset one past the end of the symbol.")
     val endOffset: Int,
     @DocField(description = "One-based line number of the start position.")
     val startLine: Int,

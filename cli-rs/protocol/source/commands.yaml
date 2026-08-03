@@ -14,6 +14,14 @@ categories:
   - raw/semantic-insertion-point
   - raw/diagnostics
   - raw/rename
+  - raw/plan-replacement
+  - raw/plan-add-file
+  - raw/plan-add-declaration
+  - raw/exact-file-image-cas
+  - raw/exact-file-observation
+  - raw/inspect-mutation-scratch
+  - raw/recover-mutation-scratch
+  - raw/verify-mutation-postcondition
   - raw/optimize-imports
   - raw/apply-edits
   - raw/workspace-refresh
@@ -321,6 +329,31 @@ commands:
           items: object
           optional: true
           type: array
+        mutationAttemptId:
+          optional: true
+          type: string
+        mutationScratchSets:
+          items:
+            fields:
+              preparedCleanupPath:
+                type: string
+              preparedPath:
+                type: string
+              quarantineCleanupPath:
+                type: string
+              quarantinePath:
+                type: string
+              targetFilePath:
+                type: string
+            required:
+            - targetFilePath
+            - quarantinePath
+            - preparedPath
+            - preparedCleanupPath
+            - quarantineCleanupPath
+            type: object
+          optional: true
+          type: array
       required:
       - edits
       - fileHashes
@@ -445,6 +478,72 @@ commands:
     tool:
       description: Run Kotlin diagnostics on listed files. Run after any mutation that did not already validate; treat dirty results as a failed change.
       name: kast_diagnostics
+  raw/exact-file-image-cas:
+    category: raw
+    dataSource: backend
+    method: raw/exact-file-image-cas
+    notes:
+    - The request carries canonical standard Base64 and lowercase SHA-256 evidence for the exact replacement bytes.
+    - Only COMMITTED is a result; conflicts and unsafe retained editor state are typed protocol errors.
+    request:
+      fields:
+        contentBase64:
+          type: string
+        expectedCurrentSha256:
+          type: string
+        expectedResultSha256:
+          type: string
+        filePath:
+          type: string
+        mutationAttemptId:
+          optional: true
+          type: string
+        mutationScratch:
+          fields:
+            preparedCleanupPath:
+              type: string
+            preparedPath:
+              type: string
+            quarantineCleanupPath:
+              type: string
+            quarantinePath:
+              type: string
+            targetFilePath:
+              type: string
+          optional: true
+          required:
+          - targetFilePath
+          - quarantinePath
+          - preparedPath
+          - preparedCleanupPath
+          - quarantineCleanupPath
+          type: object
+      required:
+      - filePath
+      - expectedCurrentSha256
+      - contentBase64
+      - expectedResultSha256
+    responseType: ExactFileImageResult
+    summary: Commit one exact file byte image with compare-and-swap
+  raw/exact-file-observation:
+    category: raw
+    dataSource: backend
+    method: raw/exact-file-observation
+    notes:
+    - The path is canonical workspace-relative input and cannot escape the exact workspace root.
+    - The closed result is ABSENT or PRESENT with canonical Base64 and lowercase SHA-256 evidence.
+    request:
+      fields:
+        filePath:
+          sample: src/main/kotlin/example/Widget.kt
+          type: string
+        mutationAttemptId:
+          optional: true
+          type: string
+      required:
+      - filePath
+    responseType: RawExactFileObservationResult
+    summary: Observe one canonical workspace-relative file as an exact byte image
   raw/file-outline:
     category: raw
     dataSource: backend
@@ -483,6 +582,50 @@ commands:
       - position
     responseType: ImplementationsResult
     summary: Find concrete implementations and subclasses for a declaration
+  raw/inspect-mutation-scratch:
+    category: raw
+    dataSource: backend
+    method: raw/inspect-mutation-scratch
+    notes:
+    - The top-level mutation attempt is the active backend fence epoch; owned scratch names can retain an older journal-owned epoch.
+    - The result closes every owned role and every unowned Kast-prefixed entry in the requested target parents.
+    request:
+      fields:
+        mutationAttemptId:
+          sample: 00000000-0000-4000-8000-000000000337
+          type: string
+        ownedScratchSets:
+          items:
+            fields:
+              preparedCleanupPath:
+                type: string
+              preparedPath:
+                type: string
+              quarantineCleanupPath:
+                type: string
+              quarantinePath:
+                type: string
+              targetFilePath:
+                type: string
+            required:
+            - targetFilePath
+            - quarantinePath
+            - preparedPath
+            - preparedCleanupPath
+            - quarantineCleanupPath
+            type: object
+          type: array
+        workspaceRelativeParentPaths:
+          items: string
+          sample:
+          - src/main/kotlin/example
+          type: array
+      required:
+      - mutationAttemptId
+      - workspaceRelativeParentPaths
+      - ownedScratchSets
+    responseType: MutationScratchInspectResult
+    summary: Fence a mutation attempt and inspect its exact scratch namespace
   raw/optimize-imports:
     category: raw
     dataSource: backend
@@ -496,6 +639,180 @@ commands:
       - filePaths
     responseType: ImportOptimizeResult
     summary: Optimize imports for one or more files
+  raw/plan-add-declaration:
+    category: raw
+    dataSource: backend
+    method: raw/plan-add-declaration
+    notes:
+    - The result is non-mutating and binds the exact target preimage and postimage.
+    - The only supported insertion is compiler FILE_BOTTOM with the closed preserve-existing append blank-line final-LF policy.
+    request:
+      fields:
+        expectedCurrentSha256:
+          type: string
+        proposedDeclaration:
+          type: string
+        targetPath:
+          type: string
+      required:
+      - targetPath
+      - expectedCurrentSha256
+      - proposedDeclaration
+    responseType: AddDeclarationPlanResult
+    summary: Plan a compiler-proven top-level Kotlin declaration addition
+  raw/plan-add-file:
+    category: raw
+    dataSource: backend
+    method: raw/plan-add-file
+    notes:
+    - The result is non-mutating and proves the exact target is absent.
+    - The result binds canonical source ownership, collision and rebinding coverage, compiler occurrences, and the exact UTF-8 postimage.
+    request:
+      fields:
+        proposedContent:
+          type: string
+        targetPath:
+          type: string
+      required:
+      - targetPath
+      - proposedContent
+    responseType: AddFilePlanResult
+    summary: Plan a compiler-proven Kotlin source file addition
+  raw/plan-replacement:
+    category: raw
+    dataSource: backend
+    method: raw/plan-replacement
+    notes:
+    - The result is non-mutating and includes exact compiler proof, one source-file hash, and one replacement edit.
+    - Only Kotlin function and property declarations with equal compiler-observable signatures are supported.
+    request:
+      fields:
+        proposedDeclaration:
+          type: string
+        target:
+          fields:
+            containingType:
+              nullable: true
+              optional: true
+              type: string
+            declarationFile:
+              type: string
+            declarationStartOffset:
+              type: integer
+            fqName:
+              type: string
+            kind:
+              enum:
+              - FUNCTION
+              - PROPERTY
+              type: string
+          required:
+          - fqName
+          - kind
+          - declarationFile
+          - declarationStartOffset
+          type: object
+      required:
+      - target
+      - proposedDeclaration
+    responseType: ReplacementPlanResult
+    summary: Plan an identity-preserving function or property replacement
+  raw/recover-mutation-scratch:
+    category: raw
+    dataSource: backend
+    method: raw/recover-mutation-scratch
+    notes:
+    - Recovery holds the active mutation fence and consumes only the four exact journal-owned role paths.
+    - A successful result proves the selected target image and all four scratch roles absent.
+    request:
+      fields:
+        action:
+          enum:
+          - RESTORE_PREIMAGE
+          - FINALIZE_POSTIMAGE
+          type: string
+        mutationAttemptId:
+          sample: 00000000-0000-4000-8000-000000000337
+          type: string
+        postimage:
+          fields:
+            contentBase64:
+              type: string
+            sha256:
+              type: string
+          required:
+          - contentBase64
+          - sha256
+          type: object
+        preimage:
+          fields:
+            state:
+              enum:
+              - ABSENT
+              - PRESENT
+              type: string
+          required:
+          - state
+          sample:
+            image:
+              contentBase64: YQ==
+              sha256: ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb
+            state: PRESENT
+          type: object
+          variantDiscriminator: state
+          variants:
+            ABSENT:
+              fields: {}
+            PRESENT:
+              fields:
+                image:
+                  fields:
+                    contentBase64:
+                      type: string
+                    sha256:
+                      type: string
+                  required:
+                  - contentBase64
+                  - sha256
+                  type: object
+              required:
+              - image
+        scratch:
+          fields:
+            preparedCleanupPath:
+              type: string
+            preparedPath:
+              type: string
+            quarantineCleanupPath:
+              type: string
+            quarantinePath:
+              type: string
+            targetFilePath:
+              type: string
+          required:
+          - targetFilePath
+          - quarantinePath
+          - preparedPath
+          - preparedCleanupPath
+          - quarantineCleanupPath
+          type: object
+        scratchDirection:
+          enum:
+          - FORWARD
+          - RESTORE_PREIMAGE
+          type: string
+        targetFilePath:
+          type: string
+      required:
+      - mutationAttemptId
+      - action
+      - scratchDirection
+      - targetFilePath
+      - preimage
+      - postimage
+      - scratch
+    responseType: MutationScratchRecoveryResult
+    summary: Restore or finalize one exact journal-owned mutation scratch set
   raw/references:
     category: raw
     dataSource: backend
@@ -670,6 +987,92 @@ commands:
       - position
     responseType: TypeHierarchyResult
     summary: Expand supertypes and subtypes from a resolved symbol
+  raw/verify-mutation-postcondition:
+    category: raw
+    dataSource: backend
+    method: raw/verify-mutation-postcondition
+    notes:
+    - The authority is the exact persisted rename, replacement, add-file, or add-declaration proof.
+    - Only VERIFIED with deterministic postimage hashes and operation-specific compiler evidence is a successful result.
+    request:
+      fields:
+        authority:
+          fields:
+            type:
+              enum:
+              - RENAME
+              - REPLACEMENT
+              - ADD_FILE
+              - ADD_DECLARATION
+              type: string
+          required:
+          - type
+          sample:
+            postimage:
+              contentBase64: Y2xhc3MgV2lkZ2V0Cg==
+              sha256: 889676b7bc43cb549308dfee73eb4796b677424e6d54709c5db84d886df12f37
+            proof: {}
+            type: ADD_FILE
+          type: object
+          variantDiscriminator: type
+          variants:
+            ADD_DECLARATION:
+              fields:
+                image:
+                  type: object
+                proof:
+                  type: object
+              required:
+              - proof
+              - image
+            ADD_FILE:
+              fields:
+                postimage:
+                  fields:
+                    contentBase64:
+                      type: string
+                    sha256:
+                      type: string
+                  required:
+                  - contentBase64
+                  - sha256
+                  type: object
+                proof:
+                  type: object
+              required:
+              - proof
+              - postimage
+            RENAME:
+              fields:
+                edits:
+                  items: object
+                  type: array
+                images:
+                  items: object
+                  type: array
+                proof:
+                  type: object
+              required:
+              - proof
+              - edits
+              - images
+            REPLACEMENT:
+              fields:
+                edit:
+                  type: object
+                images:
+                  items: object
+                  type: array
+                proof:
+                  type: object
+              required:
+              - proof
+              - edit
+              - images
+      required:
+      - authority
+    responseType: MutationPostconditionResult
+    summary: Verify compiler-backed postconditions for one exact mutation authority
   raw/workspace-files:
     category: raw
     dataSource: backend

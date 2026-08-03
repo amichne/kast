@@ -2,8 +2,16 @@
   "hooks": {
     "sessionStart": [
       {
-        "bash": "\"${HOME}/.local/bin/kast\"",
-        "powershell": "& \"$HOME\\.local\\bin\\kast\"",
+        "bash": "KAST_AGENT_PROVIDER=copilot KAST_AGENT_RESOURCE_ROOT=\"${PLUGIN_ROOT}\" \"${KAST_HOME:-${HOME}/.local/share/kast}/current/libexec/kastctl\" developer agent-hook session-start",
+        "powershell": "$env:KAST_AGENT_PROVIDER='copilot'; $env:KAST_AGENT_RESOURCE_ROOT='${PLUGIN_ROOT}'; $kastHome=if ($env:KAST_HOME) { $env:KAST_HOME } else { Join-Path $HOME '.local/share/kast' }; & (Join-Path $kastHome 'current/libexec/kastctl') developer agent-hook session-start",
+        "timeoutSec": 30,
+        "type": "command"
+      }
+    ],
+    "preToolUse": [
+      {
+        "bash": "KAST_AGENT_PROVIDER=copilot KAST_AGENT_RESOURCE_ROOT=\"${PLUGIN_ROOT}\" \"${KAST_HOME:-${HOME}/.local/share/kast}/current/libexec/kastctl\" developer agent-hook pre-tool-use",
+        "powershell": "$env:KAST_AGENT_PROVIDER='copilot'; $env:KAST_AGENT_RESOURCE_ROOT='${PLUGIN_ROOT}'; $kastHome=if ($env:KAST_HOME) { $env:KAST_HOME } else { Join-Path $HOME '.local/share/kast' }; & (Join-Path $kastHome 'current/libexec/kastctl') developer agent-hook pre-tool-use",
         "timeoutSec": 30,
         "type": "command"
       }

@@ -104,6 +104,144 @@ fn agent_rename_without_apply_returns_identity_first_plan_without_applied_mutati
 }
 
 #[test]
+fn agent_rename_preview_preserves_exact_compiler_proof() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("rename-proof.sock");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"rename-proof\"\n",
+    )
+    .expect("Gradle workspace marker");
+    std::fs::write(
+        workspace.join("Keywords.kt"),
+        "package io.example\nclass OrderService { fun process() = Unit }\n",
+    )
+    .expect("Kotlin declaration fixture");
+    std::fs::write(
+        workspace.join("Usage.kt"),
+        "package io.example\nservice.process()\n",
+    )
+    .expect("Kotlin reference fixture");
+    let backend = spawn_scripted_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        vec![
+            (
+                "symbol/resolve",
+                symbol_result(&workspace, "io.example.OrderService.process"),
+            ),
+            (
+                "raw/rename",
+                rename_preview_with_exact_reference(&workspace, "processSafely"),
+            ),
+        ],
+    );
+
+    let output = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "rename",
+            "--symbol",
+            "io.example.OrderService.process",
+            "--new-name",
+            "processSafely",
+            "--kind",
+            "function",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("agent rename proof preview");
+
+    assert!(
+        output.status.success(),
+        "rename proof preview should succeed: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    let stdout: Value = serde_json::from_slice(&output.stdout).expect("rename proof JSON");
+    let proof = &stdout["result"]["plan"]["preview"]["proof"];
+    assert_eq!(proof["target"]["fqName"], "io.example.OrderService.process");
+    assert_eq!(proof["requiredGeneration"], 7);
+    assert_eq!(proof["evidence"]["type"], "COMPLETE");
+    assert_eq!(proof["evidence"]["cardinality"]["totalCount"], 1);
+    assert_eq!(proof["occurrences"].as_array().map(Vec::len), Some(1));
+    assert_eq!(proof["occurrences"][0]["resolvedTarget"], proof["target"]);
+    assert_eq!(proof["occurrences"][0]["provenance"], "COMPILER");
+    backend.join().expect("rename proof backend");
+}
+
+#[test]
+fn agent_rename_preview_rejects_proof_for_another_resolved_target() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("rename-proof-mismatch.sock");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(
+        workspace.join("settings.gradle.kts"),
+        "rootProject.name = \"rename-proof-mismatch\"\n",
+    )
+    .expect("Gradle workspace marker");
+    std::fs::write(
+        workspace.join("Keywords.kt"),
+        "package io.example\nclass OrderService { fun process() = Unit }\n",
+    )
+    .expect("Kotlin declaration fixture");
+    let mut mismatched_preview = rename_preview(&workspace, "processSafely");
+    mismatched_preview["proof"]["target"]["fqName"] = json!("io.example.OtherService.process");
+    let backend = spawn_scripted_indexer_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        vec![
+            (
+                "symbol/resolve",
+                symbol_result(&workspace, "io.example.OrderService.process"),
+            ),
+            ("raw/rename", mismatched_preview),
+        ],
+    );
+
+    let output = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "agent",
+            "rename",
+            "--symbol",
+            "io.example.OrderService.process",
+            "--new-name",
+            "processSafely",
+            "--workspace-root",
+            workspace.to_str().expect("workspace"),
+        ])
+        .output()
+        .expect("agent rename mismatched proof preview");
+
+    assert!(!output.status.success(), "mismatched proof was accepted");
+    let stdout: Value = serde_json::from_slice(&output.stdout).expect("rename proof error JSON");
+    assert_eq!(stdout["error"]["code"], "INVALID_RENAME_PREVIEW");
+    assert!(
+        stdout["error"]["message"]
+            .as_str()
+            .is_some_and(|message| message.contains("selected compiler identity")),
+        "{stdout:#}"
+    );
+    backend.join().expect("mismatched rename proof backend");
+}
+
+#[test]
 fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
@@ -123,6 +261,7 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
     )
     .expect("Kotlin rename fixture");
     let selector_handle = "ksh1.rename-handle";
+    let canonical_workspace = workspace.canonicalize().expect("canonical workspace");
     let plan_backend = spawn_scripted_indexer_backend(
         &home,
         &config_home,
@@ -140,10 +279,13 @@ fn selector_handle_rename_preserves_compact_plan_and_distinct_apply_authority() 
                         "declarationStartOffset": 10,
                         "containingType": "io.example.OrderService"
                     },
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
             ),
-            ("raw/rename", rename_preview(&workspace, "processSafely")),
+            (
+                "raw/rename",
+                rename_preview(&canonical_workspace, "processSafely"),
+            ),
         ],
     );
 
@@ -283,6 +425,28 @@ fn agent_rename_preview_rejects_duplicate_hash_rows_that_leave_an_affected_file_
     .expect("Kotlin rename fixture");
     let first_file = workspace.join("Keywords.kt").display().to_string();
     let second_file = workspace.join("Usage.kt").display().to_string();
+    let target = json!({
+        "fqName": "io.example.OrderService.process",
+        "kind": "FUNCTION",
+        "declarationFile": first_file,
+        "declarationStartOffset": 10,
+        "containingType": "io.example.OrderService"
+    });
+    let occurrence = json!({
+        "reference": {
+            "location": {
+                "filePath": second_file,
+                "startOffset": 20,
+                "endOffset": 26,
+                "startLine": 2,
+                "startColumn": 1,
+                "preview": "process()"
+            },
+            "containingSymbol": {"type": "TOP_LEVEL"}
+        },
+        "resolvedTarget": target,
+        "provenance": "COMPILER"
+    });
     let duplicate_hash_preview = json!({
         "edits": [
             {
@@ -299,11 +463,24 @@ fn agent_rename_preview_rejects_duplicate_hash_rows_that_leave_an_affected_file_
             },
         ],
         "fileHashes": [
-            {"filePath": first_file, "hash": "a".repeat(64)},
-            {"filePath": first_file, "hash": "b".repeat(64)},
+            {"filePath": first_file, "hash": hex::encode(Sha256::digest(b"0123456789abcdef\n"))},
+            {"filePath": first_file, "hash": hex::encode(Sha256::digest(b"01234567890123456789abcdef\n"))},
         ],
         "affectedFiles": [first_file, second_file],
-        "schemaVersion": 5,
+        "proof": exact_rename_proof(&workspace, vec![occurrence]),
+        "fileImages": [
+            exact_file_image_value(
+                &first_file,
+                b"0123456789abcdef\n",
+                b"0123456789processSafely\n",
+            ),
+            exact_file_image_value(
+                &second_file,
+                b"01234567890123456789abcdef\n",
+                b"01234567890123456789processSafely\n",
+            ),
+        ],
+        "schemaVersion": api_schema_version(),
     });
     let backend = spawn_scripted_indexer_backend(
         &home,

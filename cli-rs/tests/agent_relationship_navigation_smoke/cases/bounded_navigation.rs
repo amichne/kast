@@ -43,7 +43,7 @@ fn compact_references_bound_high_cardinality_output() {
                 "references": references,
                 "evidence": resumable_relationship_evidence(TOTAL_REFERENCES),
                 "page": {"truncated": true, "nextPageToken": backend_token},
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
@@ -147,7 +147,7 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
                         "containingSymbol": {"type": "TOP_LEVEL"}
                     }],
                     "page": exact_relation_page(1),
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
             )],
         );
@@ -222,7 +222,7 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
                     )
                 }],
                 "page": exact_relation_page(1),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
@@ -289,7 +289,7 @@ fn remaining_relationship_commands_reach_bounded_compiler_engines() {
                     "depth": 1
                 }],
                 "page": exact_relation_page(1),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
