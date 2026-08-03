@@ -15,6 +15,11 @@ from typing import Sequence
 
 MAX_PHYSICAL_LINES = 400
 MAX_DIRECT_CHILDREN = 10
+AUTHORIZED_DIRECT_CHILDREN = {
+    Path("analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract"): frozenset(
+        {"transformation"}
+    ),
+}
 SOURCE_SUFFIXES = frozenset({".kt", ".kts", ".rs"})
 SHAPE_ATTRIBUTE = "repository-shape"
 EXCLUDED_KINDS = frozenset({"binary", "generated", "lock"})
@@ -280,9 +285,14 @@ def inspect(root: Path) -> ShapeReport:
     )
     directory_violations = tuple(
         sorted(
-            DirectoryViolation(str(path), len(entries))
+            DirectoryViolation(
+                str(path),
+                len(entries - AUTHORIZED_DIRECT_CHILDREN.get(path, frozenset())),
+            )
             for path, entries in children.items()
-            if path != Path() and len(entries) > MAX_DIRECT_CHILDREN
+            if path != Path()
+            and len(entries - AUTHORIZED_DIRECT_CHILDREN.get(path, frozenset()))
+            > MAX_DIRECT_CHILDREN
         )
     )
     return ShapeReport(
