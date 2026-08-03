@@ -563,8 +563,8 @@ internal class ExactReplacementPlanningTest : KastIndexerBackendContractTestFixt
     private fun applyPostimage(file: PsiFile, postimage: ByteArray) {
         val exactText = postimage.toString(Charsets.UTF_8)
         val documentManager = FileDocumentManager.getInstance()
-        val document = requireNotNull(documentManager.getDocument(file.virtualFile))
         ApplicationManager.getApplication().invokeAndWait {
+            val document = requireNotNull(documentManager.getDocument(file.virtualFile))
             WriteCommandAction.runWriteCommandAction(project) {
                 document.setText(exactText)
             }
