@@ -14,6 +14,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 
@@ -127,39 +128,46 @@ internal class ExactAdditionSourceRootPolicyTest : ExactAdditionPlanningTestSupp
     @Test
     fun `allowed addition rejects a second outside-workspace model source root`() = runBlocking {
         ensureProjectReady()
-        val allowedRoot = sourceRoot()
-        val workspaceRoot = requireNotNull(allowedRoot.parent)
+        val allowedRoot = sourceRoot().toRealPath()
+        val workspaceRoot = allowedRoot
         val outsideRoot = Files.createTempDirectory(
             requireNotNull(workspaceRoot.parent),
             "kast-outside-addition-proof-root",
         ).toRealPath()
-        Files.writeString(outsideRoot.resolve("OutsideContext.kt"), "package outside\n\nclass OutsideContext\n")
-        val target = Path.of(sampleFile.virtualFile.path).toAbsolutePath().normalize()
+        val outsideFile = outsideRoot.resolve("OutsideContext.kt")
+        try {
+            assertFalse(outsideRoot.startsWith(workspaceRoot))
+            Files.writeString(outsideFile, "package outside\n\nclass OutsideContext\n")
+            val target = Path.of(sampleFile.virtualFile.path).toAbsolutePath().normalize()
 
-        val failure = assertThrows(AdditionProofIncompleteException::class.java) {
-            runBlocking {
-                backend(
-                    workspaceRoot,
-                    workspaceModelReader = model(
+            val failure = assertThrows(AdditionProofIncompleteException::class.java) {
+                runBlocking {
+                    backend(
                         workspaceRoot,
-                        listOf(
-                            association("main", workspaceRoot, ":", "main", allowedRoot),
-                            association("outside", workspaceRoot, ":outside", "main", outsideRoot),
+                        workspaceModelReader = model(
+                            workspaceRoot,
+                            listOf(
+                                association("main", workspaceRoot, ":", "main", allowedRoot),
+                                association("outside", workspaceRoot, ":outside", "main", outsideRoot),
+                            ),
                         ),
-                    ),
-                ).planAddDeclaration(
-                    AddDeclarationPlanQuery(
-                        targetPath = AdditionTargetPath.parse(target.toString()),
-                        expectedCurrentSha256 = AdditionTargetPreimageSha256.of(
-                            FileHashing.sha256(Files.readAllBytes(target)),
+                    ).planAddDeclaration(
+                        AddDeclarationPlanQuery(
+                            targetPath = AdditionTargetPath.parse(target.toString()),
+                            expectedCurrentSha256 = AdditionTargetPreimageSha256.of(
+                                FileHashing.sha256(Files.readAllBytes(target)),
+                            ),
+                            proposedDeclaration = "class RejectedOutsideContext",
                         ),
-                        proposedDeclaration = "class RejectedOutsideContext",
-                    ),
-                )
+                    )
+                }
             }
-        }
 
-        assertLimitation(failure, AdditionProofLimitation.SOURCE_OWNER_UNPROVEN)
+            assertLimitation(failure, AdditionProofLimitation.SOURCE_OWNER_UNPROVEN)
+        } finally {
+            Files.deleteIfExists(outsideFile)
+            Files.deleteIfExists(outsideRoot)
+        }
     }
 
     private fun createSourceRoot(relativeRoot: String, fileName: String, content: String): Path {
