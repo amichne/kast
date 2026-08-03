@@ -49,6 +49,7 @@ expected_workflow_jobs="$(printf '%s\n' \
   publish-openapi-spec \
   publish-release \
   publish-setup-bundles \
+  quarantine-failed-release-artifacts \
   real-repository-indexing \
   release-preflight \
   verify-release-state | sort)"
@@ -64,8 +65,8 @@ reject "$release" 'linux-headless' "release must not publish a standalone runtim
 
 require "$release" 'timeout-minutes: 30' \
   "release preflight must bound the exact-source CI wait"
-require "$release" 'gh run watch "$ci_run_id" --exit-status --interval 10' \
-  "release preflight must wait for exact-source CI to complete"
+require "$release" 'gh run watch "$ci_run_id" --repo "$GITHUB_REPOSITORY" --exit-status --interval 10' \
+  "release preflight must wait for exact-source CI with explicit repository context"
 reject "$release" '-f status=success' \
   "release preflight must discover in-progress exact-source CI"
 
@@ -154,6 +155,48 @@ require "$release" "-name 'kast-linux-x64-*.tar.gz'" \
 require "$release" 'scripts/release/benchmark-real-repositories.sh' \
   "release must retain real-repository indexing proof"
 
+workflow_job() {
+  local job="$1"
+  awk -v job="$job" '
+    $0 == "  " job ":" { selected=1 }
+    selected && $0 ~ /^  [a-z0-9][a-z0-9-]*:$/ && $0 != "  " job ":" { exit }
+    selected { print }
+  ' "$release"
+}
+
+for publication_job in \
+  publish-maven-central \
+  publish-openapi-spec \
+  publish-agent-resources \
+  publish-setup-bundles; do
+  publication_contract="$(workflow_job "$publication_job")"
+  [[ "$publication_contract" == *'- real-repository-indexing'* ]] \
+    || die "${publication_job} must wait for real-repository setup validation"
+  [[ "$publication_contract" == *"needs.real-repository-indexing.result == 'success'"* ]] \
+    || die "${publication_job} must reject a failed real-repository setup validation"
+done
+
+quarantine_contract="$(workflow_job quarantine-failed-release-artifacts)"
+for producer_job in \
+  build-openapi-spec \
+  build-cli \
+  build-agent-resources \
+  build-indexer \
+  build-setup-bundles \
+  real-repository-indexing; do
+  [[ "$quarantine_contract" == *"- $producer_job"* ]] \
+    || die "failed-artifact quarantine must wait for $producer_job"
+done
+for quarantine_evidence in \
+  "needs.real-repository-indexing.result != 'success'" \
+  'actions: write' \
+  'actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100' \
+  "mapfile -t artifact_ids" \
+  'actions/artifacts/$artifact_id'; do
+  [[ "$quarantine_contract" == *"$quarantine_evidence"* ]] \
+    || die "failed-artifact quarantine is missing: $quarantine_evidence"
+done
+
 for retained_product in \
   publish-openapi-spec \
   publish-agent-resources \
@@ -225,15 +268,15 @@ if set(tasks) != expected_tasks:
 
 expected_needs = {
     "prepare-release": set(),
-    "publish-maven-central": {"prepare-release"},
+    "publish-maven-central": {"prepare-release", "real-repository-indexing"},
     "build-openapi-spec": {"prepare-release"},
-    "publish-openapi-spec": {"prepare-release", "build-openapi-spec"},
+    "publish-openapi-spec": {"prepare-release", "build-openapi-spec", "real-repository-indexing"},
     "build-cli": {"prepare-release"},
     "build-agent-resources": {"prepare-release"},
-    "publish-agent-resources": {"prepare-release", "build-agent-resources"},
+    "publish-agent-resources": {"prepare-release", "build-agent-resources", "real-repository-indexing"},
     "build-indexer": {"prepare-release"},
     "build-setup-bundles": {"prepare-release", "build-cli", "build-indexer"},
-    "publish-setup-bundles": {"prepare-release", "build-setup-bundles"},
+    "publish-setup-bundles": {"prepare-release", "build-setup-bundles", "real-repository-indexing"},
     "real-repository-indexing": {"prepare-release", "build-setup-bundles"},
     "build-release-metadata": {
         "prepare-release",

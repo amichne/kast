@@ -71,7 +71,19 @@ require "$runner" 'kastctl config list' 'benchmark must capture effective worksp
 require "$runner" "kastctl config set indexing.relationships.enabled \"\$relationships_enabled\"" 'benchmark must apply the declared relationship indexing plan'
 require "$runner" "if [[ \"\$relationships_enabled\" == true ]]" 'relationship tuning must apply only when relationship indexing is enabled'
 require "$runner" 'kastctl config set indexing.relationships.parallelism 2' 'benchmark must exercise relationship indexing configuration'
-require "$runner" "cat \"\$scratch/runtime.json\" >&2" 'runtime readiness failures must preserve their typed evidence'
+require "$runner" 'run_json_command()' 'benchmark must centralize typed command failure reporting'
+require "$runner" 'cat "$output" >&2' 'typed command failures must preserve their response payload'
+require "$runner" 'run_generation_bound_graph_refresh()' 'benchmark must own bounded generation-conflict recovery'
+require "$runner" 'graph_refresh_attempts=3' 'graph refresh recovery must have a fixed attempt bound'
+require "$runner" 'expectedGeneration' 'graph refresh recovery must require typed expected-generation evidence'
+require "$runner" 'actualGeneration' 'graph refresh recovery must require typed actual-generation evidence'
+require "$runner" 'run_json_command "$scratch/runtime.json" developer runtime up' 'runtime readiness must use typed failure reporting'
+require "$runner" 'wait_for_exact_workspace_index()' 'benchmark must wait for typed exact workspace evidence'
+require "$runner" 'wait_for_exact_workspace_index "$scratch/workspace-files.json" "$wait_timeout_ms" agent workspace-files' 'workspace indexing must use the release timeout'
+reject "$runner" 'run_json_command "$scratch/workspace-files.json" agent workspace-files' 'workspace indexing must not accept the first partial result'
+require "$runner" 'run_generation_bound_graph_refresh "$scratch/graph-refresh.json" agent graph' 'graph refresh must use bounded typed conflict recovery'
+reject "$runner" 'run_json_command "$scratch/graph-refresh.json" agent graph' 'graph refresh must not bypass bounded generation-conflict recovery'
+require "$runner" 'run_json_command "$scratch/graph.json" agent graph' 'graph summary must use typed failure reporting'
 require "$runner" 'settings.gradle.kts' 'benchmark must recognize Kotlin Gradle build roots'
 require "$runner" 'settings.gradle' 'benchmark must recognize Groovy Gradle build roots'
 # shellcheck disable=SC2016 # Runner variables are intentionally matched literally.
@@ -79,6 +91,10 @@ require "$runner" 'scoped_graph_file="${graph_path#"$workspace"/}"' 'benchmark m
 require "$runner" '--operation refresh' 'benchmark must populate the native graph through the compiler indexer'
 require "$runner" "--file-path \"\$scoped_graph_file\"" 'benchmark must refresh the pinned Kotlin source within the selected Gradle root'
 require "$runner" '--exclusive' 'benchmark graph evidence must stay within the pinned probe scope'
+require "$runner" 'verify_benchmark_evidence()' 'benchmark must centralize typed evidence validation'
+require "$runner" 'refreshed_paths' 'benchmark must identify the exact refreshed probe'
+require "$runner" 'file.get("status") not in {"REFRESHED", "REMOVED"}' 'exclusive graph validation must reject unknown coverage states'
+reject "$runner" 'len(coverage) != 1' 'exclusive graph validation must allow typed removals beside the refreshed probe'
 require "$runner" 'Semantic graph refresh was incomplete' 'benchmark must verify compiler graph coverage'
 reject "$runner" '--accept-indexing' 'benchmark must wait for the runtime to become ready'
 
@@ -115,6 +131,77 @@ reject_graph_file src/Probe.kts
 source "$runner"
 scope_fixture="$(mktemp -d "${TMPDIR:-/tmp}/kast-release-scope.XXXXXX")"
 trap 'rm -rf -- "$scope_fixture"' EXIT
+
+graph_refresh_attempt_file="$scope_fixture/graph-refresh-attempts"
+graph_refresh_scenario=generation-conflict-once
+kastctl() {
+  local attempt=0
+  [[ ! -f "$graph_refresh_attempt_file" ]] || read -r attempt <"$graph_refresh_attempt_file"
+  attempt=$((attempt + 1))
+  printf '%s\n' "$attempt" >"$graph_refresh_attempt_file"
+  if [[ "$graph_refresh_scenario" == workspace-partial-once ]]; then
+    if [[ "$attempt" -eq 1 ]]; then
+      printf '%s\n' '{"ok":true,"result":{"cardinality":{"type":"KNOWN_MINIMUM","knownMinimumCount":98}}}'
+    else
+      printf '%s\n' '{"ok":true,"result":{"cardinality":{"type":"EXACT","totalCount":98}}}'
+    fi
+    return 0
+  fi
+  if [[ "$graph_refresh_scenario" == workspace-empty ]]; then
+    printf '%s\n' '{"ok":true,"result":{"cardinality":{"type":"EXACT","totalCount":0}}}'
+    return 0
+  fi
+  if [[ "$graph_refresh_scenario" == generation-conflict-once && "$attempt" -eq 1 ]]; then
+    printf '%s\n' '{"ok":false,"error":{"code":"CONFLICT","details":{"rpcError":{"data":{"details":{"expectedGeneration":"1","actualGeneration":"2"}}}}}}'
+    return 1
+  fi
+  if [[ "$graph_refresh_scenario" == other-conflict ]]; then
+    printf '%s\n' '{"ok":false,"error":{"code":"CONFLICT","details":{"rpcError":{"data":{"details":{"expectedPsiGeneration":"1","actualPsiGeneration":"2"}}}}}}'
+    return 1
+  fi
+  printf '%s\n' '{"ok":true,"result":{"generation":2}}'
+}
+
+run_generation_bound_graph_refresh "$scope_fixture/graph-refresh.json" agent graph --operation refresh
+[[ "$(cat "$graph_refresh_attempt_file")" == 2 ]] \
+  || { printf 'error: generation conflict was not retried exactly once\n' >&2; exit 1; }
+graph_refresh_scenario=other-conflict
+rm -f "$graph_refresh_attempt_file"
+if run_generation_bound_graph_refresh "$scope_fixture/other-conflict.json" agent graph --operation refresh 2>/dev/null; then
+  printf 'error: non-generation conflict unexpectedly succeeded\n' >&2
+  exit 1
+fi
+[[ "$(cat "$graph_refresh_attempt_file")" == 1 ]] \
+  || { printf 'error: non-generation conflict was retried\n' >&2; exit 1; }
+
+graph_refresh_scenario=workspace-partial-once
+rm -f "$graph_refresh_attempt_file"
+KAST_RELEASE_INDEX_POLL_SECONDS=0 \
+  wait_for_exact_workspace_index "$scope_fixture/workspace-files.json" 10000 agent workspace-files --count
+[[ "$(cat "$graph_refresh_attempt_file")" == 2 ]] \
+  || { printf 'error: partial workspace evidence was not polled to exactness\n' >&2; exit 1; }
+graph_refresh_scenario=workspace-empty
+rm -f "$graph_refresh_attempt_file"
+if KAST_RELEASE_INDEX_POLL_SECONDS=0 \
+    wait_for_exact_workspace_index "$scope_fixture/workspace-empty.json" 10000 agent workspace-files --count 2>/dev/null; then
+  printf 'error: exact empty workspace unexpectedly succeeded\n' >&2
+  exit 1
+fi
+[[ "$(cat "$graph_refresh_attempt_file")" == 1 ]] \
+  || { printf 'error: exact empty workspace was retried\n' >&2; exit 1; }
+
+printf '%s\n' '{"ok":true,"result":{"cardinality":{"type":"EXACT","totalCount":2}}}' \
+  >"$scope_fixture/evidence-workspace.json"
+printf '%s\n' '{"ok":true,"result":{"symbolCount":4,"coverage":{"files":[{"path":"src/Probe.kt","status":"REFRESHED"},{"path":"src/Other.kt","status":"REMOVED"}]}}}' \
+  >"$scope_fixture/evidence-refresh.json"
+printf '%s\n' '{"ok":true,"result":{"nodeCount":4}}' \
+  >"$scope_fixture/evidence-graph.json"
+verify_benchmark_evidence \
+  "$scope_fixture/evidence-workspace.json" \
+  "$scope_fixture/evidence-refresh.json" \
+  "$scope_fixture/evidence-graph.json" \
+  src/Probe.kt
+
 repository_fixture="$scope_fixture/repository"
 ktor_fixture="$repository_fixture/ktor-test-server"
 mkdir -p "$ktor_fixture/src/main/kotlin/test/server" "$repository_fixture/okcurl/src/main/kotlin"
