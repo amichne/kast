@@ -164,16 +164,24 @@ workflow_job() {
   ' "$release"
 }
 
+real_repository_contract="$(workflow_job real-repository-indexing)"
+[[ "$real_repository_contract" == *'if: ${{ false }}'* ]] \
+  || die "real-repository release indexing must stay disabled until it is restored deliberately"
+
 for publication_job in \
   publish-maven-central \
   publish-openapi-spec \
   publish-agent-resources \
   publish-setup-bundles; do
   publication_contract="$(workflow_job "$publication_job")"
-  [[ "$publication_contract" == *'- real-repository-indexing'* ]] \
-    || die "${publication_job} must wait for real-repository setup validation"
-  [[ "$publication_contract" == *"needs.real-repository-indexing.result == 'success'"* ]] \
-    || die "${publication_job} must reject a failed real-repository setup validation"
+  for artifact_build in build-openapi-spec build-agent-resources build-setup-bundles; do
+    [[ "$publication_contract" == *"- $artifact_build"* ]] \
+      || die "${publication_job} must wait for $artifact_build"
+    [[ "$publication_contract" == *"needs.$artifact_build.result == 'success'"* ]] \
+      || die "${publication_job} must reject a failed $artifact_build"
+  done
+  [[ "$publication_contract" != *'real-repository-indexing'* ]] \
+    || die "${publication_job} must not wait for disabled real-repository indexing"
 done
 
 quarantine_contract="$(workflow_job quarantine-failed-release-artifacts)"
@@ -182,13 +190,16 @@ for producer_job in \
   build-cli \
   build-agent-resources \
   build-indexer \
-  build-setup-bundles \
-  real-repository-indexing; do
+  build-setup-bundles; do
   [[ "$quarantine_contract" == *"- $producer_job"* ]] \
     || die "failed-artifact quarantine must wait for $producer_job"
 done
 for quarantine_evidence in \
-  "needs.real-repository-indexing.result != 'success'" \
+  "needs.build-openapi-spec.result != 'success'" \
+  "needs.build-cli.result != 'success'" \
+  "needs.build-agent-resources.result != 'success'" \
+  "needs.build-indexer.result != 'success'" \
+  "needs.build-setup-bundles.result != 'success'" \
   'actions: write' \
   'actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100' \
   "mapfile -t artifact_ids" \
@@ -200,8 +211,7 @@ done
 for retained_product in \
   publish-openapi-spec \
   publish-agent-resources \
-  publish-setup-bundles \
-  real-repository-indexing; do
+  publish-setup-bundles; do
   require "$release" "- ${retained_product}" \
     "metadata finalization must wait for ${retained_product}"
 done
@@ -258,7 +268,6 @@ expected_tasks = {
     "build-indexer",
     "build-setup-bundles",
     "publish-setup-bundles",
-    "real-repository-indexing",
     "build-release-metadata",
     "publish-release",
     "verify-release-state",
@@ -268,22 +277,40 @@ if set(tasks) != expected_tasks:
 
 expected_needs = {
     "prepare-release": set(),
-    "publish-maven-central": {"prepare-release", "real-repository-indexing"},
+    "publish-maven-central": {
+        "prepare-release",
+        "build-openapi-spec",
+        "build-agent-resources",
+        "build-setup-bundles",
+    },
     "build-openapi-spec": {"prepare-release"},
-    "publish-openapi-spec": {"prepare-release", "build-openapi-spec", "real-repository-indexing"},
+    "publish-openapi-spec": {
+        "prepare-release",
+        "build-openapi-spec",
+        "build-agent-resources",
+        "build-setup-bundles",
+    },
     "build-cli": {"prepare-release"},
     "build-agent-resources": {"prepare-release"},
-    "publish-agent-resources": {"prepare-release", "build-agent-resources", "real-repository-indexing"},
+    "publish-agent-resources": {
+        "prepare-release",
+        "build-openapi-spec",
+        "build-agent-resources",
+        "build-setup-bundles",
+    },
     "build-indexer": {"prepare-release"},
     "build-setup-bundles": {"prepare-release", "build-cli", "build-indexer"},
-    "publish-setup-bundles": {"prepare-release", "build-setup-bundles", "real-repository-indexing"},
-    "real-repository-indexing": {"prepare-release", "build-setup-bundles"},
+    "publish-setup-bundles": {
+        "prepare-release",
+        "build-openapi-spec",
+        "build-agent-resources",
+        "build-setup-bundles",
+    },
     "build-release-metadata": {
         "prepare-release",
         "publish-openapi-spec",
         "publish-agent-resources",
         "publish-setup-bundles",
-        "real-repository-indexing",
     },
     "publish-release": {"prepare-release", "build-release-metadata"},
     "verify-release-state": {"prepare-release", "publish-release"},

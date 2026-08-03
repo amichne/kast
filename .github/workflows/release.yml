@@ -287,12 +287,14 @@ jobs:
     needs:
       - prepare-release
       - build-openapi-spec
-      - real-repository-indexing
+      - build-agent-resources
+      - build-setup-bundles
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
       needs.build-openapi-spec.result == 'success' &&
-      needs.real-repository-indexing.result == 'success'
+      needs.build-agent-resources.result == 'success' &&
+      needs.build-setup-bundles.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -336,11 +338,15 @@ jobs:
     name: Publish Maven Central
     needs:
       - prepare-release
-      - real-repository-indexing
+      - build-openapi-spec
+      - build-agent-resources
+      - build-setup-bundles
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
-      needs.real-repository-indexing.result == 'success'
+      needs.build-openapi-spec.result == 'success' &&
+      needs.build-agent-resources.result == 'success' &&
+      needs.build-setup-bundles.result == 'success'
     runs-on: ubuntu-latest
     continue-on-error: true
     permissions:
@@ -609,13 +615,15 @@ jobs:
     name: Publish agent resource assets
     needs:
       - prepare-release
+      - build-openapi-spec
       - build-agent-resources
-      - real-repository-indexing
+      - build-setup-bundles
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
+      needs.build-openapi-spec.result == 'success' &&
       needs.build-agent-resources.result == 'success' &&
-      needs.real-repository-indexing.result == 'success'
+      needs.build-setup-bundles.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -786,13 +794,15 @@ jobs:
     name: Publish setup bundle (${{ matrix.platform }})
     needs:
       - prepare-release
+      - build-openapi-spec
+      - build-agent-resources
       - build-setup-bundles
-      - real-repository-indexing
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
-      needs.build-setup-bundles.result == 'success' &&
-      needs.real-repository-indexing.result == 'success'
+      needs.build-openapi-spec.result == 'success' &&
+      needs.build-agent-resources.result == 'success' &&
+      needs.build-setup-bundles.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -821,10 +831,7 @@ jobs:
     needs:
       - prepare-release
       - build-setup-bundles
-    if: >-
-      always() &&
-      needs.prepare-release.result == 'success' &&
-      needs.build-setup-bundles.result == 'success'
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -904,11 +911,16 @@ jobs:
       - build-agent-resources
       - build-indexer
       - build-setup-bundles
-      - real-repository-indexing
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
-      needs.real-repository-indexing.result != 'success'
+      (
+        needs.build-openapi-spec.result != 'success' ||
+        needs.build-cli.result != 'success' ||
+        needs.build-agent-resources.result != 'success' ||
+        needs.build-indexer.result != 'success' ||
+        needs.build-setup-bundles.result != 'success'
+      )
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -938,14 +950,12 @@ jobs:
       - publish-openapi-spec
       - publish-agent-resources
       - publish-setup-bundles
-      - real-repository-indexing
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
       needs.publish-openapi-spec.result == 'success' &&
       needs.publish-agent-resources.result == 'success' &&
-      needs.publish-setup-bundles.result == 'success' &&
-      needs.real-repository-indexing.result == 'success'
+      needs.publish-setup-bundles.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write

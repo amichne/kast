@@ -2,10 +2,10 @@
   "schemaVersion": 2,
   "evidenceMode": "structural-only",
   "provenance": {
-    "description": "Release topology for one retained indexer and four canonical setup bundles. Timing claims require completed workflow evidence.",
+    "description": "Release topology for one retained indexer and four canonical setup bundles. Real-repository smoke tests are temporarily disabled. Timing claims require completed workflow evidence.",
     "observedAt": "2026-08-02",
     "source": ".github/workflows/release.yml",
-    "sourceSha256": "9658650613a047c68273d55cb88a5b6f9929cbd2752a5f82c161ed9fda8de8f5"
+    "sourceSha256": "11e94d86f370f6a46816b8e15d7390f051de2db0d06f6b1f463dcece6e905b09"
   },
   "tasks": [
     {
@@ -15,7 +15,7 @@
     },
     {
       "id": "publish-maven-central",
-      "needs": ["prepare-release", "real-repository-indexing"],
+      "needs": ["prepare-release", "build-openapi-spec", "build-agent-resources", "build-setup-bundles"],
       "outputs": ["release-maven-publication"]
     },
     {
@@ -25,7 +25,7 @@
     },
     {
       "id": "publish-openapi-spec",
-      "needs": ["prepare-release", "build-openapi-spec", "real-repository-indexing"],
+      "needs": ["prepare-release", "build-openapi-spec", "build-agent-resources", "build-setup-bundles"],
       "outputs": ["release-openapi-asset"]
     },
     {
@@ -40,7 +40,7 @@
     },
     {
       "id": "publish-agent-resources",
-      "needs": ["prepare-release", "build-agent-resources", "real-repository-indexing"],
+      "needs": ["prepare-release", "build-openapi-spec", "build-agent-resources", "build-setup-bundles"],
       "outputs": ["release-agent-resource-assets"]
     },
     {
@@ -55,7 +55,7 @@
     },
     {
       "id": "publish-setup-bundles",
-      "needs": ["prepare-release", "build-setup-bundles", "real-repository-indexing"],
+      "needs": ["prepare-release", "build-openapi-spec", "build-agent-resources", "build-setup-bundles"],
       "outputs": [
         "release-setup-linux-x64-asset",
         "release-setup-linux-x64-sidecar",
@@ -72,22 +72,12 @@
       ]
     },
     {
-      "id": "real-repository-indexing",
-      "needs": ["prepare-release", "build-setup-bundles"],
-      "outputs": [
-        "release-index-ktor-proof",
-        "release-index-spring-boot-proof",
-        "release-index-okhttp-proof"
-      ]
-    },
-    {
       "id": "build-release-metadata",
       "needs": [
         "prepare-release",
         "publish-openapi-spec",
         "publish-agent-resources",
-        "publish-setup-bundles",
-        "real-repository-indexing"
+        "publish-setup-bundles"
       ],
       "outputs": ["release-build-provenance", "release-checksum-manifest"]
     },
@@ -125,9 +115,6 @@
     "release-setup-macos-arm64-asset",
     "release-setup-macos-arm64-sidecar",
     "release-setup-macos-arm64-provenance",
-    "release-index-ktor-proof",
-    "release-index-spring-boot-proof",
-    "release-index-okhttp-proof",
     "release-build-provenance",
     "release-checksum-manifest",
     "published-release",
