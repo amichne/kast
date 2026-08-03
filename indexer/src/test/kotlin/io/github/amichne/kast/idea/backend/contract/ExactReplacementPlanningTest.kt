@@ -5,8 +5,8 @@ import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
-import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.psi.PsiFile
+import com.intellij.psi.PsiDocumentManager
 import com.intellij.psi.PsiManager
 import com.intellij.testFramework.junit5.fixture.TestFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
@@ -561,16 +561,19 @@ internal class ExactReplacementPlanningTest : KastIndexerBackendContractTestFixt
 
     @OptIn(KaPlatformInterface::class)
     private fun applyPostimage(file: PsiFile, postimage: ByteArray) {
+        val exactText = postimage.toString(Charsets.UTF_8)
+        val documentManager = FileDocumentManager.getInstance()
+        val document = requireNotNull(documentManager.getDocument(file.virtualFile))
         ApplicationManager.getApplication().invokeAndWait {
-            ApplicationManager.getApplication().runWriteAction {
-                VfsUtil.saveText(file.virtualFile, postimage.toString(Charsets.UTF_8))
-                PsiManager.getInstance(project).reloadFromDisk(file)
+            WriteCommandAction.runWriteCommandAction(project) {
+                document.setText(exactText)
             }
+            PsiDocumentManager.getInstance(project).commitDocument(document)
+            documentManager.saveDocument(document)
         }
         WriteAction.runAndWait<RuntimeException> {
             project.publishGlobalSourceOutOfBlockModificationEvent()
         }
-        val exactText = postimage.toString(Charsets.UTF_8)
         val semanticText = ApplicationManager.getApplication().runReadAction<String> {
             PsiManager.getInstance(project).findFile(file.virtualFile)?.text ?: file.text
         }
