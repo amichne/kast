@@ -81,6 +81,7 @@ require_single_shared_refresh_route() {
 }
 
 for file in \
+  .github/workflows/docs.yml \
   package.json \
   docs/architecture/likec4.config.json \
   docs/architecture/specification.c4 \
@@ -97,6 +98,9 @@ require_contains package.json '"diagrams:validate"'
 require_contains package.json '"diagrams:embed"'
 require_contains package.json '"diagrams:build"'
 require_graphviz_output_scripts
+require_contains .github/workflows/docs.yml 'sudo apt-get install --yes --no-install-recommends graphviz'
+require_contains .github/workflows/docs.yml 'command -v dot'
+require_contains .github/workflows/docs.yml 'command -v unflatten'
 require_contains zensical.toml 'path = "architecture/likec4-views.mjs"'
 require_contains docs/architecture/views.c4 'view system-landscape'
 require_contains docs/architecture/views.c4 'view runtime-components'
