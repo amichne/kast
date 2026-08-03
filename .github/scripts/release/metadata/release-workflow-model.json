@@ -5,7 +5,7 @@
     "description": "Release topology for one retained indexer and four canonical setup bundles. Timing claims require completed workflow evidence.",
     "observedAt": "2026-08-02",
     "source": ".github/workflows/release.yml",
-    "sourceSha256": "3c466ecede792f4e98e8e885252466df055203bc6b58cc7d6a259de09fcc5785"
+    "sourceSha256": "9658650613a047c68273d55cb88a5b6f9929cbd2752a5f82c161ed9fda8de8f5"
   },
   "tasks": [
     {
@@ -15,7 +15,7 @@
     },
     {
       "id": "publish-maven-central",
-      "needs": ["prepare-release"],
+      "needs": ["prepare-release", "real-repository-indexing"],
       "outputs": ["release-maven-publication"]
     },
     {
@@ -25,7 +25,7 @@
     },
     {
       "id": "publish-openapi-spec",
-      "needs": ["prepare-release", "build-openapi-spec"],
+      "needs": ["prepare-release", "build-openapi-spec", "real-repository-indexing"],
       "outputs": ["release-openapi-asset"]
     },
     {
@@ -40,7 +40,7 @@
     },
     {
       "id": "publish-agent-resources",
-      "needs": ["prepare-release", "build-agent-resources"],
+      "needs": ["prepare-release", "build-agent-resources", "real-repository-indexing"],
       "outputs": ["release-agent-resource-assets"]
     },
     {
@@ -55,7 +55,7 @@
     },
     {
       "id": "publish-setup-bundles",
-      "needs": ["prepare-release", "build-setup-bundles"],
+      "needs": ["prepare-release", "build-setup-bundles", "real-repository-indexing"],
       "outputs": [
         "release-setup-linux-x64-asset",
         "release-setup-linux-x64-sidecar",

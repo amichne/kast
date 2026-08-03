@@ -75,7 +75,7 @@ jobs:
             | .id
           ' <<<"$ci_runs")" \
             || { printf 'error: exact source CI is unavailable for %s\n' "$GITHUB_SHA" >&2; exit 1; }
-          gh run watch "$ci_run_id" --exit-status --interval 10 \
+          gh run watch "$ci_run_id" --repo "$GITHUB_REPOSITORY" --exit-status --interval 10 \
             || { printf 'error: exact source CI did not finish green for %s\n' "$GITHUB_SHA" >&2; exit 1; }
           ci_run="$(gh api --method GET \
             "repos/${GITHUB_REPOSITORY}/actions/runs/${ci_run_id}")"
@@ -287,7 +287,12 @@ jobs:
     needs:
       - prepare-release
       - build-openapi-spec
-    if: always() && needs.prepare-release.result == 'success' && needs.build-openapi-spec.result == 'success'
+      - real-repository-indexing
+    if: >-
+      always() &&
+      needs.prepare-release.result == 'success' &&
+      needs.build-openapi-spec.result == 'success' &&
+      needs.real-repository-indexing.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -329,8 +334,13 @@ jobs:
 
   publish-maven-central:
     name: Publish Maven Central
-    needs: [prepare-release]
-    if: always() && needs.prepare-release.result == 'success'
+    needs:
+      - prepare-release
+      - real-repository-indexing
+    if: >-
+      always() &&
+      needs.prepare-release.result == 'success' &&
+      needs.real-repository-indexing.result == 'success'
     runs-on: ubuntu-latest
     continue-on-error: true
     permissions:
@@ -600,7 +610,12 @@ jobs:
     needs:
       - prepare-release
       - build-agent-resources
-    if: always() && needs.prepare-release.result == 'success' && needs.build-agent-resources.result == 'success'
+      - real-repository-indexing
+    if: >-
+      always() &&
+      needs.prepare-release.result == 'success' &&
+      needs.build-agent-resources.result == 'success' &&
+      needs.real-repository-indexing.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -772,10 +787,12 @@ jobs:
     needs:
       - prepare-release
       - build-setup-bundles
+      - real-repository-indexing
     if: >-
       always() &&
       needs.prepare-release.result == 'success' &&
-      needs.build-setup-bundles.result == 'success'
+      needs.build-setup-bundles.result == 'success' &&
+      needs.real-repository-indexing.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -877,6 +894,41 @@ jobs:
             --relationships-enabled "${{ matrix.relationships_enabled }}" \
             --bundle "$bundle" \
             --cache-root "${{ runner.temp }}/kast-real-repository-cache"
+
+  quarantine-failed-release-artifacts:
+    name: Quarantine failed release artifacts
+    needs:
+      - prepare-release
+      - build-openapi-spec
+      - build-cli
+      - build-agent-resources
+      - build-indexer
+      - build-setup-bundles
+      - real-repository-indexing
+    if: >-
+      always() &&
+      needs.prepare-release.result == 'success' &&
+      needs.real-repository-indexing.result != 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Delete artifacts from the failed release run
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t artifact_ids < <(
+            gh api --paginate \
+              "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" \
+              --jq '.artifacts[].id'
+          )
+          for artifact_id in "${artifact_ids[@]}"; do
+            gh api --method DELETE \
+              "repos/$GITHUB_REPOSITORY/actions/artifacts/$artifact_id"
+          done
 
 
   build-release-metadata:

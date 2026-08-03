@@ -45,6 +45,144 @@ configure_gradle_java_paths() {
     >"$gradle_user_dir/gradle.properties"
 }
 
+run_json_command() {
+  local output="$1"
+  shift
+  if ! kastctl --output json "$@" >"$output"; then
+    cat "$output" >&2
+    return 1
+  fi
+}
+
+workspace_index_state() {
+  local output="$1"
+  python3 - "$output" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except (OSError, json.JSONDecodeError):
+    raise SystemExit(2)
+
+cardinality = payload.get("result", {}).get("cardinality", {})
+if payload.get("ok") is not True:
+    raise SystemExit(2)
+if cardinality.get("type") == "EXACT":
+    raise SystemExit(0 if cardinality.get("totalCount", 0) > 0 else 2)
+if cardinality.get("type") == "KNOWN_MINIMUM":
+    raise SystemExit(1)
+raise SystemExit(2)
+PY
+}
+
+wait_for_exact_workspace_index() {
+  local output="$1" timeout_ms="$2" state
+  local poll_seconds="${KAST_RELEASE_INDEX_POLL_SECONDS:-5}"
+  local timeout_seconds=$(((timeout_ms + 999) / 1000))
+  local deadline=$((SECONDS + timeout_seconds))
+  shift 2
+  [[ "$poll_seconds" =~ ^[0-9]+$ ]] \
+    || { printf 'error: workspace index poll seconds must be a non-negative integer\n' >&2; return 1; }
+  while true; do
+    if ! run_json_command "$output" "$@"; then
+      return 1
+    fi
+    if workspace_index_state "$output"; then
+      return 0
+    else
+      state=$?
+    fi
+    if [[ "$state" -ne 1 ]]; then
+      cat "$output" >&2
+      printf 'error: workspace indexing returned invalid or empty exact evidence\n' >&2
+      return 1
+    fi
+    if [[ "$SECONDS" -ge "$deadline" ]]; then
+      cat "$output" >&2
+      printf 'error: workspace indexing did not reach exact evidence within %sms\n' "$timeout_ms" >&2
+      return 1
+    fi
+    printf 'Workspace indexing is partial; waiting for exact evidence\n' >&2
+    sleep "$poll_seconds"
+  done
+}
+
+is_source_generation_conflict() {
+  local output="$1"
+  python3 - "$output" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+try:
+    payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+except (OSError, json.JSONDecodeError):
+    raise SystemExit(1)
+
+error = payload.get("error", {})
+details = error.get("details", {}).get("rpcError", {}).get("data", {}).get("details", {})
+if (
+    error.get("code") != "CONFLICT"
+    or details.get("expectedGeneration") is None
+    or details.get("actualGeneration") is None
+):
+    raise SystemExit(1)
+PY
+}
+
+run_generation_bound_graph_refresh() {
+  local output="$1" attempt graph_refresh_attempts=3
+  shift
+  for ((attempt = 1; attempt <= graph_refresh_attempts; attempt += 1)); do
+    if run_json_command "$output" "$@"; then
+      return 0
+    fi
+    if [[ "$attempt" -eq "$graph_refresh_attempts" ]] \
+        || ! is_source_generation_conflict "$output"; then
+      return 1
+    fi
+    printf 'Source generation changed during graph refresh; retrying (%s/%s)\n' \
+      "$attempt" "$graph_refresh_attempts" >&2
+  done
+  return 1
+}
+
+verify_benchmark_evidence() {
+  local workspace_output="$1" refresh_output="$2" graph_output="$3" expected_graph_path="$4"
+  python3 - "$workspace_output" "$refresh_output" "$graph_output" "$expected_graph_path" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+workspace_files = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+cardinality = workspace_files.get("result", {}).get("cardinality", {})
+if cardinality.get("type") != "EXACT" or cardinality.get("totalCount", 0) <= 0:
+    raise SystemExit(f"workspace indexing was not complete: {cardinality}")
+
+refresh = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
+coverage = refresh.get("result", {}).get("coverage", {}).get("files", [])
+expected_graph_path = sys.argv[4]
+refreshed_paths = [
+    file.get("path")
+    for file in coverage
+    if file.get("status") == "REFRESHED"
+]
+if (
+    not refresh.get("ok")
+    or refresh.get("result", {}).get("symbolCount", 0) <= 0
+    or refreshed_paths != [expected_graph_path]
+    or any(file.get("status") not in {"REFRESHED", "REMOVED"} for file in coverage)
+):
+    raise SystemExit(f"Semantic graph refresh was incomplete: {refresh}")
+
+graph = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
+if not graph.get("ok") or graph.get("result", {}).get("nodeCount", 0) <= 0:
+    raise SystemExit("native graph summary was unavailable")
+PY
+}
+
 [[ "${BASH_SOURCE[0]}" == "$0" ]] || return 0
 
 name=
@@ -148,47 +286,25 @@ if [[ "$relationships_enabled" == true ]]; then
 fi
 kastctl config set gradle.toolingApiTimeoutMillis "$wait_timeout_ms" --workspace-root "$workspace" >/dev/null
 kastctl config list --workspace-root "$workspace" >"$scratch/effective-config.toon"
-if ! kastctl --output json developer runtime up \
+run_json_command "$scratch/runtime.json" developer runtime up \
     --workspace-root "$workspace" \
-    --wait-timeout-ms "$wait_timeout_ms" >"$scratch/runtime.json"; then
-  cat "$scratch/runtime.json" >&2
-  exit 1
-fi
-kastctl --output json agent workspace-files \
+    --wait-timeout-ms "$wait_timeout_ms"
+wait_for_exact_workspace_index "$scratch/workspace-files.json" "$wait_timeout_ms" agent workspace-files \
   --workspace-root "$workspace" \
-  --count >"$scratch/workspace-files.json"
-kastctl --output json agent graph \
+  --count
+run_generation_bound_graph_refresh "$scratch/graph-refresh.json" agent graph \
   --workspace-root "$workspace" \
   --operation refresh \
   --file-path "$scoped_graph_file" \
-  --exclusive >"$scratch/graph-refresh.json"
-kastctl --output json agent graph \
+  --exclusive
+run_json_command "$scratch/graph.json" agent graph \
   --workspace-root "$workspace" \
-  --operation summary >"$scratch/graph.json"
+  --operation summary
 
-python3 - "$scratch/workspace-files.json" "$scratch/graph-refresh.json" "$scratch/graph.json" <<'PY'
-import json
-import sys
-from pathlib import Path
-
-workspace_files = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
-cardinality = workspace_files["result"]["cardinality"]
-if cardinality.get("type") != "EXACT" or cardinality.get("totalCount", 0) <= 0:
-    raise SystemExit(f"workspace indexing was not complete: {cardinality}")
-
-refresh = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
-coverage = refresh.get("result", {}).get("coverage", {}).get("files", [])
-if (
-    not refresh.get("ok")
-    or refresh.get("result", {}).get("symbolCount", 0) <= 0
-    or len(coverage) != 1
-    or coverage[0].get("status") != "REFRESHED"
-):
-    raise SystemExit(f"Semantic graph refresh was incomplete: {refresh}")
-
-graph = json.loads(Path(sys.argv[3]).read_text(encoding="utf-8"))
-if not graph.get("ok") or graph.get("result", {}).get("nodeCount", 0) <= 0:
-    raise SystemExit("native graph summary was unavailable")
-PY
+verify_benchmark_evidence \
+  "$scratch/workspace-files.json" \
+  "$scratch/graph-refresh.json" \
+  "$scratch/graph.json" \
+  "$scoped_graph_file"
 
 printf 'benchmark %s passed at %s\n' "$name" "$revision"
