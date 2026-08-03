@@ -119,6 +119,34 @@ grep -Fq '"child-limit",11,10' "$directory_output"
 
 rm "$fixture/child-limit/11.txt"
 git -C "$fixture" add -u "$fixture/child-limit/11.txt"
+
+contract_root="$fixture/analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract"
+for child in $(seq 1 10); do
+  mkdir -p "$contract_root/child-$child"
+  printf 'contract child %s\n' "$child" >"$contract_root/child-$child/Type.kt"
+done
+mkdir -p "$contract_root/transformation"
+printf 'projection contract\n' >"$contract_root/transformation/Projection.kt"
+git -C "$fixture" add "$fixture/analysis-api"
+authorized_namespace_output="$fixture/authorized-namespace-output.txt"
+if ! python3 "$checker" --root "$fixture" >"$authorized_namespace_output"; then
+  grep -F '"analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract",11,10' "$authorized_namespace_output" >&2
+  printf '%s\n' 'expected the authorized projection contract namespace to pass' >&2
+  exit 1
+fi
+
+mkdir -p "$contract_root/unrelated-extra"
+printf 'unrelated contract child\n' >"$contract_root/unrelated-extra/Type.kt"
+git -C "$fixture" add "$contract_root/unrelated-extra/Type.kt"
+unrelated_child_output="$fixture/unrelated-child-output.txt"
+if python3 "$checker" --root "$fixture" >"$unrelated_child_output"; then
+  printf '%s\n' 'expected an unrelated eleventh contract child to fail' >&2
+  exit 1
+fi
+grep -Fq '"analysis-api/src/main/kotlin/io/github/amichne/kast/api/contract",11,10' "$unrelated_child_output"
+
+rm "$contract_root/unrelated-extra/Type.kt"
+git -C "$fixture" add -u "$contract_root/unrelated-extra/Type.kt"
 mkdir -p "$fixture/backend-idea"
 printf 'retired\n' >"$fixture/backend-idea/build.gradle.kts"
 printf 'run --backend idea\n' >"$fixture/legacy.md"
