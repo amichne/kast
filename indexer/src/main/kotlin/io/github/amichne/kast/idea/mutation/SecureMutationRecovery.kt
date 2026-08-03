@@ -277,16 +277,18 @@ internal fun SecureWorkspaceMutation.removeExactName(
             val recoveryFilePath = try {
                 restoreCleanupName(parent, sourceName, cleanupName, target, platform)
             } catch (restorationFailure: Exception) {
-                failure.rethrowIfMutationCancellation(
-                    UnsafeWorkspaceMutationException(
-                        message = "Secure workspace cleanup retained recovery evidence after cancellation",
-                        details = failureDetails(target, "cleanup-restoration-cancellation") + mapOf(
-                            "recoveryFilePath" to cleanupPath.toString(),
-                            "restorationFailure" to restorationFailure.failureReason(),
-                        ),
+                val evidence = UnsafeWorkspaceMutationException(
+                    message = "Secure workspace cleanup retained recovery evidence after cancellation",
+                    details = failureDetails(target, "cleanup-restoration-cancellation") + mapOf(
+                        "recoveryFilePath" to cleanupPath.toString(),
+                        "restorationFailure" to restorationFailure.failureReason(),
                     ),
                 )
-                throw restorationFailure
+                if (failure is ProcessCanceledException || failure is CancellationException) {
+                    failure.addSuppressed(evidence)
+                    return retainedCleanup(cleanupPath, failure)
+                }
+                return retainedCleanup(cleanupPath, restorationFailure)
             }
             return retainedCleanup(recoveryFilePath, failure)
         }
