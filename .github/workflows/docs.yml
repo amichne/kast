@@ -54,6 +54,12 @@ jobs:
         with:
           node-version: "24"
           cache: npm
+      - name: Install Graphviz
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends graphviz
+          command -v dot
+          command -v unflatten
       - run: npm ci
       - run: echo "${GITHUB_WORKSPACE}/node_modules/.bin" >> "$GITHUB_PATH"
       - run: pip install -r requirements-docs.txt

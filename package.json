@@ -7,8 +7,8 @@
   "scripts": {
     "diagrams:dev": "likec4 serve docs/architecture",
     "diagrams:validate": "likec4 validate --json --no-layout --file docs/architecture/specification.c4 --file docs/architecture/model.c4 --file docs/architecture/deployment.c4 --file docs/architecture/views.c4 --file docs/architecture/flows.c4 docs/architecture",
-    "diagrams:embed": "likec4 gen webcomponent --outfile docs/architecture/likec4-views.mjs --webcomponent-prefix kast docs/architecture",
-    "diagrams:build": "likec4 build --base ./ --output dist/architecture docs/architecture"
+    "diagrams:embed": "likec4 gen webcomponent --use-dot --outfile docs/architecture/likec4-views.mjs --webcomponent-prefix kast docs/architecture",
+    "diagrams:build": "likec4 build --use-dot --base ./ --output dist/architecture docs/architecture"
   },
   "devDependencies": {
     "likec4": "1.59.2"
