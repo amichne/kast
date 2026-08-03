@@ -15,6 +15,7 @@ sealed interface ValidatedFileOperation {
     data class CreateFile(
         override val filePath: String,
         val content: String,
+        val parentPolicy: CreateFileParentPolicy,
     ) : ValidatedFileOperation
 
     data class DeleteFile(
@@ -83,6 +84,7 @@ object EditPlanValidator {
                 is FileOperation.CreateFile -> ValidatedFileOperation.CreateFile(
                     filePath = filePath,
                     content = operation.content,
+                    parentPolicy = operation.parentPolicy,
                 )
 
                 is FileOperation.DeleteFile -> ValidatedFileOperation.DeleteFile(

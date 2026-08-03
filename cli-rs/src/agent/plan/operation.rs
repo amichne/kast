@@ -1,49 +1,44 @@
-impl From<KastChangeCommand> for StoredOperation {
+impl From<KastChangeCommand> for RequestedOperation {
     fn from(command: KastChangeCommand) -> Self {
         match command {
             KastChangeCommand::Rename { symbol, new_name } => Self::Rename { symbol, new_name },
             KastChangeCommand::AddFile { path } => Self::AddFile { path },
             KastChangeCommand::AddDeclaration { path } => Self::AddDeclaration { path },
-            KastChangeCommand::AddImplementation { scope } => Self::AddImplementation { scope },
-            KastChangeCommand::AddStatement { scope } => Self::AddStatement { scope },
             KastChangeCommand::Replace { symbol } => Self::Replace { symbol },
         }
     }
 }
 
-impl StoredOperation {
-    fn name(&self) -> &'static str {
-        match self {
-            Self::Rename { .. } => "rename",
-            Self::AddFile { .. } => "add-file",
-            Self::AddDeclaration { .. } => "add-declaration",
-            Self::AddImplementation { .. } => "add-implementation",
-            Self::AddStatement { .. } => "add-statement",
-            Self::Replace { .. } => "replace",
-        }
-    }
-
+impl RequestedOperation {
     fn requires_content(&self) -> bool {
         !matches!(self, Self::Rename { .. })
     }
 
-    fn normalize_from_preview(&mut self, preview: &Value) -> Result<()> {
-        let normalized = preview
-            .get("plan")
-            .and_then(|plan| plan.get("filePath"))
-            .and_then(Value::as_str);
+    fn into_stored(self, preview: &Value) -> Result<StoredOperation> {
         match self {
-            Self::AddFile { path } | Self::AddDeclaration { path } => {
-                *path = PathBuf::from(normalized.ok_or_else(|| {
-                    CliError::new(
-                        "KAST_INVALID_AGENT_RESULT",
-                        "The validated change plan returned no normalized file path.",
-                    )
-                })?);
+            Self::Rename { .. } => AgentRenameAuthority::from_projected_result(preview)
+                .map(|authority| StoredOperation::Rename {
+                    authority: Box::new(authority),
+                })
+                .map_err(|message| CliError::new("KAST_INVALID_AGENT_RESULT", message)),
+            Self::AddFile { .. } => AgentAddFileAuthority::from_projected_result(preview)
+                .map(|authority| StoredOperation::AddFile {
+                    authority: Box::new(authority),
+                })
+                .map_err(|message| CliError::new("KAST_INVALID_AGENT_RESULT", message)),
+            Self::AddDeclaration { .. } => {
+                AgentAddDeclarationAuthority::from_projected_result(preview)
+                    .map(|authority| StoredOperation::AddDeclaration {
+                        authority: Box::new(authority),
+                    })
+                    .map_err(|message| CliError::new("KAST_INVALID_AGENT_RESULT", message))
             }
-            _ => {}
+            Self::Replace { .. } => AgentReplacementAuthority::from_projected_result(preview)
+                .map(|authority| StoredOperation::Replace {
+                    authority: Box::new(authority),
+                })
+                .map_err(|message| CliError::new("KAST_INVALID_AGENT_RESULT", message)),
         }
-        Ok(())
     }
 
     fn command(
@@ -98,27 +93,6 @@ impl StoredOperation {
                     mutation,
                 })
             }
-            Self::AddImplementation { scope } => {
-                AgentCommand::AddImplementation(AgentScopedMutationArgs {
-                    runtime,
-                    inside_scope: Some(scope.clone()),
-                    inside_file: None,
-                    at: Some(AgentPlacementAnchor::BodyEnd),
-                    after_symbol: None,
-                    before_symbol: None,
-                    content_file: content_file()?,
-                    mutation,
-                })
-            }
-            Self::AddStatement { scope } => {
-                AgentCommand::AddStatement(AgentStatementMutationArgs {
-                    runtime,
-                    inside_scope: scope.clone(),
-                    at: AgentStatementAnchor::BodyEnd,
-                    content_file: content_file()?,
-                    mutation,
-                })
-            }
             Self::Replace { symbol } => {
                 AgentCommand::ReplaceDeclaration(AgentReplaceDeclarationArgs {
                     runtime,
@@ -133,4 +107,194 @@ impl StoredOperation {
             }
         })
     }
+}
+
+impl StoredOperation {
+    fn name(&self) -> &'static str {
+        match self {
+            Self::Rename { .. } => "rename",
+            Self::AddFile { .. } => "add-file",
+            Self::AddDeclaration { .. } => "add-declaration",
+            Self::Replace { .. } => "replace",
+        }
+    }
+
+    fn requires_content(&self) -> bool {
+        !matches!(self, Self::Rename { .. })
+    }
+
+    fn validate(&self) -> std::result::Result<(), String> {
+        match self {
+            Self::Rename { authority } => authority.validate(),
+            Self::Replace { authority } => authority.validate(),
+            Self::AddFile { authority } => authority.validate(),
+            Self::AddDeclaration { authority } => authority.validate(),
+        }
+    }
+
+    fn validate_content_sha256(
+        &self,
+        content_sha256: Option<&str>,
+    ) -> std::result::Result<(), String> {
+        match self {
+            Self::Replace { authority }
+                if content_sha256 == Some(authority.proposed_content_sha256()) =>
+            {
+                Ok(())
+            }
+            Self::Replace { .. } => {
+                Err("replacement content digest disagreed with its exact proposed edit".to_string())
+            }
+            Self::Rename { .. } if content_sha256.is_none() => Ok(()),
+            Self::Rename { .. } => Err("rename authority unexpectedly carried content".to_string()),
+            Self::AddFile { authority }
+                if content_sha256 == Some(authority.proposed_content_sha256()) =>
+            {
+                Ok(())
+            }
+            Self::AddFile { .. } => {
+                Err("add-file content digest disagreed with its exact postimage".to_string())
+            }
+            Self::AddDeclaration { authority }
+                if content_sha256 == Some(authority.proposed_content_sha256()) =>
+            {
+                Ok(())
+            }
+            Self::AddDeclaration { .. } => Err(
+                "add-declaration content digest disagreed with its exact declaration".to_string(),
+            ),
+        }
+    }
+
+    fn transitions(&self, workspace_root: &Path) -> Result<Vec<ExactMutationTransition>> {
+        let mut transitions = match self {
+            Self::Rename { authority } => authority
+                .file_images()
+                .iter()
+                .map(|image| transition_from_file_image(workspace_root, image))
+                .collect::<Result<Vec<_>>>()?,
+            Self::Replace { authority } => authority
+                .file_images()
+                .iter()
+                .map(|image| transition_from_file_image(workspace_root, image))
+                .collect::<Result<Vec<_>>>()?,
+            Self::AddDeclaration { authority } => {
+                vec![transition_from_file_image(workspace_root, authority.file_image())?]
+            }
+            Self::AddFile { authority } => {
+                let absolute_path = authority.target_path().to_string();
+                vec![ExactMutationTransition {
+                    relative_path: relative_authority_path(workspace_root, &absolute_path)?,
+                    absolute_path,
+                    preimage: ExactMutationPreimage::Absent,
+                    postimage: authority.postimage().clone(),
+                }]
+            }
+        };
+        transitions.sort_by(|left, right| left.relative_path.cmp(&right.relative_path));
+        validate_sorted_transition_set(workspace_root, &transitions)?;
+        Ok(transitions)
+    }
+
+    fn postcondition_authority(&self) -> AgentMutationPostconditionAuthority {
+        match self {
+            Self::Rename { authority } => {
+                AgentMutationPostconditionAuthority::Rename(authority.postcondition_authority())
+            }
+            Self::Replace { authority } => AgentMutationPostconditionAuthority::Replacement(
+                authority.postcondition_authority(),
+            ),
+            Self::AddFile { authority } => AgentMutationPostconditionAuthority::AddFile(
+                authority.postcondition_authority(),
+            ),
+            Self::AddDeclaration { authority } => {
+                AgentMutationPostconditionAuthority::AddDeclaration(
+                    authority.postcondition_authority(),
+                )
+            }
+        }
+    }
+
+    fn minimum_postcondition_generation(&self) -> u64 {
+        match self {
+            Self::Rename { authority } => authority.minimum_postcondition_generation(),
+            Self::Replace { authority } => authority.minimum_postcondition_generation(),
+            Self::AddFile { authority } => authority.minimum_postcondition_generation(),
+            Self::AddDeclaration { authority } => authority.minimum_postcondition_generation(),
+        }
+    }
+
+    fn validate_postcondition_evidence(
+        &self,
+        evidence: &AgentMutationPostconditionEvidence,
+    ) -> std::result::Result<(), String> {
+        match (self, evidence) {
+            (
+                Self::Rename { authority },
+                AgentMutationPostconditionEvidence::Rename(evidence),
+            ) => authority.validate_postcondition_evidence(evidence),
+            (
+                Self::Replace { authority },
+                AgentMutationPostconditionEvidence::Replacement(evidence),
+            ) => authority.validate_postcondition_evidence(evidence),
+            (
+                Self::AddFile { authority },
+                AgentMutationPostconditionEvidence::AddFile(evidence),
+            ) => authority.validate_postcondition_evidence(evidence),
+            (
+                Self::AddDeclaration { authority },
+                AgentMutationPostconditionEvidence::AddDeclaration(evidence),
+            ) => authority.validate_postcondition_evidence(evidence),
+            _ => Err(
+                "mutation postcondition evidence used a different operation variant"
+                    .to_string(),
+            ),
+        }
+    }
+
+    fn authority_bytes(&self) -> Result<Vec<u8>> {
+        serde_json::to_vec(self).map_err(CliError::from)
+    }
+
+}
+
+fn transition_from_file_image(
+    workspace_root: &Path,
+    image: &AgentExactFileImage,
+) -> Result<ExactMutationTransition> {
+    let absolute_path = image.file_path().to_string();
+    Ok(ExactMutationTransition {
+        relative_path: relative_authority_path(workspace_root, &absolute_path)?,
+        absolute_path,
+        preimage: ExactMutationPreimage::Present {
+            image: image.preimage().clone(),
+        },
+        postimage: image.postimage().clone(),
+    })
+}
+
+fn relative_authority_path(workspace_root: &Path, absolute_path: &str) -> Result<String> {
+    let absolute = Path::new(absolute_path);
+    let relative = absolute.strip_prefix(workspace_root).map_err(|_| {
+        CliError::new(
+            "KAST_PLAN_INVALID",
+            "The mutation authority contains a path outside its exact workspace root.",
+        )
+    })?;
+    if relative.as_os_str().is_empty()
+        || !relative
+            .components()
+            .all(|component| matches!(component, std::path::Component::Normal(_)))
+    {
+        return Err(CliError::new(
+            "KAST_PLAN_INVALID",
+            "The mutation authority path is not canonical and workspace-relative.",
+        ));
+    }
+    relative.to_str().map(str::to_string).ok_or_else(|| {
+        CliError::new(
+            "KAST_PLAN_INVALID",
+            "The mutation authority path is not UTF-8.",
+        )
+    })
 }

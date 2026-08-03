@@ -86,6 +86,42 @@ class DocExampleGeneratorTest {
     }
 
     @Test
+    fun `verified mutation examples execute through successful typed responses`() {
+        val examples = DocExampleGenerator.generateExamples()
+        val operationIds = setOf(
+            "planReplacement",
+            "planAddFile",
+            "planAddDeclaration",
+            "verifyMutationPostcondition",
+            "exactFileObservation",
+            "exactFileImageCas",
+            "inspectMutationScratch",
+            "recoverMutationScratch",
+        )
+
+        operationIds.forEach { operationId ->
+            val response = examples.getValue(operationId).responseObject()
+            assertTrue("result" in response, "Mutation example $operationId failed: $response")
+        }
+    }
+
+    @Test
+    fun `proof carrying mutation examples retain complete evidence discriminators`() {
+        val examples = DocExampleGenerator.generateExamples()
+        val renameEvidence = examples.getValue("rename")
+            .responseObject().result().getValue("proof").jsonObject
+            .getValue("evidence").jsonObject
+        val replacementEvidence = examples.getValue("planReplacement")
+            .responseObject().result().getValue("proof").jsonObject
+            .getValue("evidence").jsonObject
+
+        assertEquals("COMPLETE", renameEvidence.string("type"))
+        assertEquals("EXACT", renameEvidence.getValue("cardinality").jsonObject.string("type"))
+        assertEquals("complete", replacementEvidence.string("type"))
+        assertEquals("EXACT", replacementEvidence.getValue("cardinality").jsonObject.string("type"))
+    }
+
+    @Test
     fun `checked in doc examples match generated examples`() {
         val generated = DocExampleGenerator.generateExamples()
         val docsExamples = repoRoot().resolve("cli-rs/protocol/examples")

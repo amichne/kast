@@ -14,6 +14,14 @@ import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.ReplacementPlanResult
+import io.github.amichne.kast.api.contract.result.ExactFileImageResult
+import io.github.amichne.kast.api.contract.result.AddFilePlanResult
+import io.github.amichne.kast.api.contract.result.AddDeclarationPlanResult
+import io.github.amichne.kast.api.contract.result.MutationPostconditionResult
+import io.github.amichne.kast.api.contract.result.RawExactFileObservationResult
+import io.github.amichne.kast.api.contract.result.MutationScratchInspectResult
+import io.github.amichne.kast.api.contract.result.MutationScratchRecoveryResult
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
 import io.github.amichne.kast.api.contract.result.WorkspaceFilesResult
@@ -96,6 +104,70 @@ interface AnalysisBackend {
     suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult
 
     suspend fun rename(query: ParsedRenameQuery): RenameResult
+
+    suspend fun planReplacement(query: ParsedReplacementPlanQuery): ReplacementPlanResult {
+        throw CapabilityNotSupportedException(
+            capability = "PLAN_REPLACEMENT",
+            message = "Compiler-backed replacement planning is not available for this backend",
+        )
+    }
+
+    suspend fun planAddFile(query: ParsedAddFilePlanQuery): AddFilePlanResult {
+        throw CapabilityNotSupportedException(
+            capability = "PLAN_ADD_FILE",
+            message = "Compiler-backed add-file planning is not available for this backend",
+        )
+    }
+
+    suspend fun planAddDeclaration(query: ParsedAddDeclarationPlanQuery): AddDeclarationPlanResult {
+        throw CapabilityNotSupportedException(
+            capability = "PLAN_ADD_DECLARATION",
+            message = "Compiler-backed add-declaration planning is not available for this backend",
+        )
+    }
+
+    suspend fun verifyMutationPostcondition(
+        query: ParsedMutationPostconditionQuery,
+    ): MutationPostconditionResult {
+        throw CapabilityNotSupportedException(
+            capability = "VERIFY_MUTATION_POSTCONDITION",
+            message = "Compiler-backed mutation postcondition verification is not available for this backend",
+        )
+    }
+
+    suspend fun observeExactFile(
+        query: ParsedRawExactFileObservationQuery,
+    ): RawExactFileObservationResult {
+        throw CapabilityNotSupportedException(
+            capability = "EXACT_FILE_OBSERVATION",
+            message = "Exact workspace-relative file observation is not available for this backend",
+        )
+    }
+
+    suspend fun exactFileImageCas(query: ParsedExactFileImageQuery): ExactFileImageResult {
+        throw CapabilityNotSupportedException(
+            capability = "EXACT_FILE_IMAGE_CAS",
+            message = "Exact file-image compare-and-swap is not available for this backend",
+        )
+    }
+
+    suspend fun inspectMutationScratch(
+        query: ParsedMutationScratchInspectQuery,
+    ): MutationScratchInspectResult {
+        throw CapabilityNotSupportedException(
+            capability = "MUTATION_SCRATCH_RECOVERY",
+            message = "Descriptor-secure mutation scratch inspection is not available for this backend",
+        )
+    }
+
+    suspend fun recoverMutationScratch(
+        query: ParsedMutationScratchRecoveryQuery,
+    ): MutationScratchRecoveryResult {
+        throw CapabilityNotSupportedException(
+            capability = "MUTATION_SCRATCH_RECOVERY",
+            message = "Descriptor-secure mutation scratch recovery is not available for this backend",
+        )
+    }
 
     suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult
 

@@ -12,6 +12,36 @@ fn command_catalog_schema_rejects_unrecognized_command_properties() {
 }
 
 #[test]
+fn command_catalog_schema_accepts_only_closed_nested_variant_fields() {
+    let catalog_schema = schema_value("protocol/source/commands.schema.json");
+    let validator = jsonschema::validator_for(&catalog_schema).expect("schema compiles");
+    let valid_catalog = catalog();
+
+    assert_valid(&catalog_schema, &valid_catalog);
+
+    let mut unknown_property = valid_catalog.clone();
+    mutation_postcondition_authority(&mut unknown_property)["unrecognized"] = Value::Bool(true);
+    assert!(validator.validate(&unknown_property).is_err());
+
+    let mut missing_variants = valid_catalog.clone();
+    mutation_postcondition_authority(&mut missing_variants)
+        .as_object_mut()
+        .expect("authority field")
+        .remove("variants");
+    assert!(validator.validate(&missing_variants).is_err());
+
+    let mut wrong_type = valid_catalog;
+    mutation_postcondition_authority(&mut wrong_type)["type"] =
+        Value::String("string".to_string());
+    assert!(validator.validate(&wrong_type).is_err());
+}
+
+fn mutation_postcondition_authority(catalog: &mut Value) -> &mut Value {
+    &mut catalog["commands"]["raw/verify-mutation-postcondition"]["request"]["fields"]
+        ["authority"]
+}
+
+#[test]
 fn symbol_query_catalog_documents_relevance_filters() {
     let catalog = catalog();
     let filters = &catalog["commands"]["symbol/query"]["request"]["fields"]["filters"]["fields"];

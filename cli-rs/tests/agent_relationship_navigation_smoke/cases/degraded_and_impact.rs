@@ -23,7 +23,7 @@ fn handle_backed_stale_relationship_preserves_known_minimum_and_limitations() {
                 },
                 "reason": "GENERATION_CHANGED",
                 "evidence": generation_changed_evidence(2),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
@@ -157,7 +157,7 @@ fn selector_handle_drives_impact_without_position_resolution() {
             serde_json::json!({
                 "type": "AVAILABLE",
                 "identity": relation_identity("lib.Foo", "CLASS", &declaration_file, 1),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
@@ -243,7 +243,7 @@ fn selector_handle_impact_preserves_rejection_before_sql() {
                 "type": "SELECTOR_HANDLE_REJECTED",
                 "reason": "STALE",
                 "recovery": "RESOLVE_AGAIN",
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );

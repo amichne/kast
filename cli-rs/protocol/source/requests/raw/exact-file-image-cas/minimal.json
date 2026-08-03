@@ -1,0 +1,11 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "raw/exact-file-image-cas",
+  "params": {
+    "contentBase64": "example-contentBase64",
+    "expectedCurrentSha256": "example-expectedCurrentSha256",
+    "expectedResultSha256": "example-expectedResultSha256",
+    "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt"
+  }
+}

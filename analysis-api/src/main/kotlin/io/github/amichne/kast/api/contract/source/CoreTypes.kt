@@ -130,7 +130,9 @@ value class FqName(val value: String) {
 }
 
 /**
- * A zero-based byte offset into a file's content.
+ * A zero-based IntelliJ UTF-16 code-unit offset into normalized file text.
+ *
+ * The type name is retained for source compatibility.
  *
  * @throws IllegalArgumentException if [value] is negative.
  */

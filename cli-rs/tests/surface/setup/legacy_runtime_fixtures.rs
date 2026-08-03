@@ -66,7 +66,7 @@ fn spawn_legacy_headless_status_server(
                         "backendName": "headless",
                         "backendVersion": "legacy-test",
                         "workspaceRoot": workspace.display().to_string(),
-                        "schemaVersion": 5
+                        "schemaVersion": prior_api_schema_version()
                     }
                 })
             )
@@ -109,6 +109,7 @@ fn write_legacy_headless_descriptor(
         "legacy-test",
         pid,
     );
+    descriptor["schemaVersion"] = prior_api_schema_version().into();
     if let Some(process_start_epoch_millis) = process_start_override {
         descriptor["processStartEpochMillis"] = process_start_epoch_millis.into();
     }

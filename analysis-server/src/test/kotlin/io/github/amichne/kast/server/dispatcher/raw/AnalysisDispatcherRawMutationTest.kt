@@ -3,17 +3,13 @@ package io.github.amichne.kast.server
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.*
 import io.github.amichne.kast.api.contract.result.*
-import io.github.amichne.kast.api.contract.selector.*
-import io.github.amichne.kast.api.contract.skill.*
 import io.github.amichne.kast.api.protocol.*
 import io.github.amichne.kast.api.validation.*
 import io.github.amichne.kast.testing.*
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.*
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.nio.file.Files
-import java.nio.file.Path
 import kotlin.io.path.readText
 
 class AnalysisDispatcherRawMutationTest : AnalysisDispatcherTestSupport() {
@@ -34,6 +30,8 @@ class AnalysisDispatcherRawMutationTest : AnalysisDispatcherTestSupport() {
 
         assertEquals(listOf(file.toString()), result.affectedFiles)
         assertTrue(result.edits.all { edit -> edit.newText == "welcome" })
+        assertEquals(result.affectedFiles, result.fileImages.map { image -> image.filePath.value })
+        assertArrayEquals(Files.readAllBytes(file), result.fileImages.single().preimage.copyBytes())
     }
 
     @Test

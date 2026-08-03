@@ -23,7 +23,72 @@
         "affectedFiles": [
             "/workspace/src/Sample.kt"
         ],
-        "schemaVersion": 5
+        "fileImages": [
+            {
+                "filePath": "/workspace/src/Sample.kt",
+                "preimage": {
+                    "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQo=",
+                    "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+                },
+                "postimage": {
+                    "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biB3ZWxjb21lKCkgPSAiaGkiCgpmdW4gdXNlKCkgPSB3ZWxjb21lKCkK",
+                    "sha256": "0998f81963528b681154b7853e16f00d43148a6b5042651c1cabdf89a6e0922e"
+                }
+            }
+        ],
+        "proof": {
+            "target": {
+                "fqName": "sample.greet",
+                "kind": "FUNCTION",
+                "declarationFile": "/workspace/src/Sample.kt",
+                "declarationStartOffset": 20,
+                "containingType": "sample"
+            },
+            "requiredGeneration": 0,
+            "evidence": {
+                "type": "COMPLETE",
+                "cardinality": {
+                    "type": "EXACT",
+                    "totalCount": 1
+                },
+                "coverage": {
+                    "type": "COMPLETE",
+                    "identity": "COMPLETE",
+                    "projectScope": "COMPLETE",
+                    "sourceSetScope": "COMPLETE",
+                    "indexFreshness": "COMPLETE",
+                    "backend": "COMPLETE",
+                    "requestedFamily": "COMPLETE",
+                    "limitations": []
+                }
+            },
+            "occurrences": [
+                {
+                    "reference": {
+                        "location": {
+                            "filePath": "/workspace/src/Sample.kt",
+                            "startOffset": 48,
+                            "endOffset": 53,
+                            "startLine": 4,
+                            "startColumn": 13,
+                            "preview": "greet"
+                        },
+                        "containingSymbol": {
+                            "type": "TOP_LEVEL"
+                        }
+                    },
+                    "resolvedTarget": {
+                        "fqName": "sample.greet",
+                        "kind": "FUNCTION",
+                        "declarationFile": "/workspace/src/Sample.kt",
+                        "declarationStartOffset": 20,
+                        "containingType": "sample"
+                    },
+                    "provenance": "COMPILER"
+                }
+            ]
+        },
+        "schemaVersion": 6
     },
     "id": 1,
     "jsonrpc": "2.0"

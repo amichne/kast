@@ -8,12 +8,18 @@ import io.github.amichne.kast.api.contract.query.CallHierarchyQuery
 import io.github.amichne.kast.api.contract.query.CodeActionsQuery
 import io.github.amichne.kast.api.contract.query.CompletionsQuery
 import io.github.amichne.kast.api.contract.query.DiagnosticsQuery
+import io.github.amichne.kast.api.contract.query.ExactFileImageQuery
 import io.github.amichne.kast.api.contract.query.FileOutlineQuery
 import io.github.amichne.kast.api.contract.query.ImplementationsQuery
 import io.github.amichne.kast.api.contract.query.ImportOptimizeQuery
+import io.github.amichne.kast.api.contract.query.MutationScratchInspectQuery
+import io.github.amichne.kast.api.contract.query.MutationScratchRecoveryQuery
 import io.github.amichne.kast.api.contract.query.ReferencesQuery
 import io.github.amichne.kast.api.contract.query.RefreshQuery
 import io.github.amichne.kast.api.contract.query.RenameQuery
+import io.github.amichne.kast.api.contract.query.ReplacementPlanQuery
+import io.github.amichne.kast.api.contract.query.AddFilePlanQuery
+import io.github.amichne.kast.api.contract.query.AddDeclarationPlanQuery
 import io.github.amichne.kast.api.contract.query.SymbolQuery
 import io.github.amichne.kast.api.contract.query.TypeHierarchyQuery
 import io.github.amichne.kast.api.contract.query.WorkspaceFilesQuery
@@ -28,6 +34,14 @@ internal suspend fun KastIndexerBackend.typeHierarchy(query: TypeHierarchyQuery)
 internal suspend fun KastIndexerBackend.semanticInsertionPoint(query: SemanticInsertionQuery) = semanticInsertionPoint(query.parsed())
 internal suspend fun KastIndexerBackend.diagnostics(query: DiagnosticsQuery) = diagnostics(query.parsed())
 internal suspend fun KastIndexerBackend.rename(query: RenameQuery) = rename(query.parsed())
+internal suspend fun KastIndexerBackend.planReplacement(query: ReplacementPlanQuery) = planReplacement(query.parsed())
+internal suspend fun KastIndexerBackend.planAddFile(query: AddFilePlanQuery) = planAddFile(query.parsed())
+internal suspend fun KastIndexerBackend.planAddDeclaration(query: AddDeclarationPlanQuery) = planAddDeclaration(query.parsed())
+internal suspend fun KastIndexerBackend.exactFileImageCas(query: ExactFileImageQuery) = exactFileImageCas(query.parsed())
+internal suspend fun KastIndexerBackend.inspectMutationScratch(query: MutationScratchInspectQuery) =
+    inspectMutationScratch(query.parsed())
+internal suspend fun KastIndexerBackend.recoverMutationScratch(query: MutationScratchRecoveryQuery) =
+    recoverMutationScratch(query.parsed())
 internal suspend fun KastIndexerBackend.applyEdits(query: ApplyEditsQuery) = applyEdits(query.parsed())
 internal suspend fun KastIndexerBackend.optimizeImports(query: ImportOptimizeQuery) = optimizeImports(query.parsed())
 internal suspend fun KastIndexerBackend.refresh(query: RefreshQuery) = refresh(query.parsed())

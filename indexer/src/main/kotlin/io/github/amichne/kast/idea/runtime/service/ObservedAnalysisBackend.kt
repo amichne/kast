@@ -21,6 +21,14 @@ import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
 import io.github.amichne.kast.api.contract.result.ReferencesResult
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.ReplacementPlanResult
+import io.github.amichne.kast.api.contract.result.ExactFileImageResult
+import io.github.amichne.kast.api.contract.result.AddFilePlanResult
+import io.github.amichne.kast.api.contract.result.AddDeclarationPlanResult
+import io.github.amichne.kast.api.contract.result.MutationPostconditionResult
+import io.github.amichne.kast.api.contract.result.RawExactFileObservationResult
+import io.github.amichne.kast.api.contract.result.MutationScratchInspectResult
+import io.github.amichne.kast.api.contract.result.MutationScratchRecoveryResult
 import io.github.amichne.kast.api.contract.result.SemanticGraphResult
 import io.github.amichne.kast.api.contract.result.SymbolResult
 import io.github.amichne.kast.api.contract.result.TypeHierarchyResult
@@ -39,6 +47,14 @@ import io.github.amichne.kast.api.validation.ParsedImportOptimizeQuery
 import io.github.amichne.kast.api.validation.ParsedReferencesQuery
 import io.github.amichne.kast.api.validation.ParsedRefreshQuery
 import io.github.amichne.kast.api.validation.ParsedRenameQuery
+import io.github.amichne.kast.api.validation.ParsedReplacementPlanQuery
+import io.github.amichne.kast.api.validation.ParsedExactFileImageQuery
+import io.github.amichne.kast.api.validation.ParsedAddFilePlanQuery
+import io.github.amichne.kast.api.validation.ParsedAddDeclarationPlanQuery
+import io.github.amichne.kast.api.validation.ParsedMutationPostconditionQuery
+import io.github.amichne.kast.api.validation.ParsedRawExactFileObservationQuery
+import io.github.amichne.kast.api.validation.ParsedMutationScratchInspectQuery
+import io.github.amichne.kast.api.validation.ParsedMutationScratchRecoveryQuery
 import io.github.amichne.kast.api.validation.ParsedSemanticInsertionQuery
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.api.validation.ParsedSymbolQuery
@@ -97,6 +113,42 @@ internal class ObservedAnalysisBackend(
 
     override suspend fun rename(query: ParsedRenameQuery): RenameResult =
         observe(KastBackendOperation.RENAME) { delegate.rename(query) }
+
+    override suspend fun planReplacement(query: ParsedReplacementPlanQuery): ReplacementPlanResult =
+        observe(KastBackendOperation.PLAN_REPLACEMENT) { delegate.planReplacement(query) }
+
+    override suspend fun planAddFile(query: ParsedAddFilePlanQuery): AddFilePlanResult =
+        observe(KastBackendOperation.PLAN_ADD_FILE) { delegate.planAddFile(query) }
+
+    override suspend fun planAddDeclaration(query: ParsedAddDeclarationPlanQuery): AddDeclarationPlanResult =
+        observe(KastBackendOperation.PLAN_ADD_DECLARATION) { delegate.planAddDeclaration(query) }
+
+    override suspend fun verifyMutationPostcondition(
+        query: ParsedMutationPostconditionQuery,
+    ): MutationPostconditionResult = observe(KastBackendOperation.VERIFY_MUTATION_POSTCONDITION) {
+        delegate.verifyMutationPostcondition(query)
+    }
+
+    override suspend fun observeExactFile(
+        query: ParsedRawExactFileObservationQuery,
+    ): RawExactFileObservationResult = observe(KastBackendOperation.EXACT_FILE_OBSERVATION) {
+        delegate.observeExactFile(query)
+    }
+
+    override suspend fun exactFileImageCas(query: ParsedExactFileImageQuery): ExactFileImageResult =
+        observe(KastBackendOperation.EXACT_FILE_IMAGE_CAS) { delegate.exactFileImageCas(query) }
+
+    override suspend fun inspectMutationScratch(
+        query: ParsedMutationScratchInspectQuery,
+    ): MutationScratchInspectResult = observe(KastBackendOperation.MUTATION_SCRATCH_INSPECT) {
+        delegate.inspectMutationScratch(query)
+    }
+
+    override suspend fun recoverMutationScratch(
+        query: ParsedMutationScratchRecoveryQuery,
+    ): MutationScratchRecoveryResult = observe(KastBackendOperation.MUTATION_SCRATCH_RECOVER) {
+        delegate.recoverMutationScratch(query)
+    }
 
     override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult =
         observe(KastBackendOperation.APPLY_EDITS) { delegate.applyEdits(query) }

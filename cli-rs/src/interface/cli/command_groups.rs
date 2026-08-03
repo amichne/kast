@@ -13,7 +13,10 @@ pub enum DeveloperCommand {
     Inspect(InspectArgs),
     /// Build, activate, and validate release artifacts.
     Release(ReleaseArgs),
-    /// Run the Codex plugin hook bridge.
+    /// Run one agent-harness hook event.
+    #[command(hide = true)]
+    AgentHook(CodexHookArgs),
+    /// Run the legacy Codex plugin hook bridge.
     Codex(CodexArgs),
 }
 

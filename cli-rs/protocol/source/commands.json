@@ -38,6 +38,14 @@
       "raw/semantic-insertion-point",
       "raw/diagnostics",
       "raw/rename",
+      "raw/plan-replacement",
+      "raw/plan-add-file",
+      "raw/plan-add-declaration",
+      "raw/exact-file-image-cas",
+      "raw/exact-file-observation",
+      "raw/inspect-mutation-scratch",
+      "raw/recover-mutation-scratch",
+      "raw/verify-mutation-postcondition",
       "raw/optimize-imports",
       "raw/apply-edits",
       "raw/workspace-refresh",
@@ -2114,6 +2122,528 @@
       },
       "responseType": "RenameResult"
     },
+    "raw/plan-replacement": {
+      "method": "raw/plan-replacement",
+      "category": "raw",
+      "summary": "Plan an identity-preserving function or property replacement",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "target": {
+            "type": "object",
+            "fields": {
+              "fqName": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "FUNCTION",
+                  "PROPERTY"
+                ]
+              },
+              "declarationFile": {
+                "type": "string"
+              },
+              "declarationStartOffset": {
+                "type": "integer"
+              },
+              "containingType": {
+                "type": "string",
+                "optional": true,
+                "nullable": true
+              }
+            },
+            "required": [
+              "fqName",
+              "kind",
+              "declarationFile",
+              "declarationStartOffset"
+            ]
+          },
+          "proposedDeclaration": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "target",
+          "proposedDeclaration"
+        ]
+      },
+      "responseType": "ReplacementPlanResult",
+      "notes": [
+        "The result is non-mutating and includes exact compiler proof, one source-file hash, and one replacement edit.",
+        "Only Kotlin function and property declarations with equal compiler-observable signatures are supported."
+      ]
+    },
+    "raw/plan-add-file": {
+      "method": "raw/plan-add-file",
+      "category": "raw",
+      "summary": "Plan a compiler-proven Kotlin source file addition",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "targetPath": {
+            "type": "string"
+          },
+          "proposedContent": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetPath",
+          "proposedContent"
+        ]
+      },
+      "responseType": "AddFilePlanResult",
+      "notes": [
+        "The result is non-mutating and proves the exact target is absent.",
+        "The result binds canonical source ownership, collision and rebinding coverage, compiler occurrences, and the exact UTF-8 postimage."
+      ]
+    },
+    "raw/plan-add-declaration": {
+      "method": "raw/plan-add-declaration",
+      "category": "raw",
+      "summary": "Plan a compiler-proven top-level Kotlin declaration addition",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "targetPath": {
+            "type": "string"
+          },
+          "expectedCurrentSha256": {
+            "type": "string"
+          },
+          "proposedDeclaration": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "targetPath",
+          "expectedCurrentSha256",
+          "proposedDeclaration"
+        ]
+      },
+      "responseType": "AddDeclarationPlanResult",
+      "notes": [
+        "The result is non-mutating and binds the exact target preimage and postimage.",
+        "The only supported insertion is compiler FILE_BOTTOM with the closed preserve-existing append blank-line final-LF policy."
+      ]
+    },
+    "raw/exact-file-image-cas": {
+      "method": "raw/exact-file-image-cas",
+      "category": "raw",
+      "summary": "Commit one exact file byte image with compare-and-swap",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "filePath": {
+            "type": "string"
+          },
+          "expectedCurrentSha256": {
+            "type": "string"
+          },
+          "contentBase64": {
+            "type": "string"
+          },
+          "expectedResultSha256": {
+            "type": "string"
+          },
+          "mutationAttemptId": {
+            "type": "string",
+            "optional": true
+          },
+          "mutationScratch": {
+            "type": "object",
+            "optional": true,
+            "fields": {
+              "targetFilePath": {
+                "type": "string"
+              },
+              "quarantinePath": {
+                "type": "string"
+              },
+              "preparedPath": {
+                "type": "string"
+              },
+              "preparedCleanupPath": {
+                "type": "string"
+              },
+              "quarantineCleanupPath": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "targetFilePath",
+              "quarantinePath",
+              "preparedPath",
+              "preparedCleanupPath",
+              "quarantineCleanupPath"
+            ]
+          }
+        },
+        "required": [
+          "filePath",
+          "expectedCurrentSha256",
+          "contentBase64",
+          "expectedResultSha256"
+        ]
+      },
+      "responseType": "ExactFileImageResult",
+      "notes": [
+        "The request carries canonical standard Base64 and lowercase SHA-256 evidence for the exact replacement bytes.",
+        "Only COMMITTED is a result; conflicts and unsafe retained editor state are typed protocol errors."
+      ]
+    },
+    "raw/exact-file-observation": {
+      "method": "raw/exact-file-observation",
+      "category": "raw",
+      "summary": "Observe one canonical workspace-relative file as an exact byte image",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "filePath": {
+            "type": "string",
+            "sample": "src/main/kotlin/example/Widget.kt"
+          },
+          "mutationAttemptId": {
+            "type": "string",
+            "optional": true
+          }
+        },
+        "required": [
+          "filePath"
+        ]
+      },
+      "responseType": "RawExactFileObservationResult",
+      "notes": [
+        "The path is canonical workspace-relative input and cannot escape the exact workspace root.",
+        "The closed result is ABSENT or PRESENT with canonical Base64 and lowercase SHA-256 evidence."
+      ]
+    },
+    "raw/inspect-mutation-scratch": {
+      "method": "raw/inspect-mutation-scratch",
+      "category": "raw",
+      "summary": "Fence a mutation attempt and inspect its exact scratch namespace",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "mutationAttemptId": {
+            "type": "string",
+            "sample": "00000000-0000-4000-8000-000000000337"
+          },
+          "workspaceRelativeParentPaths": {
+            "type": "array",
+            "items": "string",
+            "sample": [
+              "src/main/kotlin/example"
+            ]
+          },
+          "ownedScratchSets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "fields": {
+                "targetFilePath": {
+                  "type": "string"
+                },
+                "quarantinePath": {
+                  "type": "string"
+                },
+                "preparedPath": {
+                  "type": "string"
+                },
+                "preparedCleanupPath": {
+                  "type": "string"
+                },
+                "quarantineCleanupPath": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "targetFilePath",
+                "quarantinePath",
+                "preparedPath",
+                "preparedCleanupPath",
+                "quarantineCleanupPath"
+              ]
+            }
+          }
+        },
+        "required": [
+          "mutationAttemptId",
+          "workspaceRelativeParentPaths",
+          "ownedScratchSets"
+        ]
+      },
+      "responseType": "MutationScratchInspectResult",
+      "notes": [
+        "The top-level mutation attempt is the active backend fence epoch; owned scratch names can retain an older journal-owned epoch.",
+        "The result closes every owned role and every unowned Kast-prefixed entry in the requested target parents."
+      ]
+    },
+    "raw/recover-mutation-scratch": {
+      "method": "raw/recover-mutation-scratch",
+      "category": "raw",
+      "summary": "Restore or finalize one exact journal-owned mutation scratch set",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "mutationAttemptId": {
+            "type": "string",
+            "sample": "00000000-0000-4000-8000-000000000337"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "RESTORE_PREIMAGE",
+              "FINALIZE_POSTIMAGE"
+            ]
+          },
+          "scratchDirection": {
+            "type": "string",
+            "enum": [
+              "FORWARD",
+              "RESTORE_PREIMAGE"
+            ]
+          },
+          "targetFilePath": {
+            "type": "string"
+          },
+          "preimage": {
+            "type": "object",
+            "variantDiscriminator": "state",
+            "sample": {
+              "state": "PRESENT",
+              "image": {
+                "contentBase64": "YQ==",
+                "sha256": "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb"
+              }
+            },
+            "fields": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "ABSENT",
+                  "PRESENT"
+                ]
+              }
+            },
+            "required": [
+              "state"
+            ],
+            "variants": {
+              "ABSENT": {
+                "fields": {}
+              },
+              "PRESENT": {
+                "fields": {
+                  "image": {
+                    "type": "object",
+                    "fields": {
+                      "contentBase64": {
+                        "type": "string"
+                      },
+                      "sha256": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "contentBase64",
+                      "sha256"
+                    ]
+                  }
+                },
+                "required": [
+                  "image"
+                ]
+              }
+            }
+          },
+          "postimage": {
+            "type": "object",
+            "fields": {
+              "contentBase64": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "contentBase64",
+              "sha256"
+            ]
+          },
+          "scratch": {
+            "type": "object",
+            "fields": {
+              "targetFilePath": {
+                "type": "string"
+              },
+              "quarantinePath": {
+                "type": "string"
+              },
+              "preparedPath": {
+                "type": "string"
+              },
+              "preparedCleanupPath": {
+                "type": "string"
+              },
+              "quarantineCleanupPath": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "targetFilePath",
+              "quarantinePath",
+              "preparedPath",
+              "preparedCleanupPath",
+              "quarantineCleanupPath"
+            ]
+          }
+        },
+        "required": [
+          "mutationAttemptId",
+          "action",
+          "scratchDirection",
+          "targetFilePath",
+          "preimage",
+          "postimage",
+          "scratch"
+        ]
+      },
+      "responseType": "MutationScratchRecoveryResult",
+      "notes": [
+        "Recovery holds the active mutation fence and consumes only the four exact journal-owned role paths.",
+        "A successful result proves the selected target image and all four scratch roles absent."
+      ]
+    },
+    "raw/verify-mutation-postcondition": {
+      "method": "raw/verify-mutation-postcondition",
+      "category": "raw",
+      "summary": "Verify compiler-backed postconditions for one exact mutation authority",
+      "dataSource": "backend",
+      "request": {
+        "fields": {
+          "authority": {
+            "type": "object",
+            "variantDiscriminator": "type",
+            "fields": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "RENAME",
+                  "REPLACEMENT",
+                  "ADD_FILE",
+                  "ADD_DECLARATION"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "variants": {
+              "RENAME": {
+                "fields": {
+                  "proof": {
+                    "type": "object"
+                  },
+                  "edits": {
+                    "type": "array",
+                    "items": "object"
+                  },
+                  "images": {
+                    "type": "array",
+                    "items": "object"
+                  }
+                },
+                "required": [
+                  "proof",
+                  "edits",
+                  "images"
+                ]
+              },
+              "REPLACEMENT": {
+                "fields": {
+                  "proof": {
+                    "type": "object"
+                  },
+                  "edit": {
+                    "type": "object"
+                  },
+                  "images": {
+                    "type": "array",
+                    "items": "object"
+                  }
+                },
+                "required": [
+                  "proof",
+                  "edit",
+                  "images"
+                ]
+              },
+              "ADD_FILE": {
+                "fields": {
+                  "proof": {
+                    "type": "object"
+                  },
+                  "postimage": {
+                    "type": "object",
+                    "fields": {
+                      "contentBase64": {
+                        "type": "string"
+                      },
+                      "sha256": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "contentBase64",
+                      "sha256"
+                    ]
+                  }
+                },
+                "required": [
+                  "proof",
+                  "postimage"
+                ]
+              },
+              "ADD_DECLARATION": {
+                "fields": {
+                  "proof": {
+                    "type": "object"
+                  },
+                  "image": {
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "proof",
+                  "image"
+                ]
+              }
+            },
+            "sample": {
+              "type": "ADD_FILE",
+              "proof": {},
+              "postimage": {
+                "contentBase64": "Y2xhc3MgV2lkZ2V0Cg==",
+                "sha256": "889676b7bc43cb549308dfee73eb4796b677424e6d54709c5db84d886df12f37"
+              }
+            }
+          }
+        },
+        "required": [
+          "authority"
+        ]
+      },
+      "responseType": "MutationPostconditionResult",
+      "notes": [
+        "The authority is the exact persisted rename, replacement, add-file, or add-declaration proof.",
+        "Only VERIFIED with deterministic postimage hashes and operation-specific compiler evidence is a successful result."
+      ]
+    },
     "raw/optimize-imports": {
       "method": "raw/optimize-imports",
       "category": "raw",
@@ -2151,6 +2681,41 @@
             "type": "array",
             "optional": true,
             "items": "object"
+          },
+          "mutationAttemptId": {
+            "type": "string",
+            "optional": true
+          },
+          "mutationScratchSets": {
+            "type": "array",
+            "optional": true,
+            "items": {
+              "type": "object",
+              "fields": {
+                "targetFilePath": {
+                  "type": "string"
+                },
+                "quarantinePath": {
+                  "type": "string"
+                },
+                "preparedPath": {
+                  "type": "string"
+                },
+                "preparedCleanupPath": {
+                  "type": "string"
+                },
+                "quarantineCleanupPath": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "targetFilePath",
+                "quarantinePath",
+                "preparedPath",
+                "preparedCleanupPath",
+                "quarantineCleanupPath"
+              ]
+            }
           }
         },
         "required": [

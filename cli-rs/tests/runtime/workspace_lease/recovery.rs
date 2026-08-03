@@ -130,7 +130,7 @@ fn indexing_indexer_runtime_never_becomes_lease_ready() {
                 "backendName": "indexer",
                 "backendVersion": "scripted-test",
                 "workspaceRoot": workspace.display().to_string(),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         ));
         responses.push((
@@ -146,7 +146,7 @@ fn indexing_indexer_runtime_never_becomes_lease_ready() {
                     "maxResults": 1000,
                     "maxConcurrentRequests": 4
                 },
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         ));
     }

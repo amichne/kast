@@ -15,7 +15,8 @@ internal fun readOperationDocs(): List<OperationDoc> = listOf(
                 "qualified name, kind, location, and optional metadata such as type " +
                 "information and documentation.",
             behavioralNotes = listOf(
-                "The position must be an absolute file path with a zero-based byte offset.",
+                "The position must be an absolute file path with a zero-based IntelliJ UTF-16 code-unit offset " +
+                    "into normalized file text.",
                 "If the offset does not land on a symbol, the daemon returns a NOT_FOUND error.",
                 "Optional fields like `declarationScope` and `documentation` are only " +
                     "populated when the corresponding query flags are set.",

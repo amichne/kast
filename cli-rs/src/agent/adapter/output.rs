@@ -43,10 +43,6 @@ pub(crate) fn print_projected_value(envelope: Value) -> Result<i32> {
     print_direct(&sanitize_agent_result(result, true))
 }
 
-pub(crate) fn print_agent_result(result: Value) -> Result<i32> {
-    print_direct(&sanitize_agent_result(result, true))
-}
-
 fn print_direct(value: &impl Serialize) -> Result<i32> {
     output::print_structured(value, OutputFormat::Toon)?;
     Ok(0)

@@ -1,6 +1,5 @@
 package io.github.amichne.kast.idea.diagnostics
 
-import com.intellij.notification.NotificationType
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.BackendCapabilities
 import io.github.amichne.kast.api.contract.RuntimeState
@@ -332,65 +331,3 @@ internal enum class KastBackendUiState(val displayName: String) {
 
 private fun KastBackendUiState.indexingIfReady(): KastBackendUiState =
     if (this == KastBackendUiState.READY) KastBackendUiState.INDEXING else this
-
-internal enum class KastIndexState {
-    IDLE,
-    WAITING_FOR_IDE,
-    HYDRATING,
-    INDEXING,
-    READY,
-    DEGRADED,
-    FAILED,
-    CANCELLED,
-}
-
-internal enum class KastActivitySeverity {
-    INFO,
-    WARNING,
-    ERROR,
-}
-
-internal enum class KastActivityKind(val displayName: String) {
-    BACKEND("Backend"),
-    CONFIG("Config"),
-    INDEX("Index"),
-    OPERATION("Operation"),
-}
-
-internal enum class KastBackendOperation(val displayName: String) {
-    CAPABILITIES("Capabilities"),
-    RUNTIME_STATUS("Runtime status"),
-    HEALTH("Health"),
-    RESOLVE_SYMBOL("Resolve symbol"),
-    FIND_REFERENCES("Find references"),
-    CALL_HIERARCHY("Call hierarchy"),
-    TYPE_HIERARCHY("Type hierarchy"),
-    SEMANTIC_INSERTION_POINT("Semantic insertion"),
-    DIAGNOSTICS("Diagnostics"),
-    RENAME("Rename"),
-    APPLY_EDITS("Apply edits"),
-    OPTIMIZE_IMPORTS("Optimize imports"),
-    REFRESH("Refresh"),
-    FILE_OUTLINE("File outline"),
-    WORKSPACE_SYMBOL_SEARCH("Workspace symbols"),
-    WORKSPACE_SEARCH("Workspace search"),
-    WORKSPACE_FILES("Workspace files"),
-    SEMANTIC_GRAPH("Semantic graph"),
-    IMPLEMENTATIONS("Implementations"),
-    CODE_ACTIONS("Code actions"),
-    COMPLETIONS("Completions"),
-}
-
-internal fun AnalysisTransport.displayName(): String = when (this) {
-    is AnalysisTransport.UnixDomainSocket -> "uds:${socketPath.fileName}"
-    AnalysisTransport.Stdio -> "stdio"
-    is AnalysisTransport.Tcp -> "tcp:$host:$port"
-}
-
-internal fun KastActivitySeverity.toNotificationType(): NotificationType = when (this) {
-    KastActivitySeverity.INFO -> NotificationType.INFORMATION
-    KastActivitySeverity.WARNING -> NotificationType.WARNING
-    KastActivitySeverity.ERROR -> NotificationType.ERROR
-}
-
-internal fun Throwable.compactMessage(): String = message?.takeIf(String::isNotBlank) ?: javaClass.simpleName

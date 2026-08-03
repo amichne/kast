@@ -11,6 +11,26 @@ struct AgentMutationPlanProjectionInput {
     result_type: String,
     apply_required: bool,
     request: AgentMutationPlanRequestInput,
+    #[serde(default)]
+    plan_kind: Option<AgentAdditionPlanKind>,
+    #[serde(default)]
+    preview: Option<AgentMutationPlanPreview>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(untagged)]
+enum AgentMutationPlanPreview {
+    Rename(Box<AgentRenamePreview>),
+    Replacement(Box<AgentReplacementPlanResult>),
+    AddFile(Box<AgentAddFilePlanResult>),
+    AddDeclaration(Box<AgentAddDeclarationPlanResult>),
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+enum AgentAdditionPlanKind {
+    AddFile,
+    AddDeclaration,
 }
 
 #[derive(Debug, Deserialize)]
@@ -290,6 +310,8 @@ struct AgentMutationPlanProjection {
     inside_scope: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     anchor: Option<AgentMutationPlanAnchorInput>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    preview: Option<AgentMutationPlanPreview>,
 }
 
 #[derive(Debug)]
@@ -316,65 +338,4 @@ struct AgentMutationFailureEvidence {
     result: AgentMutationResultEvidence,
 }
 
-impl TryFrom<AgentMutationProjectionInput> for AgentMutationProjection {
-    type Error = String;
-
-    fn try_from(input: AgentMutationProjectionInput) -> std::result::Result<Self, Self::Error> {
-        match input {
-            AgentMutationProjectionInput::Plan(plan) => {
-                let plan = *plan;
-                if !matches!(
-                    plan.result_type.as_str(),
-                    "KAST_AGENT_MUTATION_PLAN" | "KAST_AGENT_RENAME_PLAN"
-                ) || !plan.apply_required
-                {
-                    return Err("mutation plan did not require explicit apply".to_string());
-                }
-                let AgentMutationPlanRequestInput { method, params } = plan.request;
-                let inside_file = params
-                    .placement
-                    .as_ref()
-                    .and_then(|placement| placement.scope.inside_file())
-                    .map(str::to_string);
-                let file_path = params.file_path.or(inside_file);
-                let mutation_kind = mutation_kind_from_method(&method);
-                Ok(Self {
-                    execution: AgentMutationExecutionProjection {
-                        outcome: format!("PLANNED_{mutation_kind}"),
-                        deduplicated: None,
-                        failure: None,
-                    },
-                    plan: Some(AgentMutationPlanProjection {
-                        method,
-                        request_type: params.request_type,
-                        symbol: params.symbol,
-                        selector_handle: params.selector_handle,
-                        new_name: params.new_name,
-                        kind: params.kind,
-                        file_hint: params.file_hint,
-                        containing_type: params.containing_type,
-                        file_path: file_path.clone(),
-                        content_file: params.content_file,
-                        placement: params.placement,
-                        inside_scope: params.inside_scope,
-                        anchor: params.statement_anchor.map(|anchor| {
-                            AgentMutationPlanAnchorInput::AtAnchor {
-                                anchor: anchor.canonical().to_string(),
-                            }
-                        }),
-                    }),
-                    edit_count: 0,
-                    edits: Vec::new(),
-                    files: file_path.into_iter().collect(),
-                    diagnostics: AgentDiagnosticSeverityCounts {
-                        error: 0,
-                        warning: 0,
-                        info: 0,
-                        total: 0,
-                    },
-                })
-            }
-            AgentMutationProjectionInput::Execution(execution) => Self::from_execution(execution),
-        }
-    }
-}
+include!("contract/conversion.rs");

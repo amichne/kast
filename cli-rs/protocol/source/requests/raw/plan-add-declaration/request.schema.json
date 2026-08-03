@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "raw/plan-add-declaration"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": false,
+      "properties": {
+        "expectedCurrentSha256": {
+          "type": "string"
+        },
+        "proposedDeclaration": {
+          "type": "string"
+        },
+        "targetPath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "targetPath",
+        "expectedCurrentSha256",
+        "proposedDeclaration"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast raw/plan-add-declaration JSON-RPC request",
+  "type": "object"
+}

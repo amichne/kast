@@ -53,7 +53,7 @@ sealed interface RelationshipResultEvidence {
     ) : RelationshipResultEvidence
 
     object CompleteSerializer : KSerializer<Complete> {
-        override val descriptor = RelationshipResultEvidence.serializer().descriptor
+        override val descriptor = Complete.serializer().descriptor
 
         override fun serialize(encoder: Encoder, value: Complete) {
             encoder.encodeSerializableValue(RelationshipResultEvidence.serializer(), value)

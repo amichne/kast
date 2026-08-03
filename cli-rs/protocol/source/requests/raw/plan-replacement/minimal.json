@@ -1,0 +1,14 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "raw/plan-replacement",
+  "params": {
+    "proposedDeclaration": "example-proposedDeclaration",
+    "target": {
+      "declarationFile": "example-declarationFile",
+      "declarationStartOffset": 128,
+      "fqName": "com.example.Widget",
+      "kind": "FUNCTION"
+    }
+  }
+}

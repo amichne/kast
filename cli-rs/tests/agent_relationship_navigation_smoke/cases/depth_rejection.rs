@@ -36,7 +36,7 @@ fn call_relationships_fail_closed_on_over_depth_backend_evidence() {
                     "containingSymbol": {"type": "TOP_LEVEL"}
                 }],
                 "page": exact_relation_page(1),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );

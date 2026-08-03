@@ -1,0 +1,53 @@
+{
+    "result": {
+        "status": "VERIFIED",
+        "operation": "ADD_FILE",
+        "currentGeneration": 2,
+        "postimages": [
+            {
+                "filePath": "/workspace/src/Generated.kt",
+                "sha256": "abe691db3b6164d00c64654569267637709942f01c9a174a267a8ac044206a2a"
+            }
+        ],
+        "evidence": {
+            "type": "ADD_FILE",
+            "owner": {
+                "sourceRoot": "/workspace/src",
+                "ideaModuleName": "fake-module",
+                "gradleBuildRoot": "/workspace",
+                "gradleProjectPath": ":",
+                "sourceSetName": "main"
+            },
+            "packageIdentity": {
+                "type": "NAMED",
+                "segments": [
+                    "sample"
+                ]
+            },
+            "declarations": [
+                {
+                    "packageIdentity": {
+                        "type": "NAMED",
+                        "segments": [
+                            "sample"
+                        ]
+                    },
+                    "name": "Generated",
+                    "kind": "CLASS",
+                    "relativeRange": {
+                        "startOffset": 16,
+                        "endOffset": 31
+                    },
+                    "collisionSignature": "87cc059ff6a5a0e01e501b755c7aeccfe87c039f5d28fa48732935f25a930e56"
+                }
+            ],
+            "outboundEvidence": {
+                "cardinality": 0,
+                "occurrences": []
+            }
+        },
+        "schemaVersion": 6
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

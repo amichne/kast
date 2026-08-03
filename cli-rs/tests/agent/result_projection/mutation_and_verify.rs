@@ -106,7 +106,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
         "backendName": "indexer",
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     });
     let capabilities = json!({
         "backendName": "indexer",
@@ -120,7 +120,7 @@ fn verify_default_exposes_health_runtime_and_capability_evidence_without_steps()
             "maxConcurrentRequests": 4
         },
         "explanation": "capability explanation ".repeat(200),
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     });
     let responses = vec![
         ("runtime/status", runtime.clone()),
@@ -257,7 +257,7 @@ fn complete_refresh_for(file: &Path) -> Value {
         "removedFileCount": 0,
         "attemptCount": 1,
         "elapsedMillis": 0,
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     })
 }
 

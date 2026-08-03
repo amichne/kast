@@ -81,6 +81,24 @@ require_contains "${docs_root}/how-to/plan-safe-edits.md" "one exact compiler id
 for command in up refresh files symbol graph check change apply; do
   require_contains "${docs_root}/reference/cli.md" "\`kast ${command}"
 done
+public_mutation_docs=(
+  "${docs_root}/how-to/plan-safe-edits.md"
+  "${docs_root}/reference/cli.md"
+  "${repo_root}/cli-rs/resources/kast/SKILL.md"
+)
+for public_mutation_doc in "${public_mutation_docs[@]}"; do
+  require_not_contains_file "$public_mutation_doc" "kastctl agent lease"
+  require_not_contains_file "$public_mutation_doc" "--lease-id"
+done
+for public_mutation_command in \
+  'kast change' 'kast apply <PLAN_ID>' 'kast recover <RECOVERY_ID>'; do
+  require_contains "${repo_root}/cli-rs/resources/kast/SKILL.md" \
+    "$public_mutation_command"
+  require_contains "${docs_root}/how-to/plan-safe-edits.md" \
+    "$public_mutation_command"
+  require_contains "${docs_root}/reference/cli.md" \
+    "$public_mutation_command"
+done
 require_contains "${docs_root}/reference/cli.md" '`kast` is the only public interface'
 require_contains "${docs_root}/reference/cli.md" "compact TOON"
 require_contains "${docs_root}/reference/cli.md" '`libexec/kastctl` multicall entrypoint'
@@ -89,6 +107,12 @@ require_contains "${docs_root}/reference/codex-plugin.md" "Codex, Claude,"
 require_contains "${docs_root}/reference/codex-plugin.md" "installer never"
 require_contains "${docs_root}/reference/codex-plugin.md" '`kast@kast`'
 require_contains "${docs_root}/reference/codex-plugin.md" "kast-codex-<tag>.tar"
+require_contains "${docs_root}/reference/codex-plugin.md" \
+  "CLI, provider plugin, and skill"
+require_contains "${docs_root}/reference/codex-plugin.md" \
+  "version or digest mismatch rejects harness activation"
+require_contains "${docs_root}/reference/codex-plugin.md" \
+  "Direct CLI use does not require agent harness resources"
 require_contains "${docs_root}/explanation/architecture.md" "exact workspace"
 require_contains "${docs_root}/explanation/compiler-evidence.md" "scope fingerprint"
 require_contains "${docs_root}/explanation/repository-intelligence.md" "Incomplete positive answers fail closed"

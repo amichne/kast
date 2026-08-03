@@ -35,7 +35,7 @@ fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
                     "truncated": true,
                     "nextHandle": handle
                 },
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
@@ -94,7 +94,7 @@ fn call_relationship_page_tokens_round_trip_only_the_backend_handle() {
                     "visitedCandidateCount": 1,
                     "truncated": false
                 },
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );

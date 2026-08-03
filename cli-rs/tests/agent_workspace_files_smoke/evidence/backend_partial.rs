@@ -28,13 +28,13 @@ fn backend_module_filter_is_partial_when_backend_page_is_incomplete() {
                 "fileCount": 2,
                 "nextPageToken": null
             }],
-            "schemaVersion": 5
+            "schemaVersion": api_schema_version()
         })
     };
     let validation = serde_json::json!({
         "snapshotToken": "snapshot-partial-backend-owner",
         "modules": [],
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     });
     let backend = spawn_scripted_indexer_backend(
         &home,

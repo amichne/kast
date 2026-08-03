@@ -2,7 +2,7 @@
 mod support;
 
 use support::metrics::seed_source_index;
-use support::{kast_at, spawn_scripted_indexer_backend_for_invocations};
+use support::{api_schema_version, kast_at, spawn_scripted_indexer_backend_for_invocations};
 
 fn decode_default_toon(
     operation: &str,
@@ -102,7 +102,7 @@ fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operation
                     "subject": identity,
                     "references": [],
                     "evidence": complete_relationship_evidence(0),
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
             ),
             (
@@ -117,7 +117,7 @@ fn cargo_built_cli_resolves_once_and_reuses_handle_across_default_toon_operation
                         "visitedCandidateCount": 0,
                         "truncated": false
                     },
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
             ),
         ],

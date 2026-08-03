@@ -56,17 +56,24 @@ object DocExampleGenerator {
     fun generateExamples(): Map<String, ExamplePair> {
         val tempDir = Files.createTempDirectory("kast-doc-examples")
         try {
-            val backend = FakeAnalysisBackend.sample(tempDir)
-            val dispatcher = RpcAnalysisDispatcher(
-                backend = backend,
-                config = AnalysisServerConfig(),
-                lifecycleController = RuntimeLifecycleController { {} },
-            )
-
+            val delegate = FakeAnalysisBackend.sample(tempDir)
             val sampleFile = tempDir.resolve("src/Sample.kt").toString()
             val typeFile = tempDir.resolve("src/Types.kt").toString()
             val sampleContent = Path.of(sampleFile).readText()
             val typeContent = Path.of(typeFile).readText()
+
+            val mutationFixture = buildDocExampleGeneratorMutationFixture(
+                json = json,
+                delegate = delegate,
+                workspaceRoot = tempDir,
+                sampleFile = sampleFile,
+                sampleContent = sampleContent,
+            )
+            val dispatcher = RpcAnalysisDispatcher(
+                backend = mutationFixture.backend,
+                config = AnalysisServerConfig(),
+                lifecycleController = RuntimeLifecycleController { {} },
+            )
 
             val greetDeclarationOffset = sampleContent.indexOf("greet")
             val greetReferenceOffset = sampleContent.lastIndexOf("greet")
@@ -76,15 +83,18 @@ object DocExampleGenerator {
             val canonicalPathToSanitize = tempDir.toRealPath().toString()
             val continuationIdentity = continuationIdentity(sampleFile)
 
-            val operations = buildOperations(
-                json = json,
-                sampleFile = sampleFile,
-                typeFile = typeFile,
-                sampleContent = sampleContent,
-                greetDeclarationOffset = greetDeclarationOffset,
-                greetReferenceOffset = greetReferenceOffset,
-                friendlyGreeterOffset = friendlyGreeterOffset,
-                continuationIdentity = continuationIdentity,
+            val operations = insertDocMutationOperations(
+                base = buildOperations(
+                    json = json,
+                    sampleFile = sampleFile,
+                    typeFile = typeFile,
+                    sampleContent = sampleContent,
+                    greetDeclarationOffset = greetDeclarationOffset,
+                    greetReferenceOffset = greetReferenceOffset,
+                    friendlyGreeterOffset = friendlyGreeterOffset,
+                    continuationIdentity = continuationIdentity,
+                ),
+                mutation = mutationFixture.operations,
             )
 
             val result = linkedMapOf<String, ExamplePair>()

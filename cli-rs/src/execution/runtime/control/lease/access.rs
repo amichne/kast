@@ -1,4 +1,17 @@
 pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceLeaseResult> {
+    workspace_lease_acquire_with_owner(args, WorkspaceLeaseOwnerScope::CallerSession)
+}
+
+pub(crate) fn workspace_lease_acquire_process_owned(
+    args: AgentLeaseAcquireArgs,
+) -> Result<WorkspaceLeaseResult> {
+    workspace_lease_acquire_with_owner(args, WorkspaceLeaseOwnerScope::CurrentProcess)
+}
+
+fn workspace_lease_acquire_with_owner(
+    args: AgentLeaseAcquireArgs,
+    owner_scope: WorkspaceLeaseOwnerScope,
+) -> Result<WorkspaceLeaseResult> {
     let requested_root = exact_lease_root(&args.workspace_root)?;
     let admission = admitted_lease_workspace(requested_root, args.wait_timeout_ms)?;
     let initial_installation =
@@ -23,7 +36,7 @@ pub fn workspace_lease_acquire(args: AgentLeaseAcquireArgs) -> Result<WorkspaceL
             WorkspaceLeaseOwnership::Borrowed
         };
         let runtime = runtime_identity(&ensured.selected)?;
-        let owner = caller_process_identity()?;
+        let owner = lease_owner_identity(owner_scope)?;
         let acquired_at = crate::manifest::current_timestamp();
 
         let finalization = (|| {

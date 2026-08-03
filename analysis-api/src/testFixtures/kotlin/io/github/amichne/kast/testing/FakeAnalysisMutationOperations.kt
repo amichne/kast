@@ -1,11 +1,25 @@
 package io.github.amichne.kast.testing
 
 import io.github.amichne.kast.api.contract.FileHash
+import io.github.amichne.kast.api.contract.ExactFileImage
+import io.github.amichne.kast.api.contract.Location
+import io.github.amichne.kast.api.contract.NonNegativeInt
+import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.SymbolIdentity
 import io.github.amichne.kast.api.contract.TextEdit
 import io.github.amichne.kast.api.contract.query.ApplyEditsQuery
 import io.github.amichne.kast.api.contract.result.ApplyEditsResult
 import io.github.amichne.kast.api.contract.result.ImportOptimizeResult
+import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
+import io.github.amichne.kast.api.contract.result.ExactRenameOccurrence
+import io.github.amichne.kast.api.contract.result.ExactRenameProof
+import io.github.amichne.kast.api.contract.result.MutationSemanticGeneration
+import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
+import io.github.amichne.kast.api.contract.result.RelationshipResultEvidence
+import io.github.amichne.kast.api.contract.result.RelationshipSearchCoverage
 import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.RenameOccurrenceProvenance
+import io.github.amichne.kast.api.contract.result.ResultCardinality
 import io.github.amichne.kast.api.protocol.*
 import io.github.amichne.kast.api.validation.*
 import java.nio.file.Files
@@ -27,15 +41,65 @@ internal suspend fun FakeAnalysisBackend.renameResult(query: ParsedRenameQuery):
         .distinctBy { edit -> Triple(edit.filePath, edit.startOffset, edit.endOffset) }
         .sortedWith(compareBy({ it.filePath }, { it.startOffset }))
     val affectedFiles = edits.map(TextEdit::filePath).distinct()
+    val targetIdentity = SymbolIdentity(
+        fqName = symbol.fqName,
+        kind = symbol.kind,
+        declarationFile = NormalizedPath.parse(symbol.location.filePath),
+        declarationStartOffset = NonNegativeInt(symbol.location.startOffset),
+        containingType = symbol.containingDeclaration,
+    )
+    val occurrences = symbolAnchors.drop(1).map { location ->
+        ExactRenameOccurrence(
+            reference = ReferenceOccurrence(
+                location = Location(
+                    filePath = location.filePath,
+                    startOffset = location.startOffset,
+                    endOffset = location.endOffset,
+                    startLine = location.startLine,
+                    startColumn = location.startColumn,
+                    preview = location.preview,
+                    usageSiteScope = location.usageSiteScope,
+                ),
+                containingSymbol = ContainingSymbolEvidence.TopLevel,
+            ),
+            resolvedTarget = targetIdentity,
+            provenance = RenameOccurrenceProvenance.COMPILER,
+        )
+    }
+    val fileImages = affectedFiles.map { filePath ->
+        val preimage = Files.readAllBytes(Path.of(filePath))
+        val originalText = preimage.toString(Charsets.UTF_8)
+        val postimageText = edits
+            .filter { edit -> edit.filePath == filePath }
+            .sortedByDescending(TextEdit::startOffset)
+            .fold(originalText) { text, edit ->
+                text.replaceRange(edit.startOffset, edit.endOffset, edit.newText)
+            }
+        ExactFileImage.of(
+            filePath = filePath,
+            preimageBytes = preimage,
+            postimageBytes = postimageText.toByteArray(),
+        )
+    }
 
     return RenameResult.of(
         edits = edits,
-        fileHashes = affectedFiles.map { filePath ->
+        fileHashes = fileImages.map { image ->
             FileHash(
-                filePath = filePath,
-                hash = FileHashing.sha256(Files.readString(Path.of(filePath))),
+                filePath = image.filePath.value,
+                hash = image.preimage.sha256.value,
             )
         },
+        fileImages = fileImages,
+        proof = ExactRenameProof.of(
+            target = targetIdentity,
+            requiredGeneration = MutationSemanticGeneration(0),
+            evidence = RelationshipResultEvidence.Complete(
+                cardinality = ResultCardinality.Exact(occurrences.size),
+                coverage = RelationshipSearchCoverage.complete(),
+            ),
+            occurrences = occurrences,
+        ),
     )
 }
 

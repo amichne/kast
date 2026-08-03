@@ -90,7 +90,14 @@ fn indexer_authority_accepts_every_server_mutation_capability() {
             "APPLY_EDITS",
             "FILE_OPERATIONS",
             "OPTIMIZE_IMPORTS",
-            "REFRESH_WORKSPACE"
+            "REFRESH_WORKSPACE",
+            "PLAN_REPLACEMENT",
+            "PLAN_ADD_FILE",
+            "PLAN_ADD_DECLARATION",
+            "EXACT_FILE_IMAGE_CAS",
+            "EXACT_FILE_OBSERVATION",
+            "MUTATION_SCRATCH_RECOVERY",
+            "VERIFY_MUTATION_POSTCONDITION"
         ]))
         .expect("complete server mutation capability domain");
 
@@ -102,6 +109,13 @@ fn indexer_authority_accepts_every_server_mutation_capability() {
             SemanticMutationCapability::FileOperations,
             SemanticMutationCapability::OptimizeImports,
             SemanticMutationCapability::RefreshWorkspace,
+            SemanticMutationCapability::PlanReplacement,
+            SemanticMutationCapability::PlanAddFile,
+            SemanticMutationCapability::PlanAddDeclaration,
+            SemanticMutationCapability::ExactFileImageCas,
+            SemanticMutationCapability::ExactFileObservation,
+            SemanticMutationCapability::MutationScratchRecovery,
+            SemanticMutationCapability::VerifyMutationPostcondition,
         ]
     );
 }

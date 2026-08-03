@@ -19,6 +19,7 @@ enum class RelationshipSearchLimitation {
     TIMED_OUT,
     CANCELLED,
     GENERATION_CHANGED,
+    SOURCE_IMAGE_UNPROVEN,
     CONTINUATION_EXPIRED,
     CONTINUATION_INVALID,
 }

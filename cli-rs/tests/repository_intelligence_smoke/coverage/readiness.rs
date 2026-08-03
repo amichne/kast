@@ -9,7 +9,7 @@ fn ready_runtime(workspace: &std::path::Path) -> serde_json::Value {
         "workspaceRoot": workspace.display().to_string(),
         "sourceModuleNames": ["app"],
         "referenceIndexReady": true,
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     })
 }
 
@@ -25,7 +25,7 @@ fn semantic_graph_capabilities(workspace: &std::path::Path) -> serde_json::Value
             "maxResults": 1000,
             "maxConcurrentRequests": 4
         },
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     })
 }
 
@@ -162,7 +162,7 @@ fn status_reports_semantic_graph_coverage_separately_while_runtime_is_indexing()
                     "workspaceRoot": workspace.display().to_string(),
                     "sourceModuleNames": ["app"],
                     "referenceIndexReady": false,
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
             ),
             ("capabilities", semantic_graph_capabilities(&workspace)),

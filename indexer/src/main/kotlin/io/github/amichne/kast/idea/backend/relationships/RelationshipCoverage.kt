@@ -169,17 +169,41 @@ internal fun KastIndexerBackend.completeRelationshipCoverageAdmission(
         searchScope: GlobalSearchScope,
         requiredGeneration: Long? = null,
         knownMinimumCount: Int = 0,
-    ): CompleteRelationshipCoverageAdmission {
+    ): CompleteRelationshipCoverageAdmission = completeRelationshipCoverageAdmission(
+        selector = selector,
+        rootKind = rootKind,
+        requiredGeneration = requiredGeneration,
+        knownMinimumCount = knownMinimumCount,
+        assessmentSource = CompleteRelationshipCoverageAssessmentSource.Scoped(searchScope),
+    )
+
+internal fun KastIndexerBackend.completeLiveRenameRelationshipCoverageAdmission(
+    selector: KastExactSymbolSelector,
+    rootKind: RelationshipRootKind,
+    requiredGeneration: Long? = null,
+    knownMinimumCount: Int = 0,
+): CompleteRelationshipCoverageAdmission = completeRelationshipCoverageAdmission(
+    selector = selector,
+    rootKind = rootKind,
+    requiredGeneration = requiredGeneration,
+    knownMinimumCount = knownMinimumCount,
+    assessmentSource = CompleteRelationshipCoverageAssessmentSource.Live,
+)
+
+private fun KastIndexerBackend.completeRelationshipCoverageAdmission(
+    selector: KastExactSymbolSelector,
+    rootKind: RelationshipRootKind,
+    requiredGeneration: Long?,
+    knownMinimumCount: Int,
+    assessmentSource: CompleteRelationshipCoverageAssessmentSource,
+): CompleteRelationshipCoverageAdmission {
         if (requiredGeneration != null && psiGeneration() != requiredGeneration) {
             return limitedRelationshipCoverageAdmission(RelationshipSearchLimitation.GENERATION_CHANGED)
         }
         if (!relationshipSelectorMatches(selector, rootKind)) {
             return limitedRelationshipCoverageAdmission(RelationshipSearchLimitation.IDENTITY_UNPROVEN)
         }
-        val coverage = relationshipCoverageAuthority.assess(
-            RelationshipCoverageAuthority.FamilyCompletion.COMPLETE,
-            searchScope,
-        )
+        val coverage = assessmentSource.assess(relationshipCoverageAuthority)
         val generation = psiGeneration()
         if (requiredGeneration != null && generation != requiredGeneration) {
             return limitedRelationshipCoverageAdmission(RelationshipSearchLimitation.GENERATION_CHANGED)
@@ -206,6 +230,22 @@ internal fun KastIndexerBackend.completeRelationshipCoverageAdmission(
                 )
         }
     }
+
+private sealed interface CompleteRelationshipCoverageAssessmentSource {
+    fun assess(authority: RelationshipCoverageAuthority): RelationshipSearchCoverage
+
+    data object Live : CompleteRelationshipCoverageAssessmentSource {
+        override fun assess(authority: RelationshipCoverageAuthority): RelationshipSearchCoverage =
+            authority.assess(RelationshipCoverageAuthority.FamilyCompletion.COMPLETE)
+    }
+
+    data class Scoped(
+        val searchScope: GlobalSearchScope,
+    ) : CompleteRelationshipCoverageAssessmentSource {
+        override fun assess(authority: RelationshipCoverageAuthority): RelationshipSearchCoverage =
+            authority.assess(RelationshipCoverageAuthority.FamilyCompletion.COMPLETE, searchScope)
+    }
+}
 
 internal fun KastIndexerBackend.relationshipSelectorMatches(
         selector: KastExactSymbolSelector,

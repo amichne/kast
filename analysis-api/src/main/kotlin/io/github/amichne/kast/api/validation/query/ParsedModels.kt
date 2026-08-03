@@ -3,6 +3,8 @@ package io.github.amichne.kast.api.validation
 import io.github.amichne.kast.api.contract.*
 import io.github.amichne.kast.api.contract.query.*
 import io.github.amichne.kast.api.contract.result.SemanticGraphExternalBoundaryFailureId
+import io.github.amichne.kast.api.contract.result.AdditionTargetPath
+import io.github.amichne.kast.api.contract.result.AdditionTargetPreimageSha256
 import io.github.amichne.kast.api.protocol.*
 import java.nio.file.FileSystems
 
@@ -65,6 +67,7 @@ sealed interface ParsedFileOperation {
     data class CreateFile(
         override val filePath: NormalizedPath,
         val content: String,
+        val parentPolicy: CreateFileParentPolicy,
     ) : ParsedFileOperation
 
     data class DeleteFile(
@@ -106,6 +109,31 @@ data class ParsedRenameQuery(
     val dryRun: Boolean,
 ) : PositionQuery
 
+data class ParsedReplacementPlanQuery(
+    val target: SymbolIdentity,
+    val proposedDeclaration: NonBlankString,
+)
+
+data class ParsedAddFilePlanQuery(
+    val targetPath: AdditionTargetPath,
+    val proposedContent: NonBlankString,
+)
+
+data class ParsedAddDeclarationPlanQuery(
+    val targetPath: AdditionTargetPath,
+    val expectedCurrentSha256: AdditionTargetPreimageSha256,
+    val proposedDeclaration: NonBlankString,
+)
+
+data class ParsedExactFileImageQuery(
+    val filePath: NormalizedPath,
+    val expectedCurrentSha256: ExactFileImageSha256,
+    val content: ExactByteImage,
+    val expectedResultSha256: ExactFileImageSha256,
+    val mutationAttemptId: MutationAttemptId? = null,
+    val mutationScratch: ParsedMutationScratchSet? = null,
+)
+
 data class ParsedImportOptimizeQuery(
     val filePaths: NonEmptyList<NormalizedPath>,
 )
@@ -114,6 +142,8 @@ data class ParsedApplyEditsQuery(
     val edits: List<ParsedTextEdit>,
     val fileHashes: List<ParsedFileHash>,
     val fileOperations: List<ParsedFileOperation>,
+    val mutationAttemptId: MutationAttemptId? = null,
+    val mutationScratchSets: List<ParsedMutationScratchSet> = emptyList(),
 )
 
 data class ParsedRefreshQuery(
@@ -197,6 +227,7 @@ fun FileOperation.parsed(): ParsedFileOperation = when (this) {
     is FileOperation.CreateFile -> ParsedFileOperation.CreateFile(
         filePath = NormalizedPath.parse(filePath),
         content = content,
+        parentPolicy = parentPolicy,
     )
 
     is FileOperation.DeleteFile -> ParsedFileOperation.DeleteFile(
@@ -267,108 +298,40 @@ fun RenameQuery.parsed(): ParsedRenameQuery = validationBoundary {
     )
 }
 
-fun ImportOptimizeQuery.parsed(): ParsedImportOptimizeQuery = validationBoundary {
-    ParsedImportOptimizeQuery(
-        filePaths = NonEmptyList(filePaths.map(NormalizedPath::parse)),
+fun ReplacementPlanQuery.parsed(): ParsedReplacementPlanQuery = validationBoundary {
+    ParsedReplacementPlanQuery(
+        target = target,
+        proposedDeclaration = NonBlankString(proposedDeclaration),
     )
 }
 
-fun ApplyEditsQuery.parsed(): ParsedApplyEditsQuery = validationBoundary {
-    ParsedApplyEditsQuery(
-        edits = edits.map(TextEdit::parsed),
-        fileHashes = fileHashes.map(FileHash::parsed),
-        fileOperations = fileOperations.map(FileOperation::parsed),
+fun AddFilePlanQuery.parsed(): ParsedAddFilePlanQuery = validationBoundary {
+    requireStrictNormalizedKotlinText(proposedContent, allowFinalLf = true)
+    ParsedAddFilePlanQuery(targetPath, NonBlankString(proposedContent))
+}
+
+fun AddDeclarationPlanQuery.parsed(): ParsedAddDeclarationPlanQuery = validationBoundary {
+    requireStrictNormalizedKotlinText(proposedDeclaration, allowFinalLf = false)
+    ParsedAddDeclarationPlanQuery(
+        targetPath = targetPath,
+        expectedCurrentSha256 = expectedCurrentSha256,
+        proposedDeclaration = NonBlankString(proposedDeclaration),
     )
 }
 
-fun RefreshQuery.parsed(): ParsedRefreshQuery = validationBoundary {
-    require(filePaths.isEmpty() || externalFailureIds.isEmpty()) {
-        "Refresh file paths and external failure IDs are mutually exclusive"
+private fun requireStrictNormalizedKotlinText(value: String, allowFinalLf: Boolean) {
+    require('\r' !in value && '\uFEFF' !in value) {
+        "Inline Kotlin source must use normalized LF text without a byte-order mark"
     }
-    val parsedFailureIds = externalFailureIds.map(SemanticGraphExternalBoundaryFailureId::parse)
-    require(parsedFailureIds.distinct().size == parsedFailureIds.size) {
-        "External failure IDs must be unique"
+    if (!allowFinalLf) require(!value.endsWith('\n')) {
+        "Inline Kotlin declaration must not contain a final line break"
     }
-    ParsedRefreshQuery(
-        filePaths = filePaths.map(NormalizedPath::parse),
-        externalFailureIds = parsedFailureIds,
-    )
-}
-
-fun FileOutlineQuery.parsed(): ParsedFileOutlineQuery = validationBoundary {
-    ParsedFileOutlineQuery(filePath = NormalizedPath.parse(filePath))
-}
-
-fun WorkspaceSymbolQuery.parsed(): ParsedWorkspaceSymbolQuery = validationBoundary {
-    ParsedWorkspaceSymbolQuery(
-        pattern = NonBlankString(pattern),
-        kind = kind,
-        maxResults = PositiveInt(maxResults),
-        regex = regex,
-        includeDeclarationScope = includeDeclarationScope,
-    )
-}
-
-fun WorkspaceSearchQuery.parsed(): ParsedWorkspaceSearchQuery = validationBoundary {
-    val parsedPattern = NonBlankString(pattern)
-    val parsedFileGlob = fileGlob?.let(::NonBlankString)
-    if (regex) {
-        Regex(
-            parsedPattern.value,
-            if (caseSensitive) emptySet() else setOf(RegexOption.IGNORE_CASE),
-        )
-    }
-    parsedFileGlob?.value?.let { glob ->
-        FileSystems.getDefault().getPathMatcher("glob:$glob")
-    }
-    ParsedWorkspaceSearchQuery(
-        pattern = parsedPattern,
-        maxResults = PositiveInt(maxResults),
-        regex = regex,
-        fileGlob = parsedFileGlob,
-        caseSensitive = caseSensitive,
-    )
-}
-
-fun WorkspaceFilesQuery.parsed(): ParsedWorkspaceFilesQuery = validationBoundary {
-    ParsedWorkspaceFilesQuery(
-        kindDomain = kindDomain,
-        moduleName = moduleName?.let(::NonBlankString),
-        includeFiles = includeFiles,
-        maxFilesPerModule = maxFilesPerModule?.let(::PositiveInt),
-        snapshotToken = snapshotToken?.let(WorkspaceFileSnapshotToken::parse),
-        pageToken = pageToken?.let(WorkspaceFilePageToken::parse),
-    )
-}
-
-fun SemanticGraphQuery.parsed(): ParsedSemanticGraphQuery = validationBoundary {
-    ParsedSemanticGraphQuery(
-        filePaths = filePaths.distinct().sorted(),
-        removedFilePaths = removedFilePaths.distinct().sorted(),
-        expectedGeneration = expectedGeneration,
-    )
-}
-
-fun ImplementationsQuery.parsed(): ParsedImplementationsQuery = validationBoundary {
-    ParsedImplementationsQuery(
-        position = position.parsed(),
-        maxResults = PositiveInt(maxResults),
-    )
-}
-
-fun CodeActionsQuery.parsed(): ParsedCodeActionsQuery = validationBoundary {
-    ParsedCodeActionsQuery(
-        position = position.parsed(),
-        diagnosticCode = diagnosticCode,
-    )
-}
-
-fun CompletionsQuery.parsed(): ParsedCompletionsQuery = validationBoundary {
-    ParsedCompletionsQuery(
-        position = position.parsed(),
-        maxResults = PositiveInt(maxResults),
-        kindFilter = kindFilter,
-    )
+    require(runCatching {
+        java.nio.charset.StandardCharsets.UTF_8.newEncoder()
+            .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+            .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT)
+            .encode(java.nio.CharBuffer.wrap(value))
+    }.isSuccess) { "Inline Kotlin source must be strict UTF-8 encodable" }
 }
 
 private inline fun <T> validationBoundary(block: () -> T): T {

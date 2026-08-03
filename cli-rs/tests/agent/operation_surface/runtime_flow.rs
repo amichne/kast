@@ -156,7 +156,7 @@ fn spawn_operation_backend(
                     "workspaceRoot": workspace,
                     "sourceModuleNames": [":fixture"],
                     "referenceIndexReady": true,
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
                 "capabilities" => json!({
                     "backendName": "indexer",
@@ -169,7 +169,7 @@ fn spawn_operation_backend(
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
                 "mutation/submit" => match terminal_result.as_ref() {
                     Some(result) => {

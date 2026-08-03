@@ -40,13 +40,7 @@ fn execute(command: AgentCommand) -> AgentEnvelope {
         AgentCommand::Diagnostics(args) => execute_agent_diagnostics(args),
         AgentCommand::Rename(args) => execute_agent_rename(args),
         AgentCommand::AddFile(args) => execute_agent_add_file(args),
-        AgentCommand::AddDeclaration(args) => execute_agent_scoped_mutation(
-            "agent/add-declaration",
-            "symbol/add-declaration",
-            "ADD_DECLARATION",
-            "add-declaration",
-            args,
-        ),
+        AgentCommand::AddDeclaration(args) => execute_agent_add_declaration(args),
         AgentCommand::AddImplementation(args) => execute_agent_scoped_mutation(
             "agent/add-implementation",
             "symbol/add-implementation",

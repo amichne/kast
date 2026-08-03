@@ -1,7 +1,7 @@
 use std::ffi::OsStr;
 use std::path::Path;
 use support::metrics::{seed_high_cardinality_impact, seed_source_index};
-use support::{kast, spawn_scripted_indexer_backend};
+use support::{api_schema_version, kast, spawn_scripted_indexer_backend};
 
 fn run_agent_json<I, S>(home: &Path, config: &Path, args: I) -> serde_json::Value
 where

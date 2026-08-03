@@ -308,7 +308,7 @@ object DocsDocument {
     private fun tagSummary(tag: String, count: Int): String = when (tag) {
         "system" -> "$count operations for health checks, runtime status, host lifecycle, and capability discovery. No capability gating required."
         "read" -> "${count - 1} read-only operations for querying symbols, references, hierarchies, diagnostics, outlines, and completions."
-        "mutation" -> "$count operations that modify workspace state: rename, optimize imports, apply edits, and refresh."
+        "mutation" -> "$count operations for verified mutation planning, application, observation, recovery, and refresh."
         else -> "$count operations."
     }
 

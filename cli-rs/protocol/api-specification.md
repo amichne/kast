@@ -44,7 +44,7 @@ so the page exposes the internal JSON-RPC catalog used by typed
 families, flow-oriented building blocks, and request fields that
 callers compose into larger automation flows.
 
-Catalog version: `dev`. Methods: `44`.
+Catalog version: `dev`. Methods: `52`.
 
 #### Method families
 
@@ -55,7 +55,7 @@ The families below are internal JSON-RPC namespaces, not public CLI commands.
 | `system` | Runtime readiness, backend state, and capability discovery. | backend | `health`<br>`runtime/status`<br>`runtime/shutdown`<br>`runtime/restart`<br>`capabilities` |
 | `mutation` | Cataloged JSON-RPC methods. | backend | `mutation/submit` |
 | `symbol` | Name-based orchestration for agent and script workflows. | backend, sqlite | `symbol/scaffold`<br>`symbol/discover`<br>`symbol/query`<br>`symbol/resolve`<br>`selector/identity`<br>`symbol/references`<br>`symbol/callers`<br>`symbol/implementations`<br>`symbol/hierarchy`<br>`symbol/rename`<br>`symbol/write-and-validate`<br>`symbol/add-file`<br>`symbol/add-declaration`<br>`symbol/add-implementation`<br>`symbol/add-statement`<br>`symbol/replace-declaration` |
-| `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/semantic-graph`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
+| `raw` | Position- and file-based backend primitives. | backend | `raw/resolve`<br>`raw/references`<br>`raw/call-hierarchy`<br>`raw/type-hierarchy`<br>`raw/semantic-insertion-point`<br>`raw/diagnostics`<br>`raw/rename`<br>`raw/plan-replacement`<br>`raw/plan-add-file`<br>`raw/plan-add-declaration`<br>`raw/exact-file-image-cas`<br>`raw/exact-file-observation`<br>`raw/inspect-mutation-scratch`<br>`raw/recover-mutation-scratch`<br>`raw/verify-mutation-postcondition`<br>`raw/optimize-imports`<br>`raw/apply-edits`<br>`raw/workspace-refresh`<br>`raw/file-outline`<br>`raw/workspace-symbol`<br>`raw/workspace-search`<br>`raw/workspace-files`<br>`raw/semantic-graph`<br>`raw/workspace-files-continuation`<br>`raw/implementations`<br>`raw/code-actions`<br>`raw/completions` |
 | `graph` | Cataloged JSON-RPC methods. | sqlite | `graph/coverage` |
 | `repository` | Cataloged JSON-RPC methods. | sqlite | `repository/query` |
 | `database` | Source-index queries for metrics and impact views. | sqlite | `database/metrics` |
@@ -112,8 +112,16 @@ uses a discriminated response envelope.
 | `raw/semantic-insertion-point` | `raw` | backend | Find the best insertion point for a new declaration | `position`<br>`target` | none | `SemanticInsertionResult` | single result |
 | `raw/diagnostics` | `raw` | backend | Run Kotlin diagnostics on listed files | `filePaths` | `maxResults`<br>`pageToken` | `DiagnosticsResult` | single result |
 | `raw/rename` | `raw` | backend | Plan a symbol rename by file position | `position`<br>`newName` | `dryRun` | `RenameResult` | single result |
+| `raw/plan-replacement` | `raw` | backend | Plan an identity-preserving function or property replacement | `target`<br>`proposedDeclaration` | none | `ReplacementPlanResult` | single result |
+| `raw/plan-add-file` | `raw` | backend | Plan a compiler-proven Kotlin source file addition | `targetPath`<br>`proposedContent` | none | `AddFilePlanResult` | single result |
+| `raw/plan-add-declaration` | `raw` | backend | Plan a compiler-proven top-level Kotlin declaration addition | `targetPath`<br>`expectedCurrentSha256`<br>`proposedDeclaration` | none | `AddDeclarationPlanResult` | single result |
+| `raw/exact-file-image-cas` | `raw` | backend | Commit one exact file byte image with compare-and-swap | `filePath`<br>`expectedCurrentSha256`<br>`contentBase64`<br>`expectedResultSha256` | `mutationAttemptId`<br>`mutationScratch` | `ExactFileImageResult` | single result |
+| `raw/exact-file-observation` | `raw` | backend | Observe one canonical workspace-relative file as an exact byte image | `filePath` | `mutationAttemptId` | `RawExactFileObservationResult` | single result |
+| `raw/inspect-mutation-scratch` | `raw` | backend | Fence a mutation attempt and inspect its exact scratch namespace | `mutationAttemptId`<br>`workspaceRelativeParentPaths`<br>`ownedScratchSets` | none | `MutationScratchInspectResult` | single result |
+| `raw/recover-mutation-scratch` | `raw` | backend | Restore or finalize one exact journal-owned mutation scratch set | `mutationAttemptId`<br>`action`<br>`scratchDirection`<br>`targetFilePath`<br>`preimage`<br>`postimage`<br>`scratch` | none | `MutationScratchRecoveryResult` | single result |
+| `raw/verify-mutation-postcondition` | `raw` | backend | Verify compiler-backed postconditions for one exact mutation authority | `authority` | none | `MutationPostconditionResult` | single result |
 | `raw/optimize-imports` | `raw` | backend | Optimize imports for one or more files | `filePaths` | none | `ImportOptimizeResult` | single result |
-| `raw/apply-edits` | `raw` | backend | Apply a prepared edit plan with conflict detection | `edits`<br>`fileHashes` | `fileOperations` | `ApplyEditsResult` | single result |
+| `raw/apply-edits` | `raw` | backend | Apply a prepared edit plan with conflict detection | `edits`<br>`fileHashes` | `fileOperations`<br>`mutationAttemptId`<br>`mutationScratchSets` | `ApplyEditsResult` | single result |
 | `raw/workspace-refresh` | `raw` | backend | Force a targeted or full workspace state refresh | none | `filePaths` | `RefreshResult` | single result |
 | `raw/file-outline` | `raw` | backend | Get a hierarchical symbol outline for a file | `filePath` | none | `FileOutlineResult` | single result |
 | `raw/workspace-symbol` | `raw` | backend | Search the workspace for symbols by name pattern | `pattern` | `kind`<br>`maxResults`<br>`regex`<br>`includeDeclarationScope` | `WorkspaceSymbolResult` | single result |
@@ -627,6 +635,152 @@ Response type: `RenameResult`.
 </details>
 
 <details markdown="1">
+<summary><code>raw/plan-replacement</code> - Plan an identity-preserving function or property replacement</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `target` | `object` | yes | no |  |
+| `proposedDeclaration` | `string` | yes | no |  |
+
+Response type: `ReplacementPlanResult`.
+
+Notes:
+
+- The result is non-mutating and includes exact compiler proof, one source-file hash, and one replacement edit.
+- Only Kotlin function and property declarations with equal compiler-observable signatures are supported.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/plan-add-file</code> - Plan a compiler-proven Kotlin source file addition</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `targetPath` | `string` | yes | no |  |
+| `proposedContent` | `string` | yes | no |  |
+
+Response type: `AddFilePlanResult`.
+
+Notes:
+
+- The result is non-mutating and proves the exact target is absent.
+- The result binds canonical source ownership, collision and rebinding coverage, compiler occurrences, and the exact UTF-8 postimage.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/plan-add-declaration</code> - Plan a compiler-proven top-level Kotlin declaration addition</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `targetPath` | `string` | yes | no |  |
+| `expectedCurrentSha256` | `string` | yes | no |  |
+| `proposedDeclaration` | `string` | yes | no |  |
+
+Response type: `AddDeclarationPlanResult`.
+
+Notes:
+
+- The result is non-mutating and binds the exact target preimage and postimage.
+- The only supported insertion is compiler FILE_BOTTOM with the closed preserve-existing append blank-line final-LF policy.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/exact-file-image-cas</code> - Commit one exact file byte image with compare-and-swap</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `filePath` | `string` | yes | no |  |
+| `expectedCurrentSha256` | `string` | yes | no |  |
+| `contentBase64` | `string` | yes | no |  |
+| `expectedResultSha256` | `string` | yes | no |  |
+| `mutationAttemptId` | `string` | no | no |  |
+| `mutationScratch` | `object` | no | no |  |
+
+Response type: `ExactFileImageResult`.
+
+Notes:
+
+- The request carries canonical standard Base64 and lowercase SHA-256 evidence for the exact replacement bytes.
+- Only COMMITTED is a result; conflicts and unsafe retained editor state are typed protocol errors.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/exact-file-observation</code> - Observe one canonical workspace-relative file as an exact byte image</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `filePath` | `string` | yes | no |  |
+| `mutationAttemptId` | `string` | no | no |  |
+
+Response type: `RawExactFileObservationResult`.
+
+Notes:
+
+- The path is canonical workspace-relative input and cannot escape the exact workspace root.
+- The closed result is ABSENT or PRESENT with canonical Base64 and lowercase SHA-256 evidence.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/inspect-mutation-scratch</code> - Fence a mutation attempt and inspect its exact scratch namespace</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `mutationAttemptId` | `string` | yes | no |  |
+| `workspaceRelativeParentPaths` | `array of string` | yes | no |  |
+| `ownedScratchSets` | `array of {'type': 'object', 'fields': {'targetFilePath': {'type': 'string'}, 'quarantinePath': {'type': 'string'}, 'preparedPath': {'type': 'string'}, 'preparedCleanupPath': {'type': 'string'}, 'quarantineCleanupPath': {'type': 'string'}}, 'required': ['targetFilePath', 'quarantinePath', 'preparedPath', 'preparedCleanupPath', 'quarantineCleanupPath']}` | yes | no |  |
+
+Response type: `MutationScratchInspectResult`.
+
+Notes:
+
+- The top-level mutation attempt is the active backend fence epoch; owned scratch names can retain an older journal-owned epoch.
+- The result closes every owned role and every unowned Kast-prefixed entry in the requested target parents.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/recover-mutation-scratch</code> - Restore or finalize one exact journal-owned mutation scratch set</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `mutationAttemptId` | `string` | yes | no |  |
+| `action` | `string` | yes | no | `RESTORE_PREIMAGE`<br>`FINALIZE_POSTIMAGE` |
+| `scratchDirection` | `string` | yes | no | `FORWARD`<br>`RESTORE_PREIMAGE` |
+| `targetFilePath` | `string` | yes | no |  |
+| `preimage` | `object` | yes | no |  |
+| `postimage` | `object` | yes | no |  |
+| `scratch` | `object` | yes | no |  |
+
+Response type: `MutationScratchRecoveryResult`.
+
+Notes:
+
+- Recovery holds the active mutation fence and consumes only the four exact journal-owned role paths.
+- A successful result proves the selected target image and all four scratch roles absent.
+
+</details>
+
+<details markdown="1">
+<summary><code>raw/verify-mutation-postcondition</code> - Verify compiler-backed postconditions for one exact mutation authority</summary>
+
+| Field | Type | Required | Nullable | Values |
+| --- | --- | --- | --- | --- |
+| `authority` | `object` | yes | no |  |
+
+Response type: `MutationPostconditionResult`.
+
+Notes:
+
+- The authority is the exact persisted rename, replacement, add-file, or add-declaration proof.
+- Only VERIFIED with deterministic postimage hashes and operation-specific compiler evidence is a successful result.
+
+</details>
+
+<details markdown="1">
 <summary><code>raw/optimize-imports</code> - Optimize imports for one or more files</summary>
 
 | Field | Type | Required | Nullable | Values |
@@ -645,6 +799,8 @@ Response type: `ImportOptimizeResult`.
 | `edits` | `array of object` | yes | no |  |
 | `fileHashes` | `array of object` | yes | no |  |
 | `fileOperations` | `array of object` | no | no |  |
+| `mutationAttemptId` | `string` | no | no |  |
+| `mutationScratchSets` | `array of {'type': 'object', 'fields': {'targetFilePath': {'type': 'string'}, 'quarantinePath': {'type': 'string'}, 'preparedPath': {'type': 'string'}, 'preparedCleanupPath': {'type': 'string'}, 'quarantineCleanupPath': {'type': 'string'}}, 'required': ['targetFilePath', 'quarantinePath', 'preparedPath', 'preparedCleanupPath', 'quarantineCleanupPath']}` | no | no |  |
 
 Response type: `ApplyEditsResult`.
 
@@ -917,8 +1073,8 @@ configure your client for the real transport.
 ## Schema version
 
 The spec version tracks the analysis API schema version
-(`SCHEMA_VERSION`), currently **3**. OpenAPI `info.version` is set
-to `3.0.0` to reflect this.
+(`SCHEMA_VERSION`), currently **6**. OpenAPI `info.version` is set
+to `6.0.0` to reflect this.
 
 ??? info "For contributors: regenerating the spec"
 

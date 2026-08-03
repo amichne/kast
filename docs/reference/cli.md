@@ -44,18 +44,31 @@ reference-index readiness, limitations, and suggested next commands.
 | `kast change rename <SYMBOL> <NEW_NAME>` | Validate a compiler-resolved rename. |
 | `kast change add-file <PATH>` | Validate a Kotlin file whose content comes from standard input. |
 | `kast change add-declaration <PATH>` | Validate a declaration appended to one file; content comes from standard input. |
-| `kast change add-implementation <SCOPE>` | Validate implementation content appended to one named scope from standard input. |
-| `kast change add-statement <SCOPE>` | Validate a statement appended to one named executable scope from standard input. |
 | `kast change replace <SYMBOL>` | Validate replacement content from standard input. |
-| `kast apply <PLAN_ID> --lease-id <LEASE_ID>` | Apply the validated plan with retry-safe exact-root authority. |
+| `kast apply <PLAN_ID>` | Own the workspace lease, revalidate and apply the plan, verify its postcondition, and persist a terminal receipt. |
+| `kast recover <RECOVERY_ID>` | Complete or roll back an interrupted mutation from durable recovery state. |
 
 Use `kast <command> --help` for the small operation-specific grammar.
 
-Applied mutations require a lease from
-`kastctl agent lease acquire --workspace-root "$PWD"`. Pass its opaque
-`leaseId` to `kast apply`, then release it with
-`kastctl agent lease release --workspace-root "$PWD" --lease-id <LEASE_ID>`
-when the mutation session ends.
+## Mutation receipts
+
+`kast change` persists a proof-carrying plan for one exact workspace root.
+`kast apply <PLAN_ID>` owns lease acquisition and release. It revalidates the
+plan before writing, then refreshes semantic evidence, compares diagnostics,
+and verifies the operation postcondition.
+
+Mutation outcomes are a closed set:
+
+| Outcome | Meaning |
+| --- | --- |
+| `VERIFIED` | The requested postcondition is proven and the verified final state is retained. This is the only zero-exit outcome. |
+| `REJECTED` | The request failed before a mutation could be accepted. |
+| `CONFLICTED` | The prepared evidence no longer matches the workspace. |
+| `ROLLED_BACK` | Verification did not complete and Kast restored the exact source pre-state. |
+| `RECOVERY_REQUIRED` | Durable recovery state remains after an interruption. Run `kast recover <RECOVERY_ID>`, including from a new process. |
+
+Retrying a terminal plan or recovery receipt does not repeat source writes. No
+non-success outcome reports silent partial success.
 
 When `files`, a symbol relationship, `graph nodes`, or `graph impact` returns
 `nextPage`, repeat the same command with `--page <nextPage>`. The continuation

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "oneOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "jsonrpc": {
+      "enum": [
+        "2.0"
+      ],
+      "type": "string"
+    },
+    "method": {
+      "enum": [
+        "raw/plan-replacement"
+      ],
+      "type": "string"
+    },
+    "params": {
+      "additionalProperties": false,
+      "properties": {
+        "proposedDeclaration": {
+          "type": "string"
+        },
+        "target": {
+          "additionalProperties": false,
+          "properties": {
+            "containingType": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "declarationFile": {
+              "type": "string"
+            },
+            "declarationStartOffset": {
+              "type": "integer"
+            },
+            "fqName": {
+              "type": "string"
+            },
+            "kind": {
+              "enum": [
+                "FUNCTION",
+                "PROPERTY"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "fqName",
+            "kind",
+            "declarationFile",
+            "declarationStartOffset"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "target",
+        "proposedDeclaration"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "jsonrpc",
+    "method",
+    "params",
+    "id"
+  ],
+  "title": "Kast raw/plan-replacement JSON-RPC request",
+  "type": "object"
+}

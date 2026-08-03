@@ -163,6 +163,70 @@ internal fun openApiPaths(): Map<String, Any?> = linkedMapOf(
         responseSchema = "RenameResult",
         capability = "RENAME",
     ),
+    "/rpc/raw/plan-replacement" to mutationMethod(
+        operationId = "planReplacement",
+        summary = "Plan an identity-preserving function or property replacement",
+        method = "raw/plan-replacement",
+        requestSchema = "ReplacementPlanQuery",
+        responseSchema = "ReplacementPlanResult",
+        capability = "PLAN_REPLACEMENT",
+    ),
+    "/rpc/raw/plan-add-file" to mutationMethod(
+        operationId = "planAddFile",
+        summary = "Plan a compiler-proven Kotlin source file addition",
+        method = "raw/plan-add-file",
+        requestSchema = "AddFilePlanQuery",
+        responseSchema = "AddFilePlanResult",
+        capability = "PLAN_ADD_FILE",
+    ),
+    "/rpc/raw/plan-add-declaration" to mutationMethod(
+        operationId = "planAddDeclaration",
+        summary = "Plan a compiler-proven top-level Kotlin declaration addition",
+        method = "raw/plan-add-declaration",
+        requestSchema = "AddDeclarationPlanQuery",
+        responseSchema = "AddDeclarationPlanResult",
+        capability = "PLAN_ADD_DECLARATION",
+    ),
+    "/rpc/raw/verify-mutation-postcondition" to mutationMethod(
+        operationId = "verifyMutationPostcondition",
+        summary = "Verify one exact mutation postcondition",
+        method = "raw/verify-mutation-postcondition",
+        requestSchema = "MutationPostconditionQuery",
+        responseSchema = "MutationPostconditionResult",
+        capability = "VERIFY_MUTATION_POSTCONDITION",
+    ),
+    "/rpc/raw/exact-file-observation" to mutationMethod(
+        operationId = "exactFileObservation",
+        summary = "Observe one file as an exact byte image or proven absence",
+        method = "raw/exact-file-observation",
+        requestSchema = "RawExactFileObservationQuery",
+        responseSchema = "RawExactFileObservationResult",
+        capability = "EXACT_FILE_OBSERVATION",
+    ),
+    "/rpc/raw/exact-file-image-cas" to mutationMethod(
+        operationId = "exactFileImageCas",
+        summary = "Commit one exact file byte image with compare-and-swap",
+        method = "raw/exact-file-image-cas",
+        requestSchema = "ExactFileImageQuery",
+        responseSchema = "ExactFileImageResult",
+        capability = "EXACT_FILE_IMAGE_CAS",
+    ),
+    "/rpc/raw/inspect-mutation-scratch" to mutationMethod(
+        operationId = "inspectMutationScratch",
+        summary = "Fence a mutation attempt and inspect its exact scratch namespace",
+        method = "raw/inspect-mutation-scratch",
+        requestSchema = "MutationScratchInspectQuery",
+        responseSchema = "MutationScratchInspectResult",
+        capability = "MUTATION_SCRATCH_RECOVERY",
+    ),
+    "/rpc/raw/recover-mutation-scratch" to mutationMethod(
+        operationId = "recoverMutationScratch",
+        summary = "Restore or finalize one journal-owned mutation scratch set",
+        method = "raw/recover-mutation-scratch",
+        requestSchema = "MutationScratchRecoveryQuery",
+        responseSchema = "MutationScratchRecoveryResult",
+        capability = "MUTATION_SCRATCH_RECOVERY",
+    ),
     "/rpc/raw/optimize-imports" to mutationMethod(
         operationId = "optimizeImports",
         summary = "Optimize imports for one or more files",
@@ -191,160 +255,3 @@ internal fun openApiPaths(): Map<String, Any?> = linkedMapOf(
         capability = "REFRESH_WORKSPACE",
     ),
 )
-
-private fun systemMethod(
-    operationId: String,
-    summary: String,
-    method: String,
-    requestSchema: String? = null,
-    responseSchema: String,
-): Map<String, Any?> = linkedMapOf(
-    "post" to linkedMapOf(
-        "operationId" to operationId,
-        "summary" to summary,
-        "tags" to listOf("system"),
-        "x-jsonrpc-method" to method,
-    ).also { operation ->
-        if (requestSchema != null) {
-            operation["requestBody"] = linkedMapOf(
-                "required" to true,
-                "content" to linkedMapOf(
-                    "application/json" to linkedMapOf(
-                        "schema" to ref(requestSchema),
-                    ),
-                ),
-            )
-        }
-        operation["responses"] = linkedMapOf(
-            "200" to linkedMapOf(
-                "description" to "JSON-RPC success result",
-                "content" to linkedMapOf(
-                    "application/json" to linkedMapOf(
-                        "schema" to ref(responseSchema),
-                    ),
-                ),
-            ),
-            "default" to errorResponse(),
-        )
-    },
-)
-
-private fun readMethod(
-    operationId: String,
-    summary: String,
-    method: String,
-    requestSchema: String,
-    responseSchema: String,
-    capability: String,
-): Map<String, Any?> = linkedMapOf(
-    "post" to linkedMapOf(
-        "operationId" to operationId,
-        "summary" to summary,
-        "tags" to listOf("read"),
-        "x-jsonrpc-method" to method,
-        "x-kast-required-capability" to capability,
-        "requestBody" to linkedMapOf(
-            "required" to true,
-            "content" to linkedMapOf(
-                "application/json" to linkedMapOf(
-                    "schema" to ref(requestSchema),
-                ),
-            ),
-        ),
-        "responses" to linkedMapOf(
-            "200" to linkedMapOf(
-                "description" to "JSON-RPC success result",
-                "content" to linkedMapOf(
-                    "application/json" to linkedMapOf(
-                        "schema" to ref(responseSchema),
-                    ),
-                ),
-            ),
-            "default" to errorResponse(),
-        ),
-    ),
-)
-
-private fun internalReadMethod(
-    operationId: String,
-    summary: String,
-    method: String,
-    requestSchema: String,
-    responseSchema: String,
-): Map<String, Any?> = linkedMapOf(
-    "post" to linkedMapOf(
-        "operationId" to operationId,
-        "summary" to summary,
-        "tags" to listOf("read"),
-        "x-jsonrpc-method" to method,
-        "requestBody" to linkedMapOf(
-            "required" to true,
-            "content" to linkedMapOf(
-                "application/json" to linkedMapOf(
-                    "schema" to ref(requestSchema),
-                ),
-            ),
-        ),
-        "responses" to linkedMapOf(
-            "200" to linkedMapOf(
-                "description" to "JSON-RPC success result",
-                "content" to linkedMapOf(
-                    "application/json" to linkedMapOf(
-                        "schema" to ref(responseSchema),
-                    ),
-                ),
-            ),
-            "default" to errorResponse(),
-        ),
-    ),
-)
-
-private fun mutationMethod(
-    operationId: String,
-    summary: String,
-    method: String,
-    requestSchema: String,
-    responseSchema: String,
-    capability: String,
-    extraExtensions: Map<String, String> = emptyMap(),
-): Map<String, Any?> = linkedMapOf(
-    "post" to linkedMapOf(
-        "operationId" to operationId,
-        "summary" to summary,
-        "tags" to listOf("mutation"),
-        "x-jsonrpc-method" to method,
-        "x-kast-required-capability" to capability,
-    ).also { op ->
-        extraExtensions.forEach { (k, v) -> op[k] = v }
-        op["requestBody"] = linkedMapOf(
-            "required" to true,
-            "content" to linkedMapOf(
-                "application/json" to linkedMapOf(
-                    "schema" to ref(requestSchema),
-                ),
-            ),
-        )
-        op["responses"] = linkedMapOf(
-            "200" to linkedMapOf(
-                "description" to "JSON-RPC success result",
-                "content" to linkedMapOf(
-                    "application/json" to linkedMapOf(
-                        "schema" to ref(responseSchema),
-                    ),
-                ),
-            ),
-            "default" to errorResponse(),
-        )
-    },
-)
-
-private fun errorResponse(): Map<String, Any?> = linkedMapOf(
-    "description" to "JSON-RPC error response",
-    "content" to linkedMapOf(
-        "application/json" to linkedMapOf(
-            "schema" to ref("JsonRpcErrorResponse"),
-        ),
-    ),
-)
-
-private fun ref(name: String): Map<String, Any?> = linkedMapOf("\$ref" to "#/components/schemas/$name")

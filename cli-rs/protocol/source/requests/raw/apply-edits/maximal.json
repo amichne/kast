@@ -22,6 +22,16 @@
         "filePath": "/absolute/path/to/workspace/src/main/kotlin/example/Widget.kt",
         "type": "CREATE_FILE"
       }
+    ],
+    "mutationAttemptId": "example-mutationAttemptId",
+    "mutationScratchSets": [
+      {
+        "preparedCleanupPath": "example-preparedCleanupPath",
+        "preparedPath": "example-preparedPath",
+        "quarantineCleanupPath": "example-quarantineCleanupPath",
+        "quarantinePath": "example-quarantinePath",
+        "targetFilePath": "example-targetFilePath"
+      }
     ]
   }
 }

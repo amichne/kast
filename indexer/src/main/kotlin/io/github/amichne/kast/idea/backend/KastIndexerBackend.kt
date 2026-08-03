@@ -44,6 +44,14 @@ import io.github.amichne.kast.api.contract.result.ContainingSymbolEvidence
 import io.github.amichne.kast.api.contract.result.ReferenceOccurrence
 import io.github.amichne.kast.api.contract.result.RefreshResult
 import io.github.amichne.kast.api.contract.result.RenameResult
+import io.github.amichne.kast.api.contract.result.ReplacementPlanResult
+import io.github.amichne.kast.api.contract.result.ExactFileImageResult
+import io.github.amichne.kast.api.contract.result.AddFilePlanResult
+import io.github.amichne.kast.api.contract.result.AddDeclarationPlanResult
+import io.github.amichne.kast.api.contract.result.MutationPostconditionResult
+import io.github.amichne.kast.api.contract.result.RawExactFileObservationResult
+import io.github.amichne.kast.api.contract.result.MutationScratchInspectResult
+import io.github.amichne.kast.api.contract.result.MutationScratchRecoveryResult
 import io.github.amichne.kast.api.contract.result.SemanticGraphResult
 import io.github.amichne.kast.api.contract.RuntimeState
 import io.github.amichne.kast.api.contract.RuntimeStatusResponse
@@ -69,6 +77,7 @@ import java.nio.file.Path
 import java.util.UUID
 import io.github.amichne.kast.idea.*
 import io.github.amichne.kast.idea.edit.*
+import io.github.amichne.kast.idea.mutation.SecureWorkspaceMutation
 import io.github.amichne.kast.idea.backend.references.*
 import io.github.amichne.kast.idea.backend.relationships.*
 import io.github.amichne.kast.idea.backend.diagnostics.*
@@ -83,6 +92,11 @@ internal class KastIndexerBackend(
     internal val limits: ServerLimits,
     internal val telemetry: IdeaBackendTelemetry = IdeaBackendTelemetry.disabled(),
     internal val workspaceIdentity: IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
+    internal val exactFileImageMutation: SecureWorkspaceMutation =
+        SecureWorkspaceMutation(workspaceIdentity.canonicalWorkspaceRootPath),
+    internal val mutationAttemptGate: MutationAttemptGate =
+        MutationAttemptGateRegistry.forWorkspaceRoot(workspaceIdentity.canonicalWorkspaceRootPath),
+    internal val exactFileImageCasObserver: ExactFileImageCasObserver = ExactFileImageCasObserver.Disabled,
     internal val referenceIndexLookup: ReferenceIndexLookup = ReferenceIndexLookup.Unavailable,
     internal val semanticGraphStore: SqliteSourceIndexStore? = null,
     initialIndexingConfig: IndexingConfig = KastConfig.defaults().indexing,
@@ -306,6 +320,26 @@ internal class KastIndexerBackend(
     override suspend fun semanticInsertionPoint(query: ParsedSemanticInsertionQuery): SemanticInsertionResult = semanticInsertionPointOperation(query)
     override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult = diagnosticsOperation(query)
     override suspend fun rename(query: ParsedRenameQuery): RenameResult = renameOperation(query)
+    override suspend fun planReplacement(query: ParsedReplacementPlanQuery): ReplacementPlanResult =
+        planReplacementOperation(query)
+    override suspend fun planAddFile(query: ParsedAddFilePlanQuery): AddFilePlanResult =
+        planAddFileOperation(query)
+    override suspend fun planAddDeclaration(query: ParsedAddDeclarationPlanQuery): AddDeclarationPlanResult =
+        planAddDeclarationOperation(query)
+    override suspend fun verifyMutationPostcondition(
+        query: ParsedMutationPostconditionQuery,
+    ): MutationPostconditionResult = verifyMutationPostconditionOperation(query)
+    override suspend fun observeExactFile(
+        query: ParsedRawExactFileObservationQuery,
+    ): RawExactFileObservationResult = rawExactFileObservationOperation(query)
+    override suspend fun exactFileImageCas(query: ParsedExactFileImageQuery): ExactFileImageResult =
+        exactFileImageCasOperation(query)
+    override suspend fun inspectMutationScratch(
+        query: ParsedMutationScratchInspectQuery,
+    ): MutationScratchInspectResult = inspectMutationScratchOperation(query)
+    override suspend fun recoverMutationScratch(
+        query: ParsedMutationScratchRecoveryQuery,
+    ): MutationScratchRecoveryResult = recoverMutationScratchOperation(query)
     override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult = applyEditsOperation(query)
     override suspend fun optimizeImports(query: ParsedImportOptimizeQuery): ImportOptimizeResult = optimizeImportsOperation(query)
     override suspend fun refresh(query: ParsedRefreshQuery): RefreshResult = refreshOperation(query)

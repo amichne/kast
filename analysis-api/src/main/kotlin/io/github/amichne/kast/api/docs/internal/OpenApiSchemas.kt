@@ -69,6 +69,10 @@ internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
         "RelationshipResultEvidence.Limited",
         RelationshipResultEvidence.Limited.serializer(),
     )
+    registry.register("ContainingSymbolEvidence", ContainingSymbolEvidence.serializer())
+    registry.register("ContainingSymbolEvidence.Known", ContainingSymbolEvidence.Known.serializer())
+    registry.register("ContainingSymbolEvidence.TopLevel", ContainingSymbolEvidence.TopLevel.serializer())
+    registry.register("ContainingSymbolEvidence.Unavailable", ContainingSymbolEvidence.Unavailable.serializer())
     registry.register("ReferencesResult", ReferencesResult.serializer())
     registry.register("CallHierarchyQuery", CallHierarchyQuery.serializer())
     registry.register("CallHierarchyResult", CallHierarchyResult.serializer())
@@ -125,6 +129,110 @@ internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
     // Mutation queries & results
     registry.register("RenameQuery", RenameQuery.serializer())
     registry.register("RenameResult", RenameResult.serializer())
+    registry.register("ReplacementPlanQuery", ReplacementPlanQuery.serializer())
+    registry.register("ReplacementDeclarationSignature", ReplacementDeclarationSignature.serializer())
+    registry.register(
+        "ReplacementDeclarationSignature.Function",
+        ReplacementFunctionSignature.serializer(),
+    )
+    registry.register(
+        "ReplacementDeclarationSignature.Property",
+        ReplacementPropertySignature.serializer(),
+    )
+    registry.register("ReplacementOutboundEvidence", ReplacementOutboundEvidence.serializer())
+    registry.register("ReplacementProofDimension", ReplacementProofDimension.serializer())
+    registry.register(
+        "ReplacementOutboundEvidence.Complete",
+        ReplacementOutboundEvidence.Complete.serializer(),
+    )
+    registry.register(
+        "ReplacementOutboundEvidence.Limited",
+        ReplacementOutboundEvidence.Limited.serializer(),
+    )
+    registry.register("ReplacementOutboundTarget", ReplacementOutboundTarget.serializer())
+    registry.register("ReplacementOutboundTarget.Source", ReplacementOutboundTarget.Source.serializer())
+    registry.register("ReplacementOutboundTarget.External", ReplacementOutboundTarget.External.serializer())
+    registry.register("ReplacementPlanResult", ReplacementPlanResult.serializer())
+    registry.register("AddFilePlanQuery", AddFilePlanQuery.serializer())
+    registry.register("AdditionKotlinPackage", AdditionKotlinPackage.serializer())
+    registry.register("AdditionKotlinPackage.Root", AdditionKotlinPackage.Root.serializer())
+    registry.register("AdditionKotlinPackage.Named", AdditionKotlinPackage.Named.serializer())
+    registry.register("AdditionResolvedTarget", AdditionResolvedTarget.serializer())
+    registry.register("AdditionResolvedTarget.Source", AdditionResolvedTarget.Source.serializer())
+    registry.register("AdditionResolvedTarget.External", AdditionResolvedTarget.External.serializer())
+    registry.register("AdditionRebindingCurrentTarget", AdditionRebindingCurrentTarget.serializer())
+    registry.register(
+        "AdditionRebindingCurrentTarget.Resolved",
+        AdditionRebindingCurrentTarget.Resolved.serializer(),
+    )
+    registry.register(
+        "AdditionRebindingCurrentTarget.Unresolved",
+        AdditionRebindingCurrentTarget.Unresolved.serializer(),
+    )
+    registry.register("AddFilePlanResult", AddFilePlanResult.serializer())
+    registry.register("AddDeclarationPlanQuery", AddDeclarationPlanQuery.serializer())
+    registry.register("AddDeclarationPlanResult", AddDeclarationPlanResult.serializer())
+    registry.register("MutationPostconditionQuery", MutationPostconditionQuery.serializer())
+    registry.register("MutationPostconditionAuthority", MutationPostconditionAuthority.serializer())
+    registry.register(
+        "MutationPostconditionAuthority.Rename",
+        MutationPostconditionAuthority.Rename.serializer(),
+    )
+    registry.register(
+        "MutationPostconditionAuthority.Replacement",
+        MutationPostconditionAuthority.Replacement.serializer(),
+    )
+    registry.register(
+        "MutationPostconditionAuthority.AddFile",
+        MutationPostconditionAuthority.AddFile.serializer(),
+    )
+    registry.register(
+        "MutationPostconditionAuthority.AddDeclaration",
+        MutationPostconditionAuthority.AddDeclaration.serializer(),
+    )
+    registry.register("MutationPostconditionResult", MutationPostconditionResult.serializer())
+    registry.register("MutationPostconditionEvidence", MutationPostconditionEvidence.serializer())
+    registry.register(
+        "MutationPostconditionEvidence.Rename",
+        MutationPostconditionEvidence.Rename.serializer(),
+    )
+    registry.register(
+        "MutationPostconditionEvidence.Replacement",
+        MutationPostconditionEvidence.Replacement.serializer(),
+    )
+    registry.register(
+        "MutationPostconditionEvidence.AddFile",
+        MutationPostconditionEvidence.AddFile.serializer(),
+    )
+    registry.register(
+        "MutationPostconditionEvidence.AddDeclaration",
+        MutationPostconditionEvidence.AddDeclaration.serializer(),
+    )
+    registry.register("RawExactFileObservationQuery", RawExactFileObservationQuery.serializer())
+    registry.register("RawExactFileObservationResult", RawExactFileObservationResult.serializer())
+    registry.register(
+        "RawExactFileObservationResult.Absent",
+        RawExactFileObservationResult.Absent.serializer(),
+    )
+    registry.register(
+        "RawExactFileObservationResult.Present",
+        RawExactFileObservationResult.Present.serializer(),
+    )
+    registry.register("ExactFileImageQuery", ExactFileImageQuery.serializer())
+    registry.register("ExactFileImageResult", ExactFileImageResult.serializer())
+    registry.register("MutationScratchInspectQuery", MutationScratchInspectQuery.serializer())
+    registry.register("MutationScratchInspectResult", MutationScratchInspectResult.serializer())
+    registry.register("MutationScratchRecoveryQuery", MutationScratchRecoveryQuery.serializer())
+    registry.register("MutationScratchRecoveryPreimage", MutationScratchRecoveryPreimage.serializer())
+    registry.register(
+        "MutationScratchRecoveryPreimage.Absent",
+        MutationScratchRecoveryPreimage.Absent.serializer(),
+    )
+    registry.register(
+        "MutationScratchRecoveryPreimage.Present",
+        MutationScratchRecoveryPreimage.Present.serializer(),
+    )
+    registry.register("MutationScratchRecoveryResult", MutationScratchRecoveryResult.serializer())
     registry.register("ImportOptimizeQuery", ImportOptimizeQuery.serializer())
     registry.register("ImportOptimizeResult", ImportOptimizeResult.serializer())
     registry.register("ApplyEditsQuery", ApplyEditsQuery.serializer())

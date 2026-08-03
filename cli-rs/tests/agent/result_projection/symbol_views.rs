@@ -123,7 +123,7 @@ fn symbol_default_is_a_stable_compact_projection_within_budget() {
                 "preview": "target()"
             },
             "relationships": [],
-            "schemaVersion": 5
+            "schemaVersion": api_schema_version()
         })
     );
     assert!(stdout.get("request").is_none(), "{stdout}");

@@ -7,11 +7,69 @@ fn execute_agent_add_file(args: AgentAddFileArgs) -> AgentEnvelope {
         "filePath": file_path,
         "contentFile": args.content_file.display().to_string(),
     });
+    if !args.mutation.apply {
+        let request = json_rpc_request("symbol/add-file", params);
+        return execute_agent_add_file_preview(args.runtime, request, file_path, args.content_file);
+    }
     execute_agent_mutation(
         "agent/add-file",
         "symbol/add-file",
         "ADD_FILE",
         "add-file",
+        params,
+        args.mutation,
+        args.runtime,
+    )
+}
+
+fn execute_agent_add_declaration(args: AgentScopedMutationArgs) -> AgentEnvelope {
+    let inside_file = match args.inside_file {
+        Some(inside_file) => match normalize_agent_file_target(&args.runtime, &inside_file) {
+            Ok(inside_file) => Some(inside_file),
+            Err(error) => {
+                return error_envelope("agent/add-declaration".to_string(), None, error);
+            }
+        },
+        None => None,
+    };
+    let exact_file_bottom = args.inside_scope.is_none()
+        && inside_file
+            .as_ref()
+            .is_some_and(|file| Path::new(file).is_file())
+        && args.at == Some(AgentPlacementAnchor::FileBottom)
+        && args.after_symbol.is_none()
+        && args.before_symbol.is_none();
+    let placement = match scoped_placement_params(
+        args.inside_scope,
+        inside_file.clone(),
+        args.at.map(|anchor| anchor.canonical().to_string()),
+        args.after_symbol,
+        args.before_symbol,
+    ) {
+        Ok(placement) => placement,
+        Err(error) => return error_envelope("agent/add-declaration".to_string(), None, error),
+    };
+    let params = json!({
+        "placement": placement,
+        "contentFile": args.content_file.display().to_string(),
+    });
+    if !args.mutation.apply {
+        let request = json_rpc_request("symbol/add-declaration", params);
+        if exact_file_bottom {
+            return execute_agent_add_declaration_preview(
+                args.runtime,
+                request,
+                inside_file.expect("exact file-bottom placement has one file"),
+                args.content_file,
+            );
+        }
+        return mutation_plan_envelope("agent/add-declaration", "add-declaration", request);
+    }
+    execute_agent_mutation(
+        "agent/add-declaration",
+        "symbol/add-declaration",
+        "ADD_DECLARATION",
+        "add-declaration",
         params,
         args.mutation,
         args.runtime,
@@ -81,8 +139,8 @@ fn execute_agent_replace_declaration(args: AgentReplaceDeclarationArgs) -> Agent
             "symbol": symbol,
             "contentFile": args.content_file.display().to_string(),
             "kind": args.kind.map(|kind| kind.canonical()),
-            "fileHint": args.file_hint,
-            "containingType": args.containing_type,
+            "fileHint": args.file_hint.as_ref(),
+            "containingType": args.containing_type.as_ref(),
         })),
         (None, Some(handle)) => json!({
             "type": "REPLACE_DECLARATION_BY_SELECTOR_HANDLE_REQUEST",
@@ -100,6 +158,9 @@ fn execute_agent_replace_declaration(args: AgentReplaceDeclarationArgs) -> Agent
             );
         }
     };
+    if !args.mutation.apply {
+        return execute_agent_replacement_preview(args, params);
+    }
     execute_agent_mutation(
         "agent/replace-declaration",
         "symbol/replace-declaration",

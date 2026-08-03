@@ -53,7 +53,7 @@ fn selector_handle_rejections_stay_distinct_and_actionable_in_cli_projection() {
                     "type": "SELECTOR_HANDLE_REJECTED",
                     "reason": reason,
                     "recovery": recovery,
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
             )],
         );
@@ -148,7 +148,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
                     "truncated": true,
                     "nextPageToken": reference_handle
                 },
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
@@ -194,7 +194,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
                 "subject": selector,
                 "references": [],
                 "evidence": complete_relationship_evidence(1),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
@@ -248,7 +248,7 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
                     "containingSymbol": {"type": "TOP_LEVEL"}
                 }],
                 "page": exact_relation_page(1),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );

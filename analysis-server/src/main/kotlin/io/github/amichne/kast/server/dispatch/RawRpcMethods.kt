@@ -79,6 +79,70 @@ internal suspend fun RpcMethodRouter.dispatchRawMethod(
             },
         ),
     )
+    "raw/plan-replacement" -> encode(
+        ReplacementPlanResult.serializer(),
+        backend.planReplacement(
+            decodeParams(ReplacementPlanQuery.serializer(), params).parsed().also {
+                requireMutationCapability(MutationCapability.PLAN_REPLACEMENT)
+            },
+        ),
+    )
+    "raw/plan-add-file" -> encode(
+        AddFilePlanResult.serializer(),
+        backend.planAddFile(
+            decodeParams(AddFilePlanQuery.serializer(), params).parsed().also {
+                requireMutationCapability(MutationCapability.PLAN_ADD_FILE)
+            },
+        ),
+    )
+    "raw/plan-add-declaration" -> encode(
+        AddDeclarationPlanResult.serializer(),
+        backend.planAddDeclaration(
+            decodeParams(AddDeclarationPlanQuery.serializer(), params).parsed().also {
+                requireMutationCapability(MutationCapability.PLAN_ADD_DECLARATION)
+            },
+        ),
+    )
+    "raw/verify-mutation-postcondition" -> encode(
+        MutationPostconditionResult.serializer(),
+        backend.verifyMutationPostcondition(
+            decodeParams(MutationPostconditionQuery.serializer(), params).parsed().also {
+                requireMutationCapability(MutationCapability.VERIFY_MUTATION_POSTCONDITION)
+            },
+        ),
+    )
+    "raw/exact-file-observation" -> encode(
+        RawExactFileObservationResult.serializer(),
+        backend.observeExactFile(
+            decodeParams(RawExactFileObservationQuery.serializer(), params).parsed().also {
+                requireMutationCapability(MutationCapability.EXACT_FILE_OBSERVATION)
+            },
+        ),
+    )
+    "raw/exact-file-image-cas" -> encode(
+        ExactFileImageResult.serializer(),
+        backend.exactFileImageCas(
+            decodeParams(ExactFileImageQuery.serializer(), params).parsed().also {
+                requireMutationCapability(MutationCapability.EXACT_FILE_IMAGE_CAS)
+            },
+        ),
+    )
+    "raw/inspect-mutation-scratch" -> encode(
+        MutationScratchInspectResult.serializer(),
+        backend.inspectMutationScratch(
+            decodeParams(MutationScratchInspectQuery.serializer(), params).parsed().also {
+                requireMutationCapability(MutationCapability.MUTATION_SCRATCH_RECOVERY)
+            },
+        ),
+    )
+    "raw/recover-mutation-scratch" -> encode(
+        MutationScratchRecoveryResult.serializer(),
+        backend.recoverMutationScratch(
+            decodeParams(MutationScratchRecoveryQuery.serializer(), params).parsed().also {
+                requireMutationCapability(MutationCapability.MUTATION_SCRATCH_RECOVERY)
+            },
+        ),
+    )
     "raw/optimize-imports" -> encode(
         ImportOptimizeResult.serializer(),
         backend.optimizeImports(

@@ -35,7 +35,7 @@ fn degraded_relationships_preserve_qualified_positive_records() {
                     "containingSymbol": {"type": "TOP_LEVEL"}
                 }],
                 "evidence": excluded_source_set_evidence(1),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
             "REFERENCE",
         ),
@@ -50,7 +50,7 @@ fn degraded_relationships_preserve_qualified_positive_records() {
                 "reason": "CALL_HIERARCHY_UNAVAILABLE",
                 "records": [call_relation_record("CALLER", 1, &workspace)],
                 "evidence": excluded_source_set_evidence(1),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
             "CALLER",
         ),
@@ -74,7 +74,7 @@ fn degraded_relationships_preserve_qualified_positive_records() {
                     "declarationLocation": relation_location(&implementation_file, 10)
                 }],
                 "evidence": excluded_source_set_evidence(1),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
             "IMPLEMENTATION",
         ),
@@ -99,7 +99,7 @@ fn degraded_relationships_preserve_qualified_positive_records() {
                     "depth": 1
                 }],
                 "evidence": excluded_source_set_evidence(1),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
             "SUBTYPE",
         ),
@@ -204,7 +204,7 @@ fn assert_invalid_degraded_response(references: bool, include_record: bool, incl
                 "references": occurrences,
                 "page": page,
                 "evidence": excluded_source_set_evidence(0),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )
     } else {
@@ -225,7 +225,7 @@ fn assert_invalid_degraded_response(references: bool, include_record: bool, incl
                 "records": records,
                 "page": page,
                 "evidence": excluded_source_set_evidence(0),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )
     };

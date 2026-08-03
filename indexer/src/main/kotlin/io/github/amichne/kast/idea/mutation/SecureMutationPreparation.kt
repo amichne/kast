@@ -2,9 +2,9 @@ package io.github.amichne.kast.idea.mutation
 
 import com.sun.jna.Native
 import io.github.amichne.kast.api.protocol.NotFoundException
+import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.UnsafeWorkspaceMutationException
 import io.github.amichne.kast.api.validation.FileHashing
-import java.nio.charset.StandardCharsets
 import java.nio.file.Path
 import java.util.UUID
 import io.github.amichne.kast.idea.*
@@ -17,7 +17,8 @@ internal fun SecureWorkspaceMutation.detachValidatedTarget(
         mutation: IdeaWorkspaceMutation,
         hashConflictMessage: String,
         api: PosixFileApi,
-        platform: PosixPlatform,
+    platform: PosixPlatform,
+    quarantineName: String? = null,
     ): DetachedTarget {
         val quarantineName = moveToUniqueName(
             parent = parent,
@@ -32,12 +33,19 @@ internal fun SecureWorkspaceMutation.detachValidatedTarget(
                     details = mapOf("filePath" to target.toString()),
                 )
             },
+            exactDestinationName = quarantineName,
         )
         val descriptorValue = api.openat(parent.value, quarantineName, platform.readFileFlags, 0)
         if (descriptorValue < 0) {
             val errno = Native.getLastError()
-            restoreUnopenedQuarantine(parent, fileName, quarantineName, target, platform)
-            throw nativeFailure("openat-quarantine", target, quarantineName, errno)
+            restoreUnopenedQuarantineAfterFailure(
+                parent = parent,
+                fileName = fileName,
+                quarantineName = quarantineName,
+                target = target,
+                platform = platform,
+                failure = nativeFailure("openat-quarantine", target, quarantineName, errno),
+            )
         }
 
         val descriptor = NativeDescriptor(api, descriptorValue)
@@ -52,7 +60,7 @@ internal fun SecureWorkspaceMutation.detachValidatedTarget(
                     ),
                 )
             }
-            val content = readFully(api, descriptor.value, target)
+            val content = readFullyBytes(api, descriptor.value, target)
             DetachedTarget(
                 name = quarantineName,
                 descriptor = descriptor,
@@ -61,8 +69,14 @@ internal fun SecureWorkspaceMutation.detachValidatedTarget(
             )
         } catch (exception: Exception) {
             descriptor.close()
-            restoreUnopenedQuarantine(parent, fileName, quarantineName, target, platform)
-            throw exception
+            restoreUnopenedQuarantineAfterFailure(
+                parent = parent,
+                fileName = fileName,
+                quarantineName = quarantineName,
+                target = target,
+                platform = platform,
+                failure = exception,
+            )
         }
 
         if (detached.actualDiskHash != expectedDiskHash) {
@@ -86,32 +100,63 @@ internal fun SecureWorkspaceMutation.detachValidatedTarget(
             afterTargetDetached(target, mutation)
         } catch (exception: Exception) {
             detached.use {
-                throw conflictWithRestoration(
+                rollbackDetachedFailure(
                     message = "The secure mutation was interrupted after detaching its target",
                     target = target,
                     fileName = fileName,
                     detached = detached,
                     parent = parent,
                     platform = platform,
-                    details = mapOf("cause" to (exception.message ?: exception::class.java.simpleName)),
+                    cause = exception,
                 )
             }
         }
         return detached
     }
 
+private fun SecureWorkspaceMutation.restoreUnopenedQuarantineAfterFailure(
+    parent: NativeDescriptor,
+    fileName: String,
+    quarantineName: String,
+    target: Path,
+    platform: PosixPlatform,
+    failure: Exception,
+): Nothing {
+    try {
+        restoreUnopenedQuarantine(parent, fileName, quarantineName, target, platform)
+    } catch (restorationFailure: Exception) {
+        val evidence = UnsafeWorkspaceMutationException(
+            message = "The unopened quarantine could not be restored after a preparation failure",
+            details = failureDetails(target, "restore-unopened-quarantine") + mapOf(
+                "cause" to failure.failureReason(),
+                "restorationFailure" to restorationFailure.failureReason(),
+                "recoveryFilePath" to target.parent.resolve(quarantineName).toString(),
+            ),
+        )
+        failure.rethrowIfMutationCancellation(evidence)
+        restorationFailure.rethrowIfMutationCancellation(evidence)
+        evidence.initCause(failure)
+        evidence.addSuppressed(restorationFailure)
+        throw evidence
+    }
+    throw failure
+}
+
 internal fun SecureWorkspaceMutation.createPreparedFile(
         parent: NativeDescriptor,
         target: Path,
-        content: String,
+        content: ByteArray,
         mode: Int,
         api: PosixFileApi,
-        platform: PosixPlatform,
+    platform: PosixPlatform,
+    preparedName: String? = null,
         onUntrackedPreparationFailure: (Exception) -> Nothing,
         onPreparationFailure: (PreparedFile, Exception) -> Nothing,
     ): PreparedFile {
-        repeat(MAX_UNIQUE_NAME_ATTEMPTS) {
-            val name = "$PREPARED_PREFIX${UUID.randomUUID()}.tmp"
+        val candidateNames = preparedName?.let(::listOf) ?: List(MAX_UNIQUE_NAME_ATTEMPTS) {
+            "$PREPARED_PREFIX${UUID.randomUUID()}.tmp"
+        }
+        candidateNames.forEach { name ->
             val descriptorValue = api.openat(
                 parent.value,
                 name,
@@ -120,7 +165,17 @@ internal fun SecureWorkspaceMutation.createPreparedFile(
             )
             if (descriptorValue < 0) {
                 val errno = Native.getLastError()
-                if (errno == platform.alreadyExistsErrno) return@repeat
+                if (errno == platform.alreadyExistsErrno && preparedName == null) return@forEach
+                if (errno == platform.alreadyExistsErrno) {
+                    onUntrackedPreparationFailure(
+                        ConflictException(
+                            message = "A predeclared mutation prepared path is already occupied",
+                            details = failureDetails(target, "prepared-scratch-exists") + mapOf(
+                                "scratchFilePath" to target.parent.resolve(name).toString(),
+                            ),
+                        ),
+                    )
+                }
                 onUntrackedPreparationFailure(nativeFailure("openat-prepared", target, name, errno))
             }
 
@@ -142,7 +197,7 @@ internal fun SecureWorkspaceMutation.createPreparedFile(
             val prepared = PreparedFile(name, descriptor, status)
             try {
                 requireSuccess(api.fchmod(descriptor.value, mode), "fchmod-prepared", target, name)
-                writeFully(api, descriptor.value, content.toByteArray(StandardCharsets.UTF_8), target)
+                writeFully(api, descriptor.value, content, target)
                 requireSuccess(api.fsync(descriptor.value), "fsync-prepared", target, name)
                 return prepared
             } catch (exception: Exception) {
@@ -169,7 +224,7 @@ internal fun SecureWorkspaceMutation.rollbackDetachedFailure(
         val restoration = try {
             restoreDetached(parent, fileName, detached, target, platform)
         } catch (restorationFailure: Exception) {
-            throw UnsafeWorkspaceMutationException(
+            val evidence = UnsafeWorkspaceMutationException(
                 message = "The detached workspace entry could not be restored after a pre-commit failure",
                 details = failureDetails(target, "rollback-detached") +
                     mapOf(
@@ -179,8 +234,11 @@ internal fun SecureWorkspaceMutation.rollbackDetachedFailure(
                     ) +
                     detached.status.identity.details(),
             )
+            cause.rethrowIfMutationCancellation(evidence)
+            restorationFailure.rethrowIfMutationCancellation(evidence)
+            throw evidence
         }
-        throw conflictWithRestoration(
+        val evidence = conflictWithRestoration(
             message = message,
             target = target,
             fileName = fileName,
@@ -190,6 +248,8 @@ internal fun SecureWorkspaceMutation.rollbackDetachedFailure(
             details = cause.rollbackDetails(),
             restoration = restoration,
         )
+        cause.rethrowIfMutationCancellation(evidence)
+        throw evidence
     }
 
 internal fun SecureWorkspaceMutation.rollbackPreparedFailure(
@@ -201,18 +261,26 @@ internal fun SecureWorkspaceMutation.rollbackPreparedFailure(
         parent: NativeDescriptor,
         api: PosixFileApi,
         platform: PosixPlatform,
+        preparedCleanupName: String? = null,
         cause: Exception? = null,
     ): Nothing {
         val restorationAttempt = runCatching {
             restoreDetached(parent, fileName, detached, target, platform)
         }
         val cleanup = try {
-            removeExactNamedEntry(parent, prepared, target, api, platform)
+            removeExactNamedEntry(
+                parent,
+                prepared,
+                target,
+                api,
+                platform,
+                cleanupName = preparedCleanupName,
+            )
         } finally {
             prepared.close()
         }
         val restoration = restorationAttempt.getOrElse { restorationFailure ->
-            throw UnsafeWorkspaceMutationException(
+            val evidence = UnsafeWorkspaceMutationException(
                 message = "The detached workspace entry could not be restored after a prepared commit failure",
                 details = failureDetails(target, "rollback-prepared") +
                     mapOf(
@@ -223,8 +291,12 @@ internal fun SecureWorkspaceMutation.rollbackPreparedFailure(
                     cleanup.conflictDetails() +
                     detached.status.identity.details(),
             )
+            cause?.rethrowIfMutationCancellation(evidence)
+            restorationFailure.rethrowIfMutationCancellation(evidence)
+            cleanup.rethrowIfMutationCancellation(evidence)
+            throw evidence
         }
-        throw conflictWithRestoration(
+        val evidence = conflictWithRestoration(
             message = message,
             target = target,
             fileName = fileName,
@@ -235,4 +307,7 @@ internal fun SecureWorkspaceMutation.rollbackPreparedFailure(
             restoration = restoration,
             cleanup = cleanup,
         )
+        cause?.rethrowIfMutationCancellation(evidence)
+        cleanup.rethrowIfMutationCancellation(evidence)
+        throw evidence
     }

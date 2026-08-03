@@ -52,6 +52,48 @@ fn symbol_resolve_catalog_declares_every_exact_outcome() {
     );
 }
 
+#[test]
+fn exact_file_image_cas_catalog_declares_closed_byte_authority() {
+    let catalog = catalog();
+    let command = &catalog["commands"]["raw/exact-file-image-cas"];
+
+    assert_eq!(command["responseType"], "ExactFileImageResult");
+    assert_eq!(
+        command["request"]["required"],
+        serde_json::json!([
+            "filePath",
+            "expectedCurrentSha256",
+            "contentBase64",
+            "expectedResultSha256"
+        ])
+    );
+}
+
+#[test]
+fn addition_planner_catalog_declares_both_terminal_request_schemas() {
+    let catalog = catalog();
+    let add_file = &catalog["commands"]["raw/plan-add-file"];
+    assert_eq!(add_file["responseType"], "AddFilePlanResult");
+    assert_eq!(
+        add_file["request"]["required"],
+        serde_json::json!(["targetPath", "proposedContent"])
+    );
+
+    let add_declaration = &catalog["commands"]["raw/plan-add-declaration"];
+    assert_eq!(
+        add_declaration["responseType"],
+        "AddDeclarationPlanResult"
+    );
+    assert_eq!(
+        add_declaration["request"]["required"],
+        serde_json::json!([
+            "targetPath",
+            "expectedCurrentSha256",
+            "proposedDeclaration"
+        ])
+    );
+}
+
 fn request_required(request: &Value) -> impl Iterator<Item = &str> {
     request
         .get("required")

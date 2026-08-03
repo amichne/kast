@@ -69,7 +69,7 @@ fn spawn_fake_backend(
                     "backendName": "indexer",
                     "backendVersion": "diagnostics-test",
                     "workspaceRoot": workspace.display().to_string(),
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
                 "capabilities" => json!({
                     "backendName": "indexer",
@@ -82,7 +82,7 @@ fn spawn_fake_backend(
                         "maxResults": 1000,
                         "maxConcurrentRequests": 4
                     },
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
                 "raw/workspace-refresh" => refresh.clone(),
                 "raw/diagnostics" => diagnostics.clone(),
@@ -134,7 +134,7 @@ fn complete_refresh_for(file_paths: &[String]) -> Value {
         "removedFileCount": 0,
         "attemptCount": 1,
         "elapsedMillis": 0,
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     })
 }
 
@@ -158,6 +158,6 @@ fn complete_removed_refresh(file: &Path) -> Value {
         "removedFileCount": 1,
         "attemptCount": 1,
         "elapsedMillis": 0,
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     })
 }

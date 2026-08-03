@@ -44,6 +44,25 @@ pub struct WorkspaceLeaseOwnerIdentity {
     pub process: WorkspaceLeaseProcessIdentity,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub session_sha256: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "WorkspaceLeaseOwnerScope::is_caller_session"
+    )]
+    pub scope: WorkspaceLeaseOwnerScope,
+}
+
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum WorkspaceLeaseOwnerScope {
+    #[default]
+    CallerSession,
+    CurrentProcess,
+}
+
+impl WorkspaceLeaseOwnerScope {
+    fn is_caller_session(&self) -> bool {
+        *self == Self::CallerSession
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

@@ -38,9 +38,11 @@ pub enum KastCommand {
     Apply {
         /// Opaque plan identifier returned by `kast change`.
         plan_id: String,
-        /// Opaque workspace lease acquired for this exact root and indexer.
-        #[arg(long = "lease-id")]
-        lease_id: AgentWorkspaceLeaseId,
+    },
+    /// Finish or roll back one interrupted semantic change.
+    Recover {
+        /// Opaque recovery identifier returned by `kast apply`.
+        recovery_id: String,
     },
 }
 
@@ -321,10 +323,6 @@ pub enum KastChangeCommand {
     AddFile { path: PathBuf },
     /// Add a declaration at the bottom of one file from stdin.
     AddDeclaration { path: PathBuf },
-    /// Add implementation content at the end of one named scope from stdin.
-    AddImplementation { scope: String },
-    /// Add a statement at the end of one named executable scope from stdin.
-    AddStatement { scope: String },
     /// Replace one named declaration with content from stdin.
     Replace { symbol: String },
 }

@@ -25,6 +25,9 @@ fn field_schema(field: &Value, context: &str) -> Result<Value> {
             );
         }
         "object" => {
+            if field.get("variants").is_some() {
+                return nested_variant_object_schema(field, context, nullable);
+            }
             schema.insert("type".to_string(), schema_type("object", nullable));
             if let Some(fields) = field.get("fields") {
                 let fields = fields.as_object().ok_or_else(|| {
@@ -75,6 +78,136 @@ fn field_schema(field: &Value, context: &str) -> Result<Value> {
     }
 
     Ok(Value::Object(schema))
+}
+
+fn nested_variant_object_schema(
+    field: &Value,
+    context: &str,
+    nullable: bool,
+) -> Result<Value> {
+    if nullable {
+        return Err(CliError::new(
+            "RPC_CATALOG_INVALID",
+            format!("Variant object field `{context}` cannot be nullable."),
+        ));
+    }
+    let discriminator = field
+        .get("variantDiscriminator")
+        .and_then(Value::as_str)
+        .unwrap_or("type");
+    let base_fields = field
+        .get("fields")
+        .and_then(Value::as_object)
+        .ok_or_else(|| {
+            CliError::new(
+                "RPC_CATALOG_INVALID",
+                format!("Variant object field `{context}` needs base fields."),
+            )
+        })?;
+    let discriminator_field = base_fields.get(discriminator).ok_or_else(|| {
+        CliError::new(
+            "RPC_CATALOG_INVALID",
+            format!(
+                "Variant object field `{context}` must declare its `{discriminator}` discriminator."
+            ),
+        )
+    })?;
+    if base_fields.keys().any(|name| name != discriminator) {
+        return Err(CliError::new(
+            "RPC_CATALOG_INVALID",
+            format!(
+                "Variant object field `{context}` may declare only its discriminator as a base field."
+            ),
+        ));
+    }
+    let enum_values = discriminator_field
+        .get("enum")
+        .and_then(Value::as_array)
+        .ok_or_else(|| {
+            CliError::new(
+                "RPC_CATALOG_INVALID",
+                format!(
+                    "Variant object discriminator `{context}.{discriminator}` needs an enum."
+                ),
+            )
+        })?;
+    let variants = field
+        .get("variants")
+        .and_then(Value::as_object)
+        .filter(|variants| !variants.is_empty())
+        .ok_or_else(|| {
+            CliError::new(
+                "RPC_CATALOG_INVALID",
+                format!("Variant object field `{context}` needs non-empty variants."),
+            )
+        })?;
+    let enum_names = enum_values
+        .iter()
+        .map(Value::as_str)
+        .collect::<Option<BTreeSet<_>>>()
+        .ok_or_else(|| {
+            CliError::new(
+                "RPC_CATALOG_INVALID",
+                format!("Variant object discriminator `{context}` enum was not strings."),
+            )
+        })?;
+    let variant_names = variants.keys().map(String::as_str).collect::<BTreeSet<_>>();
+    if enum_names != variant_names || enum_values.len() != variants.len() {
+        return Err(CliError::new(
+            "RPC_CATALOG_INVALID",
+            format!(
+                "Variant object discriminator `{context}` must name every variant exactly once."
+            ),
+        ));
+    }
+    let mut schemas = Vec::with_capacity(variants.len());
+    let mut sorted = variants.iter().collect::<Vec<_>>();
+    sorted.sort_by_key(|(name, _)| *name);
+    for (variant_name, variant_request) in sorted {
+        let mut properties = Map::new();
+        let mut discriminator_schema = field_schema(
+            discriminator_field,
+            &format!("{context}.{discriminator}"),
+        )?
+        .as_object()
+        .cloned()
+        .ok_or_else(|| {
+            CliError::new(
+                "RPC_CATALOG_INVALID",
+                format!("Variant object discriminator `{context}` was not a schema object."),
+            )
+        })?;
+        discriminator_schema.remove("enum");
+        discriminator_schema.insert("const".to_string(), Value::String(variant_name.clone()));
+        properties.insert(discriminator.to_string(), Value::Object(discriminator_schema));
+        for (name, variant_field) in object_at(variant_request, "fields", variant_name)? {
+            if name == discriminator || base_fields.contains_key(name) {
+                return Err(CliError::new(
+                    "RPC_CATALOG_INVALID",
+                    format!(
+                        "Nested variant `{context}.{variant_name}` redeclared base field `{name}`."
+                    ),
+                ));
+            }
+            properties.insert(
+                name.clone(),
+                field_schema(variant_field, &format!("{context}.{variant_name}.{name}"))?,
+            );
+        }
+        let mut required = vec![Value::String(discriminator.to_string())];
+        required.extend(
+            request_required(variant_request)?
+                .into_iter()
+                .map(Value::String),
+        );
+        schemas.push(json!({
+            "type": "object",
+            "properties": properties,
+            "required": required,
+            "additionalProperties": false,
+        }));
+    }
+    Ok(json!({"oneOf": schemas}))
 }
 
 fn item_schema(items: Option<&Value>, context: &str) -> Result<Value> {

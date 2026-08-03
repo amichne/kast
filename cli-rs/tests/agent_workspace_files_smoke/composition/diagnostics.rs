@@ -86,7 +86,7 @@ fn discovered_file_path_composes_with_diagnostics_and_exact_symbol_lookup() {
                     "removedFileCount": 0,
                     "attemptCount": 1,
                     "elapsedMillis": 0,
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
             ),
             (

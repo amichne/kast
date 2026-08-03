@@ -94,7 +94,9 @@ internal class IdeaEditApplicationTestRecovery : IdeaEditApplicationTestFixture(
         )
         val partial = failure as PartialApplyException
         assertEquals(target.toString(), partial.details["appliedFiles"])
-        val recoveryFile = Path.of(partial.details.getValue("recoveryFilePaths"))
+        assertEquals("1", partial.details["recoveryFilePathCount"])
+        assertFalse(partial.details.containsKey("recoveryFilePaths"))
+        val recoveryFile = Path.of(partial.details.getValue("recoveryFilePath.0"))
         assertEquals(original, Files.readString(recoveryFile))
         assertEquals(replacement, Files.readString(target))
         val documentText = readAction {

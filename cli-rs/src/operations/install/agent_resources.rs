@@ -39,6 +39,19 @@ const KAST_COPILOT_HOOKS: &str = include_str!(concat!(
 
 const KAST_VERSION_PLACEHOLDER: &str = "${KAST_VERSION}";
 
+#[derive(Debug, serde::Deserialize)]
+struct InstalledAgentPluginIdentity {
+    name: String,
+    version: String,
+}
+
+struct AgentResourceDigestOverrides<'a> {
+    provider: &'static str,
+    hooks: &'a str,
+    plugin: &'a str,
+    skill: &'a str,
+}
+
 pub fn install_agent_resources(requested: &[KastHarness]) -> Result<()> {
     let selected = [KastHarness::Codex, KastHarness::Claude, KastHarness::Copilot]
         .into_iter()
@@ -201,7 +214,133 @@ fn materialize_agent_harness(harness: KastHarness) -> Result<PathBuf> {
     Ok(root)
 }
 
+pub(crate) fn validate_agent_harness_activation(
+    harness: KastHarness,
+    plugin_root: &Path,
+) -> Result<()> {
+    let (plugin_path, hooks_path, expected_plugin, expected_hooks) = match harness {
+        KastHarness::Codex => (
+            ".codex-plugin/plugin.json",
+            "hooks/hooks.json",
+            KAST_CODEX_PLUGIN,
+            KAST_CODEX_HOOKS,
+        ),
+        KastHarness::Claude => (
+            ".claude-plugin/plugin.json",
+            "hooks/hooks.json",
+            KAST_CLAUDE_PLUGIN,
+            KAST_CLAUDE_HOOKS,
+        ),
+        KastHarness::Copilot => (
+            "plugin.json",
+            "hooks.json",
+            KAST_COPILOT_PLUGIN,
+            KAST_COPILOT_HOOKS,
+        ),
+    };
+    let expected_version = crate::cli::version();
+    let expected_digest = agent_resources_digest();
+    let repair_command = format!(
+        "kast __internal resources install --harness {}",
+        harness_name(harness)
+    );
+    let read_resource = |relative: &str| {
+        fs::read_to_string(plugin_root.join(relative)).map_err(|error| {
+            activation_error(
+                harness,
+                format!("{relative} is unavailable: {error}"),
+                "UNAVAILABLE",
+                "UNAVAILABLE",
+                expected_version,
+                &expected_digest,
+                &repair_command,
+            )
+        })
+    };
+    let plugin = read_resource(plugin_path)?;
+    let hooks = read_resource(hooks_path)?;
+    let skill = read_resource("skills/kast/SKILL.md")?;
+    let detected_identity = serde_json::from_str::<InstalledAgentPluginIdentity>(&plugin).ok();
+    let detected_version = detected_identity
+        .as_ref()
+        .map(|identity| identity.version.as_str())
+        .unwrap_or("INVALID");
+    let detected_digest = agent_resources_digest_with(Some(&AgentResourceDigestOverrides {
+        provider: harness_name(harness),
+        hooks: &hooks,
+        plugin: &plugin,
+        skill: &skill,
+    }));
+    let expected_plugin = render_agent_resource(expected_plugin);
+    let expected_hooks = render_agent_resource(expected_hooks);
+    let expected_skill = render_agent_resource(KAST_AGENT_SKILL);
+    let mut mismatches = Vec::new();
+    if detected_identity
+        .as_ref()
+        .is_none_or(|identity| identity.name != "kast" || identity.version != expected_version)
+    {
+        mismatches.push("version mismatch");
+    }
+    if plugin != expected_plugin {
+        mismatches.push("plugin digest mismatch");
+    }
+    if hooks != expected_hooks {
+        mismatches.push("hook digest mismatch");
+    }
+    if skill != expected_skill {
+        mismatches.push("skill digest mismatch");
+    }
+    if mismatches.is_empty() && detected_digest == expected_digest {
+        return Ok(());
+    }
+    if mismatches.is_empty() {
+        mismatches.push("resource digest mismatch");
+    }
+    Err(activation_error(
+        harness,
+        mismatches.join(", "),
+        detected_version,
+        &detected_digest,
+        expected_version,
+        &expected_digest,
+        &repair_command,
+    ))
+}
+
+fn activation_error(
+    harness: KastHarness,
+    mismatch: impl Into<String>,
+    detected_version: &str,
+    detected_digest: &str,
+    expected_version: &str,
+    expected_digest: &str,
+    repair_command: &str,
+) -> CliError {
+    let mismatch = mismatch.into();
+    let mut error = CliError::new(
+        "KAST_AGENT_RESOURCES_INCOMPATIBLE",
+        format!(
+            "{} harness activation rejected: {mismatch}.",
+            harness_name(harness)
+        ),
+    );
+    for (key, value) in [
+        ("detectedVersion", detected_version),
+        ("expectedVersion", expected_version),
+        ("detectedDigest", detected_digest),
+        ("expectedDigest", expected_digest),
+        ("repairCommand", repair_command),
+    ] {
+        error.details.insert(key.to_string(), value.to_string());
+    }
+    error
+}
+
 fn agent_resources_digest() -> String {
+    agent_resources_digest_with(None)
+}
+
+fn agent_resources_digest_with(overrides: Option<&AgentResourceDigestOverrides<'_>>) -> String {
     let mut digest = Sha256::new();
     for (path, contents) in [
         ("SKILL.md", KAST_AGENT_SKILL),
@@ -215,9 +354,22 @@ fn agent_resources_digest() -> String {
         ("copilot/marketplace.json", KAST_COPILOT_MARKETPLACE),
         ("copilot/plugin.json", KAST_COPILOT_PLUGIN),
     ] {
+        let overridden = overrides.and_then(|overrides| match path {
+            "SKILL.md" => Some(overrides.skill),
+            path if path == format!("{}/hooks.json", overrides.provider) => {
+                Some(overrides.hooks)
+            }
+            path if path == format!("{}/plugin.json", overrides.provider) => {
+                Some(overrides.plugin)
+            }
+            _ => None,
+        });
+        let contents = overridden
+            .map(str::to_string)
+            .unwrap_or_else(|| render_agent_resource(contents));
         digest.update(path.as_bytes());
         digest.update([0]);
-        digest.update(render_agent_resource(contents).as_bytes());
+        digest.update(contents.as_bytes());
         digest.update([0]);
     }
     hex::encode(digest.finalize())

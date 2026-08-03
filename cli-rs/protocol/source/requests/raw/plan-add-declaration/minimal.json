@@ -1,0 +1,10 @@
+{
+  "id": 1,
+  "jsonrpc": "2.0",
+  "method": "raw/plan-add-declaration",
+  "params": {
+    "expectedCurrentSha256": "example-expectedCurrentSha256",
+    "proposedDeclaration": "example-proposedDeclaration",
+    "targetPath": "example-targetPath"
+  }
+}

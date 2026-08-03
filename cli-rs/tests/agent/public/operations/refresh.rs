@@ -139,7 +139,7 @@ fn refresh_external_projects_only_actionable_outcomes() {
                 "removedFileCount": 0,
                 "attemptCount": 1,
                 "elapsedMillis": 0,
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
@@ -326,7 +326,7 @@ fn complete_refresh(file: &Path, failure_id: &str) -> Value {
         "removedFileCount": 0,
         "attemptCount": 1,
         "elapsedMillis": 0,
-        "schemaVersion": 5
+        "schemaVersion": api_schema_version()
     })
 }
 

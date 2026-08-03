@@ -1,0 +1,119 @@
+{
+    "result": {
+        "edit": {
+            "filePath": "/workspace/src/Sample.kt",
+            "startOffset": 16,
+            "endOffset": 34,
+            "newText": "fun greet() = \"hello\""
+        },
+        "proof": {
+            "target": {
+                "fqName": "sample.greet",
+                "kind": "FUNCTION",
+                "declarationFile": "/workspace/src/Sample.kt",
+                "declarationStartOffset": 20
+            },
+            "requiredGeneration": 1,
+            "sourceRange": {
+                "filePath": "/workspace/src/Sample.kt",
+                "startOffset": 16,
+                "endOffset": 34,
+                "startLine": 3,
+                "startColumn": 1,
+                "preview": "fun greet() = \"hi\""
+            },
+            "fileHashes": [
+                {
+                    "filePath": "/workspace/src/Sample.kt",
+                    "hash": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+                }
+            ],
+            "oldSignature": {
+                "type": "function",
+                "name": "greet",
+                "contextReceiverTypes": [],
+                "typeParameters": [],
+                "valueParameters": [],
+                "returnType": "kotlin.String",
+                "visibility": "PUBLIC",
+                "modality": "FINAL",
+                "hasStableParameterNames": true,
+                "suspend": false,
+                "operator": false,
+                "inline": false,
+                "override": false,
+                "infix": false,
+                "static": false,
+                "tailrec": false,
+                "external": false,
+                "expect": false,
+                "actual": false
+            },
+            "proposedSignature": {
+                "type": "function",
+                "name": "greet",
+                "contextReceiverTypes": [],
+                "typeParameters": [],
+                "valueParameters": [],
+                "returnType": "kotlin.String",
+                "visibility": "PUBLIC",
+                "modality": "FINAL",
+                "hasStableParameterNames": true,
+                "suspend": false,
+                "operator": false,
+                "inline": false,
+                "override": false,
+                "infix": false,
+                "static": false,
+                "tailrec": false,
+                "external": false,
+                "expect": false,
+                "actual": false
+            },
+            "proposedDeclarationHash": "51900255787d6207ba81f6bb21decc089f5201c89d9d4028e19a94b8a0a30ee7",
+            "proposedDeclarationLength": 21,
+            "declarationSlice": {
+                "startOffset": 0,
+                "endOffset": 21
+            },
+            "evidence": {
+                "type": "complete",
+                "cardinality": {
+                    "type": "EXACT",
+                    "totalCount": 0
+                },
+                "dimensions": [
+                    "EXACT_TARGET_IDENTITY",
+                    "SUPPORTED_TARGET_KIND",
+                    "SINGLE_SUPPORTED_PROPOSED_DECLARATION",
+                    "COMPILER_SIGNATURE_EQUAL",
+                    "PROPOSED_PSI_TRAVERSAL_EXHAUSTIVE",
+                    "EVERY_REFERENCE_COMPILER_RESOLVED",
+                    "EVERY_REFERENCE_TARGET_MATCHED",
+                    "EVERY_CALL_EXACT",
+                    "NO_UNSUPPORTED_REFERENCE_KIND",
+                    "EXACT_OUTBOUND_CARDINALITY",
+                    "SOURCE_CONTEXT_HASH_BOUND",
+                    "SEMANTIC_GENERATION_UNCHANGED"
+                ]
+            },
+            "outboundReferences": []
+        },
+        "fileImages": [
+            {
+                "filePath": "/workspace/src/Sample.kt",
+                "preimage": {
+                    "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhpIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQo=",
+                    "sha256": "fd31168346a51e49dbb21eca8e5d7cc897afe7116bb3ef21754f782ddb261f72"
+                },
+                "postimage": {
+                    "contentBase64": "cGFja2FnZSBzYW1wbGUKCmZ1biBncmVldCgpID0gImhlbGxvIgoKZnVuIHVzZSgpID0gZ3JlZXQoKQo=",
+                    "sha256": "83133a5e5cd2b76cd821245c5b53e107fa810ad1d45edb35d27b17cc1ced704f"
+                }
+            }
+        ],
+        "schemaVersion": 6
+    },
+    "id": 1,
+    "jsonrpc": "2.0"
+}

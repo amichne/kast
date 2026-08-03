@@ -18,7 +18,7 @@ fn exact_zero_relationships_require_complete_coverage_proof() {
                 "subject": function,
                 "references": [],
                 "cardinality": {"type": "EXACT", "totalCount": 0},
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         ),
         (
@@ -30,7 +30,7 @@ fn exact_zero_relationships_require_complete_coverage_proof() {
                 "subject": function,
                 "records": [],
                 "page": proofless_exact_relation_page(0),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         ),
         (
@@ -42,7 +42,7 @@ fn exact_zero_relationships_require_complete_coverage_proof() {
                 "subject": function,
                 "records": [],
                 "page": proofless_exact_relation_page(0),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         ),
         (
@@ -54,7 +54,7 @@ fn exact_zero_relationships_require_complete_coverage_proof() {
                 "subject": interface,
                 "records": [],
                 "page": proofless_exact_relation_page(0),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         ),
         (
@@ -66,7 +66,7 @@ fn exact_zero_relationships_require_complete_coverage_proof() {
                 "subject": interface,
                 "records": [],
                 "page": proofless_exact_relation_page(0),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         ),
     ];
@@ -176,7 +176,7 @@ fn relationship_evidence_variants_reject_inconsistent_coverage_facts() {
                     "subject": subject,
                     "references": [],
                     "evidence": evidence,
-                    "schemaVersion": 5
+                    "schemaVersion": api_schema_version()
                 }),
             )],
         );
@@ -221,7 +221,7 @@ fn genuine_exact_zero_preserves_complete_coverage_in_compact_and_count_views() {
             ),
             "references": [],
             "evidence": complete_relationship_evidence(0),
-            "schemaVersion": 5
+            "schemaVersion": api_schema_version()
         })
     };
 
@@ -334,7 +334,7 @@ fn handle_backed_degraded_relationship_preserves_known_minimum_and_limitations()
                 "subject": subject,
                 "reason": "CALL_HIERARCHY_UNAVAILABLE",
                 "evidence": excluded_source_set_evidence(3),
-                "schemaVersion": 5
+                "schemaVersion": api_schema_version()
             }),
         )],
     );
