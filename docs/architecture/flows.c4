@@ -131,27 +131,21 @@ views {
   dynamic view refresh-lifecycle {
     variant sequence
     title "Refresh routing"
-    description "Focused compiler refresh and semantic graph replacement remain distinct operations."
+    description "One typed route selects focused compiler refresh or semantic graph replacement."
 
-    developer -> kast.cli "changes source or requests refresh"
+    developer -> kast.cli "requests focused or graph refresh"
+    kast.cli -> kast.agent "normalizes exact scope"
+    kast.agent -> kast.rpcClient "sends typed refresh request"
+    kast.rpcClient -> kast.server.dispatcher "opens request"
+    kast.server.dispatcher -> kast.server.router "routes refresh request"
+    kast.server.router -> kast.server.orchestrator "dispatches typed refresh"
     alt {
       when "focused source refresh" {
-        codexHooks -> kast.cli "invokes public refresh"
-        kast.cli -> kast.agent "requires exact-root READY"
-        kast.agent -> kast.rpcClient "sends selected paths"
-        kast.rpcClient -> kast.server.dispatcher "opens request"
-        kast.server.dispatcher -> kast.server.router "routes refresh"
-        kast.server.router -> kast.server.orchestrator "dispatches compiler work"
         kast.server.orchestrator -> kast.indexer.refresh "refreshes VFS and PSI"
         kast.indexer.refresh -> kast.indexer.diagnostics "collects diagnostics"
         kast.indexer.diagnostics -> kast.indexer.refreshStatus "returns admission evidence"
       }
       else "semantic graph refresh" {
-        kast.cli -> kast.agent "expands exact scope"
-        kast.agent -> kast.rpcClient "sends graph request"
-        kast.rpcClient -> kast.server.dispatcher "opens request"
-        kast.server.dispatcher -> kast.server.router "routes graph extraction"
-        kast.server.router -> kast.server.orchestrator "dispatches compiler work"
         kast.server.orchestrator -> kast.indexer.graphExtractor "extracts selected facts"
         kast.indexer.graphExtractor -> kast.indexer.graphWriter "submits replacement"
         kast.indexer.graphWriter -> kast.evidence.index.writer "commits selected files"
@@ -161,5 +155,6 @@ views {
 
     kast.cli <- kast.indexer.refreshStatus "projects typed refresh evidence"
     developer <- kast.cli "receives readiness or limitation"
+    autoLayout RightLeft
   }
 }
