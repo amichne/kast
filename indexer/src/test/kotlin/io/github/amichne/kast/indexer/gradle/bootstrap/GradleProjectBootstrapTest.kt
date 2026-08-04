@@ -106,6 +106,7 @@ class GradleProjectBootstrapTest {
         val workspace = tempDir.resolve("workspace")
         val observedPaths = mutableListOf<String>()
         var waitCount = 0
+        var linked = false
         val modelSnapshots = ArrayDeque(
             listOf(
                 modelReadiness(),
@@ -123,7 +124,9 @@ class GradleProjectBootstrapTest {
                 modelSnapshots.removeFirst()
             },
             canLinkGradleProject = { _, _ -> true },
+            hasLinkedGradleProject = { _, _ -> linked },
             linkAndImportGradleProject = { _, externalProjectPath ->
+                linked = true
                 observedPaths += externalProjectPath
             },
         )
@@ -213,10 +216,32 @@ class GradleProjectBootstrapTest {
     }
 
     @Test
+    fun `Gradle bootstrap fails closed when concurrent reload leaves exact root unlinked`() {
+        val workspace = tempDir.resolve("workspace")
+        val bootstrap = GradleProjectBootstrap(
+            configureGradleImport = {},
+            waitForProjectModel = { settlementEvidence() },
+            inspectProjectModel = { modelReadiness(moduleNames = listOf(":stale")) },
+            canLinkGradleProject = { _, _ -> true },
+            hasLinkedGradleProject = { _, _ -> false },
+            linkAndImportGradleProject = { _, _ -> },
+            waitBeforeReadinessRetry = {},
+            maxReadinessChecks = 1,
+        )
+
+        val error = assertThrows(GradleModelUnavailableException::class.java) {
+            bootstrap.bootstrap(projectStub(), workspace, WorkspaceKind.GRADLE)
+        }
+
+        assertTrue(error.message.orEmpty().contains(workspace.toAbsolutePath().normalize().toString()))
+    }
+
+    @Test
     fun `Gradle bootstrap refreshes a persisted module model before declaring readiness`() {
         val workspace = tempDir.resolve("workspace")
         val observedPaths = mutableListOf<String>()
         var waitCount = 0
+        var linked = false
         val modelSnapshots = ArrayDeque(
             listOf(
                 modelReadiness(
@@ -240,7 +265,9 @@ class GradleProjectBootstrapTest {
                 modelSnapshots.removeFirst()
             },
             canLinkGradleProject = { _, _ -> true },
+            hasLinkedGradleProject = { _, _ -> linked },
             linkAndImportGradleProject = { _, externalProjectPath ->
+                linked = true
                 observedPaths += externalProjectPath
             },
         )
@@ -328,6 +355,7 @@ class GradleProjectBootstrapTest {
             },
             inspectProjectModel = { modelSnapshots.removeFirst() },
             canLinkGradleProject = { _, _ -> true },
+            hasLinkedGradleProject = { _, _ -> true },
             linkAndImportGradleProject = { _, _ -> },
             waitBeforeReadinessRetry = { retryCount += 1 },
             maxReadinessChecks = 2,

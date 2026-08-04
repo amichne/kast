@@ -96,7 +96,9 @@ public final class GradleProjectImportBridge {
         awaitStartupActivities(project, externalProjectPath);
         if (isGradleReloadActive(project)) {
             awaitGradleModelSettlement(project);
-            return;
+            if (hasLinkedGradleProject(project, externalProjectPath)) {
+                return;
+            }
         }
 
         CompletableFuture<Void> importFuture = new CompletableFuture<>();

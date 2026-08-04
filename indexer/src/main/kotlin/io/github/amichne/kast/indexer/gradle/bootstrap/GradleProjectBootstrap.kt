@@ -75,7 +75,7 @@ class GradleProjectBootstrap(
         repeat(maxReadinessChecks) { attempt ->
             waitForProjectModel(project)
             latestModel = inspectProjectModel(project)
-            if (latestModel.compilerReady) {
+            if (latestModel.compilerReady && hasLinkedGradleProject(externalProjectPath, project)) {
                 return ProjectModelBootstrapResult.Ready(
                     moduleNames = latestModel.moduleNames,
                     linkedGradleProject = true,
