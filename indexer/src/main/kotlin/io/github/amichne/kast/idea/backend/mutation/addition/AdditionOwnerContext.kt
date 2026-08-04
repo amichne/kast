@@ -67,6 +67,18 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.psi.*
 
+private data class AdditionGradleOwnerIdentity(
+    val sourceRoot: AdditionSourceRoot,
+    val gradleBuildRoot: AdditionGradleBuildRoot,
+    val gradleProjectPath: AdditionGradleProjectPath,
+    val sourceSetName: AdditionGradleSourceSetName,
+)
+
+private data class AdditionOwnerObservation(
+    val gradleOwner: AdditionGradleOwnerIdentity,
+    val ideaModuleName: AdditionIdeaModuleName,
+)
+
 internal fun KastIndexerBackend.exactAdditionOwner(target: Path): AdditionOwnerSnapshot {
     val model = workspaceModelReader()
     if (!model.importedModelComplete()) failAddition(
@@ -80,33 +92,44 @@ internal fun KastIndexerBackend.exactAdditionOwner(target: Path): AdditionOwnerS
             sourceSet.sourceRoots().mapNotNull { rawRoot ->
                 val sourceRoot = rawRoot.toAbsolutePath().normalize()
                 sourceRoot.takeIf { normalizedTarget != it && normalizedTarget.startsWith(it) }?.let {
-                    Triple(module, sourceSet, sourceRoot)
+                    AdditionOwnerObservation(
+                        gradleOwner = AdditionGradleOwnerIdentity(
+                            sourceRoot = AdditionSourceRoot.parse(sourceRoot.toString()),
+                            gradleBuildRoot = AdditionGradleBuildRoot.parse(
+                                module.linkedBuildRoot().toAbsolutePath().normalize().toString(),
+                            ),
+                            gradleProjectPath = AdditionGradleProjectPath.parse(module.gradleProjectPath()),
+                            sourceSetName = AdditionGradleSourceSetName.of(sourceSet.sourceSetName()),
+                        ),
+                        ideaModuleName = AdditionIdeaModuleName.of(module.ideaModuleName()),
+                    )
                 }
             }
         }
     }
-    val mostSpecificDepth = candidates.maxOfOrNull { it.third.nameCount } ?: failAddition(
+    val mostSpecificDepth = candidates.maxOfOrNull { Path.of(it.gradleOwner.sourceRoot.value).nameCount } ?: failAddition(
         AdditionProofLimitation.SOURCE_OWNER_UNPROVEN,
         "The target has no exact Gradle source-set owner",
     )
-    val exact = candidates.filter { it.third.nameCount == mostSpecificDepth }.distinctBy { candidate ->
-        listOf(
-            candidate.first.ideaModuleName(),
-            candidate.first.linkedBuildRoot().toString(),
-            candidate.first.gradleProjectPath(),
-            candidate.second.sourceSetName(),
-            candidate.third.toString(),
-        )
-    }
-    if (exact.size != 1) failAddition(
+    val exactGradleOwners = candidates
+        .filter { Path.of(it.gradleOwner.sourceRoot.value).nameCount == mostSpecificDepth }
+        .groupBy(AdditionOwnerObservation::gradleOwner)
+    if (exactGradleOwners.size != 1) failAddition(
         AdditionProofLimitation.SOURCE_OWNER_AMBIGUOUS,
         "The target has more than one exact Gradle source-set owner",
     )
-    val (module, sourceSet, sourceRoot) = exact.single()
+    val (gradleOwner, observations) = exactGradleOwners.entries.single()
+    val sourceRoot = Path.of(gradleOwner.sourceRoot.value)
     requireAdditionPathAuthority(sourceRoot, "model-owned source root")
+    val ideaModuleName = exactAdditionIdeaModule(
+        target = normalizedTarget,
+        sourceRoot = sourceRoot,
+        observations = observations,
+    )
     val modelSourceRoots = model.moduleAssociations().flatMap { association ->
         association.sourceSets().flatMap { it.sourceRoots() }
-    }.map { it.toAbsolutePath().normalize() }
+    }
+        .map { it.toAbsolutePath().normalize() }
         .distinct()
         .sortedBy(Path::toString)
     modelSourceRoots.forEach { modelSourceRoot ->
@@ -119,11 +142,11 @@ internal fun KastIndexerBackend.exactAdditionOwner(target: Path): AdditionOwnerS
     val anchorSourceFiles = sourceFilesUnder(sourceRoot)
     return AdditionOwnerSnapshot(
         owner = AdditionSourceOwner.of(
-            sourceRoot = AdditionSourceRoot.parse(sourceRoot.toString()),
-            ideaModuleName = AdditionIdeaModuleName.of(module.ideaModuleName()),
-            gradleBuildRoot = AdditionGradleBuildRoot.parse(module.linkedBuildRoot().toAbsolutePath().normalize().toString()),
-            gradleProjectPath = AdditionGradleProjectPath.parse(module.gradleProjectPath()),
-            sourceSetName = AdditionGradleSourceSetName.of(sourceSet.sourceSetName()),
+            sourceRoot = gradleOwner.sourceRoot,
+            ideaModuleName = ideaModuleName,
+            gradleBuildRoot = gradleOwner.gradleBuildRoot,
+            gradleProjectPath = gradleOwner.gradleProjectPath,
+            sourceSetName = gradleOwner.sourceSetName,
         ),
         modelFingerprint = AdditionProjectModelFingerprint.of(projectModelFingerprint(model)),
         classpathFingerprint = AdditionClasspathFingerprint.of(
@@ -131,6 +154,37 @@ internal fun KastIndexerBackend.exactAdditionOwner(target: Path): AdditionOwnerS
         ),
         sourceFiles = sourceFiles,
         anchorSourceFiles = anchorSourceFiles,
+    )
+}
+
+private fun KastIndexerBackend.exactAdditionIdeaModule(
+    target: Path,
+    sourceRoot: Path,
+    observations: List<AdditionOwnerObservation>,
+): AdditionIdeaModuleName {
+    val observedModuleNames = observations
+        .map(AdditionOwnerObservation::ideaModuleName)
+        .distinct()
+        .sortedBy(AdditionIdeaModuleName::value)
+    if (observedModuleNames.size == 1) return observedModuleNames.single()
+
+    val indexedModuleNames = sequenceOf(
+        target.takeIf { Files.exists(it, NOFOLLOW_LINKS) },
+        target.parent,
+        sourceRoot,
+    ).filterNotNull()
+        .distinct()
+        .mapNotNull(LocalFileSystem.getInstance()::findFileByNioFile)
+        .mapNotNull { ProjectFileIndex.getInstance(project).getModuleForFile(it)?.name }
+        .distinct()
+        .toList()
+    if (indexedModuleNames.size != 1) failAddition(
+        AdditionProofLimitation.SOURCE_OWNER_UNPROVEN,
+        "The exact Gradle source-set owner has no unique indexed IDEA module",
+    )
+    return observedModuleNames.singleOrNull { it.value == indexedModuleNames.single() } ?: failAddition(
+        AdditionProofLimitation.SOURCE_OWNER_UNPROVEN,
+        "The indexed IDEA module does not observe the exact Gradle source-set owner",
     )
 }
 
