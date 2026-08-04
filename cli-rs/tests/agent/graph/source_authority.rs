@@ -43,6 +43,12 @@ fn agent_graph_scope_rejects_malformed_and_orphaned_gradle_ownership() {
             .connection()
             .execute_batch(&format!("PRAGMA foreign_keys=OFF; {ownership_sql};"))
             .unwrap_or_else(|error| panic!("{label}: {error}"));
+        let backend = spawn_open_published_semantic_read_backend(
+            &home,
+            &config_home,
+            &workspace,
+            &temp.path().join("indexer.sock"),
+        );
 
         let mut command = kast(&home, &config_home);
         command.args([
@@ -60,6 +66,7 @@ fn agent_graph_scope_rejects_malformed_and_orphaned_gradle_ownership() {
         let output = command
             .output()
             .unwrap_or_else(|error| panic!("{label}: {error}"));
+        backend.finish();
         let stdout: serde_json::Value = serde_json::from_slice(&output.stdout)
             .unwrap_or_else(|error| panic!("{label}: {error}"));
 
@@ -137,6 +144,12 @@ fn agent_graph_scope_blocks_selected_pending_updates_but_ignores_proven_nonmembe
         .expect("apply unrelated update");
     drop(connection);
     index.seed_pending_update_at(2, "App.kt", false);
+    let read_backend = spawn_open_published_semantic_read_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("indexer-read.sock"),
+    );
     let selected = kast(&home, &config_home)
         .args([
             "--output",
@@ -154,6 +167,7 @@ fn agent_graph_scope_blocks_selected_pending_updates_but_ignores_proven_nonmembe
         ])
         .output()
         .expect("selected pending graph refresh");
+    read_backend.finish();
     let stdout: serde_json::Value =
         serde_json::from_slice(&selected.stdout).expect("scope error JSON");
     assert!(!selected.status.success(), "{stdout:#}");

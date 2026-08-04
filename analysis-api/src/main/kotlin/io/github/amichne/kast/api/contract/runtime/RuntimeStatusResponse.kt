@@ -7,6 +7,7 @@ import io.github.amichne.kast.api.protocol.*
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
+import java.nio.file.Path
 
 @Serializable
 data class RuntimeStatusResponse(
@@ -51,6 +52,11 @@ data class RuntimeStatusResponse(
         defaultValue = "emptyList()",
     )
     val referenceCoverageLimitations: List<ReferenceCoverageLimitation> = emptyList(),
+    @DocField(
+        description = "Exact immutable workspace generation admitted for semantic reads, or null outside generation-backed READY.",
+        defaultValue = "null",
+    )
+    val publishedWorkspaceGeneration: PublishedWorkspaceGenerationStatus? = null,
     @DocField(description = "Protocol schema version for forward compatibility.", serverManaged = true)
     val schemaVersion: Int = SCHEMA_VERSION,
 ) {
@@ -66,6 +72,48 @@ data class RuntimeStatusResponse(
         referenceCoverageState = coverage.state,
         referenceCoverageLimitations = coverage.limitations,
     )
+}
+
+@Serializable
+data class PublishedWorkspaceGenerationStatus(
+    @DocField(description = "Positive immutable workspace semantic generation identifier.")
+    val generation: Long,
+    @DocField(description = "Verified workspace-state identity bound to this generation.")
+    val identity: String,
+    @DocField(description = "Source-index generation stored in the published database.")
+    val sourceIndexGeneration: Long,
+    @DocField(description = "Source-index schema version stored in the published database.")
+    val sourceIndexSchemaVersion: Int,
+    @DocField(description = "Canonical generation-relative source-index database path.")
+    val databaseFile: String,
+    @DocField(description = "Publication time in Unix epoch milliseconds.")
+    val publishedAtEpochMillis: Long,
+    @DocField(description = "Contained repository overlay descriptor filename, when repository evidence is attached.")
+    val repositoryOverlayFile: String? = null,
+) {
+    init {
+        require(generation > 0) { "Workspace semantic generation must be positive" }
+        require(identity.isNotBlank()) { "Published workspace identity must not be blank" }
+        require(sourceIndexGeneration >= 0) { "Source-index generation must not be negative" }
+        require(sourceIndexSchemaVersion > 0) { "Source-index schema version must be positive" }
+        require(isCanonicalGenerationDatabasePath(databaseFile)) {
+            "Published database file must be a canonical generation-relative source-index.db path"
+        }
+        require(repositoryOverlayFile == null || repositoryOverlayFile == "repository-overlay.json") {
+            "Published repository overlay must be repository-overlay.json"
+        }
+        require(publishedAtEpochMillis >= 0) { "Publication time must not be negative" }
+    }
+}
+
+private fun isCanonicalGenerationDatabasePath(raw: String): Boolean {
+    if (raw.isBlank() || '\\' in raw) return false
+    val path = runCatching { Path.of(raw) }.getOrNull() ?: return false
+    return !path.isAbsolute &&
+        path.nameCount == 2 &&
+        path.normalize().toString() == raw &&
+        path.fileName.toString() == "source-index.db" &&
+        path.none { segment -> segment.toString() == ".." }
 }
 
 class ReferenceCoverage private constructor(

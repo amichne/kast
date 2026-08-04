@@ -36,7 +36,7 @@ fn backend_module_filter_is_partial_when_backend_page_is_incomplete() {
         "modules": [],
         "schemaVersion": api_schema_version()
     });
-    let backend = spawn_scripted_indexer_backend(
+    let backend = spawn_scripted_indexer_backend_for_published_workspace_read(
         &home,
         &config_home,
         &workspace,

@@ -215,7 +215,7 @@ fn verification_semantic_graph_readiness(
                 .any(|capability| capability.as_str() == Some("SEMANTIC_GRAPH"))
         });
     advertised.then(|| {
-        crate::repository_intelligence::semantic_graph_readiness(admission.workspace_root())
+        crate::repository_intelligence::semantic_graph_readiness_for_admission(admission)
     })
 }
 

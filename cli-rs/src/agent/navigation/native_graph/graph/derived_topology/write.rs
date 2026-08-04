@@ -10,10 +10,12 @@ pub(crate) fn write_reference_derived_topology(
     prior: Option<&Path>,
 ) -> Result<DerivedTopologyReceipt> {
     let output = NewDerivedTopologyPath::resolve(workspace_root, output)?;
+    let semantic_read =
+        crate::runtime::semantic_workspace_read_ready(Some(output.workspace_root.clone()))?;
     let previous = prior
         .map(|path| read_previous_topology(&output.workspace_root, path))
         .transpose()?;
-    let snapshot = load_reference_topology_snapshot(&output.workspace_root)?;
+    let snapshot = load_reference_topology_snapshot(semantic_read.published())?;
     if previous
         .as_ref()
         .is_some_and(|previous| previous.source.generation >= snapshot.generation)
@@ -24,6 +26,7 @@ pub(crate) fn write_reference_derived_topology(
         ));
     }
     let artifact = derive_reference_topology(snapshot, previous.as_ref());
+    semantic_read.revalidate()?;
     let mut bytes = serde_json::to_vec_pretty(&artifact)?;
     bytes.push(b'\n');
     output.write_new(&bytes)?;

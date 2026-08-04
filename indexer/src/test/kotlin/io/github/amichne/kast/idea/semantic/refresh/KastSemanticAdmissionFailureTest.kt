@@ -72,6 +72,8 @@ class KastSemanticAdmissionFailureTest {
         limits = defaultLimits,
         semanticAdmissionAwaiter = admissionAwaiter,
         semanticAdmissionOperations = admissionOperations,
+        workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+        workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
         workspaceModelReader = { IdeaGradleProjectLoadBridge.readWorkspaceModel(project) },
     )
 

@@ -1003,6 +1003,10 @@ components:
           type: array
           items:
             "$ref": "#/components/schemas/ReferenceCoverageLimitation"
+        publishedWorkspaceGeneration:
+          anyOf:
+            - "$ref": "#/components/schemas/PublishedWorkspaceGenerationStatus"
+            - type: "null"
         schemaVersion:
           type: integer
           format: int32
@@ -1039,6 +1043,37 @@ components:
         - CRITICAL_STAGE_GAP
         - UNMATCHED_CRITICAL_PATH
         - CANCELLED
+    PublishedWorkspaceGenerationStatus:
+      type: object
+      properties:
+        generation:
+          type: integer
+          format: int64
+        identity:
+          type: string
+        sourceIndexGeneration:
+          type: integer
+          format: int64
+        sourceIndexSchemaVersion:
+          type: integer
+          format: int32
+        databaseFile:
+          type: string
+        publishedAtEpochMillis:
+          type: integer
+          format: int64
+        repositoryOverlayFile:
+          anyOf:
+            - type: string
+            - type: "null"
+      additionalProperties: false
+      required:
+        - generation
+        - identity
+        - sourceIndexGeneration
+        - sourceIndexSchemaVersion
+        - databaseFile
+        - publishedAtEpochMillis
     RuntimeLifecycleResponse:
       type: object
       properties:

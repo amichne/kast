@@ -1,12 +1,46 @@
 package io.github.amichne.kast.idea
 
+import com.intellij.openapi.progress.ProcessCanceledException
+import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.GradleSourceSetName
 import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
 import java.nio.file.Files
 import java.nio.file.Path
-import java.security.MessageDigest
+
+@JvmInline
+internal value class AdmittedWorkspaceContentIdentity private constructor(val value: String) {
+    companion object {
+        fun hash(canonicalRecords: Iterable<String>): AdmittedWorkspaceContentIdentity =
+            AdmittedWorkspaceContentIdentity(FileHashing.sha256(canonicalRecords.joinToString("\n")))
+    }
+}
+
+internal data class WorkspaceIndexingCandidate(
+    val gradleModel: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
+    val scope: WorkspaceIndexingScope,
+    val ownerModuleNamesByPath: Map<WorkspaceSourcePath, Set<IdeaWorkspaceModuleIdentity>>,
+    val inventoryEntries: List<FileInventoryEntry>,
+) {
+    val admittedContentIdentity: AdmittedWorkspaceContentIdentity = AdmittedWorkspaceContentIdentity.hash(
+        inventoryEntries
+            .sortedBy { entry -> entry.path.relative.value }
+            .map { entry ->
+                buildString {
+                    append(entry.path.relative.value).append('|')
+                    append(entry.contentHash.value).append('|')
+                    append(
+                        ownerModuleNamesByPath[entry.path]
+                            .orEmpty()
+                            .map(IdeaWorkspaceModuleIdentity::value)
+                            .sorted()
+                            .joinToString(","),
+                    )
+                }
+            },
+    )
+}
 
 internal fun buildFileInventoryEntries(
     ownerModuleNamesByPath: Map<WorkspaceSourcePath, Set<IdeaWorkspaceModuleIdentity>>,
@@ -14,7 +48,7 @@ internal fun buildFileInventoryEntries(
     sourceSetForPath: (WorkspaceSourcePath) -> GradleSourceSetName?,
 ): List<FileInventoryEntry> = buildList {
     for ((filePath, ownerModuleNames) in ownerModuleNamesByPath) {
-        if (isCancelled()) return emptyList()
+        if (isCancelled()) throw ProcessCanceledException()
         val path = filePath.absolute.value.toJavaPath()
         if (!Files.isRegularFile(path)) continue
         val sourceSet = sourceSetForPath(filePath)
@@ -22,7 +56,7 @@ internal fun buildFileInventoryEntries(
             FileInventoryEntry(
                 path = filePath,
                 lastModifiedMillis = Files.getLastModifiedTime(path).toMillis(),
-                contentHash = hashFile(path),
+                contentHash = hashFile(path, isCancelled),
                 module = ownerModuleNames
                     .minOrNull()
                     ?.let { owner ->
@@ -37,17 +71,5 @@ internal fun buildFileInventoryEntries(
     }
 }
 
-private fun hashFile(path: Path): FileContentHash {
-    val digest = MessageDigest.getInstance("SHA-256")
-    Files.newInputStream(path).use { input ->
-        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-        while (true) {
-            val read = input.read(buffer)
-            if (read < 0) break
-            digest.update(buffer, 0, read)
-        }
-    }
-    return FileContentHash.parse(
-        digest.digest().joinToString(separator = "") { byte -> "%02x".format(byte) },
-    )
-}
+private fun hashFile(path: Path, isCancelled: () -> Boolean): FileContentHash =
+    FileContentHash.parse(SemanticPathContentIdentity.file(path, isCancelled))

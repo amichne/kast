@@ -13,6 +13,19 @@ pub(crate) fn spawn_sequenced_indexer_backend(
     std::fs::create_dir_all(config_home).expect("config home");
     std::fs::create_dir_all(&descriptor_dir).expect("descriptor dir");
     let workspace = std::fs::canonicalize(workspace).expect("canonical sequenced workspace");
+    let published = published_workspace_generation_for_test(&workspace);
+    let responses = responses
+        .into_iter()
+        .map(|(method, mut result)| {
+            if method == "runtime/status"
+                && result.get("publishedWorkspaceGeneration").is_none()
+                && let Some(published) = &published
+            {
+                result["publishedWorkspaceGeneration"] = published.clone();
+            }
+            (method, result)
+        })
+        .collect::<Vec<_>>();
     let listener = UnixListener::bind(socket_path).expect("bind sequenced backend");
     std::fs::write(
         descriptor_dir.join("daemons.json"),

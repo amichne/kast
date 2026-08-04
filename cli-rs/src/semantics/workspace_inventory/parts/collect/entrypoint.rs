@@ -1,8 +1,40 @@
-pub(crate) struct SystemWorkspaceLaneReader;
+pub(crate) struct SystemWorkspaceLaneReader<'a> {
+    published: &'a crate::published_workspace::PublishedWorkspaceDatabase,
+}
 
-impl WorkspaceInventoryLaneReader for SystemWorkspaceLaneReader {
+impl<'a> SystemWorkspaceLaneReader<'a> {
+    pub(crate) fn new(
+        published: &'a crate::published_workspace::PublishedWorkspaceDatabase,
+    ) -> Self {
+        Self { published }
+    }
+}
+
+impl WorkspaceInventoryLaneReader for SystemWorkspaceLaneReader<'_> {
     fn read_source_index(&mut self, root: &WorkspaceRoot) -> WorkspaceIndexRead {
-        super::read_workspace_index(root)
+        super::read_workspace_index_from_published(root, self.published)
+    }
+
+    fn read_dirty_workspace(&mut self, root: &WorkspaceRoot) -> DirtyWorkspaceRead {
+        read_dirty_workspace(root)
+    }
+
+    fn read_filesystem(
+        &mut self,
+        root: &WorkspaceRoot,
+        paths: &BTreeSet<WorkspaceFilePath>,
+    ) -> WorkspaceLaneStamp<WorkspaceFilesystemStamp> {
+        WorkspaceLaneStamp::Available(observe_filesystem(root, paths))
+    }
+}
+
+#[cfg(test)]
+pub(crate) struct LiveCandidateWorkspaceLaneReader;
+
+#[cfg(test)]
+impl WorkspaceInventoryLaneReader for LiveCandidateWorkspaceLaneReader {
+    fn read_source_index(&mut self, root: &WorkspaceRoot) -> WorkspaceIndexRead {
+        super::read_workspace_index_from_live_candidate_for_test(root)
     }
 
     fn read_dirty_workspace(&mut self, root: &WorkspaceRoot) -> DirtyWorkspaceRead {

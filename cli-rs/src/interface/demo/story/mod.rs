@@ -94,6 +94,7 @@ pub fn run_public(args: PublicDemoArgs, output_format: OutputFormat) -> Result<i
         io::stdout().is_terminal(),
     );
     let (snapshot, connection) = public_demo_snapshot(&db, !interactive)?;
+    db.request.published_read.revalidate()?;
     if interactive {
         return run_public_demo_tui(Some(db), snapshot, connection);
     }
@@ -178,10 +179,13 @@ fn public_missing_index_error(request: &DemoRequest) -> CliError {
 impl DemoRequest {
     fn from_public_args(args: PublicDemoArgs) -> Result<Self> {
         let workspace_root = config::resolve_workspace_root(args.runtime.workspace_root)?;
-        let database = config::workspace_database_path(&workspace_root)?;
+        let published_read =
+            runtime::semantic_workspace_read_ready(Some(workspace_root.clone()))?;
+        let database = published_read.database().to_path_buf();
         Ok(Self {
             workspace_root,
             database,
+            published_read,
             symbol: args.symbol,
             limit: 30,
         })

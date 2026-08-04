@@ -46,8 +46,8 @@ fn stable_partial_inventory_can_continue_known_matches() {
         "{stdout:#}"
     );
     let requests = backend.join().expect("stable partial backend");
-    assert_eq!(
-        requests.last().expect("continuation issue")["params"]["action"],
-        "ISSUE"
-    );
+    assert!(requests.iter().any(|request| {
+        request["method"] == "raw/workspace-files-continuation"
+            && request["params"]["action"] == "ISSUE"
+    }));
 }

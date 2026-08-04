@@ -15,17 +15,19 @@ struct CurrentSemanticGraphScope {
     source_paths: Vec<PersistedSemanticGraphSourcePath>,
 }
 
-fn read_semantic_files(workspace_root: &Path) -> Result<PersistedSemanticCoverageRead> {
-    let database = config::workspace_database_path(workspace_root)?;
+fn read_semantic_files(
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
+) -> Result<PersistedSemanticCoverageRead> {
+    let database = published.database();
     let mut connection = Connection::open_with_flags(
-        &database,
+        database,
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
     )
     .map_err(graph_coverage_unavailable)?;
     source_index_db::configure_read_connection(&connection)
         .map_err(graph_coverage_unavailable)?;
     let has_repository_base =
-        crate::agent::native_graph_attach_repository_base(&connection, &database)
+        crate::agent::native_graph_attach_published_repository_base(&connection, published)
             .map_err(|error| CliError::new("GRAPH_COVERAGE_UNAVAILABLE", error.message))?;
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Deferred)

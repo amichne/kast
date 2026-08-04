@@ -32,7 +32,7 @@ fn composition_distinguishes_scripts_filesystem_index_and_missing_drift() {
     );
     responses.push(backend_result("snapshot", vec![]));
     let mut backend = ScriptedWorkspaceBackend::new(responses);
-    let mut lanes = super::collect::SystemWorkspaceLaneReader;
+    let mut lanes = super::collect::LiveCandidateWorkspaceLaneReader;
 
     let snapshot =
         super::collect::collect_workspace_inventory(super::collect::WorkspaceInventoryInputs {
@@ -142,7 +142,7 @@ fn partial_possible_owner_makes_index_only_drift_unknown() {
     ];
     responses.push(backend_result("snapshot", vec![]));
     let mut backend = ScriptedWorkspaceBackend::new(responses);
-    let mut lanes = super::collect::SystemWorkspaceLaneReader;
+    let mut lanes = super::collect::LiveCandidateWorkspaceLaneReader;
 
     let snapshot =
         super::collect::collect_workspace_inventory(super::collect::WorkspaceInventoryInputs {
@@ -174,7 +174,7 @@ fn workspace_wide_stale_with_zero_modules_never_claims_index_only() {
         backend_api_failure("STALE_WORKSPACE_INVENTORY", None),
         backend_api_failure("STALE_WORKSPACE_INVENTORY", None),
     ]);
-    let mut lanes = super::collect::SystemWorkspaceLaneReader;
+    let mut lanes = super::collect::LiveCandidateWorkspaceLaneReader;
 
     let snapshot =
         super::collect::collect_workspace_inventory(super::collect::WorkspaceInventoryInputs {

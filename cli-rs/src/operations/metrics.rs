@@ -11,6 +11,7 @@ use crate::metrics_database::{
     ImpactSubjectIdentity, MetricsDatabase,
 };
 use crate::output;
+use crate::runtime;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
@@ -19,6 +20,7 @@ use std::path::{Path, PathBuf};
 pub(crate) struct MetricsRequest {
     workspace_root: PathBuf,
     database: PathBuf,
+    published_read: Option<runtime::SemanticWorkspaceRead>,
     metric: &'static str,
     limit: usize,
     symbol: Option<String>,
@@ -140,7 +142,7 @@ impl DirectMetricsQueryResult {
 
 fn query_direct(request: &MetricsRequest) -> DirectResult<DirectMetricsQueryResult> {
     let db = MetricsDatabase::open(request)?;
-    match request.metric {
+    let result = match request.metric {
         "fanIn" => db
             .fan_in(request.limit)
             .map(DirectMetricsQueryResult::unbounded),
@@ -167,12 +169,19 @@ fn query_direct(request: &MetricsRequest) -> DirectResult<DirectMetricsQueryResu
             "METRICS_UNSUPPORTED",
             format!("Unsupported metrics command: {other}"),
         ))),
-    }
+    };
+    result.and_then(|value| {
+        if let Some(read) = &request.published_read {
+            read.revalidate().map_err(DirectMetricsError::Query)?;
+        }
+        Ok(value)
+    })
 }
 
 pub(crate) fn try_handle_raw_rpc(
     raw_request: &str,
-    workspace_root_arg: Option<PathBuf>,
+    workspace_root: &Path,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
 ) -> Result<Option<String>> {
     let request: Value = serde_json::from_str(raw_request)?;
     if request.get("method").and_then(Value::as_str) != Some("database/metrics") {
@@ -196,7 +205,7 @@ pub(crate) fn try_handle_raw_rpc(
             ))?));
         }
     };
-    let request = match MetricsRequest::from_rpc_params(parsed, workspace_root_arg) {
+    let request = match MetricsRequest::from_rpc_params(parsed, workspace_root, published) {
         Ok(request) => request,
         Err(error) => {
             return Ok(Some(serde_json::to_string(&json_rpc_success(

@@ -18,7 +18,7 @@
             resolution: None,
         };
 
-        let error = native_graph_result(&args).unwrap_err();
+        let error = native_graph_result(&args, None).unwrap_err();
 
         assert_eq!(error.code, "AGENT_USAGE");
         assert!(error.message.contains("--generation"));

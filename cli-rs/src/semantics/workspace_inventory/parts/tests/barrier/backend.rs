@@ -10,7 +10,7 @@ fn backend_barrier_retries_availability_transitions_and_marks_second_movement_un
         unavailable_backend("offline"),
     ]);
     let mut backend = ScriptedWorkspaceBackend::new(becomes_unavailable);
-    let mut lanes = super::collect::SystemWorkspaceLaneReader;
+    let mut lanes = super::collect::LiveCandidateWorkspaceLaneReader;
     let unavailable =
         super::collect::collect_workspace_inventory(super::collect::WorkspaceInventoryInputs {
             root: root.clone(),
@@ -32,7 +32,7 @@ fn backend_barrier_retries_availability_transitions_and_marks_second_movement_un
     becomes_available.extend(empty_available_backend("lease-c", "module"));
     becomes_available.push(backend_result("lease-c", vec![]));
     let mut backend = ScriptedWorkspaceBackend::new(becomes_available);
-    let mut lanes = super::collect::SystemWorkspaceLaneReader;
+    let mut lanes = super::collect::LiveCandidateWorkspaceLaneReader;
     let available =
         super::collect::collect_workspace_inventory(super::collect::WorkspaceInventoryInputs {
             root: root.clone(),
@@ -54,7 +54,7 @@ fn backend_barrier_retries_availability_transitions_and_marks_second_movement_un
     moves_twice.extend(empty_available_backend("lease-f", "module-b"));
     moves_twice.push(backend_api_failure("STALE_WORKSPACE_INVENTORY", None));
     let mut backend = ScriptedWorkspaceBackend::new(moves_twice);
-    let mut lanes = super::collect::SystemWorkspaceLaneReader;
+    let mut lanes = super::collect::LiveCandidateWorkspaceLaneReader;
     let unstable =
         super::collect::collect_workspace_inventory(super::collect::WorkspaceInventoryInputs {
             root,

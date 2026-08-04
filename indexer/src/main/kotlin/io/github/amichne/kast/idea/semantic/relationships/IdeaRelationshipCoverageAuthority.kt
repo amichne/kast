@@ -127,7 +127,7 @@ internal class IdeaRelationshipCoverageAuthority(
             limitations += RelationshipSearchLimitation.INDEX_NOT_READY
         }
         when (indexSemanticAdmissionStatus()) {
-            IdeaIndexSemanticAdmission.Status.Ready -> Unit
+            is IdeaIndexSemanticAdmission.Status.Ready -> Unit
             is IdeaIndexSemanticAdmission.Status.Pending ->
                 limitations += RelationshipSearchLimitation.INDEX_NOT_READY
             is IdeaIndexSemanticAdmission.Status.Failed ->

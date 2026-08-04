@@ -35,6 +35,8 @@ mod output;
 mod package;
 #[path = "configuration/protocol_schema_versions.rs"]
 mod protocol_schema_versions;
+#[path = "semantics/published_workspace.rs"]
+mod published_workspace;
 #[path = "semantics/repository_intelligence.rs"]
 mod repository_intelligence;
 #[path = "semantics/rpc.rs"]

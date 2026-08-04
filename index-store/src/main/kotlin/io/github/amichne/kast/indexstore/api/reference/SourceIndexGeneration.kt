@@ -1,5 +1,8 @@
 package io.github.amichne.kast.indexstore.api.reference
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 @JvmInline
 value class SourceIndexGeneration(val value: Long) {
     init {

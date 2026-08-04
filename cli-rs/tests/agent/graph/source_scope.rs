@@ -142,6 +142,12 @@ fn agent_graph_exclusive_module_scope_rejects_persisted_unproven_project_members
     let workspace = temp.path().join("workspace");
     let index = seed_graph_source_scope_index(&workspace);
     seed_unproven_graph_source(&index, &workspace, false);
+    let backend = spawn_open_published_semantic_read_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("indexer.sock"),
+    );
 
     let output = kast(&home, &config_home)
         .args([
@@ -159,6 +165,7 @@ fn agent_graph_exclusive_module_scope_rejects_persisted_unproven_project_members
         ])
         .output()
         .expect("exclusive graph refresh");
+    backend.finish();
     let stdout: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("scope error JSON");
 
@@ -177,6 +184,12 @@ fn agent_graph_exclusive_source_set_scope_rejects_persisted_unproven_membership(
     let workspace = temp.path().join("workspace");
     let index = seed_graph_source_scope_index(&workspace);
     seed_unproven_graph_source(&index, &workspace, true);
+    let backend = spawn_open_published_semantic_read_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("indexer.sock"),
+    );
 
     let output = kast(&home, &config_home)
         .args([
@@ -196,6 +209,7 @@ fn agent_graph_exclusive_source_set_scope_rejects_persisted_unproven_membership(
         ])
         .output()
         .expect("exclusive graph refresh");
+    backend.finish();
     let stdout: serde_json::Value =
         serde_json::from_slice(&output.stdout).expect("scope error JSON");
 
@@ -248,6 +262,8 @@ fn seed_unproven_graph_source(
 fn seed_graph_source_scope_index(
     workspace: &std::path::Path,
 ) -> workspace_files::WorkspaceIndexFixture {
+    std::fs::create_dir_all(workspace).expect("workspace root");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
     let database = workspace_database_path_for_test(workspace);
     let index = workspace_files::WorkspaceIndexFixture::at_database_path(workspace, &database);
     for (prefix, directory, filename) in [

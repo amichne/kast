@@ -89,6 +89,42 @@ internal class SourceIndexSnapshotStore(
         )
     }
 
+    fun exportVerifiedWorkspaceDatabase(target: Path): WorkspaceDatabaseExportEvidence = synchronized(state.writeLock) {
+        require(!Files.exists(target)) { "Workspace generation export target already exists: $target" }
+        Files.createDirectories(target.toAbsolutePath().normalize().parent)
+        val conn = state.connection()
+        val generationBefore = state.readGenerationInTransaction(conn).value
+        val (moduleProgressCount, incompleteModuleCount) = conn.createStatement().use { statement ->
+            val result = statement.executeQuery(
+                """SELECT COUNT(*) AS total,
+                          SUM(CASE
+                              WHEN relationship_index_status NOT IN ('COMPLETE','DEGRADED')
+                               OR indexed_file_count != total_file_count
+                                  THEN 1 ELSE 0 END) AS incomplete
+                   FROM module_index_progress""",
+            )
+            check(result.next())
+            result.getInt("total") to result.getInt("incomplete")
+        }
+        val pendingUpdateCount = conn.createStatement().use { statement ->
+            val result = statement.executeQuery("SELECT COUNT(*) FROM pending_updates WHERE applied = 0")
+            check(result.next())
+            result.getInt(1)
+        }
+        val escapedTarget = target.toAbsolutePath().normalize().toString().replace("'", "''")
+        conn.createStatement().use { statement -> statement.execute("VACUUM INTO '$escapedTarget'") }
+        val generationAfter = state.readGenerationInTransaction(conn).value
+        WorkspaceDatabaseExportEvidence(
+            generationBefore = SourceIndexGeneration(generationBefore),
+            generationAfter = SourceIndexGeneration(generationAfter),
+            moduleProgressCount = moduleProgressCount,
+            incompleteModuleCount = incompleteModuleCount,
+            pendingUpdateCount = pendingUpdateCount,
+            sourceIndexSchemaVersion = SourceIndexSchemaVersion(SOURCE_INDEX_SCHEMA_VERSION),
+            repositoryOverlay = state.repositoryOverlayManifest,
+        )
+    }
+
     fun readHeadCommit(): String? {
         synchronized(state.writeLock) {
             val conn = state.connection()

@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -108,14 +109,16 @@ class NativeSemanticGraphGenerationTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
-                val result = backend.semanticGraph(query(sourcePath))
+                val result = backend.reconcileSemanticGraphForTest(query(sourcePath))
                 assertTrue(result.coverage.omittedExternalTargetCount.value > 0)
                 val excluded = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse("BoundarySource.kt")))
                 assertTrue(excluded.boundarySymbols.none { symbol -> symbol.name.value == "BoundaryTarget" })
                 assertTrue(excluded.relations.none { relation -> relation.targetKey.value.contains("BoundaryTarget") })
-                backend.semanticGraph(query(targetPath))
-                backend.semanticGraph(query(sourcePath))
+                backend.reconcileSemanticGraphForTest(query(targetPath))
+                backend.reconcileSemanticGraphForTest(query(sourcePath))
             }
             val snapshot = store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse("BoundarySource.kt")))
             val boundary = snapshot.boundarySymbols.single { symbol -> symbol.name.value == "BoundaryTarget" }
@@ -148,11 +151,13 @@ class NativeSemanticGraphGenerationTest {
                     limits = limits(),
                     semanticGraphStore = store,
                     psiGeneration = { 1L },
+                    workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                    workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
                 ).use { backend ->
-                    backend.semanticGraph(query)
+                    backend.reconcileSemanticGraphForTest(query)
                     replaceDocument(project, document, "$originalText\nval targetRevision = 2\n")
 
-                    val refreshed = backend.semanticGraph(query)
+                    val refreshed = backend.reconcileSemanticGraphForTest(query)
 
                     assertEquals(
                         setOf(
@@ -188,8 +193,10 @@ class NativeSemanticGraphGenerationTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
-                val seeded = backend.semanticGraph(SemanticGraphQuery(filePaths = listOf(sourcePath)).parsed())
+                val seeded = backend.reconcileSemanticGraphForTest(SemanticGraphQuery(filePaths = listOf(sourcePath)).parsed())
                 assertTrue(seeded.symbolCount.value > 0)
             }
             val seededGeneration = store.readGeneration()
@@ -209,10 +216,12 @@ class NativeSemanticGraphGenerationTest {
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
                 readEpochObserver = observer,
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
                 supervisorScope {
                     val refresh = async(Dispatchers.Default) {
-                        backend.semanticGraph(
+                        backend.reconcileSemanticGraphForTest(
                             SemanticGraphQuery(
                                 filePaths = listOf(sourcePath, targetPath),
                                 expectedGeneration = SemanticGraphGeneration(seededGeneration.value),
@@ -221,7 +230,7 @@ class NativeSemanticGraphGenerationTest {
                     }
                     assertTrue(refreshReadEntered.await(10, TimeUnit.SECONDS))
                     val removal = async(Dispatchers.Default) {
-                        backend.semanticGraph(
+                        backend.reconcileSemanticGraphForTest(
                             SemanticGraphQuery(
                                 filePaths = emptyList(),
                                 removedFilePaths = listOf(sourcePath),
@@ -258,8 +267,10 @@ class NativeSemanticGraphGenerationTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
-                backend.semanticGraph(SemanticGraphQuery(filePaths = listOf(sourcePath)).parsed())
+                backend.reconcileSemanticGraphForTest(SemanticGraphQuery(filePaths = listOf(sourcePath)).parsed())
             }
             val generation = store.readGeneration()
             val psiGeneration = AtomicLong()
@@ -270,9 +281,11 @@ class NativeSemanticGraphGenerationTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = psiGeneration::incrementAndGet,
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
                 runCatching {
-                    backend.semanticGraph(
+                    backend.reconcileSemanticGraphForTest(
                         SemanticGraphQuery(
                             filePaths = emptyList(),
                             removedFilePaths = listOf(sourcePath),
@@ -304,8 +317,10 @@ class NativeSemanticGraphGenerationTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
-                backend.semanticGraph(SemanticGraphQuery(filePaths = listOf(sourcePath)).parsed()).generation
+                backend.reconcileSemanticGraphForTest(SemanticGraphQuery(filePaths = listOf(sourcePath)).parsed()).generation
             }
             store.replaceSemanticGraphFiles(
                 updates = emptyList(),
@@ -323,9 +338,11 @@ class NativeSemanticGraphGenerationTest {
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
                 readEpochObserver = observer,
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
                 runCatching {
-                    backend.semanticGraph(
+                    backend.reconcileSemanticGraphForTest(
                         SemanticGraphQuery(
                             filePaths = listOf(sourcePath),
                             expectedGeneration = seededGeneration,

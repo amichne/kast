@@ -1,15 +1,31 @@
 package io.github.amichne.kast.idea
 
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.kastConfigHome
 import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
 import io.github.amichne.kast.idea.diagnostics.*
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
+import io.github.amichne.kast.idea.snapshot.BuildClasspathFingerprintResolver
+import io.github.amichne.kast.idea.transition.IdeaGradleWorkspaceModelIdentityResolver
+import io.github.amichne.kast.idea.transition.IdeaCompilerVisibleSourceIdentityResolver
+import io.github.amichne.kast.idea.transition.IdeaJavaCompilerIdentityResolver
+import io.github.amichne.kast.idea.transition.IdeaKotlinCompilerIdentityResolver
+import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
+import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentityResolver
+import io.github.amichne.kast.idea.transition.GitWorktreeTransitionGuard
+import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
+import io.github.amichne.kast.idea.transition.WorkspaceSignal
+import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.idea.transition.WorkspaceVfsEventObserver
+import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.concurrent.thread
 
@@ -17,42 +33,90 @@ internal class KastIdeaProjectIndexing(
     private val project: Project,
     private val workspaceIdentity: IdeaWorkspaceIdentity,
     private val config: KastConfig,
+    private val workspaceGenerationPublication: WorkspaceGenerationPublication,
     private val diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
     private val indexStore: SqliteSourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity),
     private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
+    private val transitionIngress: WorkspaceTransitionIngress = WorkspaceTransitionIngress(
+        semanticAdmission,
+        TimeUnit.MINUTES.toMillis(5),
+    ),
     private val snapshotCoordinator: RepositorySnapshotCoordinator? = null,
     private val liveConfigLoader: (Path, KastConfig) -> KastConfig = ::loadLiveIndexingConfig,
-    private val semanticGraphIndexer: (IndexedSourceIdentifiers, GraphIndexingBatchSize) -> Unit = { _, _ -> },
+    private val semanticGraphIndexer:
+        (IndexedSourceIdentifiers, GraphIndexingBatchSize, IdeaIndexSemanticAdmission.ReconciliationToken) -> Unit =
+        { _, _, _ -> },
     private val runProjectIndexing: ((KastConfig, (IndexedSourceIdentifiers) -> Unit) -> Unit)? = null,
-    private val waitForNextPass: (Long) -> Boolean = ::waitForIndexingRetry,
+    private val waitForNextPass: ((Long) -> Boolean)? = null,
+    private val eventWakeup: WorkspaceEventWakeup = WorkspaceEventWakeup(),
+    private val workspaceConfigurationFiles: Set<Path> = setOf(
+        workspaceIdentity.workspaceIdentity.workspaceDataDirectoryPath.resolve("config.toml"),
+        kastConfigHome().resolve("config.toml"),
+    ),
+    private val observeWorkspaceEvents:
+        (Project, WorkspaceVfsObservationScope, (WorkspaceSignal) -> Unit) -> AutoCloseable =
+        { observedProject, observedScope, observed ->
+            WorkspaceVfsEventObserver.subscribe(observedProject, observedScope, observed)
+        },
+    private val refreshWorkspace: (Project, Path, Set<WorkspaceSignal>) -> Unit = ::refreshWorkspaceModels,
+    private val resolveWorkspaceStateIdentity: (() -> WorkspaceStateIdentity)? = null,
+    private val resolveBuildSemanticInputIdentity: (() -> BuildSemanticInputIdentity)? = null,
     private val scopeCache: WorkspaceIndexingScopeCache = WorkspaceIndexingScopeCache(),
 ) {
-    constructor(
-        project: Project,
-        workspaceRoot: Path,
-        config: KastConfig,
-        diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
-    ) : this(
-        project,
-        IdeaWorkspaceIdentity.fromProject(project, workspaceRoot, config.paths.descriptorDir.toPath()),
-        config,
-        diagnostics,
-    )
-
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
+    private val gradleBuildRoot: Path = workspaceIdentity.workspaceIdentity.gradleRoot?.root?.toJavaPath()
+        ?: workspaceRoot
+    private val workspaceVfsObservationScope = WorkspaceVfsObservationScope(
+        workspaceRoot = workspaceRoot,
+        buildSemanticRoot = gradleBuildRoot,
+        configurationFiles = workspaceConfigurationFiles,
+        compilerSourceRoots = { IdeaCompilerVisibleSourceIdentityResolver.sourceRoots(project) },
+        classpathRoots = {
+            BuildClasspathFingerprintResolver.contentRoots(project) +
+                IdeaKotlinCompilerIdentityResolver.artifactRoots(project) +
+                IdeaJavaCompilerIdentityResolver.artifactRoots(project, workspaceIdentity.workspaceIdentity)
+        },
+    )
+    private val buildSemanticInputIdentityResolver = BuildSemanticInputIdentityResolver(
+        buildSemanticRoot = gradleBuildRoot,
+        isCancelled = ::isCancelled,
+    )
     private val cancelled = AtomicBoolean(false)
+    private val runtimeReporter = WorkspaceIndexingRuntimeReporter(
+        project = project,
+        workspaceIdentity = workspaceIdentity,
+        diagnostics = diagnostics,
+        snapshotCoordinator = snapshotCoordinator,
+        indexStore = indexStore,
+        isCancelled = ::isCancelled,
+    )
     private val startRequested = AtomicBoolean(false)
     private val indexingTerminated = CountDownLatch(1)
     private val lifecycleLock = Any()
+    private val transitionWorkerLock = Any()
+    private val bufferedWorkspaceSignals = linkedSetOf<WorkspaceSignal>()
 
     @Volatile
     private var indexingThread: Thread? = null
+
+    @Volatile
+    private var workspaceEventObserver: AutoCloseable? = null
+
+    @Volatile
+    private var transitionWorker: WorkspaceTransitionWorker? = null
+
+    init {
+        transitionIngress.bind(::observeWorkspaceSignal)
+    }
 
     fun start() {
         if (!startRequested.compareAndSet(false, true)) return
         if (cancelled.get()) {
             indexingTerminated.countDown()
             return
+        }
+        workspaceEventObserver = observeWorkspaceEvents(project, workspaceVfsObservationScope) { signal ->
+            observeWorkspaceSignal(signal)
         }
         KastStructuredTrace.event(
             eventName = "idea.index.waiting_for_smart_mode",
@@ -75,6 +139,14 @@ internal class KastIdeaProjectIndexing(
                     ) {
                         try {
                             runIndexing()
+                        } catch (cancelledWork: ProcessCanceledException) {
+                            if (!isCancelled()) {
+                                semanticAdmission.fail(
+                                    cancelledWork.message?.takeIf(String::isNotBlank)
+                                        ?: "Workspace reconciliation was cancelled",
+                                )
+                                runtimeReporter.failed(cancelledWork)
+                            }
                         } finally {
                             indexingTerminated.countDown()
                         }
@@ -107,6 +179,9 @@ internal class KastIdeaProjectIndexing(
             }
         }
         worker?.interrupt()
+        workspaceEventObserver?.close()
+        workspaceEventObserver = null
+        transitionIngress.close()
         if (wasRunning) {
             KastStructuredTrace.event(
                 eventName = "idea.index.cancelled",
@@ -162,7 +237,7 @@ internal class KastIdeaProjectIndexing(
             diagnostics.recordIndexingStarted()
         }
         prepared.exceptionOrNull()?.let { error ->
-            recordIndexFailure(error)
+            runtimeReporter.failed(error)
             return
         }
 
@@ -174,117 +249,79 @@ internal class KastIdeaProjectIndexing(
             workspaceIdentity = workspaceIdentity.workspaceIdentity,
             scopeCache = scopeCache,
         )
-        var lastValidConfig = config
-        var consecutiveFailures = 0
-        while (!isCancelled()) {
-            val candidate = try {
-                liveConfigLoader(workspaceRoot, lastValidConfig)
-            } catch (error: Exception) {
-                diagnostics.recordConfigFallback(configPath(), error)
-                lastValidConfig
-            }
-            var pass = runCatching { runIndexingPass(projectIndexer, candidate) }
-            val scopeFailure = pass.exceptionOrNull() as? IndexingScopeConfigurationException
-            if (scopeFailure != null && candidate != lastValidConfig) {
-                diagnostics.recordConfigFallback(configPath(), scopeFailure)
-                pass = runCatching { runIndexingPass(projectIndexer, lastValidConfig) }
-            }
-
-            pass.onSuccess { result ->
-                lastValidConfig = candidate.takeUnless { scopeFailure != null } ?: lastValidConfig
-                consecutiveFailures = if (result.graphFailure == null) 0 else consecutiveFailures + 1
-                recordIndexCompleted(result.summary)
-            }.onFailure { error ->
-                consecutiveFailures += 1
-                recordIndexFailure(error)
-            }
-            if (isCancelled()) break
-            val delay = if (pass.getOrNull()?.graphFailure == null && pass.isSuccess) {
-                PERIODIC_INDEXING_RETRY_MILLIS
-            } else {
-                indexingRetryDelayMillis(consecutiveFailures)
-            }
-            if (!waitForNextPass(delay)) break
-        }
-    }
-
-    private fun runIndexingPass(
-        projectIndexer: IdeaProjectIndexer,
-        liveConfig: KastConfig,
-    ): IndexingPassResult {
-        var graphFailure: Throwable? = null
-        val graph: (IndexedSourceIdentifiers) -> Unit = { scope ->
-            runCatching {
-                semanticGraphIndexer(scope, liveConfig.indexing.graph.batchSize)
-            }.onFailure { error ->
-                graphFailure = error
-                LOG.warn("Kast semantic graph indexing pass failed", error)
-            }
-        }
-        val indexedSources = runProjectIndexing?.let { indexProject ->
-            indexProject(liveConfig, graph)
-            scopeCache.resolve(
-                workspaceRoot = workspaceRoot,
-                config = liveConfig.indexing,
-                candidates = indexStore.knownSourcePaths(),
-            ).let { scope ->
-                IndexedSourceIdentifiers(
-                    paths = scope.includedPaths,
-                    criticalPaths = scope.criticalPaths.toSet(),
-                    unmatchedCriticalPatterns = scope.unmatchedCriticalPatterns,
-                )
-            }
-        } ?: projectIndexer.indexProject(liveConfig, graph)
-        return IndexingPassResult(
-            summary = indexStore.loadKastSourceIndexSummary(
-                criticalPaths = indexedSources.criticalPaths,
-                unmatchedCriticalPatterns = indexedSources.unmatchedCriticalPatterns,
-            ),
-            graphFailure = graphFailure,
-        )
-    }
-
-    private fun recordIndexCompleted(summary: KastSourceIndexSummary) {
-        if (isCancelled()) return
-        snapshotCoordinator?.let { coordinator ->
-            runCatching {
-                coordinator.publishCompletedIndex(indexStore)
-            }.onFailure { error ->
-                LOG.warn("Kast repository snapshot publication failed", error)
-            }
-        }
-        KastStructuredTrace.event(
-            eventName = "idea.index.completed",
-            project = project,
+        val reconciliationIndexer = WorkspaceReconciliationIndexer(
+            projectIndexer = projectIndexer,
             workspaceRoot = workspaceRoot,
-            fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
-            outcome = "completed",
-            detail = mapOf(
-                "fileCount" to summary.fileCount,
-                "identifierCount" to summary.identifierCount,
-                "moduleCount" to summary.moduleCount,
-                "importCount" to summary.importCount,
-            ) + workspaceIdentity.traceDetails(),
+            indexStore = indexStore,
+            scopeCache = scopeCache,
+            semanticGraphIndexer = semanticGraphIndexer,
+            runProjectIndexing = runProjectIndexing,
         )
-        diagnostics.recordIndexCompleted(summary)
-        LOG.info("Kast IDEA project index completed")
+        val worker = WorkspaceTransitionWorker(
+            initialConfig = config,
+            initialModelBuildSemanticIdentity = currentBuildSemanticInputIdentity(),
+            resolveBuildSemanticInputIdentity = ::currentBuildSemanticInputIdentity,
+            semanticAdmission = semanticAdmission,
+            eventWakeup = eventWakeup,
+            gitWorktreeTransitionGuard = GitWorktreeTransitionGuard.exactRoot(workspaceRoot),
+            refreshWorkspace = { signals -> refreshWorkspace(project, gradleBuildRoot, signals) },
+            loadLiveConfig = { lastValid -> liveConfigLoader(workspaceRoot, lastValid) },
+            captureCandidate = { liveConfig, buildSemanticInputIdentity ->
+                resolveWorkspaceStateIdentity?.let { injected ->
+                    WorkspaceReconciliationCandidate(injected(), indexingCandidate = null)
+                } ?: projectIndexer.captureCandidate(liveConfig.indexing).let { candidate ->
+                    WorkspaceReconciliationCandidate(
+                        identity = productionWorkspaceStateIdentity(
+                            project = project,
+                            workspaceRoot = workspaceRoot,
+                            workspaceIdentity = workspaceIdentity.workspaceIdentity,
+                            liveConfig = liveConfig,
+                            admittedContentIdentity = candidate.admittedContentIdentity,
+                            gradleModelIdentity = IdeaGradleWorkspaceModelIdentityResolver.resolve(candidate.gradleModel),
+                            buildSemanticInputIdentity = buildSemanticInputIdentity,
+                            isCancelled = ::isCancelled,
+                        ),
+                        indexingCandidate = candidate,
+                    )
+                }
+            },
+            runIndexingPass = reconciliationIndexer::run,
+            workspaceGenerationPublication = workspaceGenerationPublication,
+            waitForNextPass = waitForNextPass,
+            isCancelled = ::isCancelled,
+            onConfigFallback = { error -> diagnostics.recordConfigFallback(configPath(), error) },
+            onCompleted = runtimeReporter::completed,
+            onFailure = runtimeReporter::failed,
+            onTransition = { snapshot ->
+                transitionIngress.observe(snapshot)
+                runtimeReporter.transitioned(snapshot)
+            },
+        )
+        synchronized(transitionWorkerLock) {
+            bufferedWorkspaceSignals.forEach(worker::observe)
+            bufferedWorkspaceSignals.clear()
+            transitionWorker = worker
+        }
+        worker.requestInitialReconciliation()
+        try {
+            worker.run()
+        } finally {
+            synchronized(transitionWorkerLock) {
+                if (transitionWorker === worker) transitionWorker = null
+            }
+        }
     }
 
-    private fun recordIndexFailure(error: Throwable) {
-        if (isCancelled()) return
-        KastStructuredTrace.event(
-            eventName = "idea.index.failed",
-            project = project,
-            workspaceRoot = workspaceRoot,
-            fields = KastStructuredTraceFields(agentRole = "idea-indexer"),
-            outcome = "failed",
-            detail = mapOf(
-                "errorClass" to error::class.qualifiedName,
-                "message" to error.message,
-            ) + workspaceIdentity.traceDetails(),
+    private fun observeWorkspaceSignal(signal: WorkspaceSignal) {
+        semanticAdmission.dirty("workspace event requires reconciliation: ${signal.name}")
+        routeWorkspaceSignal(
+            lock = transitionWorkerLock,
+            signal = signal,
+            enqueue = { observed ->
+                transitionWorker?.observe(observed) ?: run { bufferedWorkspaceSignals += observed }
+            },
+            wake = eventWakeup::signal,
         )
-        diagnostics.recordIndexFailed(error)
-        LOG.warn("Kast IDEA project index failed", error)
     }
 
     private fun isCancelled(): Boolean =
@@ -298,34 +335,10 @@ internal class KastIdeaProjectIndexing(
         diagnostics.recordIndexFailed(error)
     }
 
+    private fun currentBuildSemanticInputIdentity(): BuildSemanticInputIdentity =
+        resolveBuildSemanticInputIdentity?.invoke() ?: buildSemanticInputIdentityResolver.resolve()
+
     companion object {
         private val LOG = Logger.getInstance(KastIdeaProjectIndexing::class.java)
     }
-}
-
-private data class IndexingPassResult(
-    val summary: KastSourceIndexSummary,
-    val graphFailure: Throwable?,
-)
-
-private const val PERIODIC_INDEXING_RETRY_MILLIS = 30_000L
-
-internal fun indexingRetryDelayMillis(consecutiveFailures: Int): Long = when (consecutiveFailures) {
-    1 -> 250L
-    2 -> 500L
-    3 -> 1_000L
-    else -> PERIODIC_INDEXING_RETRY_MILLIS
-}
-
-private fun loadLiveIndexingConfig(
-    workspaceRoot: Path,
-    lastValid: KastConfig,
-): KastConfig = lastValid.copy(indexing = KastConfig.load(workspaceRoot).indexing)
-
-private fun waitForIndexingRetry(delayMillis: Long): Boolean = try {
-    Thread.sleep(delayMillis)
-    true
-} catch (_: InterruptedException) {
-    Thread.currentThread().interrupt()
-    false
 }

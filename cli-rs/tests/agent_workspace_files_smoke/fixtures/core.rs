@@ -85,7 +85,7 @@ fn create_workspace_index(
     let database_path = workspaces_data
         .join("local")
         .join(format!("{sanitized_workspace}--{workspace_id}"))
-        .join("cache/source-index.db");
+        .join("semantic-generations/generations/test-generation/source-index.db");
     let index =
         workspace_files::WorkspaceIndexFixture::at_database_path(&workspace, &database_path);
     index.seed_high_cardinality_sources(source_count);

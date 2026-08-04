@@ -151,7 +151,7 @@ fn repository_nodes_preserve_build_qualified_ownership() {
         "{context:#}"
     );
 
-    let compact = kast(&home, &config_home)
+    let compact = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "agent",
             "repository",

@@ -12,7 +12,7 @@ use super::model::{
     WorkspacePackageUnprovenReason, WorkspaceRequestedKindDomain, WorkspaceRoot,
     WorkspaceSourceSetEvidence,
 };
-use super::read_workspace_index;
+use super::read_workspace_index_from_live_candidate_for_test as read_workspace_index;
 use super::workspace_files_test_support::WorkspaceIndexFixture;
 
 include!("parts/tests/fixtures/core.rs");

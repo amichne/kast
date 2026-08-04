@@ -27,7 +27,7 @@ fn spawn_small_mixed_workspace_files_backend(
         "modules": [],
         "schemaVersion": api_schema_version()
     });
-    spawn_scripted_indexer_backend(
+    spawn_scripted_indexer_backend_for_published_workspace_read(
         home,
         config_home,
         workspace,
@@ -90,7 +90,7 @@ fn spawn_structured_filter_workspace_files_backend(
         "modules": [],
         "schemaVersion": api_schema_version()
     });
-    spawn_scripted_indexer_backend(
+    spawn_scripted_indexer_backend_for_published_workspace_read(
         home,
         config_home,
         workspace,
@@ -134,7 +134,7 @@ fn spawn_single_owned_workspace_files_backend(
         "modules": [],
         "schemaVersion": api_schema_version()
     });
-    spawn_scripted_indexer_backend(
+    spawn_scripted_indexer_backend_for_published_workspace_read(
         home,
         config_home,
         workspace,

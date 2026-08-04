@@ -183,14 +183,16 @@ class IdeaProjectIndexerCancellationTest {
             val priorManifest = store.loadManifest()
             val priorGeneration = store.readGeneration()
 
-            IdeaProjectIndexer(
-                project = project,
-                workspaceRoot = workspaceRoot,
-                store = store,
-                cancelled = cancelled,
-                workspaceIdentity = workspaceIdentity,
-                readGradleWorkspaceModel = { completeGradleModel },
-            ).indexSourceIdentifiers()
+            assertThrows(ProcessCanceledException::class.java) {
+                IdeaProjectIndexer(
+                    project = project,
+                    workspaceRoot = workspaceRoot,
+                    store = store,
+                    cancelled = cancelled,
+                    workspaceIdentity = workspaceIdentity,
+                    readGradleWorkspaceModel = { completeGradleModel },
+                ).indexSourceIdentifiers()
+            }
 
             assertEquals(priorSnapshot, store.loadSourceIndexSnapshot())
             assertEquals(priorManifest, store.loadManifest())

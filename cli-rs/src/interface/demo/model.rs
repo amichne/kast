@@ -2,6 +2,7 @@
 struct DemoRequest {
     workspace_root: PathBuf,
     database: PathBuf,
+    published_read: runtime::SemanticWorkspaceRead,
     symbol: Option<String>,
     limit: usize,
 }

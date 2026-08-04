@@ -6,7 +6,7 @@ pub fn workspace_status(mut args: RuntimeArgs) -> Result<WorkspaceStatusResult> 
     let admission = admitted_runtime(semantic_workspace_route_for_runtime(args)?)?;
     let candidate = admission.candidate().clone();
     let semantic_graph = candidate_advertises_semantic_graph(&candidate)
-        .then(|| crate::repository_intelligence::semantic_graph_readiness(admission.workspace_root()));
+        .then(|| crate::repository_intelligence::semantic_graph_readiness_for_admission(&admission));
     let path_resolution = config::path_resolution_report(
         admission.config(),
         Some(admission.workspace_root()),

@@ -1,7 +1,9 @@
-fn load_reference_topology_snapshot(workspace_root: &Path) -> Result<ReferenceTopologySnapshot> {
-    let database = crate::config::workspace_database_path(workspace_root)?;
+fn load_reference_topology_snapshot(
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
+) -> Result<ReferenceTopologySnapshot> {
+    let database = published.database();
     let connection = rusqlite::Connection::open_with_flags(
-        &database,
+        database,
         rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY
             | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX
             | rusqlite::OpenFlags::SQLITE_OPEN_URI,
@@ -10,7 +12,7 @@ fn load_reference_topology_snapshot(workspace_root: &Path) -> Result<ReferenceTo
     crate::source_index_db::configure_read_connection(&connection)
         .map_err(derived_topology_database_error)?;
     let has_repository_base =
-        crate::agent::native_graph_attach_repository_base(&connection, &database)
+        crate::agent::native_graph_attach_published_repository_base(&connection, published)
             .map_err(|error| {
                 CliError::new(
                     "DERIVED_TOPOLOGY_OVERLAY_UNAVAILABLE",

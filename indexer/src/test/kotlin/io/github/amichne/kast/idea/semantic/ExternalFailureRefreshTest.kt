@@ -10,6 +10,8 @@ import io.github.amichne.kast.api.contract.result.RefreshExternalFailureStatus
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.fileInventoryEntry
 import io.github.amichne.kast.idea.fileStageOutcome
+import io.github.amichne.kast.idea.TestWorkspaceSemanticReadAuthority
+import io.github.amichne.kast.idea.TestWorkspaceTransitionRequester
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
@@ -80,6 +82,8 @@ class ExternalFailureRefreshTest {
                     maxConcurrentRequests = 4,
                 ),
                 semanticGraphStore = store,
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
                 val first = backend.refresh(
                     RefreshQuery(

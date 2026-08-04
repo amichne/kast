@@ -53,6 +53,8 @@ internal class KastAdditionPostconditionRefreshTest : IdeaEditApplicationTestFix
             defaultLimits.requestTimeoutMillis,
         ),
         semanticAdmissionOperations = IdeaSemanticAdmissionOperations.idea(),
+        workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+        workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
         workspaceModelReader = ::workspaceModel,
     )
 

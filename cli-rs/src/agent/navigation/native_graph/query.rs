@@ -1,4 +1,7 @@
-fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value, AgentError> {
+fn native_graph_result(
+    args: &AgentNativeGraphArgs,
+    published: Option<&crate::published_workspace::PublishedWorkspaceDatabase>,
+) -> std::result::Result<Value, AgentError> {
     let scope = args.scope.unwrap_or(NativeGraphScope::Symbol);
     let after_id = args.after_id.unwrap_or(0);
     let limit = args.limit.unwrap_or(100);
@@ -24,7 +27,7 @@ fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value
             "--generation is required when resuming nodes with --after-id.",
         ));
     }
-    let database = native_graph_database_path(args)?;
+    let database = native_graph_database_path(args, published)?;
     let connection = rusqlite::Connection::open_with_flags(
         &database,
         rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY
@@ -34,7 +37,8 @@ fn native_graph_result(args: &AgentNativeGraphArgs) -> std::result::Result<Value
     .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_DATABASE_UNAVAILABLE", error))?;
     crate::source_index_db::configure_read_connection(&connection)
         .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_DATABASE_UNAVAILABLE", error))?;
-    let has_repository_base = native_graph_attach_repository_base(&connection, &database)?;
+    let has_repository_base =
+        native_graph_attach_database_base(args, &connection, &database, published)?;
     crate::source_index_db::enable_query_only(&connection)
         .map_err(|error| native_graph_sql_error("NATIVE_GRAPH_DATABASE_UNAVAILABLE", error))?;
     let generation = native_graph_generation(&connection)?;

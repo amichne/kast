@@ -5,13 +5,11 @@ package io.github.amichne.kast.idea.backend.mutation
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.edit.IdeaEditApplier
 
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.LocalFileSystem
-import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiManager
 import com.intellij.psi.PsiReference
 import com.intellij.psi.search.FileTypeIndex
@@ -59,9 +57,6 @@ import io.github.amichne.kast.shared.analysis.resolveTarget
 import io.github.amichne.kast.shared.analysis.toSymbolModel
 import io.github.amichne.kast.shared.analysis.visibility
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.isActive
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.analysis.api.analyze
 import java.nio.file.Files
@@ -77,6 +72,7 @@ import io.github.amichne.kast.idea.backend.*
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureExternalizationResult
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureId
+import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 
 
 internal suspend fun KastIndexerBackend.applyEditsOperation(query: ParsedApplyEditsQuery): ApplyEditsResult {
@@ -139,9 +135,6 @@ internal suspend fun KastIndexerBackend.refreshOperation(query: ParsedRefreshQue
                 )
             }
             if (query.filePaths.isEmpty()) {
-                ApplicationManager.getApplication().invokeLater {
-                    VirtualFileManager.getInstance().asyncRefresh(null)
-                }
                 return@inSpan RefreshResult.full()
             }
 
@@ -155,38 +148,15 @@ internal suspend fun KastIndexerBackend.refreshOperation(query: ParsedRefreshQue
             val relationshipFailures = semanticGraphStore?.takeIf {
                 admittedPaths.isNotEmpty() || removedPaths.isNotEmpty()
             }?.let { store ->
-                val requestContext = currentCoroutineContext()
-                requestContext.ensureActive()
-                val admittedSourcePaths = admittedPaths.map { path ->
+                (admittedPaths + removedPaths).map { path ->
                     requireNotNull(store.sourcePath(java.nio.file.Path.of(path))) {
                         "Admitted refresh path is outside the exact workspace root: $path"
                     }
-                }
-                val removedSourcePaths = removedPaths.map { path ->
-                    requireNotNull(store.sourcePath(java.nio.file.Path.of(path))) {
-                        "Removed refresh path is outside the exact workspace root: $path"
-                    }
-                }
-                val outcomes = IdeaProjectIndexer(
-                    project = project,
-                    workspaceRoot = workspaceRoot,
-                    store = store,
-                    cancelled = {
-                        !requestContext.isActive || Thread.currentThread().isInterrupted || project.isDisposed
-                    },
-                    workspaceIdentity = sharedWorkspaceIdentity,
-                    readGradleWorkspaceModel = workspaceModelReader,
-                    scopeCache = workspaceIndexingScopeCache,
-                ).refreshSymbolRelationships(
-                    admittedSourcePaths,
-                    removedSourcePaths,
-                    currentPersistedIndexingConfig(),
-                )
-                requestContext.ensureActive()
-                outcomes.map { outcome ->
-                    val failure = requireNotNull(outcome.failure) {
-                        "Failed relationship outcome is missing failure evidence"
-                    }
+                }.mapNotNull { path ->
+                    val outcome = store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS)
+                        ?.takeIf { current -> current.status == io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus.FAILED }
+                        ?: return@mapNotNull null
+                    val failure = requireNotNull(outcome.failure)
                     RefreshRelationshipFailure(
                         failureId = SemanticGraphExternalBoundaryFailureId.parse(failure.id.value),
                         filePath = outcome.path.absolute.value.value,

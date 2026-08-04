@@ -6,8 +6,15 @@ fn agent_symbol_discovery_requests_lexical_mode_explicitly() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("indexer.sock");
     std::fs::create_dir_all(&home).expect("home");
     seed_source_index(&workspace);
+    let backend = spawn_open_published_semantic_read_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+    );
 
     let output = kast(&home, &config_home)
         .args([
@@ -39,6 +46,7 @@ fn agent_symbol_discovery_requests_lexical_mode_explicitly() {
         stdout["result"]["request"]["params"]["modes"],
         json!(["lexical"])
     );
+    assert_eq!(backend.finish().len(), 3);
 }
 
 #[test]
@@ -47,9 +55,18 @@ fn agent_symbol_uses_indexed_exact_only_when_compiler_is_unavailable() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("indexer.sock");
     std::fs::create_dir_all(&home).expect("home");
     seed_source_index(&workspace);
     support::metrics::seed_exact_lookup_symbols(&workspace);
+    let backend = spawn_ready_scripted_indexer_backend_for_invocations(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        1,
+        vec![("symbol/resolve", compiler_unavailable())],
+    );
 
     let output = kast(&home, &config_home)
         .args([
@@ -95,6 +112,7 @@ fn agent_symbol_uses_indexed_exact_only_when_compiler_is_unavailable() {
             .is_some_and(|code| !code.is_empty()),
         "{stdout}"
     );
+    assert_eq!(backend.join().expect("ready indexer").len(), 6);
 }
 
 #[test]
@@ -104,9 +122,18 @@ fn agent_symbol_indexed_exact_cardinality_ignores_presentation_limit() {
         let home = temp.path().join("home");
         let config_home = temp.path().join("config");
         let workspace = temp.path().join("workspace");
+        let socket_path = temp.path().join("indexer.sock");
         std::fs::create_dir_all(&home).expect("home");
         seed_source_index(&workspace);
         support::metrics::seed_exact_lookup_symbols(&workspace);
+        let backend = spawn_ready_scripted_indexer_backend_for_invocations(
+            &home,
+            &config_home,
+            &workspace,
+            &socket_path,
+            1,
+            vec![("symbol/resolve", compiler_unavailable())],
+        );
 
         let output = kast(&home, &config_home)
             .args([
@@ -139,6 +166,7 @@ fn agent_symbol_indexed_exact_cardinality_ignores_presentation_limit() {
                 .len(),
             2
         );
+        assert_eq!(backend.join().expect("ready indexer").len(), 6);
     }
 }
 
@@ -148,9 +176,21 @@ fn agent_symbol_indexed_file_hint_is_literal_and_suffix_equivalent() {
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
     let workspace = temp.path().join("workspace");
+    let socket_path = temp.path().join("indexer.sock");
     std::fs::create_dir_all(&home).expect("home");
     seed_source_index(&workspace);
     support::metrics::seed_exact_lookup_symbols(&workspace);
+    let backend = spawn_ready_scripted_indexer_backend_for_invocations(
+        &home,
+        &config_home,
+        &workspace,
+        &socket_path,
+        2,
+        vec![
+            ("symbol/resolve", compiler_unavailable()),
+            ("symbol/resolve", compiler_unavailable()),
+        ],
+    );
 
     for (file_hint, expected_outcome) in [
         ("lib/AlphaParser.kt", "RESOLVED"),
@@ -180,6 +220,16 @@ fn agent_symbol_indexed_file_hint_is_literal_and_suffix_equivalent() {
         let stdout: Value = serde_json::from_slice(&output.stdout).expect("fallback json");
         assert_eq!(stdout["result"]["outcome"], expected_outcome);
     }
+    assert_eq!(backend.join().expect("ready indexer").len(), 12);
+}
+
+fn compiler_unavailable() -> serde_json::Value {
+    scripted_json_rpc_error(
+        "CAPABILITY_NOT_SUPPORTED",
+        "compiler symbol resolution is unavailable",
+        json!({}),
+        false,
+    )
 }
 
 #[test]

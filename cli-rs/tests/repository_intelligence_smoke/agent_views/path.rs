@@ -23,7 +23,7 @@ fn assert_agent_path_views(
         "--evidence",
         "1",
     ];
-    let path_output = kast(home, config_home)
+    let path_output = published_semantic_command(home, config_home, std::path::Path::new(workspace_root))
         .args(["--output", "json"])
         .args(path_args)
         .output()
@@ -57,7 +57,7 @@ fn assert_agent_path_views(
             })),
         "{path:#}"
     );
-    let selected_path_output = kast(home, config_home)
+    let selected_path_output = published_semantic_command(home, config_home, std::path::Path::new(workspace_root))
         .args(["--output", "json"])
         .args(path_args)
         .args(["--fields", "paths,relationships"])
@@ -75,7 +75,7 @@ fn assert_agent_path_views(
         "{selected_path:#}"
     );
     for view in ["--verbose", "--explain", "--count"] {
-        let output = kast(home, config_home)
+        let output = published_semantic_command(home, config_home, std::path::Path::new(workspace_root))
             .args(["--output", "json"])
             .args(path_args)
             .arg(view)

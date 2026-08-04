@@ -345,6 +345,9 @@ class SqliteSourceIndexStore private constructor(
         producerVersion: ProducerVersion,
     ): PublicationEvidence = snapshots.exportSnapshotDatabase(target, treeOid, producerVersion)
 
+    fun exportVerifiedWorkspaceDatabase(target: Path): WorkspaceDatabaseExportEvidence =
+        snapshots.exportVerifiedWorkspaceDatabase(target)
+
     fun readHeadCommit(): String? = snapshots.readHeadCommit()
 
     fun writeHeadCommit(sha: String) = snapshots.writeHeadCommit(sha)

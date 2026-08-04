@@ -5,7 +5,7 @@ fn assert_agent_outgoing_views(
     question: &str,
     args: &[&str],
 ) {
-    let compact_output = kast(home, config_home)
+    let compact_output = published_semantic_command(home, config_home, workspace)
         .args(args.iter().copied())
         .output()
         .expect("compact agent repository");
@@ -88,7 +88,7 @@ fn assert_agent_outgoing_views(
         canonical_output.stdout.len()
     );
 
-    let verbose_output = kast(home, config_home)
+    let verbose_output = published_semantic_command(home, config_home, workspace)
         .args(["--output", "json"])
         .args(args.iter().copied())
         .arg("--verbose")
@@ -105,7 +105,7 @@ fn assert_agent_outgoing_views(
     assert_eq!(verbose["method"], "agent/repository", "{verbose:#}");
     assert_eq!(verbose["result"], canonical["result"], "{verbose:#}");
 
-    let explain_output = kast(home, config_home)
+    let explain_output = published_semantic_command(home, config_home, workspace)
         .args(["--output", "json"])
         .args(args.iter().copied())
         .arg("--explain")
@@ -116,7 +116,7 @@ fn assert_agent_outgoing_views(
         serde_json::from_slice(&explain_output.stdout).expect("explain repository JSON");
     assert_eq!(explain["result"], canonical["result"], "{explain:#}");
 
-    let count_output = kast(home, config_home)
+    let count_output = published_semantic_command(home, config_home, workspace)
         .args(["--output", "json"])
         .args(args.iter().copied())
         .arg("--count")
@@ -133,7 +133,7 @@ fn assert_agent_outgoing_views(
         count["result"]["cardinality"]["relationships"]["completeness"], "LOWER_BOUND",
         "{count:#}"
     );
-    let selected_output = kast(home, config_home)
+    let selected_output = published_semantic_command(home, config_home, workspace)
         .args(["--output", "json"])
         .args(args.iter().copied())
         .args(["--fields", "relationships"])

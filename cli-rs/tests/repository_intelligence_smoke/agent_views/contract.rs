@@ -6,15 +6,15 @@ fn assert_agent_intent_failures(
     args: &[&str],
 ) {
     assert!(
-        !default_descriptor_dir(home).exists(),
-        "local repository query must not discover or start a daemon"
+        default_descriptor_dir(home).exists(),
+        "semantic repository queries must use an admitted daemon"
     );
 
     fixture
         .connection()
         .execute("DROP TABLE semantic_symbols", [])
         .expect("remove traversal authority");
-    let missing_projection = kast(home, config_home)
+    let missing_projection = published_semantic_command(home, config_home, fixture.workspace_root())
         .args([
             "--output",
             "json",

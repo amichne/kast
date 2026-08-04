@@ -13,9 +13,11 @@ import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.api.contract.query.SemanticGraphPath
 import io.github.amichne.kast.api.contract.query.SemanticGraphQuery
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
+import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.parsed
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
+import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
@@ -42,7 +44,7 @@ class NativeSemanticGraphAdmissionTest {
     lateinit var storeRoot: Path
 
     @Test
-    fun `repeated semantic admission failure becomes limited and later retries`() {
+    fun `public semantic graph stays read only while pending and coordinates missing facts when ready`() {
         val project = projectFixture.get()
         val sourceFile = canonicalFileFixture.get()
         waitUntilIndexesAreReady(project)
@@ -52,52 +54,44 @@ class NativeSemanticGraphAdmissionTest {
         ).parsed()
         var admission: IdeaIndexSemanticAdmission.Status =
             IdeaIndexSemanticAdmission.Status.Pending("Kotlin PSI is unavailable")
+        val transitionSignals = mutableListOf<WorkspaceSignal>()
 
         sourceIndexStore(workspaceRoot).use { store ->
             store.ensureSchema()
-            KastIndexerBackend(
+            lateinit var backend: KastIndexerBackend
+            backend = KastIndexerBackend(
                 project = project,
                 workspaceRoot = workspaceRoot,
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
-                indexSemanticAdmissionStatus = { admission },
-            ).use { backend ->
-                assertThrows(ValidationException::class.java) {
-                    runBlocking { backend.semanticGraph(query) }
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority { admission },
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(
+                    onReconcile = { signal ->
+                        transitionSignals += signal
+                        backend.reconcileSemanticGraphForTest(query)
+                        testPublishedWorkspaceGeneration()
+                    },
+                ),
+            )
+            backend.use { backend ->
+                repeat(3) {
+                    assertThrows(ConflictException::class.java) {
+                        runBlocking { backend.semanticGraph(query) }
+                    }
                 }
                 assertEquals(
-                    FileStageOutcomeStatus.FAILED,
-                    store.fileStageOutcome(sourceFile.virtualFile.path, FileIndexStage.SEMANTIC_GRAPH)?.status,
+                    null,
+                    store.fileStageOutcome(sourceFile.virtualFile.path, FileIndexStage.SEMANTIC_GRAPH),
                 )
                 assertTrue(
                     store.readSemanticGraph(listOf(SemanticGraphSourcePath.parse(sourceFile.name))).symbols.isEmpty(),
                 )
 
-                assertThrows(ValidationException::class.java) {
-                    runBlocking { backend.semanticGraph(query) }
-                }
-                assertEquals(
-                    FileStageOutcomeStatus.FAILED,
-                    store.fileStageOutcome(sourceFile.virtualFile.path, FileIndexStage.SEMANTIC_GRAPH)?.status,
-                )
-                assertEquals(
-                    2,
-                    store.fileStageOutcome(sourceFile.virtualFile.path, FileIndexStage.SEMANTIC_GRAPH)
-                        ?.failureAttemptCount
-                        ?.value,
-                )
-
-                assertThrows(ValidationException::class.java) {
-                    runBlocking { backend.semanticGraph(query) }
-                }
-                assertEquals(
-                    FileStageOutcomeStatus.LIMITED,
-                    store.fileStageOutcome(sourceFile.virtualFile.path, FileIndexStage.SEMANTIC_GRAPH)?.status,
-                )
-
-                admission = IdeaIndexSemanticAdmission.Status.Ready
+                admission = IdeaIndexSemanticAdmission.Status.Ready(testPublishedWorkspaceGeneration())
                 val result = runBlocking { backend.semanticGraph(query) }
+
+                assertEquals(listOf(WorkspaceSignal.RecoveryAudit), transitionSignals)
                 assertTrue(result.symbolCount.value > 0)
                 assertEquals(
                     FileStageOutcomeStatus.COMPLETE,
@@ -124,6 +118,8 @@ class NativeSemanticGraphAdmissionTest {
                     workspaceRoot = workspaceRoot,
                     limits = limits(),
                     semanticGraphStore = store,
+                    workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                    workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
                 ).use { backend ->
                     val error = assertThrows(ValidationException::class.java) {
                         runBlocking {

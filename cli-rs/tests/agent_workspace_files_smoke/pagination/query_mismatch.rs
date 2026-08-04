@@ -50,13 +50,12 @@ fn public_continuations_reject_query_mismatch_and_stale_evidence_without_restart
             consumed_state["compositionStampDigest"] =
                 serde_json::Value::String("stale-composition".to_string());
         }
-        let backend = spawn_paged_workspace_files_backend(
+        let backend = spawn_rejected_paged_workspace_files_backend(
             &home,
             &config_home,
             &workspace,
             &temp.path().join(format!("{name}.sock")),
-            Some(consumed_state),
-            None,
+            consumed_state,
         );
         let output = run_workspace_files_page(
             &home,

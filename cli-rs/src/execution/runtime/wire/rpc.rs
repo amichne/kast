@@ -2,12 +2,8 @@ pub fn raw_request_passthrough(
     raw_request: String,
     requested_workspace_root: Option<PathBuf>,
 ) -> Result<String> {
-    if let Some(response) = try_handle_local_raw_rpc(&raw_request, requested_workspace_root.clone())?
-    {
-        return Ok(response);
-    }
-    let session = raw_rpc_session(requested_workspace_root)?;
-    raw_request_passthrough_in_session(raw_request, None, &session)
+    let session = raw_rpc_session(requested_workspace_root.clone())?;
+    raw_request_passthrough_in_session(raw_request, requested_workspace_root, &session)
 }
 
 #[derive(Debug, Clone)]
@@ -15,6 +11,69 @@ pub struct RawRpcSession {
     admission: AdmittedIndexerRuntime,
     socket_path: PathBuf,
     response_timeout: Duration,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct SemanticWorkspaceRead {
+    session: RawRpcSession,
+    published: crate::published_workspace::PublishedWorkspaceDatabase,
+}
+
+impl SemanticWorkspaceRead {
+    pub(crate) fn published(
+        &self,
+    ) -> &crate::published_workspace::PublishedWorkspaceDatabase {
+        &self.published
+    }
+
+    pub(crate) fn database(&self) -> &Path {
+        self.published.database()
+    }
+
+    pub(crate) fn revalidate(&self) -> Result<()> {
+        self.published.revalidate()?;
+        self.session.admission.validate_current()?;
+        let status = rpc::request_wait_for_close::<RuntimeStatusResponse>(
+            Path::new(&self.session.socket_path),
+            "runtime/status",
+            Value::Object(Default::default()),
+            self.session.response_timeout,
+        )?;
+        validate_runtime_status_identity(&self.session.admission.candidate().descriptor, &status)?;
+        require_published_runtime_status(&status, &self.published)
+    }
+}
+
+impl RawRpcSession {
+    pub(crate) fn semantic_read(&self) -> Result<SemanticWorkspaceRead> {
+        self.admission.validate_current()?;
+        let published = crate::published_workspace::resolve_published_workspace_database(
+            self.admission.workspace_root(),
+        )?;
+        let status = self
+            .admission
+            .candidate()
+            .runtime_status
+            .as_ref()
+            .ok_or_else(published_runtime_status_unavailable)?;
+        require_published_runtime_status(status, &published)?;
+        Ok(SemanticWorkspaceRead {
+            session: self.clone(),
+            published,
+        })
+    }
+}
+
+pub(crate) fn semantic_workspace_read_ready(
+    requested_workspace_root: Option<PathBuf>,
+) -> Result<SemanticWorkspaceRead> {
+    raw_rpc_session_ready(requested_workspace_root)?.semantic_read()
+}
+
+pub(crate) fn semantic_workspace_read_for_admission(
+    admission: &SemanticWorkspaceAdmission,
+) -> Result<SemanticWorkspaceRead> {
+    raw_rpc_session_for_admission(admission.clone()).semantic_read()
 }
 
 pub fn raw_rpc_session(
@@ -68,10 +127,23 @@ pub fn raw_request_passthrough_in_session(
     requested_workspace_root: Option<PathBuf>,
     session: &RawRpcSession,
 ) -> Result<String> {
-    if let Some(response) = try_handle_local_raw_rpc(&raw_request, requested_workspace_root)? {
-        return Ok(response);
-    }
     session.admission.validate_current()?;
+    validate_raw_rpc_workspace_root(requested_workspace_root.as_deref(), session)?;
+    if is_local_semantic_rpc(&raw_request)? {
+        let read = session.semantic_read()?;
+        let response = try_handle_local_raw_rpc(
+            &raw_request,
+            session.admission.workspace_root(),
+            read.published(),
+        );
+        read.revalidate()?;
+        return response?.ok_or_else(|| {
+            CliError::new(
+                "RPC_LOCAL_DISPATCH_INVALID",
+                "A local semantic RPC method had no local handler.",
+            )
+        });
+    }
     rpc::raw_wait_for_close(
         Path::new(&session.socket_path),
         &raw_request,
@@ -81,20 +153,77 @@ pub fn raw_request_passthrough_in_session(
 
 fn try_handle_local_raw_rpc(
     raw_request: &str,
-    requested_workspace_root: Option<PathBuf>,
+    workspace_root: &Path,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
 ) -> Result<Option<String>> {
     if let Some(response) = crate::repository_intelligence::try_handle_raw_rpc(
         raw_request,
-        requested_workspace_root.clone(),
+        workspace_root,
+        published,
     )? {
         return Ok(Some(response));
     }
-    if let Some(response) =
-        crate::metrics::try_handle_raw_rpc(raw_request, requested_workspace_root.clone())?
-    {
+    if let Some(response) = crate::metrics::try_handle_raw_rpc(raw_request, workspace_root, published)? {
         return Ok(Some(response));
     }
-    crate::symbol_query::try_handle_raw_rpc(raw_request, requested_workspace_root)
+    crate::symbol_query::try_handle_raw_rpc(raw_request, workspace_root, published)
+}
+
+fn is_local_semantic_rpc(raw_request: &str) -> Result<bool> {
+    let request: Value = serde_json::from_str(raw_request)?;
+    Ok(matches!(
+        request.get("method").and_then(Value::as_str),
+        Some("graph/coverage" | "repository/query" | "database/metrics" | "symbol/query")
+    ))
+}
+
+fn validate_raw_rpc_workspace_root(
+    requested_workspace_root: Option<&Path>,
+    session: &RawRpcSession,
+) -> Result<()> {
+    let Some(requested_workspace_root) = requested_workspace_root else {
+        return Ok(());
+    };
+    let requested_workspace_root = std::fs::canonicalize(requested_workspace_root).map_err(|error| {
+        CliError::new(
+            "WORKSPACE_ROOT_INVALID",
+            format!(
+                "Workspace root {} could not be canonicalized: {error}",
+                requested_workspace_root.display()
+            ),
+        )
+    })?;
+    if requested_workspace_root != session.admission.workspace_root() {
+        return Err(CliError::new(
+            "SEMANTIC_WORKSPACE_MISMATCH",
+            "The raw RPC workspace root does not match the admitted indexer workspace.",
+        ));
+    }
+    Ok(())
+}
+
+fn require_published_runtime_status(
+    status: &RuntimeStatusResponse,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
+) -> Result<()> {
+    if !is_ready(status) {
+        return Err(CliError::new(
+            "PUBLISHED_WORKSPACE_MOVED",
+            "The indexer runtime left READY while the semantic read was in progress.",
+        ));
+    }
+    let expected = status
+        .published_workspace_generation
+        .as_ref()
+        .ok_or_else(published_runtime_status_unavailable)?;
+    published.require_manifest(expected)
+}
+
+fn published_runtime_status_unavailable() -> CliError {
+    CliError::new(
+        "PUBLISHED_WORKSPACE_UNAVAILABLE",
+        "The READY indexer runtime did not advertise its published workspace generation.",
+    )
 }
 
 pub fn capabilities(args: RuntimeArgs) -> Result<Value> {

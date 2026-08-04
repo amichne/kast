@@ -5,8 +5,8 @@ use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
 
-use support::workspace_database_path_for_test;
 use support::workspace_files::WorkspaceIndexFixture;
+use support::{published_semantic_command_for_reads, workspace_database_path_for_test};
 
 struct ReferenceFixture {
     _temp: tempfile::TempDir,
@@ -106,7 +106,23 @@ impl ReferenceFixture {
         if let Some(prior) = prior {
             arguments.extend(["--prior", prior]);
         }
-        self.run(&arguments)
+        let home = self
+            .workspace
+            .parent()
+            .expect("fixture parent")
+            .join("home");
+        let config_home = self._temp.path().join("config");
+        let mut command = Command::new(env!("CARGO_BIN_EXE_kast"));
+        command
+            .arg0("kast")
+            .current_dir(&self.workspace)
+            .env("HOME", &home)
+            .env("KAST_HOME", home.join(".local/share/kast"))
+            .env("KAST_CONFIG_HOME", &config_home);
+        published_semantic_command_for_reads(command, &home, &config_home, &self.workspace, 1)
+            .args(arguments)
+            .output()
+            .expect("run derived topology command with published semantic evidence")
     }
 
     fn artifact(&self, relative: &str) -> Vec<u8> {
@@ -336,7 +352,13 @@ fn derive_reports_prior_generation_lineage_and_topology_change() {
 #[test]
 fn derive_rejects_an_output_path_outside_the_workspace() {
     let fixture = ReferenceFixture::new();
-    let output = fixture.derive("../escape.json", None);
+    let output = fixture.run(&[
+        "graph",
+        "derive",
+        "--experimental-derived-topology",
+        "--out",
+        "../escape.json",
+    ]);
 
     assert_eq!(output.status.code(), Some(2), "{output:?}");
     assert!(

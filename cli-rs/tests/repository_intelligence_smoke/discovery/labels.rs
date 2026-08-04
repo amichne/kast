@@ -81,7 +81,7 @@ fn labels_retrieve_only_compiler_resolved_candidates() {
         "{response:#}"
     );
 
-    let output = kast(&home, &config_home)
+    let output = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "agent",
             "repository",

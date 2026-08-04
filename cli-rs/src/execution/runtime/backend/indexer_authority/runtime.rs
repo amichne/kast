@@ -229,12 +229,15 @@ fn start_indexer_runtime(
     thread::spawn(move || {
         let _ = child.wait();
     });
-    let deadline = Instant::now() + Duration::from_millis(request.wait_timeout_ms);
-    while Instant::now() < deadline {
-        if let Ok(candidate) = admitted_candidate(request) {
-            return Ok((candidate, true));
-        }
-        thread::sleep(Duration::from_millis(250));
+    let started_at = Instant::now();
+    if let Some(candidate) = poll_for_runtime_candidate(
+        request.wait_timeout_ms,
+        250,
+        || u64::try_from(started_at.elapsed().as_millis()).unwrap_or(u64::MAX),
+        || admitted_candidate(request).ok(),
+        |duration_ms| thread::sleep(Duration::from_millis(duration_ms)),
+    ) {
+        return Ok((candidate, true));
     }
     Err(runtime_cli_rejection(
         &request.workspace_root,
@@ -247,6 +250,22 @@ fn start_indexer_runtime(
             ),
         ),
     ))
+}
+
+fn poll_for_runtime_candidate<T>(
+    wait_timeout_ms: u64,
+    poll_interval_ms: u64,
+    mut elapsed_ms: impl FnMut() -> u64,
+    mut candidate: impl FnMut() -> Option<T>,
+    mut pause: impl FnMut(u64),
+) -> Option<T> {
+    while elapsed_ms() < wait_timeout_ms {
+        if let Some(admitted) = candidate() {
+            return Some(admitted);
+        }
+        pause(poll_interval_ms);
+    }
+    None
 }
 
 #[cfg(any(not(target_os = "macos"), test))]

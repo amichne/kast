@@ -239,4 +239,6 @@ pub(crate) fn seed_source_index(workspace: &std::path::Path) {
         )
         .expect("reference");
     }
+    drop(conn);
+    publish_workspace_database_for_test(workspace);
 }

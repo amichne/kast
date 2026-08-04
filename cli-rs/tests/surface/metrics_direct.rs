@@ -15,7 +15,7 @@ fn reads_metrics_directly_from_source_index_db() {
     std::fs::create_dir_all(&workspace).expect("workspace");
     seed_source_index(&workspace);
 
-    let fan_in = kast(&home, &config_home)
+    let fan_in = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "--output",
             "human",
@@ -42,7 +42,7 @@ fn reads_metrics_directly_from_source_index_db() {
     assert!(fan_in_stdout.contains("occurrenceCount=3"));
     assert!(serde_json::from_slice::<Value>(&fan_in.stdout).is_err());
 
-    let fan_in_json = kast(&home, &config_home)
+    let fan_in_json = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "--output",
             "json",
@@ -66,7 +66,7 @@ fn reads_metrics_directly_from_source_index_db() {
     assert!(fan_in_json_stdout.contains("\"targetFqName\": \"lib.Foo\""));
     assert!(fan_in_json_stdout.contains("\"occurrenceCount\": 3"));
 
-    let search = kast(&home, &config_home)
+    let search = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "--output",
             "json",
@@ -87,7 +87,7 @@ fn reads_metrics_directly_from_source_index_db() {
     );
     assert!(String::from_utf8_lossy(&search.stdout).contains("\"lib.Foo\""));
 
-    let short_search = kast(&home, &config_home)
+    let short_search = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "--output",
             "json",

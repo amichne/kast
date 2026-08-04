@@ -62,6 +62,48 @@ class RuntimeStatusResponseTest {
         assertFalse(unavailable.referenceCoverage.indexReady)
     }
 
+    @Test
+    fun `serialization preserves the exact admitted workspace generation`() {
+        val published = PublishedWorkspaceGenerationStatus(
+            generation = 7,
+            identity = "workspace-state",
+            sourceIndexGeneration = 19,
+            sourceIndexSchemaVersion = 3,
+            databaseFile = "generation-7-deadbeef/source-index.db",
+            repositoryOverlayFile = "repository-overlay.json",
+            publishedAtEpochMillis = 42,
+        )
+        val response = RuntimeStatusResponse(
+            state = RuntimeState.READY,
+            healthy = true,
+            active = true,
+            indexing = false,
+            backendName = "indexer",
+            backendVersion = "test",
+            workspaceRoot = "/workspace",
+            publishedWorkspaceGeneration = published,
+        )
+
+        val encoded = Json.encodeToString(RuntimeStatusResponse.serializer(), response)
+        val decoded = Json.decodeFromString<RuntimeStatusResponse>(encoded)
+
+        assertEquals(published, decoded.publishedWorkspaceGeneration)
+    }
+
+    @Test
+    fun `published workspace generation rejects non-canonical database paths`() {
+        assertThrows<IllegalArgumentException> {
+            PublishedWorkspaceGenerationStatus(
+                generation = 1,
+                identity = "workspace-state",
+                sourceIndexGeneration = 1,
+                sourceIndexSchemaVersion = 1,
+                databaseFile = "../source-index.db",
+                publishedAtEpochMillis = 1,
+            )
+        }
+    }
+
     private fun runtimeStatusJson(coverageFacts: String): String =
         """
         {

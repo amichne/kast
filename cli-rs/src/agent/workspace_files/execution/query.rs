@@ -27,6 +27,16 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
     };
     admitted_query.canonical_workspace_root = admission.workspace_root().display().to_string();
     admitted_query.backend = Some(admission.backend_name());
+    let semantic_read = match runtime::semantic_workspace_read_for_admission(&admission) {
+        Ok(read) => read,
+        Err(error) => {
+            return error_envelope(
+                "agent/workspace-files".to_string(),
+                None,
+                AgentError::from_cli_error(error),
+            );
+        }
+    };
     let root = match WorkspaceRoot::try_from(admission.workspace_root()) {
         Ok(root) => root,
         Err(error) => {
@@ -60,7 +70,7 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
         },
         None => None,
     };
-    let mut lanes = SystemWorkspaceLaneReader;
+    let mut lanes = SystemWorkspaceLaneReader::new(semantic_read.published());
     let snapshot = match collect_workspace_inventory(WorkspaceInventoryInputs {
         root,
         kind_domain: workspace_files_kind_domain(args.kind_domain()),
@@ -208,6 +218,13 @@ fn execute_agent_workspace_files(args: AgentWorkspaceFilesArgs) -> AgentEnvelope
             .then(|| snapshot.composition_digest().to_string()),
         schema_version: SCHEMA_VERSION,
     };
+    if let Err(error) = semantic_read.revalidate() {
+        return error_envelope(
+            "agent/workspace-files".to_string(),
+            None,
+            AgentError::from_cli_error(error),
+        );
+    }
     result_envelope(
         "agent/workspace-files".to_string(),
         project_workspace_files_result(

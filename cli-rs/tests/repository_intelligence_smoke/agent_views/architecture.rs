@@ -21,7 +21,7 @@ fn assert_agent_architecture_views(
         "--evidence",
         "1",
     ];
-    let compact_output = kast(home, config_home)
+    let compact_output = published_semantic_command(home, config_home, std::path::Path::new(workspace_root))
         .args(architecture_args)
         .output()
         .expect("compact architecture agent repository");
@@ -84,7 +84,7 @@ fn assert_agent_architecture_views(
         (&["--explain"][..], true),
         (&["--fields", "findings"][..], false),
     ] {
-        let output = kast(home, config_home)
+        let output = published_semantic_command(home, config_home, std::path::Path::new(workspace_root))
             .args(["--output", "json"])
             .args(architecture_args)
             .args(view)
@@ -126,7 +126,7 @@ fn assert_agent_architecture_views(
             );
         }
     }
-    let count = kast(home, config_home)
+    let count = published_semantic_command(home, config_home, std::path::Path::new(workspace_root))
         .args(["--output", "json"])
         .args(architecture_args)
         .arg("--count")

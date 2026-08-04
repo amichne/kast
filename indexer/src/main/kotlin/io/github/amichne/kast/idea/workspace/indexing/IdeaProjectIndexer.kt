@@ -9,6 +9,8 @@ import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.client.fields.RelationshipIndexingBatchSize
 import io.github.amichne.kast.api.client.fields.RelationshipIndexingParallelism
 import io.github.amichne.kast.api.contract.query.WorkspaceFileKindDomain
+import io.github.amichne.kast.api.protocol.WorkspaceProjectModelIncompleteException
+import io.github.amichne.kast.api.protocol.WorkspaceProjectModelIncompleteReason
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileInventoryEntry
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
@@ -25,7 +27,9 @@ import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
 import io.github.amichne.kast.shared.analysis.PsiRelationshipScanResult
 import io.github.amichne.kast.shared.analysis.PsiSourceIndexScanner
+import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
 import java.nio.file.Path
+import java.util.concurrent.CancellationException
 
 private const val SOURCE_INDEX_BATCH_SIZE = 50
 private val FOCUSED_RELATIONSHIP_BATCH_SIZE = RelationshipIndexingBatchSize(50)
@@ -61,10 +65,15 @@ internal class IdeaProjectIndexer(
 
     fun indexProject(
         config: KastConfig,
+        candidate: WorkspaceIndexingCandidate = captureCandidate(config.indexing),
+        semanticContextIdentity: WorkspaceStateIdentity? = null,
         onSourceScopeReady: (IndexedSourceIdentifiers) -> Unit = {},
     ): IndexedSourceIdentifiers {
         store.ensureSchema()
-        val indexedSources = indexSourceIdentifiersAndScope(config.indexing)
+        val indexedSources = indexSourceIdentifiersAndScope(
+            candidate = candidate,
+            stageVersions = semanticContextStageVersions(semanticContextIdentity),
+        )
         onSourceScopeReady(indexedSources)
         if (config.indexing.relationships.enabled.value && !environment.isCancelled()) {
             val moduleSpecs = runIdeaReadAction { moduleResolver.discoverModuleSpecs() }
@@ -99,10 +108,7 @@ internal class IdeaProjectIndexer(
             config = indexingConfig,
             candidates = filePaths.map { path -> path.absolute.value.toJavaPath() },
         ).includedPaths
-        val requestedPaths = currentSourcePaths(scopedFilePaths) ?: run {
-            val currentFilePaths = indexSourceIdentifiers().toSet()
-            scopedFilePaths.distinct().filter(currentFilePaths::contains)
-        }
+        val requestedPaths = reconcileFocusedSourceFacts(scopedFilePaths)
         requireActive()
         val previousFailureIds = requestedPaths.associateWith { path ->
             store.fileStageOutcome(path, FileIndexStage.RELATIONSHIPS)?.failure?.id
@@ -132,43 +138,70 @@ internal class IdeaProjectIndexer(
         return failures
     }
 
-    private fun currentSourcePaths(filePaths: Collection<WorkspaceSourcePath>): List<WorkspaceSourcePath>? {
+    private fun reconcileFocusedSourceFacts(
+        filePaths: Collection<WorkspaceSourcePath>,
+    ): List<WorkspaceSourcePath> {
+        val requestedPaths = filePaths.distinct()
+        if (requestedPaths.isEmpty()) return emptyList()
+        val manifestPaths = store.knownSourcePaths().mapNotNullTo(linkedSetOf(), store::sourcePath)
+        val missingManifestPaths = requestedPaths.minus(manifestPaths)
+        check(missingManifestPaths.isEmpty()) {
+            "Focused source refresh requires current manifest entries for: " +
+                missingManifestPaths.sorted().joinToString()
+        }
+        val workByPath = store.pendingFileStages(FileIndexStage.SOURCE)
+            .associateBy { work -> work.path }
+        val pendingWork = requestedPaths.mapNotNull(workByPath::get)
+        if (pendingWork.isEmpty()) return requestedPaths
+
+        val gradleModel = readAvailableGradleWorkspaceModel()
+        val gradleProvenance = IdeaGradleFileProvenance.fromWorkspaceModel(gradleModel, ideaWorkspaceIdentity)
         val scanner = PsiSourceIndexScanner(
             environment = environment,
             moduleNameForFile = moduleResolver::moduleNameForFile,
         )
-        return buildList {
-            for (path in filePaths.distinct()) {
-                requireActive()
-                val absolutePath = path.absolute.value.value
-                onSourceFileScan(absolutePath)
-                val result = scanner.scanFile(absolutePath) ?: return null
-                if (
-                    store.pendingFileStage(
-                        path = path,
-                        contentHash = result.contentHash,
-                        stage = FileIndexStage.SOURCE,
-                        version = FileStageVersions.CURRENT.source,
-                    ) != null
-                ) {
-                    return null
-                }
-                add(path)
-            }
+        val updates = pendingWork.mapNotNull { work ->
+            requireActive()
+            val absolutePath = work.path.absolute.value.value
+            onSourceFileScan(absolutePath)
+            val result = scanner.scanFile(absolutePath)
+            requireActive()
+            if (result == null || result.contentHash != work.contentHash) return@mapNotNull null
+            SourceFileStageUpdate(
+                work = work,
+                scannedContentHash = result.contentHash,
+                update = gradleProvenance.applyTo(
+                    update = result.update,
+                    ownerModuleNames = focusedOwnerModuleNames(gradleModel, work.path),
+                ),
+            )
         }
+        requireActive()
+        if (updates.isNotEmpty()) store.commitSourceBatch(updates)
+        requireActive()
+
+        val stillPending = store.pendingFileStages(FileIndexStage.SOURCE)
+            .mapTo(mutableSetOf()) { work -> work.path }
+        val unfinishedPaths = requestedPaths.filter { path ->
+            path in stillPending ||
+                store.fileStageOutcome(path, FileIndexStage.SOURCE)?.status != FileStageOutcomeStatus.COMPLETE
+        }
+        check(unfinishedPaths.isEmpty()) {
+            "Focused source refresh did not commit current facts for: ${unfinishedPaths.sorted().joinToString()}"
+        }
+        return requestedPaths
     }
 
     fun indexSourceIdentifiers(): Collection<WorkspaceSourcePath> {
-        return indexSourceIdentifiersAndScope(KastConfig.defaults().indexing).paths
+        return indexSourceIdentifiersAndScope(
+            candidate = captureCandidate(KastConfig.defaults().indexing),
+            stageVersions = FileStageVersions.CURRENT,
+        ).paths
     }
 
-    private fun indexSourceIdentifiersAndScope(config: IndexingConfig): IndexedSourceIdentifiers {
-        store.ensureSchema()
-        val previousPaths = store.knownSourcePaths().mapNotNullTo(linkedSetOf(), store::sourcePath)
+    fun captureCandidate(config: IndexingConfig): WorkspaceIndexingCandidate {
         val captured = inventory.snapshotWithGradleModel(WorkspaceFileKindDomain.MIXED)
-        val gradleProvenance = IdeaGradleFileProvenance.fromWorkspaceModel(captured.gradleModel, ideaWorkspaceIdentity)
-        val inventorySnapshot = captured.inventory
-        val ownerModuleNamesByPath = moduleResolver.referenceIndexOwnersByPath(inventorySnapshot)
+        val ownerModuleNamesByPath = moduleResolver.referenceIndexOwnersByPath(captured.inventory)
         val scope = scopeCache.resolve(
             workspaceRoot = workspaceRoot,
             config = config,
@@ -180,8 +213,29 @@ internal class IdeaProjectIndexer(
             isCancelled = environment::isCancelled,
             sourceSetForPath = moduleResolver::legacySourceSetLabelForFile,
         )
-        if (environment.isCancelled()) return IndexedSourceIdentifiers(emptyList(), emptySet(), emptyList())
-        store.reconcileFileInventory(inventoryEntries, FileStageVersions.CURRENT)
+        return WorkspaceIndexingCandidate(
+            gradleModel = captured.gradleModel,
+            scope = scope,
+            ownerModuleNamesByPath = ownerModuleNamesByPath.filterKeys(includedPaths::contains),
+            inventoryEntries = inventoryEntries,
+        )
+    }
+
+    private fun indexSourceIdentifiersAndScope(
+        candidate: WorkspaceIndexingCandidate,
+        stageVersions: FileStageVersions,
+    ): IndexedSourceIdentifiers {
+        store.ensureSchema()
+        val previousPaths = store.knownSourcePaths().mapNotNullTo(linkedSetOf(), store::sourcePath)
+        val gradleProvenance = IdeaGradleFileProvenance.fromWorkspaceModel(
+            candidate.gradleModel,
+            ideaWorkspaceIdentity,
+        )
+        val ownerModuleNamesByPath = candidate.ownerModuleNamesByPath
+        val scope = candidate.scope
+        val inventoryEntries = candidate.inventoryEntries
+        requireActive()
+        store.reconcileFileInventory(inventoryEntries, stageVersions)
 
         val inventoryByPath = inventoryEntries.associateBy(FileInventoryEntry::path)
         val workByPath = store.pendingFileStages(FileIndexStage.SOURCE).associateBy { work -> work.path }
@@ -197,7 +251,7 @@ internal class IdeaProjectIndexer(
             moduleNameForFile = moduleResolver::moduleNameForFile,
         )
         for (batch in orderedPendingPaths.map(workByPath::getValue).chunked(SOURCE_INDEX_BATCH_SIZE)) {
-            if (environment.isCancelled()) break
+            requireActive()
             val updates = batch.mapNotNull { work ->
                 val absolutePath = work.path.absolute.value.value
                 onSourceFileScan(absolutePath)
@@ -214,11 +268,12 @@ internal class IdeaProjectIndexer(
                     )
                 }
             }
-            if (environment.isCancelled()) break
+            requireActive()
             if (updates.isNotEmpty()) {
                 store.commitSourceBatch(updates)
             }
         }
+        requireActive()
         val currentPaths = prioritizeIndexingPaths(
             pathsByModule = inventoryEntries.map { entry -> IndexingPriorityEntry(entry.path, entry.module) },
             moduleOrder = emptyList(),
@@ -296,6 +351,32 @@ internal class IdeaProjectIndexer(
             },
             isCancelled = environment::isCancelled,
         )
+    }
+
+    private fun readAvailableGradleWorkspaceModel(): IdeaGradleProjectLoadBridge.GradleWorkspaceModel {
+        requireActive()
+        val model = try {
+            readGradleWorkspaceModel()
+        } catch (cancellation: ProcessCanceledException) {
+            throw cancellation
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (failure: WorkspaceProjectModelIncompleteException) {
+            throw failure
+        } catch (failure: RuntimeException) {
+            throw WorkspaceProjectModelIncompleteException(
+                reason = WorkspaceProjectModelIncompleteReason.PROJECT_MODEL_UNAVAILABLE,
+                message = "Gradle project model is unavailable: ${failure.message ?: failure.javaClass.simpleName}",
+            )
+        }
+        if (!model.importedModelComplete()) {
+            throw WorkspaceProjectModelIncompleteException(
+                reason = WorkspaceProjectModelIncompleteReason.PROJECT_MODEL_UNAVAILABLE,
+                message = "Gradle project model is incomplete during focused source refresh",
+            )
+        }
+        requireActive()
+        return model
     }
 
     private fun workspaceIdentityForIdea(): IdeaWorkspaceIdentity = IdeaWorkspaceIdentity.fromProject(

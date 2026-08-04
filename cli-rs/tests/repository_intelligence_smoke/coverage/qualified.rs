@@ -75,7 +75,7 @@ fn repository_incomplete_coverage_returns_qualified_positive_answer() {
         "{response:#}"
     );
 
-    let agent_output = kast(&home, &config_home)
+    let agent_output = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "--output",
             "json",
@@ -294,8 +294,8 @@ fn critical_graph_noncritical_stale_file_remains_qualified() {
 fn write_critical_paths(fixture: &WorkspaceIndexFixture, pattern: &str) {
     let config_path = fixture
         .database_path()
-        .parent()
-        .and_then(std::path::Path::parent)
+        .ancestors()
+        .nth(4)
         .expect("workspace data directory")
         .join("config.toml");
     std::fs::write(
@@ -313,11 +313,18 @@ fn graph_summary(
     use std::os::unix::process::CommandExt;
 
     let mut command = std::process::Command::new(env!("CARGO_BIN_EXE_kast"));
-    command.arg0("kast");
-    let output = command
+    command
+        .arg0("kast")
         .current_dir(workspace)
         .env("HOME", home)
-        .env("KAST_CONFIG_HOME", config_home)
+        .env("KAST_CONFIG_HOME", config_home);
+    let output = published_semantic_command_for_reads(
+        command,
+        home,
+        config_home,
+        workspace,
+        2,
+    )
         .args(["graph", "summary"])
         .output()
         .expect("graph summary");

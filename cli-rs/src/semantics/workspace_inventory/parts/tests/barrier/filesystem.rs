@@ -1,7 +1,7 @@
 struct MutatingFilesystemLaneReader {
     target: std::path::PathBuf,
     filesystem_reads: usize,
-    inner: super::collect::SystemWorkspaceLaneReader,
+    inner: super::collect::LiveCandidateWorkspaceLaneReader,
 }
 
 impl super::collect::WorkspaceInventoryLaneReader for MutatingFilesystemLaneReader {
@@ -48,7 +48,7 @@ fn filesystem_existence_movement_discards_the_attempt_and_retries_once() {
     let mut lanes = MutatingFilesystemLaneReader {
         target,
         filesystem_reads: 0,
-        inner: super::collect::SystemWorkspaceLaneReader,
+        inner: super::collect::LiveCandidateWorkspaceLaneReader,
     };
 
     let snapshot =
@@ -72,7 +72,7 @@ fn filesystem_existence_movement_discards_the_attempt_and_retries_once() {
 
 struct UnavailableFilesystemLaneReader {
     reason: super::model::WorkspaceLaneUnavailableReason,
-    inner: super::collect::SystemWorkspaceLaneReader,
+    inner: super::collect::LiveCandidateWorkspaceLaneReader,
 }
 
 impl super::collect::WorkspaceInventoryLaneReader for UnavailableFilesystemLaneReader {
@@ -101,7 +101,7 @@ fn stable_filesystem_unavailability_retains_proven_backend_candidates_and_reason
         let mut backend = ScriptedWorkspaceBackend::new(responses.clone());
         let mut lanes = UnavailableFilesystemLaneReader {
             reason: super::model::WorkspaceLaneUnavailableReason::new(reason),
-            inner: super::collect::SystemWorkspaceLaneReader,
+            inner: super::collect::LiveCandidateWorkspaceLaneReader,
         };
 
         let snapshot =

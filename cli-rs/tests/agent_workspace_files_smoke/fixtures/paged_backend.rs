@@ -6,6 +6,50 @@ fn spawn_paged_workspace_files_backend(
     consumed_state: Option<serde_json::Value>,
     issued_token: Option<&'static str>,
 ) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    spawn_paged_workspace_files_backend_with_completion(
+        home,
+        config_home,
+        workspace,
+        socket,
+        consumed_state,
+        issued_token,
+        WorkspaceFilesReadCompletion::Revalidated,
+    )
+}
+
+fn spawn_rejected_paged_workspace_files_backend(
+    home: &std::path::Path,
+    config_home: &std::path::Path,
+    workspace: &std::path::Path,
+    socket: &std::path::Path,
+    consumed_state: serde_json::Value,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
+    spawn_paged_workspace_files_backend_with_completion(
+        home,
+        config_home,
+        workspace,
+        socket,
+        Some(consumed_state),
+        None,
+        WorkspaceFilesReadCompletion::RejectedBeforeRevalidation,
+    )
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum WorkspaceFilesReadCompletion {
+    Revalidated,
+    RejectedBeforeRevalidation,
+}
+
+fn spawn_paged_workspace_files_backend_with_completion(
+    home: &std::path::Path,
+    config_home: &std::path::Path,
+    workspace: &std::path::Path,
+    socket: &std::path::Path,
+    consumed_state: Option<serde_json::Value>,
+    issued_token: Option<&'static str>,
+    completion: WorkspaceFilesReadCompletion,
+) -> std::thread::JoinHandle<Vec<serde_json::Value>> {
     let mut responses = workspace_files_session_responses(workspace);
     if let Some(state) = consumed_state {
         responses.push((
@@ -20,13 +64,14 @@ fn spawn_paged_workspace_files_backend(
             serde_json::json!({"type": "ISSUED", "pageToken": page_token}),
         ));
     }
+    if completion == WorkspaceFilesReadCompletion::Revalidated {
+        responses.push(("runtime/status", workspace_files_runtime_status(workspace)));
+    }
     spawn_sequenced_indexer_backend(home, config_home, workspace, socket, responses)
 }
 
-fn workspace_files_session_responses(
-    workspace: &std::path::Path,
-) -> Vec<(&'static str, serde_json::Value)> {
-    let runtime = serde_json::json!({
+fn workspace_files_runtime_status(workspace: &std::path::Path) -> serde_json::Value {
+    serde_json::json!({
         "state": "READY",
         "healthy": true,
         "active": true,
@@ -35,7 +80,12 @@ fn workspace_files_session_responses(
         "backendVersion": "scripted-test",
         "workspaceRoot": workspace.display().to_string(),
         "schemaVersion": api_schema_version()
-    });
+    })
+}
+
+fn workspace_files_session_responses(
+    workspace: &std::path::Path,
+) -> Vec<(&'static str, serde_json::Value)> {
     let capabilities = serde_json::json!({
         "backendName": "indexer",
         "backendVersion": "scripted-test",
@@ -49,7 +99,10 @@ fn workspace_files_session_responses(
         },
         "schemaVersion": api_schema_version()
     });
-    vec![("runtime/status", runtime), ("capabilities", capabilities)]
+    vec![
+        ("runtime/status", workspace_files_runtime_status(workspace)),
+        ("capabilities", capabilities),
+    ]
 }
 
 fn append_paged_workspace_files_collection(

@@ -75,8 +75,10 @@ class NativeSemanticGraphBackendTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
-                val result = backend.semanticGraph(
+                val result = backend.reconcileSemanticGraphForTest(
                     SemanticGraphQuery(
                         filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
                     ).parsed(),
@@ -132,8 +134,10 @@ class NativeSemanticGraphBackendTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
-                backend.semanticGraph(
+                backend.reconcileSemanticGraphForTest(
                     SemanticGraphQuery(
                         filePaths = files.map { file -> SemanticGraphPath.parse(file.virtualFile.path) },
                     ).parsed(),
@@ -167,8 +171,10 @@ class NativeSemanticGraphBackendTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
-                backend.semanticGraph(
+                backend.reconcileSemanticGraphForTest(
                     SemanticGraphQuery(
                         filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
                     ).parsed(),
@@ -198,8 +204,10 @@ class NativeSemanticGraphBackendTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
-                val result = backend.semanticGraph(
+                val result = backend.reconcileSemanticGraphForTest(
                     SemanticGraphQuery(
                         filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
                     ).parsed(),
@@ -224,8 +232,10 @@ class NativeSemanticGraphBackendTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
-                val result = backend.semanticGraph(
+                val result = backend.reconcileSemanticGraphForTest(
                     SemanticGraphQuery(
                         filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
                     ).parsed(),
@@ -253,8 +263,10 @@ class NativeSemanticGraphBackendTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
-                val result = backend.semanticGraph(
+                val result = backend.reconcileSemanticGraphForTest(
                     SemanticGraphQuery(
                         filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
                     ).parsed(),
@@ -283,9 +295,11 @@ class NativeSemanticGraphBackendTest {
                 limits = limits(),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
                 files.forEach { file ->
-                    val result = backend.semanticGraph(
+                    val result = backend.reconcileSemanticGraphForTest(
                         SemanticGraphQuery(
                             filePaths = listOf(validFile, file)
                                 .map { SemanticGraphPath.parse(it.virtualFile.path) },

@@ -53,29 +53,29 @@ impl RepositoryIntentResult {
 
 fn repository_query(
     workspace_root: &WorkspaceRoot,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
     params: ValidatedRepositoryQueryParams,
 ) -> Result<Value> {
     let workspace_path = workspace_root.as_path();
-    for _ in 0..2 {
-        let snapshot = read_coverage(workspace_path, params.scope.clone())?;
-        let mut connection = open_repository_connection(workspace_path)?;
+        let snapshot =
+            read_coverage_from_published(workspace_path, params.scope.clone(), false, published)?;
+        let mut connection = open_repository_connection(published)?;
         let transaction = connection
             .transaction_with_behavior(TransactionBehavior::Deferred)
             .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
         if repository_generation(&transaction)? != snapshot.generation {
-            continue;
+            return Err(CliError::new(
+                "REPOSITORY_QUERY_UNSTABLE",
+                "published coverage and repository query generations do not match",
+            ));
         }
         let response =
             repository_query_at_snapshot(workspace_root, &transaction, &params, snapshot)?;
         transaction
             .commit()
             .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
-        return Ok(response);
-    }
-    Err(CliError::new(
-        "REPOSITORY_QUERY_UNSTABLE",
-        "source-index generation moved twice between coverage admission and semantic execution",
-    ))
+        published.revalidate()?;
+        Ok(response)
 }
 
 fn repository_query_at_snapshot(

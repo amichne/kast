@@ -5,7 +5,7 @@ struct MutatingIndexLaneReader {
     index_reads: usize,
     filesystem_reads: usize,
     dirty_reads: usize,
-    inner: super::collect::SystemWorkspaceLaneReader,
+    inner: super::collect::LiveCandidateWorkspaceLaneReader,
 }
 
 impl MutatingIndexLaneReader {
@@ -21,7 +21,7 @@ impl MutatingIndexLaneReader {
             index_reads: 0,
             filesystem_reads: 0,
             dirty_reads: 0,
-            inner: super::collect::SystemWorkspaceLaneReader,
+            inner: super::collect::LiveCandidateWorkspaceLaneReader,
         }
     }
 }

@@ -11,6 +11,7 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.fields.RelationshipIndexingEnabled
 import io.github.amichne.kast.api.client.RemoteIndexConfig
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.client.fields.IndexingRemoteEnabled
@@ -163,6 +164,8 @@ class KastProjectOpenSourceIndexingTest {
                     maxConcurrentRequests = 4,
                 ),
                 referenceIndexLookup = lookup,
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
                 relationshipCoverageAuthority = RelationshipCoverageAuthority.proven(),
             ).use { backend ->
                 val result = runBlocking {
@@ -229,7 +232,7 @@ class KastProjectOpenSourceIndexingTest {
         )
 
         SqliteSourceIndexStore(workspaceIdentity).use { store ->
-            val outcomes = IdeaProjectIndexer(
+            val indexer = IdeaProjectIndexer(
                 project = project,
                 workspaceRoot = workspaceRoot,
                 store = store,
@@ -246,7 +249,21 @@ class KastProjectOpenSourceIndexingTest {
                         }
                     }
                 },
-            ).refreshSymbolRelationships(workspaceSourcePaths(workspaceRoot, listOf(failingPath)))
+            )
+            val defaults = KastConfig.defaults()
+            indexer.indexProject(
+                defaults.copy(
+                    indexing = defaults.indexing.copy(
+                        relationships = defaults.indexing.relationships.copy(
+                            enabled = RelationshipIndexingEnabled(false),
+                        ),
+                    ),
+                ),
+            )
+
+            val outcomes = indexer.refreshSymbolRelationships(
+                workspaceSourcePaths(workspaceRoot, listOf(failingPath)),
+            )
 
             val outcome = outcomes.single()
             assertEquals(failingPath, outcome.path.rawPath)

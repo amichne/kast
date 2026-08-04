@@ -12,10 +12,13 @@ import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
+import io.github.amichne.kast.indexstore.snapshot.WorkspaceDatabaseExportEvidence
+import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.RuntimeLifecycleController
 import io.github.amichne.kast.server.RunningAnalysisServer
 import java.nio.file.Path
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.runBlocking
 
 object IndexerServerRuntime {
@@ -100,10 +103,19 @@ object IndexerServerRuntime {
                 producerVersion = ProducerVersion.parse(KastIndexerBackend.INDEXER_VERSION),
             )
         }
+        val workspaceDatabaseExporter = LateBoundWorkspaceDatabaseExporter()
+        val workspaceGenerationStore = WorkspaceGenerationStore(
+            directory = workspaceIdentity.workspaceIdentity.workspaceDataDirectoryPath.resolve("semantic-generations"),
+            exportDatabase = workspaceDatabaseExporter::export,
+        )
+        workspaceGenerationStore.recoverMutableWorkspaceDatabase(
+            workspaceIdentity.workspaceIdentity.sourceIndexDatabaseFile,
+        )
         val preparedOverlay = snapshotCoordinator?.prepareWorktreeDatabase(
             workspaceIdentity.workspaceIdentity.sourceIndexDatabaseFile,
         )
         val sourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
+        workspaceDatabaseExporter.bind(sourceIndexStore::exportVerifiedWorkspaceDatabase)
         preparedOverlay?.let { overlay ->
             (overlay.tombstones + overlay.shards.keys).forEach { relativePath ->
                 sourceIndexStore.removeFile(workspaceIdentity.workspaceRootPath.resolve(relativePath).toString())
@@ -111,6 +123,7 @@ object IndexerServerRuntime {
         }
         val manifestFileCountProvider = sourceIndexStore.prepareManifestFileCountProvider()
         val semanticAdmission = IdeaIndexSemanticAdmission(project)
+        val transitionIngress = WorkspaceTransitionIngress(semanticAdmission, limits.requestTimeoutMillis)
         if (indexAdmission is IndexerAdmission.Failed) {
             semanticAdmission.fail(indexAdmission.error.indexAdmissionFailureDetail())
         }
@@ -138,7 +151,8 @@ object IndexerServerRuntime {
                     }
                 },
                 workspaceIndexingScopeCache = indexingScopeCache,
-                indexSemanticAdmissionStatus = semanticAdmission::status,
+                workspaceSemanticReadAuthority = semanticAdmission,
+                workspaceTransitionRequester = transitionIngress,
             )
             pluginBackend = startedPluginBackend
             ObservedAnalysisBackend(
@@ -191,16 +205,18 @@ object IndexerServerRuntime {
                     project = project,
                     workspaceIdentity = workspaceIdentity,
                     config = config,
+                    workspaceGenerationPublication = PersistentWorkspaceGenerationPublication(workspaceGenerationStore),
                     diagnostics = diagnostics,
                     indexStore = sourceIndexStore,
                     semanticAdmission = semanticAdmission,
+                    transitionIngress = transitionIngress,
                     snapshotCoordinator = snapshotCoordinator,
                     scopeCache = indexingScopeCache,
-                    semanticGraphIndexer = { scope, batchSize ->
+                    semanticGraphIndexer = { scope, batchSize, reconciliationToken ->
                         if (scope.paths.isNotEmpty() || scope.removedPaths.isNotEmpty()) {
                             startedPluginBackend.updateSemanticGraphBatchSize(batchSize)
                             runBlocking {
-                                startedPluginBackend.semanticGraph(
+                                startedPluginBackend.reconcileSemanticGraph(
                                     ParsedSemanticGraphQuery(
                                         filePaths = scope.paths.distinct().sorted().map { path -> path.absolute },
                                         removedFilePaths = scope.removedPaths
@@ -209,6 +225,7 @@ object IndexerServerRuntime {
                                             .map { path -> path.absolute },
                                         expectedGeneration = null,
                                     ),
+                                    reconciliationToken,
                                 )
                             }
                         }
@@ -253,3 +270,16 @@ object IndexerServerRuntime {
 
 private fun Throwable.indexAdmissionFailureDetail(): String =
     message?.takeIf(String::isNotBlank) ?: this::class.qualifiedName.orEmpty()
+
+private class LateBoundWorkspaceDatabaseExporter {
+    private val delegate = AtomicReference<((Path) -> WorkspaceDatabaseExportEvidence)?>(null)
+
+    fun bind(exportDatabase: (Path) -> WorkspaceDatabaseExportEvidence) {
+        check(delegate.compareAndSet(null, exportDatabase)) {
+            "Workspace database exporter is already bound"
+        }
+    }
+
+    fun export(target: Path): WorkspaceDatabaseExportEvidence =
+        checkNotNull(delegate.get()) { "Workspace database exporter is not bound" }(target)
+}
