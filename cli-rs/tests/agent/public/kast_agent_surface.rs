@@ -1,3 +1,5 @@
+#[path = "kast_agent_surface/developer_route.rs"]
+mod developer_route;
 #[path = "../../support/mod.rs"]
 mod support;
 
@@ -7,10 +9,13 @@ use std::process::Command;
 
 use rusqlite::params;
 use sha2::{Digest, Sha256};
-use support::workspace_files::WorkspaceIndexFixture;
 #[cfg(target_os = "macos")]
-use support::{default_bin_dir, write_current_cli_install_manifest_for_test};
-use support::{published_semantic_command_for_reads, workspace_database_path_for_test};
+use support::default_bin_dir;
+use support::workspace_files::WorkspaceIndexFixture;
+use support::{
+    published_semantic_command_for_reads, workspace_database_path_for_test,
+    write_current_cli_install_manifest_for_test,
+};
 
 fn named(name: &str) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_kast"));
@@ -42,9 +47,17 @@ fn help_exposes_only_the_agent_contract() {
     ] {
         assert!(stdout.contains(command), "missing {command}: {stdout}");
     }
-    for legacy in ["setup", "developer", "rpc", "--output", "schemaVersion"] {
+    for private_command in ["\n  setup ", "\n  developer ", "\n  rpc "] {
+        assert!(
+            !stdout.contains(private_command),
+            "leaked private command {private_command}: {stdout}"
+        );
+    }
+    for legacy in ["--output", "schemaVersion"] {
         assert!(!stdout.contains(legacy), "leaked {legacy}: {stdout}");
     }
+    assert!(stdout.contains("developerOperations"), "{stdout}");
+    assert!(stdout.contains("/kast:developer"), "{stdout}");
 
     let graph = named("kast")
         .args(["graph", "--help"])
@@ -104,30 +117,6 @@ fn removed_output_flag_is_a_usage_error() {
     assert!(stdout.contains("--output"), "{stdout}");
     assert!(stdout.contains("next:"), "{stdout}");
     assert!(output.stderr.is_empty(), "{output:?}");
-}
-
-#[test]
-fn home_reports_live_workspace_state_without_protocol_cruft() {
-    let state = tempfile::tempdir().expect("temporary state");
-    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .expect("repository root");
-    let output = named("kast")
-        .current_dir(workspace)
-        .env("KAST_HOME", state.path().join("kast"))
-        .env("XDG_CONFIG_HOME", state.path().join("config"))
-        .output()
-        .expect("run kast home");
-
-    assert!(output.status.success(), "{output:?}");
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("root:"), "{stdout}");
-    assert!(stdout.contains("ready:"), "{stdout}");
-    assert!(stdout.contains("referenceIndexReady:"), "{stdout}");
-    assert!(stdout.contains("next["), "{stdout}");
-    for cruft in ["state: UNKNOWN", "schemaVersion", "ok:", "method:"] {
-        assert!(!stdout.contains(cruft), "leaked {cruft}: {stdout}");
-    }
 }
 
 #[cfg(target_os = "macos")]

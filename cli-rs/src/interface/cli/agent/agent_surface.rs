@@ -3,7 +3,8 @@
     name = "kast",
     version = version(),
     about = "Compiler-backed Kotlin knowledge and changes for coding agents.",
-    disable_help_subcommand = true
+    disable_help_subcommand = true,
+    after_help = "Developer operations: run `kast` to read `developerOperations`, then invoke `/kast:developer`."
 )]
 pub struct KastCli {
     #[command(subcommand)]

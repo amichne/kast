@@ -1,10 +1,13 @@
 package io.github.amichne.kast.idea.transition
 
+import java.nio.file.FileSystems
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 
@@ -42,13 +45,74 @@ class GitWorktreeTransitionGuardTest {
     }
 
     @Test
-    fun `Git metadata with unavailable exact-worktree paths fails closed`() {
-        val workspace = root.resolve("broken-worktree").also(Files::createDirectories)
-        Files.writeString(workspace.resolve(".git"), "gitdir: ${root.resolve("missing-git-directory")}")
+    fun `missing linked-worktree Git directory is explicit nonblocking evidence`() {
+        val repository = committedRepository()
+        val workspace = root.resolve("broken-worktree")
+        git(repository, "worktree", "add", "--detach", workspace.toString(), "HEAD")
+        val gitFile = workspace.resolve(".git")
+        val missingGitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
+            .toAbsolutePath()
+            .normalize()
+        Files.move(missingGitDirectory, root.resolve("displaced-worktree-git-directory"))
 
-        val unavailable = GitWorktreeTransitionGuard.exactRoot(workspace).inspect()
+        val status = GitWorktreeTransitionGuard.exactRoot(workspace).inspect()
 
-        assertTrue(unavailable is GitWorktreeTransitionStatus.Unavailable)
+        assertEquals(
+            GitWorktreeTransitionStatus.MissingLinkedWorktreeGitDirectory(
+                gitFile = gitFile,
+                gitDirectory = missingGitDirectory,
+            ),
+            status,
+        )
+    }
+
+    @Test
+    fun `missing non-worktree Git directory remains unavailable`() {
+        val repository = committedRepository()
+        val workspace = root.resolve("separate-git-directory-workspace").also(Files::createDirectories)
+        val unregisteredDirectory = repository.resolve(".git/worktrees/unregistered")
+        Files.writeString(workspace.resolve(".git"), "gitdir: $unregisteredDirectory")
+
+        val status = GitWorktreeTransitionGuard.exactRoot(workspace).inspect()
+
+        assertTrue(status is GitWorktreeTransitionStatus.Unavailable)
+    }
+
+    @Test
+    fun `indeterminate Git metadata remains unavailable`() {
+        assumeTrue(FileSystems.getDefault().supportedFileAttributeViews().contains("posix"))
+        val workspace = root.resolve("unreadable-workspace").also(Files::createDirectories)
+        val ownerPermissions = PosixFilePermissions.fromString("rwx------")
+        Files.setPosixFilePermissions(workspace, PosixFilePermissions.fromString("r--------"))
+
+        val status = try {
+            GitWorktreeTransitionGuard.exactRoot(workspace).inspect()
+        } finally {
+            Files.setPosixFilePermissions(workspace, ownerPermissions)
+        }
+
+        assertTrue(status is GitWorktreeTransitionStatus.Unavailable)
+    }
+
+    @Test
+    fun `malformed Git metadata remains unavailable`() {
+        val workspace = root.resolve("malformed-worktree").also(Files::createDirectories)
+        Files.writeString(workspace.resolve(".git"), "not a gitdir directive")
+
+        val status = GitWorktreeTransitionGuard.exactRoot(workspace).inspect()
+
+        assertTrue(status is GitWorktreeTransitionStatus.Unavailable)
+    }
+
+    private fun committedRepository(): Path {
+        val repository = root.resolve("repository").also(Files::createDirectories)
+        git(repository, "init")
+        git(repository, "config", "user.name", "Kast Test")
+        git(repository, "config", "user.email", "kast@example.invalid")
+        Files.writeString(repository.resolve("README.md"), "initial")
+        git(repository, "add", "README.md")
+        git(repository, "commit", "-m", "initial")
+        return repository
     }
 
     private fun git(directory: Path, vararg arguments: String) {

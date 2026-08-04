@@ -44,13 +44,13 @@ fn setup_bundle(source: PathBuf, mode: SetupMode) -> Result<SetupResult> {
                 )?;
             }
             if verify_activated_bundle(&bundle, &targets).is_ok() {
-                return Ok(setup_result(
+                return setup_result(
                     &bundle,
                     &targets,
                     SetupStatus::Current,
                     legacy_archive.backup_path(),
                     &retired_plugin_removal,
-                ));
+                );
             }
         }
 
@@ -87,13 +87,13 @@ fn setup_bundle(source: PathBuf, mode: SetupMode) -> Result<SetupResult> {
                 &legacy_archive,
             ));
         }
-        Ok(setup_result(
+        setup_result(
             &bundle,
             &targets,
             SetupStatus::Activated,
             backup.as_deref().or_else(|| legacy_archive.backup_path()),
             &retired_plugin_removal,
-        ))
+        )
     })
 }
 
@@ -270,8 +270,8 @@ fn setup_result(
     status: SetupStatus,
     backup: Option<&Path>,
     retired_plugin_removal: &RetiredPublicPluginRemoval,
-) -> SetupResult {
-    SetupResult {
+) -> Result<SetupResult> {
+    Ok(SetupResult {
         result_type: "KAST_SETUP",
         status,
         release_digest: bundle.release_digest.clone(),
@@ -279,6 +279,9 @@ fn setup_result(
         kast_home: targets.resolved.install_root.display().to_string(),
         current: targets.current_link.display().to_string(),
         active_binary: targets.resolved.active_binary.display().to_string(),
+        developer_operations: DeveloperOperationsRoute::try_from_cli_path(
+            &targets.resolved.active_binary,
+        )?,
         backup: backup.map(|path| path.display().to_string()),
         restart_requirement: retired_plugin_removal.restart_requirement.clone(),
         artifacts: bundle
@@ -294,5 +297,5 @@ fn setup_result(
             .collect(),
         verified: true,
         schema_version: SCHEMA_VERSION,
-    }
+    })
 }

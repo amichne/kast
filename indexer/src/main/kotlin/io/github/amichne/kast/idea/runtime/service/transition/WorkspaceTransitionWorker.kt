@@ -304,7 +304,9 @@ internal class WorkspaceTransitionWorker(
 
     private fun requireStableGitWorktreeTransition() {
         when (val transition = gitWorktreeTransitionGuard.inspect()) {
-            GitWorktreeTransitionStatus.Stable -> Unit
+            GitWorktreeTransitionStatus.Stable,
+            is GitWorktreeTransitionStatus.MissingLinkedWorktreeGitDirectory,
+            -> Unit
             is GitWorktreeTransitionStatus.InProgress ->
                 throw GitWorktreeTransitionInProgressException(transition)
             is GitWorktreeTransitionStatus.Unavailable ->

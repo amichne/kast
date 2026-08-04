@@ -58,6 +58,7 @@ fn embedded_provider_resource_sources_are_complete_and_local() {
         "copilot/hooks.json",
         "copilot/marketplace.json",
         "copilot/plugin.json",
+        "developer/SKILL.md",
     ];
     assert_eq!(resource_files(&root), expected);
 
@@ -74,6 +75,7 @@ fn embedded_provider_resource_sources_are_complete_and_local() {
                 .unwrap_or_else(|error| panic!("{path} is not valid JSON: {error}"));
         }
     }
+    skill_tests::assert_developer_route_sources(&root);
 }
 
 fn write_provider(path: &Path) {
@@ -394,3 +396,5 @@ const HARNESSES: [HarnessCase; 3] = [
 mod activation_tests;
 #[path = "kast_resources/install.rs"]
 mod install_tests;
+#[path = "kast_resources/skills.rs"]
+mod skill_tests;

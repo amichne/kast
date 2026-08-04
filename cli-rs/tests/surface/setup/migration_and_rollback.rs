@@ -29,6 +29,27 @@ fn setup_keeps_manifest_active_binary_private() {
         String::from_utf8_lossy(&output.stdout),
         String::from_utf8_lossy(&output.stderr),
     );
+    let result: serde_json::Value = serde_json::from_slice(&output.stdout).expect("setup JSON");
+    let routed_cli = Path::new(
+        result["developerOperations"]["cli"]
+            .as_str()
+            .expect("developer CLI route"),
+    );
+    assert_eq!(routed_cli, kast_home.join("current/commands/kastctl"));
+    let help_args = result["developerOperations"]["helpArgs"]
+        .as_array()
+        .expect("developer help args")
+        .iter()
+        .map(|argument| argument.as_str().expect("developer help argument"));
+    let help = Command::new(routed_cli)
+        .args(help_args)
+        .output()
+        .expect("run routed developer help");
+    assert!(help.status.success(), "{help:?}");
+    assert!(
+        String::from_utf8_lossy(&help.stdout).contains("Usage: kastctl"),
+        "{help:?}"
+    );
     assert!(kast_home.join("current/commands/kastctl").is_file());
     assert!(!home.join(".local/bin/_kastctl").exists());
     assert_eq!(

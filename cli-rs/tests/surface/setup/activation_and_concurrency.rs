@@ -49,6 +49,14 @@ fn setup_activates_one_validated_release_and_converges_on_rerun() {
     assert_eq!(first["type"], "KAST_SETUP");
     assert_eq!(first["status"], "ACTIVATED");
     assert_eq!(first["verified"], true);
+    let developer_cli = kast_home.join("current/libexec/kastctl");
+    assert_eq!(first["developerOperations"]["cli"], developer_cli.display().to_string());
+    assert_eq!(
+        first["developerOperations"]["helpArgs"],
+        serde_json::json!(["--help"]),
+    );
+    assert_eq!(first["developerOperations"]["skill"], "/kast:developer");
+    assert_eq!(first["activeBinary"], first["developerOperations"]["cli"]);
     let release_digest = first["releaseDigest"].as_str().expect("release digest");
     assert_eq!(release_digest.len(), 64);
     let release = kast_home.join("releases").join(release_digest);
@@ -82,6 +90,7 @@ fn setup_activates_one_validated_release_and_converges_on_rerun() {
     assert_eq!(second["status"], "CURRENT", "{second_stderr}");
     assert_eq!(second["releaseDigest"], release_digest);
     assert_eq!(second["verified"], true);
+    assert_eq!(second["developerOperations"], first["developerOperations"]);
 
     std::fs::write(kast_home.join("staging/junk"), "stale").expect("stale staging");
     let third = setup(&home, &kast_home, &source);

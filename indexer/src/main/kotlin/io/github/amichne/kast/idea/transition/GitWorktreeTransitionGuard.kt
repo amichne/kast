@@ -2,6 +2,7 @@ package io.github.amichne.kast.idea.transition
 
 import java.io.IOException
 import java.nio.file.Files
+import java.nio.file.InvalidPathException
 import java.nio.file.LinkOption
 import java.nio.file.NoSuchFileException
 import java.nio.file.Path
@@ -22,6 +23,16 @@ internal fun interface GitWorktreeTransitionGuard {
 
 internal sealed interface GitWorktreeTransitionStatus {
     data object Stable : GitWorktreeTransitionStatus
+
+    data class MissingLinkedWorktreeGitDirectory(
+        val gitFile: Path,
+        val gitDirectory: Path,
+    ) : GitWorktreeTransitionStatus {
+        init {
+            require(gitFile.isAbsolute) { "Linked-worktree Git file must be absolute" }
+            require(gitDirectory.isAbsolute) { "Linked-worktree Git directory must be absolute" }
+        }
+    }
 
     data class Unavailable(val detail: String) : GitWorktreeTransitionStatus {
         init {
@@ -77,6 +88,12 @@ private class ResolvedGitWorktreeTransitionGuard(
     override fun inspect(): GitWorktreeTransitionStatus {
         val resolved = resolveMarkerPaths()
         if (resolved is GitMarkerPathResolution.NotGitWorktree) return GitWorktreeTransitionStatus.Stable
+        if (resolved is GitMarkerPathResolution.MissingLinkedWorktreeGitDirectory) {
+            return GitWorktreeTransitionStatus.MissingLinkedWorktreeGitDirectory(
+                gitFile = resolved.gitFile,
+                gitDirectory = resolved.gitDirectory,
+            )
+        }
         if (resolved is GitMarkerPathResolution.Unavailable) {
             return GitWorktreeTransitionStatus.Unavailable(resolved.detail)
         }
@@ -157,19 +174,104 @@ private class ResolvedGitWorktreeTransitionGuard(
         )
     }
 
-    private fun unavailableOrNotGit(detail: String): GitMarkerPathResolution =
-        if (generateSequence(root, Path::getParent).any { directory ->
-                Files.exists(directory.resolve(".git"), LinkOption.NOFOLLOW_LINKS)
+    private fun unavailableOrNotGit(detail: String): GitMarkerPathResolution {
+        var directory: Path? = root
+        while (directory != null) {
+            val currentDirectory = directory
+            val gitFile = currentDirectory.resolve(".git")
+            val attributes = try {
+                Files.readAttributes(
+                    gitFile,
+                    BasicFileAttributes::class.java,
+                    LinkOption.NOFOLLOW_LINKS,
+                )
+            } catch (_: NoSuchFileException) {
+                directory = currentDirectory.parent
+                continue
+            } catch (failure: IOException) {
+                return GitMarkerPathResolution.Unavailable(
+                    "Cannot inspect Git metadata at $gitFile: " +
+                        (failure.message ?: failure::class.qualifiedName.orEmpty()),
+                )
+            } catch (failure: SecurityException) {
+                return GitMarkerPathResolution.Unavailable(
+                    "Cannot inspect Git metadata at $gitFile: " +
+                        (failure.message ?: failure::class.qualifiedName.orEmpty()),
+                )
             }
-        ) {
-            GitMarkerPathResolution.Unavailable(detail)
-        } else {
-            GitMarkerPathResolution.NotGitWorktree
+            return missingLinkedWorktreeGitDirectory(gitFile, attributes)
+                ?: GitMarkerPathResolution.Unavailable(detail)
         }
+        return GitMarkerPathResolution.NotGitWorktree
+    }
+
+    private fun missingLinkedWorktreeGitDirectory(
+        gitFile: Path,
+        gitFileAttributes: BasicFileAttributes,
+    ): GitMarkerPathResolution.MissingLinkedWorktreeGitDirectory? {
+        if (!gitFileAttributes.isRegularFile) return null
+        val directive = try {
+            Files.readString(gitFile).trimEnd('\n', '\r')
+        } catch (_: IOException) {
+            return null
+        } catch (_: SecurityException) {
+            return null
+        }
+        if ('\n' in directive || '\r' in directive || !directive.startsWith(GIT_DIRECTORY_PREFIX)) return null
+        val rawGitDirectory = directive.removePrefix(GIT_DIRECTORY_PREFIX).takeIf(String::isNotBlank)
+            ?: return null
+        val parsed = try {
+            Path.of(rawGitDirectory)
+        } catch (_: InvalidPathException) {
+            return null
+        }
+        val gitDirectory = (if (parsed.isAbsolute) parsed else gitFile.parent.resolve(parsed))
+            .toAbsolutePath()
+            .normalize()
+        val worktreesDirectory = gitDirectory.parent ?: return null
+        if (worktreesDirectory.fileName?.toString() != WORKTREES_DIRECTORY_NAME) return null
+        if (readAttributesOrNull(worktreesDirectory)?.isDirectory != true) return null
+        val commonGitDirectory = worktreesDirectory.parent ?: return null
+        if (!isCommonGitDirectory(commonGitDirectory)) return null
+        if (!Files.notExists(gitDirectory, LinkOption.NOFOLLOW_LINKS)) return null
+        return GitMarkerPathResolution.MissingLinkedWorktreeGitDirectory(
+            gitFile = gitFile.toAbsolutePath().normalize(),
+            gitDirectory = gitDirectory,
+        )
+    }
+
+    private fun isCommonGitDirectory(directory: Path): Boolean {
+        val directoryAttributes = readAttributesOrNull(directory) ?: return false
+        val headAttributes = readAttributesOrNull(directory.resolve("HEAD")) ?: return false
+        val objectsAttributes = readAttributesOrNull(directory.resolve("objects")) ?: return false
+        return directoryAttributes.isDirectory && headAttributes.isRegularFile && objectsAttributes.isDirectory
+    }
+
+    private fun readAttributesOrNull(path: Path): BasicFileAttributes? = try {
+        Files.readAttributes(
+            path,
+            BasicFileAttributes::class.java,
+            LinkOption.NOFOLLOW_LINKS,
+        )
+    } catch (_: IOException) {
+        null
+    } catch (_: SecurityException) {
+        null
+    }
+
+    private companion object {
+        private const val GIT_DIRECTORY_PREFIX = "gitdir: "
+        private const val WORKTREES_DIRECTORY_NAME = "worktrees"
+    }
 }
 
 private sealed interface GitMarkerPathResolution {
     data object NotGitWorktree : GitMarkerPathResolution
+
+    data class MissingLinkedWorktreeGitDirectory(
+        val gitFile: Path,
+        val gitDirectory: Path,
+    ) : GitMarkerPathResolution
 
     data class Unavailable(val detail: String) : GitMarkerPathResolution
 

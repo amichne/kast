@@ -1,5 +1,9 @@
 fn invoked_entrypoint() -> Option<Entrypoint> {
-    match Path::new(&current_executable_argument())
+    entrypoint_for_path(Path::new(&current_executable_argument()))
+}
+
+fn entrypoint_for_path(path: &Path) -> Option<Entrypoint> {
+    match path
         .file_stem()
         .and_then(|name| name.to_str())
     {
