@@ -1,5 +1,8 @@
 package io.github.amichne.kast.idea.transition
 
+import com.intellij.openapi.progress.ProcessCanceledException
+import java.util.concurrent.CancellationException
+
 @JvmInline
 internal value class WorkspaceStateIdentity(val value: String) {
     init {
@@ -75,6 +78,11 @@ internal enum class TransitionRun {
     Blocked,
 }
 
+internal enum class GenerationPublication {
+    Published,
+    Invalidated,
+}
+
 internal interface WorkspaceTransitionOperations {
     fun settle(signals: Set<WorkspaceSignal>)
 
@@ -82,10 +90,11 @@ internal interface WorkspaceTransitionOperations {
 
     fun captureIdentity(): WorkspaceStateIdentity
 
-    fun reconcile(candidate: WorkspaceStateIdentity)
+    /** Returns the identity of the inputs that were actually reconciled. */
+    fun reconcile(candidate: WorkspaceStateIdentity): WorkspaceStateIdentity
 
     /** Publishes the complete candidate generation in one durable transaction. */
-    fun publish(generation: PublishedWorkspaceGeneration)
+    fun publish(generation: PublishedWorkspaceGeneration): GenerationPublication
 }
 
 /**
@@ -95,6 +104,8 @@ internal interface WorkspaceTransitionOperations {
 internal class WorkspaceTransitionCoordinator(
     private val operations: WorkspaceTransitionOperations,
     initialPublished: PublishedWorkspaceGeneration? = null,
+    private val onTransition: (WorkspaceTransitionSnapshot) -> Unit = {},
+    private val onBlocked: (TransitionBlocker, Throwable) -> Unit = { _, _ -> },
 ) {
     private val lock = Any()
     private val pendingSignals = linkedSetOf<WorkspaceSignal>()
@@ -104,97 +115,202 @@ internal class WorkspaceTransitionCoordinator(
     private var observedEventCount = 0L
 
     fun observe(signal: WorkspaceSignal) {
-        synchronized(lock) {
+        val changed = synchronized(lock) {
             observedEventCount = Math.addExact(observedEventCount, 1)
             pendingSignals += signal
             blocker = null
-            lifecycle = WorkspaceLifecycle.Dirty
+            if (lifecycle != WorkspaceLifecycle.Settling) lifecycle = WorkspaceLifecycle.Dirty
+            snapshotLocked()
         }
+        emit(changed)
     }
 
-    fun snapshot(): WorkspaceTransitionSnapshot = synchronized(lock) {
-        WorkspaceTransitionSnapshot(
-            lifecycle = lifecycle,
-            pendingSignals = pendingSignals.toSet(),
-            published = published,
-            blocker = blocker,
-            observedEventCount = observedEventCount,
-        )
-    }
+    fun snapshot(): WorkspaceTransitionSnapshot = synchronized(lock, ::snapshotLocked)
 
     fun reconcilePending(): TransitionRun {
-        val cycle = synchronized(lock) {
+        val settling = synchronized(lock) {
             if (pendingSignals.isEmpty()) return TransitionRun.NoWork
-            val admittedSignals = pendingSignals.toSet()
-            pendingSignals.clear()
             lifecycle = WorkspaceLifecycle.Settling
-            TransitionCycle(admittedSignals, observedEventCount)
+            pendingSignals.toSet() to snapshotLocked()
+        }
+        emit(settling.second)
+        runPhase(TransitionPhase.Settling) { operations.settle(settling.first) }
+            .onFailure { return block(TransitionPhase.Settling, it) }
+
+        val cycleAndState = synchronized(lock) {
+            val cycle = TransitionCycle(
+                signals = pendingSignals.toSet(),
+                observedEventCount = observedEventCount,
+            )
+            pendingSignals.clear()
+            lifecycle = WorkspaceLifecycle.Refreshing
+            cycle to snapshotLocked()
+        }
+        val cycle = cycleAndState.first
+        emit(cycleAndState.second)
+
+        runPhase(TransitionPhase.Refreshing) { operations.refresh(cycle.signals) }
+            .onFailure { return block(TransitionPhase.Refreshing, it, cycle) }
+        if (!advance(cycle, WorkspaceLifecycle.Reconciling)) return TransitionRun.Invalidated
+
+        val candidate = runPhase(TransitionPhase.Reconciling, operations::captureIdentity)
+            .getOrElse { return block(TransitionPhase.Reconciling, it, cycle) }
+        val reconciledCandidate = runPhase(TransitionPhase.Reconciling) { operations.reconcile(candidate) }
+            .getOrElse { return block(TransitionPhase.Reconciling, it, cycle) }
+        if (!advance(cycle, WorkspaceLifecycle.Verifying)) return TransitionRun.Invalidated
+
+        val verified = runPhase(TransitionPhase.Verifying, operations::captureIdentity)
+            .getOrElse { return block(TransitionPhase.Verifying, it, cycle) }
+        if (reconciledCandidate != verified) {
+            invalidate(cycle, includeAudit = true)
+            return TransitionRun.Invalidated
         }
 
-        runPhase(TransitionPhase.Settling, WorkspaceLifecycle.Settling) {
-            operations.settle(cycle.signals)
-        } ?: return TransitionRun.Blocked
-        runPhase(TransitionPhase.Refreshing, WorkspaceLifecycle.Refreshing) {
-            operations.refresh(cycle.signals)
-        } ?: return TransitionRun.Blocked
+        return publish(cycle, verified)
+    }
 
-        val candidate = runPhase(TransitionPhase.Verifying, WorkspaceLifecycle.Reconciling) {
-            operations.captureIdentity()
-        } ?: return TransitionRun.Blocked
-        runPhase(TransitionPhase.Reconciling, WorkspaceLifecycle.Reconciling) {
-            operations.reconcile(candidate)
-        } ?: return TransitionRun.Blocked
-        val verified = runPhase(TransitionPhase.Verifying, WorkspaceLifecycle.Verifying) {
-            operations.captureIdentity()
-        } ?: return TransitionRun.Blocked
-
-        return synchronized(lock) {
-            if (
-                candidate != verified ||
-                observedEventCount != cycle.observedEventCount ||
-                pendingSignals.isNotEmpty()
-            ) {
-                pendingSignals += WorkspaceSignal.RecoveryAudit
-                lifecycle = WorkspaceLifecycle.Dirty
-                return@synchronized TransitionRun.Invalidated
+    private fun publish(
+        cycle: TransitionCycle,
+        verified: WorkspaceStateIdentity,
+    ): TransitionRun {
+        var failure: Throwable? = null
+        var failedBlocker: TransitionBlocker? = null
+        val resultAndState = synchronized(lock) {
+            if (!isCurrent(cycle)) {
+                retainForRetry(cycle, includeAudit = false)
+                return@synchronized TransitionRun.Invalidated to snapshotLocked()
             }
             val next = PublishedWorkspaceGeneration(
                 generation = published?.generation?.next() ?: SemanticGeneration(1),
                 identity = verified,
             )
-            try {
-                operations.publish(next)
-                published = next
-                blocker = null
-                lifecycle = WorkspaceLifecycle.Ready
-                TransitionRun.Published
-            } catch (failure: Throwable) {
-                block(TransitionPhase.Publishing, failure)
+            val result = try {
+                when (operations.publish(next)) {
+                    GenerationPublication.Published -> {
+                        if (isCurrent(cycle)) {
+                            published = next
+                            blocker = null
+                            lifecycle = WorkspaceLifecycle.Ready
+                            TransitionRun.Published
+                        } else {
+                            retainForRetry(cycle, includeAudit = false)
+                            TransitionRun.Invalidated
+                        }
+                    }
+
+                    GenerationPublication.Invalidated -> {
+                        retainForRetry(cycle, includeAudit = false)
+                        TransitionRun.Invalidated
+                    }
+                }
+            } catch (caught: Throwable) {
+                rethrowCancellation(caught)
+                retainForRetry(cycle, includeAudit = false)
+                failure = caught
+                failedBlocker = blockLocked(TransitionPhase.Publishing, caught)
                 TransitionRun.Blocked
             }
+            result to snapshotLocked()
         }
+        emit(resultAndState.second)
+        failure?.let { caught -> notifyBlocked(checkNotNull(failedBlocker), caught) }
+        return resultAndState.first
     }
 
-    private fun <T> runPhase(
+    private fun advance(
+        cycle: TransitionCycle,
+        next: WorkspaceLifecycle,
+    ): Boolean {
+        val currentAndState = synchronized(lock) {
+            val current = isCurrent(cycle)
+            if (current) {
+                lifecycle = next
+            } else {
+                retainForRetry(cycle, includeAudit = false)
+            }
+            current to snapshotLocked()
+        }
+        emit(currentAndState.second)
+        return currentAndState.first
+    }
+
+    private fun invalidate(cycle: TransitionCycle, includeAudit: Boolean) {
+        val changed = synchronized(lock) {
+            retainForRetry(cycle, includeAudit)
+            snapshotLocked()
+        }
+        emit(changed)
+    }
+
+    private fun block(
         phase: TransitionPhase,
-        state: WorkspaceLifecycle,
-        operation: () -> T,
-    ): T? {
-        synchronized(lock) { lifecycle = state }
-        return try {
-            operation()
-        } catch (failure: Throwable) {
-            synchronized(lock) { block(phase, failure) }
-            null
+        failure: Throwable,
+        cycle: TransitionCycle? = null,
+    ): TransitionRun {
+        rethrowCancellation(failure)
+        val blockerAndState = synchronized(lock) {
+            cycle?.let { pendingSignals += it.signals }
+            val currentBlocker = blockLocked(phase, failure)
+            currentBlocker to snapshotLocked()
         }
+        emit(blockerAndState.second)
+        notifyBlocked(blockerAndState.first, failure)
+        return TransitionRun.Blocked
     }
 
-    private fun block(phase: TransitionPhase, failure: Throwable) {
-        blocker = TransitionBlocker(
+    private fun blockLocked(phase: TransitionPhase, failure: Throwable): TransitionBlocker {
+        val currentBlocker = TransitionBlocker(
             phase = phase,
             detail = failure.message?.takeIf(String::isNotBlank) ?: failure::class.qualifiedName.orEmpty(),
         )
+        blocker = currentBlocker
         lifecycle = WorkspaceLifecycle.Blocked
+        return currentBlocker
+    }
+
+    private fun retainForRetry(cycle: TransitionCycle, includeAudit: Boolean) {
+        pendingSignals += cycle.signals
+        if (includeAudit) pendingSignals += WorkspaceSignal.RecoveryAudit
+        lifecycle = WorkspaceLifecycle.Dirty
+    }
+
+    private fun isCurrent(cycle: TransitionCycle): Boolean =
+        observedEventCount == cycle.observedEventCount && pendingSignals.isEmpty()
+
+    private fun snapshotLocked(): WorkspaceTransitionSnapshot = WorkspaceTransitionSnapshot(
+        lifecycle = lifecycle,
+        pendingSignals = pendingSignals.toSet(),
+        published = published,
+        blocker = blocker,
+        observedEventCount = observedEventCount,
+    )
+
+    private fun emit(snapshot: WorkspaceTransitionSnapshot) {
+        runCatching { onTransition(snapshot) }
+    }
+
+    private fun notifyBlocked(blocker: TransitionBlocker, failure: Throwable) {
+        runCatching { onBlocked(blocker, failure) }
+    }
+
+    private fun <T> runPhase(phase: TransitionPhase, operation: () -> T): Result<T> = try {
+        Result.success(operation())
+    } catch (failure: Throwable) {
+        rethrowCancellation(failure)
+        Result.failure(failure)
+    }
+
+    private fun rethrowCancellation(failure: Throwable) {
+        when (failure) {
+            is InterruptedException -> {
+                Thread.currentThread().interrupt()
+                throw failure
+            }
+
+            is CancellationException,
+            is ProcessCanceledException,
+            -> throw failure
+        }
     }
 
     private data class TransitionCycle(

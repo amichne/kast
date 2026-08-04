@@ -123,12 +123,14 @@ private class RecordingOperations(
     override fun captureIdentity(): WorkspaceStateIdentity =
         identities.removeFirstOrNull() ?: WorkspaceStateIdentity("state-1")
 
-    override fun reconcile(candidate: WorkspaceStateIdentity) {
+    override fun reconcile(candidate: WorkspaceStateIdentity): WorkspaceStateIdentity {
         reconciliations.incrementAndGet()
         reconcile()
+        return candidate
     }
 
-    override fun publish(generation: PublishedWorkspaceGeneration) {
+    override fun publish(generation: PublishedWorkspaceGeneration): GenerationPublication {
         published += generation.identity
+        return GenerationPublication.Published
     }
 }

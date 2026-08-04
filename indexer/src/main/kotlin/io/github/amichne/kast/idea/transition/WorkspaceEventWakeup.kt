@@ -39,6 +39,20 @@ internal class WorkspaceEventWakeup(
         false
     }
 
+    fun awaitWakeup(auditMillis: Long): WorkspaceWakeup = try {
+        lock.withLock {
+            if (!pending) {
+                val signalled = changed.await(auditMillis, TimeUnit.MILLISECONDS)
+                if (!signalled && !pending) return@withLock WorkspaceWakeup.RecoveryAudit
+            }
+            pending = false
+            WorkspaceWakeup.Signal
+        }
+    } catch (_: InterruptedException) {
+        Thread.currentThread().interrupt()
+        WorkspaceWakeup.Interrupted
+    }
+
     fun awaitQuiescence(quiescenceMillis: Long): Boolean = try {
         lock.withLock {
             while (true) {
@@ -53,4 +67,10 @@ internal class WorkspaceEventWakeup(
         Thread.currentThread().interrupt()
         false
     }
+}
+
+internal enum class WorkspaceWakeup {
+    Signal,
+    RecoveryAudit,
+    Interrupted,
 }
