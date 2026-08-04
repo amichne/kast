@@ -1,4 +1,4 @@
-package io.github.amichne.kast.idea.backend
+package io.github.amichne.kast.idea.backend.semantic
 
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.idea.IdeaIndexSemanticAdmission

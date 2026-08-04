@@ -83,7 +83,7 @@ import io.github.amichne.kast.idea.backend.relationships.*
 import io.github.amichne.kast.idea.backend.diagnostics.*
 import io.github.amichne.kast.idea.backend.mutation.*
 import io.github.amichne.kast.idea.backend.workspace.*
-import io.github.amichne.kast.idea.backend.semantic.semanticGraphOperation
+import io.github.amichne.kast.idea.backend.semantic.*
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 
 internal class KastIndexerBackend(
