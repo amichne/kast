@@ -1,5 +1,6 @@
 package io.github.amichne.kast.indexstore.snapshot
 
+import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
 import java.nio.channels.FileChannel
 import java.nio.file.Files
 import java.nio.file.Path
@@ -31,26 +32,40 @@ value class WorkspaceSemanticGeneration(val value: Long) {
 }
 
 data class WorkspaceDatabaseExportEvidence(
-    val generationBefore: Long,
-    val generationAfter: Long,
+    val generationBefore: SourceIndexGeneration,
+    val generationAfter: SourceIndexGeneration,
+    val moduleProgressCount: Int,
     val incompleteModuleCount: Int,
     val pendingUpdateCount: Int,
+    val sourceIndexSchemaVersion: SourceIndexSchemaVersion,
 ) {
     init {
-        require(generationBefore >= 0) { "Source index generation must not be negative" }
-        require(generationAfter >= 0) { "Source index generation must not be negative" }
+        require(moduleProgressCount >= 0) { "Module progress count must not be negative" }
         require(incompleteModuleCount >= 0) { "Incomplete module count must not be negative" }
         require(pendingUpdateCount >= 0) { "Pending update count must not be negative" }
     }
 
     val provesCompleteStableDatabase: Boolean
-        get() = generationBefore == generationAfter && incompleteModuleCount == 0 && pendingUpdateCount == 0
+        get() = generationBefore == generationAfter &&
+            moduleProgressCount > 0 &&
+            incompleteModuleCount == 0 &&
+            pendingUpdateCount == 0
+}
+
+@Serializable
+@JvmInline
+value class SourceIndexSchemaVersion(val value: Int) {
+    init {
+        require(value > 0) { "Source index schema version must be positive" }
+    }
 }
 
 @Serializable
 data class PublishedWorkspaceGenerationManifest(
     val generation: WorkspaceSemanticGeneration,
     val identity: PublishedWorkspaceIdentity,
+    val sourceIndexGeneration: SourceIndexGeneration,
+    val sourceIndexSchemaVersion: SourceIndexSchemaVersion,
     val databaseFile: String,
     val publishedAtEpochMillis: Long,
 ) {
@@ -95,6 +110,8 @@ class WorkspaceGenerationStore(
             val manifest = PublishedWorkspaceGenerationManifest(
                 generation = generation,
                 identity = identity,
+                sourceIndexGeneration = evidence.generationAfter,
+                sourceIndexSchemaVersion = evidence.sourceIndexSchemaVersion,
                 databaseFile = databaseFile,
                 publishedAtEpochMillis = nowEpochMillis(),
             )

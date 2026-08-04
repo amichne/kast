@@ -1,5 +1,8 @@
 package io.github.amichne.kast.indexstore.snapshot
 
+import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
+import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -27,6 +30,8 @@ class WorkspaceGenerationStoreTest {
         val second = store.publish(PublishedWorkspaceIdentity("workspace-two"))
 
         assertEquals(WorkspaceSemanticGeneration(2), second.generation)
+        assertEquals(SourceIndexGeneration(7), second.sourceIndexGeneration)
+        assertEquals(SourceIndexSchemaVersion(SOURCE_INDEX_SCHEMA_VERSION), second.sourceIndexSchemaVersion)
         assertEquals(second, store.current())
         assertEquals("generation-two", Files.readString(store.database(second)))
         assertEquals("generation-one", Files.readString(store.database(first)))
@@ -63,7 +68,7 @@ class WorkspaceGenerationStoreTest {
     fun `unstable or incomplete export never becomes current`() {
         val store = WorkspaceGenerationStore(root.resolve("published"), exportDatabase = { target ->
             Files.writeString(target, "candidate")
-            stableEvidence().copy(generationAfter = 8)
+            stableEvidence().copy(generationAfter = SourceIndexGeneration(8))
         })
 
         assertThrows(IllegalArgumentException::class.java) {
@@ -73,10 +78,29 @@ class WorkspaceGenerationStoreTest {
         assertEquals(null, store.current())
     }
 
+    @Test
+    fun `empty module progress cannot become current`() {
+        SqliteSourceIndexStore(root.resolve("workspace")).use { sourceIndex ->
+            sourceIndex.ensureSchema()
+            val store = WorkspaceGenerationStore(
+                directory = root.resolve("published"),
+                exportDatabase = sourceIndex::exportVerifiedWorkspaceDatabase,
+            )
+
+            assertThrows(IllegalArgumentException::class.java) {
+                store.publish(PublishedWorkspaceIdentity("workspace-one"))
+            }
+
+            assertEquals(null, store.current())
+        }
+    }
+
     private fun stableEvidence() = WorkspaceDatabaseExportEvidence(
-        generationBefore = 7,
-        generationAfter = 7,
+        generationBefore = SourceIndexGeneration(7),
+        generationAfter = SourceIndexGeneration(7),
+        moduleProgressCount = 1,
         incompleteModuleCount = 0,
         pendingUpdateCount = 0,
+        sourceIndexSchemaVersion = SourceIndexSchemaVersion(SOURCE_INDEX_SCHEMA_VERSION),
     )
 }
