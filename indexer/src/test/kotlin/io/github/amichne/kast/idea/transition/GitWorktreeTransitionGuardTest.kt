@@ -67,6 +67,37 @@ class GitWorktreeTransitionGuardTest {
     }
 
     @Test
+    fun `ambient Git repository selection cannot hide a missing worktree directory`() {
+        val repository = committedRepository()
+        val workspace = root.resolve("poisoned-broken-worktree")
+        git(repository, "worktree", "add", "--detach", workspace.toString(), "HEAD")
+        val missingGitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
+            .toAbsolutePath()
+            .normalize()
+        Files.move(missingGitDirectory, root.resolve("displaced-poisoned-worktree-git-directory"))
+        val unrelatedRepository = root.resolve("unrelated-repository").also(Files::createDirectories)
+        git(unrelatedRepository, "init")
+
+        val java = Path.of(System.getProperty("java.home"), "bin", "java")
+        val probe = ProcessBuilder(
+            java.toString(),
+            "-cp",
+            System.getProperty("java.class.path"),
+            GitWorktreeTransitionGuardPoisonProbe::class.java.name,
+            workspace.toString(),
+            missingGitDirectory.toString(),
+        ).redirectErrorStream(true)
+        probe.environment()["GIT_DIR"] = unrelatedRepository.resolve(".git").toString()
+        probe.environment()["GIT_WORK_TREE"] = workspace.toString()
+        probe.environment()["GIT_COMMON_DIR"] = unrelatedRepository.resolve(".git").toString()
+        probe.environment()["GIT_INDEX_FILE"] = unrelatedRepository.resolve(".git/index").toString()
+        val process = probe.start()
+        val output = process.inputStream.use { input -> input.readAllBytes().toString(Charsets.UTF_8) }
+
+        assertTrue(process.waitFor() == 0, output)
+    }
+
+    @Test
     fun `missing non-worktree Git directory remains unavailable`() {
         val repository = committedRepository()
         val workspace = root.resolve("separate-git-directory-workspace").also(Files::createDirectories)

@@ -60,6 +60,17 @@ internal enum class GitWorktreeTransitionMarker(internal val gitPath: String) {
     SEQUENCER("sequencer"),
 }
 
+private enum class GitRepositorySelectionEnvironment(val variable: String) {
+    GIT_DIR("GIT_DIR"),
+    GIT_WORK_TREE("GIT_WORK_TREE"),
+    GIT_COMMON_DIR("GIT_COMMON_DIR"),
+    GIT_INDEX_FILE("GIT_INDEX_FILE"),
+    GIT_OBJECT_DIRECTORY("GIT_OBJECT_DIRECTORY"),
+    GIT_ALTERNATE_OBJECT_DIRECTORIES("GIT_ALTERNATE_OBJECT_DIRECTORIES"),
+    GIT_CEILING_DIRECTORIES("GIT_CEILING_DIRECTORIES"),
+    GIT_DISCOVERY_ACROSS_FILESYSTEM("GIT_DISCOVERY_ACROSS_FILESYSTEM"),
+}
+
 internal data class GitWorktreeTransitionMarkerEvidence(
     val marker: GitWorktreeTransitionMarker,
     val path: Path,
@@ -138,7 +149,11 @@ private class ResolvedGitWorktreeTransitionGuard(
             }
         }
         val process = runCatching {
-            ProcessBuilder(command)
+            ProcessBuilder(command).also { builder ->
+                GitRepositorySelectionEnvironment.entries.forEach { selection ->
+                    builder.environment().remove(selection.variable)
+                }
+            }
                 .directory(root.toFile())
                 .redirectErrorStream(true)
                 .start()
