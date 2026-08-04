@@ -31,6 +31,10 @@ flowchart LR
   projections, coverage, and generation pinning.
 - [Shutdown](flows/shutdown.md) explains lease, transport, worker, endpoint,
   and store close order.
+- [Event-driven semantic atomicity](event-driven-semantic-atomicity.md)
+  defines invalidation, workspace identity, verified publication, and read
+  admission. Its [research ledger](research-ledger.md) maps each decision to
+  source, platform contracts, or executable proof.
 
 The [architecture decisions](architecture-decisions.md) record the boundaries
 that keep these flows deterministic. The

@@ -18,6 +18,7 @@ import java.util.concurrent.CancellationException
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.atomic.AtomicLong
 
 internal class IdeaIndexSemanticAdmission(
     private val project: Project,
@@ -28,13 +29,18 @@ internal class IdeaIndexSemanticAdmission(
     private val pollIntervalMillis: Long = 250L,
 ) {
     private val status = AtomicReference<Status>(Status.Pending("compiler-backed semantic admission has not started"))
+    private val revision = AtomicLong(0)
+    private val transitionLock = Any()
 
     init {
         require(maxWaitMillis >= 0) { "maxWaitMillis must not be negative" }
         require(pollIntervalMillis > 0) { "pollIntervalMillis must be positive" }
     }
 
-    fun await(cancelled: () -> Boolean) {
+    fun await(
+        publishReady: Boolean = true,
+        cancelled: () -> Boolean,
+    ) {
         val startedAtNanos = nanoTime()
         try {
             while (true) {
@@ -47,7 +53,13 @@ internal class IdeaIndexSemanticAdmission(
                     .executeSynchronously()
                 val pending = when (inspection) {
                     Inspection.Ready -> {
-                        status.set(Status.Ready)
+                        status.set(
+                            if (publishReady) {
+                                Status.Ready
+                            } else {
+                                Status.Pending("compiler model is ready; workspace generation is not verified")
+                            },
+                        )
                         return
                     }
                     is Inspection.Pending -> inspection.also {
@@ -82,8 +94,48 @@ internal class IdeaIndexSemanticAdmission(
     fun status(): Status = status.get()
 
     fun fail(detail: String) {
-        status.set(Status.Failed(detail))
+        synchronized(transitionLock) {
+            revision.incrementAndGet()
+            status.set(Status.Failed(detail))
+        }
     }
+
+    fun dirty(detail: String) {
+        require(detail.isNotBlank()) { "Dirty semantic-admission detail must not be blank" }
+        synchronized(transitionLock) {
+            revision.incrementAndGet()
+            status.set(Status.Pending(detail))
+        }
+    }
+
+    fun beginReconciliation(detail: String): ReconciliationToken {
+        require(detail.isNotBlank()) { "Reconciliation detail must not be blank" }
+        return synchronized(transitionLock) {
+            val nextRevision = revision.incrementAndGet()
+            status.set(Status.Pending(detail))
+            ReconciliationToken(nextRevision)
+        }
+    }
+
+    fun publishReady(token: ReconciliationToken, publish: () -> Unit = {}): Boolean = synchronized(transitionLock) {
+        if (revision.get() != token.revision) return@synchronized false
+        publish()
+        status.set(Status.Ready)
+        true
+    }
+
+    fun openRead(): WorkspaceReadToken = synchronized(transitionLock) {
+        check(status.get() == Status.Ready) { "Workspace semantic generation is not READY" }
+        WorkspaceReadToken(revision.get())
+    }
+
+    fun isReadCurrent(token: WorkspaceReadToken): Boolean = synchronized(transitionLock) {
+        status.get() == Status.Ready && revision.get() == token.revision
+    }
+
+    class ReconciliationToken internal constructor(internal val revision: Long)
+
+    class WorkspaceReadToken internal constructor(internal val revision: Long)
 
     private fun elapsedMillisSince(startedAtNanos: Long): Long =
         ((nanoTime() - startedAtNanos).coerceAtLeast(0L) / NANOS_PER_MILLISECOND)

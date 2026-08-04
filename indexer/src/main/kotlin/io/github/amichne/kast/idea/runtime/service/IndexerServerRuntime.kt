@@ -12,6 +12,8 @@ import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceIdentity
+import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
 import io.github.amichne.kast.server.AnalysisServer
 import io.github.amichne.kast.server.RuntimeLifecycleController
 import io.github.amichne.kast.server.RunningAnalysisServer
@@ -104,6 +106,10 @@ object IndexerServerRuntime {
             workspaceIdentity.workspaceIdentity.sourceIndexDatabaseFile,
         )
         val sourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity)
+        val workspaceGenerationStore = WorkspaceGenerationStore(
+            directory = workspaceIdentity.workspaceIdentity.workspaceDataDirectoryPath.resolve("semantic-generations"),
+            exportDatabase = sourceIndexStore::exportVerifiedWorkspaceDatabase,
+        )
         preparedOverlay?.let { overlay ->
             (overlay.tombstones + overlay.shards.keys).forEach { relativePath ->
                 sourceIndexStore.removeFile(workspaceIdentity.workspaceRootPath.resolve(relativePath).toString())
@@ -139,6 +145,8 @@ object IndexerServerRuntime {
                 },
                 workspaceIndexingScopeCache = indexingScopeCache,
                 indexSemanticAdmissionStatus = semanticAdmission::status,
+                openWorkspaceRead = semanticAdmission::openRead,
+                isWorkspaceReadCurrent = semanticAdmission::isReadCurrent,
             )
             pluginBackend = startedPluginBackend
             ObservedAnalysisBackend(
@@ -195,12 +203,15 @@ object IndexerServerRuntime {
                     indexStore = sourceIndexStore,
                     semanticAdmission = semanticAdmission,
                     snapshotCoordinator = snapshotCoordinator,
+                    publishWorkspaceGeneration = { identity ->
+                        workspaceGenerationStore.publish(PublishedWorkspaceIdentity(identity.value))
+                    },
                     scopeCache = indexingScopeCache,
                     semanticGraphIndexer = { scope, batchSize ->
                         if (scope.paths.isNotEmpty() || scope.removedPaths.isNotEmpty()) {
                             startedPluginBackend.updateSemanticGraphBatchSize(batchSize)
                             runBlocking {
-                                startedPluginBackend.semanticGraph(
+                                startedPluginBackend.reconcileSemanticGraph(
                                     ParsedSemanticGraphQuery(
                                         filePaths = scope.paths.distinct().sorted().map { path -> path.absolute },
                                         removedFilePaths = scope.removedPaths

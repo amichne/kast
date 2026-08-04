@@ -1,5 +1,7 @@
 use super::*;
 
+static ADD_FILE_PLAN_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 pub(super) fn kast(home: &Path, config_home: &Path, workspace: &Path) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_kast"));
     command
@@ -63,6 +65,7 @@ pub(super) fn plan_add_file(
     relative_path: &str,
     content: &str,
 ) -> String {
+    let _plan_guard = ADD_FILE_PLAN_LOCK.lock().expect("add-file plan lock");
     let change = change_add_file(binary, home, config_home, workspace, relative_path, content);
     assert!(
         change.status.success(),

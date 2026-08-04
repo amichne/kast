@@ -73,6 +73,72 @@ class IdeaIndexSemanticAdmissionTest {
     }
 
     @Test
+    fun `event invalidates an in-flight reconciliation token`() {
+        val admission = readyAdmission()
+        val token = admission.beginReconciliation("workspace reconciliation is active")
+
+        admission.dirty("source file changed")
+
+        assertTrue(admission.status() is IdeaIndexSemanticAdmission.Status.Pending)
+        assertEquals(false, admission.publishReady(token))
+    }
+
+    @Test
+    fun `compiler readiness does not admit reads before the first workspace generation`() {
+        val admission = IdeaIndexSemanticAdmission(
+            project = projectStub(),
+            inspectProject = { IdeaIndexSemanticAdmission.Inspection.Ready },
+        )
+
+        admission.await(publishReady = false) { false }
+
+        assertTrue(admission.status() is IdeaIndexSemanticAdmission.Status.Pending)
+        assertThrows(IllegalStateException::class.java) { admission.openRead() }
+    }
+
+    @Test
+    fun `read token detects a workspace transition during a request`() {
+        val admission = readyAdmission()
+        val token = admission.openRead()
+
+        admission.dirty("build model changed")
+
+        assertEquals(false, admission.isReadCurrent(token))
+    }
+
+    @Test
+    fun `publication and ready commit exclude an observed invalidation`() {
+        val admission = readyAdmission()
+        val token = admission.beginReconciliation("workspace reconciliation is active")
+        val publicationStarted = CountDownLatch(1)
+        val releasePublication = CountDownLatch(1)
+        val dirtyCompleted = CountDownLatch(1)
+        val publisher = Thread {
+            admission.publishReady(token) {
+                publicationStarted.countDown()
+                releasePublication.await()
+            }
+        }
+        val invalidator = Thread {
+            publicationStarted.await()
+            admission.dirty("source changed during publication")
+            dirtyCompleted.countDown()
+        }
+
+        publisher.start()
+        invalidator.start()
+        assertTrue(publicationStarted.await(1, TimeUnit.SECONDS))
+        assertEquals(false, dirtyCompleted.await(100, TimeUnit.MILLISECONDS))
+
+        releasePublication.countDown()
+        publisher.join(1_000)
+        invalidator.join(1_000)
+
+        assertTrue(dirtyCompleted.await(1, TimeUnit.SECONDS))
+        assertTrue(admission.status() is IdeaIndexSemanticAdmission.Status.Pending)
+    }
+
+    @Test
     fun `semantic admission yields to a pending EDT write action`() {
         val application = ApplicationManager.getApplication()
         val readStarted = CountDownLatch(1)
@@ -91,7 +157,7 @@ class IdeaIndexSemanticAdmissionTest {
                 IdeaIndexSemanticAdmission.Inspection.Ready
             },
         )
-        val admissionFuture = executor.submit { admission.await(stopRead::get) }
+        val admissionFuture = executor.submit { admission.await(cancelled = stopRead::get) }
         var writeFuture: Future<*>? = null
 
         try {
@@ -132,4 +198,9 @@ class IdeaIndexSemanticAdmissionTest {
                 else -> null
             }
         } as Project
+
+    private fun readyAdmission(): IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(
+        project = projectStub(),
+        inspectProject = { IdeaIndexSemanticAdmission.Inspection.Ready },
+    ).also { it.await { false } }
 }

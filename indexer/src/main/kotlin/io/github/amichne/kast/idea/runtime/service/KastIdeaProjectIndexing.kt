@@ -7,6 +7,12 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
 import io.github.amichne.kast.idea.diagnostics.*
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
+import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
+import io.github.amichne.kast.idea.transition.WorkspaceSignal
+import io.github.amichne.kast.idea.transition.WorkspaceVfsEventObserver
+import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
+import io.github.amichne.kast.idea.transition.WorkspaceStateIdentityResolver
+import io.github.amichne.kast.idea.transition.IdeaSemanticEnvironmentIdentityResolver
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
@@ -21,10 +27,18 @@ internal class KastIdeaProjectIndexing(
     private val indexStore: SqliteSourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity),
     private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
     private val snapshotCoordinator: RepositorySnapshotCoordinator? = null,
+    private val publishWorkspaceGeneration: ((WorkspaceStateIdentity) -> Unit)? = null,
     private val liveConfigLoader: (Path, KastConfig) -> KastConfig = ::loadLiveIndexingConfig,
     private val semanticGraphIndexer: (IndexedSourceIdentifiers, GraphIndexingBatchSize) -> Unit = { _, _ -> },
     private val runProjectIndexing: ((KastConfig, (IndexedSourceIdentifiers) -> Unit) -> Unit)? = null,
-    private val waitForNextPass: (Long) -> Boolean = ::waitForIndexingRetry,
+    private val waitForNextPass: ((Long) -> Boolean)? = null,
+    private val eventWakeup: WorkspaceEventWakeup = WorkspaceEventWakeup(),
+    private val observeWorkspaceEvents: (Project, Path, (WorkspaceSignal) -> Unit) -> AutoCloseable =
+        { observedProject, observedRoot, observed ->
+            WorkspaceVfsEventObserver.subscribe(observedProject, observedRoot, observed)
+        },
+    private val refreshWorkspace: (Project, Path, Set<WorkspaceSignal>) -> Unit = ::refreshWorkspaceModels,
+    private val resolveWorkspaceStateIdentity: (() -> WorkspaceStateIdentity)? = null,
     private val scopeCache: WorkspaceIndexingScopeCache = WorkspaceIndexingScopeCache(),
 ) {
     constructor(
@@ -48,11 +62,18 @@ internal class KastIdeaProjectIndexing(
     @Volatile
     private var indexingThread: Thread? = null
 
+    @Volatile
+    private var workspaceEventObserver: AutoCloseable? = null
+
     fun start() {
         if (!startRequested.compareAndSet(false, true)) return
         if (cancelled.get()) {
             indexingTerminated.countDown()
             return
+        }
+        workspaceEventObserver = observeWorkspaceEvents(project, workspaceRoot) { signal ->
+            semanticAdmission.dirty("workspace event requires reconciliation: ${signal.name}")
+            eventWakeup.signal(signal)
         }
         KastStructuredTrace.event(
             eventName = "idea.index.waiting_for_smart_mode",
@@ -107,6 +128,8 @@ internal class KastIdeaProjectIndexing(
             }
         }
         worker?.interrupt()
+        workspaceEventObserver?.close()
+        workspaceEventObserver = null
         if (wasRunning) {
             KastStructuredTrace.event(
                 eventName = "idea.index.cancelled",
@@ -144,7 +167,7 @@ internal class KastIdeaProjectIndexing(
                 detail = workspaceIdentity.traceDetails(),
             )
             diagnostics.recordIndexHydrating()
-            semanticAdmission.await {
+            semanticAdmission.await(publishReady = false) {
                 cancelled.get() || Thread.currentThread().isInterrupted || project.isDisposed
             }
             runCatching {
@@ -177,6 +200,25 @@ internal class KastIdeaProjectIndexing(
         var lastValidConfig = config
         var consecutiveFailures = 0
         while (!isCancelled()) {
+            val signals = eventWakeup.drainSignals().ifEmpty { setOf(WorkspaceSignal.RecoveryAudit) }
+            val refreshed = runCatching { refreshWorkspace(project, workspaceRoot, signals) }
+            refreshed.exceptionOrNull()?.let { error ->
+                consecutiveFailures += 1
+                semanticAdmission.fail(error.message?.takeIf(String::isNotBlank) ?: error::class.java.name)
+                recordIndexFailure(error)
+                if (!awaitNextPass(indexingRetryDelayMillis(consecutiveFailures))) break
+                continue
+            }
+            val identityResolver = resolveWorkspaceStateIdentity ?: defaultWorkspaceStateIdentityResolver(lastValidConfig)
+            val candidateIdentity = runCatching(identityResolver)
+            candidateIdentity.exceptionOrNull()?.let { error ->
+                consecutiveFailures += 1
+                semanticAdmission.fail(error.message?.takeIf(String::isNotBlank) ?: error::class.java.name)
+                recordIndexFailure(error)
+                if (!awaitNextPass(indexingRetryDelayMillis(consecutiveFailures))) break
+                continue
+            }
+            val reconciliation = semanticAdmission.beginReconciliation("workspace reconciliation is active")
             val candidate = try {
                 liveConfigLoader(workspaceRoot, lastValidConfig)
             } catch (error: Exception) {
@@ -190,21 +232,53 @@ internal class KastIdeaProjectIndexing(
                 pass = runCatching { runIndexingPass(projectIndexer, lastValidConfig) }
             }
 
-            pass.onSuccess { result ->
+            val verifiedIdentity = runCatching(identityResolver)
+            val identityFailure = verifiedIdentity.exceptionOrNull()
+            if (identityFailure != null) {
+                consecutiveFailures += 1
+                semanticAdmission.fail(
+                    identityFailure.message?.takeIf(String::isNotBlank) ?: identityFailure::class.java.name,
+                )
+                recordIndexFailure(identityFailure)
+                if (!awaitNextPass(indexingRetryDelayMillis(consecutiveFailures))) break
+                continue
+            }
+            val workspaceStable = verifiedIdentity.getOrNull() == candidateIdentity.getOrNull()
+            if (!workspaceStable) eventWakeup.signal(WorkspaceSignal.RecoveryAudit)
+            var publicationFailure: Throwable? = null
+            val stable = pass.getOrNull()?.let { result ->
                 lastValidConfig = candidate.takeUnless { scopeFailure != null } ?: lastValidConfig
                 consecutiveFailures = if (result.graphFailure == null) 0 else consecutiveFailures + 1
-                recordIndexCompleted(result.summary)
+                result.graphFailure == null && workspaceStable && runCatching {
+                    semanticAdmission.publishReady(reconciliation) {
+                        publishWorkspaceGeneration?.invoke(checkNotNull(verifiedIdentity.getOrNull()))
+                    }
+                }.getOrElse { error ->
+                    publicationFailure = error
+                    false
+                }
+            } ?: false
+            pass.onSuccess { result ->
+                if (stable) recordIndexCompleted(result.summary)
             }.onFailure { error ->
                 consecutiveFailures += 1
                 recordIndexFailure(error)
             }
-            if (isCancelled()) break
-            val delay = if (pass.getOrNull()?.graphFailure == null && pass.isSuccess) {
-                PERIODIC_INDEXING_RETRY_MILLIS
-            } else {
-                indexingRetryDelayMillis(consecutiveFailures)
+            publicationFailure?.let { error ->
+                consecutiveFailures += 1
+                semanticAdmission.fail(error.message?.takeIf(String::isNotBlank) ?: error::class.java.name)
+                recordIndexFailure(error)
             }
-            if (!waitForNextPass(delay)) break
+            if (isCancelled()) break
+            val delay = if (stable) {
+                RECOVERY_AUDIT_MILLIS
+            } else if (pass.getOrNull()?.graphFailure != null || pass.isFailure || publicationFailure != null) {
+                indexingRetryDelayMillis(consecutiveFailures)
+            } else {
+                0L
+            }
+            if (delay > 0L && !awaitNextPass(delay)) break
+            if (delay == RECOVERY_AUDIT_MILLIS && !eventWakeup.awaitQuiescence(EVENT_QUIESCENCE_MILLIS)) break
         }
     }
 
@@ -298,6 +372,20 @@ internal class KastIdeaProjectIndexing(
         diagnostics.recordIndexFailed(error)
     }
 
+    private fun awaitNextPass(delayMillis: Long): Boolean =
+        waitForNextPass?.invoke(delayMillis) ?: eventWakeup.awaitSignalOrAudit(delayMillis)
+
+    private fun defaultWorkspaceStateIdentityResolver(lastValidConfig: KastConfig): () -> WorkspaceStateIdentity {
+        val resolver = WorkspaceStateIdentityResolver(
+            workspaceRoot = workspaceRoot,
+            semanticEnvironmentIdentity = {
+                IdeaSemanticEnvironmentIdentityResolver.resolve(project, workspaceIdentity.workspaceIdentity)
+            },
+            indexingScopeIdentity = { lastValidConfig.indexing.toString() },
+        )
+        return resolver::resolve
+    }
+
     companion object {
         private val LOG = Logger.getInstance(KastIdeaProjectIndexing::class.java)
     }
@@ -308,24 +396,4 @@ private data class IndexingPassResult(
     val graphFailure: Throwable?,
 )
 
-private const val PERIODIC_INDEXING_RETRY_MILLIS = 30_000L
-
-internal fun indexingRetryDelayMillis(consecutiveFailures: Int): Long = when (consecutiveFailures) {
-    1 -> 250L
-    2 -> 500L
-    3 -> 1_000L
-    else -> PERIODIC_INDEXING_RETRY_MILLIS
-}
-
-private fun loadLiveIndexingConfig(
-    workspaceRoot: Path,
-    lastValid: KastConfig,
-): KastConfig = lastValid.copy(indexing = KastConfig.load(workspaceRoot).indexing)
-
-private fun waitForIndexingRetry(delayMillis: Long): Boolean = try {
-    Thread.sleep(delayMillis)
-    true
-} catch (_: InterruptedException) {
-    Thread.currentThread().interrupt()
-    false
-}
+private const val EVENT_QUIESCENCE_MILLIS = 250L

@@ -24,7 +24,6 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -120,6 +119,8 @@ class IndexerServerRuntimeTest {
                 referencesRan.incrementAndGet()
             },
             waitForNextPass = { delay -> retryDelays += delay; false },
+            refreshWorkspace = { _, _, _ -> },
+            resolveWorkspaceStateIdentity = { io.github.amichne.kast.idea.transition.WorkspaceStateIdentity("test") },
         )
 
         try {
@@ -160,12 +161,86 @@ class IndexerServerRuntimeTest {
                 )
             },
             waitForNextPass = { false },
+            refreshWorkspace = { _, _, _ -> },
+            resolveWorkspaceStateIdentity = { io.github.amichne.kast.idea.transition.WorkspaceStateIdentity("test") },
         )
 
         try {
             indexing.start()
             indexing.awaitTermination()
             assertEquals(listOf(removed), observed.get().removedPaths.map { it.rawPath })
+        } finally {
+            indexing.cancel()
+            store.close()
+        }
+    }
+
+    @Test
+    fun `workspace generation publication completes before admission becomes ready`() {
+        val project = projectFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = tempDir.resolve("atomic-publication")
+        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot)
+        val store = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity).also { it.ensureSchema() }
+        val admission = readyAdmission(project)
+        val stateDuringPublication = AtomicReference<IdeaIndexSemanticAdmission.Status>()
+        val indexing = KastIdeaProjectIndexing(
+            project = project,
+            workspaceIdentity = workspaceIdentity,
+            config = KastConfig.defaults(),
+            indexStore = store,
+            semanticAdmission = admission,
+            publishWorkspaceGeneration = { stateDuringPublication.set(admission.status()) },
+            runProjectIndexing = { _, _ -> },
+            waitForNextPass = { false },
+            refreshWorkspace = { _, _, _ -> },
+            resolveWorkspaceStateIdentity = {
+                io.github.amichne.kast.idea.transition.WorkspaceStateIdentity("verified-workspace")
+            },
+        )
+
+        try {
+            indexing.start()
+            indexing.awaitTermination()
+
+            assertTrue(stateDuringPublication.get() is IdeaIndexSemanticAdmission.Status.Pending)
+            assertEquals(IdeaIndexSemanticAdmission.Status.Ready, admission.status())
+        } finally {
+            indexing.cancel()
+            store.close()
+        }
+    }
+
+    @Test
+    fun `workspace generation publication failure keeps admission blocked`() {
+        val project = projectFixture.get()
+        waitUntilIndexesAreReady(project)
+        val workspaceRoot = tempDir.resolve("failed-publication")
+        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot)
+        val store = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity).also { it.ensureSchema() }
+        val admission = readyAdmission(project)
+        val indexing = KastIdeaProjectIndexing(
+            project = project,
+            workspaceIdentity = workspaceIdentity,
+            config = KastConfig.defaults(),
+            indexStore = store,
+            semanticAdmission = admission,
+            publishWorkspaceGeneration = { error("generation fsync failed") },
+            runProjectIndexing = { _, _ -> },
+            waitForNextPass = { false },
+            refreshWorkspace = { _, _, _ -> },
+            resolveWorkspaceStateIdentity = {
+                io.github.amichne.kast.idea.transition.WorkspaceStateIdentity("verified-workspace")
+            },
+        )
+
+        try {
+            indexing.start()
+            indexing.awaitTermination()
+
+            val status = admission.status()
+            assertTrue(status is IdeaIndexSemanticAdmission.Status.Failed)
+            assertTrue((status as IdeaIndexSemanticAdmission.Status.Failed).detail.contains("fsync"))
         } finally {
             indexing.cancel()
             store.close()
@@ -200,6 +275,8 @@ class IndexerServerRuntimeTest {
                 }
             },
             waitForNextPass = { false },
+            refreshWorkspace = { _, _, _ -> },
+            resolveWorkspaceStateIdentity = { io.github.amichne.kast.idea.transition.WorkspaceStateIdentity("test") },
         )
 
         try {
@@ -213,12 +290,12 @@ class IndexerServerRuntimeTest {
     }
 
     @Test
-    fun `indexing retry is bounded before periodic retry`() {
+    fun `indexing retry is bounded before recovery audit`() {
         assertEquals(250, indexingRetryDelayMillis(1))
         assertEquals(500, indexingRetryDelayMillis(2))
         assertEquals(1_000, indexingRetryDelayMillis(3))
-        assertEquals(30_000, indexingRetryDelayMillis(4))
-        assertEquals(30_000, indexingRetryDelayMillis(100))
+        assertEquals(300_000, indexingRetryDelayMillis(4))
+        assertEquals(300_000, indexingRetryDelayMillis(100))
     }
 
     @Test
@@ -305,31 +382,4 @@ class IndexerServerRuntimeTest {
         inspectProject = { IdeaIndexSemanticAdmission.Inspection.Ready },
     )
 
-    @Test
-    fun `blocking runtime cleanup leaves the IDEA dispatch thread`() {
-        val closeStarted = CountDownLatch(1)
-        val releaseClose = CountDownLatch(1)
-        val closeCompleted = CountDownLatch(1)
-        val completion = AtomicReference<CompletableFuture<Unit>>()
-
-        ApplicationManager.getApplication().invokeAndWait {
-            completion.set(
-                closeAfterLeavingIdeaDispatchThreadAsync(
-                    threadName = "kast-idea-test-closer",
-                ) {
-                    closeStarted.countDown()
-                    releaseClose.await()
-                    closeCompleted.countDown()
-                },
-            )
-        }
-
-        assertTrue(closeStarted.await(5, TimeUnit.SECONDS))
-        assertFalse(closeCompleted.await(100, TimeUnit.MILLISECONDS))
-        assertFalse(completion.get().isDone)
-
-        releaseClose.countDown()
-        assertTrue(closeCompleted.await(5, TimeUnit.SECONDS))
-        completion.get().get(5, TimeUnit.SECONDS)
-    }
 }

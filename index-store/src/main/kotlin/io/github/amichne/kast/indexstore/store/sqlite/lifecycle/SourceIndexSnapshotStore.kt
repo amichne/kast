@@ -89,6 +89,37 @@ internal class SourceIndexSnapshotStore(
         )
     }
 
+    fun exportVerifiedWorkspaceDatabase(target: Path): WorkspaceDatabaseExportEvidence = synchronized(state.writeLock) {
+        require(!Files.exists(target)) { "Workspace generation export target already exists: $target" }
+        Files.createDirectories(target.toAbsolutePath().normalize().parent)
+        val conn = state.connection()
+        val generationBefore = state.readGenerationInTransaction(conn).value
+        val incompleteModuleCount = conn.createStatement().use { statement ->
+            val result = statement.executeQuery(
+                """SELECT COUNT(*)
+                   FROM module_index_progress
+                   WHERE relationship_index_status NOT IN ('COMPLETE','DEGRADED')
+                      OR indexed_file_count != total_file_count""",
+            )
+            check(result.next())
+            result.getInt(1)
+        }
+        val pendingUpdateCount = conn.createStatement().use { statement ->
+            val result = statement.executeQuery("SELECT COUNT(*) FROM pending_updates WHERE applied = 0")
+            check(result.next())
+            result.getInt(1)
+        }
+        val escapedTarget = target.toAbsolutePath().normalize().toString().replace("'", "''")
+        conn.createStatement().use { statement -> statement.execute("VACUUM INTO '$escapedTarget'") }
+        val generationAfter = state.readGenerationInTransaction(conn).value
+        WorkspaceDatabaseExportEvidence(
+            generationBefore = generationBefore,
+            generationAfter = generationAfter,
+            incompleteModuleCount = incompleteModuleCount,
+            pendingUpdateCount = pendingUpdateCount,
+        )
+    }
+
     fun readHeadCommit(): String? {
         synchronized(state.writeLock) {
             val conn = state.connection()
