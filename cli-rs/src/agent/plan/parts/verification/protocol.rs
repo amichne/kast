@@ -207,6 +207,7 @@ struct ProtocolDiagnosticsEvidence {
     requested_file_count: usize,
     analyzed_file_count: usize,
     skipped_file_count: usize,
+    schema_version: u32,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, PartialEq, Eq)]

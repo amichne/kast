@@ -377,7 +377,8 @@ pub(super) fn independent_diagnostics(
             "info": infos,
             "total": total
         },
-        "cardinality": {"type": "EXACT", "totalCount": total}
+        "cardinality": {"type": "EXACT", "totalCount": total},
+        "schemaVersion": 6
     });
     if let Some(page) = page {
         result["page"] = page;
