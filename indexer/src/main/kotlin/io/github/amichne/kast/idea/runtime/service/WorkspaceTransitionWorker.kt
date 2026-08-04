@@ -1,8 +1,10 @@
 package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.api.client.KastConfig
+import com.intellij.openapi.progress.ProcessCanceledException
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
 import io.github.amichne.kast.idea.transition.GenerationPublication
+import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.TransitionRun
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
@@ -14,12 +16,14 @@ import io.github.amichne.kast.idea.transition.WorkspaceWakeup
 
 internal class WorkspaceTransitionWorker(
     initialConfig: KastConfig,
+    initialModelBuildSemanticIdentity: BuildSemanticInputIdentity,
+    private val resolveBuildSemanticInputIdentity: () -> BuildSemanticInputIdentity,
     private val semanticAdmission: IdeaIndexSemanticAdmission,
     private val eventWakeup: WorkspaceEventWakeup,
     private val refreshWorkspace: (Set<WorkspaceSignal>) -> Unit,
     private val loadLiveConfig: (KastConfig) -> KastConfig,
-    private val resolveIdentity: (KastConfig) -> WorkspaceStateIdentity,
-    private val runIndexingPass: (KastConfig) -> IndexingPassResult,
+    private val captureCandidate: (KastConfig, BuildSemanticInputIdentity) -> WorkspaceReconciliationCandidate,
+    private val runIndexingPass: (KastConfig, WorkspaceReconciliationCandidate) -> IndexingPassResult,
     private val publishWorkspaceGeneration: (WorkspaceStateIdentity) -> Unit,
     private val waitForNextPass: ((Long) -> Boolean)?,
     private val isCancelled: () -> Boolean,
@@ -30,10 +34,12 @@ internal class WorkspaceTransitionWorker(
 ) {
     private var lastValidConfig = initialConfig
     private var cycleConfig = initialConfig
+    private var cycleCandidate: WorkspaceReconciliationCandidate? = null
     private var cycleResult: IndexingPassResult? = null
     private var reconciliationToken: IdeaIndexSemanticAdmission.ReconciliationToken? = null
     private var publishedSummary: KastSourceIndexSummary? = null
     private var consecutiveFailures = 0
+    private var modelBuildSemanticIdentity = initialModelBuildSemanticIdentity
 
     private val coordinator = WorkspaceTransitionCoordinator(
         operations = object : WorkspaceTransitionOperations {
@@ -45,9 +51,29 @@ internal class WorkspaceTransitionWorker(
 
             override fun refresh(signals: Set<WorkspaceSignal>) {
                 semanticAdmission.dirty("workspace transition is refreshing semantic inputs")
+                cycleCandidate = null
                 cycleResult = null
                 reconciliationToken = null
-                refreshWorkspace(signals)
+                val buildInputsBeforeRefresh = resolveBuildSemanticInputIdentity()
+                val requiresGradleRefresh = WorkspaceSignal.BuildSemantic in signals ||
+                    WorkspaceSignal.RecoveryAudit in signals ||
+                    buildInputsBeforeRefresh != modelBuildSemanticIdentity
+                val effectiveSignals = if (requiresGradleRefresh) {
+                    signals + WorkspaceSignal.BuildSemantic
+                } else {
+                    signals
+                }
+                refreshWorkspace(effectiveSignals)
+                if (requiresGradleRefresh) {
+                    val buildInputsAfterRefresh = resolveBuildSemanticInputIdentity()
+                    if (buildInputsAfterRefresh != buildInputsBeforeRefresh) {
+                        throw BuildSemanticInputsMovedDuringRefreshException(
+                            before = buildInputsBeforeRefresh,
+                            after = buildInputsAfterRefresh,
+                        )
+                    }
+                    modelBuildSemanticIdentity = buildInputsAfterRefresh
+                }
                 cycleConfig = try {
                     loadLiveConfig(lastValidConfig)
                 } catch (failure: Exception) {
@@ -56,30 +82,39 @@ internal class WorkspaceTransitionWorker(
                 }
             }
 
-            override fun captureIdentity(): WorkspaceStateIdentity = resolveIdentity(cycleConfig)
+            override fun captureIdentity(): WorkspaceStateIdentity {
+                val currentBuildInputs = currentImportedBuildInputs()
+                val captured = captureCandidate(cycleConfig, currentBuildInputs)
+                if (reconciliationToken == null) cycleCandidate = captured
+                return captured.identity
+            }
 
             override fun reconcile(candidate: WorkspaceStateIdentity): WorkspaceStateIdentity {
                 reconciliationToken = semanticAdmission.beginReconciliation(
                     "workspace reconciliation is active",
                 )
-                val attempted = runCatching { runIndexingPass(cycleConfig) }
+                val candidateInputs = checkNotNull(cycleCandidate) { "Workspace candidate was not captured" }
+                val attempted = runCatching { runIndexingPass(cycleConfig, candidateInputs) }
                 val scopeFailure = attempted.exceptionOrNull() as? IndexingScopeConfigurationException
                 val reconciledIdentity = if (scopeFailure != null && cycleConfig != lastValidConfig) {
                     onConfigFallback(scopeFailure)
                     cycleConfig = lastValidConfig
-                    resolveIdentity(cycleConfig).also {
-                        cycleResult = runIndexingPass(cycleConfig)
-                    }
+                    captureCandidate(cycleConfig, currentImportedBuildInputs()).also { fallback ->
+                        cycleCandidate = fallback
+                        cycleResult = runIndexingPass(cycleConfig, fallback)
+                    }.identity
                 } else {
                     cycleResult = attempted.getOrThrow()
                     candidate
                 }
                 cycleResult?.graphFailure?.let { throw it }
+                requireActive()
                 return reconciledIdentity
             }
 
             override fun publish(generation: io.github.amichne.kast.idea.transition.PublishedWorkspaceGeneration):
                 GenerationPublication {
+                requireActive()
                 val result = checkNotNull(cycleResult) { "Verified transition has no indexing result" }
                 val token = checkNotNull(reconciliationToken) { "Verified transition has no admission token" }
                 val admitted = semanticAdmission.publishReady(token) {
@@ -105,6 +140,11 @@ internal class WorkspaceTransitionWorker(
     fun requestRecoveryAudit() {
         semanticAdmission.dirty("workspace recovery audit requires verification")
         coordinator.observe(WorkspaceSignal.RecoveryAudit)
+    }
+
+    fun requestInitialReconciliation() {
+        semanticAdmission.dirty("initial workspace reconciliation is required")
+        coordinator.observe(WorkspaceSignal.BuildSemantic)
     }
 
     fun run() {
@@ -147,6 +187,36 @@ internal class WorkspaceTransitionWorker(
             WorkspaceWakeup.Interrupted -> false
         }
     }
+
+    private fun requireActive() {
+        if (isCancelled() || Thread.currentThread().isInterrupted) throw ProcessCanceledException()
+    }
+
+    private fun currentImportedBuildInputs(): BuildSemanticInputIdentity {
+        val current = resolveBuildSemanticInputIdentity()
+        if (current != modelBuildSemanticIdentity) {
+            throw BuildSemanticModelStaleException(
+                imported = modelBuildSemanticIdentity,
+                current = current,
+            )
+        }
+        return current
+    }
 }
+
+internal class BuildSemanticInputsMovedDuringRefreshException(
+    val before: BuildSemanticInputIdentity,
+    val after: BuildSemanticInputIdentity,
+) : IllegalStateException("Build-semantic inputs moved during Gradle refresh")
+
+internal class BuildSemanticModelStaleException(
+    val imported: BuildSemanticInputIdentity,
+    val current: BuildSemanticInputIdentity,
+) : IllegalStateException("Build-semantic inputs do not match the imported Gradle model")
+
+internal data class WorkspaceReconciliationCandidate(
+    val identity: WorkspaceStateIdentity,
+    val indexingCandidate: WorkspaceIndexingCandidate?,
+)
 
 private const val EVENT_QUIESCENCE_MILLIS = 250L

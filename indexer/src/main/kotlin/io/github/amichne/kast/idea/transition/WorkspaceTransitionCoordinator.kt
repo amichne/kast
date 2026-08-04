@@ -39,6 +39,7 @@ internal enum class WorkspaceSignal {
     BuildSemantic,
     Configuration,
     Scope,
+    SemanticEnvironment,
     GitWorktree,
     RecoveryAudit,
 }

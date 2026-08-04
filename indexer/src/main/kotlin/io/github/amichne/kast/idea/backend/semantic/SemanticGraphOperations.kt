@@ -82,6 +82,7 @@ private suspend fun KastIndexerBackend.buildSemanticGraphSnapshot(query: ParsedS
     val stageInputs = currentSemanticGraphStageInputs(semanticScope)
     val contentHashes = stageInputs.associate { input -> input.sourcePath to input.contentHash }
     val stageInputFingerprint = semanticGraphStageInputFingerprint(stageInputs)
+    val pendingStageVersions = store.pendingFileStages(FileIndexStage.SEMANTIC_GRAPH).associate { it.path to it.version }
     val coverage = mutableListOf<SemanticGraphFileCoverage>()
     val unavailablePaths = sortedSetOf<String>()
     var omittedExternalTargetCount = 0
@@ -91,6 +92,7 @@ private suspend fun KastIndexerBackend.buildSemanticGraphSnapshot(query: ParsedS
         val contentHash = checkNotNull(contentHashes[relativePath]) {
             "Semantic graph scope has no current content hash for ${relativePath.value}"
         }
+        val desiredVersion = pendingStageVersions[absolutePath] ?: store.fileStageOutcome(absolutePath, FileIndexStage.SEMANTIC_GRAPH)?.version ?: FileStageVersions.CURRENT.semanticGraph
         PlannedSemanticGraphFile(
             absolutePath = absolutePath,
             relativePath = relativePath,
@@ -99,7 +101,7 @@ private suspend fun KastIndexerBackend.buildSemanticGraphSnapshot(query: ParsedS
                 path = absolutePath,
                 contentHash = FileContentHash.parse(contentHash.value),
                 stage = FileIndexStage.SEMANTIC_GRAPH,
-                version = FileStageVersions.CURRENT.semanticGraph,
+                version = desiredVersion,
                 inputFingerprint = stageInputFingerprint,
             ),
         )

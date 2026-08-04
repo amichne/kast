@@ -1,19 +1,26 @@
 package io.github.amichne.kast.idea
 
 import com.intellij.openapi.diagnostic.Logger
+import com.intellij.openapi.progress.ProcessCanceledException
 import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.kastConfigHome
 import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
 import io.github.amichne.kast.idea.diagnostics.*
 import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
+import io.github.amichne.kast.idea.snapshot.BuildClasspathFingerprintResolver
+import io.github.amichne.kast.idea.transition.IdeaGradleWorkspaceModelIdentityResolver
+import io.github.amichne.kast.idea.transition.IdeaCompilerVisibleSourceIdentityResolver
+import io.github.amichne.kast.idea.transition.IdeaKotlinCompilerIdentityResolver
+import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
+import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentityResolver
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
-import io.github.amichne.kast.idea.transition.WorkspaceVfsEventObserver
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
-import io.github.amichne.kast.idea.transition.WorkspaceStateIdentityResolver
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
-import io.github.amichne.kast.idea.transition.IdeaSemanticEnvironmentIdentityResolver
+import io.github.amichne.kast.idea.transition.WorkspaceVfsEventObserver
+import io.github.amichne.kast.idea.transition.WorkspaceVfsObservationScope
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import java.nio.file.Path
 import java.util.concurrent.CountDownLatch
@@ -34,12 +41,18 @@ internal class KastIdeaProjectIndexing(
     private val runProjectIndexing: ((KastConfig, (IndexedSourceIdentifiers) -> Unit) -> Unit)? = null,
     private val waitForNextPass: ((Long) -> Boolean)? = null,
     private val eventWakeup: WorkspaceEventWakeup = WorkspaceEventWakeup(),
-    private val observeWorkspaceEvents: (Project, Path, (WorkspaceSignal) -> Unit) -> AutoCloseable =
-        { observedProject, observedRoot, observed ->
-            WorkspaceVfsEventObserver.subscribe(observedProject, observedRoot, observed)
+    private val workspaceConfigurationFiles: Set<Path> = setOf(
+        workspaceIdentity.workspaceIdentity.workspaceDataDirectoryPath.resolve("config.toml"),
+        kastConfigHome().resolve("config.toml"),
+    ),
+    private val observeWorkspaceEvents:
+        (Project, WorkspaceVfsObservationScope, (WorkspaceSignal) -> Unit) -> AutoCloseable =
+        { observedProject, observedScope, observed ->
+            WorkspaceVfsEventObserver.subscribe(observedProject, observedScope, observed)
         },
     private val refreshWorkspace: (Project, Path, Set<WorkspaceSignal>) -> Unit = ::refreshWorkspaceModels,
     private val resolveWorkspaceStateIdentity: (() -> WorkspaceStateIdentity)? = null,
+    private val resolveBuildSemanticInputIdentity: (() -> BuildSemanticInputIdentity)? = null,
     private val scopeCache: WorkspaceIndexingScopeCache = WorkspaceIndexingScopeCache(),
 ) {
     constructor(
@@ -55,6 +68,22 @@ internal class KastIdeaProjectIndexing(
     )
 
     private val workspaceRoot: Path = workspaceIdentity.workspaceRootPath
+    private val gradleBuildRoot: Path = workspaceIdentity.workspaceIdentity.gradleRoot?.root?.toJavaPath()
+        ?: workspaceRoot
+    private val workspaceVfsObservationScope = WorkspaceVfsObservationScope(
+        workspaceRoot = workspaceRoot,
+        buildSemanticRoot = gradleBuildRoot,
+        configurationFiles = workspaceConfigurationFiles,
+        compilerSourceRoots = { IdeaCompilerVisibleSourceIdentityResolver.sourceRoots(project) },
+        classpathRoots = {
+            BuildClasspathFingerprintResolver.contentRoots(project) +
+                IdeaKotlinCompilerIdentityResolver.artifactRoots(project)
+        },
+    )
+    private val buildSemanticInputIdentityResolver = BuildSemanticInputIdentityResolver(
+        buildSemanticRoot = gradleBuildRoot,
+        isCancelled = ::isCancelled,
+    )
     private val cancelled = AtomicBoolean(false)
     private val startRequested = AtomicBoolean(false)
     private val indexingTerminated = CountDownLatch(1)
@@ -77,7 +106,7 @@ internal class KastIdeaProjectIndexing(
             indexingTerminated.countDown()
             return
         }
-        workspaceEventObserver = observeWorkspaceEvents(project, workspaceRoot) { signal ->
+        workspaceEventObserver = observeWorkspaceEvents(project, workspaceVfsObservationScope) { signal ->
             observeWorkspaceSignal(signal)
         }
         KastStructuredTrace.event(
@@ -101,6 +130,14 @@ internal class KastIdeaProjectIndexing(
                     ) {
                         try {
                             runIndexing()
+                        } catch (cancelledWork: ProcessCanceledException) {
+                            if (!isCancelled()) {
+                                semanticAdmission.fail(
+                                    cancelledWork.message?.takeIf(String::isNotBlank)
+                                        ?: "Workspace reconciliation was cancelled",
+                                )
+                                recordIndexFailure(cancelledWork)
+                            }
                         } finally {
                             indexingTerminated.countDown()
                         }
@@ -202,17 +239,42 @@ internal class KastIdeaProjectIndexing(
             workspaceIdentity = workspaceIdentity.workspaceIdentity,
             scopeCache = scopeCache,
         )
+        val reconciliationIndexer = WorkspaceReconciliationIndexer(
+            projectIndexer = projectIndexer,
+            workspaceRoot = workspaceRoot,
+            indexStore = indexStore,
+            scopeCache = scopeCache,
+            semanticGraphIndexer = semanticGraphIndexer,
+            runProjectIndexing = runProjectIndexing,
+        )
         val worker = WorkspaceTransitionWorker(
             initialConfig = config,
+            initialModelBuildSemanticIdentity = currentBuildSemanticInputIdentity(),
+            resolveBuildSemanticInputIdentity = ::currentBuildSemanticInputIdentity,
             semanticAdmission = semanticAdmission,
             eventWakeup = eventWakeup,
-            refreshWorkspace = { signals -> refreshWorkspace(project, workspaceRoot, signals) },
+            refreshWorkspace = { signals -> refreshWorkspace(project, gradleBuildRoot, signals) },
             loadLiveConfig = { lastValid -> liveConfigLoader(workspaceRoot, lastValid) },
-            resolveIdentity = { liveConfig ->
-                resolveWorkspaceStateIdentity?.invoke()
-                    ?: defaultWorkspaceStateIdentityResolver(liveConfig).invoke()
+            captureCandidate = { liveConfig, buildSemanticInputIdentity ->
+                resolveWorkspaceStateIdentity?.let { injected ->
+                    WorkspaceReconciliationCandidate(injected(), indexingCandidate = null)
+                } ?: projectIndexer.captureCandidate(liveConfig.indexing).let { candidate ->
+                    WorkspaceReconciliationCandidate(
+                        identity = productionWorkspaceStateIdentity(
+                            project = project,
+                            workspaceRoot = workspaceRoot,
+                            workspaceIdentity = workspaceIdentity.workspaceIdentity,
+                            liveConfig = liveConfig,
+                            admittedContentIdentity = candidate.admittedContentIdentity,
+                            gradleModelIdentity = IdeaGradleWorkspaceModelIdentityResolver.resolve(candidate.gradleModel),
+                            buildSemanticInputIdentity = buildSemanticInputIdentity,
+                            isCancelled = ::isCancelled,
+                        ),
+                        indexingCandidate = candidate,
+                    )
+                }
             },
-            runIndexingPass = { liveConfig -> runIndexingPass(projectIndexer, liveConfig) },
+            runIndexingPass = reconciliationIndexer::run,
             publishWorkspaceGeneration = { identity -> publishWorkspaceGeneration?.invoke(identity) },
             waitForNextPass = waitForNextPass,
             isCancelled = ::isCancelled,
@@ -221,14 +283,12 @@ internal class KastIdeaProjectIndexing(
             onFailure = ::recordIndexFailure,
             onTransition = ::recordTransition,
         )
-        val hadBufferedSignals = synchronized(transitionWorkerLock) {
-            val hadSignals = bufferedWorkspaceSignals.isNotEmpty()
+        synchronized(transitionWorkerLock) {
             bufferedWorkspaceSignals.forEach(worker::observe)
             bufferedWorkspaceSignals.clear()
             transitionWorker = worker
-            hadSignals
         }
-        if (!hadBufferedSignals) worker.requestRecoveryAudit()
+        worker.requestInitialReconciliation()
         try {
             worker.run()
         } finally {
@@ -236,42 +296,6 @@ internal class KastIdeaProjectIndexing(
                 if (transitionWorker === worker) transitionWorker = null
             }
         }
-    }
-
-    private fun runIndexingPass(
-        projectIndexer: IdeaProjectIndexer,
-        liveConfig: KastConfig,
-    ): IndexingPassResult {
-        var graphFailure: Throwable? = null
-        val graph: (IndexedSourceIdentifiers) -> Unit = { scope ->
-            runCatching {
-                semanticGraphIndexer(scope, liveConfig.indexing.graph.batchSize)
-            }.onFailure { error ->
-                graphFailure = error
-                LOG.warn("Kast semantic graph indexing pass failed", error)
-            }
-        }
-        val indexedSources = runProjectIndexing?.let { indexProject ->
-            indexProject(liveConfig, graph)
-            scopeCache.resolve(
-                workspaceRoot = workspaceRoot,
-                config = liveConfig.indexing,
-                candidates = indexStore.knownSourcePaths(),
-            ).let { scope ->
-                IndexedSourceIdentifiers(
-                    paths = scope.includedPaths,
-                    criticalPaths = scope.criticalPaths.toSet(),
-                    unmatchedCriticalPatterns = scope.unmatchedCriticalPatterns,
-                )
-            }
-        } ?: projectIndexer.indexProject(liveConfig, graph)
-        return IndexingPassResult(
-            summary = indexStore.loadKastSourceIndexSummary(
-                criticalPaths = indexedSources.criticalPaths,
-                unmatchedCriticalPatterns = indexedSources.unmatchedCriticalPatterns,
-            ),
-            graphFailure = graphFailure,
-        )
     }
 
     private fun recordIndexCompleted(summary: KastSourceIndexSummary) {
@@ -354,23 +378,10 @@ internal class KastIdeaProjectIndexing(
         diagnostics.recordIndexFailed(error)
     }
 
-    private fun defaultWorkspaceStateIdentityResolver(liveConfig: KastConfig): () -> WorkspaceStateIdentity {
-        val resolver = WorkspaceStateIdentityResolver(
-            workspaceRoot = workspaceRoot,
-            semanticEnvironmentIdentity = {
-                IdeaSemanticEnvironmentIdentityResolver.resolve(project, workspaceIdentity.workspaceIdentity)
-            },
-            indexingScopeIdentity = { liveConfig.indexing.toString() },
-        )
-        return resolver::resolve
-    }
+    private fun currentBuildSemanticInputIdentity(): BuildSemanticInputIdentity =
+        resolveBuildSemanticInputIdentity?.invoke() ?: buildSemanticInputIdentityResolver.resolve()
 
     companion object {
         private val LOG = Logger.getInstance(KastIdeaProjectIndexing::class.java)
     }
 }
-
-internal data class IndexingPassResult(
-    val summary: KastSourceIndexSummary,
-    val graphFailure: Throwable?,
-)

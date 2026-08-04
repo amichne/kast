@@ -15,6 +15,7 @@ import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcome
 import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
+import io.github.amichne.kast.indexstore.api.index.FileStageVersion
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
 import io.github.amichne.kast.indexstore.api.index.SourceIndexModuleName
 import io.github.amichne.kast.indexstore.api.index.WorkspaceSourcePath
@@ -25,6 +26,7 @@ import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.shared.analysis.PsiReferenceScanner
 import io.github.amichne.kast.shared.analysis.PsiRelationshipScanResult
 import io.github.amichne.kast.shared.analysis.PsiSourceIndexScanner
+import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
 import java.nio.file.Path
 
 private const val SOURCE_INDEX_BATCH_SIZE = 50
@@ -61,10 +63,15 @@ internal class IdeaProjectIndexer(
 
     fun indexProject(
         config: KastConfig,
+        candidate: WorkspaceIndexingCandidate = captureCandidate(config.indexing),
+        semanticContextIdentity: WorkspaceStateIdentity? = null,
         onSourceScopeReady: (IndexedSourceIdentifiers) -> Unit = {},
     ): IndexedSourceIdentifiers {
         store.ensureSchema()
-        val indexedSources = indexSourceIdentifiersAndScope(config.indexing)
+        val indexedSources = indexSourceIdentifiersAndScope(
+            candidate = candidate,
+            stageVersions = semanticContextStageVersions(semanticContextIdentity),
+        )
         onSourceScopeReady(indexedSources)
         if (config.indexing.relationships.enabled.value && !environment.isCancelled()) {
             val moduleSpecs = runIdeaReadAction { moduleResolver.discoverModuleSpecs() }
@@ -159,16 +166,15 @@ internal class IdeaProjectIndexer(
     }
 
     fun indexSourceIdentifiers(): Collection<WorkspaceSourcePath> {
-        return indexSourceIdentifiersAndScope(KastConfig.defaults().indexing).paths
+        return indexSourceIdentifiersAndScope(
+            candidate = captureCandidate(KastConfig.defaults().indexing),
+            stageVersions = FileStageVersions.CURRENT,
+        ).paths
     }
 
-    private fun indexSourceIdentifiersAndScope(config: IndexingConfig): IndexedSourceIdentifiers {
-        store.ensureSchema()
-        val previousPaths = store.knownSourcePaths().mapNotNullTo(linkedSetOf(), store::sourcePath)
+    fun captureCandidate(config: IndexingConfig): WorkspaceIndexingCandidate {
         val captured = inventory.snapshotWithGradleModel(WorkspaceFileKindDomain.MIXED)
-        val gradleProvenance = IdeaGradleFileProvenance.fromWorkspaceModel(captured.gradleModel, ideaWorkspaceIdentity)
-        val inventorySnapshot = captured.inventory
-        val ownerModuleNamesByPath = moduleResolver.referenceIndexOwnersByPath(inventorySnapshot)
+        val ownerModuleNamesByPath = moduleResolver.referenceIndexOwnersByPath(captured.inventory)
         val scope = scopeCache.resolve(
             workspaceRoot = workspaceRoot,
             config = config,
@@ -180,8 +186,29 @@ internal class IdeaProjectIndexer(
             isCancelled = environment::isCancelled,
             sourceSetForPath = moduleResolver::legacySourceSetLabelForFile,
         )
-        if (environment.isCancelled()) return IndexedSourceIdentifiers(emptyList(), emptySet(), emptyList())
-        store.reconcileFileInventory(inventoryEntries, FileStageVersions.CURRENT)
+        return WorkspaceIndexingCandidate(
+            gradleModel = captured.gradleModel,
+            scope = scope,
+            ownerModuleNamesByPath = ownerModuleNamesByPath.filterKeys(includedPaths::contains),
+            inventoryEntries = inventoryEntries,
+        )
+    }
+
+    private fun indexSourceIdentifiersAndScope(
+        candidate: WorkspaceIndexingCandidate,
+        stageVersions: FileStageVersions,
+    ): IndexedSourceIdentifiers {
+        store.ensureSchema()
+        val previousPaths = store.knownSourcePaths().mapNotNullTo(linkedSetOf(), store::sourcePath)
+        val gradleProvenance = IdeaGradleFileProvenance.fromWorkspaceModel(
+            candidate.gradleModel,
+            ideaWorkspaceIdentity,
+        )
+        val ownerModuleNamesByPath = candidate.ownerModuleNamesByPath
+        val scope = candidate.scope
+        val inventoryEntries = candidate.inventoryEntries
+        requireActive()
+        store.reconcileFileInventory(inventoryEntries, stageVersions)
 
         val inventoryByPath = inventoryEntries.associateBy(FileInventoryEntry::path)
         val workByPath = store.pendingFileStages(FileIndexStage.SOURCE).associateBy { work -> work.path }
@@ -197,7 +224,7 @@ internal class IdeaProjectIndexer(
             moduleNameForFile = moduleResolver::moduleNameForFile,
         )
         for (batch in orderedPendingPaths.map(workByPath::getValue).chunked(SOURCE_INDEX_BATCH_SIZE)) {
-            if (environment.isCancelled()) break
+            requireActive()
             val updates = batch.mapNotNull { work ->
                 val absolutePath = work.path.absolute.value.value
                 onSourceFileScan(absolutePath)
@@ -214,11 +241,12 @@ internal class IdeaProjectIndexer(
                     )
                 }
             }
-            if (environment.isCancelled()) break
+            requireActive()
             if (updates.isNotEmpty()) {
                 store.commitSourceBatch(updates)
             }
         }
+        requireActive()
         val currentPaths = prioritizeIndexingPaths(
             pathsByModule = inventoryEntries.map { entry -> IndexingPriorityEntry(entry.path, entry.module) },
             moduleOrder = emptyList(),
@@ -303,3 +331,17 @@ internal class IdeaProjectIndexer(
         workspaceRoot = workspaceRoot,
     ).copy(workspaceIdentity = workspaceIdentity)
 }
+
+internal fun semanticContextStageVersions(identity: WorkspaceStateIdentity?): FileStageVersions =
+    if (identity == null) {
+        FileStageVersions.CURRENT
+    } else {
+        FileStageVersions.CURRENT.copy(
+            relationships = FileStageVersion.parse(
+                "${FileStageVersions.CURRENT.relationships.value}-${identity.value}",
+            ),
+            semanticGraph = FileStageVersion.parse(
+                "${FileStageVersions.CURRENT.semanticGraph.value}-${identity.value}",
+            ),
+        )
+    }

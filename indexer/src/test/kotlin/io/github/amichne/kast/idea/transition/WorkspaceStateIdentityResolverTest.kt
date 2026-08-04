@@ -1,10 +1,13 @@
 package io.github.amichne.kast.idea.transition
 
+import io.github.amichne.kast.api.validation.FileHashing
+import io.github.amichne.kast.idea.AdmittedWorkspaceContentIdentity
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
+import java.nio.file.Files
 import kotlin.io.path.createDirectories
 import kotlin.io.path.writeText
 
@@ -17,7 +20,7 @@ class WorkspaceStateIdentityResolverTest {
         root.resolve("src/App.kt").also { it.parent.createDirectories(); it.writeText("fun app() = 1") }
         root.resolve(".git").createDirectories()
         root.resolve(".git/HEAD").writeText("first")
-        val resolver = resolver()
+        val resolver = resolver(admittedPaths = { listOf(root.resolve("src/App.kt")) })
         val first = resolver.resolve()
 
         root.resolve(".git/HEAD").writeText("second")
@@ -48,11 +51,44 @@ class WorkspaceStateIdentityResolverTest {
         assertNotEquals(base, resolver(environment = "classpath-a", scope = "scope-b").resolve())
     }
 
+    @Test
+    fun `scope ignored source content does not affect workspace state identity`() {
+        root.resolve(".kastignore").writeText("ignored/**\n")
+        root.resolve("src/App.kt").also { it.parent.createDirectories(); it.writeText("fun app() = 1") }
+        val ignored = root.resolve("ignored/Ignored.kt").also {
+            it.parent.createDirectories()
+            it.writeText("fun ignored() = 1")
+        }
+        val resolver = resolver(admittedPaths = { listOf(root.resolve("src/App.kt")) })
+        val before = resolver.resolve()
+
+        ignored.writeText("fun ignored() = 2")
+
+        assertEquals(before, resolver.resolve())
+    }
+
     private fun resolver(
         environment: String = "classpath",
         scope: String = "scope",
+        admittedPaths: () -> Collection<Path> = {
+            Files.walk(root).use { paths ->
+                paths.filter { path -> Files.isRegularFile(path) && path.fileName.toString().endsWith(".kt") }
+                    .toList()
+            }
+        },
     ): WorkspaceStateIdentityResolver = WorkspaceStateIdentityResolver(
         workspaceRoot = root,
+        admittedContentIdentity = {
+            AdmittedWorkspaceContentIdentity.hash(
+                admittedPaths()
+                    .filter(Files::isRegularFile)
+                    .sortedBy(Path::toString)
+                    .map { path ->
+                        "${root.relativize(path).toString().replace('\\', '/')}|" +
+                            FileHashing.sha256(Files.readString(path))
+                    },
+            )
+        },
         semanticEnvironmentIdentity = { environment },
         indexingScopeIdentity = { scope },
     )

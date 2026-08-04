@@ -15,16 +15,17 @@ private const val GRADLE_REFRESH_TIMEOUT_MINUTES = 5L
 
 internal fun refreshWorkspaceModels(
     project: Project,
-    workspaceRoot: Path,
+    gradleBuildRoot: Path,
     signals: Set<WorkspaceSignal>,
 ) {
     ApplicationManager.getApplication().invokeAndWait {
         VirtualFileManager.getInstance().syncRefresh()
     }
-    if (WorkspaceSignal.BuildSemantic !in signals) return
-    val refresh = CompletableFuture<Void>()
-    IdeaGradleProjectLoadBridge.refreshExternalGradleProject(project, workspaceRoot, refresh)
-    refresh.get(GRADLE_REFRESH_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+    if (signals.any { signal -> signal == WorkspaceSignal.BuildSemantic || signal == WorkspaceSignal.RecoveryAudit }) {
+        val refresh = CompletableFuture<Void>()
+        IdeaGradleProjectLoadBridge.refreshExternalGradleProject(project, gradleBuildRoot, refresh)
+        refresh.get(GRADLE_REFRESH_TIMEOUT_MINUTES, TimeUnit.MINUTES)
+    }
     GradleProjectImportBridge.awaitGradleModelSettlement(project)
 }
 
