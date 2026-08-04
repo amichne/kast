@@ -18,6 +18,8 @@ import io.github.amichne.kast.idea.transition.WorkspaceTransitionCoordinator
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionOperations
 import io.github.amichne.kast.idea.transition.WorkspaceTransitionSnapshot
 import io.github.amichne.kast.idea.transition.WorkspaceWakeup
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import java.util.concurrent.CancellationException
 
 internal class WorkspaceTransitionWorker(
     initialConfig: KastConfig,
@@ -168,8 +170,25 @@ internal class WorkspaceTransitionWorker(
     }
 
     fun requestRecoveryAudit() {
-        semanticAdmission.dirty("workspace recovery audit requires verification")
-        coordinator.observe(WorkspaceSignal.RecoveryAudit)
+        val audit = try {
+            semanticAdmission.beginRecoveryAudit("periodic recovery audit is verifying workspace identity")
+        } catch (failure: Throwable) {
+            rethrowRecoveryAuditCancellation(failure)
+            requestRecoveryTransition(RecoveryAuditOutcome.WorkspaceDrift)
+            return
+        }
+        when (val outcome = recoveryAuditOutcome(audit.generation)) {
+            RecoveryAuditOutcome.Current -> {
+                requireActive()
+                when (semanticAdmission.restoreReadyAfterRecoveryAudit(audit)) {
+                    is IdeaIndexSemanticAdmission.RecoveryAuditRestoration.Restored -> return
+                    IdeaIndexSemanticAdmission.RecoveryAuditRestoration.Invalidated ->
+                        requestRecoveryTransition(RecoveryAuditOutcome.WorkspaceDrift)
+                }
+            }
+
+            is RecoveryAuditOutcome.Drift -> requestRecoveryTransition(outcome)
+        }
     }
 
     fun requestInitialReconciliation() {
@@ -202,6 +221,63 @@ internal class WorkspaceTransitionWorker(
                     if (!awaitWork(indexingRetryDelayMillis(consecutiveFailures))) return
                 }
             }
+        }
+    }
+
+    private fun recoveryAuditOutcome(
+        expectedPublished: PublishedWorkspaceGenerationManifest,
+    ): RecoveryAuditOutcome {
+        return try {
+            requireActive()
+            val published = workspaceGenerationPublication.current()
+                ?: return RecoveryAuditOutcome.WorkspaceDrift
+            if (published != expectedPublished) return RecoveryAuditOutcome.WorkspaceDrift
+            requireStableGitWorktreeTransition()
+            refreshWorkspace(setOf(WorkspaceSignal.RecoveryProbe))
+            requireStableGitWorktreeTransition()
+            val currentBuildInputs = resolveBuildSemanticInputIdentity()
+            if (currentBuildInputs != modelBuildSemanticIdentity) {
+                RecoveryAuditOutcome.BuildSemanticDrift
+            } else {
+                val auditConfig = try {
+                    loadLiveConfig(lastValidConfig)
+                } catch (failure: Exception) {
+                    rethrowRecoveryAuditCancellation(failure)
+                    onConfigFallback(failure)
+                    lastValidConfig
+                }
+                val currentIdentity = captureCandidate(auditConfig, currentBuildInputs).identity
+                requireStableGitWorktreeTransition()
+                if (
+                    currentIdentity.value == published.identity.value &&
+                    workspaceGenerationPublication.current() == published
+                ) {
+                    RecoveryAuditOutcome.Current
+                } else {
+                    RecoveryAuditOutcome.WorkspaceDrift
+                }
+            }
+        } catch (failure: Throwable) {
+            rethrowRecoveryAuditCancellation(failure)
+            RecoveryAuditOutcome.WorkspaceDrift
+        }
+    }
+
+    private fun requestRecoveryTransition(outcome: RecoveryAuditOutcome.Drift) {
+        semanticAdmission.dirty(outcome.dirtyReason)
+        coordinator.observe(outcome.signal)
+    }
+
+    private fun rethrowRecoveryAuditCancellation(failure: Throwable) {
+        when (failure) {
+            is InterruptedException -> {
+                Thread.currentThread().interrupt()
+                throw failure
+            }
+
+            is CancellationException,
+            is ProcessCanceledException,
+            -> throw failure
         }
     }
 
@@ -262,6 +338,25 @@ internal data class WorkspaceReconciliationCandidate(
     val identity: WorkspaceStateIdentity,
     val indexingCandidate: WorkspaceIndexingCandidate?,
 )
+
+private sealed interface RecoveryAuditOutcome {
+    data object Current : RecoveryAuditOutcome
+
+    sealed interface Drift : RecoveryAuditOutcome {
+        val signal: WorkspaceSignal
+        val dirtyReason: String
+    }
+
+    data object WorkspaceDrift : Drift {
+        override val signal: WorkspaceSignal = WorkspaceSignal.RecoveryAudit
+        override val dirtyReason: String = "workspace recovery audit requires reconciliation"
+    }
+
+    data object BuildSemanticDrift : Drift {
+        override val signal: WorkspaceSignal = WorkspaceSignal.BuildSemantic
+        override val dirtyReason: String = "workspace recovery audit found build-semantic drift"
+    }
+}
 
 private const val EVENT_QUIESCENCE_MILLIS = 250L
 private const val GIT_TRANSITION_RETRY_MILLIS = 250L

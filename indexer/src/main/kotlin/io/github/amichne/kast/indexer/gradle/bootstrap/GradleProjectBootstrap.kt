@@ -21,6 +21,9 @@ class GradleProjectBootstrap(
     private val canLinkGradleProject: (String, Project) -> Boolean = { externalProjectPath, project ->
         GradleProjectImportBridge.canLinkAndRefreshGradleProject(externalProjectPath, project)
     },
+    private val hasLinkedGradleProject: (String, Project) -> Boolean = { externalProjectPath, project ->
+        GradleProjectImportBridge.hasLinkedGradleProject(project, externalProjectPath)
+    },
     private val linkAndImportGradleProject: (Project, String) -> Unit = { project, externalProjectPath ->
         GradleProjectImportBridge.linkAndImportGradleProject(project, externalProjectPath)
     },
@@ -61,7 +64,7 @@ class GradleProjectBootstrap(
 
         waitForProjectModel(project)
         var latestModel = inspectProjectModel(project)
-        if (latestModel.compilerReady) {
+        if (latestModel.compilerReady && hasLinkedGradleProject(externalProjectPath, project)) {
             return ProjectModelBootstrapResult.Ready(
                 moduleNames = latestModel.moduleNames,
                 linkedGradleProject = true,

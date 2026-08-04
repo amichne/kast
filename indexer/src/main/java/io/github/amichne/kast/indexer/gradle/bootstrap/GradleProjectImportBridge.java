@@ -15,10 +15,13 @@ import com.intellij.openapi.project.DumbService;
 import com.intellij.openapi.roots.ModuleRootManager;
 import com.intellij.openapi.roots.OrderEntry;
 import com.intellij.openapi.startup.StartupManager;
+import com.intellij.platform.backend.workspace.WorkspaceModel;
 import com.intellij.psi.JavaPsiFacade;
 import com.intellij.psi.search.FileTypeIndex;
 import com.intellij.psi.search.GlobalSearchScope;
 import com.intellij.util.execution.ParametersListUtil;
+import com.intellij.workspaceModel.ide.JpsProjectLoadingManager;
+import com.intellij.workspaceModel.ide.impl.WorkspaceModelImpl;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleImportObservation;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelReadiness;
 import io.github.amichne.kast.indexer.gradle.settlement.GradleModelSettlementAwaiter;
@@ -43,6 +46,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 public final class GradleProjectImportBridge {
@@ -77,8 +81,15 @@ public final class GradleProjectImportBridge {
     }
 
     public static boolean canLinkAndRefreshGradleProject(String externalProjectPath, Project project) {
-        return isGradleProjectLinked(project, externalProjectPath)
+        return hasLinkedGradleProject(project, externalProjectPath)
             || GradleProjectImportUtil.canLinkAndRefreshGradleProject(externalProjectPath, project, false);
+    }
+
+    static boolean hasLinkedGradleProject(Project project, String externalProjectPath) {
+        return hasLinkedProject(
+            GradleSettings.getInstance(project).getLinkedProjectsSettings(),
+            externalProjectPath
+        );
     }
 
     public static void linkAndImportGradleProject(Project project, String externalProjectPath) {
@@ -92,7 +103,7 @@ public final class GradleProjectImportBridge {
         try {
             ImportSpecBuilder importSpec = new ImportSpecBuilder(project, GradleConstants.SYSTEM_ID)
                 .withCallback(importFuture);
-            if (isGradleProjectLinked(project, externalProjectPath)) {
+            if (hasLinkedGradleProject(project, externalProjectPath)) {
                 ExternalSystemUtil.refreshProject(externalProjectPath, importSpec);
             } else {
                 GradleProjectSettings linkSettings =
@@ -171,13 +182,6 @@ public final class GradleProjectImportBridge {
         return roots.getSdk() != null && everyOrderEntryResolved && jdkResolvable && kotlinRuntimeResolvable;
     }
 
-    private static boolean isGradleProjectLinked(Project project, String externalProjectPath) {
-        return hasLinkedProject(
-            GradleSettings.getInstance(project).getLinkedProjectsSettings(),
-            externalProjectPath
-        );
-    }
-
     private static void awaitImport(CompletableFuture<Void> importFuture, String externalProjectPath)
         throws InterruptedException, ExecutionException, TimeoutException {
         importFuture.get(5, TimeUnit.MINUTES);
@@ -243,6 +247,49 @@ public final class GradleProjectImportBridge {
             }
             pauseUntilNextObservation(deadlineNanos, "project startup activities for " + externalProjectPath);
         }
+        awaitJpsProjectLoad(
+            () -> workspaceModelLoadedFromCache(project),
+            project::isDisposed,
+            externalProjectPath,
+            callback -> JpsProjectLoadingManager.getInstance(project).jpsProjectLoaded(callback)
+        );
+    }
+
+    static void awaitJpsProjectLoad(
+        BooleanSupplier cacheBacked,
+        BooleanSupplier projectDisposed,
+        String externalProjectPath,
+        Consumer<Runnable> registerProjectLoadedCallback
+    ) {
+        if (projectDisposed.getAsBoolean()) {
+            throw new IllegalStateException(
+                "Project was disposed before the JPS project model loaded: " + externalProjectPath
+            );
+        }
+        if (!cacheBacked.getAsBoolean()) {
+            return;
+        }
+        CompletableFuture<Void> projectLoaded = new CompletableFuture<>();
+        registerProjectLoadedCallback.accept(() -> projectLoaded.complete(null));
+        long deadlineNanos = System.nanoTime() + TimeUnit.MINUTES.toNanos(5);
+        while (!projectLoaded.isDone()) {
+            if (projectDisposed.getAsBoolean()) {
+                throw new IllegalStateException(
+                    "Project was disposed before the JPS project model loaded: " + externalProjectPath
+                );
+            }
+            pauseUntilNextObservation(deadlineNanos, "JPS project model load for " + externalProjectPath);
+        }
+    }
+
+    private static boolean workspaceModelLoadedFromCache(Project project) {
+        WorkspaceModel workspaceModel = WorkspaceModel.getInstance(project);
+        if (workspaceModel instanceof WorkspaceModelImpl implementation) {
+            return implementation.getLoadedFromCache();
+        }
+        throw new IllegalStateException(
+            "Unsupported IntelliJ workspace model implementation: " + workspaceModel.getClass().getName()
+        );
     }
 
     private static void pauseUntilNextObservation(long deadlineNanos, String operation) {

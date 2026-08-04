@@ -212,46 +212,6 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
     }
 
     @Test
-    fun `recovery audit repairs a workspace change with no event`() {
-        val stableBuildInputs = BuildSemanticInputIdentity("stable-build-inputs")
-        val refreshedSignals = mutableListOf<Set<WorkspaceSignal>>()
-        val publications = mutableListOf<WorkspaceStateIdentity>()
-        var waitCount = 0
-        val worker = WorkspaceTransitionWorker(
-            initialConfig = KastConfig.defaults(),
-            initialModelBuildSemanticIdentity = stableBuildInputs,
-            resolveBuildSemanticInputIdentity = { stableBuildInputs },
-            semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
-            eventWakeup = WorkspaceEventWakeup(),
-            refreshWorkspace = refreshedSignals::add,
-            loadLiveConfig = { it },
-            captureCandidate = { _, _ ->
-                WorkspaceReconciliationCandidate(
-                    identity = WorkspaceStateIdentity("missed-change"),
-                    indexingCandidate = null,
-                )
-            },
-            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
-            workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
-            waitForNextPass = { waitCount++ == 0 },
-            isCancelled = { false },
-            onConfigFallback = {},
-            onCompleted = {},
-            onFailure = { throw it },
-            onTransition = {},
-        )
-
-        worker.run()
-
-        assertEquals(
-            listOf(setOf(WorkspaceSignal.RecoveryAudit, WorkspaceSignal.BuildSemantic)),
-            refreshedSignals,
-        )
-        assertEquals(listOf(WorkspaceStateIdentity("missed-change")), publications)
-        assertEquals(2, waitCount)
-    }
-
-    @Test
     fun `source wakeup refreshes Gradle when build inputs drifted without a build signal`() {
         val importedBuildInputs = BuildSemanticInputIdentity("imported-build-inputs")
         val currentBuildInputs = BuildSemanticInputIdentity("changed-build-inputs")

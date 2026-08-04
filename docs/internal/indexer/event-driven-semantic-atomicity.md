@@ -34,9 +34,16 @@ The transition phases have these responsibilities:
 8. **BLOCKED** records a typed phase and reason. It does not replace the current
    published generation.
 
-A five-minute recovery audit runs after a stable pass. It repeats identity
-capture and reconciliation. A VFS event that Kast did not receive therefore
-cannot cause permanent stale readiness.
+A five-minute recovery audit runs after a stable pass. It first withdraws
+semantic admission, advances the admission revision, and waits for active read
+leases and any mutation permit to drain. A VFS-only `RecoveryProbe` then checks
+the exact current manifest, build inputs, live configuration, and WSID. If all
+evidence is unchanged, a revision-bound token restores the same manifest as
+READY without Gradle import, reconciliation, or publication. Drift or an
+inspection failure schedules an explicit `RecoveryAudit` transition, which
+does refresh Gradle and reconcile. A concurrent event invalidates the token and
+cannot reopen READY. A VFS event that Kast did not receive therefore cannot
+cause permanent stale readiness.
 
 The worker also checks Git's exact-root transition markers after settlement,
 around Gradle refresh, and at the publication boundary. Active checkout,
@@ -60,9 +67,13 @@ Kotlin or Java under an imported compiler source root remains a source signal.
 Only `.idea/compiler.xml`, `.idea/kotlinc.xml`, and `.idea/misc.xml` are
 semantic-environment signals; unrelated IDE-local state is ignored. Java
 annotation-processor artifacts and Kotlin compiler-plugin artifacts are watched
-as classpath roots.
+as classpath roots. Derived module compiler output is not a classpath authority.
+The classpath resolver excludes module-source order entries, while retaining
+library, SDK, compiler-plugin, and processor artifacts. This prevents a Gradle
+import from observing its own `build/classes` output as a new semantic input.
 
-VFS refresh occurs before each pass. A build-semantic signal refreshes the
+VFS refresh occurs before each transition and recovery probe. `RecoveryProbe`
+is VFS-only. A build-semantic or explicit `RecoveryAudit` signal refreshes the
 linked Gradle project and waits for module and source-set import settlement. A
 refresh failure closes admission and moves the transition to BLOCKED. Kast does
 not use a foreground IDE project as a repair mechanism.
@@ -70,6 +81,14 @@ not use a foreground IDE project as a repair mechanism.
 Initial reconciliation is also build-semantic. The public CLI therefore waits
 up to six minutes for READY: five minutes for the bounded Gradle refresh and one
 minute for process startup, model settlement, reconciliation, and publication.
+
+Cold startup does not trust a compiler-ready module model from IntelliJ's
+workspace cache by itself. After post-startup activities, a cache-backed open
+waits for the sticky JPS project-loaded signal that follows real-state model
+application. A fresh or discarded cache does not wait for a signal that
+IntelliJ does not publish. Kast then accepts cached compiler readiness only if
+the normalized Gradle root is registered as an exact linked project. Otherwise,
+it links and imports the exact root and inspects the resulting model again.
 
 ## Workspace-state identity
 
@@ -79,8 +98,9 @@ WSID is a SHA-256 digest of all admitted semantic inputs:
   untracked files;
 - Gradle scripts, settings, properties, wrapper inputs, and version catalogs;
 - the effective indexing scope;
-- module names, source roots, SDK identity, order-entry validity, class roots,
-  and the classpath fingerprint;
+- module names, source roots, resolved SDK type, canonical home, and version,
+  unresolved SDK reference name and type, order-entry validity, non-derived
+  class roots, and the classpath fingerprint;
 - the effective Java language level, ordered compiler options, bytecode target,
   annotation-processing mode, processor paths and their content, processors,
   and processor options;
@@ -89,7 +109,9 @@ WSID is a SHA-256 digest of all admitted semantic inputs:
 
 The `.git` directory and commit identity are excluded. Two identical semantic
 workspaces at different commits have the same WSID. A dirty or untracked
-admitted source changes the WSID.
+admitted source changes the WSID. An IntelliJ SDK presentation label is also
+excluded when the resolved SDK semantics are unchanged. SDK identity has
+distinct absent, resolved, and unresolved states.
 
 ## Two-phase immutable publication
 
@@ -231,8 +253,12 @@ and does not replace the default published-read contract.
 Focused tests cover event invalidation, a 10,000-event storm, moving-pass
 rejection, an external disk edit through the production IntelliJ VFS listener,
 and a real 1,000-file Git checkout held at its exact-root `index.lock`. They
-also cover build refresh failure, Git-independent identity, dirty and untracked
-identity, Java and Kotlin compiler identity, read-lease draining, mutation
+also cover build refresh failure, stable recovery-probe no-op, missed-event
+recovery, recovery-audit read draining and cancellation, SDK presentation-name
+invariance, resolved and unresolved SDK identity sensitivity, Git-independent
+identity, dirty and untracked identity, Java and Kotlin compiler identity,
+cache-backed JPS reconciliation, fresh-cache bypass, late project-load
+registration, exact Gradle-link admission, read-lease draining, mutation
 exclusion, prepared-generation invisibility, pointer-last publication,
 post-rename durability uncertainty, restart recovery, cache-only public graph
 coordination, runtime-manifest identity, and Rust pointer revalidation.

@@ -1,23 +1,10 @@
 package io.github.amichne.kast.idea
 
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.ReadAction
-import com.intellij.openapi.fileTypes.FileTypeManager
-import com.intellij.openapi.module.Module
-import com.intellij.openapi.module.ModuleManager
-import com.intellij.openapi.progress.ProcessCanceledException
-import com.intellij.openapi.project.DumbService
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.roots.ModuleRootManager
-import com.intellij.psi.JavaPsiFacade
-import com.intellij.psi.PsiManager
-import com.intellij.psi.search.FileTypeIndex
-import com.intellij.psi.search.GlobalSearchScope
 import io.github.amichne.kast.idea.backend.semantic.WorkspaceSemanticReadAuthority
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
-import org.jetbrains.kotlin.psi.KtFile
-import java.util.concurrent.CancellationException
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -28,7 +15,9 @@ import kotlin.concurrent.withLock
 
 internal class IdeaIndexSemanticAdmission(
     private val project: Project,
-    private val inspectProject: () -> Inspection = { inspect(project, IdeaSemanticAdmissionOperations.idea()) },
+    private val inspectProject: () -> Inspection = {
+        inspectSemanticAdmission(project, IdeaSemanticAdmissionOperations.idea())
+    },
     private val nanoTime: () -> Long = System::nanoTime,
     private val pause: (Long) -> Unit = { millis -> Thread.sleep(millis) },
     private val maxWaitMillis: Long = TimeUnit.MINUTES.toMillis(5),
@@ -107,6 +96,38 @@ internal class IdeaIndexSemanticAdmission(
             status.set(Status.Pending(detail))
         }
     }
+
+    fun beginRecoveryAudit(detail: String): RecoveryAuditToken {
+        require(detail.isNotBlank()) { "Recovery-audit detail must not be blank" }
+        return transitionLock.withLock {
+            val admissionStatus = status.get()
+            val ready = admissionStatus as? Status.Ready
+                ?: throw RecoveryAuditAdmissionUnavailableException(admissionStatus)
+            val auditRevision = revision.incrementAndGet()
+            status.set(Status.Pending(detail))
+            while (activeReaders > 0 || activeMutation) readersDrained.await()
+            val currentRevision = revision.get()
+            if (currentRevision != auditRevision) {
+                throw RecoveryAuditAdmissionInvalidatedException(
+                    expectedRevision = auditRevision,
+                    actualRevision = currentRevision,
+                )
+            }
+            RecoveryAuditToken(
+                revision = auditRevision,
+                generation = ready.generation,
+            )
+        }
+    }
+
+    fun restoreReadyAfterRecoveryAudit(token: RecoveryAuditToken): RecoveryAuditRestoration =
+        transitionLock.withLock {
+            if (revision.get() != token.revision || status.get() !is Status.Pending) {
+                return@withLock RecoveryAuditRestoration.Invalidated
+            }
+            status.set(Status.Ready(token.generation))
+            RecoveryAuditRestoration.Restored(token.generation)
+        }
 
     fun beginReconciliation(detail: String): ReconciliationToken {
         require(detail.isNotBlank()) { "Reconciliation detail must not be blank" }
@@ -194,6 +215,11 @@ internal class IdeaIndexSemanticAdmission(
 
     class ReconciliationToken internal constructor(internal val revision: Long)
 
+    class RecoveryAuditToken internal constructor(
+        internal val revision: Long,
+        val generation: PublishedWorkspaceGenerationManifest,
+    )
+
     class WorkspaceReadToken internal constructor(
         internal val revision: Long,
         val generation: PublishedWorkspaceGenerationManifest,
@@ -236,6 +262,31 @@ internal class IdeaIndexSemanticAdmission(
         "Workspace mutation admission moved while waiting for active semantic reads to finish",
     )
 
+    sealed class RecoveryAuditAdmissionException(message: String) : IllegalStateException(message)
+
+    class RecoveryAuditAdmissionUnavailableException internal constructor(
+        val admissionStatus: Status,
+    ) : RecoveryAuditAdmissionException("Workspace recovery audit requires READY semantic admission") {
+        init {
+            require(admissionStatus !is Status.Ready) {
+                "READY semantic admission cannot be represented as unavailable"
+            }
+        }
+    }
+
+    class RecoveryAuditAdmissionInvalidatedException internal constructor(
+        val expectedRevision: Long,
+        val actualRevision: Long,
+    ) : RecoveryAuditAdmissionException(
+        "Workspace recovery audit moved while waiting for active semantic reads to finish",
+    )
+
+    sealed interface RecoveryAuditRestoration {
+        data class Restored(val generation: PublishedWorkspaceGenerationManifest) : RecoveryAuditRestoration
+
+        data object Invalidated : RecoveryAuditRestoration
+    }
+
     sealed interface ReadyPublication {
         data class Admitted(val commit: WorkspaceGenerationCommit) : ReadyPublication
 
@@ -277,72 +328,5 @@ internal class IdeaIndexSemanticAdmission(
 
     private companion object {
         const val NANOS_PER_MILLISECOND = 1_000_000L
-
-        fun inspect(
-            project: Project,
-            operations: IdeaSemanticAdmissionOperations,
-        ): Inspection = ApplicationManager.getApplication().runReadAction<Inspection> {
-            if (DumbService.isDumb(project)) {
-                return@runReadAction Inspection.Pending("IDEA indexing is still in progress")
-            }
-            val kotlinFileType = FileTypeManager.getInstance().findFileTypeByName("Kotlin")
-                ?: return@runReadAction Inspection.Pending("the Kotlin file type is unavailable")
-            val kotlinModules = ModuleManager.getInstance(project).modules
-                .asSequence()
-                .filterNot(Module::isDisposed)
-                .mapNotNull { module ->
-                    val representative = FileTypeIndex.getFiles(
-                        kotlinFileType,
-                        GlobalSearchScope.moduleScope(module),
-                    ).asSequence()
-                        .filter { file -> file.isValid && !file.isDirectory }
-                        .minByOrNull { file -> file.path }
-                    representative?.let { file -> module to file }
-                }
-                .sortedBy { (module, _) -> module.name }
-                .toList()
-            if (kotlinModules.isEmpty()) {
-                return@runReadAction Inspection.Pending("no Kotlin source module has been admitted to the project model")
-            }
-
-            val javaPsi = JavaPsiFacade.getInstance(project)
-            kotlinModules.forEach { (module, representative) ->
-                val roots = ModuleRootManager.getInstance(module)
-                if (roots.sdk == null) {
-                    return@runReadAction Inspection.Pending("module ${module.name} has no SDK")
-                }
-                if (roots.orderEntries.any { entry -> !entry.isValid }) {
-                    return@runReadAction Inspection.Pending("module ${module.name} has unresolved order entries")
-                }
-                val compilerScope = GlobalSearchScope.moduleWithDependenciesAndLibrariesScope(module)
-                if (javaPsi.findClass("java.nio.file.Path", compilerScope) == null) {
-                    return@runReadAction Inspection.Pending(
-                        "JDK symbol java.nio.file.Path is unresolved in module ${module.name}",
-                    )
-                }
-                if (javaPsi.findClass("kotlin.jvm.internal.Intrinsics", compilerScope) == null) {
-                    return@runReadAction Inspection.Pending(
-                        "Kotlin runtime symbol kotlin.jvm.internal.Intrinsics is unresolved in module ${module.name}",
-                    )
-                }
-                val ktFile = PsiManager.getInstance(project).findFile(representative) as? KtFile
-                    ?: return@runReadAction Inspection.Pending(
-                        "IDEA has not created Kotlin PSI for ${representative.path}",
-                    )
-                try {
-                    operations.collectDiagnostics(ktFile)
-                } catch (error: ProcessCanceledException) {
-                    throw error
-                } catch (error: CancellationException) {
-                    throw error
-                } catch (error: Throwable) {
-                    return@runReadAction Inspection.Pending(
-                        "Kotlin analysis is unavailable for ${representative.path}: " +
-                            (error.message?.takeIf(String::isNotBlank) ?: error::class.qualifiedName),
-                    )
-                }
-            }
-            Inspection.Ready
-        }
     }
 }

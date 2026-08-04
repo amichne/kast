@@ -27,6 +27,7 @@ internal enum class WorkspaceSignal {
     Scope,
     SemanticEnvironment,
     GitWorktree,
+    RecoveryProbe,
     RecoveryAudit,
 }
 

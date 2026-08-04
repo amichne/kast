@@ -27,6 +27,28 @@ class WorkspaceTransitionRuntimeTest {
     lateinit var tempDir: Path
 
     @Test
+    fun `recovery probe skips Gradle while explicit recovery audit forces it`() {
+        assertEquals(
+            WorkspaceModelRefreshRequirement.VfsOnly,
+            workspaceModelRefreshRequirement(setOf(WorkspaceSignal.RecoveryProbe)),
+        )
+        assertEquals(
+            WorkspaceModelRefreshRequirement.Gradle,
+            workspaceModelRefreshRequirement(setOf(WorkspaceSignal.RecoveryAudit)),
+        )
+        assertEquals(
+            WorkspaceModelRefreshRequirement.Gradle,
+            workspaceModelRefreshRequirement(setOf(WorkspaceSignal.BuildSemantic)),
+        )
+        assertEquals(
+            WorkspaceModelRefreshRequirement.Gradle,
+            workspaceModelRefreshRequirement(
+                setOf(WorkspaceSignal.RecoveryAudit, WorkspaceSignal.BuildSemantic),
+            ),
+        )
+    }
+
+    @Test
     fun `buffered source event cannot bypass initial build semantic refresh`() {
         val project = projectFixture.get()
         waitUntilIndexesAreReady(project)

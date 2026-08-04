@@ -13,6 +13,21 @@ import java.util.concurrent.TimeUnit
 internal const val RECOVERY_AUDIT_MILLIS = 300_000L
 private const val GRADLE_REFRESH_TIMEOUT_MINUTES = 5L
 
+internal enum class WorkspaceModelRefreshRequirement {
+    VfsOnly,
+    Gradle,
+}
+
+internal fun workspaceModelRefreshRequirement(
+    signals: Set<WorkspaceSignal>,
+): WorkspaceModelRefreshRequirement = if (
+    WorkspaceSignal.BuildSemantic in signals || WorkspaceSignal.RecoveryAudit in signals
+) {
+    WorkspaceModelRefreshRequirement.Gradle
+} else {
+    WorkspaceModelRefreshRequirement.VfsOnly
+}
+
 internal fun refreshWorkspaceModels(
     project: Project,
     gradleBuildRoot: Path,
@@ -21,7 +36,7 @@ internal fun refreshWorkspaceModels(
     ApplicationManager.getApplication().invokeAndWait {
         VirtualFileManager.getInstance().syncRefresh()
     }
-    if (signals.any { signal -> signal == WorkspaceSignal.BuildSemantic || signal == WorkspaceSignal.RecoveryAudit }) {
+    if (workspaceModelRefreshRequirement(signals) == WorkspaceModelRefreshRequirement.Gradle) {
         val refresh = CompletableFuture<Void>()
         IdeaGradleProjectLoadBridge.refreshExternalGradleProject(project, gradleBuildRoot, refresh)
         refresh.get(GRADLE_REFRESH_TIMEOUT_MINUTES, TimeUnit.MINUTES)
