@@ -9,6 +9,55 @@
         }
     }
 
+    fn diagnostics_page(schema_version: u32) -> ProtocolDiagnosticsEvidence {
+        serde_json::from_value(serde_json::json!({
+            "diagnostics": [],
+            "fileStatuses": [{
+                "filePath": "/workspace/src/Checked.kt",
+                "state": "ANALYZED"
+            }],
+            "fileHashes": [{
+                "filePath": "/workspace/src/Checked.kt",
+                "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+            }],
+            "severityCounts": {"error": 0, "warning": 0, "info": 0, "total": 0},
+            "cardinality": {"type": "EXACT", "totalCount": 0},
+            "semanticOutcome": "COMPLETE",
+            "requestedFileCount": 1,
+            "analyzedFileCount": 1,
+            "skippedFileCount": 0,
+            "schemaVersion": schema_version
+        }))
+        .expect("closed live diagnostics evidence")
+    }
+
+    fn validate_diagnostics_schema(schema_version: u32) -> Result<()> {
+        let expected_files = [CompilerDiagnosticFileHash {
+            file_path: "/workspace/src/Checked.kt".to_string(),
+            sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                .to_string(),
+        }];
+        validate_diagnostics_page(
+            diagnostics_page(schema_version),
+            &expected_files,
+            &mut None,
+            &mut None,
+            &mut Vec::new(),
+            &mut None,
+            &mut BTreeSet::new(),
+        )
+    }
+
+    #[test]
+    fn diagnostics_accept_the_live_schema_version() {
+        assert!(validate_diagnostics_schema(crate::SCHEMA_VERSION).is_ok());
+    }
+
+    #[test]
+    fn diagnostics_reject_a_different_schema_version() {
+        assert!(validate_diagnostics_schema(crate::SCHEMA_VERSION - 1).is_err());
+    }
+
     #[test]
     fn existing_file_rollback_requires_restored_semantic_admission() {
         let refresh = serde_json::from_value(serde_json::json!({

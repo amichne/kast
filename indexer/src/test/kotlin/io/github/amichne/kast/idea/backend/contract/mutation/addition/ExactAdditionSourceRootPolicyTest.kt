@@ -1,10 +1,12 @@
 package io.github.amichne.kast.idea
 
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.roots.ProjectFileIndex
 import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VfsUtil
 import com.intellij.testFramework.junit5.TestApplication
 import io.github.amichne.kast.api.contract.query.AddDeclarationPlanQuery
+import io.github.amichne.kast.api.contract.query.AddFilePlanQuery
 import io.github.amichne.kast.api.contract.result.AdditionTargetPath
 import io.github.amichne.kast.api.contract.result.AdditionTargetPreimageSha256
 import io.github.amichne.kast.api.protocol.AdditionProofIncompleteException
@@ -20,6 +22,79 @@ import org.junit.jupiter.api.Test
 
 @TestApplication
 internal class ExactAdditionSourceRootPolicyTest : ExactAdditionPlanningTestSupport() {
+    @Test
+    fun `duplicate observations of one source set remain one exact owner`() = runBlocking {
+        ensureProjectReady()
+        val sourceRoot = sourceRoot()
+        val workspaceRoot = requireNotNull(sourceRoot.parent)
+        val ideaModuleName = ApplicationManager.getApplication().runReadAction<String> {
+            requireNotNull(
+                ProjectFileIndex.getInstance(project).getModuleForFile(sampleFile.virtualFile),
+            ).name
+        }
+        val exactObservation = association(ideaModuleName, workspaceRoot, ":", "main", sourceRoot)
+        val aggregateObservation = association(
+            "$ideaModuleName.aggregate",
+            workspaceRoot,
+            ":",
+            "main",
+            sourceRoot,
+        )
+        val target = sourceRoot.resolve("DuplicateOwnerObservation.kt")
+        val query = AddFilePlanQuery(
+            targetPath = AdditionTargetPath.parse(target.toString()),
+            proposedContent = "package demo\n\nclass DuplicateOwnerObservation\n",
+        )
+
+        val forward = backend(
+            workspaceRoot,
+            workspaceModelReader = model(workspaceRoot, listOf(aggregateObservation, exactObservation)),
+        ).planAddFile(query)
+        val reversed = backend(
+            workspaceRoot,
+            workspaceModelReader = model(workspaceRoot, listOf(exactObservation, aggregateObservation)),
+        ).planAddFile(query)
+
+        assertEquals(ideaModuleName, forward.proof.owner.ideaModuleName.value)
+        assertEquals(forward.proof.owner, reversed.proof.owner)
+    }
+
+    @Test
+    fun `duplicate observations without the indexed module remain unproven`() = runBlocking {
+        ensureProjectReady()
+        val sourceRoot = sourceRoot()
+        val workspaceRoot = requireNotNull(sourceRoot.parent)
+        val ideaModuleName = ApplicationManager.getApplication().runReadAction<String> {
+            requireNotNull(
+                ProjectFileIndex.getInstance(project).getModuleForFile(sampleFile.virtualFile),
+            ).name
+        }
+        val target = sourceRoot.resolve("UnprovenDuplicateOwnerObservation.kt")
+
+        val failure = assertThrows(AdditionProofIncompleteException::class.java) {
+            runBlocking {
+                backend(
+                    workspaceRoot,
+                    workspaceModelReader = model(
+                        workspaceRoot,
+                        listOf(
+                            association("$ideaModuleName.aggregate", workspaceRoot, ":", "main", sourceRoot),
+                            association("$ideaModuleName.other", workspaceRoot, ":", "main", sourceRoot),
+                        ),
+                    ),
+                ).planAddFile(
+                    AddFilePlanQuery(
+                        targetPath = AdditionTargetPath.parse(target.toString()),
+                        proposedContent = "package demo\n\nclass UnprovenDuplicateOwnerObservation\n",
+                    ),
+                )
+            }
+        }
+
+        assertLimitation(failure, AdditionProofLimitation.SOURCE_OWNER_UNPROVEN)
+        assertFalse(Files.exists(target))
+    }
+
     @Test
     fun `add declaration rejects every hard-excluded model-owned source root`() = runBlocking {
         ensureProjectReady()

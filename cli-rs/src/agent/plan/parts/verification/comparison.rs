@@ -75,6 +75,7 @@ fn validate_diagnostics_page(
         })
         .collect::<Vec<_>>();
     if page.semantic_outcome != ProtocolAnalysisOutcome::Complete
+        || page.schema_version != crate::SCHEMA_VERSION
         || page.requested_file_count != expected_files.len()
         || page.analyzed_file_count != expected_files.len()
         || page.skipped_file_count != 0
