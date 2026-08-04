@@ -15,6 +15,43 @@ internal value class BuildSemanticInputIdentity(val value: String) {
     }
 }
 
+internal object BuildSemanticInputPolicy {
+    fun includes(relative: Path): Boolean {
+        val segments = relative.map(Path::toString)
+        if (segments.any(::isExcludedDirectory)) return false
+        val fileName = relative.fileName?.toString().orEmpty()
+        val extension = fileName.substringAfterLast('.', "")
+        return fileName in ROOT_BUILD_FILES ||
+            fileName.endsWith(".gradle.kts") ||
+            extension == "gradle" ||
+            isDependencyLock(segments, fileName, extension) ||
+            (segments.any(BUILD_LOGIC_DIRECTORIES::contains) && extension in BUILD_LOGIC_EXTENSIONS) ||
+            (segments.any { it == "gradle" } && extension in GRADLE_DIRECTORY_EXTENSIONS)
+    }
+
+    fun isExcludedDirectory(name: String): Boolean = name in EXCLUDED_DIRECTORIES
+
+    private fun isDependencyLock(segments: List<String>, fileName: String, extension: String): Boolean =
+        fileName == "gradle.lockfile" ||
+            extension == "lockfile" && segments.windowed(2).any { (parent, child) ->
+                parent == "gradle" && child == "dependency-locks"
+            }
+
+    private val EXCLUDED_DIRECTORIES = setOf(".git", ".gradle", ".idea", ".kotlin", "build", "node_modules", "out")
+    private val BUILD_LOGIC_DIRECTORIES = setOf("buildSrc", "build-logic")
+    private val BUILD_LOGIC_EXTENSIONS = setOf("groovy", "java", "kt", "kts", "properties", "toml")
+    private val GRADLE_DIRECTORY_EXTENSIONS = setOf("jar", "properties", "toml")
+    private val ROOT_BUILD_FILES = setOf(
+        "gradle.lockfile",
+        "gradle.properties",
+        "gradlew",
+        "gradlew.bat",
+        "local.properties",
+        "settings.gradle",
+        "settings.gradle.kts",
+    )
+}
+
 internal class BuildSemanticInputIdentityResolver(
     buildSemanticRoot: Path,
     private val externalBuildSemanticFiles: () -> Collection<Path> = { emptyList() },
@@ -40,7 +77,10 @@ internal class BuildSemanticInputIdentityResolver(
                 object : SimpleFileVisitor<Path>() {
                     override fun preVisitDirectory(directory: Path, attributes: BasicFileAttributes): FileVisitResult {
                         SemanticPathContentIdentity.requireActive(isCancelled)
-                        if (directory != root && root.relativize(directory).any { it.toString() in EXCLUDED_DIRECTORIES }) {
+                        if (
+                            directory != root &&
+                            root.relativize(directory).any { BuildSemanticInputPolicy.isExcludedDirectory(it.toString()) }
+                        ) {
                             return FileVisitResult.SKIP_SUBTREE
                         }
                         return FileVisitResult.CONTINUE
@@ -48,7 +88,7 @@ internal class BuildSemanticInputIdentityResolver(
 
                     override fun visitFile(file: Path, attributes: BasicFileAttributes): FileVisitResult {
                         SemanticPathContentIdentity.requireActive(isCancelled)
-                        if (attributes.isRegularFile && isBuildSemanticInput(root.relativize(file))) {
+                        if (attributes.isRegularFile && BuildSemanticInputPolicy.includes(root.relativize(file))) {
                             inputs.add(file.toAbsolutePath().normalize())
                         }
                         return FileVisitResult.CONTINUE
@@ -63,17 +103,6 @@ internal class BuildSemanticInputIdentityResolver(
             .filter(Files::isRegularFile)
             .forEach(inputs::add)
         return inputs.sortedBy(::stablePath)
-    }
-
-    private fun isBuildSemanticInput(relative: Path): Boolean {
-        val segments = relative.map(Path::toString)
-        val fileName = relative.fileName?.toString().orEmpty()
-        val extension = fileName.substringAfterLast('.', "")
-        return fileName in ROOT_BUILD_FILES ||
-            fileName.endsWith(".gradle.kts") ||
-            extension == "gradle" ||
-            (segments.any { it == "buildSrc" || it == "build-logic" } && extension in BUILD_LOGIC_EXTENSIONS) ||
-            (segments.any { it == "gradle" } && extension in GRADLE_DIRECTORY_EXTENSIONS)
     }
 
     private fun stablePath(path: Path): String {
@@ -97,15 +126,5 @@ internal class BuildSemanticInputIdentityResolver(
     private companion object {
         val FIELD_SEPARATOR = byteArrayOf(0)
         val RECORD_SEPARATOR = byteArrayOf(0xff.toByte())
-        val EXCLUDED_DIRECTORIES = setOf(".git", ".gradle", ".idea", ".kotlin", "build", "node_modules", "out")
-        val BUILD_LOGIC_EXTENSIONS = setOf("java", "kt", "kts", "properties", "toml")
-        val GRADLE_DIRECTORY_EXTENSIONS = setOf("jar", "properties", "toml")
-        val ROOT_BUILD_FILES = setOf(
-            "gradle.properties",
-            "gradlew",
-            "gradlew.bat",
-            "settings.gradle",
-            "settings.gradle.kts",
-        )
     }
 }

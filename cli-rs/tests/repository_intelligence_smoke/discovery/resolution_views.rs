@@ -279,7 +279,7 @@ fn repository_resolve_preserves_selected_identity_in_agent_and_human_views() {
         }
     });
     let agent_json = |view: &[&str]| {
-        let output = kast(&home, &config_home)
+        let output = published_semantic_command(&home, &config_home, &workspace)
             .args([
                 "--output",
                 "json",
@@ -303,7 +303,7 @@ fn repository_resolve_preserves_selected_identity_in_agent_and_human_views() {
         );
         serde_json::from_slice::<serde_json::Value>(&output.stdout).expect("agent repository JSON")
     };
-    let compact_output = kast(&home, &config_home)
+    let compact_output = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "agent",
             "repository",

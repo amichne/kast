@@ -5,7 +5,7 @@ fn agent_repository_exposes_expect_actual_relation() {
     seed_expect_actual_relationship(&fixture);
     let workspace_root = workspace.to_str().expect("workspace");
 
-    let output = kast(&home, &config_home)
+    let output = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "agent",
             "repository",

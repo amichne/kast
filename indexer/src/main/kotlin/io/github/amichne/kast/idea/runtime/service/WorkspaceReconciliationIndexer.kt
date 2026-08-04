@@ -12,17 +12,19 @@ internal class WorkspaceReconciliationIndexer(
     private val workspaceRoot: Path,
     private val indexStore: SqliteSourceIndexStore,
     private val scopeCache: WorkspaceIndexingScopeCache,
-    private val semanticGraphIndexer: (IndexedSourceIdentifiers, GraphIndexingBatchSize) -> Unit,
+    private val semanticGraphIndexer:
+        (IndexedSourceIdentifiers, GraphIndexingBatchSize, IdeaIndexSemanticAdmission.ReconciliationToken) -> Unit,
     private val runProjectIndexing: ((KastConfig, (IndexedSourceIdentifiers) -> Unit) -> Unit)?,
 ) {
     fun run(
         liveConfig: KastConfig,
         candidate: WorkspaceReconciliationCandidate,
+        reconciliationToken: IdeaIndexSemanticAdmission.ReconciliationToken,
     ): IndexingPassResult {
         var graphFailure: Throwable? = null
         val graph: (IndexedSourceIdentifiers) -> Unit = { scope ->
             runCatching {
-                semanticGraphIndexer(scope, liveConfig.indexing.graph.batchSize)
+                semanticGraphIndexer(scope, liveConfig.indexing.graph.batchSize, reconciliationToken)
             }.onFailure { error ->
                 graphFailure = error
                 LOG.warn("Kast semantic graph indexing pass failed", error)

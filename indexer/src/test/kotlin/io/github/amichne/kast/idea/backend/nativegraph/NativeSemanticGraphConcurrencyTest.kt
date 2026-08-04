@@ -114,10 +114,12 @@ class NativeSemanticGraphConcurrencyTest {
                 semanticGraphStore = store,
                 psiGeneration = psiGeneration::get,
                 readEpochObserver = observer,
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
                 supervisorScope {
                     val refresh = async(Dispatchers.Default) {
-                        backend.semanticGraph(
+                        backend.reconcileSemanticGraphForTest(
                             SemanticGraphQuery(
                                 filePaths = files.map { file -> SemanticGraphPath.parse(file.virtualFile.path) },
                             ).parsed(),
@@ -178,9 +180,11 @@ class NativeSemanticGraphConcurrencyTest {
                 psiGeneration = { 1L },
                 readEpochObserver = observer,
                 semanticGraphBatchSize = GraphIndexingBatchSize(1),
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
                 val refresh = async(Dispatchers.Default) {
-                    backend.semanticGraph(
+                    backend.reconcileSemanticGraphForTest(
                         SemanticGraphQuery(
                             filePaths = files.map { file -> SemanticGraphPath.parse(file.virtualFile.path) },
                         ).parsed(),

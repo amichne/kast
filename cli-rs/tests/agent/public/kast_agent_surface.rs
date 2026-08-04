@@ -7,15 +7,27 @@ use std::process::Command;
 
 use rusqlite::params;
 use sha2::{Digest, Sha256};
-use support::workspace_database_path_for_test;
 use support::workspace_files::WorkspaceIndexFixture;
 #[cfg(target_os = "macos")]
 use support::{default_bin_dir, write_current_cli_install_manifest_for_test};
+use support::{published_semantic_command_for_reads, workspace_database_path_for_test};
 
 fn named(name: &str) -> Command {
     let mut command = Command::new(env!("CARGO_BIN_EXE_kast"));
     command.arg0(name);
     command
+}
+
+fn published_public_kast(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+) -> support::PublishedSemanticCommand {
+    let mut command = named("kast");
+    command
+        .env("HOME", home)
+        .env("KAST_CONFIG_HOME", config_home);
+    published_semantic_command_for_reads(command, home, config_home, workspace, 1)
 }
 
 #[test]
@@ -164,10 +176,8 @@ fn graph_summary_is_a_direct_deterministic_toon_result_without_protocol_cruft() 
 
     let _index = seed_public_graph(&workspace, false);
 
-    let output = named("kast")
+    let output = published_public_kast(&home, &fixture.path().join("config"), &workspace)
         .current_dir(&workspace)
-        .env("HOME", &home)
-        .env("KAST_CONFIG_HOME", fixture.path().join("config"))
         .args(["graph", "summary"])
         .output()
         .expect("run kast graph summary");
@@ -227,10 +237,8 @@ fn public_graph_nodes_exposes_and_consumes_an_opaque_next_page() {
     }
     drop(connection);
 
-    let first = named("kast")
+    let first = published_public_kast(&home, &fixture.path().join("config"), &workspace)
         .current_dir(&workspace)
-        .env("HOME", &home)
-        .env("KAST_CONFIG_HOME", fixture.path().join("config"))
         .args(["graph", "nodes"])
         .output()
         .expect("first graph page");
@@ -257,10 +265,8 @@ fn public_graph_nodes_exposes_and_consumes_an_opaque_next_page() {
         assert!(first.get(private).is_none(), "leaked {private}: {first:#}");
     }
 
-    let second = named("kast")
+    let second = published_public_kast(&home, &fixture.path().join("config"), &workspace)
         .current_dir(&workspace)
-        .env("HOME", &home)
-        .env("KAST_CONFIG_HOME", fixture.path().join("config"))
         .args(["graph", "nodes", "--page", &next_page])
         .output()
         .expect("second graph page");
@@ -288,10 +294,8 @@ fn public_graph_nodes_exposes_and_consumes_an_opaque_next_page() {
         .canonicalize()
         .expect("canonical other workspace");
     let _other_index = seed_public_graph(&other_workspace, false);
-    let wrong_root = named("kast")
+    let wrong_root = published_public_kast(&home, &fixture.path().join("config"), &other_workspace)
         .current_dir(&other_workspace)
-        .env("HOME", &home)
-        .env("KAST_CONFIG_HOME", fixture.path().join("config"))
         .args(["graph", "nodes", "--page", &next_page])
         .output()
         .expect("cross-workspace graph page");
@@ -315,10 +319,8 @@ fn graph_summary_qualifies_stale_noncritical_persisted_facts() {
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let _index = seed_public_graph(&workspace, true);
 
-    let output = named("kast")
+    let output = published_public_kast(&home, &fixture.path().join("config"), &workspace)
         .current_dir(&workspace)
-        .env("HOME", &home)
-        .env("KAST_CONFIG_HOME", fixture.path().join("config"))
         .args(["graph", "summary"])
         .output()
         .expect("run stale graph summary");
@@ -354,10 +356,8 @@ fn graph_summary_ignores_current_reference_external_boundaries() {
         ))
         .expect("external reference boundary");
 
-    let output = named("kast")
+    let output = published_public_kast(&home, &fixture.path().join("config"), &workspace)
         .current_dir(&workspace)
-        .env("HOME", &home)
-        .env("KAST_CONFIG_HOME", fixture.path().join("config"))
         .args(["graph", "summary"])
         .output()
         .expect("run graph summary with an external reference boundary");

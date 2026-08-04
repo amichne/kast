@@ -110,6 +110,8 @@ class IdeaBackendOperationPerformanceTest {
         project = project,
         workspaceRoot = Path.of(sourceRootFixture.get().virtualFile.path).toAbsolutePath().normalize(),
         limits = defaultLimits,
+        workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+        workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
     )
 
     private fun ensureProjectReady() {

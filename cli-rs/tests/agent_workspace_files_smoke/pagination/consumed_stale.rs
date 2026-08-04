@@ -29,7 +29,10 @@ fn consumed_continuation_reports_stale_before_disappeared_authorities() {
             .expect("disappeared-authorities seed backend"),
     );
 
-    std::fs::remove_file(index.database_path()).expect("remove source-index authority");
+    index
+        .connection()
+        .execute_batch("PRAGMA foreign_keys=OFF; DROP TABLE file_manifest;")
+        .expect("remove source-index inventory authority");
     let mut responses = workspace_files_session_responses(&workspace);
     responses.push((
         "raw/workspace-files-continuation",

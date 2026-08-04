@@ -10,13 +10,22 @@ import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.WorkspaceIdentity
 import io.github.amichne.kast.api.contract.NormalizedPath
+import io.github.amichne.kast.api.contract.result.SemanticGraphFileStatus
+import io.github.amichne.kast.api.contract.result.SemanticGraphSha256
+import io.github.amichne.kast.idea.backend.semantic.semanticGraphContentHash
+import io.github.amichne.kast.indexstore.api.graph.SemanticGraphFileIndexUpdate
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
+import io.github.amichne.kast.indexstore.api.index.FileStageOutcomeStatus
+import io.github.amichne.kast.indexstore.api.index.FileStageVersions
+import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageUpdate
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
+import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 
 @TestApplication
@@ -146,6 +155,104 @@ class KastFocusedRelationshipRefreshTest {
             )
             assertTrue(
                 store.pendingFileStages(FileIndexStage.RELATIONSHIPS).any { work -> work.path.rawPath == callerPath },
+            )
+        }
+    }
+
+    @Test
+    fun `focused refresh repairs missing source facts before relationships`() {
+        val project = projectFixture.get()
+        val callerFile = callerFileFixture.get()
+        waitUntilIndexesAreReady(project)
+        val callerPath = Path.of(callerFile.virtualFile.path).toRealPath()
+        val workspaceRoot = callerPath.parent
+        val workspaceIdentity = WorkspaceIdentity.fromWorkspaceRoot(workspaceRoot).copy(
+            sourceIndexDatabasePath = NormalizedPath.ofAbsolute(tempDir.resolve("focused-missing-source.db")),
+        )
+        val completeGradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            emptyList(),
+            true,
+            emptyList(),
+            emptyList(),
+            emptyList(),
+            emptyList(),
+        )
+
+        SqliteSourceIndexStore(workspaceIdentity).use { store ->
+            store.ensureSchema()
+            val contentHash = semanticGraphContentHash(workspaceSourcePath(workspaceRoot, callerPath.toString()))
+            store.reconcileFileInventory(
+                entries = listOf(
+                    fileInventoryEntry(
+                        workspaceRoot = workspaceRoot,
+                        path = callerPath.toString(),
+                        lastModifiedMillis = Files.getLastModifiedTime(callerPath).toMillis(),
+                        contentHash = contentHash,
+                        moduleName = null,
+                        sourceSet = null,
+                    ),
+                ),
+                versions = FileStageVersions.CURRENT,
+            )
+            val graphWork = store.pendingFileStages(FileIndexStage.SEMANTIC_GRAPH).single()
+            store.commitSemanticGraphBatchIfGeneration(
+                expectedGeneration = store.readGeneration(),
+                updates = listOf(
+                    SemanticGraphFileStageUpdate(
+                        work = graphWork,
+                        update = SemanticGraphFileIndexUpdate(
+                            path = graphWork.path.semanticGraphSourcePath,
+                            packageName = "demo",
+                            moduleName = null,
+                            contentHash = SemanticGraphSha256.parse(contentHash.value),
+                            status = SemanticGraphFileStatus.REFRESHED,
+                            diagnostics = emptyList(),
+                            types = emptyList(),
+                            symbols = emptyList(),
+                            boundarySymbols = emptyList(),
+                            relations = emptyList(),
+                        ),
+                    ),
+                ),
+            )
+            assertNull(store.fileStageOutcome(callerPath.toString(), FileIndexStage.SOURCE))
+            assertNull(store.fileStageOutcome(callerPath.toString(), FileIndexStage.RELATIONSHIPS))
+            assertEquals(
+                FileStageOutcomeStatus.COMPLETE,
+                store.fileStageOutcome(callerPath.toString(), FileIndexStage.SEMANTIC_GRAPH)?.status,
+            )
+
+            val sourceScans = mutableListOf<String>()
+            val relationshipScans = mutableListOf<String>()
+            IdeaProjectIndexer(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                store = store,
+                cancelled = { false },
+                workspaceIdentity = workspaceIdentity,
+                readGradleWorkspaceModel = { completeGradleModel },
+                onSourceFileScan = sourceScans::add,
+                onRelationshipFileScan = relationshipScans::add,
+            ).refreshSymbolRelationships(listOf(graphWork.path))
+
+            assertEquals(listOf(callerPath.toString()), sourceScans)
+            assertEquals(listOf(callerPath.toString()), relationshipScans)
+            assertEquals(
+                FileStageOutcomeStatus.COMPLETE,
+                store.fileStageOutcome(callerPath.toString(), FileIndexStage.SOURCE)?.status,
+            )
+            assertTrue(
+                requireNotNull(
+                    store.fileStageOutcome(callerPath.toString(), FileIndexStage.RELATIONSHIPS),
+                ).status in setOf(FileStageOutcomeStatus.COMPLETE, FileStageOutcomeStatus.LIMITED),
+            )
+            assertTrue(
+                store.pendingFileStages(FileIndexStage.RELATIONSHIPS)
+                    .none { work -> work.path == graphWork.path },
+            )
+            assertEquals(
+                FileStageOutcomeStatus.COMPLETE,
+                store.fileStageOutcome(callerPath.toString(), FileIndexStage.SEMANTIC_GRAPH)?.status,
             )
         }
     }

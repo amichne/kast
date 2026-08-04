@@ -22,13 +22,57 @@ class WorkspaceVfsSignalClassifierTest {
         assertEquals(WorkspaceSignal.BuildSemantic, classifier.classify(root.resolve("build.gradle.kts")))
         assertEquals(WorkspaceSignal.BuildSemantic, classifier.classify(root.resolve("conventions/custom.gradle")))
         assertEquals(WorkspaceSignal.BuildSemantic, classifier.classify(root.resolve("gradle/libs.versions.toml")))
+        assertEquals(WorkspaceSignal.BuildSemantic, classifier.classify(root.resolve("local.properties")))
+        assertEquals(WorkspaceSignal.BuildSemantic, classifier.classify(root.resolve("gradle.lockfile")))
+        assertEquals(
+            WorkspaceSignal.BuildSemantic,
+            classifier.classify(root.resolve("gradle/dependency-locks/runtime.lockfile")),
+        )
         assertEquals(WorkspaceSignal.Scope, classifier.classify(root.resolve(".kastignore")))
         assertEquals(WorkspaceSignal.GitWorktree, classifier.classify(root.resolve(".git/index.lock")))
     }
 
     @Test
+    fun `classifies only compiler-visible IDEA configuration`() {
+        assertEquals(
+            WorkspaceSignal.SemanticEnvironment,
+            classifier.classify(root.resolve(".idea/compiler.xml")),
+        )
+        assertEquals(
+            WorkspaceSignal.SemanticEnvironment,
+            classifier.classify(root.resolve(".idea/kotlinc.xml")),
+        )
+        assertEquals(
+            WorkspaceSignal.SemanticEnvironment,
+            classifier.classify(root.resolve(".idea/misc.xml")),
+        )
+        assertNull(classifier.classify(root.resolve(".idea/workspace.xml")))
+        assertNull(classifier.classify(root.resolve(".idea/codeStyles/Project.xml")))
+    }
+
+    @Test
+    fun `classifies only compiler-visible build logic source`() {
+        assertEquals(
+            WorkspaceSignal.BuildSemantic,
+            classifier.classify(root.resolve("buildSrc/src/main/groovy/Plugin.groovy")),
+        )
+        assertEquals(
+            WorkspaceSignal.BuildSemantic,
+            classifier.classify(root.resolve("buildSrc/src/main/kotlin/Plugin.kt")),
+        )
+        assertEquals(
+            WorkspaceSignal.BuildSemantic,
+            classifier.classify(root.resolve("build-logic/src/main/java/Plugin.java")),
+        )
+        assertNull(classifier.classify(root.resolve("buildSrc/README.md")))
+        assertNull(classifier.classify(root.resolve("build-logic/docs/design.txt")))
+    }
+
+    @Test
     fun `ignores generated and unrelated paths`() {
         assertNull(classifier.classify(root.resolve("build/classes/App.class")))
+        assertNull(classifier.classify(root.resolve("build-logic/build/kotlin/compileKotlin/cacheable/last-build.bin")))
+        assertNull(classifier.classify(root.resolve("build-logic/.gradle/executionHistory/executionHistory.bin")))
         assertNull(classifier.classify(root.resolve("README.md")))
         assertNull(classifier.classify(Path.of("/other/src/App.kt")))
     }

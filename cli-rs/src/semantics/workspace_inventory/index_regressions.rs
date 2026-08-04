@@ -6,7 +6,7 @@ use super::super::model::{
     WorkspaceFileDrift, WorkspaceIndexRead, WorkspaceInventoryLimitationCode, WorkspaceRoot,
 };
 use super::super::workspace_files_test_support::WorkspaceIndexFixture;
-use super::read_workspace_index;
+use super::read_workspace_index_from_live_candidate_for_test as read_workspace_index;
 
 fn fixture() -> (tempfile::TempDir, WorkspaceRoot, WorkspaceIndexFixture) {
     let temp = tempfile::tempdir().expect("workspace tempdir");

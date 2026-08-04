@@ -1,4 +1,6 @@
-pub const DEFAULT_RUNTIME_WAIT_TIMEOUT_MS: u64 = 60_000;
+// The indexer permits one Gradle model refresh to run for five minutes. Leave
+// one minute for process startup, model settlement, reconciliation, and publish.
+pub const DEFAULT_RUNTIME_WAIT_TIMEOUT_MS: u64 = 360_000;
 
 #[derive(Debug, Args, Clone)]
 pub struct RuntimeArgs {
@@ -143,6 +145,6 @@ mod runtime_args_tests {
             panic!("expected developer runtime up command");
         };
 
-        assert_eq!(args.wait_timeout_ms, 60_000);
+        assert_eq!(args.wait_timeout_ms, 360_000);
     }
 }

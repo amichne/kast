@@ -276,11 +276,12 @@ fn exact_identity_drives_references_callers_continuation_and_impact_without_redi
     assert_eq!(callers_json["result"]["outcome"], "AVAILABLE");
     semantic_requests.extend(caller_backend.join().expect("callers backend"));
 
-    let impact_backend = spawn_scripted_indexer_backend(
+    let impact_backend = spawn_ready_scripted_indexer_backend_for_invocations(
         &home,
         &config,
         &workspace,
         &temp.path().join("identity-workflow-impact.sock"),
+        1,
         vec![(
             "raw/resolve",
             serde_json::json!({

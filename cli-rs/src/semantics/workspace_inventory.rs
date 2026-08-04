@@ -11,14 +11,25 @@ mod index;
 #[path = "workspace_inventory/model.rs"]
 pub(crate) mod model;
 
-pub(crate) fn read_workspace_index(root: &model::WorkspaceRoot) -> model::WorkspaceIndexRead {
-    index::read_workspace_index(root)
-}
-
-pub(crate) fn read_persisted_workspace_index(
+#[cfg(test)]
+pub(crate) fn read_workspace_index_from_live_candidate_for_test(
     root: &model::WorkspaceRoot,
 ) -> model::WorkspaceIndexRead {
-    index::read_persisted_workspace_index(root)
+    index::read_workspace_index_from_live_candidate_for_test(root)
+}
+
+pub(crate) fn read_workspace_index_from_published(
+    root: &model::WorkspaceRoot,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
+) -> model::WorkspaceIndexRead {
+    index::read_workspace_index_from_published(root, published)
+}
+
+pub(crate) fn read_persisted_workspace_index_from_published(
+    root: &model::WorkspaceRoot,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
+) -> model::WorkspaceIndexRead {
+    index::read_persisted_workspace_index_from_published(root, published)
 }
 
 #[cfg(test)]

@@ -31,7 +31,7 @@ fn exact_root_inventory_returns_a_bounded_compact_public_result() {
             "schemaVersion": api_schema_version()
         })
     };
-    let server = spawn_scripted_indexer_backend(
+    let server = spawn_scripted_indexer_backend_for_published_workspace_read(
         &home,
         &config_home,
         &workspace,
@@ -120,7 +120,11 @@ fn exact_root_inventory_returns_a_bounded_compact_public_result() {
     );
 
     let requests = server.join().expect("scripted backend");
-    assert_eq!(requests.len(), 6, "one admitted raw session: {requests:#?}");
+    assert_eq!(
+        requests.len(),
+        7,
+        "one admitted semantic read: {requests:#?}"
+    );
     assert_eq!(
         requests
             .iter()

@@ -35,8 +35,36 @@ fn execute_agent_native_graph(args: AgentNativeGraphArgs) -> AgentEnvelope {
     if args.operation == NativeGraphOperation::Refresh {
         return execute_agent_native_graph_refresh(args);
     }
-    match native_graph_result(&args) {
-        Ok(result) => result_envelope("agent/graph".to_string(), result),
+    let semantic_read = if args.database.is_none() {
+        match runtime::semantic_workspace_read_ready(args.runtime.workspace_root.clone()) {
+            Ok(read) => Some(read),
+            Err(error) => {
+                return error_envelope(
+                    "agent/graph".to_string(),
+                    None,
+                    AgentError::from_cli_error(error),
+                );
+            }
+        }
+    } else {
+        None
+    };
+    match native_graph_result(
+        &args,
+        semantic_read.as_ref().map(runtime::SemanticWorkspaceRead::published),
+    ) {
+        Ok(result) => {
+            if let Some(read) = &semantic_read
+                && let Err(error) = read.revalidate()
+            {
+                return error_envelope(
+                    "agent/graph".to_string(),
+                    None,
+                    AgentError::from_cli_error(error),
+                );
+            }
+            result_envelope("agent/graph".to_string(), result)
+        }
         Err(error) => error_envelope("agent/graph".to_string(), None, error),
     }
 }

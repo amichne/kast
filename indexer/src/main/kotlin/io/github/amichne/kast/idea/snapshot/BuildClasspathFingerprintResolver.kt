@@ -46,7 +46,12 @@ object BuildClasspathFingerprintResolver {
         }
 
     private fun classpathRootUrls(project: Project): List<String> =
-        OrderEnumerator.orderEntries(project).recursively().classes().urls.toList()
+        OrderEnumerator.orderEntries(project)
+            .recursively()
+            .withoutModuleSourceEntries()
+            .classes()
+            .urls
+            .toList()
 }
 
 private fun classpathRootContentIdentity(rootUrl: String, isCancelled: () -> Boolean): String {

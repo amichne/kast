@@ -33,6 +33,7 @@ internal class WorkspaceVfsSignalClassifier(
     fun classify(path: Path): WorkspaceSignal? {
         val normalized = path.toAbsolutePath().normalize()
         if (normalized in configurationFiles) return WorkspaceSignal.Configuration
+        if (isIdeaCompilerConfiguration(normalized)) return WorkspaceSignal.SemanticEnvironment
         if (isWithinAny(normalized, classpathRoots)) return WorkspaceSignal.SemanticEnvironment
         val fileName = normalized.fileName?.toString().orEmpty()
         val extension = fileName.substringAfterLast('.', "")
@@ -41,7 +42,7 @@ internal class WorkspaceVfsSignalClassifier(
         }
         if (normalized.startsWith(buildSemanticRoot)) {
             val buildRelative = buildSemanticRoot.relativize(normalized)
-            if (isBuildSemantic(buildRelative, fileName)) return WorkspaceSignal.BuildSemantic
+            if (BuildSemanticInputPolicy.includes(buildRelative)) return WorkspaceSignal.BuildSemantic
         }
         if (!normalized.startsWith(root)) return null
         val relative = root.relativize(normalized)
@@ -53,11 +54,16 @@ internal class WorkspaceVfsSignalClassifier(
         return WorkspaceSignal.Source.takeIf { extension.isEmpty() }
     }
 
-    private fun isBuildSemantic(relative: Path, fileName: String): Boolean =
-        fileName in BUILD_FILES ||
-            fileName.endsWith(".gradle") ||
-            fileName.endsWith(".gradle.kts") ||
-            relative.any { segment -> segment.toString() in BUILD_SEMANTIC_DIRECTORIES }
+    private fun isIdeaCompilerConfiguration(path: Path): Boolean =
+        sequenceOf(root, buildSemanticRoot)
+            .distinct()
+            .filter(path::startsWith)
+            .map { authority -> authority.relativize(path) }
+            .any { relative ->
+                relative.nameCount == 2 &&
+                    relative.getName(0).toString() == ".idea" &&
+                    relative.fileName.toString() in IDEA_COMPILER_CONFIGURATION_FILES
+            }
 
     private fun isWithinAny(path: Path, roots: () -> Set<Path>): Boolean =
         runCatching {
@@ -69,17 +75,8 @@ internal class WorkspaceVfsSignalClassifier(
 
     private companion object {
         val GENERATED_DIRECTORIES = setOf("build", ".gradle", ".idea", ".kotlin", "node_modules", "out")
-        val BUILD_SEMANTIC_DIRECTORIES = setOf("buildSrc", "build-logic", "gradle")
         val SOURCE_EXTENSIONS = setOf("java", "kt", "kts")
-        val BUILD_FILES = setOf(
-            "build.gradle",
-            "build.gradle.kts",
-            "settings.gradle",
-            "settings.gradle.kts",
-            "gradle.properties",
-            "gradlew",
-            "gradlew.bat",
-        )
+        val IDEA_COMPILER_CONFIGURATION_FILES = setOf("compiler.xml", "kotlinc.xml", "misc.xml")
         val SCOPE_FILES = setOf(".kastignore")
     }
 }

@@ -272,6 +272,7 @@ fn impact_default_is_typed_bounded_and_supports_selected_and_count_views() {
     let workspace = temp.path().join("workspace");
     seed_source_index(&workspace);
     seed_high_cardinality_impact(&workspace, "lib.Foo", HIGH_CARDINALITY_IMPACT_NODES);
+    let canonical_workspace = std::fs::canonicalize(&workspace).expect("canonical workspace");
     let declaration_file =
         std::fs::canonicalize(workspace.join("lib/Foo.kt")).expect("canonical impact declaration");
     let resolved = json!({
@@ -291,11 +292,12 @@ fn impact_default_is_typed_bounded_and_supports_selected_and_count_views() {
         let index = run_index.get();
         run_index.set(index + 1);
         let socket = temp.path().join(format!("impact-{index}.sock"));
-        let backend = spawn_scripted_indexer_backend(
+        let backend = spawn_ready_scripted_indexer_backend_for_invocations(
             &home,
             &config_home,
             &workspace,
             &socket,
+            1,
             vec![("raw/resolve", resolved.clone())],
         );
         let output = kast(&home, &config_home)
@@ -339,7 +341,7 @@ fn impact_default_is_typed_bounded_and_supports_selected_and_count_views() {
     assert_eq!(stdout["result"]["query"]["limit"], 4);
     assert_eq!(
         stdout["result"]["query"]["workspaceRoot"],
-        workspace.display().to_string()
+        canonical_workspace.display().to_string()
     );
     assert_eq!(
         stdout["result"]["totalCount"],

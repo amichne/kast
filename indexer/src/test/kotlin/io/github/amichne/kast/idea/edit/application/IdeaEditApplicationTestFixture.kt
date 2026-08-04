@@ -90,6 +90,8 @@ internal abstract class IdeaEditApplicationTestFixture {
         project = project,
         workspaceRoot = workspaceRoot,
         limits = defaultLimits,
+        workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+        workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
     )
 
     protected fun ensureProjectReady() {

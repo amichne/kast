@@ -3,14 +3,18 @@ include!("read/readiness.rs");
 pub(crate) fn semantic_graph_refresh_plan(
     workspace_root: &Path,
 ) -> Result<SemanticGraphRefreshPlan> {
-    let snapshot = read_coverage_with_orphans(
+    let semantic_read =
+        runtime::semantic_workspace_read_ready(Some(workspace_root.to_path_buf()))?;
+    let snapshot = read_coverage_from_published(
         workspace_root,
         RepositoryScope {
             language: Some("kotlin".to_string()),
             ..RepositoryScope::default()
         },
         true,
+        semantic_read.published(),
     )?;
+    semantic_read.revalidate()?;
     let (file_paths, removed_file_paths) = plan_semantic_graph_refresh_files(
         &snapshot.files,
         &snapshot.semantic_scope,
@@ -80,13 +84,18 @@ fn plan_semantic_graph_refresh_files(
 pub(crate) fn semantic_graph_read_admission(
     workspace_root: &Path,
 ) -> Result<SemanticGraphReadAdmission> {
-    let snapshot = read_coverage(
+    let semantic_read =
+        runtime::semantic_workspace_read_ready(Some(workspace_root.to_path_buf()))?;
+    let snapshot = read_coverage_from_published(
         workspace_root,
         RepositoryScope {
             language: Some("kotlin".to_string()),
             ..RepositoryScope::default()
         },
+        false,
+        semantic_read.published(),
     )?;
+    semantic_read.revalidate()?;
     let evidence = SemanticGraphEvidenceCoverage {
         total: snapshot.coverage.counts.total,
         indexed: snapshot.coverage.counts.indexed,
@@ -158,31 +167,38 @@ fn validate_limits(limits: &RepositoryLimits) -> Result<()> {
     Ok(())
 }
 
-fn open_repository_connection(workspace_root: &Path) -> Result<Connection> {
-    let database = config::workspace_database_path(workspace_root)?;
+fn open_repository_connection(
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
+) -> Result<Connection> {
     let connection = Connection::open_with_flags(
-        database,
+        published.database(),
         OpenFlags::SQLITE_OPEN_READ_ONLY | OpenFlags::SQLITE_OPEN_URI,
     )
     .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
     source_index_db::configure_read_connection(&connection)
         .map_err(|error| CliError::new("REPOSITORY_INDEX_UNAVAILABLE", error.to_string()))?;
+    crate::agent::native_graph_attach_published_repository_base(&connection, published)
+        .map_err(|error| {
+            CliError::new(
+                "REPOSITORY_INDEX_UNAVAILABLE",
+                format!("{}: {}", error.code, error.message),
+            )
+        })?;
     Ok(connection)
 }
 
-fn read_coverage(workspace_root: &Path, scope: RepositoryScope) -> Result<CoverageSnapshot> {
-    read_coverage_with_orphans(workspace_root, scope, false)
-}
-
-fn read_coverage_with_orphans(
+fn read_coverage_from_published(
     workspace_root: &Path,
     scope: RepositoryScope,
     allow_orphans: bool,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
 ) -> Result<CoverageSnapshot> {
-    for _ in 0..2 {
         let root = workspace_inventory::model::WorkspaceRoot::try_from(workspace_root)
             .map_err(|error| CliError::new("INVALID_REPOSITORY_SCOPE", error.to_string()))?;
-        let index = match workspace_inventory::read_persisted_workspace_index(&root) {
+        let index = match workspace_inventory::read_persisted_workspace_index_from_published(
+            &root,
+            published,
+        ) {
             WorkspaceIndexRead::Snapshot(index) => index,
             WorkspaceIndexRead::Unavailable(failure)
             | WorkspaceIndexRead::Incompatible(failure) => {
@@ -207,9 +223,12 @@ fn read_coverage_with_orphans(
             pending_updates,
             semantic_scope,
             orphaned_semantic_paths,
-        } = read_semantic_files(workspace_root)?;
+        } = read_semantic_files(published)?;
         if generation != semantic_generation {
-            continue;
+            return Err(CliError::new(
+                "GRAPH_COVERAGE_UNSTABLE",
+                "published source inventory and semantic graph generations do not match",
+            ));
         }
         if !allow_orphans
             && let Some(unaccounted) = orphaned_semantic_paths.first()
@@ -233,12 +252,7 @@ fn read_coverage_with_orphans(
         if snapshot.scope.module.is_none() && snapshot.scope.source_set.is_none() {
             apply_critical_path_coverage(workspace_root, &mut snapshot)?;
         }
-        return Ok(snapshot);
-    }
-    Err(CliError::new(
-        "GRAPH_COVERAGE_UNSTABLE",
-        "source-index generation moved twice while reading graph coverage",
-    ))
+        Ok(snapshot)
 }
 
 fn apply_critical_path_coverage(

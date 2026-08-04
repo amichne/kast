@@ -133,13 +133,17 @@ impl MetricsRequest {
         depth: usize,
     ) -> Result<Self> {
         let workspace_root = config::resolve_workspace_root(scope.workspace_root)?;
-        let database = scope
-            .database
-            .map(config::normalize)
-            .unwrap_or(config::workspace_database_path(&workspace_root)?);
+        let (database, published_read) = match scope.database {
+            Some(database) => (config::normalize(database), None),
+            None => {
+                let read = runtime::semantic_workspace_read_ready(Some(workspace_root.clone()))?;
+                (read.database().to_path_buf(), Some(read))
+            }
+        };
         Ok(Self {
             workspace_root,
             database,
+            published_read,
             metric,
             limit,
             symbol,
@@ -152,7 +156,8 @@ impl MetricsRequest {
 
     fn from_rpc_params(
         params: MetricsRpcParams,
-        workspace_root_arg: Option<PathBuf>,
+        workspace_root: &Path,
+        published: &crate::published_workspace::PublishedWorkspaceDatabase,
     ) -> Result<Self> {
         let metric = match params.metric.as_str() {
             "fanIn" => "fanIn",
@@ -168,9 +173,18 @@ impl MetricsRequest {
                 ));
             }
         };
-        let workspace_root =
-            config::resolve_workspace_root(params.workspace_root.or(workspace_root_arg))?;
-        let database = config::workspace_database_path(&workspace_root)?;
+        if let Some(requested_workspace_root) = params.workspace_root {
+            let requested_workspace_root =
+                config::resolve_workspace_root(Some(requested_workspace_root))?;
+            if requested_workspace_root != workspace_root {
+                return Err(CliError::new(
+                    "SEMANTIC_WORKSPACE_MISMATCH",
+                    "database/metrics requested a workspace other than the admitted indexer workspace",
+                ));
+            }
+        }
+        let workspace_root = workspace_root.to_path_buf();
+        let database = published.database().to_path_buf();
         let impact_offset = AgentImpactPageOffset::try_from(params.offset.unwrap_or_default())
             .map_err(|message| CliError::new("IMPACT_PAGE_TOKEN_INVALID", message))?;
         if metric != "impact" && (params.subject.is_some() || params.offset.is_some()) {
@@ -196,6 +210,7 @@ impl MetricsRequest {
         Ok(Self {
             workspace_root,
             database,
+            published_read: None,
             metric,
             limit: params.limit.unwrap_or(50),
             symbol: params.symbol,
@@ -244,6 +259,7 @@ impl MetricsRequest {
         Ok(Self {
             workspace_root,
             database,
+            published_read: None,
             metric,
             limit,
             symbol,

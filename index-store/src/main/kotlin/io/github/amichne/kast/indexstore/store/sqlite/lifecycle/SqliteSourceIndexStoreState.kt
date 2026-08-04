@@ -27,10 +27,10 @@ internal class SqliteSourceIndexStoreState(
     internal val normalizedWorkspaceRoot: NormalizedPath = NormalizedPath.of(workspaceRoot)
     internal val sourceFilePolicy = SourceIndexFilePolicy.forWorkspace(workspaceRoot)
     internal val dbPath: Path = workspaceIdentity.sourceIndexDatabaseFile
-    private val overlayManifest: OverlayManifest? = dbPath.resolveSibling(REPOSITORY_OVERLAY_FILE)
+    internal val repositoryOverlayManifest: OverlayManifest? = dbPath.resolveSibling(REPOSITORY_OVERLAY_FILE)
         .takeIf(Files::isRegularFile)
         ?.let { path -> Json.decodeFromString(Files.readString(path)) }
-    internal val repositoryBasePath: Path? = overlayManifest?.baseDatabase
+    internal val repositoryBasePath: Path? = repositoryOverlayManifest?.baseDatabase
         ?.let(Path::of)
         ?.toAbsolutePath()
         ?.normalize()
@@ -163,7 +163,7 @@ internal class SqliteSourceIndexStoreState(
     }
 
     internal fun initializeRepositoryOverlay(conn: Connection) {
-        val manifest = overlayManifest ?: return
+        val manifest = repositoryOverlayManifest ?: return
         conn.createStatement().use { statement ->
             statement.execute(
                 """CREATE TABLE IF NOT EXISTS repository_overlay_state (

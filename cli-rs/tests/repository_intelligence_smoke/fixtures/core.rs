@@ -50,7 +50,7 @@ fn coverage_fixture_with_file_count(
         .join(&common_hash[..12])
         .join("worktrees")
         .join(format!("workspace--{}", &worktree_hash[..12]))
-        .join("cache/source-index.db");
+        .join("semantic-generations/generations/test-generation/source-index.db");
     let fixture = WorkspaceIndexFixture::at_database_path(&workspace, &database);
     fixture.seed_high_cardinality_sources(file_count);
     let file_count = i64::try_from(file_count).expect("fixture file count");
@@ -108,7 +108,12 @@ fn rpc_output(
     output_format: &str,
     request: &serde_json::Value,
 ) -> std::process::Output {
-    kast(home, config_home)
+    publish_workspace_database_for_test(workspace);
+    let socket = home.join("published-semantic-read.sock");
+    let _ = std::fs::remove_file(&socket);
+    let backend =
+        spawn_open_published_semantic_read_backend(home, config_home, workspace, &socket);
+    let output = kast(home, config_home)
         .args([
             "--output",
             output_format,
@@ -119,7 +124,9 @@ fn rpc_output(
             &request.to_string(),
         ])
         .output()
-        .expect("rpc")
+        .expect("rpc");
+    backend.finish();
+    output
 }
 
 fn graph_coverage_page_request(
@@ -204,7 +211,7 @@ fn agent_repository_traversal_page(
     if request.verbose {
         args.push("--verbose".to_string());
     }
-    let output = kast(home, config_home)
+    let output = published_semantic_command(home, config_home, workspace)
         .args(args)
         .output()
         .expect("agent repository traversal page");

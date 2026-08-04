@@ -89,7 +89,7 @@ mod regex_discovery {
     fn unique_regex_resolves_through_the_agent_cli() {
         let (_temp, home, config_home, workspace, fixture) = coverage_fixture();
         seed_repository_graph(&fixture);
-        let output = kast(&home, &config_home)
+        let output = published_semantic_command(&home, &config_home, &workspace)
             .args([
                 "--output",
                 "json",

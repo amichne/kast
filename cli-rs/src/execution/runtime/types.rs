@@ -52,6 +52,9 @@ pub struct RuntimeStatusResponse {
     pub reference_coverage_state: ReferenceCoverageState,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub reference_coverage_limitations: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub published_workspace_generation:
+        Option<crate::published_workspace::PublishedWorkspaceGenerationManifest>,
     #[serde(default = "schema_version")]
     pub schema_version: u32,
 }

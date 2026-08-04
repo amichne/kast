@@ -18,6 +18,8 @@ import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.idea.backend.mutation.ExactFileImageCasObserver
 import io.github.amichne.kast.idea.mutation.SecureWorkspaceMutation
+import io.github.amichne.kast.idea.transition.WorkspaceSignal
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Base64
@@ -52,6 +54,30 @@ internal class ExactFileImageCasTest : KastIndexerBackendContractTestFixture() {
         assertEquals(FileHashing.sha256(after), result.resultSha256.value)
         assertArrayEquals(after, Files.readAllBytes(filePath))
         assertArrayEquals(after, readAction { sampleFile.virtualFile.contentsToByteArray() })
+    }
+
+    @Test
+    fun `exact image CAS is owned by one workspace transition mutation`() = runBlocking {
+        ensureProjectReady()
+        val (filePath, workspaceRoot) = readAction {
+            Path.of(sampleFile.virtualFile.path) to commonWorkspaceRoot(
+                sampleFile.virtualFile.path,
+                hierarchyFile.virtualFile.path,
+            )
+        }
+        val before = Files.readAllBytes(filePath)
+        val after = "package demo\nfun transitionOwned(): Unit = Unit\n".toByteArray()
+        val requester = RecordingWorkspaceTransitionRequester()
+
+        backend(
+            workspaceRoot = workspaceRoot,
+            workspaceTransitionRequester = requester,
+        ).exactFileImageCas(query(filePath, before, after))
+
+        assertEquals(1, requester.mutationCount)
+        assertEquals(WorkspaceSignal.Source, requester.signal)
+        assertTrue(requester.operationCompleted)
+        assertArrayEquals(after, Files.readAllBytes(filePath))
     }
 
     @Test
@@ -210,6 +236,8 @@ internal class ExactFileImageCasTest : KastIndexerBackendContractTestFixture() {
                 maxConcurrentRequests = 2,
             ),
             exactFileImageMutation = mutation,
+            workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+            workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
         )
 
         val failure = assertThrows(UnsafeWorkspaceMutationException::class.java) {
@@ -293,6 +321,8 @@ internal class ExactFileImageCasTest : KastIndexerBackendContractTestFixture() {
                 maxConcurrentRequests = 2,
             ),
             exactFileImageMutation = mutation,
+            workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+            workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
         )
 
         val thrown = try {
@@ -325,5 +355,26 @@ internal class ExactFileImageCasTest : KastIndexerBackendContractTestFixture() {
             maxConcurrentRequests = 2,
         ),
         exactFileImageCasObserver = observer,
+        workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+        workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
     )
+
+    private class RecordingWorkspaceTransitionRequester : WorkspaceTransitionRequester {
+        var mutationCount: Int = 0
+        var signal: WorkspaceSignal? = null
+        var operationCompleted: Boolean = false
+
+        override suspend fun reconcile(signal: WorkspaceSignal): PublishedWorkspaceGenerationManifest =
+            error("Unexpected standalone reconciliation")
+
+        override suspend fun <T> mutate(
+            signal: WorkspaceSignal,
+            detail: String,
+            operation: suspend () -> T,
+        ): T {
+            mutationCount += 1
+            this.signal = signal
+            return operation().also { operationCompleted = true }
+        }
+    }
 }

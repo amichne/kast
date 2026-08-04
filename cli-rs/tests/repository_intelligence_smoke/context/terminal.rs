@@ -6,7 +6,7 @@ fn repository_terminal_context_resolution_skips_content_reads() {
     std::fs::write(workspace.join("docs/unrelated.md"), [0xff, 0xfe])
         .expect("malformed context fixture");
 
-    let output = kast(&home, &config_home)
+    let output = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "agent",
             "repository",

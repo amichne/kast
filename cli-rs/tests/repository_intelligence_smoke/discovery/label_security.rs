@@ -54,7 +54,7 @@ fn label_index_paths_and_size_are_bounded_before_reading() {
         );
     }
 
-    let output = kast(&home, &config_home)
+    let output = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "agent",
             "repository",

@@ -1,7 +1,7 @@
 struct ScriptedIndexLaneReader {
     index: VecDeque<WorkspaceIndexRead>,
     index_reads: usize,
-    inner: super::collect::SystemWorkspaceLaneReader,
+    inner: super::collect::LiveCandidateWorkspaceLaneReader,
 }
 
 impl super::collect::WorkspaceInventoryLaneReader for ScriptedIndexLaneReader {
@@ -83,7 +83,7 @@ fn lane_availability_and_unavailable_reason_transitions_participate_in_the_barri
         let mut lanes = ScriptedIndexLaneReader {
             index: observations.into(),
             index_reads: 0,
-            inner: super::collect::SystemWorkspaceLaneReader,
+            inner: super::collect::LiveCandidateWorkspaceLaneReader,
         };
 
         let snapshot =

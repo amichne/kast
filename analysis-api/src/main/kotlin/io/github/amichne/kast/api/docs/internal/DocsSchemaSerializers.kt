@@ -10,6 +10,7 @@ internal fun docsSchemaSerializers(): Map<String, KSerializer<*>> = mapOf(
     // System responses
     "HealthResponse" to HealthResponse.serializer(),
     "RuntimeStatusResponse" to RuntimeStatusResponse.serializer(),
+    "PublishedWorkspaceGenerationStatus" to PublishedWorkspaceGenerationStatus.serializer(),
     "RuntimeLifecycleResponse" to RuntimeLifecycleResponse.serializer(),
     "BackendCapabilities" to BackendCapabilities.serializer(),
     // Shared types

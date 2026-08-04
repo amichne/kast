@@ -180,7 +180,7 @@ internal class KastIndexerBackendContractTest : KastIndexerBackendContractTestFi
         ensureProjectReady()
 
         val status = backend(
-            indexSemanticAdmissionStatus = {
+            workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority {
                 IdeaIndexSemanticAdmission.Status.Pending("Kotlin runtime unresolved in :main")
             },
         ).runtimeStatus()
@@ -202,7 +202,7 @@ internal class KastIndexerBackendContractTest : KastIndexerBackendContractTestFi
         ensureProjectReady()
 
         val status = backend(
-            indexSemanticAdmissionStatus = {
+            workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority {
                 IdeaIndexSemanticAdmission.Status.Failed("K2 diagnostics unavailable")
             },
         ).runtimeStatus()

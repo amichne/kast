@@ -80,7 +80,7 @@ fn repository_architecture_result_limits_are_truthful_and_bounded() {
         "{low:#}"
     );
 
-    let compact = kast(&home, &config_home)
+    let compact = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "agent",
             "repository",

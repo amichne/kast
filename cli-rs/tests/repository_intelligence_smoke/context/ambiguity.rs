@@ -50,7 +50,7 @@ fn repository_context_ambiguity_preserves_exact_candidates() {
     assert_eq!(canonical_ambiguity["truncated"], true, "{canonical:#}");
     assert_eq!(canonical["result"]["truncated"], true, "{canonical:#}");
 
-    let compact_output = kast(&home, &config_home)
+    let compact_output = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "agent",
             "repository",

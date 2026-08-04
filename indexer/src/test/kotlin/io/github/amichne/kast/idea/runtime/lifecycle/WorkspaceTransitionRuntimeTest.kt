@@ -45,7 +45,7 @@ class WorkspaceTransitionRuntimeTest {
             },
             refreshWorkspace = { _, _, signals -> refreshedSignals += signals },
             runProjectIndexing = { _, _ -> },
-            publishWorkspaceGeneration = {},
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
             waitForNextPass = { false },
             resolveWorkspaceStateIdentity = { WorkspaceStateIdentity("stable") },
         )
@@ -82,7 +82,7 @@ class WorkspaceTransitionRuntimeTest {
             observeWorkspaceEvents = { _, _, _ -> AutoCloseable {} },
             refreshWorkspace = { _, refreshRoot, _ -> refreshedRoots.add(refreshRoot) },
             runProjectIndexing = { _, _ -> },
-            publishWorkspaceGeneration = {},
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
             waitForNextPass = { false },
             resolveWorkspaceStateIdentity = { WorkspaceStateIdentity("stable") },
         )
@@ -124,7 +124,9 @@ class WorkspaceTransitionRuntimeTest {
                 }
             },
             runProjectIndexing = { _, _ -> },
-            publishWorkspaceGeneration = { publishedPasses += refreshPass.get() },
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(
+                onCommit = { publishedPasses += refreshPass.get() },
+            ),
             waitForNextPass = { false },
             resolveWorkspaceStateIdentity = { WorkspaceStateIdentity("stable") },
         )
@@ -158,7 +160,7 @@ class WorkspaceTransitionRuntimeTest {
             observeWorkspaceEvents = { _, _, _ -> AutoCloseable {} },
             refreshWorkspace = { _, _, _ -> },
             runProjectIndexing = { _, _ -> indexing.cancel() },
-            publishWorkspaceGeneration = publications::add,
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
             waitForNextPass = { false },
             resolveWorkspaceStateIdentity = { WorkspaceStateIdentity("cancelled-candidate") },
         )

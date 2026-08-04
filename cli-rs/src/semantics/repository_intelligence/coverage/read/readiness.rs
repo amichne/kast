@@ -1,11 +1,26 @@
-pub fn semantic_graph_readiness(workspace_root: &Path) -> SemanticGraphReadiness {
-    match read_coverage(
-        workspace_root,
-        RepositoryScope {
-            language: Some("kotlin".to_string()),
-            ..RepositoryScope::default()
-        },
-    ) {
+pub(crate) fn semantic_graph_readiness_for_admission(
+    admission: &runtime::SemanticWorkspaceAdmission,
+) -> SemanticGraphReadiness {
+    let result = runtime::semantic_workspace_read_for_admission(admission).and_then(|read| {
+        let snapshot = read_coverage_from_published(
+            admission.workspace_root(),
+            RepositoryScope {
+                language: Some("kotlin".to_string()),
+                ..RepositoryScope::default()
+            },
+            false,
+            read.published(),
+        )?;
+        read.revalidate()?;
+        Ok(snapshot)
+    });
+    semantic_graph_readiness_from_result(result)
+}
+
+fn semantic_graph_readiness_from_result(
+    result: Result<CoverageSnapshot>,
+) -> SemanticGraphReadiness {
+    match result {
         Ok(snapshot) => {
             let coverage = snapshot.coverage;
             SemanticGraphReadiness {

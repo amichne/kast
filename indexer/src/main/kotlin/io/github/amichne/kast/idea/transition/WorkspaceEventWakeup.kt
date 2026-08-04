@@ -1,11 +1,13 @@
 package io.github.amichne.kast.idea.transition
 
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.Condition
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
 internal class WorkspaceEventWakeup(
     private val nanoTime: () -> Long = System::nanoTime,
+    private val awaitCondition: (Condition, Long) -> Long = Condition::awaitNanos,
 ) {
     private val lock = ReentrantLock()
     private val changed = lock.newCondition()
@@ -41,9 +43,11 @@ internal class WorkspaceEventWakeup(
 
     fun awaitWakeup(auditMillis: Long): WorkspaceWakeup = try {
         lock.withLock {
-            if (!pending) {
-                val signalled = changed.await(auditMillis, TimeUnit.MILLISECONDS)
-                if (!signalled && !pending) return@withLock WorkspaceWakeup.RecoveryAudit
+            val deadlineNanos = nanoTime() + TimeUnit.MILLISECONDS.toNanos(auditMillis)
+            while (!pending) {
+                val remainingNanos = deadlineNanos - nanoTime()
+                if (remainingNanos <= 0L) return@withLock WorkspaceWakeup.RecoveryAudit
+                awaitCondition(changed, remainingNanos)
             }
             pending = false
             WorkspaceWakeup.Signal
@@ -59,7 +63,7 @@ internal class WorkspaceEventWakeup(
                 val remainingNanos = TimeUnit.MILLISECONDS.toNanos(quiescenceMillis) -
                     (nanoTime() - lastSignalNanos).coerceAtLeast(0L)
                 if (remainingNanos <= 0) return@withLock
-                changed.awaitNanos(remainingNanos)
+                awaitCondition(changed, remainingNanos)
             }
         }
         true

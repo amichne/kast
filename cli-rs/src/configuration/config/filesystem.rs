@@ -85,6 +85,7 @@ fn workspace_data_directory_from(workspaces_root: &Path, root: &Path) -> Result<
         .join(format!("{}--{id}", sanitized_path(root))))
 }
 
+#[cfg(test)]
 pub fn workspace_database_path(workspace_root: &Path) -> Result<PathBuf> {
     Ok(workspace_data_directory(workspace_root)?.join("cache/source-index.db"))
 }

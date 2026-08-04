@@ -1,7 +1,7 @@
 struct MutatingDirtyLaneReader {
     target: std::path::PathBuf,
     dirty_reads: usize,
-    inner: super::collect::SystemWorkspaceLaneReader,
+    inner: super::collect::LiveCandidateWorkspaceLaneReader,
 }
 
 impl super::collect::WorkspaceInventoryLaneReader for MutatingDirtyLaneReader {
@@ -49,7 +49,7 @@ fn git_movement_is_barrier_relevant_only_when_dirty_evidence_is_requested() {
     let mut relevant_lanes = MutatingDirtyLaneReader {
         target: target.clone(),
         dirty_reads: 0,
-        inner: super::collect::SystemWorkspaceLaneReader,
+        inner: super::collect::LiveCandidateWorkspaceLaneReader,
     };
     let relevant =
         super::collect::collect_workspace_inventory(super::collect::WorkspaceInventoryInputs {
@@ -70,7 +70,7 @@ fn git_movement_is_barrier_relevant_only_when_dirty_evidence_is_requested() {
     let mut irrelevant_lanes = MutatingDirtyLaneReader {
         target,
         dirty_reads: 0,
-        inner: super::collect::SystemWorkspaceLaneReader,
+        inner: super::collect::LiveCandidateWorkspaceLaneReader,
     };
     let irrelevant =
         super::collect::collect_workspace_inventory(super::collect::WorkspaceInventoryInputs {

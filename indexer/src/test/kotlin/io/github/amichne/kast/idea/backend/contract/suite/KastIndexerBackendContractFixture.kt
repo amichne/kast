@@ -47,6 +47,7 @@ import io.github.amichne.kast.api.contract.skill.KastHierarchyQuery
 import io.github.amichne.kast.api.contract.skill.KastImplementationsQuery
 import io.github.amichne.kast.api.contract.skill.WrapperCallDirection
 import io.github.amichne.kast.api.protocol.ConflictException
+import io.github.amichne.kast.idea.backend.semantic.WorkspaceSemanticReadAuthority
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferenceRow
 import io.github.amichne.kast.indexstore.api.reference.SymbolReferencePage
 import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
@@ -162,9 +163,8 @@ internal abstract class KastIndexerBackendContractTestFixture {
         psiGeneration: () -> Long = { 1L },
         readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
         referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
-        indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
-            IdeaIndexSemanticAdmission.Status.Ready
-        },
+        workspaceSemanticReadAuthority: WorkspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+        workspaceTransitionRequester: WorkspaceTransitionRequester = TestWorkspaceTransitionRequester(),
         workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
             IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
                 emptyList(),
@@ -187,7 +187,8 @@ internal abstract class KastIndexerBackendContractTestFixture {
         psiGeneration = psiGeneration,
         readEpochObserver = readEpochObserver,
         referenceTraversalObserver = referenceTraversalObserver,
-        indexSemanticAdmissionStatus = indexSemanticAdmissionStatus,
+        workspaceSemanticReadAuthority = workspaceSemanticReadAuthority,
+        workspaceTransitionRequester = workspaceTransitionRequester,
         workspaceModelReader = workspaceModelReader,
         relationshipCoverageAuthority = relationshipCoverageAuthority,
     )
@@ -236,7 +237,9 @@ internal abstract class KastIndexerBackendContractTestFixture {
         return IdeaRelationshipCoverageAuthority(
             project = project,
             workspaceIdentity = IdeaWorkspaceIdentity.fromProject(project, workspaceRoot),
-            indexSemanticAdmissionStatus = { IdeaIndexSemanticAdmission.Status.Ready },
+            indexSemanticAdmissionStatus = {
+                IdeaIndexSemanticAdmission.Status.Ready(testPublishedWorkspaceGeneration())
+            },
             workspaceModelReader = { transform(model) },
             sourceIndexStore = sourceIndexStore,
         )

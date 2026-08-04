@@ -29,6 +29,23 @@ pub(crate) fn native_graph_attach_repository_base(
             format!("Repository base is unavailable: {}", base.display()),
         ));
     }
+    native_graph_attach_repository_base_path(connection, Some(&base))
+}
+
+pub(crate) fn native_graph_attach_published_repository_base(
+    connection: &rusqlite::Connection,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
+) -> std::result::Result<bool, AgentError> {
+    native_graph_attach_repository_base_path(connection, published.repository_base_database())
+}
+
+fn native_graph_attach_repository_base_path(
+    connection: &rusqlite::Connection,
+    base: Option<&Path>,
+) -> std::result::Result<bool, AgentError> {
+    let Some(base) = base else {
+        return Ok(false);
+    };
     connection
         .execute(
             "ATTACH DATABASE ?1 AS repository_base",
@@ -53,28 +70,38 @@ pub(crate) fn native_graph_attach_repository_base(
 
 fn native_graph_database_path(
     args: &AgentNativeGraphArgs,
+    published: Option<&crate::published_workspace::PublishedWorkspaceDatabase>,
 ) -> std::result::Result<PathBuf, AgentError> {
     if let Some(database) = &args.database {
         return Ok(database.clone());
     }
-    let workspace_root = args
-        .runtime
-        .workspace_root
-        .clone()
-        .map(Ok)
-        .unwrap_or_else(std::env::current_dir)
-        .map_err(|error| {
+    published
+        .map(|published| published.database().to_path_buf())
+        .ok_or_else(|| {
             agent_error(
                 "NATIVE_GRAPH_DATABASE_UNAVAILABLE",
-                format!("Cannot resolve the active workspace: {error}"),
+                "Default native-graph reads require an admitted published workspace generation.",
+            )
+        })
+}
+
+fn native_graph_attach_database_base(
+    args: &AgentNativeGraphArgs,
+    connection: &rusqlite::Connection,
+    database: &Path,
+    published: Option<&crate::published_workspace::PublishedWorkspaceDatabase>,
+) -> std::result::Result<bool, AgentError> {
+    if args.database.is_some() {
+        native_graph_attach_repository_base(connection, database)
+    } else {
+        let published = published.ok_or_else(|| {
+            agent_error(
+                "NATIVE_GRAPH_DATABASE_UNAVAILABLE",
+                "Default native-graph overlay reads require an admitted published workspace generation.",
             )
         })?;
-    crate::config::workspace_database_path(&workspace_root).map_err(|error| {
-        agent_error(
-            "NATIVE_GRAPH_DATABASE_UNAVAILABLE",
-            format!("Cannot resolve source-index.db: {error}"),
-        )
-    })
+        native_graph_attach_published_repository_base(connection, published)
+    }
 }
 
 fn native_graph_generation(

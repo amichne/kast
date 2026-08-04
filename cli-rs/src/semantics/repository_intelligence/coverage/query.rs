@@ -1,4 +1,8 @@
-fn graph_coverage(workspace_root: &Path, params: GraphCoverageParams) -> Result<Value> {
+fn graph_coverage(
+    workspace_root: &Path,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
+    params: GraphCoverageParams,
+) -> Result<Value> {
     let scope = RepositoryScope::from(params.scope);
     validate_scope(&scope)?;
     if !(1..=MAX_FILE_LIMIT).contains(&params.limit) {
@@ -14,7 +18,7 @@ fn graph_coverage(workspace_root: &Path, params: GraphCoverageParams) -> Result<
         .map(|token| consume_graph_coverage_continuation(token, &query_sha256))
         .transpose()?;
     let has_continuation = claims.is_some();
-    let snapshot = read_coverage(workspace_root, scope).map_err(|error| {
+    let snapshot = read_coverage_from_published(workspace_root, scope, false, published).map_err(|error| {
         if has_continuation
             && matches!(
                 error.code,
@@ -26,6 +30,7 @@ fn graph_coverage(workspace_root: &Path, params: GraphCoverageParams) -> Result<
             error
         }
     })?;
+    published.revalidate()?;
     let coverage_sha256 = coverage_composition_sha256(&snapshot)?;
     let start = claims
         .map(|claims| graph_coverage_resume_offset(&claims, &snapshot, &coverage_sha256))

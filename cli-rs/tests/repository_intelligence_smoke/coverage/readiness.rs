@@ -100,6 +100,7 @@ fn status_separates_runtime_readiness_from_incomplete_semantic_graph_coverage() 
         vec![
             ("runtime/status", ready_runtime(&workspace)),
             ("capabilities", semantic_graph_capabilities(&workspace)),
+            ("runtime/status", ready_runtime(&workspace)),
         ],
     );
 
@@ -213,8 +214,9 @@ fn verify_fails_incomplete_semantic_graph_coverage_without_discarding_runtime_ev
             ("runtime/status", runtime.clone()),
             ("capabilities", capabilities.clone()),
             ("health", serde_json::json!({"ok": true, "status": "READY"})),
-            ("runtime/status", runtime),
+            ("runtime/status", runtime.clone()),
             ("capabilities", capabilities),
+            ("runtime/status", runtime),
         ],
     );
 
@@ -280,8 +282,9 @@ fn verify_verbose_reports_execution_level_semantic_graph_issue() {
             ("runtime/status", runtime.clone()),
             ("capabilities", capabilities.clone()),
             ("health", serde_json::json!({"ok": true, "status": "READY"})),
-            ("runtime/status", runtime),
+            ("runtime/status", runtime.clone()),
             ("capabilities", capabilities),
+            ("runtime/status", runtime),
         ],
     );
 

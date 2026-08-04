@@ -4,7 +4,7 @@ fn repository_context_empty_preserves_unresolved_references() {
     seed_repository_graph(&fixture);
     let question = "Resolve MissingContextSymbol context.";
 
-    let compact_output = kast(&home, &config_home)
+    let compact_output = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "agent",
             "repository",
@@ -47,7 +47,7 @@ fn repository_context_empty_preserves_unresolved_references() {
         "{compact:#}"
     );
 
-    let selected_output = kast(&home, &config_home)
+    let selected_output = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "--output",
             "json",
@@ -204,7 +204,7 @@ fn repository_context_qualifies_empty_at_inferred_target_ceiling() {
         "{response:#}"
     );
 
-    let agent_output = kast(&home, &config_home)
+    let agent_output = published_semantic_command(&home, &config_home, &workspace)
         .args([
             "--output",
             "json",

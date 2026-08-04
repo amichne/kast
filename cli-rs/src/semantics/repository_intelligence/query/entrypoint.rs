@@ -4,7 +4,8 @@ fn default_file_limit() -> usize {
 
 pub(crate) fn try_handle_raw_rpc(
     raw_request: &str,
-    workspace_root_arg: Option<PathBuf>,
+    workspace_root: &Path,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
 ) -> Result<Option<String>> {
     let request_value: Value = serde_json::from_str(raw_request)?;
     let Some(method) = request_value
@@ -45,17 +46,21 @@ pub(crate) fn try_handle_raw_rpc(
         "graph/coverage" => {
             let params = serde_json::from_value::<GraphCoverageParams>(request.params)
                 .map_err(|error| CliError::new(invalid_code, error.to_string()))?;
-            let workspace_root =
-                repository_workspace_root(workspace_root_arg, params._workspace_root.as_deref())?;
-            graph_coverage(workspace_root.as_path(), params)?
+            let workspace_root = repository_workspace_root(
+                Some(workspace_root.to_path_buf()),
+                params._workspace_root.as_deref(),
+            )?;
+            graph_coverage(workspace_root.as_path(), published, params)?
         }
         "repository/query" => {
             let params = serde_json::from_value::<RepositoryQueryParams>(request.params)
                 .map_err(|error| CliError::new(invalid_code, error.to_string()))?;
-            let workspace_root =
-                repository_workspace_root(workspace_root_arg, params._workspace_root.as_deref())?;
+            let workspace_root = repository_workspace_root(
+                Some(workspace_root.to_path_buf()),
+                params._workspace_root.as_deref(),
+            )?;
             let params = params.validated()?;
-            repository_query(&workspace_root, params)?
+            repository_query(&workspace_root, published, params)?
         }
         _ => unreachable!("method checked above"),
     };

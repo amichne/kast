@@ -121,6 +121,7 @@ internal class SourceIndexSnapshotStore(
             incompleteModuleCount = incompleteModuleCount,
             pendingUpdateCount = pendingUpdateCount,
             sourceIndexSchemaVersion = SourceIndexSchemaVersion(SOURCE_INDEX_SCHEMA_VERSION),
+            repositoryOverlay = state.repositoryOverlayManifest,
         )
     }
 

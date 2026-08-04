@@ -14,12 +14,9 @@ import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
 import io.github.amichne.kast.api.client.fields.PathsDescriptorDir
 import io.github.amichne.kast.api.client.fields.PathsLogsDir
 import io.github.amichne.kast.api.client.fields.PathsSocketDir
-import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -29,10 +26,9 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
-import kotlin.io.path.exists
 
 @TestApplication
-class IndexerServerRuntimeTest {
+class KastIdeaProjectIndexingRuntimeTest {
     companion object {
         private val projectFixture: TestFixture<Project> = projectFixture()
 
@@ -51,45 +47,6 @@ class IndexerServerRuntimeTest {
     private val targetFileFixture = sourceRootFixture.psiFileFixture("Target.kt", targetSource)
 
     @Test
-    fun `runtime starts analysis server with configured backend name`() = runBlocking {
-        val project = projectFixture.get()
-        val sourceFile = targetFileFixture.get()
-        waitUntilIndexesAreReady(project)
-        val workspaceRoot = Path.of(sourceFile.virtualFile.path).parent.toAbsolutePath().normalize()
-        val socketPath = tempDir.resolve("kast-indexer.sock")
-        val descriptorDirectory = tempDir.resolve("descriptors")
-        val config = KastConfig.defaults().let { defaults ->
-            defaults.copy(
-                indexing = defaults.indexing.copy(
-                    graph = defaults.indexing.graph.copy(batchSize = GraphIndexingBatchSize(7)),
-                ),
-                paths = defaults.paths.copy(
-                    descriptorDir = PathsDescriptorDir(descriptorDirectory.toString()),
-                    logsDir = PathsLogsDir(tempDir.resolve("logs").toString()),
-                    socketDir = PathsSocketDir(tempDir.toString()),
-                ),
-            )
-        }
-
-        IndexerServerRuntime.start(
-            project = project,
-            workspaceRoot = workspaceRoot,
-            socketPath = socketPath,
-            config = config,
-        ).use { runtime ->
-            assertEquals("indexer", runtime.backend.capabilities().backendName)
-            assertEquals("indexer", runtime.backend.runtimeStatus().backendName)
-            val delegateField = runtime.backend.javaClass.getDeclaredField("delegate").apply { isAccessible = true }
-            val pluginBackend = delegateField.get(runtime.backend) as KastIndexerBackend
-            assertEquals(GraphIndexingBatchSize(7), pluginBackend.semanticGraphBatchSize)
-            pluginBackend.updateSemanticGraphBatchSize(GraphIndexingBatchSize(9))
-            assertEquals(GraphIndexingBatchSize(9), pluginBackend.semanticGraphBatchSize)
-            assertEquals(socketPath.toRealPath(), runtime.server.descriptor?.socketPath?.toPath())
-            assertTrue(descriptorDirectory.resolve("daemons.json").exists())
-        }
-    }
-
-    @Test
     fun `graph failure does not block the reference indexing pass`() {
         val project = projectFixture.get()
         waitUntilIndexesAreReady(project)
@@ -102,9 +59,10 @@ class IndexerServerRuntimeTest {
             project = project,
             workspaceIdentity = workspaceIdentity,
             config = KastConfig.defaults(),
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
             indexStore = store,
             semanticAdmission = readyAdmission(project),
-            semanticGraphIndexer = { _, _ -> error("graph unavailable") },
+            semanticGraphIndexer = { _, _, _ -> error("graph unavailable") },
             runProjectIndexing = { _, graph ->
                 graph(
                     IndexedSourceIdentifiers(
@@ -147,9 +105,10 @@ class IndexerServerRuntimeTest {
             project = project,
             workspaceIdentity = workspaceIdentity,
             config = KastConfig.defaults(),
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
             indexStore = store,
             semanticAdmission = readyAdmission(project),
-            semanticGraphIndexer = { scope, _ -> observed.set(scope) },
+            semanticGraphIndexer = { scope, _, _ -> observed.set(scope) },
             runProjectIndexing = { _, graph ->
                 graph(
                     IndexedSourceIdentifiers(
@@ -188,9 +147,11 @@ class IndexerServerRuntimeTest {
             project = project,
             workspaceIdentity = workspaceIdentity,
             config = KastConfig.defaults(),
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(
+                onCommit = { stateDuringPublication.set(admission.status()) },
+            ),
             indexStore = store,
             semanticAdmission = admission,
-            publishWorkspaceGeneration = { stateDuringPublication.set(admission.status()) },
             runProjectIndexing = { _, _ -> },
             waitForNextPass = { false },
             refreshWorkspace = { _, _, _ -> },
@@ -204,7 +165,8 @@ class IndexerServerRuntimeTest {
             indexing.awaitTermination()
 
             assertTrue(stateDuringPublication.get() is IdeaIndexSemanticAdmission.Status.Pending)
-            assertEquals(IdeaIndexSemanticAdmission.Status.Ready, admission.status())
+            val ready = admission.status() as IdeaIndexSemanticAdmission.Status.Ready
+            assertEquals("verified-workspace", ready.generation.identity.value)
         } finally {
             indexing.cancel()
             store.close()
@@ -223,9 +185,11 @@ class IndexerServerRuntimeTest {
             project = project,
             workspaceIdentity = workspaceIdentity,
             config = KastConfig.defaults(),
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(
+                onCommit = { error("generation fsync failed") },
+            ),
             indexStore = store,
             semanticAdmission = admission,
-            publishWorkspaceGeneration = { error("generation fsync failed") },
             runProjectIndexing = { _, _ -> },
             waitForNextPass = { false },
             refreshWorkspace = { _, _, _ -> },
@@ -265,6 +229,7 @@ class IndexerServerRuntimeTest {
             project = project,
             workspaceIdentity = workspaceIdentity,
             config = initial,
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
             indexStore = store,
             semanticAdmission = readyAdmission(project),
             liveConfigLoader = { _, _ -> invalid },
@@ -343,6 +308,7 @@ class IndexerServerRuntimeTest {
             project = project,
             workspaceIdentity = workspaceIdentity,
             config = config,
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(),
             indexStore = store,
             semanticAdmission = admission,
         )

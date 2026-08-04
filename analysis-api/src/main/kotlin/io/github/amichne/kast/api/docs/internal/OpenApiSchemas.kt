@@ -14,6 +14,7 @@ internal fun registerOpenApiSchemas(registry: SchemaRegistry) {
     // System responses
     registry.register("HealthResponse", HealthResponse.serializer())
     registry.register("RuntimeStatusResponse", RuntimeStatusResponse.serializer())
+    registry.register("PublishedWorkspaceGenerationStatus", PublishedWorkspaceGenerationStatus.serializer())
     registry.register("RuntimeLifecycleResponse", RuntimeLifecycleResponse.serializer())
     registry.register("BackendCapabilities", BackendCapabilities.serializer())
 

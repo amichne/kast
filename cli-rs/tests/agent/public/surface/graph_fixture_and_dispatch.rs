@@ -89,10 +89,8 @@ fn public_graph_exposes_read_only_topology() {
         ("topology", "package", "PACKAGE"),
         ("communities", "module", "MODULE"),
     ] {
-        let output = named("kast")
+        let output = published_public_kast(&home, &fixture.path().join("config"), &workspace)
             .current_dir(&workspace)
-            .env("HOME", &home)
-            .env("KAST_CONFIG_HOME", fixture.path().join("config"))
             .args(["graph", operation, "--scope", scope])
             .output()
             .unwrap_or_else(|error| panic!("run graph {operation} at {scope} scope: {error}"));

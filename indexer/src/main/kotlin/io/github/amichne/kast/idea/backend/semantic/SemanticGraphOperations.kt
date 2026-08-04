@@ -16,10 +16,10 @@ import io.github.amichne.kast.api.contract.result.SemanticGraphResult
 import io.github.amichne.kast.api.contract.result.SemanticGraphSha256
 import io.github.amichne.kast.api.contract.result.SemanticGraphSourcePath
 import io.github.amichne.kast.api.protocol.CapabilityNotSupportedException
+import io.github.amichne.kast.api.protocol.AnalysisException
 import io.github.amichne.kast.api.protocol.ConflictException
 import io.github.amichne.kast.api.protocol.ValidationException
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
-import io.github.amichne.kast.api.validation.FileHashing
 import io.github.amichne.kast.idea.IdeaReadEpochKind
 import io.github.amichne.kast.idea.IdeaIndexSemanticAdmission
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
@@ -29,7 +29,6 @@ import io.github.amichne.kast.indexstore.api.graph.SemanticGraphCommitResult
 import io.github.amichne.kast.indexstore.api.index.FileContentHash
 import io.github.amichne.kast.indexstore.api.index.FileIndexStage
 import io.github.amichne.kast.indexstore.api.index.FileStageFailureCode
-import io.github.amichne.kast.indexstore.api.index.FileStageInputFingerprint
 import io.github.amichne.kast.indexstore.api.index.FileStageVersions
 import io.github.amichne.kast.indexstore.api.index.PendingFileStage
 import io.github.amichne.kast.indexstore.api.index.SourceIndexFilePolicy
@@ -40,12 +39,12 @@ import io.github.amichne.kast.indexstore.api.stage.SemanticGraphFileStageUpdate
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 import java.nio.file.Path
-import java.security.MessageDigest
 
-internal suspend fun KastIndexerBackend.semanticGraphOperation(query: ParsedSemanticGraphQuery): SemanticGraphResult =
+internal suspend fun KastIndexerBackend.semanticGraphOperation(
+    query: ParsedSemanticGraphQuery,
+    reconciliationToken: IdeaIndexSemanticAdmission.ReconciliationToken? = null,
+): SemanticGraphResult =
     withContext(readDispatcher) {
         val store = semanticGraphStore ?: throw CapabilityNotSupportedException(
             capability = "SEMANTIC_GRAPH",
@@ -63,10 +62,13 @@ internal suspend fun KastIndexerBackend.semanticGraphOperation(query: ParsedSema
             )
         }
         store.ensureSchema()
-        buildSemanticGraphSnapshot(query)
+        buildSemanticGraphSnapshot(query, reconciliationToken)
     }
 
-private suspend fun KastIndexerBackend.buildSemanticGraphSnapshot(query: ParsedSemanticGraphQuery): SemanticGraphResult {
+private suspend fun KastIndexerBackend.buildSemanticGraphSnapshot(
+    query: ParsedSemanticGraphQuery,
+    reconciliationToken: IdeaIndexSemanticAdmission.ReconciliationToken?,
+): SemanticGraphResult {
     val store = requireNotNull(semanticGraphStore)
     val selectedSourcePaths = query.filePaths.map(::toWorkspaceSourcePath)
     val removedSourcePaths = query.removedFilePaths.map(::toWorkspaceSourcePath)
@@ -86,6 +88,7 @@ private suspend fun KastIndexerBackend.buildSemanticGraphSnapshot(query: ParsedS
     val coverage = mutableListOf<SemanticGraphFileCoverage>()
     val unavailablePaths = sortedSetOf<String>()
     var omittedExternalTargetCount = 0
+    val removals = removedSourcePaths.map(::SemanticGraphFileStageRemoval)
     val planned = selectedSourcePaths.map { absolutePath ->
         checkSemanticGraphCancellation()
         val relativePath = absolutePath.semanticGraphSourcePath
@@ -106,6 +109,9 @@ private suspend fun KastIndexerBackend.buildSemanticGraphSnapshot(query: ParsedS
             ),
         )
     }
+    if (reconciliationToken == null && (planned.any { it.work != null } || removals.isNotEmpty())) {
+        throw PublishedSemanticGraphIncompleteException()
+    }
     val cachedFiles = store.readSemanticGraphSummary(selectedPaths).files.associateBy(SemanticGraphFileCoverage::path)
     planned.filter { file -> file.work == null }.forEach { file ->
         val persisted = checkNotNull(cachedFiles[file.relativePath]) {
@@ -115,7 +121,6 @@ private suspend fun KastIndexerBackend.buildSemanticGraphSnapshot(query: ParsedS
             status = SemanticGraphFileStatus.CACHED,
         )
     }
-    val removals = removedSourcePaths.map(::SemanticGraphFileStageRemoval)
     var expectedGeneration = scopeSnapshot.generation
     var uncommittedRemovals = removals
     planned.filter { file -> file.work != null }
@@ -135,6 +140,7 @@ private suspend fun KastIndexerBackend.buildSemanticGraphSnapshot(query: ParsedS
                         relativePath = file.relativePath,
                         expectedContentHash = file.contentHash,
                         semanticScope = semanticScope,
+                        reconciliationToken = reconciliationToken,
                     )
                 }
                 checkSemanticGraphCancellation()
@@ -221,6 +227,13 @@ private suspend fun KastIndexerBackend.buildSemanticGraphSnapshot(query: ParsedS
     )
 }
 
+internal class PublishedSemanticGraphIncompleteException : AnalysisException(
+    statusCode = 409,
+    errorCode = "WORKSPACE_RECONCILIATION_REQUIRED",
+    message = "Published semantic graph evidence is incomplete; request workspace reconciliation before reading it",
+    retryable = true,
+)
+
 private fun SemanticGraphCommitResult.semanticGraphGenerationOrThrow() = when (this) {
     is SemanticGraphCommitResult.Committed -> writeResult.generation
     is SemanticGraphCommitResult.GenerationChanged -> throw semanticGraphGenerationConflict(
@@ -228,11 +241,6 @@ private fun SemanticGraphCommitResult.semanticGraphGenerationOrThrow() = when (t
         actualGeneration.value,
     )
 }
-
-private data class SemanticGraphStageInput(
-    val sourcePath: SemanticGraphSourcePath,
-    val contentHash: FileContentHash,
-)
 
 private fun KastIndexerBackend.currentSemanticGraphStageInputs(
     sourcePaths: Set<SemanticGraphSourcePath>,
@@ -264,12 +272,17 @@ private fun KastIndexerBackend.refreshSemanticGraphFile(
     relativePath: SemanticGraphSourcePath,
     expectedContentHash: FileContentHash,
     semanticScope: Set<SemanticGraphSourcePath>,
+    reconciliationToken: IdeaIndexSemanticAdmission.ReconciliationToken?,
 ): SemanticGraphFileRefresh {
-    when (indexSemanticAdmissionStatus()) {
-        IdeaIndexSemanticAdmission.Status.Ready -> Unit
-        is IdeaIndexSemanticAdmission.Status.Pending,
-        is IdeaIndexSemanticAdmission.Status.Failed,
-        -> return SemanticGraphFileRefresh.Unavailable
+    if (reconciliationToken == null) {
+        when (workspaceSemanticReadAuthority.status()) {
+            is IdeaIndexSemanticAdmission.Status.Ready -> Unit
+            is IdeaIndexSemanticAdmission.Status.Pending,
+            is IdeaIndexSemanticAdmission.Status.Failed,
+            -> return SemanticGraphFileRefresh.Unavailable
+        }
+    } else if (!reconciliationAdmissionCurrent(reconciliationToken)) {
+        return SemanticGraphFileRefresh.Unavailable
     }
     val diagnostics = analyzeDiagnosticsFileInReadEpoch(absolutePath.absolute.value)
     if (diagnostics.status.state.name != "ANALYZED") {
@@ -317,6 +330,10 @@ private fun KastIndexerBackend.refreshSemanticGraphFile(
     )
 }
 
+private fun KastIndexerBackend.reconciliationAdmissionCurrent(
+    token: IdeaIndexSemanticAdmission.ReconciliationToken,
+): Boolean = workspaceSemanticReadAuthority.isReconciliationCurrent(token)
+
 private sealed interface SemanticGraphFileRefresh {
     data class Refreshed(val file: RefreshedSemanticGraphFile) : SemanticGraphFileRefresh
 
@@ -361,40 +378,3 @@ private fun KastIndexerBackend.toWorkspaceSourcePath(path: SemanticGraphPath): W
             "Semantic graph path is outside the active workspace: ${path.value.value}",
             details = mapOf("filePath" to path.value.value),
         )
-
-private fun sha256(value: String): SemanticGraphSha256 = sha256(value.toByteArray(StandardCharsets.UTF_8))
-
-private fun sha256(value: ByteArray): SemanticGraphSha256 = SemanticGraphSha256.parse(
-    MessageDigest.getInstance("SHA-256")
-        .digest(value)
-        .joinToString("") { byte -> "%02x".format(byte) },
-)
-
-internal fun semanticGraphContentHash(path: WorkspaceSourcePath): FileContentHash =
-    FileContentHash.parse(FileHashing.sha256(Files.readAllBytes(path.absolute.value.toJavaPath())))
-
-private fun semanticGraphStageInputFingerprint(
-    inputs: List<SemanticGraphStageInput>,
-): FileStageInputFingerprint = FileStageInputFingerprint.parse(
-    sha256(
-        buildString {
-            inputs.sortedBy(SemanticGraphStageInput::sourcePath).forEach { input ->
-                append("source:")
-                    .append(input.sourcePath.value)
-                    .append(':')
-                    .append(input.contentHash.value)
-                    .append('\n')
-            }
-        },
-    ).value,
-)
-
-private fun semanticGraphScopeFingerprint(
-    selectedPaths: List<SemanticGraphSourcePath>,
-    removedPaths: List<SemanticGraphSourcePath>,
-): SemanticGraphSha256 = sha256(
-    buildString {
-        selectedPaths.sorted().forEach { append("selected:").append(it.value).append('\n') }
-        removedPaths.sorted().forEach { append("removed:").append(it.value).append('\n') }
-    },
-)

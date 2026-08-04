@@ -13,12 +13,18 @@ import com.intellij.psi.JavaPsiFacade
 import com.intellij.psi.PsiManager
 import com.intellij.psi.search.FileTypeIndex
 import com.intellij.psi.search.GlobalSearchScope
+import io.github.amichne.kast.idea.backend.semantic.WorkspaceSemanticReadAuthority
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
 import org.jetbrains.kotlin.psi.KtFile
 import java.util.concurrent.CancellationException
 import java.util.concurrent.Callable
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 
 internal class IdeaIndexSemanticAdmission(
     private val project: Project,
@@ -27,20 +33,20 @@ internal class IdeaIndexSemanticAdmission(
     private val pause: (Long) -> Unit = { millis -> Thread.sleep(millis) },
     private val maxWaitMillis: Long = TimeUnit.MINUTES.toMillis(5),
     private val pollIntervalMillis: Long = 250L,
-) {
+) : WorkspaceSemanticReadAuthority {
     private val status = AtomicReference<Status>(Status.Pending("compiler-backed semantic admission has not started"))
     private val revision = AtomicLong(0)
-    private val transitionLock = Any()
+    private val transitionLock = ReentrantLock()
+    private val readersDrained = transitionLock.newCondition()
+    private var activeReaders = 0
+    private var activeMutation = false
 
     init {
         require(maxWaitMillis >= 0) { "maxWaitMillis must not be negative" }
         require(pollIntervalMillis > 0) { "pollIntervalMillis must be positive" }
     }
 
-    fun await(
-        publishReady: Boolean = true,
-        cancelled: () -> Boolean,
-    ) {
+    fun await(cancelled: () -> Boolean) {
         val startedAtNanos = nanoTime()
         try {
             while (true) {
@@ -53,13 +59,7 @@ internal class IdeaIndexSemanticAdmission(
                     .executeSynchronously()
                 val pending = when (inspection) {
                     Inspection.Ready -> {
-                        status.set(
-                            if (publishReady) {
-                                Status.Ready
-                            } else {
-                                Status.Pending("compiler model is ready; workspace generation is not verified")
-                            },
-                        )
+                        status.set(Status.Pending("compiler model is ready; workspace generation is not verified"))
                         return
                     }
                     is Inspection.Pending -> inspection.also {
@@ -91,10 +91,10 @@ internal class IdeaIndexSemanticAdmission(
         }
     }
 
-    fun status(): Status = status.get()
+    override fun status(): Status = status.get()
 
     fun fail(detail: String) {
-        synchronized(transitionLock) {
+        transitionLock.withLock {
             revision.incrementAndGet()
             status.set(Status.Failed(detail))
         }
@@ -102,7 +102,7 @@ internal class IdeaIndexSemanticAdmission(
 
     fun dirty(detail: String) {
         require(detail.isNotBlank()) { "Dirty semantic-admission detail must not be blank" }
-        synchronized(transitionLock) {
+        transitionLock.withLock {
             revision.incrementAndGet()
             status.set(Status.Pending(detail))
         }
@@ -110,32 +110,141 @@ internal class IdeaIndexSemanticAdmission(
 
     fun beginReconciliation(detail: String): ReconciliationToken {
         require(detail.isNotBlank()) { "Reconciliation detail must not be blank" }
-        return synchronized(transitionLock) {
+        return transitionLock.withLock {
             val nextRevision = revision.incrementAndGet()
             status.set(Status.Pending(detail))
+            while (activeReaders > 0 || activeMutation) readersDrained.await()
             ReconciliationToken(nextRevision)
         }
     }
 
-    fun publishReady(token: ReconciliationToken, publish: () -> Unit = {}): Boolean = synchronized(transitionLock) {
-        if (revision.get() != token.revision) return@synchronized false
-        publish()
-        status.set(Status.Ready)
-        true
+    fun beginMutation(detail: String): WorkspaceMutationToken {
+        require(detail.isNotBlank()) { "Workspace mutation detail must not be blank" }
+        return transitionLock.withLock {
+            val admissionStatus = status.get()
+            val ready = admissionStatus as? Status.Ready
+                ?: throw WorkspaceMutationAdmissionUnavailableException(admissionStatus)
+            val mutationRevision = revision.incrementAndGet()
+            status.set(Status.Pending(detail))
+            while (activeReaders > 0 || activeMutation) readersDrained.await()
+            val currentRevision = revision.get()
+            if (currentRevision != mutationRevision) {
+                throw WorkspaceMutationAdmissionInvalidatedException(
+                    expectedRevision = mutationRevision,
+                    actualRevision = currentRevision,
+                )
+            }
+            activeMutation = true
+            WorkspaceMutationToken(ready.generation, ::releaseMutation)
+        }
     }
 
-    fun openRead(): WorkspaceReadToken = synchronized(transitionLock) {
-        check(status.get() == Status.Ready) { "Workspace semantic generation is not READY" }
-        WorkspaceReadToken(revision.get())
+    fun publishReady(
+        token: ReconciliationToken,
+        publish: () -> WorkspaceGenerationCommit,
+    ): ReadyPublication {
+        if (transitionLock.withLock { revision.get() != token.revision }) {
+            return ReadyPublication.InvalidatedBeforeCommit
+        }
+        val commit = publish()
+        return transitionLock.withLock {
+            if (revision.get() != token.revision) {
+                return@withLock ReadyPublication.InvalidatedAfterCommit(commit)
+            }
+            status.set(Status.Ready(commit.manifest))
+            ReadyPublication.Admitted(commit)
+        }
     }
 
-    fun isReadCurrent(token: WorkspaceReadToken): Boolean = synchronized(transitionLock) {
-        status.get() == Status.Ready && revision.get() == token.revision
+    override fun openRead(): WorkspaceReadToken = transitionLock.withLock {
+        val ready = status.get() as? Status.Ready
+            ?: error("Workspace semantic generation is not READY")
+        activeReaders += 1
+        WorkspaceReadToken(
+            revision = revision.get(),
+            generation = ready.generation,
+            release = ::releaseRead,
+        )
+    }
+
+    override fun isReadCurrent(token: WorkspaceReadToken): Boolean = transitionLock.withLock {
+        val ready = status.get() as? Status.Ready ?: return@withLock false
+        revision.get() == token.revision && ready.generation == token.generation
+    }
+
+    override fun isReconciliationCurrent(token: ReconciliationToken): Boolean = transitionLock.withLock {
+        status.get() is Status.Pending && revision.get() == token.revision
+    }
+
+    private fun releaseRead() {
+        transitionLock.withLock {
+            check(activeReaders > 0) { "Workspace semantic read lease was released without an active reader" }
+            activeReaders -= 1
+            if (activeReaders == 0) readersDrained.signalAll()
+        }
+    }
+
+    private fun releaseMutation() {
+        transitionLock.withLock {
+            check(activeMutation) { "Workspace mutation permit was released without an active mutation" }
+            activeMutation = false
+            readersDrained.signalAll()
+        }
     }
 
     class ReconciliationToken internal constructor(internal val revision: Long)
 
-    class WorkspaceReadToken internal constructor(internal val revision: Long)
+    class WorkspaceReadToken internal constructor(
+        internal val revision: Long,
+        val generation: PublishedWorkspaceGenerationManifest,
+        private val release: () -> Unit,
+    ) : AutoCloseable {
+        private val closed = AtomicBoolean(false)
+
+        override fun close() {
+            if (closed.compareAndSet(false, true)) release()
+        }
+    }
+
+    class WorkspaceMutationToken internal constructor(
+        val generation: PublishedWorkspaceGenerationManifest,
+        private val release: () -> Unit,
+    ) : AutoCloseable {
+        private val closed = AtomicBoolean(false)
+
+        override fun close() {
+            if (closed.compareAndSet(false, true)) release()
+        }
+    }
+
+    sealed class WorkspaceMutationAdmissionException(message: String) : IllegalStateException(message)
+
+    class WorkspaceMutationAdmissionUnavailableException internal constructor(
+        val admissionStatus: Status,
+    ) : WorkspaceMutationAdmissionException("Workspace mutation requires READY semantic admission") {
+        init {
+            require(admissionStatus !is Status.Ready) {
+                "READY semantic admission cannot be represented as unavailable"
+            }
+        }
+    }
+
+    class WorkspaceMutationAdmissionInvalidatedException internal constructor(
+        val expectedRevision: Long,
+        val actualRevision: Long,
+    ) : WorkspaceMutationAdmissionException(
+        "Workspace mutation admission moved while waiting for active semantic reads to finish",
+    )
+
+    sealed interface ReadyPublication {
+        data class Admitted(val commit: WorkspaceGenerationCommit) : ReadyPublication
+
+        data object InvalidatedBeforeCommit : ReadyPublication
+
+        data class InvalidatedAfterCommit(
+            val commit: WorkspaceGenerationCommit,
+        ) : ReadyPublication
+    }
 
     private fun elapsedMillisSince(startedAtNanos: Long): Long =
         ((nanoTime() - startedAtNanos).coerceAtLeast(0L) / NANOS_PER_MILLISECOND)
@@ -151,7 +260,7 @@ internal class IdeaIndexSemanticAdmission(
     }
 
     sealed interface Status {
-        data object Ready : Status
+        data class Ready(val generation: PublishedWorkspaceGenerationManifest) : Status
 
         data class Pending(val detail: String) : Status {
             init {

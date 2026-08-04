@@ -22,6 +22,7 @@ mod tests {
             reference_index_ready: true,
             reference_coverage_state: ReferenceCoverageState::Complete,
             reference_coverage_limitations: vec![],
+            published_workspace_generation: None,
             schema_version: crate::SCHEMA_VERSION,
         };
 

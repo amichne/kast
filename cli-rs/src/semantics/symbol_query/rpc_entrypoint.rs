@@ -1,6 +1,7 @@
 pub(crate) fn try_handle_raw_rpc(
     raw_request: &str,
-    workspace_root_arg: Option<PathBuf>,
+    workspace_root: &Path,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
 ) -> Result<Option<String>> {
     let request: Value = serde_json::from_str(raw_request)?;
     if request.get("method").and_then(Value::as_str) != Some("symbol/query") {
@@ -9,17 +10,29 @@ pub(crate) fn try_handle_raw_rpc(
 
     let id = request.get("id").cloned().unwrap_or(Value::Null);
     let params = request.get("params").cloned().unwrap_or_else(|| json!({}));
-    let workspace_root = params
+    let requested_workspace_root = params
         .get("workspaceRoot")
         .and_then(Value::as_str)
-        .map(PathBuf::from)
-        .or(workspace_root_arg);
-    let workspace_root = config::resolve_workspace_root(workspace_root)?;
-    let response = run_symbol_query(&workspace_root, params, id)?;
+        .map(PathBuf::from);
+    if let Some(requested_workspace_root) = requested_workspace_root {
+        let requested_workspace_root = config::resolve_workspace_root(Some(requested_workspace_root))?;
+        if requested_workspace_root != workspace_root {
+            return Err(CliError::new(
+                "SEMANTIC_WORKSPACE_MISMATCH",
+                "symbol/query requested a workspace other than the admitted indexer workspace",
+            ));
+        }
+    }
+    let response = run_symbol_query(workspace_root, published, params, id)?;
     Ok(Some(serde_json::to_string(&response)?))
 }
 
-fn run_symbol_query(workspace_root: &Path, params: Value, id: Value) -> Result<Value> {
+fn run_symbol_query(
+    workspace_root: &Path,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
+    params: Value,
+    id: Value,
+) -> Result<Value> {
     let request = match serde_json::from_value::<SymbolQueryRequest>(params) {
         Ok(request) => request,
         Err(error) => {
@@ -40,42 +53,24 @@ fn run_symbol_query(workspace_root: &Path, params: Value, id: Value) -> Result<V
         ));
     }
 
-    let database = match config::workspace_database_path(workspace_root) {
-        Ok(path) => path,
-        Err(error) => {
-            return Ok(json_rpc_success(
+    published.read(|published| {
+        let db = match SymbolQueryDatabase::open(workspace_root, published.database()) {
+            Ok(db) => db,
+            Err(error) => {
+                return Ok(json_rpc_success(
+                    id,
+                    failure_result(&request.query, "INDEX_UNAVAILABLE", error.message),
+                ));
+            }
+        };
+        match db.query(request) {
+            Ok(result) => Ok(json_rpc_success(id, serde_json::to_value(result)?)),
+            Err(error) => Ok(json_rpc_success(
                 id,
-                failure_result(&request.query, "INDEX_UNAVAILABLE", error.message),
-            ));
+                failure_result("", "INVALID_FILTER", error.message),
+            )),
         }
-    };
-    if !database.is_file() {
-        return Ok(json_rpc_success(
-            id,
-            failure_result(
-                &request.query,
-                "INDEX_UNAVAILABLE",
-                format!("No source-index database exists at {}", database.display()),
-            ),
-        ));
-    }
-
-    let db = match SymbolQueryDatabase::open(workspace_root, &database) {
-        Ok(db) => db,
-        Err(error) => {
-            return Ok(json_rpc_success(
-                id,
-                failure_result(&request.query, "INDEX_UNAVAILABLE", error.message),
-            ));
-        }
-    };
-    match db.query(request) {
-        Ok(result) => Ok(json_rpc_success(id, serde_json::to_value(result)?)),
-        Err(error) => Ok(json_rpc_success(
-            id,
-            failure_result("", "INVALID_FILTER", error.message),
-        )),
-    }
+    })
 }
 
 fn json_rpc_success(id: Value, result: Value) -> Value {

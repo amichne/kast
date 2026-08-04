@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 
 use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction, TransactionBehavior};
 
-use crate::config;
 use crate::source_index_db;
 use crate::source_index_schema::SOURCE_INDEX_SCHEMA_VERSION;
 

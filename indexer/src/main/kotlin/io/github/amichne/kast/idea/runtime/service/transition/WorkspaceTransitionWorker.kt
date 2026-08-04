@@ -4,7 +4,12 @@ import io.github.amichne.kast.api.client.KastConfig
 import com.intellij.openapi.progress.ProcessCanceledException
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
 import io.github.amichne.kast.idea.transition.GenerationPublication
+import io.github.amichne.kast.idea.transition.GitWorktreeTransitionGuard
+import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInProgressException
+import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInspectionException
+import io.github.amichne.kast.idea.transition.GitWorktreeTransitionStatus
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
+import io.github.amichne.kast.idea.transition.PreparedWorkspacePublication
 import io.github.amichne.kast.idea.transition.TransitionRun
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
@@ -20,11 +25,13 @@ internal class WorkspaceTransitionWorker(
     private val resolveBuildSemanticInputIdentity: () -> BuildSemanticInputIdentity,
     private val semanticAdmission: IdeaIndexSemanticAdmission,
     private val eventWakeup: WorkspaceEventWakeup,
+    private val gitWorktreeTransitionGuard: GitWorktreeTransitionGuard = GitWorktreeTransitionGuard.stable(),
     private val refreshWorkspace: (Set<WorkspaceSignal>) -> Unit,
     private val loadLiveConfig: (KastConfig) -> KastConfig,
     private val captureCandidate: (KastConfig, BuildSemanticInputIdentity) -> WorkspaceReconciliationCandidate,
-    private val runIndexingPass: (KastConfig, WorkspaceReconciliationCandidate) -> IndexingPassResult,
-    private val publishWorkspaceGeneration: (WorkspaceStateIdentity) -> Unit,
+    private val runIndexingPass:
+        (KastConfig, WorkspaceReconciliationCandidate, IdeaIndexSemanticAdmission.ReconciliationToken) -> IndexingPassResult,
+    private val workspaceGenerationPublication: WorkspaceGenerationPublication,
     private val waitForNextPass: ((Long) -> Boolean)?,
     private val isCancelled: () -> Boolean,
     private val onConfigFallback: (Throwable) -> Unit,
@@ -47,9 +54,11 @@ internal class WorkspaceTransitionWorker(
                 if (!eventWakeup.awaitQuiescence(EVENT_QUIESCENCE_MILLIS)) {
                     throw InterruptedException("Workspace transition settlement was interrupted")
                 }
+                requireStableGitWorktreeTransition()
             }
 
             override fun refresh(signals: Set<WorkspaceSignal>) {
+                requireStableGitWorktreeTransition()
                 semanticAdmission.dirty("workspace transition is refreshing semantic inputs")
                 cycleCandidate = null
                 cycleResult = null
@@ -80,6 +89,7 @@ internal class WorkspaceTransitionWorker(
                     onConfigFallback(failure)
                     lastValidConfig
                 }
+                requireStableGitWorktreeTransition()
             }
 
             override fun captureIdentity(): WorkspaceStateIdentity {
@@ -94,14 +104,15 @@ internal class WorkspaceTransitionWorker(
                     "workspace reconciliation is active",
                 )
                 val candidateInputs = checkNotNull(cycleCandidate) { "Workspace candidate was not captured" }
-                val attempted = runCatching { runIndexingPass(cycleConfig, candidateInputs) }
+                val token = checkNotNull(reconciliationToken)
+                val attempted = runCatching { runIndexingPass(cycleConfig, candidateInputs, token) }
                 val scopeFailure = attempted.exceptionOrNull() as? IndexingScopeConfigurationException
                 val reconciledIdentity = if (scopeFailure != null && cycleConfig != lastValidConfig) {
                     onConfigFallback(scopeFailure)
-                    cycleConfig = lastValidConfig
-                    captureCandidate(cycleConfig, currentImportedBuildInputs()).also { fallback ->
-                        cycleCandidate = fallback
-                        cycleResult = runIndexingPass(cycleConfig, fallback)
+                        cycleConfig = lastValidConfig
+                        captureCandidate(cycleConfig, currentImportedBuildInputs()).also { fallback ->
+                            cycleCandidate = fallback
+                            cycleResult = runIndexingPass(cycleConfig, fallback, token)
                     }.identity
                 } else {
                     cycleResult = attempted.getOrThrow()
@@ -112,20 +123,39 @@ internal class WorkspaceTransitionWorker(
                 return reconciledIdentity
             }
 
-            override fun publish(generation: io.github.amichne.kast.idea.transition.PublishedWorkspaceGeneration):
-                GenerationPublication {
+            override fun preparePublication(identity: WorkspaceStateIdentity): PreparedWorkspacePublication {
                 requireActive()
+                return workspaceGenerationPublication.prepare(identity)
+            }
+
+            override fun commitPublication(prepared: PreparedWorkspacePublication): GenerationPublication {
+                requireActive()
+                requireStableGitWorktreeTransition()
                 val result = checkNotNull(cycleResult) { "Verified transition has no indexing result" }
                 val token = checkNotNull(reconciliationToken) { "Verified transition has no admission token" }
-                val admitted = semanticAdmission.publishReady(token) {
-                    publishWorkspaceGeneration(generation.identity)
+                return when (val publication = semanticAdmission.publishReady(token) {
+                    requireStableGitWorktreeTransition()
+                    workspaceGenerationPublication.commit(prepared)
+                }) {
+                    is IdeaIndexSemanticAdmission.ReadyPublication.Admitted -> {
+                        lastValidConfig = cycleConfig
+                        publishedSummary = result.summary
+                        GenerationPublication.Published(publication.commit)
+                    }
+
+                    IdeaIndexSemanticAdmission.ReadyPublication.InvalidatedBeforeCommit ->
+                        GenerationPublication.InvalidatedBeforeCommit
+
+                    is IdeaIndexSemanticAdmission.ReadyPublication.InvalidatedAfterCommit ->
+                        GenerationPublication.InvalidatedAfterCommit(publication.commit)
                 }
-                if (!admitted) return GenerationPublication.Invalidated
-                lastValidConfig = cycleConfig
-                publishedSummary = result.summary
-                return GenerationPublication.Published
+            }
+
+            override fun discardPublication(prepared: PreparedWorkspacePublication) {
+                workspaceGenerationPublication.discard(prepared)
             }
         },
+        initialPublished = workspaceGenerationPublication.current(),
         onTransition = onTransition,
         onBlocked = { _, failure ->
             semanticAdmission.fail(failure.message?.takeIf(String::isNotBlank) ?: failure::class.java.name)
@@ -163,6 +193,10 @@ internal class WorkspaceTransitionWorker(
 
                 TransitionRun.Invalidated -> Unit
 
+                TransitionRun.Retry -> {
+                    if (!awaitWork(GIT_TRANSITION_RETRY_MILLIS)) return
+                }
+
                 TransitionRun.Blocked -> {
                     consecutiveFailures += 1
                     if (!awaitWork(indexingRetryDelayMillis(consecutiveFailures))) return
@@ -190,6 +224,16 @@ internal class WorkspaceTransitionWorker(
 
     private fun requireActive() {
         if (isCancelled() || Thread.currentThread().isInterrupted) throw ProcessCanceledException()
+    }
+
+    private fun requireStableGitWorktreeTransition() {
+        when (val transition = gitWorktreeTransitionGuard.inspect()) {
+            GitWorktreeTransitionStatus.Stable -> Unit
+            is GitWorktreeTransitionStatus.InProgress ->
+                throw GitWorktreeTransitionInProgressException(transition)
+            is GitWorktreeTransitionStatus.Unavailable ->
+                throw GitWorktreeTransitionInspectionException(transition)
+        }
     }
 
     private fun currentImportedBuildInputs(): BuildSemanticInputIdentity {
@@ -220,3 +264,4 @@ internal data class WorkspaceReconciliationCandidate(
 )
 
 private const val EVENT_QUIESCENCE_MILLIS = 250L
+private const val GIT_TRANSITION_RETRY_MILLIS = 250L

@@ -1,28 +1,29 @@
 package io.github.amichne.kast.idea.backend.semantic
 
 import io.github.amichne.kast.api.protocol.ConflictException
-import io.github.amichne.kast.idea.IdeaIndexSemanticAdmission
 
 internal class WorkspaceSemanticGate(
-    private val status: () -> IdeaIndexSemanticAdmission.Status,
-    private val openRead: () -> IdeaIndexSemanticAdmission.WorkspaceReadToken,
-    private val isReadCurrent: (IdeaIndexSemanticAdmission.WorkspaceReadToken) -> Boolean,
+    private val readAuthority: WorkspaceSemanticReadAuthority,
 ) {
     suspend fun <T> current(operation: suspend () -> T): T {
         val token = try {
-            openRead()
+            readAuthority.openRead()
         } catch (_: IllegalStateException) {
             throw conflict("Semantic operation started while the workspace was not READY")
         }
-        val result = operation()
-        if (!isReadCurrent(token)) {
-            throw conflict("Workspace moved during the semantic operation; retry against the next READY generation")
+        try {
+            val result = operation()
+            if (!readAuthority.isReadCurrent(token)) {
+                throw conflict("Workspace moved during the semantic operation; retry against the next READY generation")
+            }
+            return result
+        } finally {
+            token.close()
         }
-        return result
     }
 
     private fun conflict(message: String): ConflictException = ConflictException(
         message = message,
-        details = mapOf("workspaceState" to status().toString()),
+        details = mapOf("workspaceState" to readAuthority.status().toString()),
     )
 }

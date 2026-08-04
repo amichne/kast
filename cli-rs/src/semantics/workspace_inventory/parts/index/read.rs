@@ -1,31 +1,50 @@
-pub(super) fn read_workspace_index(root: &WorkspaceRoot) -> WorkspaceIndexRead {
-    read_workspace_index_with_path_validation(root, WorkspaceIndexPathValidation::LiveFilesystem)
+#[cfg(test)]
+pub(super) fn read_workspace_index_from_live_candidate_for_test(
+    root: &WorkspaceRoot,
+) -> WorkspaceIndexRead {
+    let database = match crate::config::workspace_database_path(root.as_path()) {
+        Ok(database) => database,
+        Err(error) => return unavailable(error.to_string()),
+    };
+    match read_database(
+        root,
+        &database,
+        WorkspaceIndexPathValidation::LiveFilesystem,
+    ) {
+        Ok(snapshot) => WorkspaceIndexRead::Snapshot(snapshot),
+        Err(ReadDatabaseError::Unavailable(detail)) => unavailable(detail),
+        Err(ReadDatabaseError::Incompatible(detail)) => incompatible(detail),
+    }
 }
 
-pub(super) fn read_persisted_workspace_index(root: &WorkspaceRoot) -> WorkspaceIndexRead {
-    read_workspace_index_with_path_validation(root, WorkspaceIndexPathValidation::PersistedLexical)
+pub(super) fn read_workspace_index_from_published(
+    root: &WorkspaceRoot,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
+) -> WorkspaceIndexRead {
+    read_workspace_index_with_path_validation(
+        root,
+        published,
+        WorkspaceIndexPathValidation::LiveFilesystem,
+    )
+}
+
+pub(super) fn read_persisted_workspace_index_from_published(
+    root: &WorkspaceRoot,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
+) -> WorkspaceIndexRead {
+    read_workspace_index_with_path_validation(
+        root,
+        published,
+        WorkspaceIndexPathValidation::PersistedLexical,
+    )
 }
 
 fn read_workspace_index_with_path_validation(
     root: &WorkspaceRoot,
+    published: &crate::published_workspace::PublishedWorkspaceDatabase,
     path_validation: WorkspaceIndexPathValidation,
 ) -> WorkspaceIndexRead {
-    let database_path = match config::workspace_database_path(root.as_path()) {
-        Ok(path) => path,
-        Err(error) => {
-            return unavailable(format!(
-                "source-index path cannot be resolved for `{}`: {error}",
-                root.as_path().display()
-            ));
-        }
-    };
-    if !database_path.is_file() {
-        return unavailable(format!(
-            "source-index database is unavailable at `{}`",
-            database_path.display()
-        ));
-    }
-    match read_database(root, &database_path, path_validation) {
+    match read_database(root, published.database(), path_validation) {
         Ok(snapshot) => WorkspaceIndexRead::Snapshot(snapshot),
         Err(ReadDatabaseError::Unavailable(detail)) => unavailable(detail),
         Err(ReadDatabaseError::Incompatible(detail)) => incompatible(detail),

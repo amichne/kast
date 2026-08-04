@@ -43,7 +43,11 @@ fn assert_remaining_agent_intent_views(
         ),
     ] {
         for view in [None, Some("--verbose"), Some("--explain"), Some("--count")] {
-            let mut command = kast(home, config_home);
+            let mut command = published_semantic_command(
+                home,
+                config_home,
+                std::path::Path::new(workspace_root),
+            );
             command
                 .args([
                     "--output",
@@ -68,7 +72,11 @@ fn assert_remaining_agent_intent_views(
                 serde_json::from_slice(&output.stdout).expect("remaining repository intent JSON");
             assert_eq!(response["method"], "agent/repository", "{response:#}");
         }
-        let selected = kast(home, config_home)
+        let selected = published_semantic_command(
+            home,
+            config_home,
+            std::path::Path::new(workspace_root),
+        )
             .args([
                 "--output",
                 "json",

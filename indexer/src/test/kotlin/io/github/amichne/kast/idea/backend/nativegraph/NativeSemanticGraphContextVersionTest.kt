@@ -68,8 +68,10 @@ class NativeSemanticGraphContextVersionTest {
                 limits = ServerLimits(500, 30_000, 4),
                 semanticGraphStore = store,
                 psiGeneration = { 1L },
+                workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+                workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
             ).use { backend ->
-                backend.semanticGraph(
+                backend.reconcileSemanticGraphForTest(
                     SemanticGraphQuery(
                         filePaths = listOf(SemanticGraphPath.parse(sourceFile.virtualFile.path)),
                     ).parsed(),

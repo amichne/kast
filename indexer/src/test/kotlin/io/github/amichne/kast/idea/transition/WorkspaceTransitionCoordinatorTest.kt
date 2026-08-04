@@ -1,10 +1,22 @@
 package io.github.amichne.kast.idea.transition
 
+import io.github.amichne.kast.indexstore.api.reference.SourceIndexGeneration
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceGenerationManifest
+import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceIdentity
+import io.github.amichne.kast.indexstore.snapshot.SourceIndexSchemaVersion
+import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationCommit
+import io.github.amichne.kast.indexstore.snapshot.WorkspaceSemanticGeneration
+import io.github.amichne.kast.indexstore.store.SOURCE_INDEX_SCHEMA_VERSION
+import java.io.IOException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
+import kotlin.concurrent.thread
 
 class WorkspaceTransitionCoordinatorTest {
     @Test
@@ -51,7 +63,7 @@ class WorkspaceTransitionCoordinatorTest {
         assertEquals(checkoutSignals.toSet(), coordinator.snapshot().pendingSignals)
         assertEquals(TransitionRun.Published, coordinator.reconcilePending())
         assertEquals(1, operations.reconciliations.get())
-        assertEquals(SemanticGeneration(1), coordinator.snapshot().published?.generation)
+        assertEquals(WorkspaceSemanticGeneration(1), coordinator.snapshot().published?.generation)
     }
 
     @Test
@@ -89,11 +101,48 @@ class WorkspaceTransitionCoordinatorTest {
     }
 
     @Test
-    fun `build refresh failure blocks and preserves published generation`() {
-        val previous = PublishedWorkspaceGeneration(
-            generation = SemanticGeneration(7),
-            identity = WorkspaceStateIdentity("previous"),
+    fun `unobserved identity movement during slow preparation cannot publish`() {
+        val before = WorkspaceStateIdentity("before-preparation")
+        val after = WorkspaceStateIdentity("after-preparation")
+        val identities = ArrayDeque(listOf(before, before))
+        val preparationStarted = CountDownLatch(1)
+        val releasePreparation = CountDownLatch(1)
+        val commitCalls = AtomicInteger()
+        val operations = RecordingOperations(
+            identities = identities,
+            onPrepare = {
+                preparationStarted.countDown()
+                releasePreparation.await()
+            },
+            onCommit = { manifest ->
+                commitCalls.incrementAndGet()
+                GenerationPublication.Published(WorkspaceGenerationCommit.Durable(manifest))
+            },
         )
+        val coordinator = WorkspaceTransitionCoordinator(operations)
+        coordinator.observe(WorkspaceSignal.Source)
+        val transitionResult = AtomicReference<TransitionRun>()
+        val transition = thread { transitionResult.set(coordinator.reconcilePending()) }
+        assertTrue(preparationStarted.await(1, TimeUnit.SECONDS), "generation preparation did not start")
+
+        try {
+            identities.addLast(after)
+        } finally {
+            releasePreparation.countDown()
+            transition.join(1_000)
+        }
+
+        assertFalse(transition.isAlive)
+        assertEquals(0, commitCalls.get())
+        assertEquals(1, operations.discards.get())
+        assertEquals(TransitionRun.Invalidated, transitionResult.get())
+        assertEquals(WorkspaceLifecycle.Dirty, coordinator.snapshot().lifecycle)
+        assertTrue(WorkspaceSignal.RecoveryAudit in coordinator.snapshot().pendingSignals)
+    }
+
+    @Test
+    fun `build refresh failure blocks and preserves published generation`() {
+        val previous = publishedManifest(7, "previous")
         val operations = RecordingOperations(refreshFailure = IllegalStateException("Gradle model unavailable"))
         val coordinator = WorkspaceTransitionCoordinator(operations, previous)
         coordinator.observe(WorkspaceSignal.BuildSemantic)
@@ -104,15 +153,123 @@ class WorkspaceTransitionCoordinatorTest {
         assertEquals(previous, snapshot.published)
         assertEquals("Gradle model unavailable", snapshot.blocker?.detail)
     }
+
+    @Test
+    fun `committed generation with uncertain pointer durability becomes ready`() {
+        val syncFailure = IOException("simulated directory sync failure")
+        val operations = RecordingOperations(
+            onCommit = { manifest ->
+                GenerationPublication.Published(
+                    WorkspaceGenerationCommit.DurabilityUncertain(manifest, syncFailure),
+                )
+            },
+        )
+        val coordinator = WorkspaceTransitionCoordinator(operations)
+        coordinator.observe(WorkspaceSignal.Source)
+
+        assertEquals(TransitionRun.Published, coordinator.reconcilePending())
+        val snapshot = coordinator.snapshot()
+        assertEquals(WorkspaceLifecycle.Ready, snapshot.lifecycle)
+        assertEquals(WorkspaceSemanticGeneration(1), snapshot.published?.generation)
+        assertEquals(null, snapshot.blocker)
+        assertEquals(syncFailure, snapshot.publicationWarning?.cause)
+        assertEquals(snapshot.published, snapshot.publicationWarning?.manifest)
+    }
+
+    @Test
+    fun `event during slow generation preparation prevents pointer commit`() {
+        val preparationStarted = CountDownLatch(1)
+        val releasePreparation = CountDownLatch(1)
+        val observationCompleted = CountDownLatch(1)
+        val commitCalls = AtomicInteger()
+        val operations = RecordingOperations(
+            onPrepare = {
+                preparationStarted.countDown()
+                releasePreparation.await()
+            },
+            onCommit = { manifest ->
+                commitCalls.incrementAndGet()
+                GenerationPublication.Published(WorkspaceGenerationCommit.Durable(manifest))
+            },
+        )
+        val coordinator = WorkspaceTransitionCoordinator(operations)
+        coordinator.observe(WorkspaceSignal.Source)
+        val transitionResult = AtomicReference<TransitionRun>()
+        val transition = thread { transitionResult.set(coordinator.reconcilePending()) }
+        assertTrue(preparationStarted.await(1, TimeUnit.SECONDS), "generation preparation did not start")
+        val observer = thread {
+            coordinator.observe(WorkspaceSignal.GitWorktree)
+            observationCompleted.countDown()
+        }
+
+        try {
+            assertTrue(
+                observationCompleted.await(1, TimeUnit.SECONDS),
+                "workspace invalidation must not wait for generation preparation",
+            )
+        } finally {
+            releasePreparation.countDown()
+            transition.join(1_000)
+            observer.join(1_000)
+        }
+
+        assertEquals(0, commitCalls.get())
+        assertEquals(TransitionRun.Invalidated, transitionResult.get())
+        assertEquals(WorkspaceLifecycle.Dirty, coordinator.snapshot().lifecycle)
+    }
+
+    @Test
+    fun `event during pointer commit withdraws readiness without waiting`() {
+        val previous = publishedManifest(7, "previous")
+        val commitStarted = CountDownLatch(1)
+        val releaseCommit = CountDownLatch(1)
+        val observationCompleted = CountDownLatch(1)
+        val operations = RecordingOperations(
+            onCommit = { manifest ->
+                commitStarted.countDown()
+                releaseCommit.await()
+                GenerationPublication.Published(WorkspaceGenerationCommit.Durable(manifest))
+            },
+        )
+        val coordinator = WorkspaceTransitionCoordinator(operations, previous)
+        coordinator.observe(WorkspaceSignal.Source)
+        val transitionResult = AtomicReference<TransitionRun>()
+        val transition = thread { transitionResult.set(coordinator.reconcilePending()) }
+        assertTrue(commitStarted.await(1, TimeUnit.SECONDS), "generation commit did not start")
+        val observer = thread {
+            coordinator.observe(WorkspaceSignal.Source)
+            observationCompleted.countDown()
+        }
+
+        try {
+            assertTrue(
+                observationCompleted.await(1, TimeUnit.SECONDS),
+                "workspace invalidation must not wait for the current-pointer commit",
+            )
+        } finally {
+            releaseCommit.countDown()
+            transition.join(1_000)
+            observer.join(1_000)
+        }
+
+        assertEquals(TransitionRun.Invalidated, transitionResult.get())
+        assertEquals(WorkspaceLifecycle.Dirty, coordinator.snapshot().lifecycle)
+        assertEquals(previous, coordinator.snapshot().published)
+    }
 }
 
 private class RecordingOperations(
     private val identities: ArrayDeque<WorkspaceStateIdentity> = ArrayDeque(),
     private val reconcile: () -> Unit = {},
     private val refreshFailure: Throwable? = null,
+    private val onPrepare: (WorkspaceStateIdentity) -> Unit = {},
+    private val onCommit: (PublishedWorkspaceGenerationManifest) -> GenerationPublication =
+        { manifest -> GenerationPublication.Published(WorkspaceGenerationCommit.Durable(manifest)) },
 ) : WorkspaceTransitionOperations {
     val reconciliations = AtomicInteger()
     val published = mutableListOf<WorkspaceStateIdentity>()
+    val discards = AtomicInteger()
+    private val nextGeneration = AtomicInteger()
 
     override fun settle(signals: Set<WorkspaceSignal>) = Unit
 
@@ -129,8 +286,36 @@ private class RecordingOperations(
         return candidate
     }
 
-    override fun publish(generation: PublishedWorkspaceGeneration): GenerationPublication {
-        published += generation.identity
-        return GenerationPublication.Published
+    override fun preparePublication(identity: WorkspaceStateIdentity): PreparedWorkspacePublication {
+        onPrepare(identity)
+        return RecordingPreparedWorkspacePublication(identity)
+    }
+
+    override fun commitPublication(prepared: PreparedWorkspacePublication): GenerationPublication {
+        val identity = (prepared as RecordingPreparedWorkspacePublication).identity
+        val manifest = publishedManifest(nextGeneration.incrementAndGet().toLong(), identity.value)
+        return onCommit(manifest).also { publication ->
+            if (publication is GenerationPublication.Published) published += identity
+        }
+    }
+
+    override fun discardPublication(prepared: PreparedWorkspacePublication) {
+        discards.incrementAndGet()
     }
 }
+
+private data class RecordingPreparedWorkspacePublication(
+    val identity: WorkspaceStateIdentity,
+) : PreparedWorkspacePublication
+
+private fun publishedManifest(
+    generation: Long,
+    identity: String,
+): PublishedWorkspaceGenerationManifest = PublishedWorkspaceGenerationManifest(
+    generation = WorkspaceSemanticGeneration(generation),
+    identity = PublishedWorkspaceIdentity(identity),
+    sourceIndexGeneration = SourceIndexGeneration(generation),
+    sourceIndexSchemaVersion = SourceIndexSchemaVersion(SOURCE_INDEX_SCHEMA_VERSION),
+    databaseFile = "generation-$generation/source-index.db",
+    publishedAtEpochMillis = 1,
+)

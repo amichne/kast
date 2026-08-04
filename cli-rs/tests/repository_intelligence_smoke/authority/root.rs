@@ -147,6 +147,10 @@ fn graph_coverage_rejects_conflicting_body_workspace_root() {
     std::fs::create_dir(&routed_workspace).expect("routed workspace");
     std::fs::write(routed_workspace.join("settings.gradle.kts"), "")
         .expect("routed Gradle settings");
+    let _routed_fixture = WorkspaceIndexFixture::at_database_path(
+        &routed_workspace,
+        &workspace_database_path_for_test(&routed_workspace),
+    );
     let request = |workspace_root: &std::path::Path| {
         serde_json::json!({
             "jsonrpc": "2.0",

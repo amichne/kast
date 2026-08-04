@@ -34,6 +34,14 @@ fn captured_demo_returns_ranked_repo_native_story_snapshot() {
     std::fs::create_dir_all(&workspace).expect("workspace");
     seed_source_index(&workspace);
     seed_external_reference_target(&workspace);
+    publish_workspace_database_for_test(&workspace);
+    let backend = spawn_ready_demo_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("indexer.sock"),
+        None,
+    );
 
     let demo = kast(&home, &config_home)
         .args([
@@ -45,6 +53,7 @@ fn captured_demo_returns_ranked_repo_native_story_snapshot() {
         ])
         .output()
         .expect("captured demo");
+    let requests = backend.finish();
 
     assert!(
         demo.status.success(),
@@ -54,7 +63,7 @@ fn captured_demo_returns_ranked_repo_native_story_snapshot() {
     );
     let response: Value = serde_json::from_slice(&demo.stdout).expect("demo json");
     assert_eq!(response["type"], "KAST_DEMO");
-    assert_eq!(response["availability"], "indexOnly");
+    assert_eq!(response["availability"], "full");
     assert_eq!(response["workspaceRoot"], workspace.display().to_string());
     assert_eq!(response["mutates"], false);
     let candidates = response["candidates"].as_array().expect("candidates");
@@ -84,7 +93,7 @@ fn captured_demo_returns_ranked_repo_native_story_snapshot() {
             .expect("chapters")
             .iter()
             .any(|chapter| chapter["chapter"] == "impact" && chapter["available"] == true),
-        "index-only stories should retain impact evidence: {response:#}"
+        "published stories should retain impact evidence: {response:#}"
     );
     assert!(
         response["help"]
@@ -95,6 +104,23 @@ fn captured_demo_returns_ranked_repo_native_story_snapshot() {
                 .as_str()
                 .is_some_and(|entry| { entry.contains("kast agent impact --symbol lib.Foo") })),
         "snapshot should expose an exact reusable public command: {response:#}"
+    );
+    assert_eq!(
+        requests
+            .iter()
+            .map(|request| request["method"].as_str().expect("method"))
+            .collect::<Vec<_>>(),
+        vec![
+            "runtime/status",
+            "capabilities",
+            "runtime/status",
+            "capabilities",
+            "symbol/resolve",
+            "symbol/references",
+            "raw/diagnostics",
+            "runtime/status",
+        ],
+        "the demo must revalidate the published generation after reading it"
     );
 }
 
@@ -119,7 +145,7 @@ fn seed_external_reference_target(workspace: &std::path::Path) {
 }
 
 #[test]
-fn unavailable_demo_reports_the_indexer_runtime_setup_authority() {
+fn unsupported_demo_reports_the_supported_workspace_authority() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let config_home = temp.path().join("config");
@@ -140,11 +166,11 @@ fn unavailable_demo_reports_the_indexer_runtime_setup_authority() {
 
     assert!(!demo.status.success());
     let response: Value = serde_json::from_slice(&demo.stdout).expect("demo error json");
-    assert_eq!(response["code"], "DEMO_SOURCE_INDEX_MISSING");
+    assert_eq!(response["code"], "SEMANTIC_WORKSPACE_UNSUPPORTED");
     let message = response["message"].as_str().expect("message");
     assert!(
-        message.contains("Kast indexer"),
-        "remediation should name the indexer startup path: {response:#}"
+        message.contains("settings.gradle(.kts)") && message.contains("build.gradle(.kts)"),
+        "remediation should identify a supported Kotlin Gradle workspace: {response:#}"
     );
 }
 
@@ -157,6 +183,13 @@ fn requested_demo_symbol_fails_loudly_when_the_index_has_no_match() {
     std::fs::create_dir_all(&home).expect("home");
     std::fs::create_dir_all(&workspace).expect("workspace");
     seed_source_index(&workspace);
+    let backend = spawn_ready_demo_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("indexer.sock"),
+        None,
+    );
 
     let demo = kast(&home, &config_home)
         .args([
@@ -170,6 +203,7 @@ fn requested_demo_symbol_fails_loudly_when_the_index_has_no_match() {
         ])
         .output()
         .expect("requested symbol demo");
+    let requests = backend.finish();
 
     assert!(!demo.status.success());
     let response: Value = serde_json::from_slice(&demo.stdout).expect("demo error json");
@@ -179,6 +213,14 @@ fn requested_demo_symbol_fails_loudly_when_the_index_has_no_match() {
             .as_str()
             .is_some_and(|message| message.contains("NoSuchSymbol")),
         "the error should preserve the user's missing symbol query: {response:#}"
+    );
+    assert_eq!(
+        requests
+            .iter()
+            .map(|request| request["method"].as_str().expect("method"))
+            .collect::<Vec<_>>(),
+        vec!["runtime/status", "capabilities"],
+        "the missing indexed symbol should fail before compiler requests"
     );
 }
 
@@ -197,6 +239,13 @@ fn interactive_demo_renders_in_a_real_pty_without_changing_sources() {
     let control_binary = temp.path().join("kastctl");
     std::os::unix::fs::symlink(env!("CARGO_BIN_EXE_kast"), &control_binary)
         .expect("control binary symlink");
+    let backend = spawn_ready_demo_backend(
+        &home,
+        &config_home,
+        &workspace,
+        &temp.path().join("indexer.sock"),
+        None,
+    );
 
     let mut child = Command::new("script")
         .env("HOME", &home)
@@ -223,6 +272,7 @@ fn interactive_demo_renders_in_a_real_pty_without_changing_sources() {
         .write_all(b"q")
         .expect("quit demo");
     let output = child.wait_with_output().expect("wait for demo");
+    let requests = backend.finish();
 
     assert!(
         output.status.success(),
@@ -240,6 +290,20 @@ fn interactive_demo_renders_in_a_real_pty_without_changing_sources() {
         before,
         "the interactive demo must not mutate user code"
     );
+    assert_eq!(
+        requests
+            .iter()
+            .map(|request| request["method"].as_str().expect("method"))
+            .collect::<Vec<_>>(),
+        vec![
+            "runtime/status",
+            "capabilities",
+            "runtime/status",
+            "capabilities",
+            "runtime/status",
+        ],
+        "the interactive demo must retain one published generation"
+    );
 }
 
 #[test]
@@ -250,7 +314,7 @@ fn demo_reports_full_availability_from_an_existing_ready_backend() {
     let workspace = temp.path().join("workspace");
     let socket_path = temp.path().join("indexer.sock");
     seed_source_index(&workspace);
-    let handle = spawn_ready_demo_backend(&home, &config_home, &workspace, &socket_path, 5, None);
+    let backend = spawn_ready_demo_backend(&home, &config_home, &workspace, &socket_path, None);
 
     let demo = kast(&home, &config_home)
         .args([
@@ -270,7 +334,7 @@ fn demo_reports_full_availability_from_an_existing_ready_backend() {
         String::from_utf8_lossy(&demo.stderr)
     );
     let response: Value = serde_json::from_slice(&demo.stdout).expect("demo json");
-    let requests = handle.join().expect("fake backend");
+    let requests = backend.finish();
     assert_eq!(
         requests
             .iter()
@@ -279,9 +343,12 @@ fn demo_reports_full_availability_from_an_existing_ready_backend() {
         vec![
             "runtime/status",
             "capabilities",
+            "runtime/status",
+            "capabilities",
             "symbol/resolve",
             "symbol/references",
-            "raw/diagnostics"
+            "raw/diagnostics",
+            "runtime/status",
         ]
     );
     assert_eq!(response["availability"], "full");

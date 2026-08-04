@@ -1,11 +1,14 @@
 package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
+import io.github.amichne.kast.api.client.KastConfig
 
 import com.intellij.openapi.module.Module
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.readAction
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.VirtualFileManager
 import com.intellij.psi.PsiDirectory
 import com.intellij.psi.PsiFile
 import com.intellij.psi.PsiManager
@@ -92,6 +95,7 @@ class KastSemanticAdmissionRefreshTest {
         ),
         admissionOperations: IdeaSemanticAdmissionOperations = IdeaSemanticAdmissionOperations.idea(),
         semanticGraphStore: SqliteSourceIndexStore? = null,
+        workspaceTransitionRequester: WorkspaceTransitionRequester = TestWorkspaceTransitionRequester(),
         workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
             IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
         },
@@ -102,6 +106,8 @@ class KastSemanticAdmissionRefreshTest {
         semanticAdmissionAwaiter = admissionAwaiter,
         semanticAdmissionOperations = admissionOperations,
         semanticGraphStore = semanticGraphStore,
+        workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+        workspaceTransitionRequester = workspaceTransitionRequester,
         workspaceModelReader = workspaceModelReader,
     )
 
@@ -145,19 +151,13 @@ class KastSemanticAdmissionRefreshTest {
             fun refreshedCaller(): Int = seed()
             """.trimIndent(),
         )
-        val completeGradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
-            emptyList(),
-            true,
-            emptyList(),
-            emptyList(),
-            emptyList(),
-            emptyList(),
-        )
+        val completeGradleModel = completeGradleModel()
 
         try {
             SqliteSourceIndexStore(workspaceRoot).use { store ->
                 val result = backend(
                     semanticGraphStore = store,
+                    workspaceTransitionRequester = reconcilingRequester(store, completeGradleModel),
                     workspaceModelReader = { completeGradleModel },
                 ).refresh(RefreshQuery(filePaths = listOf(newFile.toString())))
 
@@ -221,19 +221,13 @@ class KastSemanticAdmissionRefreshTest {
         ensureProjectReady()
         val deletedFile = productionRoot.resolve("Deleted.kt")
         Files.writeString(deletedFile, newSource)
-        val completeGradleModel = IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
-            emptyList(),
-            true,
-            emptyList(),
-            emptyList(),
-            emptyList(),
-            emptyList(),
-        )
+        val completeGradleModel = completeGradleModel()
 
         try {
             SqliteSourceIndexStore(workspaceRoot).use { store ->
                 val backend = backend(
                     semanticGraphStore = store,
+                    workspaceTransitionRequester = reconcilingRequester(store, completeGradleModel),
                     workspaceModelReader = { completeGradleModel },
                 )
                 backend.refresh(RefreshQuery(filePaths = listOf(deletedFile.toString())))
@@ -254,6 +248,50 @@ class KastSemanticAdmissionRefreshTest {
         } finally {
             Files.deleteIfExists(deletedFile)
         }
+    }
+
+    private fun reconcilingRequester(
+        store: SqliteSourceIndexStore,
+        model: IdeaGradleProjectLoadBridge.GradleWorkspaceModel,
+    ): WorkspaceTransitionRequester = TestWorkspaceTransitionRequester(
+        onReconcile = {
+            ApplicationManager.getApplication().invokeAndWait {
+                VirtualFileManager.getInstance().syncRefresh()
+            }
+            waitUntilIndexesAreReady(project)
+            IdeaProjectIndexer(
+                project = project,
+                workspaceRoot = workspaceRoot,
+                store = store,
+                cancelled = { false },
+                readGradleWorkspaceModel = { model },
+            ).indexProject(KastConfig.defaults())
+            testPublishedWorkspaceGeneration()
+        },
+    )
+
+    private fun completeGradleModel(): IdeaGradleProjectLoadBridge.GradleWorkspaceModel {
+        val identity = IdeaGradleProjectLoadBridge.GradleModuleIdentity(workspaceRoot, ":")
+        val association = IdeaGradleProjectLoadBridge.GradleModuleAssociation(
+            "main",
+            workspaceRoot,
+            workspaceRoot,
+            ":",
+            true,
+            false,
+            listOf(
+                IdeaGradleProjectLoadBridge.GradleSourceSetAssociation("main", listOf(productionRoot)),
+                IdeaGradleProjectLoadBridge.GradleSourceSetAssociation("test", listOf(testRoot)),
+            ),
+        )
+        return IdeaGradleProjectLoadBridge.GradleWorkspaceModel(
+            listOf(workspaceRoot),
+            true,
+            listOf(identity),
+            listOf(IdeaGradleProjectLoadBridge.LoadedGradleModule("main", identity)),
+            listOf(productionRoot, testRoot),
+            listOf(association),
+        )
     }
 
     @Test

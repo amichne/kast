@@ -23,6 +23,16 @@ internal object IdeaSemanticEnvironmentIdentityResolver {
                     .sortedBy { module -> module.name }
                 add("compiler:${IdeaKotlinCompilerIdentityResolver.resolve(project, modules, isCancelled)}")
                 add(
+                    "compiler-java:${
+                        IdeaJavaCompilerIdentityResolver.resolve(
+                            project,
+                            workspaceIdentity,
+                            modules,
+                            isCancelled,
+                        ).value
+                    }",
+                )
+                add(
                     "compiler-sources:${
                         IdeaCompilerVisibleSourceIdentityResolver.resolve(
                             project,

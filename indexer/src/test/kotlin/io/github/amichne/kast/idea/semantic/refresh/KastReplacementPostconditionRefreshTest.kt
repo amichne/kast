@@ -82,6 +82,8 @@ class KastReplacementPostconditionRefreshTest {
             defaultLimits.requestTimeoutMillis,
         ),
         semanticAdmissionOperations = IdeaSemanticAdmissionOperations.idea(),
+        workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+        workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
         workspaceModelReader = { IdeaGradleProjectLoadBridge.readWorkspaceModel(project) },
     )
 

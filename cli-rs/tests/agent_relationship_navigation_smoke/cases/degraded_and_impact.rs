@@ -147,11 +147,12 @@ fn selector_handle_drives_impact_without_position_resolution() {
     let declaration_file =
         std::fs::canonicalize(workspace.join("lib/Foo.kt")).expect("impact declaration");
     let selector_handle = "ksh1.test-impact-selector-handle";
-    let backend = spawn_scripted_indexer_backend(
+    let backend = spawn_ready_scripted_indexer_backend_for_invocations(
         &home,
         &config,
         &workspace,
         &temp.path().join("selector-handle-impact.sock"),
+        1,
         vec![(
             "selector/identity",
             serde_json::json!({
@@ -288,11 +289,12 @@ fn impact_pages_are_query_bound_and_do_not_overlap() {
     });
     let run_page = |index: usize, page_token: Option<&str>| {
         let socket = temp.path().join(format!("impact-page-{index}.sock"));
-        let backend = spawn_scripted_indexer_backend(
+        let backend = spawn_ready_scripted_indexer_backend_for_invocations(
             &home,
             &config,
             &workspace,
             &socket,
+            1,
             vec![("raw/resolve", resolved.clone())],
         );
         let mut args = vec![
@@ -317,14 +319,15 @@ fn impact_pages_are_query_bound_and_do_not_overlap() {
         }
         let result = run_agent_json(&home, &config, args);
         let requests = backend.join().expect("impact backend");
+        let resolve = requests
+            .iter()
+            .find(|request| request["method"] == "raw/resolve")
+            .expect("resolve request");
         assert_eq!(
-            requests.last().expect("resolve request")["method"],
+            resolve["method"],
             "raw/resolve"
         );
-        assert_eq!(
-            requests.last().expect("resolve request")["params"]["position"]["offset"],
-            1
-        );
+        assert_eq!(resolve["params"]["position"]["offset"], 1);
         result
     };
 

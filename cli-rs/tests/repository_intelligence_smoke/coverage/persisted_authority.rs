@@ -8,8 +8,11 @@ fn repository_cached_overlay_base_facts_fail_closed() {
     rusqlite::Connection::open(&base_database)
         .expect("repository base")
         .execute_batch(&format!(
-            "CREATE TABLE schema_version(version INTEGER NOT NULL);
-             INSERT INTO schema_version VALUES ({});
+            "CREATE TABLE schema_version(
+                 version INTEGER NOT NULL,
+                 generation INTEGER NOT NULL
+             );
+             INSERT INTO schema_version VALUES ({}, 41);
              CREATE TABLE semantic_files(
                  id INTEGER PRIMARY KEY,
                  path TEXT NOT NULL UNIQUE,

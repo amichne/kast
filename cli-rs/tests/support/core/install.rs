@@ -13,6 +13,83 @@ pub(crate) fn kast_at(binary: &Path, home: &Path, config_home: &Path) -> Command
     command
 }
 
+pub(crate) struct PublishedSemanticCommand {
+    command: Command,
+    backend: Option<PublishedSemanticReadBackend>,
+}
+
+pub(crate) fn published_semantic_command(
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+) -> PublishedSemanticCommand {
+    published_semantic_command_for_reads(kast(home, config_home), home, config_home, workspace, 1)
+}
+
+pub(crate) fn published_semantic_command_for_reads(
+    command: Command,
+    home: &Path,
+    config_home: &Path,
+    workspace: &Path,
+    read_count: usize,
+) -> PublishedSemanticCommand {
+    publish_workspace_database_for_test(workspace);
+    let socket = home.join("semantic.sock");
+    let _ = std::fs::remove_file(&socket);
+    let _ = read_count;
+    let backend = spawn_open_published_semantic_read_backend(
+        home, config_home, workspace, &socket,
+    );
+    PublishedSemanticCommand {
+        command,
+        backend: Some(backend),
+    }
+}
+
+impl PublishedSemanticCommand {
+    pub(crate) fn arg<S: AsRef<std::ffi::OsStr>>(&mut self, arg: S) -> &mut Self {
+        self.command.arg(arg);
+        self
+    }
+
+    pub(crate) fn args<I, S>(&mut self, args: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<std::ffi::OsStr>,
+    {
+        self.command.args(args);
+        self
+    }
+
+    pub(crate) fn current_dir<P: AsRef<Path>>(&mut self, directory: P) -> &mut Self {
+        self.command.current_dir(directory);
+        self
+    }
+
+    pub(crate) fn output(&mut self) -> std::io::Result<std::process::Output> {
+        let output = self.command.output();
+        self.backend
+            .take()
+            .expect("published semantic backend")
+            .finish();
+        output
+    }
+}
+
+impl std::ops::Deref for PublishedSemanticCommand {
+    type Target = Command;
+
+    fn deref(&self) -> &Self::Target {
+        &self.command
+    }
+}
+
+impl std::ops::DerefMut for PublishedSemanticCommand {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.command
+    }
+}
+
 pub(crate) fn default_install_root(home: &Path) -> PathBuf {
     home.join(".local/share/kast")
 }
@@ -163,12 +240,36 @@ pub(crate) fn write_legacy_local_install_for_test(home: &Path, config_home: &Pat
 }
 
 pub(crate) fn workspace_database_path_for_test(workspace: &Path) -> PathBuf {
-    workspace_data_directory_for_test(workspace).join("cache/source-index.db")
+    std::fs::create_dir_all(workspace).expect("workspace fixture root");
+    workspace_data_directory_for_test(workspace)
+        .join("semantic-generations/generations/test-generation/source-index.db")
+}
+
+pub(crate) fn publish_workspace_database_for_test(workspace: &Path) -> serde_json::Value {
+    workspace_files::publish_database_if_generation(&workspace_database_path_for_test(workspace))
+        .expect("published workspace generation fixture")
+}
+
+pub(crate) fn published_workspace_generation_for_test(
+    workspace: &Path,
+) -> Option<serde_json::Value> {
+    let pointer = workspace_data_directory_for_test(workspace)
+        .join("semantic-generations/current.json");
+    pointer.is_file().then(|| {
+        serde_json::from_slice(&std::fs::read(&pointer).expect("published workspace pointer"))
+            .expect("published workspace pointer JSON")
+    })
 }
 
 fn workspace_data_directory_for_test(workspace: &Path) -> PathBuf {
-    let home = inferred_fixture_home(workspace);
-    workspace_data_directory_for_test_at_home(workspace, &home)
+    let workspace = std::fs::canonicalize(workspace).unwrap_or_else(|error| {
+        panic!(
+            "canonical fixture workspace {}: {error}",
+            workspace.display()
+        )
+    });
+    let home = inferred_fixture_home(&workspace);
+    workspace_data_directory_for_test_at_home(&workspace, &home)
 }
 
 fn inferred_fixture_home(workspace: &Path) -> PathBuf {

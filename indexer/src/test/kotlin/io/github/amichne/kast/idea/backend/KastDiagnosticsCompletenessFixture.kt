@@ -63,6 +63,8 @@ internal abstract class KastDiagnosticsCompletenessFixture {
         limits = defaultLimits,
         psiGeneration = psiGeneration,
         readEpochObserver = readEpochObserver,
+        workspaceSemanticReadAuthority = TestWorkspaceSemanticReadAuthority(),
+        workspaceTransitionRequester = TestWorkspaceTransitionRequester(),
     )
 
     protected fun ensureProjectReady() {

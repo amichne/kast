@@ -23,9 +23,13 @@ fn native_graph_refresh_scope_snapshot(
     args: &AgentNativeGraphArgs,
 ) -> std::result::Result<NativeGraphRefreshScopeSnapshot, AgentError> {
     let workspace_root = native_graph_workspace_root(args)?;
-    let database = native_graph_database_path(args)?;
+    let semantic_read = runtime::semantic_workspace_read_ready(Some(workspace_root.clone()))
+        .map_err(AgentError::from_cli_error)?;
+    let published = semantic_read.published();
+    let database = native_graph_database_path(args, Some(published))?;
     let connection = native_graph_scope_connection(&database)?;
-    let has_repository_base = native_graph_attach_repository_base(&connection, &database)?;
+    let has_repository_base =
+        native_graph_attach_database_base(args, &connection, &database, Some(published))?;
     crate::source_index_db::enable_query_only(&connection)
         .map_err(|error| native_graph_sql_error("GRAPH_SOURCE_SCOPE_UNAVAILABLE", error))?;
     connection
@@ -56,7 +60,11 @@ fn native_graph_refresh_scope_snapshot(
         })
     })();
     let _ = connection.execute_batch(if result.is_ok() { "COMMIT" } else { "ROLLBACK" });
-    result
+    let snapshot = result?;
+    semantic_read
+        .revalidate()
+        .map_err(AgentError::from_cli_error)?;
+    Ok(snapshot)
 }
 
 fn native_graph_source_scope_paths(

@@ -1,4 +1,5 @@
 use super::*;
+use std::cell::Cell;
 
 fn current_process_descriptor(socket_path: &Path) -> ServerInstanceDescriptor {
     ServerInstanceDescriptor {
@@ -138,4 +139,28 @@ fn indexer_distribution_rejection_projects_closed_distribution() {
         Some(&"linux-indexer-tarball".to_string())
     );
     assert!(error.details.contains_key("semanticWorkspace"));
+}
+
+#[test]
+fn default_wait_admits_an_indexer_after_a_full_initial_gradle_refresh() {
+    fn admit_after(delay_ms: u64, timeout_ms: u64) -> Option<()> {
+        let elapsed_ms = Cell::new(0_u64);
+        poll_for_runtime_candidate(
+            timeout_ms,
+            250,
+            || elapsed_ms.get(),
+            || (elapsed_ms.get() >= delay_ms).then_some(()),
+            |duration_ms| elapsed_ms.set(elapsed_ms.get() + duration_ms),
+        )
+    }
+
+    let delayed_initial_refresh_ms = 300_001;
+    assert_eq!(None, admit_after(delayed_initial_refresh_ms, 60_000));
+    assert_eq!(
+        Some(()),
+        admit_after(
+            delayed_initial_refresh_ms,
+            crate::cli::DEFAULT_RUNTIME_WAIT_TIMEOUT_MS,
+        ),
+    );
 }

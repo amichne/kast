@@ -111,13 +111,8 @@ internal class KastIndexerBackend(
     internal val readEpochObserver: IdeaReadEpochObserver = IdeaReadEpochObserver.Disabled,
     internal val referenceTraversalObserver: ReferenceTraversalObserver = ReferenceTraversalObserver.Disabled,
     @Volatile internal var semanticGraphBatchSize: GraphIndexingBatchSize = GraphIndexingBatchSize(32),
-    internal val indexSemanticAdmissionStatus: () -> IdeaIndexSemanticAdmission.Status = {
-        IdeaIndexSemanticAdmission.Status.Ready
-    },
-    internal val openWorkspaceRead: () -> IdeaIndexSemanticAdmission.WorkspaceReadToken = {
-        IdeaIndexSemanticAdmission.WorkspaceReadToken(0)
-    },
-    internal val isWorkspaceReadCurrent: (IdeaIndexSemanticAdmission.WorkspaceReadToken) -> Boolean = { true },
+    internal val workspaceSemanticReadAuthority: WorkspaceSemanticReadAuthority,
+    internal val workspaceTransitionRequester: WorkspaceTransitionRequester,
     internal val workspaceModelReader: () -> IdeaGradleProjectLoadBridge.GradleWorkspaceModel = {
         IdeaGradleProjectLoadBridge.readWorkspaceModel(project)
     },
@@ -125,7 +120,7 @@ internal class KastIndexerBackend(
         IdeaRelationshipCoverageAuthority(
             project = project,
             workspaceIdentity = workspaceIdentity,
-            indexSemanticAdmissionStatus = indexSemanticAdmissionStatus,
+            indexSemanticAdmissionStatus = workspaceSemanticReadAuthority::status,
             workspaceModelReader = workspaceModelReader,
             sourceIndexStore = semanticGraphStore,
         ),
@@ -134,10 +129,8 @@ internal class KastIndexerBackend(
     @Volatile
     private var lastValidIndexingConfig: IndexingConfig = initialIndexingConfig
     private val psiSupport = KastIndexerPsiSupport(this)
-    private val workspaceSemanticGate = WorkspaceSemanticGate(
-        status = indexSemanticAdmissionStatus,
-        openRead = openWorkspaceRead,
-        isReadCurrent = isWorkspaceReadCurrent,
+    internal val workspaceSemanticGate = WorkspaceSemanticGate(
+        readAuthority = workspaceSemanticReadAuthority,
     )
 
     internal fun updateSemanticGraphBatchSize(batchSize: GraphIndexingBatchSize) {
@@ -277,7 +270,7 @@ internal class KastIndexerBackend(
     override suspend fun runtimeStatus(): RuntimeStatusResponse {
         val caps = capabilities()
         val isDumb = DumbService.isDumb(project)
-        val admission = indexSemanticAdmissionStatus()
+        val admission = workspaceSemanticReadAuthority.status()
         val state = when {
             admission is IdeaIndexSemanticAdmission.Status.Failed -> RuntimeState.DEGRADED
             isDumb || admission is IdeaIndexSemanticAdmission.Status.Pending -> RuntimeState.INDEXING
@@ -301,6 +294,7 @@ internal class KastIndexerBackend(
                 else -> "Kast compiler-backed indexer is ready"
             },
             sourceModuleNames = moduleNames,
+            publishedWorkspaceGeneration = (admission as? IdeaIndexSemanticAdmission.Status.Ready)?.generation?.toRuntimeStatus(),
         )
     }
 
@@ -323,10 +317,12 @@ internal class KastIndexerBackend(
     override suspend fun codeActions(query: ParsedCodeActionsQuery): CodeActionsResult = workspaceSemanticGate.current { codeActionsOperation(query) }
     override suspend fun completions(query: ParsedCompletionsQuery): CompletionsResult = workspaceSemanticGate.current { completionsOperation(query) }
     override suspend fun workspaceFiles(query: ParsedWorkspaceFilesQuery): WorkspaceFilesResult = workspaceSemanticGate.current { workspaceFilesOperation(query) }
-    override suspend fun semanticGraph(query: ParsedSemanticGraphQuery): SemanticGraphResult = workspaceSemanticGate.current { semanticGraphOperation(query) }
+    override suspend fun semanticGraph(query: ParsedSemanticGraphQuery): SemanticGraphResult = coordinatedSemanticGraph(query)
     /** Internal transition writer. External graph requests remain guarded by [WorkspaceSemanticGate.current]. */
-    internal suspend fun reconcileSemanticGraph(query: ParsedSemanticGraphQuery): SemanticGraphResult =
-        semanticGraphOperation(query)
+    internal suspend fun reconcileSemanticGraph(
+        query: ParsedSemanticGraphQuery,
+        token: IdeaIndexSemanticAdmission.ReconciliationToken,
+    ): SemanticGraphResult = semanticGraphOperation(query, token)
     override suspend fun semanticInsertionPoint(query: ParsedSemanticInsertionQuery): SemanticInsertionResult = workspaceSemanticGate.current { semanticInsertionPointOperation(query) }
     override suspend fun diagnostics(query: ParsedDiagnosticsQuery): DiagnosticsResult = workspaceSemanticGate.current { diagnosticsOperation(query) }
     override suspend fun rename(query: ParsedRenameQuery): RenameResult = workspaceSemanticGate.current { renameOperation(query) }
@@ -343,16 +339,16 @@ internal class KastIndexerBackend(
         query: ParsedRawExactFileObservationQuery,
     ): RawExactFileObservationResult = workspaceSemanticGate.current { rawExactFileObservationOperation(query) }
     override suspend fun exactFileImageCas(query: ParsedExactFileImageQuery): ExactFileImageResult =
-        workspaceSemanticGate.current { exactFileImageCasOperation(query) }
+        coordinatedExactFileImageCas(query)
     override suspend fun inspectMutationScratch(
         query: ParsedMutationScratchInspectQuery,
     ): MutationScratchInspectResult = workspaceSemanticGate.current { inspectMutationScratchOperation(query) }
     override suspend fun recoverMutationScratch(
         query: ParsedMutationScratchRecoveryQuery,
-    ): MutationScratchRecoveryResult = workspaceSemanticGate.current { recoverMutationScratchOperation(query) }
-    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult = workspaceSemanticGate.current { applyEditsOperation(query) }
+    ): MutationScratchRecoveryResult = coordinatedMutationScratchRecovery(query)
+    override suspend fun applyEdits(query: ParsedApplyEditsQuery): ApplyEditsResult = coordinatedApplyEdits(query)
     override suspend fun optimizeImports(query: ParsedImportOptimizeQuery): ImportOptimizeResult = workspaceSemanticGate.current { optimizeImportsOperation(query) }
-    override suspend fun refresh(query: ParsedRefreshQuery): RefreshResult = workspaceSemanticGate.current { refreshOperation(query) }
+    override suspend fun refresh(query: ParsedRefreshQuery): RefreshResult = coordinatedRefresh(query)
     override suspend fun fileOutline(query: ParsedFileOutlineQuery): FileOutlineResult = workspaceSemanticGate.current { fileOutlineOperation(query) }
     override suspend fun workspaceSymbolSearch(query: ParsedWorkspaceSymbolQuery): WorkspaceSymbolResult = workspaceSemanticGate.current { workspaceSymbolSearchOperation(query) }
     override suspend fun workspaceSearch(query: ParsedWorkspaceSearchQuery): WorkspaceSearchResult = workspaceSemanticGate.current { workspaceSearchOperation(query) }
