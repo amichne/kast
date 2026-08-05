@@ -8,6 +8,10 @@ inputs:
   tag:
     description: Release tag
     required: true
+  version:
+    description: Bundle version; defaults to the release tag
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -36,6 +40,8 @@ runs:
       run: |
         set -euo pipefail
         tag="${{ inputs.tag }}"
+        version="${{ inputs.version }}"
+        [[ -n "$version" ]] || version="$tag"
         platform="${{ inputs.platform }}"
         cli_asset="provenance-cli/kast-${tag}-${platform}.zip"
         packager_archive="provenance-cli/kast-${tag}-linux-x64.zip"
@@ -74,7 +80,7 @@ runs:
           --cli-archive "$cli_asset" \
           --indexer-archive "$indexer_asset" \
           --platform "$platform" \
-          --version "$tag" \
+          --version "$version" \
           --bundle-output "$asset"
         python3 - "$asset" "dist/provenance/build-provenance-setup-${platform}.json" "$platform" <<'PY'
         import hashlib, json, os, sys
