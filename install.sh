@@ -156,12 +156,12 @@ latest_snapshot_tag() {
   tag="$(
     curl -fsSL -H 'Accept: application/vnd.github+json' "$RELEASES_API_URL" \
       | awk '
-          /"tag_name"[[:space:]]*:[[:space:]]*"snapshot-[^"]+"/ {
+          found == 0 && /"tag_name"[[:space:]]*:[[:space:]]*"snapshot-[^"]+"/ {
             value = $0
             sub(/^.*"tag_name"[[:space:]]*:[[:space:]]*"/, "", value)
             sub(/".*$/, "", value)
             print value
-            exit
+            found = 1
           }
         '
   )"
