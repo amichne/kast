@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 RELEASES_URL="${KAST_RELEASES_URL:-https://github.com/amichne/kast/releases}"
+RELEASES_API_URL="${KAST_RELEASES_API_URL:-https://api.github.com/repos/amichne/kast/releases}"
 setup_scratch=""
 
 cleanup() {
@@ -47,6 +48,8 @@ Options:
 Environment:
   KAST_HOME          Active install root. Defaults to ~/.local/share/kast.
   KAST_RELEASES_URL  Release base URL. Defaults to the Kast GitHub releases.
+  KAST_RELEASES_API_URL
+                     Releases API used to resolve the latest snapshot.
 USAGE
   if kast_repository_root >/dev/null; then
     cat >&2 <<'USAGE'
@@ -148,6 +151,24 @@ latest_version() {
   printf '%s\n' "${effective##*/}"
 }
 
+latest_snapshot_tag() {
+  local tag
+  tag="$(
+    curl -fsSL -H 'Accept: application/vnd.github+json' "$RELEASES_API_URL" \
+      | awk '
+          /"tag_name"[[:space:]]*:[[:space:]]*"snapshot-[^"]+"/ {
+            value = $0
+            sub(/^.*"tag_name"[[:space:]]*:[[:space:]]*"/, "", value)
+            sub(/".*$/, "", value)
+            print value
+            exit
+          }
+        '
+  )"
+  [[ -n "$tag" ]] || die 'no published snapshot is available'
+  printf '%s\n' "$tag"
+}
+
 download_artifact() {
   local label="$1" url="$2" destination="$3"
   ui_step "Downloading ${label}"
@@ -190,7 +211,7 @@ finish_install() {
 }
 
 main() {
-  local source="" version="" bundle_root="" bundle_archive="" platform_id=""
+  local source="" version="" artifact_version="" bundle_root="" bundle_archive="" platform_id=""
   local force=0 snapshot=0 development=0 development_clean=0 repository_root="" active_agent=""
   local harness requested none_selected=0 already_selected
   local -a setup_args=() gradle_args=() requested_harnesses=() selected_harnesses=()
@@ -273,12 +294,14 @@ main() {
   if [[ -z "$source" ]]; then
     require curl
     ui_step "Resolving release"
-    ((snapshot == 0)) || version="snapshot"
+    ((snapshot == 0)) || version="$(latest_snapshot_tag)"
     version="${version:-$(latest_version)}"
+    artifact_version="$version"
+    ((snapshot == 0)) || artifact_version="snapshot"
     platform_id="$(platform)"
     ui_info "${version} · ${platform_id}"
     bundle_archive="${setup_scratch}/kast-bundle.tar.gz"
-    source="${RELEASES_URL}/download/${version}/kast-${platform_id}-${version}.tar.gz"
+    source="${RELEASES_URL}/download/${version}/kast-${platform_id}-${artifact_version}.tar.gz"
     download_artifact "Kast bundle" "$source" "$bundle_archive"
     source="$bundle_archive"
   fi

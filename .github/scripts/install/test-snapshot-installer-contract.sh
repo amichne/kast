@@ -11,6 +11,11 @@ require() {
   grep -Fq -- "$text" "$file" || die "$message"
 }
 
+reject() {
+  local file="$1" text="$2" message="$3"
+  ! grep -Fq -- "$text" "$file" || die "$message"
+}
+
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
 installer="$repo_root/install.sh"
 workflow="$repo_root/.github/workflows/snapshot.yml"
@@ -41,6 +46,7 @@ cat >"$scratch/bin/curl" <<'SH'
 set -euo pipefail
 printf '%s\n' "$*" >>"${KAST_SNAPSHOT_TEST_CURL_LOG:?}"
 output=""
+url=""
 while (($# > 0)); do
   case "$1" in
     -o|--output)
@@ -48,11 +54,15 @@ while (($# > 0)); do
       output="$2"
       shift 2
       ;;
-    *) shift ;;
+    *) url="$1"; shift ;;
   esac
 done
-[[ -n "$output" ]]
-cp "${KAST_SNAPSHOT_TEST_ARCHIVE:?}" "$output"
+if [[ -n "$output" ]]; then
+  cp "${KAST_SNAPSHOT_TEST_ARCHIVE:?}" "$output"
+else
+  [[ "$url" == "${KAST_SNAPSHOT_TEST_API_URL:?}" ]]
+  printf '[{"tag_name":"%s","prerelease":true}]\n' "${KAST_SNAPSHOT_TEST_TAG:?}"
+fi
 SH
 chmod 755 "$scratch/bin/curl"
 
@@ -71,7 +81,10 @@ run_installer() {
     PATH="$scratch/bin:$PATH" \
     KAST_HOME="$scratch/kast-home" \
     KAST_RELEASES_URL="https://downloads.example.invalid/releases" \
+    KAST_RELEASES_API_URL="https://api.example.invalid/releases" \
     KAST_SNAPSHOT_TEST_ARCHIVE="$scratch/kast-snapshot.tar.gz" \
+    KAST_SNAPSHOT_TEST_API_URL="https://api.example.invalid/releases" \
+    KAST_SNAPSHOT_TEST_TAG="snapshot-ce211e2a805f" \
     KAST_SNAPSHOT_TEST_CURL_LOG="$scratch/curl.log" \
     KAST_SNAPSHOT_TEST_SETUP_LOG="$scratch/setup.log" \
     "$installer" "$@" >"$scratch/stdout" 2>"$scratch/stderr"
@@ -80,9 +93,13 @@ run_installer() {
 run_installer --snapshot --harness none \
   || { sed -n '1,120p' "$scratch/stderr" >&2; die "--snapshot installation failed"; }
 grep -Fq -- \
-  "https://downloads.example.invalid/releases/download/snapshot/kast-${platform}-snapshot.tar.gz" \
+  "https://api.example.invalid/releases" \
   "$scratch/curl.log" \
-  || die "--snapshot did not download the rolling snapshot asset"
+  || die "--snapshot did not resolve the newest published snapshot"
+grep -Fq -- \
+  "https://downloads.example.invalid/releases/download/snapshot-ce211e2a805f/kast-${platform}-snapshot.tar.gz" \
+  "$scratch/curl.log" \
+  || die "--snapshot did not download the resolved immutable snapshot asset"
 grep -Eq '^setup --source .*/kast-snapshot$' "$scratch/setup.log" \
   || die "--snapshot did not delegate installation to kastctl"
 
@@ -125,16 +142,26 @@ require "$workflow" 'release_tag: snapshot' \
   "snapshot build inputs must use the rolling snapshot asset name"
 require "$workflow" 'version: ${{ needs.validate.outputs.snapshot-tag }}' \
   "snapshot bundles must embed the resolved snapshot version"
-require "$workflow" 'gh release create snapshot' \
-  "snapshot publication must create the rolling prerelease"
+require "$workflow" 'snapshot_tag="snapshot-${source_sha:0:12}"' \
+  "snapshot publication must derive an immutable source tag"
+require "$workflow" 'gh release create "$snapshot_tag"' \
+  "snapshot publication must create a source-specific prerelease"
+require "$workflow" '--draft' \
+  "snapshot assets must upload before immutable publication"
+require "$workflow" '--draft=false' \
+  "snapshot publication must make the verified draft visible"
 require "$workflow" '--prerelease' \
   "snapshot release must not be presented as stable"
-require "$workflow" 'gh release upload snapshot' \
+require "$workflow" 'gh release upload "$snapshot_tag"' \
   "snapshot publication must upload installable bundles"
 require "$workflow" 'dist/kast-*-snapshot.tar.gz' \
   "snapshot publication must use installer-stable asset names"
 require "$workflow" '--clobber' \
-  "rolling snapshot assets must replace the previous merge build"
+  "draft snapshot reruns must replace incomplete assets"
+require "$workflow" 'isImmutable' \
+  "snapshot publication must verify the immutable result"
+reject "$workflow" 'git/refs/tags/snapshot' \
+  "snapshot publication must not move a shared release tag"
 
 require "$setup_builder" 'version:' \
   "setup bundle builder must accept an explicit bundle version"
