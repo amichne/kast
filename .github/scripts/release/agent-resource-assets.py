@@ -41,7 +41,7 @@ def version_from_tag(tag: str) -> str:
 
 def source_digest(source: Path) -> str:
     value = hashlib.sha256()
-    paths = [source / "SKILL.md"]
+    paths = [source / "SKILL.md", source / "developer/SKILL.md"]
     paths.extend(
         source / provider / name
         for provider in sorted(PROVIDERS)
@@ -61,6 +61,7 @@ def rendered_files(source: Path, provider: str, version: str) -> dict[str, bytes
         marketplace: source / provider / "marketplace.json",
         plugin: source / provider / "plugin.json",
         hooks: source / provider / "hooks.json",
+        "plugins/kast/skills/developer/SKILL.md": source / "developer/SKILL.md",
         "plugins/kast/skills/kast/SKILL.md": source / "SKILL.md",
     }
     rendered = {
@@ -167,6 +168,7 @@ def verify(release_dir: Path, tag: str, git_sha: str) -> None:
 def verify_archive(contents: bytes, provider: str, version: str) -> None:
     expected = {
         *PROVIDERS[provider],
+        "plugins/kast/skills/developer/SKILL.md",
         "plugins/kast/skills/kast/SKILL.md",
     }
     with tarfile.open(fileobj=io.BytesIO(contents), mode="r:") as archive:
