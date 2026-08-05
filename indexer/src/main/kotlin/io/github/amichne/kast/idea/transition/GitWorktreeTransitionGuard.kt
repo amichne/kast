@@ -16,8 +16,18 @@ internal fun interface GitWorktreeTransitionGuard {
             GitWorktreeTransitionStatus.Stable
         }
 
-        fun exactRoot(workspaceRoot: Path): GitWorktreeTransitionGuard =
-            ResolvedGitWorktreeTransitionGuard(workspaceRoot)
+        fun exactRoot(
+            workspaceRoot: Path,
+            registrationProof: GitWorktreeRegistrationProof? = null,
+            markerReader: GitWorktreeTransitionMarkerReader = GitWorktreeTransitionMarkerReader.filesystem(),
+            resolutionObserver: GitWorktreeTransitionResolutionObserver =
+                GitWorktreeTransitionResolutionObserver.noop(),
+        ): GitWorktreeTransitionGuard = ResolvedGitWorktreeTransitionGuard(
+            workspaceRoot,
+            registrationProof,
+            markerReader,
+            resolutionObserver,
+        )
     }
 }
 
@@ -80,6 +90,25 @@ internal data class GitWorktreeTransitionMarkerEvidence(
     }
 }
 
+internal fun interface GitWorktreeTransitionMarkerReader {
+    @Throws(IOException::class, SecurityException::class)
+    fun read(path: Path)
+
+    companion object {
+        fun filesystem(): GitWorktreeTransitionMarkerReader = GitWorktreeTransitionMarkerReader { path ->
+            Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+        }
+    }
+}
+
+internal fun interface GitWorktreeTransitionResolutionObserver {
+    fun resolved()
+
+    companion object {
+        fun noop(): GitWorktreeTransitionResolutionObserver = GitWorktreeTransitionResolutionObserver {}
+    }
+}
+
 internal class GitWorktreeTransitionInProgressException(
     val transition: GitWorktreeTransitionStatus.InProgress,
 ) : WorkspaceTransitionRetryException(
@@ -93,43 +122,41 @@ internal class GitWorktreeTransitionInspectionException(
 
 private class ResolvedGitWorktreeTransitionGuard(
     workspaceRoot: Path,
+    private val registrationProof: GitWorktreeRegistrationProof?,
+    private val markerReader: GitWorktreeTransitionMarkerReader,
+    private val resolutionObserver: GitWorktreeTransitionResolutionObserver,
 ) : GitWorktreeTransitionGuard {
     private val root = workspaceRoot.toAbsolutePath().normalize()
-    private var registeredLinkedWorktree: RegisteredLinkedWorktree? = null
 
-    @Synchronized
     override fun inspect(): GitWorktreeTransitionStatus {
         val resolved = resolveMarkerPaths()
-        if (resolved is GitMarkerPathResolution.NotGitWorktree) {
-            registeredLinkedWorktree = null
-            return GitWorktreeTransitionStatus.Stable
-        }
+        if (resolved is GitMarkerPathResolution.NotGitWorktree) return GitWorktreeTransitionStatus.Stable
         if (resolved is GitMarkerPathResolution.MissingLinkedWorktreeGitDirectory) {
-            return GitWorktreeTransitionStatus.MissingLinkedWorktreeGitDirectory(
-                gitFile = resolved.gitFile,
-                gitDirectory = resolved.gitDirectory,
-            )
+            return resolved.toStatus()
         }
         if (resolved is GitMarkerPathResolution.Unavailable) {
-            registeredLinkedWorktree = null
             return GitWorktreeTransitionStatus.Unavailable(resolved.detail)
         }
-        val currentRegistration = resolveRegisteredLinkedWorktree()
-        if (currentRegistration == null && pointsAtLinkedWorktreeGitDirectory()) {
-            registeredLinkedWorktree = null
-            return GitWorktreeTransitionStatus.Unavailable(
-                "Git resolved exact-worktree metadata without bidirectional registration identity for $root",
-            )
+        resolved as GitMarkerPathResolution.Resolved
+        resolutionObserver.resolved()
+        val registrationBeforeMarkers = GitWorktreeRegistrationInspector.observe(root, registrationProof)
+        val registrationIdentity = when (registrationBeforeMarkers) {
+            GitWorktreeRegistrationObservation.NotLinked -> null
+            is GitWorktreeRegistrationObservation.Registered -> registrationBeforeMarkers.identity
+            is GitWorktreeRegistrationObservation.ProvenMissingDirectory ->
+                return registrationBeforeMarkers.toStatus()
+            is GitWorktreeRegistrationObservation.UnprovenMissingDirectory ->
+                return registrationBeforeMarkers.unprovenStatus()
+            is GitWorktreeRegistrationObservation.Unavailable ->
+                return GitWorktreeTransitionStatus.Unavailable(registrationBeforeMarkers.detail)
         }
-        registeredLinkedWorktree = currentRegistration
+        resolutionMismatch(resolved, registrationIdentity)?.let { detail ->
+            return GitWorktreeTransitionStatus.Unavailable(detail)
+        }
         val markers = linkedSetOf<GitWorktreeTransitionMarkerEvidence>()
-        (resolved as GitMarkerPathResolution.Resolved).markers.forEach { evidence ->
+        resolved.markers.forEach { evidence ->
             try {
-                Files.readAttributes(
-                    evidence.path,
-                    BasicFileAttributes::class.java,
-                    LinkOption.NOFOLLOW_LINKS,
-                )
+                markerReader.read(evidence.path)
                 markers += evidence
             } catch (_: NoSuchFileException) {
                 // The exact-worktree marker is absent.
@@ -145,6 +172,28 @@ private class ResolvedGitWorktreeTransitionGuard(
                 )
             }
         }
+        when (val registrationAfterMarkers = GitWorktreeRegistrationInspector.observe(root, registrationProof)) {
+            is GitWorktreeRegistrationObservation.ProvenMissingDirectory ->
+                return registrationAfterMarkers.toStatus()
+            is GitWorktreeRegistrationObservation.UnprovenMissingDirectory ->
+                return registrationAfterMarkers.unprovenStatus()
+            is GitWorktreeRegistrationObservation.Unavailable ->
+                return GitWorktreeTransitionStatus.Unavailable(registrationAfterMarkers.detail)
+            is GitWorktreeRegistrationObservation.Registered -> {
+                if (registrationAfterMarkers.identity != registrationIdentity) {
+                    return GitWorktreeTransitionStatus.Unavailable(
+                        "Linked-worktree registration changed while transition markers were inspected: $root",
+                    )
+                }
+            }
+            GitWorktreeRegistrationObservation.NotLinked -> {
+                if (registrationIdentity != null) {
+                    return GitWorktreeTransitionStatus.Unavailable(
+                        "Linked-worktree registration disappeared while transition markers were inspected: $root",
+                    )
+                }
+            }
+        }
         return if (markers.isEmpty()) {
             GitWorktreeTransitionStatus.Stable
         } else {
@@ -157,6 +206,9 @@ private class ResolvedGitWorktreeTransitionGuard(
             add("git")
             add("rev-parse")
             add("--path-format=absolute")
+            add("--show-toplevel")
+            add("--absolute-git-dir")
+            add("--git-common-dir")
             GitWorktreeTransitionMarker.entries.forEach { marker ->
                 add("--git-path")
                 add(marker.gitPath)
@@ -187,28 +239,95 @@ private class ResolvedGitWorktreeTransitionGuard(
         val resolved = output.trimEnd('\n', '\r')
             .split('\n')
             .map { line -> line.removeSuffix("\r") }
-        if (resolved.size != GitWorktreeTransitionMarker.entries.size) {
+        val expectedPathCount = GitWorktreeTransitionMarker.entries.size + GIT_IDENTITY_PATH_COUNT
+        if (resolved.size != expectedPathCount) {
             return GitMarkerPathResolution.Unavailable(
-                "Git returned ${resolved.size} transition paths; expected ${GitWorktreeTransitionMarker.entries.size}",
+                "Git returned ${resolved.size} identity and transition paths; expected $expectedPathCount",
+            )
+        }
+        val paths = resolved.map { rawPath ->
+            resolveOutputPath(rawPath) ?: return GitMarkerPathResolution.Unavailable(
+                "Git returned an invalid exact-worktree metadata path: $rawPath",
             )
         }
         return GitMarkerPathResolution.Resolved(
-            GitWorktreeTransitionMarker.entries.zip(resolved)
-            .mapTo(linkedSetOf()) { (marker, rawPath) ->
-                val path = Path.of(rawPath).let { candidate ->
-                    if (candidate.isAbsolute) candidate else root.resolve(candidate)
-                }.toAbsolutePath().normalize()
-                GitWorktreeTransitionMarkerEvidence(marker, path)
-            },
+            workspaceRoot = paths[0],
+            gitDirectory = paths[1],
+            commonGitDirectory = paths[2],
+            markers = GitWorktreeTransitionMarker.entries.zip(paths.drop(GIT_IDENTITY_PATH_COUNT))
+                .mapTo(linkedSetOf()) { (marker, path) ->
+                    GitWorktreeTransitionMarkerEvidence(marker, path)
+                },
         )
     }
 
+    private fun resolveOutputPath(rawPath: String): Path? {
+        val candidate = try {
+            Path.of(rawPath)
+        } catch (_: InvalidPathException) {
+            return null
+        }
+        return (if (candidate.isAbsolute) candidate else root.resolve(candidate))
+            .toAbsolutePath()
+            .normalize()
+    }
+
+    private fun resolutionMismatch(
+        resolved: GitMarkerPathResolution.Resolved,
+        registrationIdentity: RegisteredLinkedWorktreeIdentity?,
+    ): String? {
+        if (!sameExistingPath(resolved.workspaceRoot, root)) {
+            return "Git resolved transition markers for a different workspace root: ${resolved.workspaceRoot}"
+        }
+        if (registrationIdentity == null) return null
+        if (!sameExistingPath(resolved.gitDirectory, registrationIdentity.gitDirectory)) {
+            return "Git resolved transition markers for a different linked-worktree Git directory: " +
+                resolved.gitDirectory
+        }
+        val registeredCommonGitDirectory = registrationIdentity.gitDirectory.parent?.parent
+            ?: return "Registered linked-worktree Git directory has no common Git directory"
+        if (!sameExistingPath(resolved.commonGitDirectory, registeredCommonGitDirectory)) {
+            return "Git resolved transition markers for a different common Git directory: " +
+                resolved.commonGitDirectory
+        }
+        return null
+    }
+
+    private fun sameExistingPath(first: Path, second: Path): Boolean = try {
+        Files.isSameFile(first, second)
+    } catch (_: IOException) {
+        false
+    } catch (_: SecurityException) {
+        false
+    }
+
     private fun unavailableOrNotGit(detail: String): GitMarkerPathResolution {
+        when (val registration = GitWorktreeRegistrationInspector.observe(root, registrationProof)) {
+            is GitWorktreeRegistrationObservation.ProvenMissingDirectory -> {
+                return GitMarkerPathResolution.MissingLinkedWorktreeGitDirectory(
+                    registration.gitFile,
+                    registration.gitDirectory,
+                )
+            }
+            is GitWorktreeRegistrationObservation.UnprovenMissingDirectory -> {
+                return GitMarkerPathResolution.Unavailable(
+                    "Missing linked-worktree Git directory has no exact launch registration proof: " +
+                        registration.gitDirectory,
+                )
+            }
+            is GitWorktreeRegistrationObservation.Unavailable -> {
+                return GitMarkerPathResolution.Unavailable(registration.detail)
+            }
+            is GitWorktreeRegistrationObservation.Registered -> {
+                return GitMarkerPathResolution.Unavailable(detail)
+            }
+            GitWorktreeRegistrationObservation.NotLinked -> Unit
+        }
         var directory: Path? = root
         while (directory != null) {
             val currentDirectory = directory
             val gitFile = currentDirectory.resolve(".git")
-            val attributes = try {
+            try {
                 Files.readAttributes(
                     gitFile,
                     BasicFileAttributes::class.java,
@@ -228,127 +347,26 @@ private class ResolvedGitWorktreeTransitionGuard(
                         (failure.message ?: failure::class.qualifiedName.orEmpty()),
                 )
             }
-            return missingLinkedWorktreeGitDirectory(gitFile, attributes)
-                ?: GitMarkerPathResolution.Unavailable(detail)
+            return GitMarkerPathResolution.Unavailable(detail)
         }
         return GitMarkerPathResolution.NotGitWorktree
     }
 
-    private fun missingLinkedWorktreeGitDirectory(
-        gitFile: Path,
-        gitFileAttributes: BasicFileAttributes,
-    ): GitMarkerPathResolution.MissingLinkedWorktreeGitDirectory? {
-        val gitDirectory = resolveGitDirectory(gitFile, gitFileAttributes) ?: return null
-        val worktreesDirectory = gitDirectory.parent ?: return null
-        if (worktreesDirectory.fileName?.toString() != WORKTREES_DIRECTORY_NAME) return null
-        if (readAttributesOrNull(worktreesDirectory)?.isDirectory != true) return null
-        val commonGitDirectory = worktreesDirectory.parent ?: return null
-        if (!isCommonGitDirectory(commonGitDirectory)) return null
-        if (!Files.notExists(gitDirectory, LinkOption.NOFOLLOW_LINKS)) return null
-        if (registeredLinkedWorktree != RegisteredLinkedWorktree(gitFile, gitDirectory)) return null
-        return GitMarkerPathResolution.MissingLinkedWorktreeGitDirectory(
-            gitFile = gitFile.toAbsolutePath().normalize(),
-            gitDirectory = gitDirectory,
-        )
-    }
-
-    private fun resolveRegisteredLinkedWorktree(): RegisteredLinkedWorktree? {
-        val gitFile = root.resolve(".git").toAbsolutePath().normalize()
-        val gitFileAttributes = readAttributesOrNull(gitFile) ?: return null
-        val gitDirectory = resolveGitDirectory(gitFile, gitFileAttributes) ?: return null
-        val worktreesDirectory = gitDirectory.parent ?: return null
-        if (worktreesDirectory.fileName?.toString() != WORKTREES_DIRECTORY_NAME) return null
-        val commonGitDirectory = worktreesDirectory.parent ?: return null
-        if (!isCommonGitDirectory(commonGitDirectory)) return null
-        if (readAttributesOrNull(gitDirectory)?.isDirectory != true) return null
-        val registrationFile = gitDirectory.resolve(GIT_FILE_REGISTRATION_NAME)
-        val registeredGitFile = resolvePathFile(registrationFile) ?: return null
-        val sameGitFile = try {
-            Files.isSameFile(registeredGitFile, gitFile)
-        } catch (_: IOException) {
-            false
-        } catch (_: SecurityException) {
-            false
-        }
-        return if (sameGitFile) RegisteredLinkedWorktree(gitFile, gitDirectory) else null
-    }
-
-    private fun pointsAtLinkedWorktreeGitDirectory(): Boolean {
-        val gitFile = root.resolve(".git").toAbsolutePath().normalize()
-        val gitFileAttributes = readAttributesOrNull(gitFile) ?: return false
-        val gitDirectory = resolveGitDirectory(gitFile, gitFileAttributes) ?: return false
-        return gitDirectory.parent?.fileName?.toString() == WORKTREES_DIRECTORY_NAME
-    }
-
-    private fun resolveGitDirectory(
-        gitFile: Path,
-        gitFileAttributes: BasicFileAttributes,
-    ): Path? {
-        if (!gitFileAttributes.isRegularFile) return null
-        val directive = readSingleLine(gitFile) ?: return null
-        if (!directive.startsWith(GIT_DIRECTORY_PREFIX)) return null
-        val rawGitDirectory = directive.removePrefix(GIT_DIRECTORY_PREFIX).takeIf(String::isNotBlank)
-            ?: return null
-        return resolvePath(rawGitDirectory, gitFile.parent)
-    }
-
-    private fun resolvePathFile(path: Path): Path? {
-        val rawPath = readSingleLine(path)?.takeIf(String::isNotBlank) ?: return null
-        return resolvePath(rawPath, path.parent)
-    }
-
-    private fun readSingleLine(path: Path): String? = try {
-        Files.readString(path).trimEnd('\n', '\r').takeUnless { value -> '\n' in value || '\r' in value }
-    } catch (_: IOException) {
-        null
-    } catch (_: SecurityException) {
-        null
-    }
-
-    private fun resolvePath(rawPath: String, relativeTo: Path): Path? {
-        val parsed = try {
-            Path.of(rawPath)
-        } catch (_: InvalidPathException) {
-            return null
-        }
-        return (if (parsed.isAbsolute) parsed else relativeTo.resolve(parsed)).toAbsolutePath().normalize()
-    }
-
-    private fun isCommonGitDirectory(directory: Path): Boolean {
-        val directoryAttributes = readAttributesOrNull(directory) ?: return false
-        val headAttributes = readAttributesOrNull(directory.resolve("HEAD")) ?: return false
-        val objectsAttributes = readAttributesOrNull(directory.resolve("objects")) ?: return false
-        return directoryAttributes.isDirectory && headAttributes.isRegularFile && objectsAttributes.isDirectory
-    }
-
-    private fun readAttributesOrNull(path: Path): BasicFileAttributes? = try {
-        Files.readAttributes(
-            path,
-            BasicFileAttributes::class.java,
-            LinkOption.NOFOLLOW_LINKS,
-        )
-    } catch (_: IOException) {
-        null
-    } catch (_: SecurityException) {
-        null
-    }
-
     private companion object {
-        private const val GIT_DIRECTORY_PREFIX = "gitdir: "
-        private const val GIT_FILE_REGISTRATION_NAME = "gitdir"
-        private const val WORKTREES_DIRECTORY_NAME = "worktrees"
+        private const val GIT_IDENTITY_PATH_COUNT = 3
     }
 }
 
-private data class RegisteredLinkedWorktree(
-    val gitFile: Path,
-    val gitDirectory: Path,
-) {
-    init {
-        require(gitFile.isAbsolute) { "Registered linked-worktree Git file must be absolute" }
-        require(gitDirectory.isAbsolute) { "Registered linked-worktree Git directory must be absolute" }
-    }
-}
+private fun GitWorktreeRegistrationObservation.ProvenMissingDirectory.toStatus() =
+    GitWorktreeTransitionStatus.MissingLinkedWorktreeGitDirectory(gitFile, gitDirectory)
+
+private fun GitWorktreeRegistrationObservation.UnprovenMissingDirectory.unprovenStatus() =
+    GitWorktreeTransitionStatus.Unavailable(
+        "Missing linked-worktree Git directory has no exact launch registration proof: $gitDirectory",
+    )
+
+private fun GitMarkerPathResolution.MissingLinkedWorktreeGitDirectory.toStatus() =
+    GitWorktreeTransitionStatus.MissingLinkedWorktreeGitDirectory(gitFile, gitDirectory)
 
 private sealed interface GitMarkerPathResolution {
     data object NotGitWorktree : GitMarkerPathResolution
@@ -361,6 +379,9 @@ private sealed interface GitMarkerPathResolution {
     data class Unavailable(val detail: String) : GitMarkerPathResolution
 
     data class Resolved(
+        val workspaceRoot: Path,
+        val gitDirectory: Path,
+        val commonGitDirectory: Path,
         val markers: Set<GitWorktreeTransitionMarkerEvidence>,
     ) : GitMarkerPathResolution
 }

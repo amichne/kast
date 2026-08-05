@@ -31,13 +31,18 @@ struct ControlCliPath(PathBuf);
 
 impl ControlCliPath {
     fn parse(path: &Path) -> Result<Self> {
-        if crate::entrypoint_for_path(path) == Some(crate::Entrypoint::Control) {
+        let is_executable_file = fs::metadata(path)
+            .is_ok_and(|metadata| metadata.is_file())
+            && is_executable(path).unwrap_or(false);
+        if crate::entrypoint_for_path(path) == Some(crate::Entrypoint::Control)
+            && is_executable_file
+        {
             return Ok(Self(path.to_path_buf()));
         }
         Err(CliError::new(
             "DEVELOPER_OPERATIONS_ROUTE_INVALID",
             format!(
-                "Developer operations require a `kastctl` executable path, got {}.",
+                "Developer operations require an existing executable `kastctl` path, got {}.",
                 path.display()
             ),
         ))

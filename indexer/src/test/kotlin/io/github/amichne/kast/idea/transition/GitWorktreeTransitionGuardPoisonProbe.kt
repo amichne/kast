@@ -1,5 +1,6 @@
 package io.github.amichne.kast.idea.transition
 
+import io.github.amichne.kast.api.client.LinkedWorktreeLaunchClaim
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.system.exitProcess
@@ -13,18 +14,16 @@ object GitWorktreeTransitionGuardPoisonProbe {
         val workspace = Path.of(arguments[0]).toAbsolutePath().normalize()
         val missingGitDirectory = Path.of(arguments[1]).toAbsolutePath().normalize()
         val displacedGitDirectory = Path.of(arguments[2]).toAbsolutePath().normalize()
-        val guard = GitWorktreeTransitionGuard.exactRoot(workspace)
-        val initial = guard.inspect()
-        if (initial != GitWorktreeTransitionStatus.Stable) {
-            System.err.println("Expected initial Stable registration proof but observed $initial")
-            exitProcess(1)
-        }
+        val proof = GitWorktreeRegistrationProof.capture(
+            workspace,
+            LinkedWorktreeLaunchClaim.of(workspace.resolve(".git"), missingGitDirectory),
+        )
         Files.move(missingGitDirectory, displacedGitDirectory)
         val expected = GitWorktreeTransitionStatus.MissingLinkedWorktreeGitDirectory(
             gitFile = workspace.resolve(".git"),
             gitDirectory = missingGitDirectory,
         )
-        val observed = guard.inspect()
+        val observed = GitWorktreeTransitionGuard.exactRoot(workspace, proof).inspect()
         if (observed != expected) {
             System.err.println("Expected $expected but observed $observed")
             exitProcess(1)

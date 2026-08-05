@@ -7,6 +7,7 @@ import io.github.amichne.kast.api.client.fields.ServerRequestTimeoutMillis
 import io.github.amichne.kast.api.contract.*
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -118,5 +119,32 @@ class ServerLaunchOptionsTest {
         assertTrue(options.toCliArguments().contains("--profile-modes=cpu,alloc"))
         assertTrue(options.toCliArguments().contains("--profile-duration=45"))
         assertTrue(options.toCliArguments().contains("--profile-otlp-endpoint=http://localhost:4317"))
+    }
+
+    @Test
+    fun `linked worktree launch claim is complete and round trips`() {
+        val gitFile = tempDir.resolve("workspace/.git").toAbsolutePath().normalize()
+        val gitDirectory = tempDir.resolve("repository/.git/worktrees/workspace").toAbsolutePath().normalize()
+        val options = ServerLaunchOptions.fromValues(
+            mapOf(
+                "workspace-root" to tempDir.toString(),
+                "linked-worktree-git-file" to gitFile.toString(),
+                "linked-worktree-git-directory" to gitDirectory.toString(),
+            ),
+        )
+
+        assertEquals(gitFile, options.linkedWorktreeLaunchClaim?.gitFile)
+        assertEquals(gitDirectory, options.linkedWorktreeLaunchClaim?.gitDirectory)
+        assertEquals(options.linkedWorktreeLaunchClaim, ServerLaunchOptions.parse(
+            options.toCliArguments().toTypedArray(),
+        ).linkedWorktreeLaunchClaim)
+        assertThrows(IllegalStateException::class.java) {
+            ServerLaunchOptions.fromValues(
+                mapOf(
+                    "workspace-root" to tempDir.toString(),
+                    "linked-worktree-git-file" to gitFile.toString(),
+                ),
+            )
+        }
     }
 }

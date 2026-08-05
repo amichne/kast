@@ -1,8 +1,12 @@
 package io.github.amichne.kast.idea.transition
 
+import io.github.amichne.kast.api.client.LinkedWorktreeLaunchClaim
+import java.io.IOException
 import java.nio.file.FileSystems
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.Path
+import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.attribute.PosixFilePermissions
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
@@ -53,11 +57,10 @@ class GitWorktreeTransitionGuardTest {
         val missingGitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
             .toAbsolutePath()
             .normalize()
-        val guard = GitWorktreeTransitionGuard.exactRoot(workspace)
-        assertEquals(GitWorktreeTransitionStatus.Stable, guard.inspect())
+        val proof = registrationProof(workspace, missingGitDirectory)
         Files.move(missingGitDirectory, root.resolve("displaced-worktree-git-directory"))
 
-        val status = guard.inspect()
+        val status = GitWorktreeTransitionGuard.exactRoot(workspace, proof).inspect()
 
         assertEquals(
             GitWorktreeTransitionStatus.MissingLinkedWorktreeGitDirectory(
@@ -116,6 +119,141 @@ class GitWorktreeTransitionGuardTest {
     }
 
     @Test
+    fun `launch proof fails closed when the registered Git file disappears`() {
+        val repository = committedRepository()
+        val workspace = root.resolve("deleted-git-file-worktree")
+        git(repository, "worktree", "add", "--detach", workspace.toString(), "HEAD")
+        val gitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
+            .toAbsolutePath()
+            .normalize()
+        val proof = registrationProof(workspace, gitDirectory)
+        Files.delete(workspace.resolve(".git"))
+
+        val status = GitWorktreeTransitionGuard.exactRoot(workspace, proof).inspect()
+
+        assertTrue(status is GitWorktreeTransitionStatus.Unavailable)
+    }
+
+    @Test
+    fun `launch proof rejects a same-path replacement Git file`() {
+        val repository = committedRepository()
+        val workspace = root.resolve("replaced-git-file-worktree")
+        git(repository, "worktree", "add", "--detach", workspace.toString(), "HEAD")
+        val gitFile = workspace.resolve(".git")
+        val gitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
+            .toAbsolutePath()
+            .normalize()
+        val proof = registrationProof(workspace, gitDirectory)
+        Files.move(gitDirectory, root.resolve("displaced-replaced-worktree-git-directory"))
+        val directive = Files.readString(gitFile)
+        Files.delete(gitFile)
+        Files.writeString(gitFile, directive)
+
+        val status = GitWorktreeTransitionGuard.exactRoot(workspace, proof).inspect()
+
+        assertTrue(status is GitWorktreeTransitionStatus.Unavailable)
+    }
+
+    @Test
+    fun `in-progress inspection does not authorize a later missing Git directory`() {
+        val repository = committedRepository()
+        val workspace = root.resolve("transitioning-worktree")
+        git(repository, "worktree", "add", "--detach", workspace.toString(), "HEAD")
+        val gitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
+            .toAbsolutePath()
+            .normalize()
+        val indexLock = gitDirectory.resolve("index.lock")
+        val guard = GitWorktreeTransitionGuard.exactRoot(workspace)
+        Files.writeString(indexLock, "transition")
+        assertTrue(guard.inspect() is GitWorktreeTransitionStatus.InProgress)
+        Files.delete(indexLock)
+        Files.move(gitDirectory, root.resolve("displaced-transitioning-worktree-git-directory"))
+
+        val status = guard.inspect()
+
+        assertTrue(status is GitWorktreeTransitionStatus.Unavailable)
+    }
+
+    @Test
+    fun `Git directory disappearing during marker inspection never reports stable`() {
+        val repository = committedRepository()
+        val workspace = root.resolve("mid-inspection-worktree")
+        git(repository, "worktree", "add", "--detach", workspace.toString(), "HEAD")
+        val gitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
+            .toAbsolutePath()
+            .normalize()
+        val proof = registrationProof(workspace, gitDirectory)
+        val displaced = root.resolve("displaced-mid-inspection-worktree-git-directory")
+        var moved = false
+        val markerReader = GitWorktreeTransitionMarkerReader { path ->
+            if (!moved) {
+                Files.move(gitDirectory, displaced)
+                moved = true
+            }
+            Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+        }
+
+        val status = GitWorktreeTransitionGuard.exactRoot(workspace, proof, markerReader).inspect()
+
+        assertTrue(status is GitWorktreeTransitionStatus.MissingLinkedWorktreeGitDirectory)
+    }
+
+    @Test
+    fun `marker paths resolved from a swapped Git directive never report stable`() {
+        val repository = committedRepository()
+        val workspace = root.resolve("resolution-epoch-worktree")
+        val alternateWorkspace = root.resolve("alternate-worktree")
+        git(repository, "worktree", "add", "--detach", workspace.toString(), "HEAD")
+        git(repository, "worktree", "add", "--detach", alternateWorkspace.toString(), "HEAD")
+        val gitFile = workspace.resolve(".git")
+        val gitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
+            .toAbsolutePath()
+            .normalize()
+        val alternateGitDirectory = Path.of(
+            gitOutput(alternateWorkspace, "rev-parse", "--absolute-git-dir"),
+        ).toAbsolutePath().normalize()
+        val proof = registrationProof(workspace, gitDirectory)
+        val registeredDirective = Files.readString(gitFile)
+        Files.writeString(gitFile, "gitdir: $alternateGitDirectory\n")
+        val resolutionObserver = GitWorktreeTransitionResolutionObserver {
+            Files.writeString(gitFile, registeredDirective)
+        }
+
+        val status = GitWorktreeTransitionGuard.exactRoot(
+            workspace,
+            proof,
+            resolutionObserver = resolutionObserver,
+        ).inspect()
+
+        assertTrue(status is GitWorktreeTransitionStatus.Unavailable)
+    }
+
+    @Test
+    fun `marker inspection failure does not authorize a later missing Git directory`() {
+        val repository = committedRepository()
+        val workspace = root.resolve("marker-failure-worktree")
+        git(repository, "worktree", "add", "--detach", workspace.toString(), "HEAD")
+        val gitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
+            .toAbsolutePath()
+            .normalize()
+        var failed = false
+        val markerReader = GitWorktreeTransitionMarkerReader { path ->
+            if (!failed) {
+                failed = true
+                throw IOException("injected marker failure: $path")
+            }
+            Files.readAttributes(path, BasicFileAttributes::class.java, LinkOption.NOFOLLOW_LINKS)
+        }
+        val guard = GitWorktreeTransitionGuard.exactRoot(workspace, markerReader = markerReader)
+        assertTrue(guard.inspect() is GitWorktreeTransitionStatus.Unavailable)
+        Files.move(gitDirectory, root.resolve("displaced-marker-failure-worktree-git-directory"))
+
+        val status = guard.inspect()
+
+        assertTrue(status is GitWorktreeTransitionStatus.Unavailable)
+    }
+
+    @Test
     fun `missing non-worktree Git directory remains unavailable`() {
         val repository = committedRepository()
         val registeredWorktree = root.resolve("registered-worktree")
@@ -165,6 +303,14 @@ class GitWorktreeTransitionGuardTest {
         git(repository, "commit", "-m", "initial")
         return repository
     }
+
+    private fun registrationProof(
+        workspace: Path,
+        gitDirectory: Path,
+    ): GitWorktreeRegistrationProof = GitWorktreeRegistrationProof.capture(
+        workspace,
+        LinkedWorktreeLaunchClaim.of(workspace.resolve(".git"), gitDirectory),
+    )
 
     private fun git(directory: Path, vararg arguments: String) {
         val process = ProcessBuilder("git", *arguments)

@@ -2,12 +2,14 @@ package io.github.amichne.kast.idea
 
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.LinkedWorktreeLaunchClaim
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionGuard
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInspectionException
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionMarker
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionMarkerEvidence
+import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionStatus
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
@@ -40,8 +42,10 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val gitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
             .toAbsolutePath()
             .normalize()
-        val gitWorktreeTransitionGuard = GitWorktreeTransitionGuard.exactRoot(workspace)
-        assertEquals(GitWorktreeTransitionStatus.Stable, gitWorktreeTransitionGuard.inspect())
+        val registrationProof = GitWorktreeRegistrationProof.capture(
+            workspace,
+            LinkedWorktreeLaunchClaim.of(workspace.resolve(".git"), gitDirectory),
+        )
         Files.move(gitDirectory, tempDir.resolve("displaced-worktree-git-directory"))
         val stableBuildInputs = BuildSemanticInputIdentity("stable-build-inputs")
         val publications = mutableListOf<WorkspaceStateIdentity>()
@@ -52,7 +56,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             resolveBuildSemanticInputIdentity = { stableBuildInputs },
             semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
             eventWakeup = WorkspaceEventWakeup(),
-            gitWorktreeTransitionGuard = gitWorktreeTransitionGuard,
+            gitWorktreeTransitionGuard = GitWorktreeTransitionGuard.exactRoot(workspace, registrationProof),
             refreshWorkspace = {},
             loadLiveConfig = { it },
             captureCandidate = { _, _ ->

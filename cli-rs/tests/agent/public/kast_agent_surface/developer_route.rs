@@ -79,6 +79,63 @@ fn home_rejects_an_invalid_install_receipt_instead_of_fabricating_a_developer_ro
 }
 
 #[test]
+fn home_rejects_a_missing_control_executable_instead_of_publishing_its_path() {
+    let state = tempfile::tempdir().expect("temporary state");
+    let kast_home = state.path().join("empty-kast-home");
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("repository root");
+
+    let output = named("kast")
+        .current_dir(workspace)
+        .env("KAST_HOME", &kast_home)
+        .env("XDG_CONFIG_HOME", state.path().join("config"))
+        .output()
+        .expect("run kast home");
+
+    assert!(!output.status.success(), "{output:?}");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("DEVELOPER_OPERATIONS_ROUTE_INVALID"),
+        "{stdout}"
+    );
+    assert!(!stdout.contains("developerOperations"), "{stdout}");
+}
+
+#[cfg(unix)]
+#[test]
+fn home_rejects_a_non_executable_control_file_instead_of_publishing_its_path() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let state = tempfile::tempdir().expect("temporary state");
+    let kast_home = state.path().join("kast-home");
+    let developer_cli = kast_home.join("current/libexec/kastctl");
+    std::fs::create_dir_all(developer_cli.parent().expect("developer CLI parent"))
+        .expect("developer CLI directory");
+    std::fs::write(&developer_cli, b"not executable").expect("developer CLI fixture");
+    std::fs::set_permissions(&developer_cli, std::fs::Permissions::from_mode(0o644))
+        .expect("non-executable developer CLI permissions");
+    let workspace = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .expect("repository root");
+
+    let output = named("kast")
+        .current_dir(workspace)
+        .env("KAST_HOME", &kast_home)
+        .env("XDG_CONFIG_HOME", state.path().join("config"))
+        .output()
+        .expect("run kast home");
+
+    assert!(!output.status.success(), "{output:?}");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(
+        stdout.contains("DEVELOPER_OPERATIONS_ROUTE_INVALID"),
+        "{stdout}"
+    );
+    assert!(!stdout.contains("developerOperations"), "{stdout}");
+}
+
+#[test]
 fn home_rejects_a_receipt_whose_developer_route_is_not_the_control_entrypoint() {
     let state = tempfile::tempdir().expect("temporary state");
     let home = state.path().join("home");

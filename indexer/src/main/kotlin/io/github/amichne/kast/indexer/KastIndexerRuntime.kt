@@ -7,6 +7,7 @@ import io.github.amichne.kast.api.client.ServerLaunchOptions
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.idea.IndexerServerRuntime
 import io.github.amichne.kast.idea.RunningIndexer
+import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.indexer.gradle.bootstrap.GradleProjectImportBridge
 import io.github.amichne.kast.indexer.project.ProjectOpener
 import kotlinx.coroutines.runBlocking
@@ -91,17 +92,21 @@ object KastIndexerRuntime {
         configureSystemProperties()
         val serverOptions = options.serverOptions
         val workspaceRoot = serverOptions.workspaceRoot
+        val registrationProof = serverOptions.linkedWorktreeLaunchClaim?.let { claim ->
+            GitWorktreeRegistrationProof.capture(workspaceRoot, claim)
+        }
         GradleProjectImportBridge.configureIndexerApplication()
         val project = projectOpener.openProject(workspaceRoot)
         val config = options.runtimeConfig ?: KastConfig.load(
             workspaceRoot = workspaceRoot,
             overrides = KastConfigOverride(profiling = serverOptions.profilingOverride),
         )
-        val indexerRuntime = IndexerServerRuntime.start(
+        val indexerRuntime = IndexerServerRuntime.startWithRegistrationProof(
             project = project,
             workspaceRoot = workspaceRoot,
             transport = serverOptions.transport,
             config = config,
+            registrationProof = registrationProof,
         )
         val status = runBlocking { indexerRuntime.backend.runtimeStatus() }
         check(status.backendName == "indexer") {
