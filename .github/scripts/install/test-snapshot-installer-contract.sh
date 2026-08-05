@@ -61,7 +61,12 @@ if [[ -n "$output" ]]; then
   cp "${KAST_SNAPSHOT_TEST_ARCHIVE:?}" "$output"
 else
   [[ "$url" == "${KAST_SNAPSHOT_TEST_API_URL:?}" ]]
-  printf '[{"tag_name":"%s","prerelease":true}]\n' "${KAST_SNAPSHOT_TEST_TAG:?}"
+  printf '[\n  {"tag_name":"%s","prerelease":true}' "${KAST_SNAPSHOT_TEST_TAG:?}"
+  for ((index = 0; index < 8192; index++)); do
+    printf ',\n  {"ignored_release":"%080d"}' "$index"
+  done
+  printf '\n]\n'
+  printf '%s\n' drained >"${KAST_SNAPSHOT_TEST_API_DRAIN_LOG:?}"
 fi
 SH
 chmod 755 "$scratch/bin/curl"
@@ -77,6 +82,7 @@ esac
 run_installer() {
   : >"$scratch/curl.log"
   : >"$scratch/setup.log"
+  : >"$scratch/api-drain.log"
   HOME="$scratch/user" \
     PATH="$scratch/bin:$PATH" \
     KAST_HOME="$scratch/kast-home" \
@@ -84,6 +90,7 @@ run_installer() {
     KAST_RELEASES_API_URL="https://api.example.invalid/releases" \
     KAST_SNAPSHOT_TEST_ARCHIVE="$scratch/kast-snapshot.tar.gz" \
     KAST_SNAPSHOT_TEST_API_URL="https://api.example.invalid/releases" \
+    KAST_SNAPSHOT_TEST_API_DRAIN_LOG="$scratch/api-drain.log" \
     KAST_SNAPSHOT_TEST_TAG="snapshot-ce211e2a805f" \
     KAST_SNAPSHOT_TEST_CURL_LOG="$scratch/curl.log" \
     KAST_SNAPSHOT_TEST_SETUP_LOG="$scratch/setup.log" \
@@ -100,6 +107,8 @@ grep -Fq -- \
   "https://downloads.example.invalid/releases/download/snapshot-ce211e2a805f/kast-${platform}-snapshot.tar.gz" \
   "$scratch/curl.log" \
   || die "--snapshot did not download the resolved immutable snapshot asset"
+grep -Fqx -- drained "$scratch/api-drain.log" \
+  || die "--snapshot did not consume the complete releases response"
 grep -Eq '^setup --source .*/kast-snapshot$' "$scratch/setup.log" \
   || die "--snapshot did not delegate installation to kastctl"
 
