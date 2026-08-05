@@ -27,7 +27,7 @@ kast_repository_root() {
 
 usage() {
   cat >&2 <<'USAGE'
-Usage: install.sh [--source <bundle-directory-or-tar.gz>] [--version <vX.Y.Z>] [--force]
+Usage: install.sh [--source <bundle-directory-or-tar.gz>] [--version <vX.Y.Z>] [--snapshot] [--force]
                   [--harness <codex|claude|copilot|none>]...
 
 Downloads one platform bundle when --source is omitted, then delegates every
@@ -40,6 +40,7 @@ Options:
                      Defaults to every detected harness; none disables it.
   --source PATH      Install a local bundle directory or tar.gz archive.
   --version VERSION  Install an exact release instead of the latest release.
+  --snapshot         Install the latest snapshot build.
   --force            Remove prior Kast-owned state before reinstalling.
   -h, --help         Show this help.
 
@@ -190,7 +191,7 @@ finish_install() {
 
 main() {
   local source="" version="" bundle_root="" bundle_archive="" platform_id=""
-  local force=0 development=0 development_clean=0 repository_root="" active_agent=""
+  local force=0 snapshot=0 development=0 development_clean=0 repository_root="" active_agent=""
   local harness requested none_selected=0 already_selected
   local -a setup_args=() gradle_args=() requested_harnesses=() selected_harnesses=()
 
@@ -198,6 +199,7 @@ main() {
     case "$1" in
       --source) [[ $# -ge 2 ]] || die '--source requires a value'; source="$2"; shift 2 ;;
       --version) [[ $# -ge 2 ]] || die '--version requires a value'; version="$2"; shift 2 ;;
+      --snapshot) snapshot=1; shift ;;
       --force) force=1; shift ;;
       --development) development=1; shift ;;
       --clean) development_clean=1; shift ;;
@@ -219,8 +221,11 @@ main() {
       || die 'development options are available only from the Kast Git repository'
   fi
   ((development_clean == 0 || development == 1)) || die '--clean requires --development'
-  if ((development == 1)) && { [[ -n "$source" || -n "$version" ]] || ((force == 1)); }; then
+  if ((development == 1)) && { [[ -n "$source" || -n "$version" ]] || ((snapshot == 1 || force == 1)); }; then
     die '--development cannot be combined with release installer options'
+  fi
+  if ((snapshot == 1)) && [[ -n "$source" || -n "$version" ]]; then
+    die '--snapshot cannot be combined with --source or --version'
   fi
 
   if ((${#requested_harnesses[@]} == 0)); then
@@ -268,6 +273,7 @@ main() {
   if [[ -z "$source" ]]; then
     require curl
     ui_step "Resolving release"
+    ((snapshot == 0)) || version="snapshot"
     version="${version:-$(latest_version)}"
     platform_id="$(platform)"
     ui_info "${version} · ${platform_id}"
