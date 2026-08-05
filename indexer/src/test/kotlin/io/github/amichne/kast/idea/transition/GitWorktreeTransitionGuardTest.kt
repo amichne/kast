@@ -53,9 +53,11 @@ class GitWorktreeTransitionGuardTest {
         val missingGitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
             .toAbsolutePath()
             .normalize()
+        val guard = GitWorktreeTransitionGuard.exactRoot(workspace)
+        assertEquals(GitWorktreeTransitionStatus.Stable, guard.inspect())
         Files.move(missingGitDirectory, root.resolve("displaced-worktree-git-directory"))
 
-        val status = GitWorktreeTransitionGuard.exactRoot(workspace).inspect()
+        val status = guard.inspect()
 
         assertEquals(
             GitWorktreeTransitionStatus.MissingLinkedWorktreeGitDirectory(
@@ -74,7 +76,7 @@ class GitWorktreeTransitionGuardTest {
         val missingGitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
             .toAbsolutePath()
             .normalize()
-        Files.move(missingGitDirectory, root.resolve("displaced-poisoned-worktree-git-directory"))
+        val displacedGitDirectory = root.resolve("displaced-poisoned-worktree-git-directory")
         val unrelatedRepository = root.resolve("unrelated-repository").also(Files::createDirectories)
         git(unrelatedRepository, "init")
 
@@ -86,6 +88,7 @@ class GitWorktreeTransitionGuardTest {
             GitWorktreeTransitionGuardPoisonProbe::class.java.name,
             workspace.toString(),
             missingGitDirectory.toString(),
+            displacedGitDirectory.toString(),
         ).redirectErrorStream(true)
         probe.environment()["GIT_DIR"] = unrelatedRepository.resolve(".git").toString()
         probe.environment()["GIT_WORK_TREE"] = workspace.toString()
@@ -98,8 +101,25 @@ class GitWorktreeTransitionGuardTest {
     }
 
     @Test
+    fun `missing linked-worktree Git directory without prior identity proof remains unavailable`() {
+        val repository = committedRepository()
+        val workspace = root.resolve("unproven-broken-worktree")
+        git(repository, "worktree", "add", "--detach", workspace.toString(), "HEAD")
+        val missingGitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
+            .toAbsolutePath()
+            .normalize()
+        Files.move(missingGitDirectory, root.resolve("displaced-unproven-worktree-git-directory"))
+
+        val status = GitWorktreeTransitionGuard.exactRoot(workspace).inspect()
+
+        assertTrue(status is GitWorktreeTransitionStatus.Unavailable)
+    }
+
+    @Test
     fun `missing non-worktree Git directory remains unavailable`() {
         val repository = committedRepository()
+        val registeredWorktree = root.resolve("registered-worktree")
+        git(repository, "worktree", "add", "--detach", registeredWorktree.toString(), "HEAD")
         val workspace = root.resolve("separate-git-directory-workspace").also(Files::createDirectories)
         val unregisteredDirectory = repository.resolve(".git/worktrees/unregistered")
         Files.writeString(workspace.resolve(".git"), "gitdir: $unregisteredDirectory")

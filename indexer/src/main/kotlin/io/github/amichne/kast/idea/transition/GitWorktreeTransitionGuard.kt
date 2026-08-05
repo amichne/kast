@@ -95,10 +95,15 @@ private class ResolvedGitWorktreeTransitionGuard(
     workspaceRoot: Path,
 ) : GitWorktreeTransitionGuard {
     private val root = workspaceRoot.toAbsolutePath().normalize()
+    private var registeredLinkedWorktree: RegisteredLinkedWorktree? = null
 
+    @Synchronized
     override fun inspect(): GitWorktreeTransitionStatus {
         val resolved = resolveMarkerPaths()
-        if (resolved is GitMarkerPathResolution.NotGitWorktree) return GitWorktreeTransitionStatus.Stable
+        if (resolved is GitMarkerPathResolution.NotGitWorktree) {
+            registeredLinkedWorktree = null
+            return GitWorktreeTransitionStatus.Stable
+        }
         if (resolved is GitMarkerPathResolution.MissingLinkedWorktreeGitDirectory) {
             return GitWorktreeTransitionStatus.MissingLinkedWorktreeGitDirectory(
                 gitFile = resolved.gitFile,
@@ -106,8 +111,17 @@ private class ResolvedGitWorktreeTransitionGuard(
             )
         }
         if (resolved is GitMarkerPathResolution.Unavailable) {
+            registeredLinkedWorktree = null
             return GitWorktreeTransitionStatus.Unavailable(resolved.detail)
         }
+        val currentRegistration = resolveRegisteredLinkedWorktree()
+        if (currentRegistration == null && pointsAtLinkedWorktreeGitDirectory()) {
+            registeredLinkedWorktree = null
+            return GitWorktreeTransitionStatus.Unavailable(
+                "Git resolved exact-worktree metadata without bidirectional registration identity for $root",
+            )
+        }
+        registeredLinkedWorktree = currentRegistration
         val markers = linkedSetOf<GitWorktreeTransitionMarkerEvidence>()
         (resolved as GitMarkerPathResolution.Resolved).markers.forEach { evidence ->
             try {
@@ -224,35 +238,80 @@ private class ResolvedGitWorktreeTransitionGuard(
         gitFile: Path,
         gitFileAttributes: BasicFileAttributes,
     ): GitMarkerPathResolution.MissingLinkedWorktreeGitDirectory? {
-        if (!gitFileAttributes.isRegularFile) return null
-        val directive = try {
-            Files.readString(gitFile).trimEnd('\n', '\r')
-        } catch (_: IOException) {
-            return null
-        } catch (_: SecurityException) {
-            return null
-        }
-        if ('\n' in directive || '\r' in directive || !directive.startsWith(GIT_DIRECTORY_PREFIX)) return null
-        val rawGitDirectory = directive.removePrefix(GIT_DIRECTORY_PREFIX).takeIf(String::isNotBlank)
-            ?: return null
-        val parsed = try {
-            Path.of(rawGitDirectory)
-        } catch (_: InvalidPathException) {
-            return null
-        }
-        val gitDirectory = (if (parsed.isAbsolute) parsed else gitFile.parent.resolve(parsed))
-            .toAbsolutePath()
-            .normalize()
+        val gitDirectory = resolveGitDirectory(gitFile, gitFileAttributes) ?: return null
         val worktreesDirectory = gitDirectory.parent ?: return null
         if (worktreesDirectory.fileName?.toString() != WORKTREES_DIRECTORY_NAME) return null
         if (readAttributesOrNull(worktreesDirectory)?.isDirectory != true) return null
         val commonGitDirectory = worktreesDirectory.parent ?: return null
         if (!isCommonGitDirectory(commonGitDirectory)) return null
         if (!Files.notExists(gitDirectory, LinkOption.NOFOLLOW_LINKS)) return null
+        if (registeredLinkedWorktree != RegisteredLinkedWorktree(gitFile, gitDirectory)) return null
         return GitMarkerPathResolution.MissingLinkedWorktreeGitDirectory(
             gitFile = gitFile.toAbsolutePath().normalize(),
             gitDirectory = gitDirectory,
         )
+    }
+
+    private fun resolveRegisteredLinkedWorktree(): RegisteredLinkedWorktree? {
+        val gitFile = root.resolve(".git").toAbsolutePath().normalize()
+        val gitFileAttributes = readAttributesOrNull(gitFile) ?: return null
+        val gitDirectory = resolveGitDirectory(gitFile, gitFileAttributes) ?: return null
+        val worktreesDirectory = gitDirectory.parent ?: return null
+        if (worktreesDirectory.fileName?.toString() != WORKTREES_DIRECTORY_NAME) return null
+        val commonGitDirectory = worktreesDirectory.parent ?: return null
+        if (!isCommonGitDirectory(commonGitDirectory)) return null
+        if (readAttributesOrNull(gitDirectory)?.isDirectory != true) return null
+        val registrationFile = gitDirectory.resolve(GIT_FILE_REGISTRATION_NAME)
+        val registeredGitFile = resolvePathFile(registrationFile) ?: return null
+        val sameGitFile = try {
+            Files.isSameFile(registeredGitFile, gitFile)
+        } catch (_: IOException) {
+            false
+        } catch (_: SecurityException) {
+            false
+        }
+        return if (sameGitFile) RegisteredLinkedWorktree(gitFile, gitDirectory) else null
+    }
+
+    private fun pointsAtLinkedWorktreeGitDirectory(): Boolean {
+        val gitFile = root.resolve(".git").toAbsolutePath().normalize()
+        val gitFileAttributes = readAttributesOrNull(gitFile) ?: return false
+        val gitDirectory = resolveGitDirectory(gitFile, gitFileAttributes) ?: return false
+        return gitDirectory.parent?.fileName?.toString() == WORKTREES_DIRECTORY_NAME
+    }
+
+    private fun resolveGitDirectory(
+        gitFile: Path,
+        gitFileAttributes: BasicFileAttributes,
+    ): Path? {
+        if (!gitFileAttributes.isRegularFile) return null
+        val directive = readSingleLine(gitFile) ?: return null
+        if (!directive.startsWith(GIT_DIRECTORY_PREFIX)) return null
+        val rawGitDirectory = directive.removePrefix(GIT_DIRECTORY_PREFIX).takeIf(String::isNotBlank)
+            ?: return null
+        return resolvePath(rawGitDirectory, gitFile.parent)
+    }
+
+    private fun resolvePathFile(path: Path): Path? {
+        val rawPath = readSingleLine(path)?.takeIf(String::isNotBlank) ?: return null
+        return resolvePath(rawPath, path.parent)
+    }
+
+    private fun readSingleLine(path: Path): String? = try {
+        Files.readString(path).trimEnd('\n', '\r').takeUnless { value -> '\n' in value || '\r' in value }
+    } catch (_: IOException) {
+        null
+    } catch (_: SecurityException) {
+        null
+    }
+
+    private fun resolvePath(rawPath: String, relativeTo: Path): Path? {
+        val parsed = try {
+            Path.of(rawPath)
+        } catch (_: InvalidPathException) {
+            return null
+        }
+        return (if (parsed.isAbsolute) parsed else relativeTo.resolve(parsed)).toAbsolutePath().normalize()
     }
 
     private fun isCommonGitDirectory(directory: Path): Boolean {
@@ -276,7 +335,18 @@ private class ResolvedGitWorktreeTransitionGuard(
 
     private companion object {
         private const val GIT_DIRECTORY_PREFIX = "gitdir: "
+        private const val GIT_FILE_REGISTRATION_NAME = "gitdir"
         private const val WORKTREES_DIRECTORY_NAME = "worktrees"
+    }
+}
+
+private data class RegisteredLinkedWorktree(
+    val gitFile: Path,
+    val gitDirectory: Path,
+) {
+    init {
+        require(gitFile.isAbsolute) { "Registered linked-worktree Git file must be absolute" }
+        require(gitDirectory.isAbsolute) { "Registered linked-worktree Git directory must be absolute" }
     }
 }
 

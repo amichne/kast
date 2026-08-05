@@ -40,6 +40,8 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
         val gitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
             .toAbsolutePath()
             .normalize()
+        val gitWorktreeTransitionGuard = GitWorktreeTransitionGuard.exactRoot(workspace)
+        assertEquals(GitWorktreeTransitionStatus.Stable, gitWorktreeTransitionGuard.inspect())
         Files.move(gitDirectory, tempDir.resolve("displaced-worktree-git-directory"))
         val stableBuildInputs = BuildSemanticInputIdentity("stable-build-inputs")
         val publications = mutableListOf<WorkspaceStateIdentity>()
@@ -50,7 +52,7 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             resolveBuildSemanticInputIdentity = { stableBuildInputs },
             semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
             eventWakeup = WorkspaceEventWakeup(),
-            gitWorktreeTransitionGuard = GitWorktreeTransitionGuard.exactRoot(workspace),
+            gitWorktreeTransitionGuard = gitWorktreeTransitionGuard,
             refreshWorkspace = {},
             loadLiveConfig = { it },
             captureCandidate = { _, _ ->
@@ -82,6 +84,8 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
     @Test
     fun `missing non-worktree Git directory remains blocked`() {
         val repository = committedRepository()
+        val registeredWorktree = tempDir.resolve("registered-worktree")
+        git(repository, "worktree", "add", "--detach", registeredWorktree.toString(), "HEAD")
         val workspace = tempDir.resolve("separate-git-directory-workspace").also(Files::createDirectories)
         val unregisteredDirectory = repository.resolve(".git/worktrees/unregistered")
         Files.writeString(workspace.resolve(".git"), "gitdir: $unregisteredDirectory")
