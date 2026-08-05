@@ -1,18 +1,36 @@
 {
+  "author": {
+    "name": "Austin Michne",
+    "url": "https://github.com/amichne"
+  },
   "description": "Compiler-backed Kotlin and Gradle semantics for coding agents.",
-  "hooks": [
-    "./hooks/hooks.json"
-  ],
+  "homepage": "https://github.com/amichne/kast",
   "interface": {
     "capabilities": [
-      "Interactive",
+      "Read",
       "Write"
     ],
-    "category": "Coding",
+    "category": "Developer Tools",
+    "defaultPrompt": [
+      "Use Kast to trace this Kotlin symbol's callers and impact before changing it.",
+      "Use Kast to diagnose the changed Kotlin files and present only actionable compiler evidence.",
+      "Use Kast to plan, review, and verify this Kotlin rename."
+    ],
+    "developerName": "Austin Michne",
     "displayName": "Kast",
-    "shortDescription": "Compiler-backed Kotlin and Gradle semantics"
+    "longDescription": "Use compiler-backed Kotlin and Gradle evidence to discover code, traverse symbols and references, inspect graph impact, diagnose changes, and apply verified semantic edits.",
+    "shortDescription": "Kotlin and Gradle semantics",
+    "websiteURL": "https://github.com/amichne/kast"
   },
+  "keywords": [
+    "coding-agents",
+    "gradle",
+    "kotlin",
+    "semantic-analysis"
+  ],
+  "license": "MIT",
   "name": "kast",
+  "repository": "https://github.com/amichne/kast",
   "skills": "./skills/",
   "version": "${KAST_VERSION}"
 }

@@ -15,6 +15,41 @@ SHA = "a" * 40
 
 
 class AgentResourceAssetsTest(unittest.TestCase):
+    def test_codex_resources_expose_the_agent_operating_contract(self) -> None:
+        source = ROOT / "cli-rs/resources/kast"
+        plugin = json.loads((source / "codex/plugin.json").read_text(encoding="utf-8"))
+        interface = plugin["interface"]
+
+        self.assertEqual("Austin Michne", plugin["author"]["name"])
+        self.assertEqual("Developer Tools", interface["category"])
+        self.assertEqual(["Read", "Write"], interface["capabilities"])
+        self.assertLessEqual(len(interface["shortDescription"]), 30)
+        self.assertGreaterEqual(len(interface["defaultPrompt"]), 3)
+
+        kast_skill = " ".join(
+            (source / "SKILL.md").read_text(encoding="utf-8").split()
+        )
+        for required in (
+            "compact TOON",
+            "nextPage",
+            "standard input",
+            "planId",
+            "limitation",
+            "/kast:developer",
+        ):
+            self.assertIn(required, kast_skill)
+
+        developer_skill = " ".join(
+            (source / "developer/SKILL.md").read_text(encoding="utf-8").split()
+        )
+        for required in (
+            "developerOperations.helpArgs",
+            "error code",
+            "limitation",
+            "next",
+        ):
+            self.assertIn(required, developer_skill)
+
     def test_assets_are_deterministic_versioned_and_verified(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -56,6 +91,7 @@ class AgentResourceAssetsTest(unittest.TestCase):
                         ".agents/plugins/marketplace.json",
                         "plugins/kast/.codex-plugin/plugin.json",
                         "plugins/kast/hooks/hooks.json",
+                        "plugins/kast/skills/developer/SKILL.md",
                         "plugins/kast/skills/kast/SKILL.md",
                     },
                     {member.name for member in members},
@@ -100,6 +136,11 @@ class AgentResourceAssetsTest(unittest.TestCase):
     def write_source(source: Path) -> None:
         source.mkdir(parents=True)
         (source / "SKILL.md").write_text("Use `kast`.\n", encoding="utf-8")
+        developer = source / "developer"
+        developer.mkdir()
+        (developer / "SKILL.md").write_text(
+            "Use the installed Kast control CLI.\n", encoding="utf-8"
+        )
         for provider in ("codex", "claude", "copilot"):
             directory = source / provider
             directory.mkdir()

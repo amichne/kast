@@ -1,40 +1,61 @@
 ---
 name: kast
-description: Use for compiler-backed Kotlin and Gradle discovery, reference indexing, symbol relationships, graph analysis, diagnostics, and validated changes.
+description: Use when Kotlin or Gradle work needs compiler-backed file discovery, symbol and reference traversal, graph analysis, diagnostics, or validated source changes through the Kast CLI.
 ---
 
 # Kast
 
 Use `kast` as the public interface for Kotlin and Gradle semantic work.
 
-- Run `kast` to inspect current workspace readiness and suggested next actions.
-- Run `kast up` to start or reuse the semantic runtime.
-- Run `kast refresh [PATH...]` after source changes.
-- Run `kast refresh external <FAILURE_ID>...` only when an eligible file-local
-  failure should remain as an explicit external `UNKNOWN` graph boundary.
-- Run `kast files [PATTERN]` to discover Kotlin source and script files.
-- Run `kast symbol find <QUERY>` to locate symbols, then use `show`, `refs`,
-  `callers`, `callees`, `implementations`, `supertypes`, or `subtypes`.
-- Run `kast graph summary` for graph coverage and size. Use `topology`,
-  `communities`, `neighbors`, or `impact` for structural and statistical
-  questions.
-- When a result has `nextPage`, repeat the same `files`, symbol relationship,
-  `graph nodes`, or `graph impact` command with `--page <nextPage>`.
-- Run `kast check [PATH...]` for compiler diagnostics.
-- Run `kast change` with `rename`, `replace`, `add-file`, or `add-declaration`
-  to create a root-bound plan. Review its preview, proof, and limitations.
-- Run `kast apply <PLAN_ID>`. Kast owns the workspace lease, revalidates the
-  plan, applies it, and verifies the postcondition before it returns a receipt.
-- Treat only `VERIFIED` as success. Read `REJECTED`, `CONFLICTED`,
-  `ROLLED_BACK`, or `RECOVERY_REQUIRED` as typed non-success outcomes.
-- After `RECOVERY_REQUIRED`, run `kast recover <RECOVERY_ID>`. Recovery can run
-  in a new process and either verifies the intended result or restores the
-  exact source pre-state.
-- Retrying a terminal plan or recovery receipt does not repeat source writes.
+## Operate
 
-For setup, runtime control, local-state inspection, raw RPC, or release work,
-invoke `/kast:developer`. Read `developerOperations.cli` from `kast`; do not
-assume `kastctl` is on `PATH`.
+1. Run `kast` from the target workspace. Confirm the selected `root`, `ready`,
+   `referenceIndexReady`, `limitation`, and `next` fields.
+2. If evidence is not ready, run the exact suggested `next` command, usually
+   `kast up`, then retry the requested semantic command.
+3. Run `kast <command> --help` when syntax is uncertain. Do not use the retired
+   `kast agent` surface or assume `kastctl` is on `PATH`.
 
-Do not infer semantic success from an empty result. Read `limitation` and the
-suggested `next` commands when evidence is unavailable.
+Select the narrowest operation:
+
+- Use `kast files [PATTERN]` for Kotlin source and script inventory.
+- Use `kast symbol find <QUERY>`, then `show`, `refs`, `callers`, `callees`,
+  `implementations`, `supertypes`, or `subtypes` with the returned identity.
+- Use `kast graph summary`, `nodes`, `neighbors`, `topology`, `communities`, or
+  `impact` for persisted structure and bounded impact.
+- Use `kast check [PATH...]` for compiler diagnostics.
+- Use `kast refresh [PATH...]` after direct source edits. Externalize an
+  eligible failure only when the user accepts an explicit `UNKNOWN` boundary.
+
+## Compose validated changes
+
+Use `kast change rename`, `replace`, `add-file`, or `add-declaration` to create
+one root-bound plan. The last three commands read Kotlin content from standard
+input. Use a quoted heredoc or pipe a trusted file so the shell does not alter
+complex source text.
+
+Review the preview, proof, and limitations before writing. Capture the exact
+`planId`, then run `kast apply <PLAN_ID>` as a separate command. Do not pipe a
+new plan directly into `apply`.
+
+Treat only `VERIFIED` as success. For `RECOVERY_REQUIRED`, capture the exact
+`recoveryId` and run `kast recover <RECOVERY_ID>`. Treat `REJECTED`,
+`CONFLICTED`, and `ROLLED_BACK` as typed non-success outcomes. Retrying a
+terminal receipt does not repeat source writes.
+
+## Read and present evidence
+
+Kast emits compact TOON without an output-format flag. Read named fields; do
+not scrape display position. When a result has `nextPage`, repeat the same
+`files`, symbol relationship, `graph nodes`, or `graph impact` command with
+`--page <nextPage>`. Aggregate only the requested evidence and stop when
+`nextPage` is absent.
+
+Present the outcome first, then the decisive symbols, files, proof, or
+limitations, followed by the next action. Do not paste the full result when a
+small field set proves the claim. Never treat an empty result as complete when
+coverage, `limitation`, or `next` says otherwise.
+
+For setup, runtime control, configuration, local-state inspection, raw RPC, or
+release work, invoke `/kast:developer`. Read `developerOperations.cli` from
+`kast`; do not invent or reuse a control path.
