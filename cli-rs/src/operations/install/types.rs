@@ -5,6 +5,50 @@ pub enum SetupStatus {
     Current,
 }
 
+const DEVELOPER_SKILL_REFERENCE: &str = "/kast:developer";
+
+#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DeveloperOperationsRoute {
+    pub cli: String,
+    pub help_args: [&'static str; 1],
+    pub skill: &'static str,
+}
+
+impl DeveloperOperationsRoute {
+    pub(crate) fn try_from_cli_path(path: &Path) -> Result<Self> {
+        let control_cli = ControlCliPath::parse(path)?;
+        Ok(Self {
+            cli: control_cli.0.display().to_string(),
+            help_args: ["--help"],
+            skill: DEVELOPER_SKILL_REFERENCE,
+        })
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ControlCliPath(PathBuf);
+
+impl ControlCliPath {
+    fn parse(path: &Path) -> Result<Self> {
+        let is_executable_file = fs::metadata(path)
+            .is_ok_and(|metadata| metadata.is_file())
+            && is_executable(path).unwrap_or(false);
+        if crate::entrypoint_for_path(path) == Some(crate::Entrypoint::Control)
+            && is_executable_file
+        {
+            return Ok(Self(path.to_path_buf()));
+        }
+        Err(CliError::new(
+            "DEVELOPER_OPERATIONS_ROUTE_INVALID",
+            format!(
+                "Developer operations require an existing executable `kastctl` path, got {}.",
+                path.display()
+            ),
+        ))
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SetupMode {
     Reconcile,
@@ -32,6 +76,7 @@ pub struct SetupResult {
     pub kast_home: String,
     pub current: String,
     pub active_binary: String,
+    pub developer_operations: DeveloperOperationsRoute,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub backup: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -1,5 +1,6 @@
 const KAST_AGENT_SKILL: &str =
     include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/resources/kast/SKILL.md"));
+const KAST_DEVELOPER_SKILL: &str = include_str!("../../../resources/kast/developer/SKILL.md");
 const KAST_CODEX_MARKETPLACE: &str = include_str!(concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/resources/kast/codex/marketplace.json"
@@ -49,7 +50,8 @@ struct AgentResourceDigestOverrides<'a> {
     provider: &'static str,
     hooks: &'a str,
     plugin: &'a str,
-    skill: &'a str,
+    kast_skill: &'a str,
+    developer_skill: &'a str,
 }
 
 pub fn install_agent_resources(requested: &[KastHarness]) -> Result<()> {
@@ -165,7 +167,8 @@ fn materialize_agent_harness(harness: KastHarness) -> Result<PathBuf> {
         .join("agent-resources")
         .join(digest)
         .join(harness_name(harness));
-    let skill = render_agent_resource(KAST_AGENT_SKILL);
+    let kast_skill = render_agent_resource(KAST_AGENT_SKILL);
+    let developer_skill = render_agent_resource(KAST_DEVELOPER_SKILL);
     let (marketplace_path, plugin_path, hooks_path, marketplace, plugin, hooks) = match harness {
         KastHarness::Codex => (
             ".agents/plugins/marketplace.json",
@@ -196,7 +199,11 @@ fn materialize_agent_harness(harness: KastHarness) -> Result<PathBuf> {
         (marketplace_path, render_agent_resource(marketplace)),
         (plugin_path, render_agent_resource(plugin)),
         (hooks_path, render_agent_resource(hooks)),
-        ("plugins/kast/skills/kast/SKILL.md", skill),
+        ("plugins/kast/skills/kast/SKILL.md", kast_skill),
+        (
+            "plugins/kast/skills/developer/SKILL.md",
+            developer_skill,
+        ),
     ] {
         let target = root.join(relative);
         let parent = target.parent().ok_or_else(|| {
@@ -259,7 +266,8 @@ pub(crate) fn validate_agent_harness_activation(
     };
     let plugin = read_resource(plugin_path)?;
     let hooks = read_resource(hooks_path)?;
-    let skill = read_resource("skills/kast/SKILL.md")?;
+    let kast_skill = read_resource("skills/kast/SKILL.md")?;
+    let developer_skill = read_resource("skills/developer/SKILL.md")?;
     let detected_identity = serde_json::from_str::<InstalledAgentPluginIdentity>(&plugin).ok();
     let detected_version = detected_identity
         .as_ref()
@@ -269,11 +277,13 @@ pub(crate) fn validate_agent_harness_activation(
         provider: harness_name(harness),
         hooks: &hooks,
         plugin: &plugin,
-        skill: &skill,
+        kast_skill: &kast_skill,
+        developer_skill: &developer_skill,
     }));
     let expected_plugin = render_agent_resource(expected_plugin);
     let expected_hooks = render_agent_resource(expected_hooks);
-    let expected_skill = render_agent_resource(KAST_AGENT_SKILL);
+    let expected_kast_skill = render_agent_resource(KAST_AGENT_SKILL);
+    let expected_developer_skill = render_agent_resource(KAST_DEVELOPER_SKILL);
     let mut mismatches = Vec::new();
     if detected_identity
         .as_ref()
@@ -287,7 +297,7 @@ pub(crate) fn validate_agent_harness_activation(
     if hooks != expected_hooks {
         mismatches.push("hook digest mismatch");
     }
-    if skill != expected_skill {
+    if kast_skill != expected_kast_skill || developer_skill != expected_developer_skill {
         mismatches.push("skill digest mismatch");
     }
     if mismatches.is_empty() && detected_digest == expected_digest {
@@ -343,7 +353,8 @@ fn agent_resources_digest() -> String {
 fn agent_resources_digest_with(overrides: Option<&AgentResourceDigestOverrides<'_>>) -> String {
     let mut digest = Sha256::new();
     for (path, contents) in [
-        ("SKILL.md", KAST_AGENT_SKILL),
+        ("skills/kast/SKILL.md", KAST_AGENT_SKILL),
+        ("skills/developer/SKILL.md", KAST_DEVELOPER_SKILL),
         ("claude/hooks.json", KAST_CLAUDE_HOOKS),
         ("claude/marketplace.json", KAST_CLAUDE_MARKETPLACE),
         ("claude/plugin.json", KAST_CLAUDE_PLUGIN),
@@ -355,7 +366,8 @@ fn agent_resources_digest_with(overrides: Option<&AgentResourceDigestOverrides<'
         ("copilot/plugin.json", KAST_COPILOT_PLUGIN),
     ] {
         let overridden = overrides.and_then(|overrides| match path {
-            "SKILL.md" => Some(overrides.skill),
+            "skills/kast/SKILL.md" => Some(overrides.kast_skill),
+            "skills/developer/SKILL.md" => Some(overrides.developer_skill),
             path if path == format!("{}/hooks.json", overrides.provider) => {
                 Some(overrides.hooks)
             }

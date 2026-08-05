@@ -17,6 +17,7 @@ import io.github.amichne.kast.idea.transition.IdeaKotlinCompilerIdentityResolver
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentityResolver
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionGuard
+import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
 import io.github.amichne.kast.idea.transition.WorkspaceStateIdentity
@@ -37,6 +38,7 @@ internal class KastIdeaProjectIndexing(
     private val diagnostics: KastDiagnosticsService = KastDiagnosticsService.getInstance(project),
     private val indexStore: SqliteSourceIndexStore = SqliteSourceIndexStore(workspaceIdentity.workspaceIdentity),
     private val semanticAdmission: IdeaIndexSemanticAdmission = IdeaIndexSemanticAdmission(project),
+    private val gitWorktreeRegistrationProof: GitWorktreeRegistrationProof? = null,
     private val transitionIngress: WorkspaceTransitionIngress = WorkspaceTransitionIngress(
         semanticAdmission,
         TimeUnit.MINUTES.toMillis(5),
@@ -263,7 +265,10 @@ internal class KastIdeaProjectIndexing(
             resolveBuildSemanticInputIdentity = ::currentBuildSemanticInputIdentity,
             semanticAdmission = semanticAdmission,
             eventWakeup = eventWakeup,
-            gitWorktreeTransitionGuard = GitWorktreeTransitionGuard.exactRoot(workspaceRoot),
+            gitWorktreeTransitionGuard = GitWorktreeTransitionGuard.exactRoot(
+                workspaceRoot,
+                gitWorktreeRegistrationProof,
+            ),
             refreshWorkspace = { signals -> refreshWorkspace(project, gradleBuildRoot, signals) },
             loadLiveConfig = { lastValid -> liveConfigLoader(workspaceRoot, lastValid) },
             captureCandidate = { liveConfig, buildSemanticInputIdentity ->

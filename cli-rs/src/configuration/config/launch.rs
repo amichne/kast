@@ -19,6 +19,15 @@ pub fn server_launch_args(args: &DaemonStartArgs, config: &KastConfig) -> Result
         .map(normalize)
         .unwrap_or_else(|| default_socket_path_for_config(config, &workspace_root));
     let mut result = vec![format!("--workspace-root={}", workspace_root.display())];
+    if let Some(claim) = linked_worktree_registration_claim(&workspace_root) {
+        result.extend([
+            format!("--linked-worktree-git-file={}", claim.git_file.display()),
+            format!(
+                "--linked-worktree-git-directory={}",
+                claim.git_directory.display()
+            ),
+        ]);
+    }
     if args.stdio {
         result.push("--stdio".to_string());
     } else {

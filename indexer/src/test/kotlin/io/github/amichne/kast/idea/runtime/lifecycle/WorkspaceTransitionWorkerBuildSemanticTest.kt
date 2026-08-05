@@ -2,11 +2,14 @@ package io.github.amichne.kast.idea
 
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.LinkedWorktreeLaunchClaim
 import io.github.amichne.kast.idea.diagnostics.KastSourceIndexSummary
 import io.github.amichne.kast.idea.transition.BuildSemanticInputIdentity
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionGuard
+import io.github.amichne.kast.idea.transition.GitWorktreeTransitionInspectionException
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionMarker
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionMarkerEvidence
+import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.idea.transition.GitWorktreeTransitionStatus
 import io.github.amichne.kast.idea.transition.WorkspaceEventWakeup
 import io.github.amichne.kast.idea.transition.WorkspaceSignal
@@ -15,7 +18,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
 import java.lang.reflect.Proxy
+import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
@@ -26,6 +31,104 @@ import java.util.concurrent.atomic.AtomicReference
 import kotlin.concurrent.thread
 
 class WorkspaceTransitionWorkerBuildSemanticTest {
+    @TempDir
+    lateinit var tempDir: Path
+
+    @Test
+    fun `missing linked-worktree Git directory does not block reconciliation`() {
+        val repository = committedRepository()
+        val workspace = tempDir.resolve("broken-linked-worktree")
+        git(repository, "worktree", "add", "--detach", workspace.toString(), "HEAD")
+        val gitDirectory = Path.of(gitOutput(workspace, "rev-parse", "--absolute-git-dir"))
+            .toAbsolutePath()
+            .normalize()
+        val registrationProof = GitWorktreeRegistrationProof.capture(
+            workspace,
+            LinkedWorktreeLaunchClaim.of(workspace.resolve(".git"), gitDirectory),
+        )
+        Files.move(gitDirectory, tempDir.resolve("displaced-worktree-git-directory"))
+        val stableBuildInputs = BuildSemanticInputIdentity("stable-build-inputs")
+        val publications = mutableListOf<WorkspaceStateIdentity>()
+        val failures = mutableListOf<Throwable>()
+        val worker = WorkspaceTransitionWorker(
+            initialConfig = KastConfig.defaults(),
+            initialModelBuildSemanticIdentity = stableBuildInputs,
+            resolveBuildSemanticInputIdentity = { stableBuildInputs },
+            semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
+            eventWakeup = WorkspaceEventWakeup(),
+            gitWorktreeTransitionGuard = GitWorktreeTransitionGuard.exactRoot(workspace, registrationProof),
+            refreshWorkspace = {},
+            loadLiveConfig = { it },
+            captureCandidate = { _, _ ->
+                WorkspaceReconciliationCandidate(
+                    identity = WorkspaceStateIdentity("workspace-without-linked-git-directory"),
+                    indexingCandidate = null,
+                )
+            },
+            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
+            waitForNextPass = { false },
+            isCancelled = { false },
+            onConfigFallback = {},
+            onCompleted = {},
+            onFailure = failures::add,
+            onTransition = {},
+        )
+
+        worker.observe(WorkspaceSignal.GitWorktree)
+        worker.run()
+
+        assertTrue(failures.isEmpty(), "missing linked-worktree metadata must not report a worker failure")
+        assertEquals(
+            listOf(WorkspaceStateIdentity("workspace-without-linked-git-directory")),
+            publications,
+        )
+    }
+
+    @Test
+    fun `missing non-worktree Git directory remains blocked`() {
+        val repository = committedRepository()
+        val registeredWorktree = tempDir.resolve("registered-worktree")
+        git(repository, "worktree", "add", "--detach", registeredWorktree.toString(), "HEAD")
+        val workspace = tempDir.resolve("separate-git-directory-workspace").also(Files::createDirectories)
+        val unregisteredDirectory = repository.resolve(".git/worktrees/unregistered")
+        Files.writeString(workspace.resolve(".git"), "gitdir: $unregisteredDirectory")
+        val stableBuildInputs = BuildSemanticInputIdentity("stable-build-inputs")
+        val publications = mutableListOf<WorkspaceStateIdentity>()
+        val failures = mutableListOf<Throwable>()
+        val worker = WorkspaceTransitionWorker(
+            initialConfig = KastConfig.defaults(),
+            initialModelBuildSemanticIdentity = stableBuildInputs,
+            resolveBuildSemanticInputIdentity = { stableBuildInputs },
+            semanticAdmission = IdeaIndexSemanticAdmission(projectStub()),
+            eventWakeup = WorkspaceEventWakeup(),
+            gitWorktreeTransitionGuard = GitWorktreeTransitionGuard.exactRoot(workspace),
+            refreshWorkspace = {},
+            loadLiveConfig = { it },
+            captureCandidate = { _, _ ->
+                WorkspaceReconciliationCandidate(
+                    identity = WorkspaceStateIdentity("unavailable-git-directory"),
+                    indexingCandidate = null,
+                )
+            },
+            runIndexingPass = { _, _, _ -> IndexingPassResult(KastSourceIndexSummary(), graphFailure = null) },
+            workspaceGenerationPublication = TestWorkspaceGenerationPublication(onCommit = publications::add),
+            waitForNextPass = { false },
+            isCancelled = { false },
+            onConfigFallback = {},
+            onCompleted = {},
+            onFailure = failures::add,
+            onTransition = {},
+        )
+
+        worker.observe(WorkspaceSignal.GitWorktree)
+        worker.run()
+
+        assertTrue(publications.isEmpty(), "unavailable non-worktree metadata must block publication")
+        assertEquals(1, failures.size)
+        assertTrue(failures.single() is GitWorktreeTransitionInspectionException)
+    }
+
     @Test
     fun `checkout starting after refresh cannot cross the publication boundary`() {
         val stableBuildInputs = BuildSemanticInputIdentity("stable-build-inputs")
@@ -249,6 +352,31 @@ class WorkspaceTransitionWorkerBuildSemanticTest {
             refreshedSignals,
         )
         assertEquals(listOf(WorkspaceStateIdentity("state-changed-build-inputs")), publications)
+    }
+
+    private fun committedRepository(): Path {
+        val repository = tempDir.resolve("repository").also(Files::createDirectories)
+        git(repository, "init")
+        git(repository, "config", "user.name", "Kast Test")
+        git(repository, "config", "user.email", "kast@example.invalid")
+        Files.writeString(repository.resolve("README.md"), "initial")
+        git(repository, "add", "README.md")
+        git(repository, "commit", "-m", "initial")
+        return repository
+    }
+
+    private fun git(directory: Path, vararg arguments: String) {
+        gitOutput(directory, *arguments)
+    }
+
+    private fun gitOutput(directory: Path, vararg arguments: String): String {
+        val process = ProcessBuilder("git", *arguments)
+            .directory(directory.toFile())
+            .redirectErrorStream(true)
+            .start()
+        val output = process.inputStream.use { input -> input.readAllBytes().toString(Charsets.UTF_8) }
+        assertTrue(process.waitFor() == 0, "git ${arguments.joinToString(" ")} failed: $output")
+        return output.trim()
     }
 
     private fun projectStub(): Project = Proxy.newProxyInstance(

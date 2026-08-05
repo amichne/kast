@@ -10,6 +10,7 @@ import io.github.amichne.kast.api.client.KastConfig
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
+import io.github.amichne.kast.idea.transition.GitWorktreeRegistrationProof
 import io.github.amichne.kast.indexstore.store.SqliteSourceIndexStore
 import io.github.amichne.kast.indexstore.snapshot.ProducerVersion
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceDatabaseExportEvidence
@@ -42,6 +43,7 @@ object IndexerServerRuntime {
             config = config,
             lifecycleController = lifecycleController,
             indexAdmission = IndexerAdmission.fromStartIndexing(startProjectIndexing),
+            registrationProof = null,
         )
     }
 
@@ -65,6 +67,30 @@ object IndexerServerRuntime {
             config = config,
             lifecycleController = lifecycleController,
             indexAdmission = IndexerAdmission.fromStartIndexing(startProjectIndexing),
+            registrationProof = null,
+        )
+    }
+
+    internal fun startWithRegistrationProof(
+        project: Project,
+        workspaceRoot: Path,
+        transport: AnalysisTransport,
+        config: KastConfig,
+        registrationProof: GitWorktreeRegistrationProof?,
+    ): RunningIndexer {
+        val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
+            project = project,
+            workspaceRoot = workspaceRoot,
+            descriptorDirectory = config.paths.descriptorDir.toPath(),
+        )
+        return startResolved(
+            project = project,
+            workspaceIdentity = workspaceIdentity,
+            transport = transport,
+            config = config,
+            lifecycleController = RuntimeLifecycleController.Unavailable,
+            indexAdmission = IndexerAdmission.fromStartIndexing(true),
+            registrationProof = registrationProof,
         )
     }
 
@@ -75,6 +101,7 @@ object IndexerServerRuntime {
         config: KastConfig,
         lifecycleController: RuntimeLifecycleController,
         indexAdmission: IndexerAdmission,
+        registrationProof: GitWorktreeRegistrationProof?,
     ): RunningIndexer {
         KastStructuredTrace.event(
             eventName = "indexer.runtime.start_requested",
@@ -209,6 +236,7 @@ object IndexerServerRuntime {
                     diagnostics = diagnostics,
                     indexStore = sourceIndexStore,
                     semanticAdmission = semanticAdmission,
+                    gitWorktreeRegistrationProof = registrationProof,
                     transitionIngress = transitionIngress,
                     snapshotCoordinator = snapshotCoordinator,
                     scopeCache = indexingScopeCache,

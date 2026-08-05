@@ -20,6 +20,7 @@ data class ServerLaunchOptions(
     val maxResults: Int,
     val maxConcurrentRequests: Int,
     val profilingOverride: ProfilingConfigOverride? = null,
+    val linkedWorktreeLaunchClaim: LinkedWorktreeLaunchClaim? = null,
 ) {
     companion object {
         fun parse(
@@ -79,6 +80,7 @@ data class ServerLaunchOptions(
                 maxResults = values["max-results"]?.toInt() ?: resolvedConfig.server.maxResults.value,
                 maxConcurrentRequests = values["max-concurrent-requests"]?.toInt() ?: resolvedConfig.server.maxConcurrentRequests.value,
                 profilingOverride = parseProfilingOverride(values),
+                linkedWorktreeLaunchClaim = LinkedWorktreeLaunchClaim.fromValues(values),
             )
         }
 
@@ -135,5 +137,9 @@ data class ServerLaunchOptions(
         profilingOverride?.modes?.value?.let { add("--profile-modes=$it") }
         profilingOverride?.durationSeconds?.value?.let { add("--profile-duration=$it") }
         profilingOverride?.otlpEndpoint?.value?.orNull?.let { add("--profile-otlp-endpoint=$it") }
+        linkedWorktreeLaunchClaim?.let { claim ->
+            add("--${LinkedWorktreeLaunchClaim.GIT_FILE_ARGUMENT}=${claim.gitFile}")
+            add("--${LinkedWorktreeLaunchClaim.GIT_DIRECTORY_ARGUMENT}=${claim.gitDirectory}")
+        }
     }
 }

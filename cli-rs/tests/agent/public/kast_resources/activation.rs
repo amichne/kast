@@ -38,6 +38,11 @@ fn every_harness_activation_requires_matching_cli_plugin_hook_and_skill() {
         );
 
         let plugin_root = installed_plugin_root(&kast_home, harness.name);
+        assert!(
+            plugin_root.join("skills/developer/SKILL.md").is_file(),
+            "{} developer skill was not materialized",
+            harness.name,
+        );
         assert_provider_hook_schema(&plugin_root, harness);
         let command = hook_command(&plugin_root, harness.hooks_path, harness.session_pointer);
         assert!(
@@ -162,6 +167,27 @@ fn every_harness_activation_requires_matching_cli_plugin_hook_and_skill() {
         let original_skill = fs::read_to_string(&skill_path).expect("read installed skill");
         fs::write(&skill_path, format!("{original_skill}\ntampered\n"))
             .expect("write skill mismatch");
+        assert_activation_blocked(
+            &run_hook(
+                &command,
+                fixture.path(),
+                &kast_home,
+                &plugin_root,
+                session_start_input(fixture.path()),
+            ),
+            harness.name,
+            "skill digest mismatch",
+        );
+        fs::write(&skill_path, &original_skill).expect("restore installed Kast skill");
+
+        let developer_skill_path = plugin_root.join("skills/developer/SKILL.md");
+        let original_developer_skill =
+            fs::read_to_string(&developer_skill_path).expect("read installed developer skill");
+        fs::write(
+            &developer_skill_path,
+            format!("{original_developer_skill}\ntampered\n"),
+        )
+        .expect("write developer skill mismatch");
         assert_activation_blocked(
             &run_hook(
                 &command,

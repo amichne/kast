@@ -138,6 +138,7 @@ struct KastHome {
     ready: bool,
     runtime: String,
     reference_index_ready: bool,
+    developer_operations: install::DeveloperOperationsRoute,
     #[serde(skip_serializing_if = "Option::is_none")]
     limitation: Option<String>,
     next: Vec<String>,
@@ -173,6 +174,9 @@ fn run_kast_agent(cli: KastCli) -> Result<i32> {
 }
 
 fn kast_home(root: PathBuf) -> Result<KastHome> {
+    let developer_paths = manifest::resolve_paths()?;
+    let developer_operations =
+        install::DeveloperOperationsRoute::try_from_cli_path(&developer_paths.active_binary)?;
     let readiness = self_mgmt::doctor(cli::ReadyTarget::Agent, Some(&root))?;
     let mut runtime_state = "DOWN".to_string();
     let mut reference_index_ready = false;
@@ -218,6 +222,7 @@ fn kast_home(root: PathBuf) -> Result<KastHome> {
         ready,
         runtime: runtime_state,
         reference_index_ready,
+        developer_operations,
         limitation,
         next,
     })

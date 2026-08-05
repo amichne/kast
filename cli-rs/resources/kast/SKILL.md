@@ -32,5 +32,9 @@ Use `kast` as the public interface for Kotlin and Gradle semantic work.
   exact source pre-state.
 - Retrying a terminal plan or recovery receipt does not repeat source writes.
 
+For setup, runtime control, local-state inspection, raw RPC, or release work,
+invoke `/kast:developer`. Read `developerOperations.cli` from `kast`; do not
+assume `kastctl` is on `PATH`.
+
 Do not infer semantic success from an empty result. Read `limitation` and the
 suggested `next` commands when evidence is unavailable.
