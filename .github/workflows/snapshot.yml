@@ -487,39 +487,56 @@ jobs:
               || { echo "Refusing to publish stale snapshot ${source_sha}; main is ${current_main}" >&2; exit 1; }
           fi
 
-          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/snapshot" >/dev/null 2>&1; then
-            gh api --method PATCH \
-              "repos/${GITHUB_REPOSITORY}/git/refs/tags/snapshot" \
-              -f sha="$source_sha" \
-              -F force=true >/dev/null
-          else
-            gh api --method POST \
-              "repos/${GITHUB_REPOSITORY}/git/refs" \
-              -f ref=refs/tags/snapshot \
-              -f sha="$source_sha" >/dev/null
-          fi
-
+          snapshot_tag="snapshot-${source_sha:0:12}"
           printf -v notes 'Source: %s\nVersion: %s' \
             "$source_sha" \
             "${{ needs.validate.outputs.snapshot-tag }}"
-          if gh release view snapshot --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release edit snapshot \
+
+          verify_immutable_release() {
+            gh release view "$snapshot_tag" \
               --repo "$GITHUB_REPOSITORY" \
-              --prerelease \
-              --target "$source_sha" \
-              --title "Latest snapshot" \
-              --notes "$notes"
+              --json assets,isImmutable,targetCommitish \
+              | jq -e --arg source_sha "$source_sha" '
+                  .isImmutable == true
+                  and .targetCommitish == $source_sha
+                  and ([.assets[].name] | sort) == [
+                    "kast-linux-arm64-snapshot.tar.gz",
+                    "kast-linux-arm64-snapshot.tar.gz.sha256",
+                    "kast-linux-x64-snapshot.tar.gz",
+                    "kast-linux-x64-snapshot.tar.gz.sha256",
+                    "kast-macos-arm64-snapshot.tar.gz",
+                    "kast-macos-arm64-snapshot.tar.gz.sha256",
+                    "kast-macos-x64-snapshot.tar.gz",
+                    "kast-macos-x64-snapshot.tar.gz.sha256"
+                  ]
+                ' >/dev/null
+          }
+
+          if gh release view "$snapshot_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            if gh release view "$snapshot_tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --json isImmutable \
+              --jq .isImmutable \
+              | grep -Fx true >/dev/null; then
+              verify_immutable_release
+              exit 0
+            fi
           else
-            gh release create snapshot \
+            gh release create "$snapshot_tag" \
               --repo "$GITHUB_REPOSITORY" \
-              --verify-tag \
-              --prerelease \
+              --draft \
               --target "$source_sha" \
-              --title "Latest snapshot" \
+              --title "Snapshot ${source_sha:0:12}" \
               --notes "$notes"
           fi
-          gh release upload snapshot \
+
+          gh release upload "$snapshot_tag" \
             --repo "$GITHUB_REPOSITORY" \
             dist/kast-*-snapshot.tar.gz \
             dist/kast-*-snapshot.tar.gz.sha256 \
             --clobber
+          gh release edit "$snapshot_tag" \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft=false \
+            --prerelease
+          verify_immutable_release
