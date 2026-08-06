@@ -10,7 +10,7 @@ repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd)"
 toolchain="${repo_root}/rust-toolchain.toml"
 metadata_command="${repo_root}/scripts/rust-agent-metadata.sh"
 nextest_config="${repo_root}/cli-rs/.config/nextest.toml"
-deny_config="${repo_root}/cli-rs/deny.toml"
+deny_config="${repo_root}/cli-rs/.config/deny.toml"
 agent_guide="${repo_root}/cli-rs/AGENTS.md"
 workflow="${repo_root}/.github/workflows/ci.yml"
 scratch_dir="$(mktemp -d "${TMPDIR:-/tmp}/kast-rust-agent-tooling.XXXXXX")"
@@ -78,7 +78,7 @@ for workflow_fragment in \
   'tool: nextest' \
   'tool: cargo-deny' \
   './.github/scripts/ci/test-rust-agent-tooling-contract.sh' \
-  'cargo deny --locked --all-features check' \
+  'cargo deny --locked --all-features --config .config/deny.toml check' \
   'cargo nextest run --locked --all-targets --all-features --profile ci' \
   'cli-rs/target/nextest/ci/junit.xml'; do
   grep -Fq -- "$workflow_fragment" "$workflow" \

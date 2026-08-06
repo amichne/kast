@@ -246,7 +246,7 @@ jobs:
 
       - name: Check Rust dependency policy
         working-directory: cli-rs
-        run: cargo deny --locked --all-features check
+        run: cargo deny --locked --all-features --config .config/deny.toml check
 
       - name: Check Rust formatting
         working-directory: cli-rs
