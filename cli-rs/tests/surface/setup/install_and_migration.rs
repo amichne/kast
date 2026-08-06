@@ -8,3 +8,4 @@ include!("install_and_migration/transaction_safety_races.rs");
 include!("install_and_migration/transaction_safety_upgrade.rs");
 include!("install_and_migration/profile_upgrades.rs");
 include!("install_and_migration/runtime_legacy_cleanup.rs");
+include!("../../runtime/durable_ownership/setup_release_pins.rs");

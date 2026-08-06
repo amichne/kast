@@ -25,6 +25,7 @@ class ServerLaunchOptionsTest {
 
         val transport = options.transport as AnalysisTransport.UnixDomainSocket
         assertEquals(defaultSocketPath(tempDir), transport.socketPath)
+        assertEquals(null, options.runtimeInstanceId)
     }
 
     @Test
@@ -76,6 +77,36 @@ class ServerLaunchOptionsTest {
         val transport = options.transport as AnalysisTransport.UnixDomainSocket
         assertEquals(socketPath, transport.socketPath)
         assertTrue(options.toCliArguments().contains("--socket-path=$socketPath"))
+    }
+
+    @Test
+    fun `runtime instance identity parses and survives round trip`() {
+        val runtimeInstanceId = RuntimeInstanceId.parse("550e8400-e29b-41d4-a716-446655440000")
+        val options = ServerLaunchOptions.parse(
+            arrayOf(
+                "--workspace-root=$tempDir",
+                "--runtime-instance-id=${runtimeInstanceId.value}",
+            ),
+        )
+
+        assertEquals(runtimeInstanceId, options.runtimeInstanceId)
+        assertTrue(options.toCliArguments().contains("--runtime-instance-id=${runtimeInstanceId.value}"))
+        assertEquals(
+            runtimeInstanceId,
+            ServerLaunchOptions.parse(options.toCliArguments().toTypedArray()).runtimeInstanceId,
+        )
+    }
+
+    @Test
+    fun `invalid runtime instance identity is rejected`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            ServerLaunchOptions.parse(
+                arrayOf(
+                    "--workspace-root=$tempDir",
+                    "--runtime-instance-id=not-a-uuid",
+                ),
+            )
+        }
     }
 
     @Test

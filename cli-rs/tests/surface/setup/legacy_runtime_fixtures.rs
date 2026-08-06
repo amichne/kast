@@ -94,6 +94,29 @@ fn spawn_reapable_process() -> (u32, std::sync::mpsc::Receiver<std::process::Exi
     (pid, receiver)
 }
 
+fn spawn_reapable_indexer_process(
+    workspace: &Path,
+    socket_path: &Path,
+) -> (u32, std::sync::mpsc::Receiver<std::process::ExitStatus>) {
+    let mut child = Command::new("python3")
+        .args([
+            "-c",
+            "import signal, sys; signal.signal(signal.SIGTERM, lambda *_: sys.exit(0)); signal.pause()",
+            "kast-indexer",
+        ])
+        .arg(format!("--workspace-root={}", workspace.display()))
+        .arg(format!("--socket-path={}", socket_path.display()))
+        .spawn()
+        .expect("fixture indexer process");
+    let pid = child.id();
+    let (sender, receiver) = std::sync::mpsc::channel();
+    thread::spawn(move || {
+        let status = child.wait().expect("reap fixture indexer process");
+        let _ = sender.send(status);
+    });
+    (pid, receiver)
+}
+
 fn write_legacy_headless_descriptor(
     home: &Path,
     workspace: &Path,

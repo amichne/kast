@@ -1,6 +1,7 @@
 package io.github.amichne.kast.indexer
 
 import com.intellij.openapi.application.ApplicationStarter
+import io.github.amichne.kast.api.client.RuntimeInstanceId
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
@@ -48,11 +49,13 @@ class KastIndexerLaunchOptionsTest {
 
     @Test
     fun `starter args drop command token and preserve existing server options`() {
+        val runtimeInstanceId = RuntimeInstanceId.parse("550e8400-e29b-41d4-a716-446655440000")
         val options = IndexerServerOptions.parseStarterArgs(
             listOf(
                 KastIndexerApplicationStarter.COMMAND_NAME,
                 "--workspace-root=/tmp/project",
                 "--socket-path=/tmp/kast-indexer.sock",
+                "--runtime-instance-id=${runtimeInstanceId.value}",
                 "--smoke-only",
                 "--idea-home=/opt/idea",
             ),
@@ -63,6 +66,7 @@ class KastIndexerLaunchOptionsTest {
             Path.of("/tmp/kast-indexer.sock"),
             (options.serverOptions.transport as AnalysisTransport.UnixDomainSocket).socketPath,
         )
+        assertEquals(runtimeInstanceId, options.serverOptions.runtimeInstanceId)
         assertTrue(options.smokeOnly)
     }
 

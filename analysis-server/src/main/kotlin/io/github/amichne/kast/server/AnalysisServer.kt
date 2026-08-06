@@ -41,7 +41,7 @@ class AnalysisServer(
                 is AnalysisTransport.UnixDomainSocket -> {
                     val bindSocketPath = transport.socketPath.toAbsolutePath().normalize()
                     val socketPath = RuntimeSocketPath.of(bindSocketPath)
-                    val instanceId = RuntimeInstanceId.create()
+                    val instanceId = config.runtimeInstanceId ?: RuntimeInstanceId.create()
                     val descriptorDirectory = (config.descriptorDirectory ?: defaultDescriptorDirectory())
                         .toAbsolutePath()
                         .normalize()

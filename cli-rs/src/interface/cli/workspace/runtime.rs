@@ -101,6 +101,29 @@ pub struct DaemonStartArgs {
     /// OTLP endpoint override while profiling is enabled.
     #[arg(long)]
     pub profile_otlp_endpoint: Option<String>,
+    /// Service-assigned runtime identity for the descriptor.
+    #[arg(long, hide = true)]
+    pub runtime_instance_id: Option<uuid::Uuid>,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct RuntimeRepairArgs {
+    /// Canonical workspace root whose runtime ownership should be inspected.
+    #[arg(long)]
+    pub workspace_root: PathBuf,
+    /// Apply the exact revalidated repair plan. The default is read-only.
+    #[arg(long)]
+    pub execute: bool,
+}
+
+#[derive(Debug, Args, Clone)]
+pub struct RuntimeServiceEntrypointArgs {
+    /// Immutable service launch registration.
+    #[arg(long)]
+    pub registration: PathBuf,
+    /// Lowercase SHA-256 digest of the registration bytes.
+    #[arg(long)]
+    pub registration_sha256: String,
 }
 
 #[derive(Debug, Args, Clone)]
@@ -125,6 +148,11 @@ pub enum RuntimeCommand {
     Restart(RuntimeArgs),
     /// Print the advertised capabilities for the workspace backend.
     Capabilities(RuntimeArgs),
+    /// Inspect or apply a precise runtime-ownership repair.
+    Repair(RuntimeRepairArgs),
+    /// Validate one service registration and replace this process with its indexer.
+    #[command(name = "service-entrypoint", hide = true)]
+    ServiceEntrypoint(RuntimeServiceEntrypointArgs),
 }
 
 #[cfg(test)]

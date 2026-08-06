@@ -16,6 +16,7 @@ impl From<RuntimeArgs> for DaemonStartArgs {
             profile_modes: value.profile_modes,
             profile_duration: value.profile_duration,
             profile_otlp_endpoint: value.profile_otlp_endpoint,
+            runtime_instance_id: None,
         }
     }
 }

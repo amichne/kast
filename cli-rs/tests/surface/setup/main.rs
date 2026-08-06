@@ -7,3 +7,4 @@ include!("legacy_runtime_fixtures.rs");
 include!("force_reset.rs");
 include!("migration_and_rollback.rs");
 include!("activation_and_concurrency.rs");
+include!("setup_lock_race.rs");

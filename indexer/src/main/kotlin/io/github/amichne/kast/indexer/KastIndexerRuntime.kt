@@ -107,6 +107,7 @@ object KastIndexerRuntime {
             transport = serverOptions.transport,
             config = config,
             registrationProof = registrationProof,
+            runtimeInstanceId = serverOptions.runtimeInstanceId,
         )
         val status = runBlocking { indexerRuntime.backend.runtimeStatus() }
         check(status.backendName == "indexer") {

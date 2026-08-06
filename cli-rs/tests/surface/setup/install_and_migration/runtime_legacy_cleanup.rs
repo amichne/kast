@@ -102,7 +102,8 @@ fn ordinary_setup_retires_an_owned_legacy_headless_daemon() {
     let (pid, reaped) = spawn_reapable_process();
     let current_socket = temp.path().join("current.sock");
     let _current_listener = UnixListener::bind(&current_socket).expect("current runtime socket");
-    let (current_pid, current_reaped) = spawn_reapable_process();
+    let (current_pid, current_reaped) =
+        spawn_reapable_indexer_process(&workspace, &current_socket);
     let preserved = vec![
         runtime_descriptor_for_process_test(
             &workspace,

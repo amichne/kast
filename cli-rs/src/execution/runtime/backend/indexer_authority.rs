@@ -1,5 +1,34 @@
 use super::*;
 
+#[path = "indexer_authority/ownership.rs"]
+mod ownership;
+#[path = "indexer_authority/process.rs"]
+mod process;
+#[path = "indexer_authority/registration.rs"]
+mod registration;
+#[path = "indexer_authority/repair.rs"]
+mod repair;
+#[path = "indexer_authority/service_manager.rs"]
+mod service_manager;
+
+use ownership::{RuntimeOwnershipSnapshot, reconcile_runtime_ownership};
+pub(crate) use registration::{
+    RuntimeSetupAuthorization, RuntimeSetupIntent, preflight_runtime_setup,
+};
+use registration::{prepare_service_registration, publish_active_registration};
+pub(crate) use repair::{service_entrypoint, workspace_repair};
+
+pub(super) fn stop_workspace_runtime(args: RuntimeArgs) -> Result<DaemonStopResult> {
+    repair::stop_workspace_runtime(args)
+}
+
+pub(super) fn stop_exact_owned_runtime(
+    workspace_root: &Path,
+    expected: &WorkspaceLeaseRuntimeIdentity,
+) -> Result<bool> {
+    repair::stop_exact_owned_runtime(workspace_root, expected)
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct AdmittedIndexerRuntime {
     workspace_root: PathBuf,
@@ -181,17 +210,16 @@ pub(super) fn plan_legacy_backend_migration(
 pub(super) fn admit_indexer_runtime(
     request: SemanticRuntimeRequest,
 ) -> std::result::Result<AdmittedIndexerRuntime, SemanticRuntimeRejection> {
-    let (candidate, started) = match admitted_candidate(&request) {
-        Ok(candidate) => (candidate, false),
+    match admitted_candidate(&request) {
+        Ok(candidate) => construct_admitted_runtime(request, candidate, false),
         Err(rejection)
             if request.availability == SemanticRuntimeAvailability::StartIfMissing
                 && matches!(rejection.code, "NO_INDEXER_AVAILABLE" | "RUNTIME_NOT_READY") =>
         {
-            start_indexer_runtime(&request)?
+            start_indexer_runtime(request)
         }
-        Err(rejection) => return Err(rejection),
-    };
-    construct_admitted_runtime(request, candidate, started)
+        Err(rejection) => Err(rejection),
+    }
 }
 
 fn admitted_candidate(

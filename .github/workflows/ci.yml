@@ -29,6 +29,10 @@ jobs:
           bash .github/scripts/test-repository-shape-contract.sh
           python3 .github/scripts/check-repository-shape.py
 
+      - name: Test pre-push check contract
+        shell: bash
+        run: bash .github/scripts/test-pre-push-check-contract.sh
+
       - name: Capture immutable local source snapshot
         shell: bash
         run: |
