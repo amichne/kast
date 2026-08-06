@@ -16,6 +16,7 @@ data class ServerLaunchOptions(
     val classpathRoots: List<Path>,
     val moduleName: String,
     val transport: AnalysisTransport,
+    val runtimeInstanceId: RuntimeInstanceId? = null,
     val requestTimeoutMillis: Long,
     val maxResults: Int,
     val maxConcurrentRequests: Int,
@@ -76,6 +77,7 @@ data class ServerLaunchOptions(
                             ?: defaultSocketPath(workspaceRoot),
                     )
                 },
+                runtimeInstanceId = values["runtime-instance-id"]?.let(RuntimeInstanceId::parse),
                 requestTimeoutMillis = values["request-timeout-ms"]?.toLong() ?: resolvedConfig.server.requestTimeoutMillis.value,
                 maxResults = values["max-results"]?.toInt() ?: resolvedConfig.server.maxResults.value,
                 maxConcurrentRequests = values["max-concurrent-requests"]?.toInt() ?: resolvedConfig.server.maxConcurrentRequests.value,
@@ -128,6 +130,7 @@ data class ServerLaunchOptions(
                 add("--tcp-port=${transport.port}")
             }
         }
+        runtimeInstanceId?.let { add("--runtime-instance-id=${it.value}") }
         add("--request-timeout-ms=$requestTimeoutMillis")
         add("--max-results=$maxResults")
         add("--max-concurrent-requests=$maxConcurrentRequests")

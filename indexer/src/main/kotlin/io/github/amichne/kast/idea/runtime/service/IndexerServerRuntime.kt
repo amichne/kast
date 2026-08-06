@@ -7,6 +7,7 @@ import io.github.amichne.kast.idea.snapshot.RepositorySnapshotCoordinator
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.RuntimeInstanceId
 import io.github.amichne.kast.api.client.defaultSocketPath
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.validation.ParsedSemanticGraphQuery
@@ -44,6 +45,7 @@ object IndexerServerRuntime {
             lifecycleController = lifecycleController,
             indexAdmission = IndexerAdmission.fromStartIndexing(startProjectIndexing),
             registrationProof = null,
+            runtimeInstanceId = null,
         )
     }
 
@@ -68,6 +70,7 @@ object IndexerServerRuntime {
             lifecycleController = lifecycleController,
             indexAdmission = IndexerAdmission.fromStartIndexing(startProjectIndexing),
             registrationProof = null,
+            runtimeInstanceId = null,
         )
     }
 
@@ -77,6 +80,7 @@ object IndexerServerRuntime {
         transport: AnalysisTransport,
         config: KastConfig,
         registrationProof: GitWorktreeRegistrationProof?,
+        runtimeInstanceId: RuntimeInstanceId?,
     ): RunningIndexer {
         val workspaceIdentity = IdeaWorkspaceIdentity.fromProject(
             project = project,
@@ -91,6 +95,7 @@ object IndexerServerRuntime {
             lifecycleController = RuntimeLifecycleController.Unavailable,
             indexAdmission = IndexerAdmission.fromStartIndexing(true),
             registrationProof = registrationProof,
+            runtimeInstanceId = runtimeInstanceId,
         )
     }
 
@@ -102,6 +107,7 @@ object IndexerServerRuntime {
         lifecycleController: RuntimeLifecycleController,
         indexAdmission: IndexerAdmission,
         registrationProof: GitWorktreeRegistrationProof?,
+        runtimeInstanceId: RuntimeInstanceId?,
     ): RunningIndexer {
         KastStructuredTrace.event(
             eventName = "indexer.runtime.start_requested",
@@ -202,7 +208,13 @@ object IndexerServerRuntime {
         val server = try {
             AnalysisServer(
                 backend = backend,
-                config = indexerAnalysisServerConfig(transport, limits, config, manifestFileCountProvider),
+                config = indexerAnalysisServerConfig(
+                    transport = transport,
+                    runtimeInstanceId = runtimeInstanceId,
+                    limits = limits,
+                    config = config,
+                    workspaceFileCountProvider = manifestFileCountProvider,
+                ),
                 lifecycleController = lifecycleController,
             ).start()
         } catch (failure: Throwable) {
