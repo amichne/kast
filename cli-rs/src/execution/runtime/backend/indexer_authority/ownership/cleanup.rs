@@ -14,6 +14,34 @@ pub(super) fn cleanup_dead_registration(
         .ok_or_else(runtime_identity_mismatch)?
         .join("active.json");
     verify_cleanup_metadata_snapshots(&registration, dead)?;
+    let process_temporary = unregister_dead_service_manager(&registration)?;
+    let registration = revalidate_registration(&registration)?;
+    ensure_registered_process_is_dead(&registration, dead.descriptor.as_ref())?;
+    verify_socket_snapshot(&dead.socket, registration.launch.owner_uid)?;
+    verify_descriptor_snapshot(dead.descriptor.as_ref(), &registration)?;
+    verify_cleanup_metadata_snapshots(&registration, dead)?;
+    recover_dead_process_claim_publication_temporary(&registration, &process_temporary)?;
+    verify_registration_directory_entries(&registration)?;
+    if let Some(descriptor) = &dead.descriptor {
+        delete_descriptor(
+            super::ownership::service_descriptor_directory(&registration)?,
+            &descriptor.descriptor,
+        )?;
+    }
+    remove_exact_socket(&dead.socket, registration.launch.owner_uid)?;
+    if let Some(active) = &dead.active
+        && active.runtime_instance_id == registration.receipt.runtime_instance_id
+    {
+        fs::remove_file(&active_path)?;
+    }
+    remove_registration_directory(&registration, dead.process_claim.is_some())?;
+    Ok(())
+}
+
+fn unregister_dead_service_manager(
+    registration: &ValidatedServiceRegistration,
+) -> Result<ProvenDeadProcessClaimPublication> {
+    let process_temporary = prove_dead_process_claim_publication_temporary(registration)?;
     match super::service_manager::inspect(&registration.receipt.manager)? {
         super::service_manager::ServiceManagerObservation::Running(_) => {
             return Err(ownership_changed(
@@ -32,26 +60,7 @@ pub(super) fn cleanup_dead_registration(
             "Runtime service manager registration remained after cleanup.",
         ));
     }
-    let registration = revalidate_registration(&registration)?;
-    ensure_registered_process_is_dead(&registration, dead.descriptor.as_ref())?;
-    verify_socket_snapshot(&dead.socket, registration.launch.owner_uid)?;
-    verify_registration_directory_entries(&registration)?;
-    verify_descriptor_snapshot(dead.descriptor.as_ref(), &registration)?;
-    verify_cleanup_metadata_snapshots(&registration, dead)?;
-    if let Some(descriptor) = &dead.descriptor {
-        delete_descriptor(
-            super::ownership::service_descriptor_directory(&registration)?,
-            &descriptor.descriptor,
-        )?;
-    }
-    remove_exact_socket(&dead.socket, registration.launch.owner_uid)?;
-    if let Some(active) = &dead.active
-        && active.runtime_instance_id == registration.receipt.runtime_instance_id
-    {
-        fs::remove_file(&active_path)?;
-    }
-    remove_registration_directory(&registration, dead.process_claim.is_some())?;
-    Ok(())
+    Ok(process_temporary)
 }
 
 fn verify_cleanup_metadata_snapshots(
@@ -215,6 +224,7 @@ fn remove_exact_socket(snapshot: &SocketObservation, owner_uid: u64) -> Result<(
 fn verify_registration_directory_entries(
     registration: &ValidatedServiceRegistration,
 ) -> Result<()> {
+    let process_temporary = process_claim_publication_temporary(registration)?;
     let definition_name = registration
         .receipt
         .manager
@@ -230,13 +240,128 @@ fn verify_registration_directory_entries(
     ];
     for entry in fs::read_dir(&registration.directory)? {
         let entry = entry?;
-        if !entry.file_type()?.is_file() || !allowed.contains(&entry.file_name().as_os_str()) {
+        let is_process_temporary = process_temporary
+            .as_ref()
+            .is_some_and(|temporary| temporary.path == entry.path());
+        if !entry.file_type()?.is_file()
+            || (!allowed.contains(&entry.file_name().as_os_str()) && !is_process_temporary)
+        {
             return Err(ownership_changed(
                 "Runtime registration directory contains an unexpected entry.",
             ));
         }
     }
     Ok(())
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct ProcessClaimPublicationTemporary {
+    path: PathBuf,
+    claim: super::registration::ServiceProcessClaim,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct ProvenDeadProcessClaimPublication {
+    temporary: Option<ProcessClaimPublicationTemporary>,
+}
+
+fn process_claim_publication_temporary(
+    registration: &ValidatedServiceRegistration,
+) -> Result<Option<ProcessClaimPublicationTemporary>> {
+    let mut temporary = None;
+    let process_claim_exists =
+        match fs::symlink_metadata(registration.directory.join("process.json")) {
+            Ok(_) => true,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
+            Err(error) => return Err(error.into()),
+        };
+    for entry in fs::read_dir(&registration.directory)? {
+        let entry = entry?;
+        if !is_canonical_atomic_json_temporary(&entry.file_name()) {
+            continue;
+        }
+        if temporary.is_some() || process_claim_exists || !entry.file_type()?.is_file()
+        {
+            return Err(ownership_changed(
+                "Runtime registration has ambiguous process-claim publication evidence.",
+            ));
+        }
+        let claim = super::registration::read_process_claim_file(&entry.path()).map_err(|error| {
+            ownership_changed(&format!(
+                "Runtime process-claim publication temporary is unsafe: {}",
+                error.message
+            ))
+        })?;
+        if claim.schema_version != registration.launch.schema_version
+            || claim.launch_sha256 != registration.receipt.launch_sha256
+        {
+            return Err(ownership_changed(
+                "Runtime process-claim publication temporary does not match its registration.",
+            ));
+        }
+        temporary = Some(ProcessClaimPublicationTemporary {
+            path: entry.path(),
+            claim,
+        });
+    }
+    Ok(temporary)
+}
+
+fn recover_dead_process_claim_publication_temporary(
+    registration: &ValidatedServiceRegistration,
+    expected: &ProvenDeadProcessClaimPublication,
+) -> Result<()> {
+    let confirmed = prove_dead_process_claim_publication_temporary(registration)?;
+    if &confirmed != expected {
+        return Err(ownership_changed(
+            "Runtime process-claim publication temporary changed before cleanup.",
+        ));
+    }
+    let Some(temporary) = &expected.temporary else {
+        return Ok(());
+    };
+    fs::remove_file(&temporary.path)?;
+    fs::File::open(
+        temporary
+            .path
+            .parent()
+            .ok_or_else(|| ownership_changed("Runtime registration has no parent directory."))?,
+    )?
+    .sync_all()?;
+    Ok(())
+}
+
+fn prove_dead_process_claim_publication_temporary(
+    registration: &ValidatedServiceRegistration,
+) -> Result<ProvenDeadProcessClaimPublication> {
+    let temporary = process_claim_publication_temporary(registration)?;
+    if let Some(temporary) = &temporary {
+        match super::ownership::observe_claimed_process(&temporary.claim.process)? {
+            super::ownership::ClaimedProcessObservation::Gone
+            | super::ownership::ClaimedProcessObservation::Reused(_) => {}
+            super::ownership::ClaimedProcessObservation::Exact(_) => {
+                return Err(ownership_changed(
+                    "Runtime process-claim publication temporary names a live process.",
+                ));
+            }
+        }
+    }
+    Ok(ProvenDeadProcessClaimPublication { temporary })
+}
+
+fn is_canonical_atomic_json_temporary(name: &std::ffi::OsStr) -> bool {
+    let Some(value) = name
+        .to_str()
+        .and_then(|name| name.strip_prefix(".runtime-"))
+        .and_then(|name| name.strip_suffix(".tmp"))
+    else {
+        return false;
+    };
+    uuid::Uuid::parse_str(value).is_ok_and(|id| {
+        id.hyphenated().to_string() == value
+            && id.get_version_num() == 4
+            && id.get_variant() == uuid::Variant::RFC4122
+    })
 }
 
 fn remove_registration_directory(
@@ -261,3 +386,7 @@ fn remove_registration_directory(
 fn ownership_changed(message: &str) -> CliError {
     CliError::new("RUNTIME_OWNERSHIP_CHANGED", message)
 }
+
+#[cfg(test)]
+#[path = "cleanup_tests.rs"]
+mod cleanup_tests;

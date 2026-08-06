@@ -224,6 +224,7 @@ fn prepare_service_registration_in(
         &request.workspace_root,
         BackendName::Indexer,
     );
+    prepare_service_log_parent(&log_file)?;
     let launch = ServiceLaunchRegistration {
         schema_version: SERVICE_REGISTRATION_SCHEMA,
         workspace_root: request.workspace_root.display().to_string(),
@@ -285,6 +286,15 @@ fn prepare_service_registration_in(
     })
 }
 
+fn prepare_service_log_parent(log_file: &Path) -> Result<()> {
+    let parent = log_file
+        .parent()
+        .filter(|path| !path.as_os_str().is_empty())
+        .ok_or_else(|| registration_invalid("Runtime service log file has no parent directory."))?;
+    fs::create_dir_all(parent)?;
+    Ok(())
+}
+
 include!("registration/validation.rs");
 
 pub(super) fn publish_active_registration(prepared: &PreparedServiceRegistration) -> Result<()> {
@@ -323,16 +333,19 @@ pub(super) fn write_process_claim(
 }
 
 pub(super) fn read_process_claim(directory: &Path) -> Result<Option<ServiceProcessClaim>> {
-    match read_owned_json::<ServiceProcessClaim>(&directory.join("process.json")) {
-        Ok((claim, _))
-            if claim.schema_version == SERVICE_REGISTRATION_SCHEMA
-                && claim.launch_sha256.len() == 64 =>
-        {
-            Ok(Some(claim))
-        }
-        Ok(_) => Err(registration_invalid("Runtime process claim is invalid.")),
+    match read_process_claim_file(&directory.join("process.json")) {
+        Ok(claim) => Ok(Some(claim)),
         Err(error) if error.code == "RUNTIME_REGISTRATION_MISSING" => Ok(None),
         Err(error) => Err(error),
+    }
+}
+
+pub(super) fn read_process_claim_file(path: &Path) -> Result<ServiceProcessClaim> {
+    let (claim, _) = read_owned_json::<ServiceProcessClaim>(path)?;
+    if claim.schema_version == SERVICE_REGISTRATION_SCHEMA && claim.launch_sha256.len() == 64 {
+        Ok(claim)
+    } else {
+        Err(registration_invalid("Runtime process claim is invalid."))
     }
 }
 
@@ -350,3 +363,7 @@ fn effective_uid() -> u64 {
 fn registration_invalid(message: &str) -> CliError {
     CliError::new("RUNTIME_REGISTRATION_INVALID", message)
 }
+
+#[cfg(test)]
+#[path = "registration/final_review_tests.rs"]
+mod final_review_tests;
