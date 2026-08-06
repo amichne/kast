@@ -210,17 +210,16 @@ pub(super) fn plan_legacy_backend_migration(
 pub(super) fn admit_indexer_runtime(
     request: SemanticRuntimeRequest,
 ) -> std::result::Result<AdmittedIndexerRuntime, SemanticRuntimeRejection> {
-    let (candidate, started) = match admitted_candidate(&request) {
-        Ok(candidate) => (candidate, false),
+    match admitted_candidate(&request) {
+        Ok(candidate) => construct_admitted_runtime(request, candidate, false),
         Err(rejection)
             if request.availability == SemanticRuntimeAvailability::StartIfMissing
                 && matches!(rejection.code, "NO_INDEXER_AVAILABLE" | "RUNTIME_NOT_READY") =>
         {
-            start_indexer_runtime(&request)?
+            start_indexer_runtime(request)
         }
-        Err(rejection) => return Err(rejection),
-    };
-    construct_admitted_runtime(request, candidate, started)
+        Err(rejection) => Err(rejection),
+    }
 }
 
 fn admitted_candidate(

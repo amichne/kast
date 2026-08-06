@@ -148,12 +148,22 @@ unsafe extern "C" {
     ) -> libc::c_int;
 }
 
+#[cfg(any(target_os = "macos", test))]
+#[derive(Debug, PartialEq, Eq)]
+enum MacosArguments {
+    Gone,
+    Exact(Vec<String>),
+}
+
 #[cfg(target_os = "macos")]
 fn observe_macos_process(pid: u64) -> Result<Option<ObservedProcess>> {
     let Some(identity) = macos_process_identity(pid)? else {
         return Ok(None);
     };
-    let command = macos_process_arguments(pid as libc::c_int)?;
+    let command = match macos_process_arguments(pid as libc::c_int)? {
+        MacosArguments::Gone => return Ok(None),
+        MacosArguments::Exact(command) => command,
+    };
     let Some(identity) = confirm_macos_process_identity(identity, macos_process_identity(pid)?)?
     else {
         return Ok(None);
@@ -216,7 +226,7 @@ fn macos_process_identity(pid: u64) -> Result<Option<ManagedProcessIdentity>> {
 }
 
 #[cfg(target_os = "macos")]
-fn macos_process_arguments(pid: libc::c_int) -> Result<Vec<String>> {
+fn macos_process_arguments(pid: libc::c_int) -> Result<MacosArguments> {
     const CTL_KERN: libc::c_int = 1;
     const KERN_ARGMAX: libc::c_int = 8;
     const KERN_PROCARGS2: libc::c_int = 49;
@@ -240,7 +250,7 @@ fn macos_process_arguments(pid: libc::c_int) -> Result<Vec<String>> {
     let mut buffer = vec![0_u8; argmax as usize];
     let mut read = buffer.len();
     let mut args_mib = [CTL_KERN, KERN_PROCARGS2, pid];
-    if unsafe {
+    let read_result = if unsafe {
         libc::sysctl(
             args_mib.as_mut_ptr(),
             3,
@@ -251,17 +261,24 @@ fn macos_process_arguments(pid: libc::c_int) -> Result<Vec<String>> {
         )
     } != 0
     {
-        return Err(process_io_error(
-            pid as u64,
-            "command arguments",
-            std::io::Error::last_os_error(),
-        ));
-    }
-    buffer.truncate(read);
-    parse_macos_arguments(&buffer)
+        Err(std::io::Error::last_os_error())
+    } else {
+        buffer.truncate(read);
+        Ok(buffer)
+    };
+    classify_macos_arguments(pid as u64, read_result)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", test))]
+fn classify_macos_arguments(pid: u64, read: std::io::Result<Vec<u8>>) -> Result<MacosArguments> {
+    match read {
+        Ok(bytes) => parse_macos_arguments(&bytes).map(MacosArguments::Exact),
+        Err(error) if error.raw_os_error() == Some(libc::ESRCH) => Ok(MacosArguments::Gone),
+        Err(error) => Err(process_io_error(pid, "command arguments", error)),
+    }
+}
+
+#[cfg(any(target_os = "macos", test))]
 fn parse_macos_arguments(bytes: &[u8]) -> Result<Vec<String>> {
     if bytes.len() < std::mem::size_of::<libc::c_int>() {
         return Err(process_error("macOS process arguments are truncated."));
@@ -293,7 +310,7 @@ fn parse_macos_arguments(bytes: &[u8]) -> Result<Vec<String>> {
     Ok(arguments)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", test))]
 fn skip_c_string(bytes: &[u8], cursor: usize) -> Result<usize> {
     bytes[cursor..]
         .iter()
