@@ -30,6 +30,7 @@ mod tests {
             profile_modes: None,
             profile_duration: None,
             profile_otlp_endpoint: None,
+            runtime_instance_id: None,
         };
         let command = linux_indexer_java_command(&args, &config).unwrap();
         assert!(command.contains(&"-cp".to_string()));
@@ -70,6 +71,7 @@ mod tests {
             profile_modes: None,
             profile_duration: None,
             profile_otlp_endpoint: None,
+            runtime_instance_id: None,
         };
 
         let command = linux_indexer_java_command(&args, &config).unwrap();
@@ -131,6 +133,7 @@ mod tests {
             profile_modes: None,
             profile_duration: None,
             profile_otlp_endpoint: None,
+            runtime_instance_id: None,
         };
 
         let command = linux_indexer_java_command(&args, &config).unwrap();
@@ -224,6 +227,7 @@ mod tests {
             profile_modes: None,
             profile_duration: None,
             profile_otlp_endpoint: None,
+            runtime_instance_id: None,
         };
 
         let command = installed_idea_sidecar_java_command(&args, &config, &app).unwrap();

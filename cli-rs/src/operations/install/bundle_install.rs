@@ -3,6 +3,7 @@ fn install_validated_bundle(
     targets: &ActivationTargetPaths,
     migrated_config: Option<&str>,
     path_projection_authority: &PathProjectionAuthority,
+    runtime_setup_authorization: &crate::runtime::RuntimeSetupAuthorization,
 ) -> Result<(Option<PathBuf>, Option<PathBuf>)> {
     if bundle.root.starts_with(&targets.resolved.install_root) {
         return Err(CliError::new(
@@ -14,6 +15,7 @@ fn install_validated_bundle(
             ),
         ));
     }
+    require_runtime_release_removal_authorized(runtime_setup_authorization, &targets.version_dir)?;
     let install_manifest = project_install_manifest(bundle, targets, path_projection_authority);
     for directory in [
         targets.resolved.install_root.join("releases"),
@@ -26,11 +28,11 @@ fn install_validated_bundle(
     ] {
         fs::create_dir_all(directory)?;
     }
-    let staged = targets
-        .resolved
-        .install_root
-        .join("staging")
-        .join(format!("{}-{}", bundle.release_digest, std::process::id()));
+    let staged = targets.resolved.install_root.join("staging").join(format!(
+        "{}-{}",
+        bundle.release_digest,
+        std::process::id()
+    ));
     manifest::remove_path(&staged)?;
     copy_bundle_tree(&bundle.root, &staged)?;
     link_active_indexer(bundle, &staged)?;
@@ -92,13 +94,31 @@ fn archive_current_activation(
 fn rollback_activated_bundle(
     targets: &ActivationTargetPaths,
     previous: Option<&Path>,
+    runtime_setup_authorization: &crate::runtime::RuntimeSetupAuthorization,
 ) -> Result<()> {
+    require_runtime_release_removal_authorized(runtime_setup_authorization, &targets.version_dir)?;
     if let Some(previous) = previous {
         manifest::replace_symlink_or_copy(previous, &targets.current_link)?;
     } else {
         manifest::remove_path(&targets.current_link)?;
     }
     manifest::remove_path(&targets.version_dir)
+}
+
+fn require_runtime_release_removal_authorized(
+    authorization: &crate::runtime::RuntimeSetupAuthorization,
+    release_root: &Path,
+) -> Result<()> {
+    if authorization.permits_release_removal(release_root) {
+        return Ok(());
+    }
+    Err(CliError::new(
+        "SETUP_RUNTIME_RELEASE_PINNED",
+        format!(
+            "Setup cannot replace {} because a registered runtime pins that release.",
+            release_root.display()
+        ),
+    ))
 }
 
 fn project_install_manifest(
@@ -238,7 +258,11 @@ fn verify_activated_bundle(
         Err(command_error(
             "BUNDLE_READY_FAILED",
             "Installed bundle did not pass kast ready",
-            &["ready".to_string(), "--for".to_string(), "machine".to_string()],
+            &[
+                "ready".to_string(),
+                "--for".to_string(),
+                "machine".to_string(),
+            ],
             &output,
         ))
     }

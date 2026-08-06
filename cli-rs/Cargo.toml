@@ -90,6 +90,10 @@ name = "runtime_backend_smoke"
 path = "tests/runtime/backend.rs"
 
 [[test]]
+name = "runtime_durable_ownership_smoke"
+path = "tests/runtime/durable_ownership.rs"
+
+[[test]]
 name = "installed_idea_sidecar_smoke"
 path = "tests/runtime/installed_idea_sidecar_smoke/main.rs"
 

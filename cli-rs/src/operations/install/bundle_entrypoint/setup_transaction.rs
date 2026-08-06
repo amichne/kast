@@ -18,6 +18,19 @@ fn setup_bundle(
     require_force_source_outside_install_root(mode, &bundle.root, &targets.resolved.install_root)?;
 
     manifest::with_install_lock(&targets.resolved, || {
+        let current_release_is_target = current_release_matches(&targets);
+        let runtime_setup_authorization = crate::runtime::preflight_runtime_setup(
+            &targets.resolved,
+            if mode.is_force() {
+                crate::runtime::RuntimeSetupIntent::ForceReset
+            } else if current_release_is_target {
+                crate::runtime::RuntimeSetupIntent::ReconcileCurrent
+            } else {
+                crate::runtime::RuntimeSetupIntent::ReplaceCandidate {
+                    candidate_release_root: &targets.version_dir,
+                }
+            },
+        )?;
         recover_path_projection_transaction(&targets)?;
         let mut path_projection_authority = PathProjectionAuthority::capture(&targets)?;
         path_projection_authority.require_profile(profile)?;
@@ -26,7 +39,7 @@ fn setup_bundle(
         )?;
         if mode.is_force() {
             path_projection_authority.preserve_for_force_reset(&targets.resolved.install_root)?;
-            ForceResetPlan::build(&targets)?.execute()?;
+            ForceResetPlan::build(&targets, &runtime_setup_authorization)?.execute()?;
             test_path_projection_crash("after-force-reset");
             test_path_projection_failure("after-force-reset")?;
         }
@@ -36,7 +49,7 @@ fn setup_bundle(
         manifest::remove_path(&targets.resolved.install_root.join("staging"))?;
         fs::create_dir_all(targets.resolved.install_root.join("staging"))?;
 
-        if current_release_matches(&targets) {
+        if current_release_is_target && !mode.is_force() {
             test_path_projection_failure("before-current-migration")
                 .map_err(|error| at_setup_phase(error, "MIGRATION"))?;
             if let Some(contents) = migrated_config.as_deref() {
@@ -91,6 +104,7 @@ fn setup_bundle(
             &targets,
             migrated_config.as_deref(),
             &path_projection_authority,
+            &runtime_setup_authorization,
         ) {
             Ok(installed) => installed,
             Err(error) => {
@@ -101,7 +115,7 @@ fn setup_bundle(
             }
         };
         if let Err(error) = verify_activated_bundle(&bundle, &targets) {
-            rollback_activated_bundle(&targets, previous.as_deref())?;
+            rollback_activated_bundle(&targets, previous.as_deref(), &runtime_setup_authorization)?;
             let mut failure = CliError::new(
                 "SETUP_VERIFY_FAILED",
                 format!("Activated release failed verification and was rolled back: {error}"),
@@ -126,7 +140,11 @@ fn setup_bundle(
         match install_user_commands(&targets, profile, &path_projection_authority, None) {
             Ok(()) => {}
             Err(UserCommandInstallFailure::BeforeReceipt(error)) => {
-                rollback_activated_bundle(&targets, previous.as_deref())?;
+                rollback_activated_bundle(
+                    &targets,
+                    previous.as_deref(),
+                    &runtime_setup_authorization,
+                )?;
                 return Err(with_legacy_restore(
                     at_setup_phase(error, "USER_COMMAND"),
                     &legacy_archive,

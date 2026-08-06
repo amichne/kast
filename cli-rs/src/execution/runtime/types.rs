@@ -205,6 +205,5 @@ struct RegisteredDescriptor {
 }
 
 struct WorkspaceInspection {
-    descriptor_directory: PathBuf,
     candidates: Vec<RuntimeCandidateStatus>,
 }

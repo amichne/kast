@@ -5,3 +5,4 @@ include!("install_and_migration/legacy_archive_races.rs");
 include!("install_and_migration/projection_recovery.rs");
 include!("install_and_migration/profile_upgrades.rs");
 include!("install_and_migration/runtime_legacy_cleanup.rs");
+include!("install_and_migration/runtime_release_pins.rs");

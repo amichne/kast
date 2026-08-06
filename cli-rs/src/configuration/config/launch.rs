@@ -69,5 +69,8 @@ pub fn server_launch_args(args: &DaemonStartArgs, config: &KastConfig) -> Result
     if let Some(value) = &args.profile_otlp_endpoint {
         result.push(format!("--profile-otlp-endpoint={value}"));
     }
+    if let Some(runtime_instance_id) = args.runtime_instance_id {
+        result.push(format!("--runtime-instance-id={runtime_instance_id}"));
+    }
     Ok(result)
 }

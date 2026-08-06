@@ -125,7 +125,8 @@ pub(crate) fn with_install_lock<T>(
         .truncate(false)
         .read(true)
         .write(true)
-        .open(lock_path)?;
+        .open(&lock_path)?;
+    test_install_file_barrier("before-install-lock-acquire", &lock_path)?;
     lock_exclusive(&lock_file)?;
     let result = action();
     unlock(&lock_file)?;
