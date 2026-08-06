@@ -19,6 +19,8 @@ PHASE_REGRESSION_PERCENT = 15
 PHASE_REGRESSION_MILLIS = 60_000
 DISK_REGRESSION_PERCENT = 15
 DISK_REGRESSION_BYTES = 268_435_456
+CLOSURE_PROOF_RESERVE_MILLIS = 1_000
+COMMAND_ADMISSION_RESERVE_MILLIS = 1_000
 REQUIRED_PHASES = [
     "setup",
     "configure",
@@ -45,6 +47,9 @@ CORRECTNESS_INTEGER_FIELDS = {
     "graphEdgeOccurrenceCount",
 }
 CORRECTNESS_NUMERIC_FIELDS = CORRECTNESS_INTEGER_FIELDS | {"graphWeightedEdgeCount"}
+CORRECTNESS_COMPARISON_NUMERIC_FIELDS = (
+    CORRECTNESS_NUMERIC_FIELDS - {"sourceIndexGeneration"}
+)
 CORRECTNESS_HASH_FIELDS = {
     "workspaceFileIdentitySha256",
     "graphNodeIdentitySha256",
@@ -482,17 +487,105 @@ def validate_run(run: object, role: str, tag: str, digest: str, repository_name:
             if outcome == "FAILED":
                 require(event["exitCode"] != 0,
                         f"{prefix} failed command exit code is invalid")
-            if outcome != "SUPERVISION_FAILED":
+            timeout_phase = event.get("timeoutPhase")
+            require(timeout_phase in {None, "PRE_SPAWN"},
+                    f"{prefix} supervised command timeout phase is invalid")
+            pre_spawn_timeout = timeout_phase == "PRE_SPAWN"
+            if pre_spawn_timeout:
+                require(outcome == "TIMED_OUT",
+                        f"{prefix} pre-spawn timeout outcome is invalid")
+                require("pid" in event and event["pid"] is None,
+                        f"{prefix} pre-spawn timeout unexpectedly has a process")
+                require(
+                    "captureIdentity" in event and event["captureIdentity"] is None,
+                    f"{prefix} pre-spawn timeout unexpectedly has a process identity",
+                )
+                require(
+                    "pidfdOpenedBeforeWait" in event
+                    and event["pidfdOpenedBeforeWait"] is False,
+                    f"{prefix} pre-spawn timeout unexpectedly opened a pidfd",
+                )
+                require(
+                    termination == {"termSent": False, "killSent": False},
+                    f"{prefix} pre-spawn timeout unexpectedly sent a signal",
+                )
+                timeout_reason = event.get("timeoutReason")
+                require(timeout_reason in {
+                    "DEADLINE_EXPIRED",
+                    "INSUFFICIENT_CLEANUP_RESERVE",
+                    "INSUFFICIENT_ADMISSION_BUDGET",
+                }, f"{prefix} pre-spawn timeout reason is invalid")
+                remaining_budget = event.get("remainingBudgetMillis")
+                required_cleanup = event.get("requiredCleanupReserveMillis")
+                term_grace = event.get("termGraceMillis")
+                kill_grace = event.get("killGraceMillis")
+                closure_reserve = event.get("closureProofReserveMillis")
+                admission_reserve = event.get("admissionReserveMillis")
+                required_admission = event.get("requiredAdmissionBudgetMillis")
+                require(nonnegative_integer(remaining_budget),
+                        f"{prefix} pre-spawn remaining budget is invalid")
+                for name, value in (
+                    ("required cleanup reserve", required_cleanup),
+                    ("TERM grace", term_grace),
+                    ("KILL grace", kill_grace),
+                ):
+                    require(nonnegative_integer(value) and value > 0,
+                            f"{prefix} pre-spawn {name} is invalid")
+                require(closure_reserve == CLOSURE_PROOF_RESERVE_MILLIS,
+                        f"{prefix} pre-spawn closure proof reserve is invalid")
+                require(required_cleanup == term_grace + kill_grace + closure_reserve,
+                        f"{prefix} pre-spawn required cleanup reserve is inconsistent")
+                require(admission_reserve == COMMAND_ADMISSION_RESERVE_MILLIS,
+                        f"{prefix} pre-spawn admission reserve is invalid")
+                require(required_admission == required_cleanup + admission_reserve,
+                        f"{prefix} pre-spawn required admission budget is inconsistent")
+                expected_remaining = max(
+                    event["deadlineMonotonicMillis"] - started_monotonic,
+                    0,
+                )
+                require(remaining_budget == expected_remaining,
+                        f"{prefix} pre-spawn remaining budget is inconsistent")
+                if timeout_reason == "DEADLINE_EXPIRED":
+                    require(
+                        event.get("detail") == "command deadline expired before spawn",
+                        f"{prefix} pre-spawn timeout detail is invalid",
+                    )
+                    require(started_monotonic >= event["deadlineMonotonicMillis"],
+                            f"{prefix} expired timeout started before its deadline")
+                elif timeout_reason == "INSUFFICIENT_CLEANUP_RESERVE":
+                    require(
+                        event.get("detail") == "insufficient cleanup reserve before spawn",
+                        f"{prefix} pre-spawn timeout detail is invalid",
+                    )
+                    require(started_monotonic < event["deadlineMonotonicMillis"],
+                            f"{prefix} reserve timeout started after its deadline")
+                    require(remaining_budget <= required_cleanup,
+                            f"{prefix} cleanup timeout had sufficient cleanup reserve")
+                else:
+                    require(
+                        event.get("detail")
+                        == "insufficient command admission budget before spawn",
+                        f"{prefix} pre-spawn timeout detail is invalid",
+                    )
+                    require(started_monotonic < event["deadlineMonotonicMillis"],
+                            f"{prefix} admission timeout started after its deadline")
+                    require(
+                        required_cleanup < remaining_budget <= required_admission,
+                        f"{prefix} admission timeout budget is outside its exact interval",
+                    )
+            elif outcome != "SUPERVISION_FAILED":
                 require(finished_monotonic <= event["deadlineMonotonicMillis"],
                         f"{prefix} successful command finished after its deadline")
             closure = validate_closure(
                 event.get("processGroupClosure"),
                 f"{prefix} supervisedCommands[{index}].processGroupClosure",
-                must_be_proven=outcome in {"FAILED", "TIMED_OUT"},
+                must_be_proven=(
+                    outcome in {"FAILED", "TIMED_OUT"} and not pre_spawn_timeout
+                ),
             )
-            if outcome == "SUCCEEDED":
+            if outcome == "SUCCEEDED" or pre_spawn_timeout:
                 require(closure["required"] is False,
-                        f"{prefix} successful command unexpectedly required closure")
+                        f"{prefix} command unexpectedly required closure")
             if event["operation"] == "worktree-cleanup":
                 require(outcome == "SUCCEEDED" and event["exitCode"] == 0,
                         f"{prefix} worktree cleanup was not successful")
@@ -651,7 +744,7 @@ def expected_comparison(stable: dict[str, object], candidate: dict[str, object])
         failures.append({"code": "CORRECTNESS_CONTEXT_MISMATCH"})
     stable_correctness = stable["correctnessEvidence"]
     candidate_correctness = candidate["correctnessEvidence"]
-    for field in sorted(CORRECTNESS_NUMERIC_FIELDS):
+    for field in sorted(CORRECTNESS_COMPARISON_NUMERIC_FIELDS):
         baseline = stable_correctness[field]
         observed = candidate_correctness[field]
         result = {

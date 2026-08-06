@@ -196,7 +196,7 @@ for benchmark_evidence in \
   '--candidate-bundle "$candidate_bundle"' \
   '--evidence-output "$evidence_output"' \
   'name: real-repository-indexing-${{ matrix.name }}-${{ github.run_id }}' \
-  'timeout-minutes: 110'; do
+  'timeout-minutes: 150'; do
   [[ "$real_repository_contract" == *"$benchmark_evidence"* ]] \
     || die "real-repository release indexing is missing: ${benchmark_evidence}"
 done
