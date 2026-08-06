@@ -40,7 +40,7 @@ The default installation root is `~/.local/share/kast`.
 | --- | --- |
 | `~/.local/bin/kast` | Public agent interface. |
 | `~/.local/share/kast/current/bin/kast` | Release-bound public entrypoint. |
-| `~/.local/share/kast/current/libexec/kastctl` | Private release-bound setup and maintenance control plane; not on `PATH`. |
+| `~/.local/share/kast/current/libexec/kastctl` | Private release-bound setup and maintenance control plane; not on `PATH` for standard or snapshot installs. |
 
 Both entrypoints contain identical bytes; the invoked name selects the command
 surface.
@@ -64,8 +64,16 @@ checkouts, and unrelated IDE extensions.
 For development from this checkout:
 
 ```console
-./gradlew refreshDevelopmentMachine
+./install.sh --development
 ```
+
+The typed development setup profile builds this checkout and projects both
+`kast` and `kastctl` into `~/.local/bin`. The receipt records the exact command,
+path, and target for each projection. Development setup does not replace an
+unmanaged `kastctl`. A later standard or snapshot setup removes the projection
+only when the prior receipt and current symlink both prove Kast ownership.
+Internally, this profile runs `./gradlew refreshDevelopmentMachine` through the
+same verified setup transaction.
 
 ## Prepare a workspace
 

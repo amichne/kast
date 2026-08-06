@@ -44,6 +44,16 @@ For a local bundle:
 Use `./install.sh --force` to replace validated Kast-owned installation state
 and managed user commands. Existing workspace indexes are preserved.
 
+Repository contributors can build and activate this checkout with:
+
+```console
+./install.sh --development
+```
+
+This development-only profile projects both `kast` and `kastctl` into
+`~/.local/bin`. A later standard or snapshot install removes `kastctl` only
+when its install receipt proves that Kast owns the exact projection.
+
 Start with the [first compiler-backed task](https://kast.michne.com/tutorials/first-compiler-backed-task/),
 follow the [installation guide](https://kast.michne.com/how-to/install-or-update/),
 or use the [CLI reference](https://kast.michne.com/reference/cli/).

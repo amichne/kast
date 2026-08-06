@@ -12,6 +12,8 @@ pub struct KastInstallManifest {
     #[serde(default = "default_profile")]
     pub profile: String,
     #[serde(default)]
+    pub setup_profile: SetupProfile,
+    #[serde(default)]
     pub active_version: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub previous_version: Option<String>,
@@ -39,10 +41,51 @@ pub struct KastInstallManifest {
     pub managed_paths: Vec<String>,
     #[serde(default)]
     pub owned_paths: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub path_projections: Vec<PathProjectionReceipt>,
     #[serde(default)]
     pub shell_rc_patches: Vec<Value>,
     #[serde(default = "schema_version")]
     pub schema_version: u32,
+}
+
+#[derive(
+    Debug,
+    Serialize,
+    Deserialize,
+    Clone,
+    Copy,
+    Default,
+    PartialEq,
+    Eq,
+    clap::ValueEnum,
+)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum SetupProfile {
+    #[default]
+    Standard,
+    Development,
+}
+
+impl SetupProfile {
+    pub(crate) fn projects_control_command(self) -> bool {
+        self == Self::Development
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PathProjectionCommand {
+    Kast,
+    Kastctl,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct PathProjectionReceipt {
+    pub command: PathProjectionCommand,
+    pub path: String,
+    pub target: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

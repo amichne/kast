@@ -200,10 +200,14 @@ install_agent_harnesses() {
 }
 
 finish_install() {
+  local setup_profile="${1:-standard}"
   local bin_dir="${HOME}/.local/bin"
   local install_root="${KAST_HOME:-${HOME}/.local/share/kast}/current/bin"
   ui_success "Kast is ready"
   ui_detail "${bin_dir}/kast -> ${install_root}/kast"
+  if [[ "$setup_profile" == development ]]; then
+    ui_detail "${bin_dir}/kastctl -> ${KAST_HOME:-${HOME}/.local/share/kast}/current/libexec/kastctl"
+  fi
   if [[ ":${PATH:-}:" != *":${bin_dir}:"* ]]; then
     ui_warning "${bin_dir} is not on PATH"
     ui_detail 'export PATH="$HOME/.local/bin:$PATH"'
@@ -287,7 +291,7 @@ main() {
     (cd -- "$repository_root" && run_quiet "$active_agent" up) \
       || die "repository database did not become ready"
     ui_success "Repository database ready"
-    finish_install
+    finish_install development
     return 0
   fi
 
@@ -328,7 +332,7 @@ main() {
   run_quiet "${setup_args[@]}" || die "Kast setup failed"
   ui_success "Kast installed"
   install_agent_harnesses "${selected_harnesses[@]}"
-  finish_install
+  finish_install standard
 }
 
 main "$@"

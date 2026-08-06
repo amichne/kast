@@ -44,6 +44,7 @@ expected_workflow_jobs="$(printf '%s\n' \
   build-setup-bundles \
   bump-version \
   prepare-release \
+  prepare-real-repository-indexing \
   publish-agent-resources \
   publish-maven-central \
   publish-openapi-spec \
@@ -150,8 +151,8 @@ require "$setup_publisher" 'setup-bundle-provenance-${{ inputs.platform }}-${{ g
 
 require "$release" 'name: setup-bundle-linux-x64-${{ github.run_id }}' \
   "repository indexing must consume the canonical Linux setup bundle"
-require "$release" "-name 'kast-linux-x64-*.tar.gz'" \
-  "repository indexing must locate the canonical Linux setup asset"
+require "$release" 'candidate_asset="kast-linux-x64-${candidate_tag}.tar.gz"' \
+  "repository indexing must select the exact candidate Linux setup asset"
 require "$release" 'scripts/release/benchmark-real-repositories.sh' \
   "release must retain real-repository indexing proof"
 
@@ -165,8 +166,40 @@ workflow_job() {
 }
 
 real_repository_contract="$(workflow_job real-repository-indexing)"
-[[ "$real_repository_contract" == *'if: ${{ false }}'* ]] \
-  || die "real-repository release indexing must stay disabled until it is restored deliberately"
+comparison_bundle_contract="$(workflow_job prepare-real-repository-indexing)"
+for comparison_bundle_evidence in \
+  'gh api --paginate --slurp' \
+  'repos/$GITHUB_REPOSITORY/releases?per_page=100' \
+  'scripts/verify-ci-artifact-ledger.py verify' \
+  '--ledger candidate-bundle/provenance/build-ledger-setup-linux-x64.json' \
+  '--git-sha "$GITHUB_SHA"' \
+  '--require-kind release-setup-linux-x64' \
+  '--artifact "release-setup-linux-x64=${candidate_bundle}"' \
+  'name: real-repository-comparison-bundles-${{ github.run_id }}' \
+  'stable_tag: ${{ steps.comparison-bundles.outputs.stable_tag }}' \
+  'stable_digest: ${{ steps.comparison-bundles.outputs.stable_digest }}' \
+  'candidate_digest: ${{ steps.comparison-bundles.outputs.candidate_digest }}'; do
+  [[ "$comparison_bundle_contract" == *"$comparison_bundle_evidence"* ]] \
+    || die "comparison bundle preparation is missing: ${comparison_bundle_evidence}"
+done
+[[ "$comparison_bundle_contract" != *'gh release list'* ]] \
+  || die "latest stable resolution must drain the paginated releases API"
+[[ "$(grep -Fc 'repos/$GITHUB_REPOSITORY/releases?per_page=100' "$release")" == 1 ]] \
+  || die "latest stable release must be resolved exactly once"
+
+[[ "$real_repository_contract" != *'if: ${{ false }}'* ]] \
+  || die "real-repository release indexing must be enabled"
+for benchmark_evidence in \
+  '- prepare-real-repository-indexing' \
+  'name: real-repository-comparison-bundles-${{ github.run_id }}' \
+  '--stable-bundle "$stable_bundle"' \
+  '--candidate-bundle "$candidate_bundle"' \
+  '--evidence-output "$evidence_output"' \
+  'name: real-repository-indexing-${{ matrix.name }}-${{ github.run_id }}' \
+  'timeout-minutes: 110'; do
+  [[ "$real_repository_contract" == *"$benchmark_evidence"* ]] \
+    || die "real-repository release indexing is missing: ${benchmark_evidence}"
+done
 
 for publication_job in \
   publish-maven-central \
@@ -180,8 +213,10 @@ for publication_job in \
     [[ "$publication_contract" == *"needs.$artifact_build.result == 'success'"* ]] \
       || die "${publication_job} must reject a failed $artifact_build"
   done
-  [[ "$publication_contract" != *'real-repository-indexing'* ]] \
-    || die "${publication_job} must not wait for disabled real-repository indexing"
+  [[ "$publication_contract" == *'- real-repository-indexing'* ]] \
+    || die "${publication_job} must wait for real-repository indexing"
+  [[ "$publication_contract" == *"needs.real-repository-indexing.result == 'success'"* ]] \
+    || die "${publication_job} must reject failed real-repository indexing"
 done
 
 quarantine_contract="$(workflow_job quarantine-failed-release-artifacts)"
@@ -190,7 +225,9 @@ for producer_job in \
   build-cli \
   build-agent-resources \
   build-indexer \
-  build-setup-bundles; do
+  build-setup-bundles \
+  prepare-real-repository-indexing \
+  real-repository-indexing; do
   [[ "$quarantine_contract" == *"- $producer_job"* ]] \
     || die "failed-artifact quarantine must wait for $producer_job"
 done
@@ -200,8 +237,11 @@ for quarantine_evidence in \
   "needs.build-agent-resources.result != 'success'" \
   "needs.build-indexer.result != 'success'" \
   "needs.build-setup-bundles.result != 'success'" \
+  "needs.prepare-real-repository-indexing.result != 'success'" \
+  "needs.real-repository-indexing.result != 'success'" \
   'actions: write' \
   'actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100' \
+  'startswith("real-repository-indexing-") | not' \
   "mapfile -t artifact_ids" \
   'actions/artifacts/$artifact_id'; do
   [[ "$quarantine_contract" == *"$quarantine_evidence"* ]] \
@@ -219,6 +259,33 @@ require "$release" 'provenance-openapi' \
   "combined provenance must include OpenAPI"
 require "$release" 'provenance-setup' \
   "combined provenance must include setup bundles"
+metadata_contract="$(workflow_job build-release-metadata)"
+for metadata_dependency in \
+  prepare-real-repository-indexing \
+  real-repository-indexing; do
+  [[ "$metadata_contract" == *"- $metadata_dependency"* ]] \
+    || die "release metadata must wait for $metadata_dependency"
+  [[ "$metadata_contract" == *"needs.$metadata_dependency.result == 'success'"* ]] \
+    || die "release metadata must reject failed $metadata_dependency"
+done
+for comparative_release_evidence in \
+  '- real-repository-indexing' \
+  'pattern: real-repository-indexing-*-${{ github.run_id }}' \
+  'name: Aggregate comparative indexing evidence' \
+  '.github/scripts/release/aggregate-indexing-benchmark-evidence.py aggregate-release' \
+  'kast-real-repository-indexing-${tag}.json' \
+  'comparativePerformance' \
+  'needs.prepare-real-repository-indexing.outputs.stable_tag' \
+  'needs.prepare-real-repository-indexing.outputs.stable_digest' \
+  'needs.prepare-real-repository-indexing.outputs.candidate_digest' \
+  'sha256sum "$performance_asset"' \
+  '--pattern "$performance_asset"' \
+  'sha256sum -c -' \
+  'dist/kast-real-repository-indexing-${{ needs.prepare-release.outputs.release_tag }}.json' \
+  '.github/scripts/release/upload-immutable-release-asset.sh'; do
+  require "$release" "$comparative_release_evidence" \
+    "release metadata must carry comparative indexing evidence: ${comparative_release_evidence}"
+done
 reject "$release" 'provenance-cli' \
   "combined provenance must not claim unpublished CLI assets"
 require "$release" 'name: release-metadata-${{ github.run_id }}' \
@@ -267,7 +334,9 @@ expected_tasks = {
     "publish-agent-resources",
     "build-indexer",
     "build-setup-bundles",
+    "prepare-real-repository-indexing",
     "publish-setup-bundles",
+    "real-repository-indexing",
     "build-release-metadata",
     "publish-release",
     "verify-release-state",
@@ -282,6 +351,7 @@ expected_needs = {
         "build-openapi-spec",
         "build-agent-resources",
         "build-setup-bundles",
+        "real-repository-indexing",
     },
     "build-openapi-spec": {"prepare-release"},
     "publish-openapi-spec": {
@@ -289,6 +359,7 @@ expected_needs = {
         "build-openapi-spec",
         "build-agent-resources",
         "build-setup-bundles",
+        "real-repository-indexing",
     },
     "build-cli": {"prepare-release"},
     "build-agent-resources": {"prepare-release"},
@@ -297,20 +368,26 @@ expected_needs = {
         "build-openapi-spec",
         "build-agent-resources",
         "build-setup-bundles",
+        "real-repository-indexing",
     },
     "build-indexer": {"prepare-release"},
     "build-setup-bundles": {"prepare-release", "build-cli", "build-indexer"},
+    "prepare-real-repository-indexing": {"prepare-release", "build-setup-bundles"},
     "publish-setup-bundles": {
         "prepare-release",
         "build-openapi-spec",
         "build-agent-resources",
         "build-setup-bundles",
+        "real-repository-indexing",
     },
+    "real-repository-indexing": {"prepare-release", "prepare-real-repository-indexing"},
     "build-release-metadata": {
         "prepare-release",
         "publish-openapi-spec",
         "publish-agent-resources",
         "publish-setup-bundles",
+        "prepare-real-repository-indexing",
+        "real-repository-indexing",
     },
     "publish-release": {"prepare-release", "build-release-metadata"},
     "verify-release-state": {"prepare-release", "publish-release"},
