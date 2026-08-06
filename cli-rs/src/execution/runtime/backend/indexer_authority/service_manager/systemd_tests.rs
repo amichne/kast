@@ -55,9 +55,11 @@ fn output(success: bool) -> std::process::Output {
     std::process::Output {
         status: std::process::ExitStatus::from_raw(if success { 0 } else { 256 }),
         stdout: vec![],
-        stderr: (!success)
-            .then(|| b"injected failure".to_vec())
-            .unwrap_or_default(),
+        stderr: if success {
+            Vec::new()
+        } else {
+            b"injected failure".to_vec()
+        },
     }
 }
 

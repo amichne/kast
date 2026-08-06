@@ -60,7 +60,7 @@ pub(super) fn signal_process(expected: &ManagedProcessIdentity, force: bool) -> 
     let signal = if force { libc::SIGKILL } else { libc::SIGTERM };
     #[cfg(target_os = "linux")]
     {
-        return signal_linux_process(expected, signal);
+        signal_linux_process(expected, signal)
     }
     #[cfg(not(target_os = "linux"))]
     if unsafe { libc::kill(pid as libc::pid_t, signal) } == 0 {
