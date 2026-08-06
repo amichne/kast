@@ -44,16 +44,20 @@ if not any("test" in target.get("kind", []) for target in targets):
 PY
 
 [[ -f "$nextest_config" ]] || die "missing nextest repository configuration"
-for profile_name in default ci; do
-  awk -v target="[profile.${profile_name}]" '
-    $0 == target { in_target = 1; next }
-    /^\[/ && in_target { exit }
-    in_target && $0 ~ /^[[:space:]]*test-threads[[:space:]]*=[[:space:]]*4[[:space:]]*$/ {
-      found = 1
-    }
-    END { exit found ? 0 : 1 }
-  ' "$nextest_config" \
-    || die "nextest profile ${profile_name} must bound concurrent tests at 4"
+if grep -Eq '^[[:space:]]*test-threads[[:space:]]*=' "$nextest_config"; then
+  die "nextest must not throttle the complete Rust suite with a global test-thread limit"
+fi
+for nextest_fragment in \
+  '[test-groups]' \
+  'public-operations = { max-threads = 4 }' \
+  'setup-smoke = { max-threads = 1 }' \
+  '[[profile.default.overrides]]' \
+  "filter = 'binary(=kast_public_operations)'" \
+  "test-group = 'public-operations'" \
+  "filter = 'binary(=setup_smoke)'" \
+  "test-group = 'setup-smoke'"; do
+  grep -Fq -- "$nextest_fragment" "$nextest_config" \
+    || die "nextest process-heavy concurrency contract is missing: ${nextest_fragment}"
 done
 grep -Fq '[profile.default]' "$nextest_config" \
   || die "nextest must define a local default profile"
