@@ -1,4 +1,48 @@
 #[test]
+fn install_bundle_fixture_uses_bounded_executable_cli_entrypoints() {
+    const MAX_FIXTURE_CLI_BYTES: u64 = 4 * 1024;
+
+    let temp = tempfile::tempdir().expect("tempdir");
+    let source = write_install_bundle_source(temp.path(), "v9.8.7");
+    let control = source.join("libexec/kastctl");
+    let agent = source.join("bin/kast");
+
+    assert_eq!(
+        std::fs::read(&control).expect("control fixture bytes"),
+        std::fs::read(&agent).expect("agent fixture bytes"),
+        "fixture entrypoints must preserve the production byte-identity contract",
+    );
+    for entrypoint in [&control, &agent] {
+        let size = std::fs::metadata(entrypoint)
+            .expect("fixture entrypoint metadata")
+            .len();
+        assert!(
+            size <= MAX_FIXTURE_CLI_BYTES,
+            "fixture entrypoint {} is {size} bytes; expected at most {MAX_FIXTURE_CLI_BYTES}",
+            entrypoint.display(),
+        );
+        let help = std::process::Command::new(entrypoint)
+            .arg("--help")
+            .output()
+            .expect("run fixture entrypoint help");
+        assert!(
+            help.status.success(),
+            "fixture entrypoint help failed: stdout={}, stderr={}",
+            String::from_utf8_lossy(&help.stdout),
+            String::from_utf8_lossy(&help.stderr),
+        );
+    }
+    let control_help = std::process::Command::new(&control)
+        .arg("--help")
+        .output()
+        .expect("run control fixture help");
+    assert!(
+        String::from_utf8_lossy(&control_help.stdout).contains("ready"),
+        "control fixture must preserve argv[0]-selected administrative commands",
+    );
+}
+
+#[test]
 fn setup_replaces_incompatible_legacy_bundle_activation() {
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");

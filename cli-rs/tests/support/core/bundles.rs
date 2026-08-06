@@ -49,11 +49,8 @@ pub(crate) fn write_cli_archive(root: &Path) -> PathBuf {
     std::fs::create_dir_all(&staging).expect("cli staging");
     let control_cli = staging.join("kastctl");
     let agent_cli = staging.join("kast");
-    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &control_cli)
-        .expect("copy test kastctl binary");
-    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &agent_cli).expect("copy test kast binary");
-    set_executable_for_test(&control_cli);
-    set_executable_for_test(&agent_cli);
+    write_delegating_cli_fixture(&control_cli);
+    write_delegating_cli_fixture(&agent_cli);
     let status = Command::new("zip")
         .args([
             "-qr",
@@ -67,6 +64,17 @@ pub(crate) fn write_cli_archive(root: &Path) -> PathBuf {
     assert!(status.success(), "zip command should create CLI fixture");
     assert!(archive.is_file(), "CLI archive fixture");
     archive
+}
+
+fn write_delegating_cli_fixture(path: &Path) {
+    let executable = env!("CARGO_BIN_EXE_kast");
+    let shell_quoted_executable = format!("'{}'", executable.replace('\'', "'\"'\"'"));
+    std::fs::write(
+        path,
+        format!("#!/usr/bin/env bash\nexec -a \"$0\" {shell_quoted_executable} \"$@\"\n"),
+    )
+    .expect("write delegating CLI fixture");
+    set_executable_for_test(path);
 }
 
 pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf {
@@ -83,9 +91,8 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
 
     let bundled_control = bundle.join("libexec/kastctl");
     let bundled_kast = bundle.join("bin/kast");
-    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &bundled_control)
-        .expect("copy test kastctl binary");
-    std::fs::copy(env!("CARGO_BIN_EXE_kast"), &bundled_kast).expect("copy test kast binary");
+    write_delegating_cli_fixture(&bundled_control);
+    write_delegating_cli_fixture(&bundled_kast);
     std::fs::write(backend_dir.join("kast-indexer"), "#!/bin/sh\n").expect("launcher");
     std::fs::write(
         backend_dir.join("runtime-libs/classpath.txt"),
@@ -100,8 +107,6 @@ pub(crate) fn write_install_bundle_source(root: &Path, version: &str) -> PathBuf
     )
     .expect("module descriptors");
     std::fs::write(bundle.join("install.sh"), "#!/usr/bin/env bash\n").expect("bootstrap script");
-    set_executable_for_test(&bundled_control);
-    set_executable_for_test(&bundled_kast);
     set_executable_for_test(&backend_dir.join("kast-indexer"));
     set_executable_for_test(&bundle.join("install.sh"));
 
