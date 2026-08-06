@@ -107,6 +107,13 @@ pub(super) enum ClaimedProcessObservation {
     Reused(ObservedProcess),
 }
 
+#[derive(Debug, Clone)]
+pub(super) enum DescriptorProcessObservation {
+    Gone,
+    Exact(ObservedProcess),
+    Reused,
+}
+
 pub(super) fn observe_claimed_process(
     expected: &ManagedProcessIdentity,
 ) -> Result<ClaimedProcessObservation> {
@@ -116,6 +123,28 @@ pub(super) fn observe_claimed_process(
             Ok(ClaimedProcessObservation::Exact(process))
         }
         Some(process) => Ok(ClaimedProcessObservation::Reused(process)),
+    }
+}
+
+pub(super) fn observe_descriptor_process(
+    descriptor: &ServerInstanceDescriptor,
+) -> Result<DescriptorProcessObservation> {
+    let Some(process) = observe_process(descriptor.pid)? else {
+        return Ok(DescriptorProcessObservation::Gone);
+    };
+    let owner_uid = descriptor.owner_uid.ok_or_else(|| {
+        ownership_error("Runtime descriptor has no operating-system owner identity.")
+    })?;
+    let start_epoch_millis = descriptor
+        .process_start_epoch_millis
+        .ok_or_else(|| ownership_error("Runtime descriptor has no process-start identity."))?;
+    if descriptor.pid == process.identity.pid
+        && owner_uid == process.identity.owner_uid
+        && start_epoch_millis / 1_000 == process.identity.start_epoch_millis / 1_000
+    {
+        Ok(DescriptorProcessObservation::Exact(process))
+    } else {
+        Ok(DescriptorProcessObservation::Reused)
     }
 }
 

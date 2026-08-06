@@ -211,31 +211,35 @@ fn observe_legacy_runtime(
     descriptor: RegisteredDescriptor,
     root: &Path,
 ) -> Result<LegacyRuntimeObservation> {
-    let process = observe_process(descriptor.descriptor.pid)?;
+    let process = observe_descriptor_process(&descriptor.descriptor)?;
     let socket = socket_for_descriptor(&descriptor.descriptor)?;
     if matches!(socket, SocketObservation::PresentUnproven { .. }) {
         return Err(ownership_error(
             "Legacy runtime socket ownership is not proven by its descriptor.",
         ));
     }
-    let Some(process) = process else {
-        let owner_uid = descriptor.descriptor.owner_uid.ok_or_else(|| {
-            ownership_error("Dead legacy descriptor has no operating-system owner identity.")
-        })?;
-        return Ok(LegacyRuntimeObservation::Dead(DeadLegacyRuntime {
-            descriptor,
-            socket,
-            owner_uid,
-        }));
-    };
-    validate_descriptor_process(&descriptor.descriptor, &process)?;
-    Ok(LegacyRuntimeObservation::Live(LegacyOwnedRuntime {
-        workspace_root: root.to_path_buf(),
-        process,
-        descriptor,
-        socket,
-        proven_dead: ProvenDeadRuntimeOwnership::default(),
-    }))
+    match process {
+        DescriptorProcessObservation::Gone | DescriptorProcessObservation::Reused => {
+            let owner_uid = descriptor.descriptor.owner_uid.ok_or_else(|| {
+                ownership_error("Dead legacy descriptor has no operating-system owner identity.")
+            })?;
+            Ok(LegacyRuntimeObservation::Dead(DeadLegacyRuntime {
+                descriptor,
+                socket,
+                owner_uid,
+            }))
+        }
+        DescriptorProcessObservation::Exact(process) => {
+            validate_descriptor_process(&descriptor.descriptor, &process)?;
+            Ok(LegacyRuntimeObservation::Live(LegacyOwnedRuntime {
+                workspace_root: root.to_path_buf(),
+                process,
+                descriptor,
+                socket,
+                proven_dead: ProvenDeadRuntimeOwnership::default(),
+            }))
+        }
+    }
 }
 
 fn validate_descriptor_process(

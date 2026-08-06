@@ -87,10 +87,14 @@ pub(super) fn cleanup_dead_legacy(config: &KastConfig, dead: &DeadLegacyRuntime)
             "Dead legacy descriptor changed before cleanup.",
         ));
     }
-    if observe_process(dead.descriptor.descriptor.pid)?.is_some() {
-        return Err(ownership_changed(
-            "Dead legacy descriptor PID became live before cleanup.",
-        ));
+    match super::ownership::observe_descriptor_process(&dead.descriptor.descriptor)? {
+        super::ownership::DescriptorProcessObservation::Gone
+        | super::ownership::DescriptorProcessObservation::Reused => {}
+        super::ownership::DescriptorProcessObservation::Exact(_) => {
+            return Err(ownership_changed(
+                "The exact legacy runtime process became live before cleanup.",
+            ));
+        }
     }
     if dead.owner_uid != u64::from(unsafe { libc::geteuid() }) {
         return Err(ownership_changed(
@@ -135,31 +139,18 @@ fn ensure_registered_process_is_dead(
             }
         }
     }
-    if let Some(descriptor) = descriptor
-        && let Some(process) = observe_process(descriptor.descriptor.pid)?
-        && !descriptor_proves_pid_reuse(&descriptor.descriptor, &process)
-    {
-        return Err(ownership_changed(
-            "Registered descriptor process became live before cleanup.",
-        ));
+    if let Some(descriptor) = descriptor {
+        match super::ownership::observe_descriptor_process(&descriptor.descriptor)? {
+            super::ownership::DescriptorProcessObservation::Gone
+            | super::ownership::DescriptorProcessObservation::Reused => {}
+            super::ownership::DescriptorProcessObservation::Exact(_) => {
+                return Err(ownership_changed(
+                    "Registered descriptor process became live before cleanup.",
+                ));
+            }
+        }
     }
     Ok(())
-}
-
-fn descriptor_proves_pid_reuse(
-    descriptor: &ServerInstanceDescriptor,
-    process: &super::process::ObservedProcess,
-) -> bool {
-    match (
-        descriptor.owner_uid,
-        descriptor.process_start_epoch_millis,
-    ) {
-        (Some(owner_uid), Some(start_epoch_millis)) => {
-            owner_uid != process.identity.owner_uid
-                || start_epoch_millis / 1_000 != process.identity.start_epoch_millis / 1_000
-        }
-        _ => false,
-    }
 }
 
 fn verify_descriptor_snapshot(
