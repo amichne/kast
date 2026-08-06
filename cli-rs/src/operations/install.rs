@@ -24,7 +24,7 @@ include!("install/force_reset.rs");
 include!("install/bundle_entrypoint.rs");
 include!("install/bundle_source.rs");
 include!("install/bundle_validation.rs");
-include!("install/bundle_activation.rs");
+include!("install/bundle_entrypoint/bundle_activation.rs");
 include!("install/bundle_install.rs");
 include!("install/bundle_helpers.rs");
 include!("install/agent_resources.rs");
