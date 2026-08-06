@@ -44,6 +44,21 @@ if not any("test" in target.get("kind", []) for target in targets):
 PY
 
 [[ -f "$nextest_config" ]] || die "missing nextest repository configuration"
+python3 - "$nextest_config" <<'PY'
+import sys
+import tomllib
+from pathlib import Path
+
+document = tomllib.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+profiles = document.get("profile", {})
+for profile_name in ("default", "ci"):
+    test_threads = profiles.get(profile_name, {}).get("test-threads")
+    if test_threads != 4:
+        raise SystemExit(
+            f"nextest profile {profile_name!r} must bound concurrent tests at 4; "
+            f"found {test_threads!r}"
+        )
+PY
 grep -Fq '[profile.default]' "$nextest_config" \
   || die "nextest must define a local default profile"
 grep -Fq '[profile.ci]' "$nextest_config" \
