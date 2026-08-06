@@ -334,7 +334,7 @@ fn doctor_rejects_drifted_user_command() {
     std::os::unix::fs::symlink("/bin/sh", &user_command).expect("retarget user command");
 
     let doctor = kast_at(
-        &kast_home.join("current/bin/kast"),
+        &kast_home.join("current/libexec/kastctl"),
         &home,
         &kast_home.join("unused-config"),
     )
