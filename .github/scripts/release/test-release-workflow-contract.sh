@@ -272,7 +272,7 @@ for comparative_release_evidence in \
   '- real-repository-indexing' \
   'pattern: real-repository-indexing-*-${{ github.run_id }}' \
   'name: Aggregate comparative indexing evidence' \
-  '.github/scripts/release/aggregate-indexing-benchmark-evidence.py aggregate-release' \
+  '.github/scripts/release/benchmark/aggregate-indexing-benchmark-evidence.py aggregate-release' \
   'kast-real-repository-indexing-${tag}.json' \
   'comparativePerformance' \
   'needs.prepare-real-repository-indexing.outputs.stable_tag' \

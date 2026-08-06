@@ -7,8 +7,8 @@ else
   readonly BENCHMARK_SCRIPT_SOURCED=false
 fi
 benchmark_repository_root="$(cd -- "${BASH_SOURCE[0]%/*}/../.." && pwd)"
-readonly BENCHMARK_COMMAND_SUPERVISOR="$benchmark_repository_root/.github/scripts/release/benchmark-command-supervisor.py"
-readonly BENCHMARK_EVIDENCE_AGGREGATOR="$benchmark_repository_root/.github/scripts/release/aggregate-indexing-benchmark-evidence.py"
+readonly BENCHMARK_COMMAND_SUPERVISOR="$benchmark_repository_root/.github/scripts/release/benchmark/benchmark-command-supervisor.py"
+readonly BENCHMARK_EVIDENCE_AGGREGATOR="$benchmark_repository_root/.github/scripts/release/benchmark/aggregate-indexing-benchmark-evidence.py"
 BENCHMARK_PYTHON_BIN="$(command -v python3)"
 readonly BENCHMARK_PYTHON_BIN
 

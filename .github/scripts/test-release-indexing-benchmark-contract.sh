@@ -18,8 +18,8 @@ reject() {
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 benchmark="$repo_root/scripts/release/benchmark-real-repositories.sh"
-supervisor="$repo_root/.github/scripts/release/benchmark-command-supervisor.py"
-aggregator="$repo_root/.github/scripts/release/aggregate-indexing-benchmark-evidence.py"
+supervisor="$repo_root/.github/scripts/release/benchmark/benchmark-command-supervisor.py"
+aggregator="$repo_root/.github/scripts/release/benchmark/aggregate-indexing-benchmark-evidence.py"
 release="$repo_root/.github/workflows/release.yml"
 cli_root="$repo_root/cli-rs/src/interface/cli/root.rs"
 cli_config="$repo_root/cli-rs/src/interface/cli/workspace/config.rs"
@@ -134,7 +134,7 @@ reject "$release" "if: \${{ false }}" \
   'real-repository release indexing must be enabled'
 require "$release" 'needs.real-repository-indexing.result' \
   'release publication must require repository indexing'
-require "$release" '.github/scripts/release/aggregate-indexing-benchmark-evidence.py aggregate-release' \
+require "$release" '.github/scripts/release/benchmark/aggregate-indexing-benchmark-evidence.py aggregate-release' \
   'release aggregation must use the executable strict nested-evidence validator'
 
 require "$benchmark" 'readonly COLD_INDEX_LIMIT_MILLIS=2700000' \
