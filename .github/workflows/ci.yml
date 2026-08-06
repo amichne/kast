@@ -221,12 +221,32 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install nextest
+        uses: taiki-e/install-action@cb33e69fad06166ca28a42b2575e4dadabf62ee8 # v2.85.8
+        with:
+          tool: nextest
+          fallback: none
+
+      - name: Install cargo-deny
+        uses: taiki-e/install-action@cb33e69fad06166ca28a42b2575e4dadabf62ee8 # v2.85.8
+        with:
+          tool: cargo-deny
+          fallback: none
+
       - name: Cache Rust validation builds
         uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2.9.1
         with:
           workspaces: cli-rs -> target
           shared-key: rust-cli-validation
           cache-bin: "false"
+
+      - name: Test Rust agent tooling contract
+        shell: bash
+        run: ./.github/scripts/ci/test-rust-agent-tooling-contract.sh
+
+      - name: Check Rust dependency policy
+        working-directory: cli-rs
+        run: cargo deny --locked --all-features --config .config/deny.toml check
 
       - name: Check Rust formatting
         working-directory: cli-rs
@@ -236,9 +256,18 @@ jobs:
         working-directory: cli-rs
         run: cargo clippy --locked --all-targets --all-features -- -D warnings
 
-      - name: Test Rust CLI
+      - name: Test Rust CLI with slow-test reporting
         working-directory: cli-rs
-        run: cargo test --locked --all-targets --all-features
+        run: cargo nextest run --locked --all-targets --all-features --profile ci
+
+      - name: Upload Rust test report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: rust-cli-nextest-junit
+          path: cli-rs/target/nextest/ci/junit.xml
+          if-no-files-found: warn
+          retention-days: 3
 
   source-bound-cli:
     name: Source-bound release CLI
