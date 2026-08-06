@@ -1,9 +1,11 @@
 [profile.default]
+test-threads = 4
 slow-timeout = "15s"
 retries = 0
 
 [profile.ci]
 fail-fast = false
+test-threads = 4
 slow-timeout = "15s"
 retries = 0
 
