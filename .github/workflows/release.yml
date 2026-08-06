@@ -1190,7 +1190,7 @@ jobs:
           set -euo pipefail
           performance_asset="dist/kast-real-repository-indexing-${RELEASE_TAG}.json"
           mkdir -p dist
-          .github/scripts/release/aggregate-indexing-benchmark-evidence.py aggregate-release \
+          .github/scripts/release/benchmark/aggregate-indexing-benchmark-evidence.py aggregate-release \
             --evidence-root comparative-indexing \
             --output "$performance_asset" \
             --release-tag "$RELEASE_TAG" \

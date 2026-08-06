@@ -5,7 +5,7 @@
     "description": "Release topology for one retained indexer, four canonical setup bundles, one verified stable-versus-candidate bundle identity, and a required same-worker real-repository gate whose aggregate evidence is published with the release. Timing claims remain in benchmark evidence.",
     "observedAt": "2026-08-05",
     "source": ".github/workflows/release.yml",
-    "sourceSha256": "3bb88e41ad9e5ae4a812548f8ab784db5ae73aae02adc4ac38beda1452f28d14"
+    "sourceSha256": "faf6fb0679e877bfc97144fb71144575792d7dc1c76de28d0f6615a56e5168ea"
   },
   "tasks": [
     {
