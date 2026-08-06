@@ -277,3 +277,89 @@ fn control_create_rollback_preserves_a_replacement_after_identity_validation() {
     );
     assert!(kast_home.join("path-projection-transaction.json").is_file());
 }
+
+#[test]
+fn agent_create_does_not_adopt_or_remove_a_replacement_before_identity_capture() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let source = write_install_bundle_source(temp.path(), "v9.8.7");
+    let agent = home.join(".local/bin/kast");
+    let barrier = temp.path().join("agent-create-identity-barrier");
+    let mut child = setup_command(&home, &kast_home, &source)
+        .env("KAST_TEST_ALLOW_SETUP_FAULT_INJECTION", "1")
+        .env("KAST_TEST_SETUP_PATH_PROJECTION_BARRIER", &barrier)
+        .env(
+            "KAST_TEST_SETUP_PATH_PROJECTION_BARRIER_STAGE",
+            "before-projection-identity-capture",
+        )
+        .env(
+            "KAST_TEST_SETUP_PATH_PROJECTION_BARRIER_PATH",
+            &agent,
+        )
+        .spawn()
+        .expect("spawn setup at agent identity barrier");
+    wait_for_setup_barrier(
+        &mut child,
+        &barrier,
+        "before-projection-identity-capture",
+    );
+    if std::fs::symlink_metadata(&agent).is_ok() {
+        std::fs::remove_file(&agent).expect("replace provisional agent projection");
+    }
+    std::fs::write(&agent, "operator agent\n").expect("operator agent replacement");
+    release_setup_barrier(&barrier, "before-projection-identity-capture");
+
+    let output = child.wait_with_output().expect("setup output");
+
+    assert!(
+        !output.status.success(),
+        "setup must not adopt an operator replacement: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert_eq!(
+        std::fs::read_to_string(agent).expect("preserved operator agent"),
+        "operator agent\n",
+    );
+}
+
+#[test]
+fn agent_create_preserves_a_replacement_after_publication_before_validation() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let source = write_install_bundle_source(temp.path(), "v9.8.7");
+    let agent = home.join(".local/bin/kast");
+    let observed_projection = temp.path().join("observed-agent-projection");
+    let barrier = temp.path().join("agent-post-publication-barrier");
+    let mut child = setup_command(&home, &kast_home, &source)
+        .env("KAST_TEST_ALLOW_SETUP_FAULT_INJECTION", "1")
+        .env("KAST_TEST_SETUP_PATH_PROJECTION_BARRIER", &barrier)
+        .env(
+            "KAST_TEST_SETUP_PATH_PROJECTION_BARRIER_STAGE",
+            "after-agent-create-publication-before-validation",
+        )
+        .spawn()
+        .expect("setup at agent post-publication barrier");
+    wait_for_setup_barrier(
+        &mut child,
+        &barrier,
+        "after-agent-create-publication-before-validation",
+    );
+    std::fs::rename(&agent, &observed_projection).expect("observe published projection");
+    std::fs::write(&agent, "operator agent\n").expect("operator replacement");
+    release_setup_barrier(
+        &barrier,
+        "after-agent-create-publication-before-validation",
+    );
+
+    let output = child.wait_with_output().expect("setup output");
+
+    assert!(!output.status.success(), "changed publication must fail setup");
+    assert_eq!(
+        std::fs::read_to_string(agent).expect("operator replacement at public path"),
+        "operator agent\n",
+    );
+    assert!(observed_projection.is_symlink());
+}

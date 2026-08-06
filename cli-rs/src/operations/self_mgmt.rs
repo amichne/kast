@@ -134,10 +134,11 @@ pub fn doctor(target: ReadyTarget, workspace_root: Option<&Path>) -> Result<Self
         let local_bin = manifest::home_dir().join(".local/bin");
         let user_command = local_bin.join("kast");
         let expected = install_root.join("current/bin/kast");
-        if install
-            .owned_paths
-            .iter()
-            .any(|path| Path::new(path) == user_command)
+        if target != ReadyTarget::Release
+            && install
+                .owned_paths
+                .iter()
+                .any(|path| Path::new(path) == user_command)
             && !same_binary_path(&user_command, &expected)
         {
             issues.push(format!(

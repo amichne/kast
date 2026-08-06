@@ -83,6 +83,7 @@ struct IdentityTransactionalMove<'a> {
     expected_identity: ProjectionFileIdentity,
     label: &'static str,
     after_validation_barrier: Option<&'static str>,
+    after_publication_barrier: Option<&'static str>,
 }
 
 impl<'a> IdentityTransactionalMove<'a> {
@@ -98,6 +99,7 @@ impl<'a> IdentityTransactionalMove<'a> {
             expected_identity,
             label,
             after_validation_barrier: None,
+            after_publication_barrier: None,
         }
     }
 
@@ -106,32 +108,31 @@ impl<'a> IdentityTransactionalMove<'a> {
         self
     }
 
+    fn with_after_publication_barrier(mut self, stage: &'static str) -> Self {
+        self.after_publication_barrier = Some(stage);
+        self
+    }
+
     fn execute(self) -> Result<()> {
-        require_identity(self.source, self.expected_identity, self.label)?;
-        require_path_absent(self.destination, "identity-transactional move destination")?;
         require_identity(self.source, self.expected_identity, self.label)?;
         require_path_absent(self.destination, "identity-transactional move destination")?;
         if let Some(stage) = self.after_validation_barrier {
             test_path_projection_barrier(stage)?;
         }
+        require_identity(self.source, self.expected_identity, self.label)?;
+        require_path_absent(self.destination, "identity-transactional move destination")?;
         rename_no_replace(self.source, self.destination)?;
-        if let Err(mut error) = require_identity(
-            self.destination,
-            self.expected_identity,
-            "identity-transactional move result",
-        ) {
-            if let Err(restoration_error) =
-                restore_identity_transactional_move(self.source, self.destination)
-            {
-                error.message = format!(
-                    "{} The moved path could not be restored: {restoration_error}",
-                    error.message,
-                );
-                error.details.insert(
-                    "restorationError".to_string(),
-                    restoration_error.to_string(),
-                );
-            }
+        let result = self
+            .after_publication_barrier
+            .map_or(Ok(()), test_path_projection_barrier)
+            .and_then(|()| {
+                require_identity(
+                    self.destination,
+                    self.expected_identity,
+                    "identity-transactional move result",
+                )
+            });
+        if let Err(mut error) = result {
             error
                 .details
                 .insert("sourcePath".to_string(), self.source.display().to_string());
@@ -270,6 +271,15 @@ fn test_path_projection_barrier(stage: &str) -> Result<()> {
         std::thread::sleep(std::time::Duration::from_millis(10));
     }
     Ok(())
+}
+
+fn test_path_projection_barrier_at(stage: &str, path: &Path) -> Result<()> {
+    if let Some(expected_path) = env::var_os("KAST_TEST_SETUP_PATH_PROJECTION_BARRIER_PATH")
+        && Path::new(&expected_path) != path
+    {
+        return Ok(());
+    }
+    test_path_projection_barrier(stage)
 }
 
 fn test_path_projection_failure(point: &str) -> Result<()> {
