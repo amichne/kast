@@ -14,6 +14,12 @@ pub(crate) struct RuntimeSetupAuthorization {
     pinned_release_roots: BTreeSet<PathBuf>,
 }
 
+#[derive(Debug)]
+struct RuntimeSetupDescriptors {
+    registry_has_entries: bool,
+    indexers: Vec<ServerInstanceDescriptor>,
+}
+
 impl RuntimeSetupAuthorization {
     pub(crate) fn pinned_release_roots(&self) -> &BTreeSet<PathBuf> {
         &self.pinned_release_roots
@@ -43,8 +49,8 @@ pub(crate) fn preflight_runtime_setup(
     intent: RuntimeSetupIntent<'_>,
 ) -> Result<RuntimeSetupAuthorization> {
     let service_roots = registered_service_roots(paths)?;
-    let descriptors = strict_runtime_descriptors(paths)?;
-    let has_runtime_artifact = !service_roots.is_empty() || !descriptors.is_empty();
+    let descriptors = runtime_setup_descriptors(paths)?;
+    let has_runtime_artifact = !service_roots.is_empty() || descriptors.registry_has_entries;
     if intent == RuntimeSetupIntent::ForceReset && has_runtime_artifact {
         return Err(CliError::new(
             "SETUP_RUNTIME_NOT_QUIESCENT",
@@ -55,8 +61,8 @@ pub(crate) fn preflight_runtime_setup(
     let mut roots = service_roots;
     roots.extend(
         descriptors
+            .indexers
             .iter()
-            .filter(|descriptor| descriptor.backend_name == BackendName::Indexer.canonical())
             .map(|descriptor| canonical_setup_root(&descriptor.workspace_root))
             .collect::<Result<BTreeSet<_>>>()?,
     );
@@ -146,17 +152,28 @@ fn registered_service_roots(
     Ok(roots)
 }
 
-fn strict_runtime_descriptors(
+fn runtime_setup_descriptors(
     paths: &crate::manifest::ResolvedKastPaths,
-) -> Result<Vec<ServerInstanceDescriptor>> {
-    super::super::super::read_descriptor_elements(&paths.descriptor_dir.join("daemons.json"))?
+) -> Result<RuntimeSetupDescriptors> {
+    let entries =
+        super::super::super::read_descriptor_elements(&paths.descriptor_dir.join("daemons.json"))?;
+    let registry_has_entries = !entries.is_empty();
+    let indexers = entries
         .into_iter()
+        .filter(|value| {
+            value.get("backendName").and_then(Value::as_str)
+                == Some(BackendName::Indexer.canonical())
+        })
         .map(|value| {
             serde_json::from_value(value).map_err(|error| {
                 setup_preflight_error(&format!("Runtime descriptor is invalid: {error}"))
             })
         })
-        .collect()
+        .collect::<Result<Vec<_>>>()?;
+    Ok(RuntimeSetupDescriptors {
+        registry_has_entries,
+        indexers,
+    })
 }
 
 fn collect_runtime_pins(
