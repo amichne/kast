@@ -1,6 +1,7 @@
 #[path = "../../support/mod.rs"]
 mod support;
 
+include!("setup_process.rs");
 include!("install_and_migration.rs");
 include!("legacy_runtime_fixtures.rs");
 include!("force_reset.rs");

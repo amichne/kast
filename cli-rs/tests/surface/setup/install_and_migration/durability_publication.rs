@@ -1,8 +1,8 @@
 use std::process::Stdio;
 use support::*;
 
-fn setup_command(home: &Path, kast_home: &Path, source: &Path) -> Command {
-    let mut command = kast(home, &kast_home.join("unused-config"));
+fn setup_command(home: &Path, kast_home: &Path, source: &Path) -> SetupCommand {
+    let mut command = SetupCommand::new(kast(home, &kast_home.join("unused-config")));
     command
         .env_remove("KAST_CONFIG_HOME")
         .env("KAST_HOME", kast_home)
@@ -36,7 +36,7 @@ fn setup_with_profile(
         .expect("profiled kast setup")
 }
 
-fn wait_for_setup_barrier(child: &mut std::process::Child, barrier_directory: &Path, stage: &str) {
+fn wait_for_setup_barrier(child: &mut SetupChild, barrier_directory: &Path, stage: &str) {
     let ready = barrier_directory.join(format!("{stage}.ready"));
     for _ in 0..3_000 {
         if ready.is_file() {
