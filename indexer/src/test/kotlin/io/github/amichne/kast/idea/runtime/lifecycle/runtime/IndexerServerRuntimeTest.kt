@@ -8,10 +8,13 @@ import com.intellij.testFramework.junit5.fixture.projectFixture
 import com.intellij.testFramework.junit5.fixture.psiFileFixture
 import com.intellij.testFramework.junit5.fixture.sourceRootFixture
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.RuntimeInstanceId
+import io.github.amichne.kast.api.client.ServerInstanceOwnership
 import io.github.amichne.kast.api.client.fields.GraphIndexingBatchSize
 import io.github.amichne.kast.api.client.fields.PathsDescriptorDir
 import io.github.amichne.kast.api.client.fields.PathsLogsDir
 import io.github.amichne.kast.api.client.fields.PathsSocketDir
+import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.idea.backend.KastIndexerBackend
 import io.github.amichne.kast.indexstore.snapshot.PublishedWorkspaceIdentity
 import io.github.amichne.kast.indexstore.snapshot.WorkspaceGenerationStore
@@ -46,13 +49,14 @@ class IndexerServerRuntimeTest {
     private val targetFileFixture = sourceRootFixture.psiFileFixture("Target.kt", targetSource)
 
     @Test
-    fun `runtime starts analysis server with configured backend name`() = runBlocking {
+    fun `managed runtime descriptor uses its registration identity`() = runBlocking {
         val project = projectFixture.get()
         val sourceFile = targetFileFixture.get()
         waitUntilIndexesAreReady(project)
         val workspaceRoot = Path.of(sourceFile.virtualFile.path).parent.toAbsolutePath().normalize()
         val socketPath = tempDir.resolve("kast-indexer.sock")
         val descriptorDirectory = tempDir.resolve("descriptors")
+        val runtimeInstanceId = RuntimeInstanceId.parse("550e8400-e29b-41d4-a716-446655440000")
         val config = KastConfig.defaults().let { defaults ->
             defaults.copy(
                 indexing = defaults.indexing.copy(
@@ -66,11 +70,13 @@ class IndexerServerRuntimeTest {
             )
         }
 
-        IndexerServerRuntime.start(
+        IndexerServerRuntime.startWithRegistrationProof(
             project = project,
             workspaceRoot = workspaceRoot,
-            socketPath = socketPath,
+            transport = AnalysisTransport.UnixDomainSocket(socketPath),
             config = config,
+            registrationProof = null,
+            runtimeInstanceId = runtimeInstanceId,
         ).use { runtime ->
             assertEquals("indexer", runtime.backend.capabilities().backendName)
             assertEquals("indexer", runtime.backend.runtimeStatus().backendName)
@@ -80,6 +86,8 @@ class IndexerServerRuntimeTest {
             pluginBackend.updateSemanticGraphBatchSize(GraphIndexingBatchSize(9))
             assertEquals(GraphIndexingBatchSize(9), pluginBackend.semanticGraphBatchSize)
             assertEquals(socketPath.toRealPath(), runtime.server.descriptor?.socketPath?.toPath())
+            val ownership = requireNotNull(runtime.server.descriptor).ownership as ServerInstanceOwnership.Owned
+            assertEquals(runtimeInstanceId, ownership.runtimeInstanceId)
             assertTrue(descriptorDirectory.resolve("daemons.json").exists())
         }
     }

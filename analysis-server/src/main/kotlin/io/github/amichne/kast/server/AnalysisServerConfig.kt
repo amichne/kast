@@ -1,5 +1,6 @@
 package io.github.amichne.kast.server
 
+import io.github.amichne.kast.api.client.RuntimeInstanceId
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.continuation.ContinuationCapacity
 import io.github.amichne.kast.api.continuation.ContinuationTtl
@@ -18,6 +19,7 @@ data class AnalysisServerConfig(
     val continuationTtlMillis: Long = 60_000,
     val continuationCapacity: Int = 256,
     val descriptorDirectory: Path? = null,
+    val runtimeInstanceId: RuntimeInstanceId? = null,
     val workspaceFileCount: Int = 0,
     val workspaceFileCountProvider: (() -> Int)? = null,
 ) {

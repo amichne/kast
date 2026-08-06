@@ -72,11 +72,13 @@ class AnalysisServerSocketTest {
     fun `socket transport writes descriptor, serves rpc, and cleans up`() {
         val socketPath = tempDir.resolve("run").resolve("indexer.sock")
         val descriptorDirectory = tempDir.resolve("instances")
+        val runtimeInstanceId = RuntimeInstanceId.parse("550e8400-e29b-41d4-a716-446655440000")
         val runningServer = AnalysisServer(
             backend = FakeAnalysisBackend.sample(tempDir),
             config = AnalysisServerConfig(
                 transport = AnalysisTransport.UnixDomainSocket(socketPath),
                 descriptorDirectory = descriptorDirectory,
+                runtimeInstanceId = runtimeInstanceId,
             ),
         ).start()
 
@@ -100,6 +102,7 @@ class AnalysisServerSocketTest {
             val ownership = descriptor.ownership as ServerInstanceOwnership.Owned
             assertEquals(UnixDomainSocketTransport.UDS, descriptor.transport)
             assertEquals(RuntimeSocketPath.of(socketPath), descriptor.socketPath)
+            assertEquals(runtimeInstanceId, ownership.runtimeInstanceId)
             assertTrue(ownership.processIdentity.processStartEpochMillis.value > 0)
             assertTrue(ownership.ownerUid.value >= 0)
             assertTrue(ownership.socketFileIdentity.device >= 0)

@@ -1,6 +1,7 @@
 package io.github.amichne.kast.idea
 
 import io.github.amichne.kast.api.client.KastConfig
+import io.github.amichne.kast.api.client.RuntimeInstanceId
 import io.github.amichne.kast.api.contract.AnalysisTransport
 import io.github.amichne.kast.api.contract.ServerLimits
 import io.github.amichne.kast.server.AnalysisServerConfig
@@ -26,11 +27,13 @@ internal fun indexerServerLimits(config: KastConfig): ServerLimits = ServerLimit
 
 internal fun indexerAnalysisServerConfig(
     transport: AnalysisTransport,
+    runtimeInstanceId: RuntimeInstanceId?,
     limits: ServerLimits,
     config: KastConfig,
     workspaceFileCountProvider: () -> Int,
 ): AnalysisServerConfig = AnalysisServerConfig(
     transport = transport,
+    runtimeInstanceId = runtimeInstanceId,
     requestTimeoutMillis = limits.requestTimeoutMillis,
     maxResults = limits.maxResults,
     maxConcurrentRequests = limits.maxConcurrentRequests,
