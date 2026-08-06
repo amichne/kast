@@ -154,19 +154,28 @@ fn observe_macos_process(pid: u64) -> Result<Option<ObservedProcess>> {
         return Ok(None);
     };
     let command = macos_process_arguments(pid as libc::c_int)?;
-    let confirmed = macos_process_identity(pid)?.ok_or_else(|| {
-        CliError::new(
-            "RUNTIME_PROCESS_IDENTITY_CHANGED",
-            "macOS process exited while ownership evidence was collected.",
-        )
-    })?;
+    let Some(identity) = confirm_macos_process_identity(identity, macos_process_identity(pid)?)?
+    else {
+        return Ok(None);
+    };
+    Ok(Some(ObservedProcess { identity, command }))
+}
+
+#[cfg(any(target_os = "macos", test))]
+fn confirm_macos_process_identity(
+    identity: ManagedProcessIdentity,
+    confirmed: Option<ManagedProcessIdentity>,
+) -> Result<Option<ManagedProcessIdentity>> {
+    let Some(confirmed) = confirmed else {
+        return Ok(None);
+    };
     if confirmed != identity {
         return Err(CliError::new(
             "RUNTIME_PROCESS_IDENTITY_CHANGED",
             "macOS PID identity changed while ownership evidence was collected.",
         ));
     }
-    Ok(Some(ObservedProcess { identity, command }))
+    Ok(Some(identity))
 }
 
 #[cfg(target_os = "macos")]
@@ -367,3 +376,6 @@ fn linux_zombie_is_gone_review_regression() {
 
     assert_eq!(observed.expect("zombie observation"), None);
 }
+
+#[cfg(test)]
+include!("process_platform_tests.rs");

@@ -45,15 +45,7 @@ struct RuntimeRepairAction {
 
 pub(crate) fn workspace_repair(args: RuntimeRepairArgs) -> Result<RuntimeRepairResult> {
     let _install_use_lock = super::registration::storage::InstallUseLock::acquire()?;
-    let workspace_root = fs::canonicalize(&args.workspace_root).map_err(|error| {
-        CliError::new(
-            "WORKSPACE_ROOT_INVALID",
-            format!(
-                "Workspace root {} could not be canonicalized: {error}",
-                args.workspace_root.display()
-            ),
-        )
-    })?;
+    let workspace_root = canonical_workspace_root(&args.workspace_root)?;
     let config = KastConfig::load(&workspace_root)?;
     let _lock = args
         .execute
@@ -63,9 +55,22 @@ pub(crate) fn workspace_repair(args: RuntimeRepairArgs) -> Result<RuntimeRepairR
     repair_snapshot(&config, &workspace_root, snapshot, args.execute)
 }
 
+fn canonical_workspace_root(workspace_root: &Path) -> Result<PathBuf> {
+    fs::canonicalize(workspace_root).map_err(|error| {
+        CliError::new(
+            "WORKSPACE_ROOT_INVALID",
+            format!(
+                "Workspace root {} could not be canonicalized: {error}",
+                workspace_root.display()
+            ),
+        )
+    })
+}
+
 pub(super) fn stop_workspace_runtime(args: RuntimeArgs) -> Result<DaemonStopResult> {
     let _install_use_lock = super::registration::storage::InstallUseLock::acquire()?;
     let workspace_root = config::resolve_workspace_root(args.workspace_root)?;
+    let workspace_root = canonical_workspace_root(&workspace_root)?;
     let config = KastConfig::load(&workspace_root)?;
     let _lock = WorkspaceLaunchLock::acquire(&config, &workspace_root)?;
     loop {
