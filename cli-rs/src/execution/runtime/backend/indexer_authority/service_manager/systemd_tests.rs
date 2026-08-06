@@ -63,6 +63,21 @@ fn output(success: bool) -> std::process::Output {
     }
 }
 
+fn service_state(
+    load: &str,
+    active: &str,
+    sub: &str,
+    pid: &str,
+    fragment: &str,
+) -> std::process::Output {
+    let mut result = output(true);
+    result.stdout = format!(
+        "LoadState={load}\nActiveState={active}\nSubState={sub}\nMainPID={pid}\nFragmentPath={fragment}\n"
+    )
+    .into_bytes();
+    result
+}
+
 fn manager() -> ServiceManagerRegistration {
     ServiceManagerRegistration::SystemdUser {
         unit: "kast-indexer-test.service".to_string(),
@@ -84,7 +99,7 @@ fn link_failure_does_not_unlink_an_unproven_unit() {
 }
 
 #[test]
-fn reload_failure_rolls_back_the_proven_link_then_reloads() {
+fn reload_failure_uses_supported_disable_for_proven_link_review_regression() {
     let mut runner = FakeSystemctl {
         outputs: vec![
             output(true),
@@ -98,7 +113,15 @@ fn reload_failure_rolls_back_the_proven_link_then_reloads() {
     };
 
     assert!(register_with(&manager(), &mut runner).is_err());
-    assert!(runner.calls[runner.calls.len() - 2].contains(&"unlink".to_string()));
+    assert_eq!(
+        runner.calls[runner.calls.len() - 2],
+        [
+            "--user",
+            "--no-pager",
+            "disable",
+            "kast-indexer-test.service",
+        ]
+    );
     assert_eq!(
         runner
             .calls
@@ -107,4 +130,49 @@ fn reload_failure_rolls_back_the_proven_link_then_reloads() {
             .map(String::as_str),
         Some("daemon-reload")
     );
+}
+
+#[test]
+fn unregister_disables_an_exact_registered_link_review_regression() {
+    let mut runner = FakeSystemctl {
+        outputs: vec![
+            service_state(
+                "loaded",
+                "inactive",
+                "dead",
+                "0",
+                "/tmp/kast-indexer-test.service",
+            ),
+            output(true),
+            service_state("not-found", "inactive", "dead", "0", ""),
+        ]
+        .into(),
+        calls: vec![],
+    };
+
+    unregister_with(&manager(), &mut runner).unwrap();
+
+    assert_eq!(
+        runner.calls[1],
+        [
+            "--user",
+            "--no-pager",
+            "disable",
+            "kast-indexer-test.service",
+        ]
+    );
+    assert_eq!(runner.calls.len(), 3);
+}
+
+#[test]
+fn unregister_of_an_absent_link_is_a_noop_review_regression() {
+    let mut runner = FakeSystemctl {
+        outputs: vec![service_state("not-found", "inactive", "dead", "0", "")].into(),
+        calls: vec![],
+    };
+
+    unregister_with(&manager(), &mut runner).unwrap();
+
+    assert_eq!(runner.calls.len(), 1);
+    assert!(runner.calls[0].contains(&"show".to_string()));
 }

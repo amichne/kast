@@ -1,5 +1,5 @@
 pub(super) fn cleanup_dead_registration(
-    config: &KastConfig,
+    _config: &KastConfig,
     dead: &DeadServiceRuntime,
 ) -> Result<()> {
     let registration = revalidate_registration(&dead.registration)?;
@@ -7,7 +7,7 @@ pub(super) fn cleanup_dead_registration(
     ensure_registered_process_is_dead(&registration, dead.descriptor.as_ref())?;
     verify_socket_snapshot(&dead.socket, registration.launch.owner_uid)?;
     verify_registration_directory_entries(&registration)?;
-    verify_descriptor_snapshot(config, dead.descriptor.as_ref(), &registration)?;
+    verify_descriptor_snapshot(dead.descriptor.as_ref(), &registration)?;
     let active_path = registration
         .directory
         .parent()
@@ -36,10 +36,13 @@ pub(super) fn cleanup_dead_registration(
     ensure_registered_process_is_dead(&registration, dead.descriptor.as_ref())?;
     verify_socket_snapshot(&dead.socket, registration.launch.owner_uid)?;
     verify_registration_directory_entries(&registration)?;
-    verify_descriptor_snapshot(config, dead.descriptor.as_ref(), &registration)?;
+    verify_descriptor_snapshot(dead.descriptor.as_ref(), &registration)?;
     verify_cleanup_metadata_snapshots(&registration, dead)?;
     if let Some(descriptor) = &dead.descriptor {
-        delete_descriptor(&config.paths.descriptor_dir, &descriptor.descriptor)?;
+        delete_descriptor(
+            super::ownership::service_descriptor_directory(&registration)?,
+            &descriptor.descriptor,
+        )?;
     }
     remove_exact_socket(&dead.socket, registration.launch.owner_uid)?;
     if let Some(active) = &dead.active
@@ -121,15 +124,20 @@ fn ensure_registered_process_is_dead(
     registration: &ValidatedServiceRegistration,
     descriptor: Option<&RegisteredDescriptor>,
 ) -> Result<()> {
-    if let Some(claim) = super::registration::read_process_claim(&registration.directory)?
-        && observe_process(claim.process.pid)?.is_some()
-    {
-        return Err(ownership_changed(
-            "Registered runtime process became live before cleanup.",
-        ));
+    if let Some(claim) = super::registration::read_process_claim(&registration.directory)? {
+        match super::ownership::observe_claimed_process(&claim.process)? {
+            super::ownership::ClaimedProcessObservation::Gone
+            | super::ownership::ClaimedProcessObservation::Reused(_) => {}
+            super::ownership::ClaimedProcessObservation::Exact(_) => {
+                return Err(ownership_changed(
+                    "The exact registered runtime process became live before cleanup.",
+                ));
+            }
+        }
     }
     if let Some(descriptor) = descriptor
-        && observe_process(descriptor.descriptor.pid)?.is_some()
+        && let Some(process) = observe_process(descriptor.descriptor.pid)?
+        && !descriptor_proves_pid_reuse(&descriptor.descriptor, &process)
     {
         return Err(ownership_changed(
             "Registered descriptor process became live before cleanup.",
@@ -138,8 +146,23 @@ fn ensure_registered_process_is_dead(
     Ok(())
 }
 
+fn descriptor_proves_pid_reuse(
+    descriptor: &ServerInstanceDescriptor,
+    process: &super::process::ObservedProcess,
+) -> bool {
+    match (
+        descriptor.owner_uid,
+        descriptor.process_start_epoch_millis,
+    ) {
+        (Some(owner_uid), Some(start_epoch_millis)) => {
+            owner_uid != process.identity.owner_uid
+                || start_epoch_millis / 1_000 != process.identity.start_epoch_millis / 1_000
+        }
+        _ => false,
+    }
+}
+
 fn verify_descriptor_snapshot(
-    config: &KastConfig,
     descriptor: Option<&RegisteredDescriptor>,
     registration: &ValidatedServiceRegistration,
 ) -> Result<()> {
@@ -147,7 +170,7 @@ fn verify_descriptor_snapshot(
         return Ok(());
     };
     let descriptors = find_indexer_descriptors(
-        &config.paths.descriptor_dir,
+        super::ownership::service_descriptor_directory(registration)?,
         Path::new(&registration.launch.workspace_root),
     )?;
     if !descriptors.iter().any(|current| {

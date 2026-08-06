@@ -10,6 +10,9 @@ use support::*;
 mod fixture;
 use fixture::RuntimeServiceFixture;
 
+#[path = "durable_ownership/review_regressions.rs"]
+mod review_regressions;
+
 #[cfg(not(target_os = "macos"))]
 #[test]
 fn requested_socket_path_is_persisted_by_start_review_regression() {

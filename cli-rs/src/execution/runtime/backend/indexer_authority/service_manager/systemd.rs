@@ -116,13 +116,11 @@ fn checked_systemctl(
 }
 
 fn rollback_partial_registration(runner: &mut impl SystemctlRunner, unit: &str) -> Result<()> {
-    let unlink = runner.output(&["--user", "--no-pager", "unlink", unit]);
+    let disable = runner.output(&["--user", "--no-pager", "disable", unit]);
     let reload = runner.output(&["--user", "--no-pager", "daemon-reload"]);
-    let unlink_ok = unlink.is_ok_and(|output| {
-        output.status.success()
-            || systemd_unit_was_not_linked(&String::from_utf8_lossy(&output.stderr))
-    });
-    if unlink_ok && reload.is_ok_and(|output| output.status.success()) {
+    if disable.is_ok_and(|output| output.status.success())
+        && reload.is_ok_and(|output| output.status.success())
+    {
         Ok(())
     } else {
         Err(CliError::new(
@@ -142,9 +140,16 @@ pub(super) fn start(manager: &ServiceManagerRegistration) -> Result<ServiceManag
 }
 
 pub(super) fn inspect(manager: &ServiceManagerRegistration) -> Result<ServiceManagerObservation> {
+    inspect_with(manager, &mut SystemctlCommand)
+}
+
+fn inspect_with(
+    manager: &ServiceManagerRegistration,
+    runner: &mut impl SystemctlRunner,
+) -> Result<ServiceManagerObservation> {
     let (unit, definition_path) = values(manager)?;
-    let output = Command::new(SYSTEMCTL)
-        .args([
+    let output = runner
+        .output(&[
             "--user",
             "--no-pager",
             "--property=LoadState",
@@ -155,7 +160,6 @@ pub(super) fn inspect(manager: &ServiceManagerRegistration) -> Result<ServiceMan
             "show",
             unit,
         ])
-        .output()
         .map_err(|error| manager_error(&format!("Cannot inspect systemd user service: {error}")))?;
     let properties = parse_properties(&String::from_utf8_lossy(&output.stdout))?;
     let observation = classify_properties(&properties)?;
@@ -177,28 +181,34 @@ pub(super) fn inspect(manager: &ServiceManagerRegistration) -> Result<ServiceMan
 }
 
 pub(super) fn unregister(manager: &ServiceManagerRegistration) -> Result<()> {
+    unregister_with(manager, &mut SystemctlCommand)
+}
+
+fn unregister_with(
+    manager: &ServiceManagerRegistration,
+    runner: &mut impl SystemctlRunner,
+) -> Result<()> {
     let (unit, _) = values(manager)?;
-    let output = Command::new(SYSTEMCTL)
-        .args(["--user", "--no-pager", "unlink", unit])
-        .output()
-        .map_err(|error| manager_error(&format!("Cannot unlink systemd user service: {error}")))?;
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    if !output.status.success() && !systemd_unit_was_not_linked(&stderr) {
-        return Err(manager_error(&format!(
-            "Cannot unlink systemd user service: {}",
-            stderr.trim()
-        )));
+    match inspect_with(manager, runner)? {
+        ServiceManagerObservation::Absent => return Ok(()),
+        ServiceManagerObservation::Registered => {}
+        ServiceManagerObservation::Running(_) => {
+            return Err(manager_error(
+                "Cannot disable a running systemd user service.",
+            ));
+        }
     }
-    command_output(
-        Command::new(SYSTEMCTL).args(["--user", "--no-pager", "daemon-reload"]),
-        "reload systemd user services",
+    checked_systemctl(
+        runner,
+        &["--user", "--no-pager", "disable", unit],
+        "disable the systemd user service",
     )?;
-    if inspect(manager)? == ServiceManagerObservation::Absent {
+    if inspect_with(manager, runner)? == ServiceManagerObservation::Absent {
         Ok(())
     } else {
-        Err(manager_error(
-            "systemd user service remained registered after unlink.",
-        ))
+        Err(manager_error(&format!(
+            "systemd user service {unit} remained registered after disable."
+        )))
     }
 }
 
@@ -237,14 +247,6 @@ fn classify_properties(properties: &BTreeMap<String, String>) -> Result<ServiceM
             "systemd service state and MainPID are contradictory or unsupported.",
         )),
     }
-}
-
-fn systemd_unit_was_not_linked(stderr: &str) -> bool {
-    stderr
-        .lines()
-        .map(str::trim)
-        .all(|line| line.is_empty() || line.ends_with("is not linked."))
-        && stderr.lines().any(|line| !line.trim().is_empty())
 }
 
 fn parse_properties(output: &str) -> Result<BTreeMap<String, String>> {

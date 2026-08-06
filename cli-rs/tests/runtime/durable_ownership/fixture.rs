@@ -15,6 +15,14 @@ pub(super) struct RuntimeServiceFixture {
 
 impl RuntimeServiceFixture {
     pub(super) fn new() -> Self {
+        Self::with_persisted_descriptor_directory(false)
+    }
+
+    pub(super) fn new_with_persisted_descriptor_directory() -> Self {
+        Self::with_persisted_descriptor_directory(true)
+    }
+
+    fn with_persisted_descriptor_directory(use_alternate_directory: bool) -> Self {
         let temp = tempfile::tempdir().expect("runtime service fixture");
         let home = temp.path().join("home");
         let config_home = temp.path().join("config");
@@ -36,7 +44,12 @@ impl RuntimeServiceFixture {
         let runtime_instance_id = uuid::Uuid::new_v4();
         let install_root = default_install_root(&home);
         let runtime_dir = install_root.join("state/runtime");
-        let descriptor_registry = runtime_dir.join("daemons/daemons.json");
+        let descriptor_directory = if use_alternate_directory {
+            temp.path().join("persisted-descriptors")
+        } else {
+            runtime_dir.join("daemons")
+        };
+        let descriptor_registry = descriptor_directory.join("daemons.json");
         let workspace_key = sha256(workspace.to_string_lossy().as_bytes());
         let registration = runtime_dir
             .join("services")
@@ -51,7 +64,7 @@ impl RuntimeServiceFixture {
             &registration,
             runtime_instance_id,
             &workspace,
-            &runtime_dir,
+            &descriptor_directory,
             &socket_path,
             &manager_state,
             temp.path(),
@@ -119,7 +132,7 @@ impl RuntimeServiceFixture {
             &registration,
             id,
             &self.workspace,
-            &runtime_dir,
+            &runtime_dir.join("daemons"),
             &self.socket_path,
             &manager_state,
             self._temp.path(),
@@ -141,6 +154,66 @@ impl RuntimeServiceFixture {
             serde_json::to_vec(&serde_json::json!({"pid": 0})).expect("manager state JSON"),
         )
         .expect("orphaned manager state");
+    }
+
+    pub(super) fn replace_registered_process_claim_with_reused_pid(&self) {
+        let receipt: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(self.registration.join("receipt.json")).expect("receipt"),
+        )
+        .expect("receipt JSON");
+        write_private(
+            &self.registration.join("process.json"),
+            &serde_json::to_vec_pretty(&serde_json::json!({
+                "schemaVersion": 1,
+                "launchSha256": receipt["launchSha256"],
+                "process": {
+                    "pid": self.runtime.id(),
+                    "startKey": "stale-runtime-process",
+                    "startEpochMillis": 1_000,
+                    "ownerUid": u64::from(unsafe { libc::geteuid() })
+                }
+            }))
+            .expect("stale process claim JSON"),
+        );
+        let mut descriptors: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(&self.descriptor_registry).expect("descriptor registry"),
+        )
+        .expect("descriptor registry JSON");
+        descriptors[0]["processStartEpochMillis"] = 1_000.into();
+        std::fs::write(
+            &self.descriptor_registry,
+            serde_json::to_vec_pretty(&descriptors).expect("descriptor registry JSON"),
+        )
+        .expect("stale descriptor registry");
+    }
+
+    pub(super) fn replace_descriptor_claim_with_current_process(&self) {
+        let descriptors: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(&self.descriptor_registry).expect("descriptor registry"),
+        )
+        .expect("descriptor registry JSON");
+        let mut descriptor = runtime_descriptor_for_process_test(
+            &self.workspace,
+            &self.socket_path,
+            "indexer",
+            "durable-ownership-test",
+            self.runtime.id(),
+        );
+        descriptor["runtimeInstanceId"] = descriptors[0]["runtimeInstanceId"].clone();
+        std::fs::write(
+            &self.descriptor_registry,
+            serde_json::to_vec_pretty(&serde_json::json!([descriptor]))
+                .expect("descriptor registry JSON"),
+        )
+        .expect("current descriptor registry");
+    }
+
+    pub(super) fn copy_descriptor_to_caller_projection(&self) -> PathBuf {
+        let registry = default_descriptor_dir(&self.home).join("daemons.json");
+        std::fs::create_dir_all(registry.parent().expect("caller descriptor directory"))
+            .expect("caller descriptor directory");
+        std::fs::copy(&self.descriptor_registry, &registry).expect("caller descriptor registry");
+        registry
     }
 
     pub(super) fn command(&self) -> Command {
@@ -181,7 +254,7 @@ fn write_registration(
     registration: &Path,
     id: uuid::Uuid,
     workspace: &Path,
-    runtime_dir: &Path,
+    descriptor_directory: &Path,
     socket_path: &Path,
     manager_state: &Path,
     temp: &Path,
@@ -199,7 +272,7 @@ fn write_registration(
         "command": registered_test_command(socket_path),
         "environment": {},
         "logFile": temp.join("runtime.log").display().to_string(),
-        "descriptorDirectory": runtime_dir.join("daemons").display().to_string(),
+        "descriptorDirectory": descriptor_directory.display().to_string(),
         "socketPath": socket_path.display().to_string(),
         "launcherPath": launcher.display().to_string(),
         "launcherSha256": sha256(&std::fs::read(&launcher).expect("launcher bytes")),

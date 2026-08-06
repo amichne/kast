@@ -1,4 +1,4 @@
-use super::process::{ObservedProcess, observe_process};
+use super::process::{ManagedProcessIdentity, ObservedProcess, observe_process};
 use super::registration::{
     ValidatedServiceRegistration, read_active_registration, service_workspace_directory,
     validate_service_registration,
@@ -100,6 +100,38 @@ pub(super) enum SocketObservation {
     },
 }
 
+#[derive(Debug, Clone)]
+pub(super) enum ClaimedProcessObservation {
+    Gone,
+    Exact(ObservedProcess),
+    Reused(ObservedProcess),
+}
+
+pub(super) fn observe_claimed_process(
+    expected: &ManagedProcessIdentity,
+) -> Result<ClaimedProcessObservation> {
+    match observe_process(expected.pid)? {
+        None => Ok(ClaimedProcessObservation::Gone),
+        Some(process) if process.identity == *expected => {
+            Ok(ClaimedProcessObservation::Exact(process))
+        }
+        Some(process) => Ok(ClaimedProcessObservation::Reused(process)),
+    }
+}
+
+pub(super) fn service_descriptor_directory(
+    registration: &ValidatedServiceRegistration,
+) -> Result<&Path> {
+    let path = Path::new(&registration.launch.descriptor_directory);
+    if path.is_absolute() {
+        Ok(path)
+    } else {
+        Err(ownership_error(
+            "Registered runtime descriptor directory is not absolute.",
+        ))
+    }
+}
+
 pub(super) fn reconcile_runtime_ownership(
     config: &KastConfig,
     workspace_root: &Path,
@@ -132,15 +164,32 @@ pub(super) fn reconcile_runtime_ownership(
             ));
         }
     }
-    let descriptors = find_indexer_descriptors(&config.paths.descriptor_dir, &canonical_root)?;
+    let legacy_descriptors =
+        find_indexer_descriptors(&config.paths.descriptor_dir, &canonical_root)?;
     let registered_ids = registrations
         .iter()
         .map(|registration| registration.receipt.runtime_instance_id.to_string())
+        .collect::<Vec<_>>();
+    let caller_registered_ids = registrations
+        .iter()
+        .map(|registration| {
+            service_descriptor_directory(registration).map(|directory| {
+                (directory == config.paths.descriptor_dir.as_path())
+                    .then(|| registration.receipt.runtime_instance_id.to_string())
+            })
+        })
+        .collect::<Result<Vec<_>>>()?
+        .into_iter()
+        .flatten()
         .collect::<Vec<_>>();
     let mut live = Vec::new();
     let mut dead = Vec::new();
 
     for registration in registrations {
+        let descriptors = find_indexer_descriptors(
+            service_descriptor_directory(&registration)?,
+            &canonical_root,
+        )?;
         match observe_registered_service(
             registration,
             &descriptors,
@@ -160,14 +209,29 @@ pub(super) fn reconcile_runtime_ownership(
         }
     }
 
-    let legacy = descriptors
+    if legacy_descriptors.iter().any(|descriptor| {
+        descriptor
+            .descriptor
+            .runtime_instance_id
+            .as_ref()
+            .is_some_and(|id| registered_ids.contains(id) && !caller_registered_ids.contains(id))
+    }) {
+        return Ok(RuntimeOwnershipSnapshot::Ambiguous(
+            RuntimeOwnershipAmbiguity {
+                workspace_root: canonical_root,
+                reason: "A service descriptor exists outside its persisted descriptor directory."
+                    .to_string(),
+            },
+        ));
+    }
+    let legacy = legacy_descriptors
         .into_iter()
         .filter(|descriptor| {
             !descriptor
                 .descriptor
                 .runtime_instance_id
                 .as_ref()
-                .is_some_and(|id| registered_ids.contains(id))
+                .is_some_and(|id| caller_registered_ids.contains(id))
         })
         .map(|descriptor| observe_legacy_runtime(descriptor, &canonical_root))
         .collect::<Result<Vec<_>>>()?;

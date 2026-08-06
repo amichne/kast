@@ -46,14 +46,69 @@ fn observe_registered_service(
             "Service manager PID does not match the process claim.",
         ));
     }
-    let Some(process) = observe_process(pid)? else {
-        return dead_registration(
-            registration,
-            claim,
-            active.cloned(),
-            descriptor,
-            descriptors,
-        );
+    let process = match claim.as_ref() {
+        Some(expected) => {
+            let launch_matches =
+                expected.launch_sha256 == registration.receipt.launch_sha256;
+            match observe_claimed_process(&expected.process)? {
+                ClaimedProcessObservation::Gone => {
+                    return dead_registration(
+                        registration,
+                        claim,
+                        active.cloned(),
+                        descriptor,
+                        descriptors,
+                    );
+                }
+                ClaimedProcessObservation::Reused(process)
+                    if descriptor.as_ref().is_some_and(|descriptor| {
+                        descriptor_matches_process(
+                            &descriptor.descriptor,
+                            &registration,
+                            &process,
+                        )
+                    }) =>
+                {
+                    return Err(ownership_error(
+                        "Runtime process claim is stale but its descriptor matches the live process.",
+                    ));
+                }
+                ClaimedProcessObservation::Reused(_)
+                    if launch_matches
+                        && matches!(
+                            manager,
+                            ServiceManagerObservation::Registered
+                                | ServiceManagerObservation::Absent
+                        ) =>
+                {
+                    return dead_registration(
+                        registration,
+                        claim,
+                        active.cloned(),
+                        descriptor,
+                        descriptors,
+                    );
+                }
+                ClaimedProcessObservation::Reused(_) => {
+                    return Err(ownership_error(
+                        "Runtime process claim does not match the live service-manager process.",
+                    ));
+                }
+                ClaimedProcessObservation::Exact(process) => process,
+            }
+        }
+        None => {
+            let Some(process) = observe_process(pid)? else {
+                return dead_registration(
+                    registration,
+                    claim,
+                    active.cloned(),
+                    descriptor,
+                    descriptors,
+                );
+            };
+            process
+        }
     };
     if process.identity.owner_uid != registration.launch.owner_uid
         || claim
@@ -124,20 +179,27 @@ fn matching_descriptor(
     }
     let descriptor = matches.into_iter().next();
     if let (Some(descriptor), Some(process)) = (&descriptor, process)
-        && (descriptor.descriptor.pid != process.identity.pid
-            || descriptor.descriptor.owner_uid != Some(process.identity.owner_uid)
-            || descriptor
-                .descriptor
-                .process_start_epoch_millis
-                .map(|value| value / 1_000)
-                != Some(process.identity.start_epoch_millis / 1_000)
-            || descriptor.descriptor.socket_path != registration.launch.socket_path)
+        && !descriptor_matches_process(&descriptor.descriptor, registration, process)
     {
         return Err(ownership_error(
             "Runtime descriptor does not match its service process.",
         ));
     }
     Ok(descriptor)
+}
+
+fn descriptor_matches_process(
+    descriptor: &ServerInstanceDescriptor,
+    registration: &ValidatedServiceRegistration,
+    process: &ObservedProcess,
+) -> bool {
+    descriptor.pid == process.identity.pid
+        && descriptor.owner_uid == Some(process.identity.owner_uid)
+        && descriptor
+            .process_start_epoch_millis
+            .map(|value| value / 1_000)
+            == Some(process.identity.start_epoch_millis / 1_000)
+        && descriptor.socket_path == registration.launch.socket_path
 }
 
 enum LegacyRuntimeObservation {
