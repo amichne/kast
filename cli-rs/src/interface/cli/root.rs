@@ -80,6 +80,9 @@ pub struct SetupArgs {
     /// Extracted bundle directory or bundle .tar.gz archive.
     #[arg(long)]
     pub source: PathBuf,
+    /// Select standard or developer-only PATH projections.
+    #[arg(long, value_enum, default_value = "standard")]
+    pub profile: crate::manifest::SetupProfile,
 }
 
 #[derive(Debug, Args, Clone)]

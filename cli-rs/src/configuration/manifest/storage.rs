@@ -2,12 +2,115 @@ pub(crate) fn write_manifest_atomic(path: &Path, manifest: &KastInstallManifest)
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let temp = path.with_extension(format!("json.tmp-{}", std::process::id()));
-    let mut file = fs::File::create(&temp)?;
+    test_install_file_barrier("before-receipt-temporary-create", path)?;
+    let (temp, mut file) = create_unique_temporary_file(path, "receipt")?;
     file.write_all(serde_json::to_vec_pretty(manifest)?.as_slice())?;
     file.write_all(b"\n")?;
     file.sync_all()?;
     fs::rename(&temp, path)?;
+    test_install_durability_failure_at("after-receipt-rename-before-parent-sync", path)?;
+    sync_parent_directory(path)
+}
+
+pub(crate) fn create_unique_temporary_file(
+    path: &Path,
+    purpose: &str,
+) -> Result<(PathBuf, fs::File)> {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static TEMPORARY_FILE_COUNTER: AtomicU64 = AtomicU64::new(0);
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("kast");
+    for _ in 0..16 {
+        let nonce = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_nanos())
+            .unwrap_or_default();
+        let sequence = TEMPORARY_FILE_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let temporary = path.with_file_name(format!(
+            ".{file_name}.kast-{purpose}-{}-{nonce}-{sequence}.tmp",
+            std::process::id(),
+        ));
+        match OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .open(&temporary)
+        {
+            Ok(file) => return Ok((temporary, file)),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(error) => return Err(error.into()),
+        }
+    }
+    Err(CliError::new(
+        "INSTALL_TEMPORARY_PATH_EXHAUSTED",
+        format!(
+            "Could not allocate a unique temporary path beside {}.",
+            path.display(),
+        ),
+    ))
+}
+
+pub(crate) fn sync_parent_directory(path: &Path) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::File::open(parent)?.sync_all()?;
+    }
+    Ok(())
+}
+
+pub(crate) fn test_install_durability_failure(point: &str) -> Result<()> {
+    if env::var("KAST_TEST_ALLOW_SETUP_FAULT_INJECTION").as_deref() == Ok("1")
+        && env::var("KAST_TEST_SETUP_DURABILITY_FAILURE_POINT").as_deref() == Ok(point)
+    {
+        let mut error = CliError::new(
+            "SETUP_TEST_DURABILITY_FAILURE",
+            format!("Injected setup durability failure at `{point}`."),
+        );
+        error
+            .details
+            .insert("durabilityPoint".to_string(), point.to_string());
+        return Err(error);
+    }
+    Ok(())
+}
+
+fn test_install_durability_failure_at(point: &str, path: &Path) -> Result<()> {
+    if let Some(expected_path) = env::var_os("KAST_TEST_SETUP_DURABILITY_FAILURE_PATH")
+        && Path::new(&expected_path) != path
+    {
+        return Ok(());
+    }
+    test_install_durability_failure(point)
+}
+
+fn test_install_file_barrier(stage: &str, path: &Path) -> Result<()> {
+    if env::var("KAST_TEST_ALLOW_SETUP_FAULT_INJECTION").as_deref() != Ok("1")
+        || env::var("KAST_TEST_SETUP_PATH_PROJECTION_BARRIER_STAGE").as_deref() != Ok(stage)
+    {
+        return Ok(());
+    }
+    if let Some(expected_path) = env::var_os("KAST_TEST_SETUP_PATH_PROJECTION_BARRIER_PATH")
+        && Path::new(&expected_path) != path
+    {
+        return Ok(());
+    }
+    let Some(directory) = env::var_os("KAST_TEST_SETUP_PATH_PROJECTION_BARRIER") else {
+        return Ok(());
+    };
+    let directory = PathBuf::from(directory);
+    fs::create_dir_all(&directory)?;
+    fs::write(directory.join(format!("{stage}.ready")), b"ready\n")?;
+    let release = directory.join(format!("{stage}.continue"));
+    let started = std::time::Instant::now();
+    while !release.is_file() {
+        if started.elapsed() > std::time::Duration::from_secs(10) {
+            return Err(CliError::new(
+                "SETUP_TEST_BARRIER_TIMEOUT",
+                format!("Timed out waiting to continue setup barrier `{stage}`."),
+            ));
+        }
+        std::thread::sleep(std::time::Duration::from_millis(10));
+    }
     Ok(())
 }
 

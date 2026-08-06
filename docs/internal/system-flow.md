@@ -101,8 +101,11 @@ release, atomically switches `current`, verifies both entrypoints, and restores
 the prior release on failure.
 
 The bundle contains byte-identical `bin/kast` and `libexec/kastctl`
-entrypoints. Only `kast` is linked onto `PATH`. Setup also materializes
-release-matched Codex, Claude, and Copilot resources locally.
+entrypoints. Standard and snapshot setup link only `kast` onto `PATH`.
+Development setup links both commands. The install receipt records each exact
+PATH projection and supplies the only authority to replace or remove the
+developer `kastctl` link. Setup also materializes release-matched Codex,
+Claude, and Copilot resources locally.
 
 ### Indexer admission
 

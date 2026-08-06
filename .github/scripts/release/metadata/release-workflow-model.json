@@ -2,10 +2,10 @@
   "schemaVersion": 2,
   "evidenceMode": "structural-only",
   "provenance": {
-    "description": "Release topology for one retained indexer and four canonical setup bundles. Real-repository smoke tests are temporarily disabled. Timing claims require completed workflow evidence.",
-    "observedAt": "2026-08-02",
+    "description": "Release topology for one retained indexer, four canonical setup bundles, one verified stable-versus-candidate bundle identity, and a required same-worker real-repository gate whose aggregate evidence is published with the release. Timing claims remain in benchmark evidence.",
+    "observedAt": "2026-08-05",
     "source": ".github/workflows/release.yml",
-    "sourceSha256": "11e94d86f370f6a46816b8e15d7390f051de2db0d06f6b1f463dcece6e905b09"
+    "sourceSha256": "3bb88e41ad9e5ae4a812548f8ab784db5ae73aae02adc4ac38beda1452f28d14"
   },
   "tasks": [
     {
@@ -15,7 +15,7 @@
     },
     {
       "id": "publish-maven-central",
-      "needs": ["prepare-release", "build-openapi-spec", "build-agent-resources", "build-setup-bundles"],
+      "needs": ["prepare-release", "build-openapi-spec", "build-agent-resources", "build-setup-bundles", "real-repository-indexing"],
       "outputs": ["release-maven-publication"]
     },
     {
@@ -25,7 +25,7 @@
     },
     {
       "id": "publish-openapi-spec",
-      "needs": ["prepare-release", "build-openapi-spec", "build-agent-resources", "build-setup-bundles"],
+      "needs": ["prepare-release", "build-openapi-spec", "build-agent-resources", "build-setup-bundles", "real-repository-indexing"],
       "outputs": ["release-openapi-asset"]
     },
     {
@@ -40,7 +40,7 @@
     },
     {
       "id": "publish-agent-resources",
-      "needs": ["prepare-release", "build-openapi-spec", "build-agent-resources", "build-setup-bundles"],
+      "needs": ["prepare-release", "build-openapi-spec", "build-agent-resources", "build-setup-bundles", "real-repository-indexing"],
       "outputs": ["release-agent-resource-assets"]
     },
     {
@@ -54,8 +54,13 @@
       "outputs": ["retained-setup-bundles"]
     },
     {
+      "id": "prepare-real-repository-indexing",
+      "needs": ["prepare-release", "build-setup-bundles"],
+      "outputs": ["verified-indexing-comparison-bundles", "latest-stable-identity"]
+    },
+    {
       "id": "publish-setup-bundles",
-      "needs": ["prepare-release", "build-openapi-spec", "build-agent-resources", "build-setup-bundles"],
+      "needs": ["prepare-release", "build-openapi-spec", "build-agent-resources", "build-setup-bundles", "real-repository-indexing"],
       "outputs": [
         "release-setup-linux-x64-asset",
         "release-setup-linux-x64-sidecar",
@@ -72,19 +77,30 @@
       ]
     },
     {
+      "id": "real-repository-indexing",
+      "needs": ["prepare-release", "prepare-real-repository-indexing"],
+      "outputs": ["comparative-real-repository-indexing"]
+    },
+    {
       "id": "build-release-metadata",
       "needs": [
         "prepare-release",
         "publish-openapi-spec",
         "publish-agent-resources",
-        "publish-setup-bundles"
+        "publish-setup-bundles",
+        "prepare-real-repository-indexing",
+        "real-repository-indexing"
       ],
-      "outputs": ["release-build-provenance", "release-checksum-manifest"]
+      "outputs": [
+        "release-build-provenance",
+        "release-checksum-manifest",
+        "retained-comparative-performance"
+      ]
     },
     {
       "id": "publish-release",
       "needs": ["prepare-release", "build-release-metadata"],
-      "outputs": ["published-release"]
+      "outputs": ["release-comparative-performance-asset", "published-release"]
     },
     {
       "id": "verify-release-state",
@@ -103,6 +119,9 @@
     "release-agent-resource-assets",
     "retained-indexer",
     "retained-setup-bundles",
+    "verified-indexing-comparison-bundles",
+    "latest-stable-identity",
+    "comparative-real-repository-indexing",
     "release-setup-linux-x64-asset",
     "release-setup-linux-x64-sidecar",
     "release-setup-linux-x64-provenance",
@@ -117,6 +136,8 @@
     "release-setup-macos-arm64-provenance",
     "release-build-provenance",
     "release-checksum-manifest",
+    "retained-comparative-performance",
+    "release-comparative-performance-asset",
     "published-release",
     "published-release-state"
   ]
