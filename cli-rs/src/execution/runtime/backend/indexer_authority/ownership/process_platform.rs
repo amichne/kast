@@ -29,25 +29,35 @@ fn parse_linux_process_stat(stat: &str) -> Result<LinuxProcessStat> {
 
 #[cfg(target_os = "linux")]
 fn observe_linux_process(pid: u64) -> Result<Option<ObservedProcess>> {
+    const EMPTY_COMMAND_SETTLE_TIMEOUT: Duration = Duration::from_millis(100);
+    const EMPTY_COMMAND_POLL_INTERVAL: Duration = Duration::from_millis(5);
+
     let Some(identity) = linux_process_identity(pid)? else {
         return Ok(None);
     };
-    let command_bytes = match fs::read(format!("/proc/{pid}/cmdline")) {
-        Ok(bytes) => bytes,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
-        Err(error) => return Err(process_io_error(pid, "cmdline", error)),
-    };
-    let Some(confirmed) = linux_process_identity(pid)? else {
-        return Ok(None);
-    };
-    if confirmed != identity {
-        return Err(CliError::new(
-            "RUNTIME_PROCESS_IDENTITY_CHANGED",
-            "Linux PID identity changed while ownership evidence was collected.",
-        ));
+    let settle_deadline = Instant::now() + EMPTY_COMMAND_SETTLE_TIMEOUT;
+    loop {
+        let command_bytes = match fs::read(format!("/proc/{pid}/cmdline")) {
+            Ok(bytes) => bytes,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+            Err(error) => return Err(process_io_error(pid, "cmdline", error)),
+        };
+        let Some(confirmed) = linux_process_identity(pid)? else {
+            return Ok(None);
+        };
+        if confirmed != identity {
+            return Err(CliError::new(
+                "RUNTIME_PROCESS_IDENTITY_CHANGED",
+                "Linux PID identity changed while ownership evidence was collected.",
+            ));
+        }
+        if command_bytes.is_empty() && Instant::now() < settle_deadline {
+            thread::sleep(EMPTY_COMMAND_POLL_INTERVAL);
+            continue;
+        }
+        let command = parse_nul_command(&command_bytes)?;
+        return Ok(Some(ObservedProcess { identity, command }));
     }
-    let command = parse_nul_command(&command_bytes)?;
-    Ok(Some(ObservedProcess { identity, command }))
 }
 
 #[cfg(target_os = "linux")]

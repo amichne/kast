@@ -242,7 +242,7 @@ fn registered_test_command(socket_path: &Path) -> Vec<String> {
     vec![
         "/bin/sh".to_string(),
         "-c".to_string(),
-        "read fixture_value".to_string(),
+        "trap 'exit 0' TERM; read fixture_value".to_string(),
         "kast-runtime-fixture".to_string(),
         format!("--socket-path={}", socket_path.display()),
     ]
