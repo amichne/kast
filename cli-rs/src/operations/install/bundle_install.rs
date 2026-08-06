@@ -2,6 +2,7 @@ fn install_validated_bundle(
     bundle: &ValidatedBundle,
     targets: &ActivationTargetPaths,
     migrated_config: Option<&str>,
+    path_projection_authority: &PathProjectionAuthority,
 ) -> Result<(Option<PathBuf>, Option<PathBuf>)> {
     if bundle.root.starts_with(&targets.resolved.install_root) {
         return Err(CliError::new(
@@ -13,7 +14,7 @@ fn install_validated_bundle(
             ),
         ));
     }
-    let install_manifest = project_install_manifest(bundle, targets);
+    let install_manifest = project_install_manifest(bundle, targets, path_projection_authority);
     for directory in [
         targets.resolved.install_root.join("releases"),
         targets.resolved.install_root.join("backups"),
@@ -103,17 +104,19 @@ fn rollback_activated_bundle(
 fn project_install_manifest(
     bundle: &ValidatedBundle,
     targets: &ActivationTargetPaths,
+    path_projection_authority: &PathProjectionAuthority,
 ) -> manifest::KastInstallManifest {
     let now = manifest::current_timestamp();
     let normalized_version = bundle.version.normalized();
     let indexer_root = targets.indexer_current_dir.clone();
     let install_id = format!("kast-{}-{}", bundle.manifest.platform, normalized_version);
-    manifest::KastInstallManifest {
+    let mut install_manifest = manifest::KastInstallManifest {
         tool: "kast".to_string(),
         install_id,
         release_digest: bundle.release_digest.clone(),
         manifest_digest: bundle.manifest_digest.clone(),
         profile: bundle.manifest.profile.clone(),
+        setup_profile: manifest::SetupProfile::Standard,
         active_version: bundle.version.as_str().to_string(),
         previous_version: None,
         created_at: now.clone(),
@@ -156,9 +159,12 @@ fn project_install_manifest(
             .map(|artifact| artifact.path.clone())
             .collect(),
         owned_paths: manifest::owned_paths(&targets.resolved),
+        path_projections: vec![],
         shell_rc_patches: vec![],
         schema_version: crate::protocol_schema_versions::INSTALL_RECEIPT_SCHEMA_VERSION,
-    }
+    };
+    path_projection_authority.carry_prior_ownership_into(&mut install_manifest);
+    install_manifest
 }
 
 fn verify_activated_bundle(

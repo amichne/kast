@@ -151,6 +151,8 @@ tasks.register<Exec>("refreshDevelopmentMachine") {
         "setup",
         "--source",
         developmentBundle.get().asFile.absolutePath,
+        "--profile",
+        "development",
     )
     if (cleanDevelopmentMachine.get()) {
         args("--force")

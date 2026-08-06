@@ -6,24 +6,10 @@ struct ForceResetPlan {
 impl ForceResetPlan {
     fn build(targets: &ActivationTargetPaths) -> Result<Self> {
         let install_root = config::normalize(targets.resolved.install_root.clone());
-        let home = config::normalize(manifest::home_dir());
         let mut cleanup = BTreeSet::new();
 
-        for name in ["backups", "current", "previous", "releases", "staging", "state"] {
+        for name in ["current", "previous", "releases", "staging", "state"] {
             cleanup.insert(validated_child(&install_root, name, "Kast install state")?);
-        }
-
-        let receipt_owned = manifest_from_file(
-            &targets.current_link.join(manifest::INSTALL_MANIFEST_FILE),
-        )
-        .map(|receipt| receipt.owned_paths)
-        .unwrap_or_default();
-        let user_bin = home.join(".local/bin");
-        for name in ["kast", "_kastctl"] {
-            let command = validated_child(&user_bin, name, "Kast user command")?;
-            if managed_user_command(&command, &install_root, &receipt_owned) {
-                cleanup.insert(command);
-            }
         }
 
         Ok(Self { targets: cleanup })
