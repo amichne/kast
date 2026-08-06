@@ -1,4 +1,4 @@
-include!("runtime_release_pins/fixture.rs");
+include!("setup_release_pins/fixture.rs");
 
 #[test]
 fn normal_upgrade_preserves_a_registered_release_and_a_pinned_candidate_blocks_replacement() {
