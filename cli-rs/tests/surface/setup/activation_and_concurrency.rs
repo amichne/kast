@@ -107,7 +107,6 @@ fn setup_rolls_back_when_the_new_release_fails_readiness() {
     let good = write_install_bundle_source(temp.path(), "v1.0.0");
     let first = setup(&home, &kast_home, &good);
     assert!(first.status.success());
-    let first: serde_json::Value = serde_json::from_slice(&first.stdout).expect("setup JSON");
     let active = std::fs::canonicalize(kast_home.join("current")).expect("active release");
 
     let broken = write_install_bundle_source(temp.path(), "v2.0.0");
@@ -150,13 +149,9 @@ fn setup_rolls_back_when_the_new_release_fails_readiness() {
         std::fs::read_link(home.join(".local/bin/kast")).expect("user command"),
         kast_home.join("current/bin/kast"),
     );
-    assert_eq!(
-        first["releaseDigest"],
-        std::fs::read_link(kast_home.join("previous"))
-            .expect("previous release")
-            .file_name()
-            .and_then(|name| name.to_str())
-            .expect("previous digest"),
+    assert!(
+        std::fs::symlink_metadata(kast_home.join("previous")).is_err(),
+        "rollback must restore the prior absence of `previous`",
     );
 }
 
