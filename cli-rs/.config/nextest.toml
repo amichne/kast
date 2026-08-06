@@ -1,11 +1,22 @@
+[test-groups]
+public-operations = { max-threads = 4 }
+# Bound bundle copy and hash contention so barrier subprocesses remain observable on Linux CI.
+setup-smoke = { max-threads = 1 }
+
 [profile.default]
-test-threads = 4
 slow-timeout = "15s"
 retries = 0
 
+[[profile.default.overrides]]
+filter = 'binary(=setup_smoke)'
+test-group = 'setup-smoke'
+
+[[profile.default.overrides]]
+filter = 'binary(=kast_public_operations)'
+test-group = 'public-operations'
+
 [profile.ci]
 fail-fast = false
-test-threads = 4
 slow-timeout = "15s"
 retries = 0
 
