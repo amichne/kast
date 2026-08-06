@@ -119,7 +119,7 @@ impl PinnedRuntimeService {
         }
     }
 
-    fn run(&self, mut command: Command) -> std::process::Output {
+    fn run(&self, mut command: SetupCommand) -> std::process::Output {
         command
             .env("KAST_TEST_ALLOW_RUNTIME_SERVICE_MANAGER", "1")
             .env(
