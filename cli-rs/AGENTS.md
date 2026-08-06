@@ -149,3 +149,40 @@ zensical build --clean
 ./gradlew test --no-daemon
 ./gradlew :analysis-api:test :analysis-server:test :indexer:test :index-store:test --no-daemon
 ```
+
+## Agent-safe Rust tooling
+
+Run Rust commands from the repository root with an explicit manifest or the
+checked-in wrapper. Keep data on standard output machine-readable. Leave
+progress and compiler rendering on standard error.
+
+Read the package and target graph without resolving dependencies or using the
+network:
+
+```console
+scripts/rust-agent-metadata.sh
+```
+
+Collect structured compiler diagnostics:
+
+```console
+cargo check --manifest-path cli-rs/Cargo.toml --locked --all-targets --all-features --message-format=json-diagnostic-rendered-ansi
+```
+
+Use rust-analyzer for batch semantic validation and ast-grep for syntax-aware
+search. Ast-grep is not type-aware, so confirm every edit with the compiler.
+
+```console
+rust-analyzer analysis-stats cli-rs
+ast-grep run --lang rust --pattern '$VALUE.clone()' --json=stream cli-rs/src
+```
+
+Use nextest for focused RED and GREEN proof. A test that exceeds 15 seconds is
+reported as slow. Failures are not retried.
+
+```console
+cargo nextest run --manifest-path cli-rs/Cargo.toml --locked --test <test-target> <test-name>
+```
+
+Nextest does not run documentation tests. Retain a separate documentation-test
+command when a library target is present.
