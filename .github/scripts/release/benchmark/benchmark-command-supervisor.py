@@ -13,6 +13,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import NoReturn, Sequence
 
@@ -22,6 +23,23 @@ TYPE_COMMAND = "KAST_BENCHMARK_SUPERVISED_COMMAND"
 TYPE_CAPTURE_GAP = "KAST_BENCHMARK_CAPTURE_GAP_PROOF"
 TYPE_OWNED = "KAST_BENCHMARK_OWNED_PROCESSES"
 STABLE_CONFIRMATION_PASSES = 2
+CLOSURE_PROOF_RESERVE_MILLIS = 1_000
+COMMAND_ADMISSION_RESERVE_MILLIS = 1_000
+TIMEOUT_PHASE_PRE_SPAWN = "PRE_SPAWN"
+
+
+class PreSpawnTimeoutReason(Enum):
+    DEADLINE_EXPIRED = "DEADLINE_EXPIRED"
+    INSUFFICIENT_CLEANUP_RESERVE = "INSUFFICIENT_CLEANUP_RESERVE"
+    INSUFFICIENT_ADMISSION_BUDGET = "INSUFFICIENT_ADMISSION_BUDGET"
+
+    @property
+    def detail(self) -> str:
+        if self is PreSpawnTimeoutReason.DEADLINE_EXPIRED:
+            return "command deadline expired before spawn"
+        if self is PreSpawnTimeoutReason.INSUFFICIENT_CLEANUP_RESERVE:
+            return "insufficient cleanup reserve before spawn"
+        return "insufficient command admission budget before spawn"
 
 
 def fail(message: str, exit_code: int = 2) -> NoReturn:
@@ -49,6 +67,44 @@ def nonnegative_millis(value: str) -> int:
     if parsed < 0:
         raise argparse.ArgumentTypeError("must be a non-negative integer")
     return parsed
+
+
+def required_cleanup_reserve_millis(
+    *,
+    term_grace_millis: int,
+    kill_grace_millis: int,
+) -> int:
+    return (
+        term_grace_millis
+        + kill_grace_millis
+        + CLOSURE_PROOF_RESERVE_MILLIS
+    )
+
+
+def required_admission_budget_millis(
+    *,
+    term_grace_millis: int,
+    kill_grace_millis: int,
+) -> int:
+    return required_cleanup_reserve_millis(
+        term_grace_millis=term_grace_millis,
+        kill_grace_millis=kill_grace_millis,
+    ) + COMMAND_ADMISSION_RESERVE_MILLIS
+
+
+def classify_pre_spawn_timeout(
+    *,
+    remaining_budget_millis: int,
+    required_cleanup_millis: int,
+    required_admission_millis: int,
+) -> PreSpawnTimeoutReason | None:
+    if remaining_budget_millis == 0:
+        return PreSpawnTimeoutReason.DEADLINE_EXPIRED
+    if remaining_budget_millis <= required_cleanup_millis:
+        return PreSpawnTimeoutReason.INSUFFICIENT_CLEANUP_RESERVE
+    if remaining_budget_millis <= required_admission_millis:
+        return PreSpawnTimeoutReason.INSUFFICIENT_ADMISSION_BUDGET
+    return None
 
 
 def require_linux_pidfd() -> None:
@@ -401,6 +457,49 @@ def persist_command_event(
     return 125 if failures else int(event["exitCode"])
 
 
+def persist_pre_spawn_timeout(
+    *,
+    args: argparse.Namespace,
+    started_epoch_ms: int,
+    started_monotonic_ms: int,
+    reason: PreSpawnTimeoutReason,
+    remaining_budget_millis: int,
+    required_cleanup_millis: int,
+) -> int:
+    required_admission_millis = required_admission_budget_millis(
+        term_grace_millis=args.term_grace_millis,
+        kill_grace_millis=args.kill_grace_millis,
+    )
+    event = command_event(
+        args=args,
+        started_epoch_ms=started_epoch_ms,
+        started_monotonic_ms=started_monotonic_ms,
+        finished_epoch_ms=epoch_millis(),
+        finished_monotonic_ms=monotonic_millis(),
+        pid=None,
+        capture_identity=None,
+        pidfd_opened=False,
+        outcome="TIMED_OUT",
+        exit_code=124,
+        term_sent=False,
+        kill_sent=False,
+        process_group_closure=no_process_group_closure(),
+        detail=reason.detail,
+    )
+    event.update({
+        "timeoutPhase": TIMEOUT_PHASE_PRE_SPAWN,
+        "timeoutReason": reason.value,
+        "remainingBudgetMillis": remaining_budget_millis,
+        "requiredCleanupReserveMillis": required_cleanup_millis,
+        "termGraceMillis": args.term_grace_millis,
+        "killGraceMillis": args.kill_grace_millis,
+        "closureProofReserveMillis": CLOSURE_PROOF_RESERVE_MILLIS,
+        "admissionReserveMillis": COMMAND_ADMISSION_RESERVE_MILLIS,
+        "requiredAdmissionBudgetMillis": required_admission_millis,
+    })
+    return persist_command_event(args, event)
+
+
 def run_command(args: argparse.Namespace) -> int:
     if args.command and args.command[0] == "--":
         args.command = args.command[1:]
@@ -416,19 +515,36 @@ def run_command(args: argparse.Namespace) -> int:
         require_linux_pidfd()
     elif not boundary.enabled:
         fail("production benchmark supervision requires Linux pidfd support")
-    if monotonic_millis() >= args.deadline_monotonic_ms:
-        fail("supervised command has no remaining monotonic budget", 124)
 
     started_epoch_ms = epoch_millis()
     started_monotonic_ms = monotonic_millis()
-    available_millis = max(args.deadline_monotonic_ms - started_monotonic_ms, 0)
-    cleanup_reserve_millis = min(
-        args.term_grace_millis + args.kill_grace_millis,
-        max(available_millis // 2, 1),
+    required_cleanup_millis = required_cleanup_reserve_millis(
+        term_grace_millis=args.term_grace_millis,
+        kill_grace_millis=args.kill_grace_millis,
     )
+    available_millis = max(args.deadline_monotonic_ms - started_monotonic_ms, 0)
+    required_admission_millis = required_admission_budget_millis(
+        term_grace_millis=args.term_grace_millis,
+        kill_grace_millis=args.kill_grace_millis,
+    )
+    pre_spawn_timeout = classify_pre_spawn_timeout(
+        remaining_budget_millis=available_millis,
+        required_cleanup_millis=required_cleanup_millis,
+        required_admission_millis=required_admission_millis,
+    )
+    if pre_spawn_timeout is not None:
+        return persist_pre_spawn_timeout(
+            args=args,
+            started_epoch_ms=started_epoch_ms,
+            started_monotonic_ms=started_monotonic_ms,
+            reason=pre_spawn_timeout,
+            remaining_budget_millis=available_millis,
+            required_cleanup_millis=required_cleanup_millis,
+        )
+    cleanup_reserve = required_cleanup_millis
     termination_start_monotonic_ms = max(
         started_monotonic_ms,
-        args.deadline_monotonic_ms - cleanup_reserve_millis,
+        args.deadline_monotonic_ms - cleanup_reserve,
     )
     process: subprocess.Popen[bytes] | None = None
     pidfd: int | None = None

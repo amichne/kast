@@ -1154,6 +1154,9 @@ correctness_integer_fields = {
     "graphEdgeOccurrenceCount",
 }
 correctness_numeric_fields = correctness_integer_fields | {"graphWeightedEdgeCount"}
+correctness_comparison_numeric_fields = (
+    correctness_numeric_fields - {"sourceIndexGeneration"}
+)
 correctness_hash_fields = {
     "workspaceFileIdentitySha256", "graphNodeIdentitySha256", "graphEdgeIdentitySha256",
 }
@@ -1535,7 +1538,7 @@ if not stable_errors and not candidate_errors:
         failures.append({"code": "CORRECTNESS_CONTEXT_MISMATCH"})
     stable_correctness = stable["correctnessEvidence"]
     candidate_correctness = candidate["correctnessEvidence"]
-    for field in sorted(correctness_numeric_fields):
+    for field in sorted(correctness_comparison_numeric_fields):
         baseline = stable_correctness[field]
         observed = candidate_correctness[field]
         failed = observed != baseline

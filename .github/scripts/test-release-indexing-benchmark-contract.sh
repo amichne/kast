@@ -343,6 +343,8 @@ grep -Fq 'requires sourced mode and both explicit test opt-ins' \
 export KAST_BENCHMARK_TEST_SIGNAL_HELPER="$test_signal_helper"
 export KAST_BENCHMARK_TEST_MODE=true
 export KAST_BENCHMARK_TEST_ALLOW_SIGNAL_HELPER=true
+export KAST_RELEASE_COMMAND_TERM_GRACE_MILLIS=100
+export KAST_RELEASE_COMMAND_KILL_GRACE_MILLIS=500
 declare -F compare_benchmark_evidence >/dev/null \
   || die 'benchmark does not expose its evidence comparator'
 declare -F run_supervised_command >/dev/null \
@@ -359,6 +361,8 @@ set +e
 "$BENCHMARK_PYTHON_BIN" "$supervisor" run \
   --deadline-monotonic-ms "$(( $(monotonic_millis) + 2000 ))" \
   --operation event-persistence-failure \
+  --term-grace-millis 100 \
+  --kill-grace-millis 500 \
   --event-log / \
   --test-sourced \
   --test-mode \
@@ -380,6 +384,8 @@ set +e
 "$BENCHMARK_PYTHON_BIN" "$supervisor" run \
   --deadline-monotonic-ms "$(( $(monotonic_millis) + 2000 ))" \
   --operation result-persistence-failure \
+  --term-grace-millis 100 \
+  --kill-grace-millis 500 \
   --event-log "$scratch/result-persistence-events.jsonl" \
   --result-json "$result_parent_file/result.json" \
   --test-sourced \
@@ -429,6 +435,55 @@ if sys.platform == "linux":
     assert payload["pidfdOpenedBeforeReap"] is True, payload
 PY
 
+python3 - "$supervisor" <<'PY'
+import importlib.util
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+spec = importlib.util.spec_from_file_location("benchmark_command_supervisor", path)
+assert spec is not None and spec.loader is not None
+module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = module
+spec.loader.exec_module(module)
+
+assert module.CLOSURE_PROOF_RESERVE_MILLIS == 1_000
+assert module.COMMAND_ADMISSION_RESERVE_MILLIS == 1_000
+assert module.required_cleanup_reserve_millis(
+    term_grace_millis=5_000,
+    kill_grace_millis=2_000,
+) == 8_000
+assert module.required_admission_budget_millis(
+    term_grace_millis=5_000,
+    kill_grace_millis=2_000,
+) == 9_000
+assert module.classify_pre_spawn_timeout(
+    remaining_budget_millis=0,
+    required_cleanup_millis=8_000,
+    required_admission_millis=9_000,
+) is module.PreSpawnTimeoutReason.DEADLINE_EXPIRED
+assert module.classify_pre_spawn_timeout(
+    remaining_budget_millis=8_000,
+    required_cleanup_millis=8_000,
+    required_admission_millis=9_000,
+) is module.PreSpawnTimeoutReason.INSUFFICIENT_CLEANUP_RESERVE
+assert module.classify_pre_spawn_timeout(
+    remaining_budget_millis=8_001,
+    required_cleanup_millis=8_000,
+    required_admission_millis=9_000,
+) is module.PreSpawnTimeoutReason.INSUFFICIENT_ADMISSION_BUDGET
+assert module.classify_pre_spawn_timeout(
+    remaining_budget_millis=9_000,
+    required_cleanup_millis=8_000,
+    required_admission_millis=9_000,
+) is module.PreSpawnTimeoutReason.INSUFFICIENT_ADMISSION_BUDGET
+assert module.classify_pre_spawn_timeout(
+    remaining_budget_millis=9_001,
+    required_cleanup_millis=8_000,
+    required_admission_millis=9_000,
+) is None
+PY
+
 hanging_surface="$scratch/hanging-surface.sh"
 cat >"$hanging_surface" <<'SH'
 #!/usr/bin/env bash
@@ -437,11 +492,71 @@ while :; do :; done
 SH
 chmod 700 "$hanging_surface"
 benchmark_command_events_file="$scratch/supervised-command-events.jsonl"
+expired_command_event="$scratch/expired-command-event.json"
+expired_command_log="$scratch/expired-command-events.jsonl"
+expired_command_deadline=$(( $(monotonic_millis) - 1 ))
+set +e
+"$BENCHMARK_PYTHON_BIN" "$supervisor" run \
+  --deadline-monotonic-ms "$expired_command_deadline" \
+  --operation pre-spawn-timeout \
+  --event-log "$expired_command_log" \
+  --result-json "$expired_command_event" \
+  --test-sourced \
+  --test-mode \
+  --test-allow-signal-helper \
+  --test-signal-helper "$test_signal_helper" \
+  -- /usr/bin/true
+expired_command_result=$?
+set -e
+[[ "$expired_command_result" -eq 124 ]] \
+  || die "expired pre-spawn deadline returned $expired_command_result instead of timeout"
+python3 - "$expired_command_event" "$expired_command_log" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+events = [
+    json.loads(line)
+    for line in Path(sys.argv[2]).read_text(encoding="utf-8").splitlines()
+    if line
+]
+assert events == [payload], events
+assert payload["type"] == "KAST_BENCHMARK_SUPERVISED_COMMAND", payload
+assert payload["operation"] == "pre-spawn-timeout", payload
+assert payload["outcome"] == "TIMED_OUT", payload
+assert payload["exitCode"] == 124, payload
+assert payload["timeoutPhase"] == "PRE_SPAWN", payload
+assert payload["timeoutReason"] == "DEADLINE_EXPIRED", payload
+assert payload["detail"] == "command deadline expired before spawn", payload
+assert payload["remainingBudgetMillis"] == 0, payload
+assert payload["requiredCleanupReserveMillis"] == 8_000, payload
+assert payload["termGraceMillis"] == 5_000, payload
+assert payload["killGraceMillis"] == 2_000, payload
+assert payload["closureProofReserveMillis"] == 1_000, payload
+assert payload["admissionReserveMillis"] == 1_000, payload
+assert payload["requiredAdmissionBudgetMillis"] == 9_000, payload
+assert payload["pid"] is None, payload
+assert payload["captureIdentity"] is None, payload
+assert payload["pidfdOpenedBeforeWait"] is False, payload
+assert payload["termination"] == {"termSent": False, "killSent": False}, payload
+assert payload["processGroupClosure"] == {
+    "required": False,
+    "proven": None,
+    "pidfdsRetained": False,
+    "capturedProcesses": [],
+    "remainingProcesses": [],
+    "recapturePasses": 0,
+    "stableConfirmationPasses": 0,
+}, payload
+assert payload["startedAtMonotonicMillis"] >= payload["deadlineMonotonicMillis"], payload
+assert payload["finishedAtMonotonicMillis"] >= payload["startedAtMonotonicMillis"], payload
+PY
+
 for bounded_surface in \
   setup config graph-refresh graph-summary process-enumeration resource-disk-sample \
   teardown-enumeration teardown-signaling worktree-cleanup finalization; do
-  bounded_deadline=$(( $(monotonic_millis) + 1500 ))
-  bounded_started="$(monotonic_millis)"
+  bounded_deadline=$(( $(monotonic_millis) + 3500 ))
   set +e
   KAST_BENCHMARK_TEST_SIGNAL_HELPER="$test_signal_helper" \
     KAST_BENCHMARK_TEST_MODE=true \
@@ -453,11 +568,8 @@ for bounded_surface in \
       >/dev/null 2>"$scratch/$bounded_surface.stderr"
   bounded_result=$?
   set -e
-  bounded_elapsed=$(( $(monotonic_millis) - bounded_started ))
   [[ "$bounded_result" -eq 124 ]] \
     || die "$bounded_surface hang did not return the typed timeout exit: $bounded_result"
-  ((bounded_elapsed < 3000)) \
-    || die "$bounded_surface hang exceeded its supervisor budget"
 done
 python3 - "$benchmark_command_events_file" <<'PY'
 import json
@@ -482,10 +594,13 @@ for event in events:
     assert event["exitCode"] == 124, event
     assert event["termination"]["termSent"] is True, event
     assert event["termination"]["killSent"] is True, event
+    assert "timeoutPhase" not in event, event
     assert event["finishedAtMonotonicMillis"] <= event["deadlineMonotonicMillis"], event
 PY
 
 printf -v emergency_digest '%064d' 0
+KAST_RELEASE_COMMAND_TERM_GRACE_MILLIS=100 \
+KAST_RELEASE_COMMAND_KILL_GRACE_MILLIS=500 \
 write_typed_emergency_role_evidence \
   "$scratch/emergency-role-evidence.json" \
   stable \
@@ -573,7 +688,7 @@ trap on_term TERM
 while :; do sleep 1; done
 SH
   chmod 700 "$late_group_fixture"
-  late_group_deadline=$(( $(monotonic_millis) + 1000 ))
+  late_group_deadline=$(( $(monotonic_millis) + 4000 ))
   set +e
   "$BENCHMARK_PYTHON_BIN" "$supervisor" run \
     --deadline-monotonic-ms "$late_group_deadline" \
@@ -631,8 +746,10 @@ exit 0
 SH
   chmod 700 "$normal_group_fixture"
   "$BENCHMARK_PYTHON_BIN" "$supervisor" run \
-    --deadline-monotonic-ms "$(( $(monotonic_millis) + 3000 ))" \
+    --deadline-monotonic-ms "$(( $(monotonic_millis) + 4000 ))" \
     --operation normal-success-background \
+    --term-grace-millis 100 \
+    --kill-grace-millis 500 \
     --result-json "$scratch/normal-group-result.json" \
     -- "$normal_group_fixture" "$normal_group_child"
   wait_for_pid_file "$normal_group_child" \
@@ -667,7 +784,7 @@ SH
   chmod 700 "$pidfd_failure_fixture"
   set +e
   "$BENCHMARK_PYTHON_BIN" "$supervisor" run \
-    --deadline-monotonic-ms "$(( $(monotonic_millis) + 3000 ))" \
+    --deadline-monotonic-ms "$(( $(monotonic_millis) + 4000 ))" \
     --operation pidfd-open-failure \
     --term-grace-millis 200 \
     --kill-grace-millis 1000 \
@@ -718,7 +835,7 @@ SH
   chmod 700 "$group_capture_error_fixture"
   set +e
   "$BENCHMARK_PYTHON_BIN" "$supervisor" run \
-    --deadline-monotonic-ms "$(( $(monotonic_millis) + 1500 ))" \
+    --deadline-monotonic-ms "$(( $(monotonic_millis) + 3000 ))" \
     --operation group-capture-emfile \
     --term-grace-millis 200 \
     --kill-grace-millis 500 \
@@ -1866,7 +1983,64 @@ grep -Fq 'CORRECTNESS_LOST' "$comparison" \
 
 write_evidence "$stable" stable true 400000 100000 1073741824
 write_evidence "$candidate" candidate true 400000 100000 1073741824
-compare_benchmark_evidence "$stable" "$candidate" "$comparison"
+python3 - "$candidate" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+payload = json.loads(path.read_text(encoding="utf-8"))
+payload["correctnessEvidence"]["sourceIndexGeneration"] += 1
+path.write_text(json.dumps(payload), encoding="utf-8")
+PY
+compare_benchmark_evidence "$stable" "$candidate" "$comparison" \
+  || die 'comparator rejected equal semantic evidence with a different run-local generation'
+python3 - "$comparison" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+assert payload["passed"] is True, payload
+assert "sourceIndexGeneration" not in {
+    item["field"] for item in payload["correctnessRegressions"]
+}, payload
+PY
+
+pre_spawn_stable="$scratch/pre-spawn-stable.json"
+pre_spawn_candidate="$scratch/pre-spawn-candidate.json"
+python3 - "$stable" "$candidate" "$pre_spawn_stable" "$pre_spawn_candidate" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+for source, destination in zip(sys.argv[1:3], sys.argv[3:5], strict=True):
+    payload = json.loads(Path(source).read_text(encoding="utf-8"))
+    event = payload["diagnostic"]["supervisedCommands"][0]
+    event.update({
+        "pid": None,
+        "captureIdentity": None,
+        "pidfdOpenedBeforeWait": False,
+        "outcome": "TIMED_OUT",
+        "exitCode": 124,
+        "timeoutPhase": "PRE_SPAWN",
+        "timeoutReason": "DEADLINE_EXPIRED",
+        "detail": "command deadline expired before spawn",
+        "remainingBudgetMillis": 0,
+        "requiredCleanupReserveMillis": 8_000,
+        "termGraceMillis": 5_000,
+        "killGraceMillis": 2_000,
+        "closureProofReserveMillis": 1_000,
+        "admissionReserveMillis": 1_000,
+        "requiredAdmissionBudgetMillis": 9_000,
+        "deadlineMonotonicMillis": event["startedAtMonotonicMillis"] - 1,
+    })
+    Path(destination).write_text(json.dumps(payload), encoding="utf-8")
+PY
+compare_benchmark_evidence \
+  "$pre_spawn_stable" "$pre_spawn_candidate" "$comparison" \
+  || die 'comparator rejected typed pre-spawn timeout evidence'
+
 # These globals are consumed by the sourced assembly function.
 # shellcheck disable=SC2034
 name=contract-repository repository=https://github.com/example/repository.git \
@@ -1896,6 +2070,188 @@ repository_validation_arguments=(
   --candidate-tag v0.21.7
   --candidate-digest "$candidate_test_digest"
 )
+
+pre_spawn_repository="$scratch/pre-spawn-repository.json"
+python3 - "$assembled" "$pre_spawn_repository" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for run in payload["runs"]:
+    event = run["diagnostic"]["supervisedCommands"][0]
+    event.update({
+        "pid": None,
+        "captureIdentity": None,
+        "pidfdOpenedBeforeWait": False,
+        "outcome": "TIMED_OUT",
+        "exitCode": 124,
+        "timeoutPhase": "PRE_SPAWN",
+        "timeoutReason": "DEADLINE_EXPIRED",
+        "detail": "command deadline expired before spawn",
+        "remainingBudgetMillis": 0,
+        "requiredCleanupReserveMillis": 8_000,
+        "termGraceMillis": 5_000,
+        "killGraceMillis": 2_000,
+        "closureProofReserveMillis": 1_000,
+        "admissionReserveMillis": 1_000,
+        "requiredAdmissionBudgetMillis": 9_000,
+        "deadlineMonotonicMillis": event["startedAtMonotonicMillis"] - 1,
+    })
+Path(sys.argv[2]).write_text(json.dumps(payload), encoding="utf-8")
+PY
+"$aggregator" "${repository_validation_arguments[@]}" \
+  --evidence "$pre_spawn_repository" \
+  || die 'repository validator rejected typed pre-spawn timeout evidence'
+
+insufficient_admission_repository="$scratch/insufficient-admission-repository.json"
+python3 - "$pre_spawn_repository" "$insufficient_admission_repository" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for run in payload["runs"]:
+    event = run["diagnostic"]["supervisedCommands"][0]
+    event.update({
+        "timeoutReason": "INSUFFICIENT_ADMISSION_BUDGET",
+        "detail": "insufficient command admission budget before spawn",
+        "deadlineMonotonicMillis": event["startedAtMonotonicMillis"] + 2_500,
+        "remainingBudgetMillis": 2_500,
+        "requiredCleanupReserveMillis": 2_000,
+        "termGraceMillis": 500,
+        "killGraceMillis": 500,
+        "closureProofReserveMillis": 1_000,
+        "admissionReserveMillis": 1_000,
+        "requiredAdmissionBudgetMillis": 3_000,
+    })
+Path(sys.argv[2]).write_text(json.dumps(payload), encoding="utf-8")
+PY
+"$aggregator" "${repository_validation_arguments[@]}" \
+  --evidence "$insufficient_admission_repository" \
+  || die 'repository validator rejected insufficient-admission timeout evidence'
+
+insufficient_cleanup_repository="$scratch/insufficient-cleanup-repository.json"
+python3 - "$insufficient_admission_repository" "$insufficient_cleanup_repository" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+for run in payload["runs"]:
+    event = run["diagnostic"]["supervisedCommands"][0]
+    event.update({
+        "timeoutReason": "INSUFFICIENT_CLEANUP_RESERVE",
+        "detail": "insufficient cleanup reserve before spawn",
+        "deadlineMonotonicMillis": event["startedAtMonotonicMillis"] + 1_500,
+        "remainingBudgetMillis": 1_500,
+    })
+Path(sys.argv[2]).write_text(json.dumps(payload), encoding="utf-8")
+PY
+"$aggregator" "${repository_validation_arguments[@]}" \
+  --evidence "$insufficient_cleanup_repository" \
+  || die 'repository validator rejected insufficient-cleanup timeout evidence'
+
+misclassified_admission_budget="$scratch/misclassified-admission-budget.json"
+python3 - "$insufficient_admission_repository" "$misclassified_admission_budget" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+event = payload["runs"][0]["diagnostic"]["supervisedCommands"][0]
+event["timeoutReason"] = "INSUFFICIENT_CLEANUP_RESERVE"
+event["detail"] = "insufficient cleanup reserve before spawn"
+Path(sys.argv[2]).write_text(json.dumps(payload), encoding="utf-8")
+PY
+if "$aggregator" "${repository_validation_arguments[@]}" \
+    --evidence "$misclassified_admission_budget" \
+    2>"$scratch/misclassified-admission-budget.stderr"; then
+  die 'repository validator accepted admission-budget evidence as cleanup insufficiency'
+fi
+grep -Fq 'cleanup timeout had sufficient cleanup reserve' \
+  "$scratch/misclassified-admission-budget.stderr" \
+  || die 'misclassified admission budget failed without exact interval diagnosis'
+
+misclassified_cleanup_reserve="$scratch/misclassified-cleanup-reserve.json"
+python3 - "$insufficient_cleanup_repository" "$misclassified_cleanup_reserve" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+event = payload["runs"][0]["diagnostic"]["supervisedCommands"][0]
+event["timeoutReason"] = "INSUFFICIENT_ADMISSION_BUDGET"
+event["detail"] = "insufficient command admission budget before spawn"
+Path(sys.argv[2]).write_text(json.dumps(payload), encoding="utf-8")
+PY
+if "$aggregator" "${repository_validation_arguments[@]}" \
+    --evidence "$misclassified_cleanup_reserve" \
+    2>"$scratch/misclassified-cleanup-reserve.stderr"; then
+  die 'repository validator accepted cleanup insufficiency as admission-budget evidence'
+fi
+grep -Fq 'admission timeout budget is outside its exact interval' \
+  "$scratch/misclassified-cleanup-reserve.stderr" \
+  || die 'misclassified cleanup reserve failed without exact interval diagnosis'
+
+ordinary_timeout_without_closure="$scratch/ordinary-timeout-without-closure.json"
+python3 - "$assembled" "$ordinary_timeout_without_closure" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+event = payload["runs"][0]["diagnostic"]["supervisedCommands"][0]
+event.update({"outcome": "TIMED_OUT", "exitCode": 124})
+Path(sys.argv[2]).write_text(json.dumps(payload), encoding="utf-8")
+PY
+if "$aggregator" "${repository_validation_arguments[@]}" \
+    --evidence "$ordinary_timeout_without_closure" \
+    2>"$scratch/ordinary-timeout-without-closure.stderr"; then
+  die 'repository validator accepted an ordinary timeout without closure proof'
+fi
+grep -Fq 'processGroupClosure is not proven' \
+  "$scratch/ordinary-timeout-without-closure.stderr" \
+  || die 'ordinary timeout failed without exact closure diagnosis'
+
+forged_pre_spawn_timeout="$scratch/forged-pre-spawn-timeout.json"
+python3 - "$pre_spawn_repository" "$forged_pre_spawn_timeout" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+payload["runs"][0]["diagnostic"]["supervisedCommands"][0]["pid"] = 42
+Path(sys.argv[2]).write_text(json.dumps(payload), encoding="utf-8")
+PY
+if "$aggregator" "${repository_validation_arguments[@]}" \
+    --evidence "$forged_pre_spawn_timeout" \
+    2>"$scratch/forged-pre-spawn-timeout.stderr"; then
+  die 'repository validator accepted a pre-spawn timeout with a process'
+fi
+grep -Fq 'pre-spawn timeout unexpectedly has a process' \
+  "$scratch/forged-pre-spawn-timeout.stderr" \
+  || die 'forged pre-spawn timeout failed without exact process diagnosis'
+
+forged_cleanup_reserve="$scratch/forged-cleanup-reserve.json"
+python3 - "$insufficient_admission_repository" "$forged_cleanup_reserve" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+payload = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+event = payload["runs"][0]["diagnostic"]["supervisedCommands"][0]
+event["requiredCleanupReserveMillis"] += 1
+Path(sys.argv[2]).write_text(json.dumps(payload), encoding="utf-8")
+PY
+if "$aggregator" "${repository_validation_arguments[@]}" \
+    --evidence "$forged_cleanup_reserve" \
+    2>"$scratch/forged-cleanup-reserve.stderr"; then
+  die 'repository validator accepted an inconsistent cleanup reserve'
+fi
+grep -Fq 'required cleanup reserve is inconsistent' \
+  "$scratch/forged-cleanup-reserve.stderr" \
+  || die 'forged cleanup reserve failed without exact diagnosis'
 
 shallow_isolation="$scratch/shallow-isolation.json"
 python3 - "$assembled" "$shallow_isolation" <<'PY'
@@ -2214,7 +2570,6 @@ grep -Fq 'EVIDENCE_INVALID' "$comparison" \
 # pinned repository, configuration, and graph probe.
 for correctness_delta in -1 1; do
   for correctness_field in \
-    sourceIndexGeneration \
     workspaceExactTotalCount \
     refreshSymbolCount \
     graphNodeCount \
