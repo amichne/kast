@@ -8,7 +8,7 @@ fn install_user_commands(
     targets: &ActivationTargetPaths,
     profile: manifest::SetupProfile,
     path_projection_authority: &PathProjectionAuthority,
-    existing_agent_projection: Option<AgentCommandProjection>,
+    current_config_migration: Option<&ExistingConfigMigrationPatch>,
 ) -> std::result::Result<(), UserCommandInstallFailure> {
     let local_bin = manifest::home_dir().join(".local/bin");
     let obsolete_control = local_bin.join("_kastctl");
@@ -21,6 +21,8 @@ fn install_user_commands(
     let control_command = local_bin.join("kastctl");
     let control_binary = path_projection_authority.control_target().to_path_buf();
     let receipt_path = targets.current_link.join(manifest::INSTALL_MANIFEST_FILE);
+    test_path_projection_failure("before-user-command-receipt-read")
+        .map_err(UserCommandInstallFailure::BeforeReceipt)?;
     let mut receipt = manifest_from_file(&receipt_path).map_err(|error| {
         let mut error = at_setup_step(error, "READ_INSTALL_RECEIPT");
         error.details.insert(
@@ -71,12 +73,8 @@ fn install_user_commands(
     }
     #[cfg(unix)]
     {
-        let agent_projection = match existing_agent_projection {
-            Some(projection) => projection,
-            None => {
-                project_agent_command(targets).map_err(UserCommandInstallFailure::BeforeReceipt)?
-            }
-        };
+        let agent_projection =
+            project_agent_command(targets).map_err(UserCommandInstallFailure::BeforeReceipt)?;
         let receipt_publication = (|| {
             let mut transaction = path_projection_authority
                 .begin_transaction(
@@ -122,6 +120,14 @@ fn install_user_commands(
                     error,
                     "WRITE_INSTALL_RECEIPT",
                 )));
+            }
+            if let Some(migration) = current_config_migration {
+                migration.apply_after_receipt().map_err(|error| {
+                    UserCommandInstallFailure::AfterReceipt(at_setup_step(
+                        error,
+                        "MIGRATE_CURRENT_CONFIG",
+                    ))
+                })?;
             }
             Ok(transaction)
         })();
@@ -170,7 +176,7 @@ fn install_user_commands(
             agent_binary,
             control_command,
             control_binary,
-            existing_agent_projection,
+            current_config_migration,
         );
         if let Err(mut error) = manifest::write_manifest_atomic(&receipt_path, &receipt) {
             let failure = if exact_install_receipt_is_visible(&receipt_path, &receipt) {
@@ -185,6 +191,11 @@ fn install_user_commands(
                 UserCommandInstallFailure::BeforeReceipt(error)
             };
             return Err(failure);
+        }
+        if let Some(migration) = current_config_migration {
+            migration
+                .apply_after_receipt()
+                .map_err(UserCommandInstallFailure::AfterReceipt)?;
         }
     }
     Ok(())

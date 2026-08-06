@@ -56,20 +56,20 @@ fn remove_internal_projection_path(
     if expected.is_some_and(|expected| expected != identity) {
         return Err(internal_projection_cleanup_conflict(path, None));
     }
-    test_path_projection_barrier("before-control-internal-cleanup")?;
     let private_path = unique_internal_projection_path(path, "cleanup");
+    test_path_projection_barrier("before-control-internal-cleanup")?;
+    require_identity(path, identity, "internal projection selected for cleanup")?;
+    require_path_absent(&private_path, "Internal projection cleanup destination")?;
     rename_no_replace(path, &private_path)?;
+    test_path_projection_barrier_at(
+        "after-internal-projection-cleanup-move-before-validation",
+        &private_path,
+    )?;
     if projection_file_identity(&private_path).ok() != Some(identity) {
-        let restore_error = rename_no_replace(&private_path, path)
-            .and_then(|()| sync_projection_parent(path))
-            .err();
-        let mut error = internal_projection_cleanup_conflict(path, Some(&private_path));
-        if let Some(restore_error) = restore_error {
-            error
-                .details
-                .insert("restoreError".to_string(), restore_error.to_string());
-        }
-        return Err(error);
+        return Err(internal_projection_cleanup_conflict(
+            path,
+            Some(&private_path),
+        ));
     }
     fs::remove_file(&private_path)?;
     sync_projection_parent_after(path, durability_failure_point)

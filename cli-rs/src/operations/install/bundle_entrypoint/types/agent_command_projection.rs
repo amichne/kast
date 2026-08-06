@@ -5,12 +5,56 @@ impl AgentCommandProjection {
         }
         match fs::symlink_metadata(path) {
             Err(error) if error.kind() == io::ErrorKind::NotFound => {
-                std::os::unix::fs::symlink(target, path)?;
-                let identity = projection_file_identity(path)?;
+                let temporary = unique_internal_projection_path(path, "agent-create");
+                std::os::unix::fs::symlink(target, &temporary)?;
+                let identity = projection_file_identity(&temporary)?;
+                require_owned_projection_unchanged(&temporary, target, identity)?;
                 let projection = Self {
                     path: path.to_path_buf(),
                     created_identity: Some(identity),
                 };
+                let publication = test_path_projection_barrier_at(
+                    "before-projection-identity-capture",
+                    path,
+                )
+                .and_then(|()| {
+                    IdentityTransactionalMove::new(
+                        &temporary,
+                        path,
+                        identity,
+                        "prepared agent projection selected for publication",
+                    )
+                    .with_after_publication_barrier(
+                        "after-agent-create-publication-before-validation",
+                    )
+                    .execute()
+                });
+                if let Err(mut error) = publication {
+                    if projection_file_identity(&temporary).ok() == Some(identity)
+                        && let Err(cleanup_error) = remove_internal_projection_path(
+                            &temporary,
+                            Some(identity),
+                            "after-agent-create-publication-failure-cleanup-before-parent-sync",
+                        )
+                    {
+                        error.details.insert(
+                            "agentProjectionCleanupError".to_string(),
+                            cleanup_error.to_string(),
+                        );
+                    }
+                    return Err(error);
+                }
+                if let Err(mut error) =
+                    require_owned_projection_unchanged(path, target, identity)
+                {
+                    if let Err(rollback_error) = projection.rollback() {
+                        error.details.insert(
+                            "agentProjectionRollbackError".to_string(),
+                            rollback_error.to_string(),
+                        );
+                    }
+                    return Err(error);
+                }
                 if let Err(mut error) =
                     sync_projection_parent_after(path, "after-agent-create-before-parent-sync")
                 {

@@ -293,3 +293,52 @@ fn same_release_failures_before_migration_and_verification_preserve_the_prior_pr
         assert_eq!(receipt["setupProfile"], "DEVELOPMENT");
     }
 }
+
+#[test]
+fn control_exchange_preserves_a_replacement_after_exchange() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let first = write_install_bundle_source(temp.path(), "v9.8.7");
+    let second = write_install_bundle_source(temp.path(), "v9.8.8");
+    assert!(setup_with_profile(&home, &kast_home, &first, "development")
+        .status
+        .success());
+    let control = home.join(".local/bin/kastctl");
+    let manifest_path = second.join("manifest.json");
+    let custom_binary = second.join("commands/kastctl");
+    std::fs::create_dir_all(custom_binary.parent().unwrap()).expect("custom binary directory");
+    std::fs::rename(second.join("libexec/kastctl"), &custom_binary).expect("custom binary");
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&manifest_path).unwrap()).unwrap();
+    manifest["activation"]["cli"]["path"] = serde_json::json!("commands/kastctl");
+    manifest["artifacts"][0]["path"] = serde_json::json!("commands/kastctl");
+    std::fs::write(&manifest_path, serde_json::to_vec(&manifest).unwrap()).unwrap();
+    let barrier = temp.path().join("control-exchange-barrier");
+    let mut child = setup_command(&home, &kast_home, &second)
+        .args(["--profile", "development"])
+        .env("KAST_TEST_ALLOW_SETUP_FAULT_INJECTION", "1")
+        .env("KAST_TEST_SETUP_PATH_PROJECTION_BARRIER", &barrier)
+        .env("KAST_TEST_SETUP_PATH_PROJECTION_BARRIER_PATH", &control)
+        .env(
+            "KAST_TEST_SETUP_PATH_PROJECTION_BARRIER_STAGE",
+            "after-projection-exchange-before-validation",
+        )
+        .spawn()
+        .expect("setup at control exchange barrier");
+    wait_for_setup_barrier(
+        &mut child,
+        &barrier,
+        "after-projection-exchange-before-validation",
+    );
+    let observed = temp.path().join("observed-control");
+    std::fs::rename(&control, &observed).expect("observe control publication");
+    std::fs::write(&control, "operator control\n").expect("operator control");
+    release_setup_barrier(&barrier, "after-projection-exchange-before-validation");
+
+    let output = child.wait_with_output().expect("setup output");
+
+    assert!(!output.status.success(), "changed publication must fail");
+    assert_eq!(std::fs::read_to_string(control).unwrap(), "operator control\n");
+    assert!(observed.is_symlink());
+}

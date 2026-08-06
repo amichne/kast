@@ -1,9 +1,9 @@
-fn install_validated_bundle(
+fn install_validated_bundle<'a>(
     bundle: &ValidatedBundle,
-    targets: &ActivationTargetPaths,
-    migrated_config: Option<&str>,
+    targets: &'a ActivationTargetPaths,
+    config_migration: &ExistingConfigMigrationPlan,
     path_projection_authority: &PathProjectionAuthority,
-) -> Result<(Option<PathBuf>, Option<PathBuf>)> {
+) -> Result<BundleActivationGuard<'a>> {
     if bundle.root.starts_with(&targets.resolved.install_root) {
         return Err(CliError::new(
             "BUNDLE_SOURCE_UNSAFE",
@@ -37,68 +37,13 @@ fn install_validated_bundle(
     manifest::make_executable(&staged.join(&bundle.cli_relative))?;
     manifest::make_executable(&staged.join(AGENT_CLI_BUNDLE_PATH))?;
     let staged_config = staged.join("config/config.toml");
-    if let Some(contents) = migrated_config {
-        write_setup_config_atomic(&staged_config, contents)?;
-    } else {
-        write_indexer_config(&staged_config)?;
-    }
+    let staged_config = config_migration.stage_for_bundle(&staged_config)?;
     manifest::write_manifest_atomic(
         &staged.join(manifest::INSTALL_MANIFEST_FILE),
         &install_manifest,
     )?;
 
-    let (previous, backup) = archive_current_activation(targets)?;
-    manifest::remove_path(&targets.version_dir)?;
-    fs::rename(&staged, &targets.version_dir)?;
-    if let Some(previous) = &previous {
-        manifest::replace_symlink_or_copy(previous, &targets.previous_link)?;
-    }
-    manifest::replace_symlink_or_copy(&targets.version_dir, &targets.current_link)?;
-    Ok((previous, backup))
-}
-
-fn archive_current_activation(
-    targets: &ActivationTargetPaths,
-) -> Result<(Option<PathBuf>, Option<PathBuf>)> {
-    let backups = targets.resolved.install_root.join("backups");
-    fs::create_dir_all(&backups)?;
-    if let Ok(mut previous) = fs::read_link(&targets.current_link) {
-        if previous.is_relative() {
-            previous = targets.resolved.install_root.join(previous);
-        }
-        let digest = previous
-            .file_name()
-            .and_then(|name| name.to_str())
-            .unwrap_or("previous");
-        if previous == targets.version_dir && previous.exists() {
-            let backup = backups.join(format!("{digest}-replaced-{}", std::process::id()));
-            manifest::remove_path(&backup)?;
-            fs::rename(&previous, &backup)?;
-            return Ok((Some(backup.clone()), Some(backup)));
-        }
-        let backup = backups.join(digest);
-        manifest::replace_symlink_or_copy(&previous, &backup)?;
-        return Ok((Some(previous), Some(backup)));
-    }
-    if targets.current_link.exists() {
-        let backup = backups.join(format!("legacy-current-{}", std::process::id()));
-        manifest::remove_path(&backup)?;
-        fs::rename(&targets.current_link, &backup)?;
-        return Ok((Some(backup.clone()), Some(backup)));
-    }
-    Ok((None, None))
-}
-
-fn rollback_activated_bundle(
-    targets: &ActivationTargetPaths,
-    previous: Option<&Path>,
-) -> Result<()> {
-    if let Some(previous) = previous {
-        manifest::replace_symlink_or_copy(previous, &targets.current_link)?;
-    } else {
-        manifest::remove_path(&targets.current_link)?;
-    }
-    manifest::remove_path(&targets.version_dir)
+    staged_config.activate(targets, &staged)
 }
 
 fn project_install_manifest(
@@ -223,7 +168,7 @@ fn verify_activated_bundle(
     let output = ProcessCommand::new(&active_binary)
         .arg("ready")
         .arg("--for")
-        .arg("machine")
+        .arg("release")
         .env("KAST_HOME", &targets.resolved.install_root)
         .output()
         .map_err(|error| {
@@ -238,7 +183,7 @@ fn verify_activated_bundle(
         Err(command_error(
             "BUNDLE_READY_FAILED",
             "Installed bundle did not pass kast ready",
-            &["ready".to_string(), "--for".to_string(), "machine".to_string()],
+            &["ready".to_string(), "--for".to_string(), "release".to_string()],
             &output,
         ))
     }

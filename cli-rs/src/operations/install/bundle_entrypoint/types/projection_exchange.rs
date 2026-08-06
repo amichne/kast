@@ -4,6 +4,15 @@ enum ControlReplacementState {
     DesiredPublished,
 }
 
+impl ControlReplacementState {
+    fn reversed(self) -> Self {
+        match self {
+            Self::PriorPublished => Self::DesiredPublished,
+            Self::DesiredPublished => Self::PriorPublished,
+        }
+    }
+}
+
 fn control_replacement_state(
     control_path: &Path,
     temporary_path: &Path,
@@ -61,11 +70,34 @@ struct ProjectionExchangeSnapshot {
 }
 
 impl ProjectionExchangeSnapshot {
-    fn capture(control_path: &Path, temporary_path: &Path) -> Result<Self> {
-        Ok(Self {
-            control_identity: projection_file_identity(control_path)?,
-            temporary_identity: projection_file_identity(temporary_path)?,
-        })
+    fn for_state(
+        state: ControlReplacementState,
+        prior_identity: ProjectionFileIdentity,
+        projected_identity: ProjectionFileIdentity,
+    ) -> Self {
+        match state {
+            ControlReplacementState::PriorPublished => Self {
+                control_identity: prior_identity,
+                temporary_identity: projected_identity,
+            },
+            ControlReplacementState::DesiredPublished => Self {
+                control_identity: projected_identity,
+                temporary_identity: prior_identity,
+            },
+        }
+    }
+
+    fn require_at(self, control_path: &Path, temporary_path: &Path) -> Result<()> {
+        require_identity(
+            control_path,
+            self.control_identity,
+            "public projection selected for exchange restoration",
+        )?;
+        require_identity(
+            temporary_path,
+            self.temporary_identity,
+            "temporary projection selected for exchange restoration",
+        )
     }
 
     fn require_reversed(self, control_path: &Path, temporary_path: &Path) -> Result<()> {
@@ -93,20 +125,44 @@ fn exchange_control_projection(
     expected_state: ControlReplacementState,
     durability_failure_point: &str,
 ) -> Result<()> {
-    rename_exchange(control_path, temporary_path)?;
-    match require_control_replacement_state(
+    require_control_replacement_state(
         control_path,
         temporary_path,
         prior_target,
         prior_identity,
         desired_target,
         projected_identity,
-        expected_state,
-    ) {
+        expected_state.reversed(),
+    )?;
+    rename_exchange(control_path, temporary_path)?;
+    let validation = test_path_projection_barrier_at(
+        "after-projection-exchange-before-validation",
+        control_path,
+    )
+    .and_then(|()| {
+        require_control_replacement_state(
+            control_path,
+            temporary_path,
+            prior_target,
+            prior_identity,
+            desired_target,
+            projected_identity,
+            expected_state,
+        )
+    });
+    match validation {
         Ok(()) => sync_projection_parent_after(control_path, durability_failure_point),
         Err(mut error) => {
-            let exchange_restored = match restore_projection_exchange(control_path, temporary_path)
-            {
+            let expected_exchange = ProjectionExchangeSnapshot::for_state(
+                expected_state,
+                prior_identity,
+                projected_identity,
+            );
+            let exchange_restored = match restore_projection_exchange(
+                control_path,
+                temporary_path,
+                expected_exchange,
+            ) {
                 Ok(()) => true,
                 Err(restoration_error) => {
                     error.message = format!(
@@ -129,11 +185,14 @@ fn exchange_control_projection(
     }
 }
 
-fn restore_projection_exchange(control_path: &Path, temporary_path: &Path) -> Result<()> {
-    let snapshot = ProjectionExchangeSnapshot::capture(control_path, temporary_path);
+fn restore_projection_exchange(
+    control_path: &Path,
+    temporary_path: &Path,
+    expected_exchange: ProjectionExchangeSnapshot,
+) -> Result<()> {
+    expected_exchange.require_at(control_path, temporary_path)?;
     rename_exchange(control_path, temporary_path)?;
-    let verification =
-        snapshot.and_then(|snapshot| snapshot.require_reversed(control_path, temporary_path));
+    let verification = expected_exchange.require_reversed(control_path, temporary_path);
     let durability = sync_projection_move_parents(control_path, temporary_path);
     if let Err(mut error) = verification {
         if let Err(durability_error) = durability {
@@ -193,28 +252,6 @@ fn require_identity(path: &Path, expected: ProjectionFileIdentity, label: &str) 
             format!("{label} identity changed at {}.", path.display()),
         ))
     }
-}
-
-fn restore_identity_transactional_move(source: &Path, destination: &Path) -> Result<()> {
-    let moved_identity = projection_file_identity(destination)?;
-    require_path_absent(source, "identity-transactional move restoration path")?;
-    rename_no_replace(destination, source)?;
-    let verification = require_identity(
-        source,
-        moved_identity,
-        "restored identity-transactional move source",
-    );
-    let durability = sync_projection_move_parents(source, destination);
-    if let Err(mut error) = verification {
-        if let Err(durability_error) = durability {
-            error.details.insert(
-                "restorationDurabilityError".to_string(),
-                durability_error.to_string(),
-            );
-        }
-        return Err(error);
-    }
-    durability
 }
 
 fn sync_projection_move_parents(first: &Path, second: &Path) -> Result<()> {
