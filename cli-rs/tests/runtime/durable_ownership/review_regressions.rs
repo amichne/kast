@@ -1,6 +1,41 @@
 use super::*;
 
 #[test]
+fn deleted_workspace_registration_is_repaired_deleted_workspace_registration_review_regression() {
+    let mut fixture = RuntimeServiceFixture::new();
+    fixture.runtime.kill().expect("stop fixture runtime");
+    fixture.runtime.wait().expect("fixture runtime exit");
+    std::fs::remove_dir_all(&fixture.workspace).expect("delete workspace");
+
+    let dry_run = fixture
+        .repair_command(false)
+        .output()
+        .expect("deleted workspace dry run");
+    assert_success(&dry_run, "deleted workspace dry run");
+    let dry_run = output_json(&dry_run);
+    assert_eq!(dry_run["state"], "REPAIRABLE");
+    assert_eq!(dry_run["actions"][0]["executed"], false);
+    assert!(
+        fixture.registration.exists(),
+        "dry run removed registration"
+    );
+    assert!(!fixture.workspace.exists(), "dry run recreated workspace");
+
+    let repair = fixture
+        .repair_command(true)
+        .output()
+        .expect("deleted workspace repair");
+    assert_success(&repair, "deleted workspace repair");
+    let repair = output_json(&repair);
+    assert_eq!(repair["state"], "CLEAN");
+    assert_eq!(repair["actions"].as_array().map(Vec::len), Some(1));
+    assert!(!fixture.workspace.exists(), "repair recreated workspace");
+    assert!(!fixture.registration.exists(), "registration remains");
+    assert!(!fixture.descriptor_registry.exists(), "descriptor remains");
+    assert!(!fixture.socket_path.exists(), "socket remains");
+}
+
+#[test]
 fn stale_registered_pid_reuse_is_repaired_without_signaling_replacement_review_regression() {
     let mut fixture = RuntimeServiceFixture::new();
     fixture.replace_registered_process_claim_with_reused_pid();
@@ -31,9 +66,11 @@ fn stale_registered_pid_reuse_is_repaired_without_signaling_replacement_review_r
 }
 
 #[test]
-fn running_service_manager_blocks_reused_pid_cleanup_review_regression() {
+fn missing_workspace_live_manager_stays_blocking_deleted_workspace_registration_review_regression()
+{
     let mut fixture = RuntimeServiceFixture::new();
     fixture.replace_registered_process_claim_with_reused_pid();
+    std::fs::remove_dir_all(&fixture.workspace).expect("delete workspace");
 
     let repair = fixture
         .repair_command(true)
@@ -58,6 +95,7 @@ fn running_service_manager_blocks_reused_pid_cleanup_review_regression() {
         "descriptor was removed"
     );
     assert!(fixture.socket_path.exists(), "socket was removed");
+    assert!(!fixture.workspace.exists(), "workspace was recreated");
 }
 
 #[test]

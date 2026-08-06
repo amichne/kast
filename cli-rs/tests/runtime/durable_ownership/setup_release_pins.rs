@@ -1,7 +1,8 @@
 include!("setup_release_pins/fixture.rs");
 
 #[test]
-fn normal_upgrade_preserves_a_registered_release_and_a_pinned_candidate_blocks_replacement() {
+fn deleted_registered_workspace_keeps_release_pinned_deleted_workspace_registration_review_regression()
+{
     let temp = tempfile::tempdir().expect("tempdir");
     let home = temp.path().join("home");
     let kast_home = home.join(".local/share/kast");
@@ -10,6 +11,7 @@ fn normal_upgrade_preserves_a_registered_release_and_a_pinned_candidate_blocks_r
     assert!(setup(&home, &kast_home, &first_source).status.success());
     let mut runtime = PinnedRuntimeService::new(temp.path(), &kast_home);
     let pinned_release = runtime.release_root.clone();
+    runtime.delete_workspace();
 
     let upgrade = runtime.run(setup_command(&home, &kast_home, &second_source));
 
@@ -21,6 +23,7 @@ fn normal_upgrade_preserves_a_registered_release_and_a_pinned_candidate_blocks_r
     );
     assert!(pinned_release.is_dir(), "pinned release was deleted");
     assert!(runtime.is_live(), "registered runtime was terminated");
+    assert!(!runtime.workspace.exists(), "setup recreated workspace");
 
     let current_before = std::fs::read_link(kast_home.join("current")).expect("current release");
     let releases_before = installed_release_names(&kast_home);

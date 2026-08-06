@@ -6,6 +6,12 @@ use super::registration::{
 use super::service_manager::ServiceManagerObservation;
 use super::*;
 
+#[path = "ownership/missing_workspace.rs"]
+mod missing_workspace;
+pub(super) use missing_workspace::{
+    RegisteredWorkspaceRoot, WorkspaceRootCandidate, require_existing_workspace_root,
+};
+
 #[derive(Debug, Clone)]
 pub(super) enum RuntimeOwnershipSnapshot {
     Absent(AbsentRuntimeOwnership),
@@ -165,16 +171,24 @@ pub(super) fn reconcile_runtime_ownership(
     config: &KastConfig,
     workspace_root: &Path,
 ) -> Result<RuntimeOwnershipSnapshot> {
-    let canonical_root = fs::canonicalize(workspace_root).map_err(|error| {
-        CliError::new(
-            "WORKSPACE_ROOT_INVALID",
-            format!(
-                "Workspace root {} could not be canonicalized: {error}",
-                workspace_root.display()
-            ),
-        )
-    })?;
+    let canonical_root = require_existing_workspace_root(workspace_root)?;
     let registrations = read_workspace_registrations(config, &canonical_root)?;
+    reconcile_validated_runtime_ownership(config, canonical_root, registrations)
+}
+
+pub(super) fn reconcile_registered_runtime_ownership(
+    config: &KastConfig,
+    workspace_root: &RegisteredWorkspaceRoot,
+) -> Result<RuntimeOwnershipSnapshot> {
+    let (root, registrations) = workspace_root.revalidate(config)?;
+    reconcile_validated_runtime_ownership(config, root, registrations)
+}
+
+fn reconcile_validated_runtime_ownership(
+    config: &KastConfig,
+    canonical_root: PathBuf,
+    registrations: Vec<ValidatedServiceRegistration>,
+) -> Result<RuntimeOwnershipSnapshot> {
     let active = read_active_registration(
         &service_workspace_directory(config, &canonical_root).join("active.json"),
     )?;

@@ -259,6 +259,31 @@ fn repair_is_dry_run_by_default_and_execute_is_idempotent() {
 }
 
 #[test]
+fn unregistered_missing_workspace_stays_blocked_deleted_workspace_registration_review_regression() {
+    let temp = tempfile::tempdir().expect("missing workspace fixture");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let missing = temp.path().join("missing-workspace");
+
+    let repair = kast(&home, &config_home)
+        .args([
+            "--output",
+            "json",
+            "developer",
+            "runtime",
+            "repair",
+            "--workspace-root",
+            missing.to_str().expect("workspace path"),
+            "--execute",
+        ])
+        .output()
+        .expect("missing workspace repair");
+
+    assert_error(&repair, "WORKSPACE_ROOT_INVALID");
+    assert!(!missing.exists(), "workspace was created");
+}
+
+#[test]
 fn repair_removes_nonactive_dead_registration_before_active_registration() {
     let mut fixture = RuntimeServiceFixture::new();
     let nonactive = fixture.add_dead_registration();

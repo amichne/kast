@@ -3,9 +3,11 @@ use std::os::unix::fs::PermissionsExt as _;
 
 struct PinnedRuntimeService {
     process: std::process::Child,
+    _listener: UnixListener,
     manager_state: PathBuf,
     registration: PathBuf,
     release_root: PathBuf,
+    workspace: PathBuf,
 }
 
 impl PinnedRuntimeService {
@@ -15,6 +17,7 @@ impl PinnedRuntimeService {
         std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
         let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
         let install_root = std::fs::canonicalize(kast_home).expect("canonical install root");
+        let descriptor_directory = kast_home.join("state/runtime/daemons");
         let release_root =
             std::fs::canonicalize(kast_home.join("current")).expect("canonical release root");
         let receipt_path = release_root.join("receipt.json");
@@ -27,6 +30,7 @@ impl PinnedRuntimeService {
         let launcher =
             std::fs::canonicalize(release_root.join("libexec/kastctl")).expect("launcher");
         let socket_path = fixture_root.join("runtime.sock");
+        let listener = UnixListener::bind(&socket_path).expect("runtime socket");
         let runtime_command = vec![
             "/bin/sh".to_string(),
             "-c".to_string(),
@@ -62,7 +66,7 @@ impl PinnedRuntimeService {
             "command": runtime_command,
             "environment": {},
             "logFile": fixture_root.join("runtime.log").display().to_string(),
-            "descriptorDirectory": install_root.join("state/runtime/daemons").display().to_string(),
+            "descriptorDirectory": descriptor_directory.display().to_string(),
             "socketPath": socket_path.display().to_string(),
             "launcherPath": launcher.display().to_string(),
             "launcherSha256": runtime_fixture_sha256(&std::fs::read(&launcher).expect("launcher bytes")),
@@ -121,12 +125,32 @@ impl PinnedRuntimeService {
                 .expect("manager state JSON"),
         )
         .expect("manager state");
+        make_runtime_fixture_directory(&descriptor_directory);
+        let mut descriptor = runtime_descriptor_for_process_test(
+            &workspace,
+            &socket_path,
+            "indexer",
+            "setup-release-pin-test",
+            process.id(),
+        );
+        descriptor["runtimeInstanceId"] = runtime_instance_id.to_string().into();
+        write_runtime_fixture_file(
+            &descriptor_directory.join("daemons.json"),
+            &serde_json::to_vec_pretty(&serde_json::json!([descriptor]))
+                .expect("descriptor registry JSON"),
+        );
         Self {
             process,
+            _listener: listener,
             manager_state,
             registration,
             release_root,
+            workspace,
         }
+    }
+
+    fn delete_workspace(&self) {
+        std::fs::remove_dir_all(&self.workspace).expect("delete registered workspace");
     }
 
     fn run(&self, mut command: SetupCommand) -> std::process::Output {

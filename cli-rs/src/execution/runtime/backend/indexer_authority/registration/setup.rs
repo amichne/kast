@@ -1,6 +1,9 @@
-use super::super::ownership::{RuntimeOwnershipSnapshot, reconcile_runtime_ownership};
+use super::super::ownership::{
+    RegisteredWorkspaceRoot, RuntimeOwnershipSnapshot, WorkspaceRootCandidate,
+    reconcile_registered_runtime_ownership,
+};
 use super::*;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum RuntimeSetupIntent<'a> {
@@ -64,19 +67,23 @@ pub(crate) fn preflight_runtime_setup(
         ));
     }
 
+    let descriptor_roots = descriptors
+        .indexers
+        .iter()
+        .map(|descriptor| descriptor_setup_root(&descriptor.workspace_root, &service_roots))
+        .collect::<Result<Vec<_>>>()?;
     let mut roots = service_roots;
-    roots.extend(
-        descriptors
-            .indexers
-            .iter()
-            .map(|descriptor| canonical_setup_root(&descriptor.workspace_root))
-            .collect::<Result<BTreeSet<_>>>()?,
-    );
+    for candidate in descriptor_roots {
+        roots
+            .entry(candidate.path().to_path_buf())
+            .or_insert(candidate);
+    }
     let mut pinned_release_roots = BTreeSet::new();
-    for root in roots {
-        let config = KastConfig::load(&root)?;
+    for (_, candidate) in roots {
+        let config = KastConfig::load(candidate.path())?;
+        let root = RegisteredWorkspaceRoot::admit(&config, candidate)?;
         collect_runtime_pins(
-            reconcile_runtime_ownership(&config, &root)?,
+            reconcile_registered_runtime_ownership(&config, &root)?,
             &mut pinned_release_roots,
         )?;
     }
@@ -102,14 +109,14 @@ pub(crate) fn preflight_runtime_setup(
 
 fn registered_service_roots(
     paths: &crate::manifest::ResolvedKastPaths,
-) -> Result<BTreeSet<PathBuf>> {
+) -> Result<BTreeMap<PathBuf, WorkspaceRootCandidate>> {
     let services = paths.runtime_dir.join("services");
     let workspace_entries = match fs::read_dir(&services) {
         Ok(entries) => entries,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(BTreeSet::new()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(BTreeMap::new()),
         Err(error) => return Err(error.into()),
     };
-    let mut roots = BTreeSet::new();
+    let mut roots = BTreeMap::new();
     for workspace_entry in workspace_entries {
         let workspace_entry = workspace_entry?;
         if !workspace_entry.file_type()?.is_dir() {
@@ -147,15 +154,16 @@ fn registered_service_roots(
             let (launch, _) = read_owned_json::<ServiceLaunchRegistration>(
                 &registration_entry.path().join("launch.json"),
             )?;
-            let root = canonical_setup_root(&launch.workspace_root)?;
-            if workspace_key(&root) != directory_workspace_key {
+            let candidate = registered_setup_root(&launch.workspace_root)?;
+            let root = candidate.path();
+            if workspace_key(root) != directory_workspace_key {
                 return Err(setup_preflight_error(
                     "Runtime service workspace key does not match its canonical root.",
                 ));
             }
-            validate_service_registration(&registration_entry.path(), &root)?;
+            validate_service_registration(&registration_entry.path(), root)?;
             registration_found = true;
-            roots.insert(root);
+            roots.entry(root.to_path_buf()).or_insert(candidate);
         }
         if !registration_found && workspace_entry.path().join("active.json").exists() {
             return Err(setup_preflight_error(
@@ -299,12 +307,35 @@ fn insert_registration_pin(
     }
 }
 
-fn canonical_setup_root(value: &str) -> Result<PathBuf> {
-    fs::canonicalize(value).map_err(|error| {
+fn registered_setup_root(value: &str) -> Result<WorkspaceRootCandidate> {
+    WorkspaceRootCandidate::resolve(Path::new(value)).map_err(|error| {
         setup_preflight_error(&format!(
-            "Registered workspace root {value} is unavailable: {error}"
+            "Registered workspace root {value} cannot be reconciled: {}",
+            error.message
         ))
     })
+}
+
+fn descriptor_setup_root(
+    value: &str,
+    registered_roots: &BTreeMap<PathBuf, WorkspaceRootCandidate>,
+) -> Result<WorkspaceRootCandidate> {
+    let candidate = WorkspaceRootCandidate::resolve(Path::new(value)).map_err(|error| {
+        setup_preflight_error(&format!(
+            "Runtime descriptor workspace root {value} cannot be reconciled: {}",
+            error.message
+        ))
+    })?;
+    match &candidate {
+        WorkspaceRootCandidate::ExistingCanonical(_) => Ok(candidate),
+        WorkspaceRootCandidate::MissingNormalized(root) => {
+            registered_roots.get(root).cloned().ok_or_else(|| {
+                setup_preflight_error(
+                    "A missing descriptor root has no registered service evidence.",
+                )
+            })
+        }
+    }
 }
 
 fn is_sha256(value: &str) -> bool {
@@ -321,6 +352,35 @@ fn setup_preflight_error(message: &str) -> CliError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn missing_service_root_keeps_typed_identity_deleted_workspace_registration_review_regression()
+    {
+        let parent = tempfile::tempdir().expect("workspace parent");
+        let missing = parent.path().join("missing");
+        let candidate = registered_setup_root(missing.to_str().expect("workspace path"))
+            .expect("missing registered root candidate");
+        let replacement = parent.path().join("replacement");
+        fs::create_dir(&replacement).expect("replacement root");
+        std::os::unix::fs::symlink(&replacement, &missing).expect("replacement symlink");
+
+        assert!(
+            matches!(candidate, WorkspaceRootCandidate::MissingNormalized(root) if root == missing)
+        );
+    }
+
+    #[test]
+    fn missing_descriptor_root_stays_blocked_deleted_workspace_registration_review_regression() {
+        let root = tempfile::tempdir()
+            .expect("workspace parent")
+            .path()
+            .join("missing");
+
+        let error = descriptor_setup_root(root.to_str().expect("workspace path"), &BTreeMap::new())
+            .expect_err("descriptor-only missing root must block setup");
+
+        assert_eq!(error.code, "SETUP_RUNTIME_PREFLIGHT_BLOCKED");
+    }
 
     #[test]
     fn publication_temporary_requires_v4_uuid_review_regression() {

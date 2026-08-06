@@ -261,7 +261,13 @@ fn write_registration(
 ) {
     let runtime_config = registration.join("runtime-config.json");
     write_private(&runtime_config, b"{}");
-    let launcher = std::fs::canonicalize(env!("CARGO_BIN_EXE_kast")).expect("launcher");
+    let launcher = temp.join("test-kastctl");
+    if !launcher.exists() {
+        std::fs::write(&launcher, "#!/bin/sh\nexit 0\n").expect("test launcher");
+        std::fs::set_permissions(&launcher, std::fs::Permissions::from_mode(0o700))
+            .expect("test launcher mode");
+    }
+    let launcher = std::fs::canonicalize(launcher).expect("canonical test launcher");
     let launch = serde_json::json!({
         "schemaVersion": 1,
         "workspaceRoot": workspace.display().to_string(),

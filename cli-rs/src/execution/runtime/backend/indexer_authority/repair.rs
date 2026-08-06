@@ -1,6 +1,8 @@
 use super::ownership::{
-    DeadLegacyRuntime, DeadServiceRuntime, LegacyOwnedRuntime, RuntimeOwnershipSnapshot,
-    ServiceOwnedRuntime, SocketObservation, reconcile_runtime_ownership,
+    DeadLegacyRuntime, DeadServiceRuntime, LegacyOwnedRuntime, RegisteredWorkspaceRoot,
+    RuntimeOwnershipSnapshot, ServiceOwnedRuntime, SocketObservation, WorkspaceRootCandidate,
+    reconcile_registered_runtime_ownership, reconcile_runtime_ownership,
+    require_existing_workspace_root,
 };
 use super::process::{observe_process, signal_process, wait_until_gone};
 use super::registration::{
@@ -45,32 +47,22 @@ struct RuntimeRepairAction {
 
 pub(crate) fn workspace_repair(args: RuntimeRepairArgs) -> Result<RuntimeRepairResult> {
     let _install_use_lock = super::registration::storage::InstallUseLock::acquire()?;
-    let workspace_root = canonical_workspace_root(&args.workspace_root)?;
-    let config = KastConfig::load(&workspace_root)?;
+    let candidate = WorkspaceRootCandidate::resolve(&args.workspace_root)?;
+    let config = KastConfig::load(candidate.path())?;
+    let workspace_root = RegisteredWorkspaceRoot::admit(&config, candidate)?;
+    let root = workspace_root.path().to_path_buf();
     let _lock = args
         .execute
-        .then(|| WorkspaceLaunchLock::acquire(&config, &workspace_root))
+        .then(|| WorkspaceLaunchLock::acquire(&config, &root))
         .transpose()?;
-    let snapshot = reconcile_runtime_ownership(&config, &workspace_root)?;
-    repair_snapshot(&config, &workspace_root, snapshot, args.execute)
-}
-
-fn canonical_workspace_root(workspace_root: &Path) -> Result<PathBuf> {
-    fs::canonicalize(workspace_root).map_err(|error| {
-        CliError::new(
-            "WORKSPACE_ROOT_INVALID",
-            format!(
-                "Workspace root {} could not be canonicalized: {error}",
-                workspace_root.display()
-            ),
-        )
-    })
+    let snapshot = reconcile_registered_runtime_ownership(&config, &workspace_root)?;
+    repair_snapshot(&config, &root, snapshot, args.execute)
 }
 
 pub(super) fn stop_workspace_runtime(args: RuntimeArgs) -> Result<DaemonStopResult> {
     let _install_use_lock = super::registration::storage::InstallUseLock::acquire()?;
     let workspace_root = config::resolve_workspace_root(args.workspace_root)?;
-    let workspace_root = canonical_workspace_root(&workspace_root)?;
+    let workspace_root = require_existing_workspace_root(&workspace_root)?;
     let config = KastConfig::load(&workspace_root)?;
     let _lock = WorkspaceLaunchLock::acquire(&config, &workspace_root)?;
     loop {
