@@ -281,6 +281,22 @@ fn run_runtime(command: cli::RuntimeCommand, output_format: OutputFormat) -> Res
             }
             Ok(0)
         }
+        cli::RuntimeCommand::Repair(args) => {
+            let result = runtime::workspace_repair(args)?;
+            output::print_structured(
+                &result,
+                if output_format.is_structured() {
+                    output_format
+                } else {
+                    OutputFormat::Toon
+                },
+            )?;
+            Ok(0)
+        }
+        cli::RuntimeCommand::ServiceEntrypoint(args) => {
+            runtime::service_entrypoint(args)?;
+            Ok(0)
+        }
     }
 }
 

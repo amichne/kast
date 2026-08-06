@@ -4,7 +4,19 @@ struct ForceResetPlan {
 }
 
 impl ForceResetPlan {
-    fn build(targets: &ActivationTargetPaths) -> Result<Self> {
+    fn build(
+        targets: &ActivationTargetPaths,
+        runtime_setup_authorization: &crate::runtime::RuntimeSetupAuthorization,
+    ) -> Result<Self> {
+        if !runtime_setup_authorization
+            .pinned_release_roots()
+            .is_empty()
+        {
+            return Err(CliError::new(
+                "SETUP_RUNTIME_NOT_QUIESCENT",
+                "Forced setup cannot delete releases pinned by registered runtimes.",
+            ));
+        }
         let install_root = config::normalize(targets.resolved.install_root.clone());
         let mut cleanup = BTreeSet::new();
 

@@ -3,6 +3,7 @@ fn install_validated_bundle<'a>(
     targets: &'a ActivationTargetPaths,
     config_migration: &ExistingConfigMigrationPlan,
     path_projection_authority: &PathProjectionAuthority,
+    runtime_setup_authorization: &crate::runtime::RuntimeSetupAuthorization,
 ) -> Result<BundleActivationGuard<'a>> {
     if bundle.root.starts_with(&targets.resolved.install_root) {
         return Err(CliError::new(
@@ -14,6 +15,7 @@ fn install_validated_bundle<'a>(
             ),
         ));
     }
+    require_runtime_release_removal_authorized(runtime_setup_authorization, &targets.version_dir)?;
     let install_manifest = project_install_manifest(bundle, targets, path_projection_authority);
     for directory in [
         targets.resolved.install_root.join("releases"),
@@ -26,11 +28,11 @@ fn install_validated_bundle<'a>(
     ] {
         fs::create_dir_all(directory)?;
     }
-    let staged = targets
-        .resolved
-        .install_root
-        .join("staging")
-        .join(format!("{}-{}", bundle.release_digest, std::process::id()));
+    let staged = targets.resolved.install_root.join("staging").join(format!(
+        "{}-{}",
+        bundle.release_digest,
+        std::process::id()
+    ));
     manifest::remove_path(&staged)?;
     copy_bundle_tree(&bundle.root, &staged)?;
     link_active_indexer(bundle, &staged)?;
@@ -44,6 +46,22 @@ fn install_validated_bundle<'a>(
     )?;
 
     staged_config.activate(targets, &staged)
+}
+
+fn require_runtime_release_removal_authorized(
+    authorization: &crate::runtime::RuntimeSetupAuthorization,
+    release_root: &Path,
+) -> Result<()> {
+    if authorization.permits_release_removal(release_root) {
+        return Ok(());
+    }
+    Err(CliError::new(
+        "SETUP_RUNTIME_RELEASE_PINNED",
+        format!(
+            "Setup cannot replace {} because a registered runtime pins that release.",
+            release_root.display()
+        ),
+    ))
 }
 
 fn project_install_manifest(

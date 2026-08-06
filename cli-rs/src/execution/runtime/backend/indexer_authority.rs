@@ -1,5 +1,34 @@
 use super::*;
 
+#[path = "indexer_authority/ownership.rs"]
+mod ownership;
+#[path = "indexer_authority/process.rs"]
+mod process;
+#[path = "indexer_authority/registration.rs"]
+mod registration;
+#[path = "indexer_authority/repair.rs"]
+mod repair;
+#[path = "indexer_authority/service_manager.rs"]
+mod service_manager;
+
+use ownership::{RuntimeOwnershipSnapshot, reconcile_runtime_ownership};
+pub(crate) use registration::{
+    RuntimeSetupAuthorization, RuntimeSetupIntent, preflight_runtime_setup,
+};
+use registration::{prepare_service_registration, publish_active_registration};
+pub(crate) use repair::{service_entrypoint, workspace_repair};
+
+pub(super) fn stop_workspace_runtime(args: RuntimeArgs) -> Result<DaemonStopResult> {
+    repair::stop_workspace_runtime(args)
+}
+
+pub(super) fn stop_exact_owned_runtime(
+    workspace_root: &Path,
+    expected: &WorkspaceLeaseRuntimeIdentity,
+) -> Result<bool> {
+    repair::stop_exact_owned_runtime(workspace_root, expected)
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct AdmittedIndexerRuntime {
     workspace_root: PathBuf,

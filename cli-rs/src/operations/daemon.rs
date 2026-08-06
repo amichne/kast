@@ -4,37 +4,10 @@ use crate::error::{CliError, Result};
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Child, Command, Stdio};
 
 const INDEXER_MAIN_CLASS: &str = "io.github.amichne.kast.indexer.KastIndexerMainKt";
 #[cfg(target_os = "macos")]
 const INDEXER_STARTER_COMMAND: &str = "kast-indexer";
-
-pub fn spawn_background(args: DaemonStartArgs, log_file: &Path) -> Result<Child> {
-    let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
-    let config = KastConfig::load(&workspace_root)?;
-    let command = java_command(&args, &config)?;
-    if let Some(parent) = log_file.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let log = fs::File::create(log_file)?;
-    let log_err = log.try_clone()?;
-    let mut process = Command::new(&command[0]);
-    apply_daemon_environment(&mut process);
-    process
-        .args(&command[1..])
-        .current_dir(workspace_root)
-        .stdin(Stdio::null())
-        .stdout(Stdio::from(log))
-        .stderr(Stdio::from(log_err))
-        .spawn()
-        .map_err(|error| {
-            CliError::new(
-                "DAEMON_START_ERROR",
-                format!("Failed to auto-start the indexer: {error}",),
-            )
-        })
-}
 
 pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<String>> {
     #[cfg(target_os = "macos")]
@@ -48,6 +21,30 @@ pub fn java_command(args: &DaemonStartArgs, config: &KastConfig) -> Result<Vec<S
     {
         linux_indexer_java_command(args, config)
     }
+}
+
+pub fn service_java_command(
+    args: &DaemonStartArgs,
+    config: &KastConfig,
+    durable_runtime_config_path: &Path,
+) -> Result<(Vec<String>, Vec<u8>)> {
+    let mut command = java_command(args, config)?;
+    let argument = command
+        .iter_mut()
+        .find(|argument| argument.starts_with("--runtime-config-file="))
+        .ok_or_else(|| {
+            CliError::new(
+                "RUNTIME_REGISTRATION_INVALID",
+                "Indexer command does not identify its runtime configuration.",
+            )
+        })?;
+    let source = PathBuf::from(argument.trim_start_matches("--runtime-config-file="));
+    let runtime_config = fs::read(source)?;
+    *argument = format!(
+        "--runtime-config-file={}",
+        durable_runtime_config_path.display()
+    );
+    Ok((command, runtime_config))
 }
 
 #[cfg_attr(target_os = "macos", allow(dead_code))]
@@ -132,12 +129,7 @@ fn write_runtime_config_file(
     Ok(runtime_config_file)
 }
 
-fn apply_daemon_environment(command: &mut Command) {
-    for (key, value) in daemon_environment() {
-        command.env(key, value);
-    }
-}
-
+#[cfg(test)]
 fn daemon_environment() -> [(&'static str, PathBuf); 1] {
     [("KAST_CONFIG_HOME", config::kast_config_home())]
 }

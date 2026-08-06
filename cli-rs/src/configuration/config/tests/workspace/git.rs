@@ -324,5 +324,6 @@
             profile_modes: None,
             profile_duration: None,
             profile_otlp_endpoint: None,
+            runtime_instance_id: None,
         }
     }

@@ -26,10 +26,7 @@ fn inspect_indexer_workspace_with_config(
             .cmp(&a.ready)
             .then_with(|| a.descriptor_path.cmp(&b.descriptor_path))
     });
-    Ok(WorkspaceInspection {
-        descriptor_directory,
-        candidates,
-    })
+    Ok(WorkspaceInspection { candidates })
 }
 
 fn inspect_descriptor(
@@ -134,8 +131,43 @@ fn find_indexer_descriptors(
     descriptor_directory: &Path,
     workspace_root: &Path,
 ) -> Result<Vec<RegisteredDescriptor>> {
-    let descriptors = read_descriptors(descriptor_directory)?;
     let normalized = config::normalize(workspace_root.to_path_buf());
+    let path = descriptor_directory.join("daemons.json");
+    let mut descriptors = Vec::new();
+    for element in read_descriptor_elements(&path)? {
+        let backend = element.get("backendName").and_then(Value::as_str);
+        let root = element.get("workspaceRoot").and_then(Value::as_str);
+        let matches_root = root
+            .map(PathBuf::from)
+            .map(config::normalize)
+            .is_some_and(|root| root == normalized);
+        if matches_root && backend.is_none() {
+            return Err(CliError::new(
+                "RUNTIME_DESCRIPTOR_REGISTRY_INVALID",
+                "A descriptor for the exact workspace has no valid backend identity.",
+            ));
+        }
+        if backend != Some(BackendName::Indexer.canonical()) {
+            continue;
+        }
+        let Some(_) = root else {
+            return Err(CliError::new(
+                "RUNTIME_DESCRIPTOR_REGISTRY_INVALID",
+                "A Kast indexer descriptor has no valid workspace identity.",
+            ));
+        };
+        if !matches_root {
+            continue;
+        }
+        descriptors.push(
+            serde_json::from_value::<ServerInstanceDescriptor>(element).map_err(|error| {
+                CliError::new(
+                    "RUNTIME_DESCRIPTOR_REGISTRY_INVALID",
+                    format!("A Kast indexer descriptor for the exact workspace is invalid: {error}"),
+                )
+            })?,
+        );
+    }
     Ok(descriptors
         .into_iter()
         .filter(|descriptor| descriptor.backend_name == BackendName::Indexer.canonical())

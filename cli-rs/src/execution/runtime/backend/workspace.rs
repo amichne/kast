@@ -50,27 +50,21 @@ fn workspace_ensure_result(admission: &AdmittedIndexerRuntime) -> Result<Workspa
     })
 }
 
-pub fn workspace_stop(mut args: RuntimeArgs) -> Result<DaemonStopResult> {
-    args.accept_indexing = Some(true);
-    args.no_auto_start = Some(true);
-    let admission = admitted_runtime(semantic_workspace_route_for_runtime(args)?)?;
-    stop_admitted_runtime(admission)
+pub fn workspace_stop(args: RuntimeArgs) -> Result<DaemonStopResult> {
+    indexer_authority::stop_workspace_runtime(args)
 }
 
 pub fn workspace_restart(mut args: RuntimeArgs) -> Result<WorkspaceRestartResult> {
+    let workspace_root = config::resolve_workspace_root(args.workspace_root.clone())?;
+    let stop = indexer_authority::stop_workspace_runtime(args.clone())?;
     args.accept_indexing = Some(true);
-    args.no_auto_start = Some(true);
-    let admission = admitted_runtime(semantic_workspace_route_for_runtime(args.clone())?)?;
-    let workspace_root = admission.workspace_root().to_path_buf();
-    let backend_name = admission.backend_name().to_string();
-    let stop = stop_admitted_runtime(admission)?;
     args.workspace_root = Some(workspace_root.clone());
     args.no_auto_start = Some(false);
     let restarted = admitted_runtime(semantic_workspace_route_for_runtime(args)?)?;
     let ensure = workspace_ensure_result(&restarted)?;
     Ok(WorkspaceRestartResult {
         workspace_root: workspace_root.display().to_string(),
-        backend_name,
+        backend_name: BackendName::Indexer.canonical().to_string(),
         stop,
         ensure,
         schema_version: SCHEMA_VERSION,

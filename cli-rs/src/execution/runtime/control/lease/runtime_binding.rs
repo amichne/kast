@@ -311,26 +311,5 @@ fn stop_exact_runtime(
     workspace_root: &Path,
     expected: &WorkspaceLeaseRuntimeIdentity,
 ) -> Result<bool> {
-    let inspection =
-        inspect_indexer_workspace(workspace_root, StaleDescriptorPolicy::Preserve)?;
-    let Some(candidate) = inspection.candidates.into_iter().find(|candidate| {
-        runtime_descriptor_matches(&candidate.descriptor, &candidate.descriptor_path, expected)
-            && process_identity_is_live(&expected.process)
-    }) else {
-        return Ok(false);
-    };
-    if candidate.pid_alive {
-        terminate_process(candidate.descriptor.pid, false);
-        for _ in 0..20 {
-            if !is_process_alive(candidate.descriptor.pid) {
-                break;
-            }
-            thread::sleep(Duration::from_millis(250));
-        }
-        if is_process_alive(candidate.descriptor.pid) {
-            terminate_process(candidate.descriptor.pid, true);
-        }
-    }
-    delete_descriptor(&inspection.descriptor_directory, &candidate.descriptor)?;
-    Ok(true)
+    indexer_authority::stop_exact_owned_runtime(workspace_root, expected)
 }
