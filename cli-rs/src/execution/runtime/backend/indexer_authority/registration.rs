@@ -1,12 +1,17 @@
 use super::process::ManagedProcessIdentity;
 use super::*;
 use sha2::{Digest, Sha256};
-use std::collections::BTreeMap;
 use uuid::Uuid;
 
 #[path = "registration/storage.rs"]
 pub(super) mod storage;
 use storage::*;
+#[path = "registration/environment.rs"]
+mod environment;
+use environment::ServiceLaunchEnvironment;
+#[path = "registration/socket.rs"]
+mod socket;
+use socket::ServiceSocketPath;
 #[path = "registration/setup.rs"]
 mod setup;
 pub(crate) use setup::{RuntimeSetupAuthorization, RuntimeSetupIntent, preflight_runtime_setup};
@@ -33,7 +38,7 @@ pub(super) struct ServiceLaunchRegistration {
     pub owner_uid: u64,
     pub working_directory: String,
     pub command: Vec<String>,
-    pub environment: BTreeMap<String, String>,
+    pub environment: ServiceLaunchEnvironment,
     pub log_file: String,
     pub descriptor_directory: String,
     pub socket_path: String,
@@ -186,6 +191,7 @@ fn prepare_service_registration_in(
     let runtime_config_path = final_directory.join("runtime-config.json");
     let (mut command, runtime_config_bytes) =
         daemon::service_java_command(daemon_args, &request.config, &runtime_config_path)?;
+    let socket_path = ServiceSocketPath::from_command(&command)?;
     let executable = command.first_mut().ok_or_else(|| {
         CliError::new("RUNTIME_REGISTRATION_INVALID", "Indexer command is empty.")
     })?;
@@ -226,12 +232,10 @@ fn prepare_service_registration_in(
         owner_uid: effective_uid(),
         working_directory: request.workspace_root.display().to_string(),
         command,
-        environment: service_environment(&request.config),
+        environment: ServiceLaunchEnvironment::capture(&request.config)?,
         log_file: log_file.display().to_string(),
         descriptor_directory: request.config.paths.descriptor_dir.display().to_string(),
-        socket_path: config::default_socket_path(&request.config, &request.workspace_root)
-            .display()
-            .to_string(),
+        socket_path: socket_path.into_string(),
         launcher_path: launcher.display().to_string(),
         launcher_sha256: sha256_stable_file(&launcher, false)?,
         installed_release: if test_manager && test_launcher.is_none() {
@@ -330,28 +334,6 @@ pub(super) fn read_process_claim(directory: &Path) -> Result<Option<ServiceProce
         Err(error) if error.code == "RUNTIME_REGISTRATION_MISSING" => Ok(None),
         Err(error) => Err(error),
     }
-}
-
-fn service_environment(config: &KastConfig) -> BTreeMap<String, String> {
-    let mut environment = BTreeMap::from([
-        (
-            "KAST_HOME".to_string(),
-            config.paths.install_root.display().to_string(),
-        ),
-        (
-            "KAST_CONFIG_HOME".to_string(),
-            config::kast_config_home().display().to_string(),
-        ),
-        ("KAST_INDEXER".to_string(), "true".to_string()),
-    ]);
-    for name in ["KAST_CACHE_HOME", "KAST_WORKSPACE_ID", "HOME", "TMPDIR"] {
-        if let Ok(value) = std::env::var(name)
-            && !value.is_empty()
-        {
-            environment.insert(name.to_string(), value);
-        }
-    }
-    environment
 }
 
 fn effective_uid() -> u64 {

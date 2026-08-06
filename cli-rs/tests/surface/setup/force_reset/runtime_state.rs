@@ -95,6 +95,86 @@ fn force_setup_preserves_a_registered_legacy_runtime_descriptor() {
     );
 }
 
+#[test]
+fn force_setup_review_regression_recovers_durable_registration_publication_temporaries() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let initial_source = write_install_bundle_source(temp.path(), "v1.0.0");
+    let replacement_source = write_install_bundle_source(temp.path(), "v2.0.0");
+    assert!(setup(&home, &kast_home, &initial_source).status.success());
+    let workspace_services = kast_home
+        .join("state/runtime/services")
+        .join("a".repeat(64));
+    std::fs::create_dir_all(&workspace_services).expect("workspace services");
+    std::fs::set_permissions(
+        workspace_services.parent().expect("services directory"),
+        std::fs::Permissions::from_mode(0o700),
+    )
+    .expect("services mode");
+    std::fs::set_permissions(
+        &workspace_services,
+        std::fs::Permissions::from_mode(0o700),
+    )
+    .expect("workspace services mode");
+    let staging = workspace_services.join(".staging-11111111-1111-4111-8111-111111111111");
+    std::fs::create_dir(&staging).expect("durable staging directory");
+    std::fs::set_permissions(&staging, std::fs::Permissions::from_mode(0o700))
+        .expect("staging mode");
+    let partial_launch = staging.join("launch.json");
+    std::fs::write(&partial_launch, b"{partial").expect("partial launch");
+    std::fs::set_permissions(&partial_launch, std::fs::Permissions::from_mode(0o600))
+        .expect("partial launch mode");
+    let active_temporary =
+        workspace_services.join(".runtime-22222222-2222-4222-8222-222222222222.tmp");
+    std::fs::write(&active_temporary, b"{partial").expect("partial active pointer");
+    std::fs::set_permissions(
+        &active_temporary,
+        std::fs::Permissions::from_mode(0o600),
+    )
+    .expect("active temporary mode");
+
+    let output = setup(&home, &kast_home, &replacement_source);
+
+    assert!(
+        output.status.success(),
+        "setup must recover proven publication temporaries: stdout={}, stderr={}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr),
+    );
+    assert!(!staging.exists(), "staging directory remains");
+    assert!(!active_temporary.exists(), "active pointer temporary remains");
+}
+
+#[test]
+fn force_setup_review_regression_preserves_ambiguous_registration_publication_artifact() {
+    let temp = tempfile::tempdir().expect("tempdir");
+    let home = temp.path().join("home");
+    let kast_home = home.join(".local/share/kast");
+    let source = write_install_bundle_source(temp.path(), "v1.0.0");
+    let workspace_services = kast_home
+        .join("state/runtime/services")
+        .join("b".repeat(64));
+    std::fs::create_dir_all(&workspace_services).expect("workspace services");
+    let ambiguous = workspace_services.join(".staging-33333333-3333-4333-8333-333333333333");
+    std::fs::write(&ambiguous, b"unmanaged").expect("ambiguous staging artifact");
+
+    let output = setup_command(&home, &kast_home, &source)
+        .arg("--force")
+        .output()
+        .expect("forced setup");
+
+    assert!(!output.status.success(), "ambiguous artifact must block setup");
+    let error: serde_json::Value =
+        serde_json::from_slice(&output.stdout).expect("typed setup error");
+    assert_eq!(error["code"], "SETUP_RUNTIME_PREFLIGHT_BLOCKED");
+    assert_eq!(
+        std::fs::read_to_string(&ambiguous).expect("preserved ambiguous artifact"),
+        "unmanaged",
+    );
+    assert!(!kast_home.join("current").exists());
+}
+
 fn installed_release_names(kast_home: &Path) -> std::collections::BTreeSet<String> {
     std::fs::read_dir(kast_home.join("releases"))
         .expect("release directory")

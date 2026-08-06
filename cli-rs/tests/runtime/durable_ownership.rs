@@ -10,6 +10,81 @@ use support::*;
 mod fixture;
 use fixture::RuntimeServiceFixture;
 
+#[cfg(not(target_os = "macos"))]
+#[test]
+fn requested_socket_path_is_persisted_by_start_review_regression() {
+    let temp = tempfile::tempdir().expect("runtime registration fixture");
+    let home = temp.path().join("home");
+    let config_home = temp.path().join("config");
+    let kast_home = default_install_root(&home);
+    let workspace = temp.path().join("workspace");
+    std::fs::create_dir_all(&workspace).expect("workspace");
+    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
+    let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
+    write_current_cli_install_manifest_for_test(&home, &config_home);
+
+    let java_home = temp.path().join("java-home");
+    let java = java_home.join("bin/java");
+    std::fs::create_dir_all(java.parent().expect("Java bin directory"))
+        .expect("Java bin directory");
+    std::fs::write(&java, "#!/bin/sh\nexit 0\n").expect("fake Java");
+    std::fs::set_permissions(&java, std::fs::Permissions::from_mode(0o755))
+        .expect("fake Java mode");
+    let manager_root = temp.path().join("test-manager");
+    let requested_socket = workspace.join("requested.sock");
+    let start = kast(&home, &config_home)
+        .current_dir(&workspace)
+        .env("JAVA_HOME", &java_home)
+        .env("KAST_TEST_ALLOW_RUNTIME_SERVICE_MANAGER", "1")
+        .env("KAST_TEST_RUNTIME_SERVICE_MANAGER_ROOT", &manager_root)
+        .args([
+            "--output",
+            "json",
+            "start",
+            "--workspace-root",
+            workspace.to_str().expect("workspace path"),
+            "--socket-path",
+            "requested.sock",
+            "--wait-timeout-ms",
+            "1",
+        ])
+        .output()
+        .expect("runtime start");
+    assert_error(&start, "RUNTIME_TIMEOUT");
+
+    let workspace_key = hex::encode(Sha256::digest(workspace.to_string_lossy().as_bytes()));
+    let service_root = kast_home.join("state/runtime/services").join(workspace_key);
+    let active: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(service_root.join("active.json")).expect("active registration"),
+    )
+    .expect("active registration JSON");
+    let launch: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(
+            service_root
+                .join(
+                    active["runtimeInstanceId"]
+                        .as_str()
+                        .expect("runtime instance identity"),
+                )
+                .join("launch.json"),
+        )
+        .expect("launch registration"),
+    )
+    .expect("launch registration JSON");
+    let expected = requested_socket.display().to_string();
+    let expected_argument = format!("--socket-path={expected}");
+    assert_eq!(launch["socketPath"], expected);
+    assert_eq!(
+        launch["command"]
+            .as_array()
+            .expect("registered command")
+            .iter()
+            .filter(|argument| argument.as_str() == Some(expected_argument.as_str()))
+            .count(),
+        1,
+    );
+}
+
 #[test]
 fn stop_uses_digest_bound_ownership_when_the_semantic_endpoint_is_unservable() {
     let mut fixture = RuntimeServiceFixture::new();

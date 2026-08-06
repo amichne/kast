@@ -86,10 +86,14 @@ pub(super) fn write_atomic_json(path: &Path, value: &impl Serialize) -> Result<(
 }
 
 pub(super) fn write_durable_file(path: &Path, bytes: &[u8]) -> Result<()> {
-    let mut file = fs::OpenOptions::new()
-        .create_new(true)
-        .write(true)
-        .open(path)?;
+    let mut options = fs::OpenOptions::new();
+    options.create_new(true).write(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt as _;
+        options.mode(0o600);
+    }
+    let mut file = options.open(path)?;
     file.write_all(bytes)?;
     set_owner_only_file(path)?;
     file.sync_all()?;

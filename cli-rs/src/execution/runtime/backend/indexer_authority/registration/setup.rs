@@ -20,6 +20,12 @@ struct RuntimeSetupDescriptors {
     indexers: Vec<ServerInstanceDescriptor>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum RegistrationPublicationTemporary {
+    Staging(Uuid),
+    ActivePointer,
+}
+
 impl RuntimeSetupAuthorization {
     pub(crate) fn pinned_release_roots(&self) -> &BTreeSet<PathBuf> {
         &self.pinned_release_roots
@@ -124,6 +130,14 @@ fn registered_service_roots(
             if name == "active.json" {
                 continue;
             }
+            if let Some(temporary) = registration_publication_temporary(&name) {
+                recover_registration_publication_temporary(
+                    &workspace_entry.path(),
+                    &registration_entry.path(),
+                    temporary,
+                )?;
+                continue;
+            }
             if name.to_string_lossy().starts_with('.') || !registration_entry.file_type()?.is_dir()
             {
                 return Err(setup_preflight_error(
@@ -150,6 +164,63 @@ fn registered_service_roots(
         }
     }
     Ok(roots)
+}
+
+fn registration_publication_temporary(
+    name: &std::ffi::OsStr,
+) -> Option<RegistrationPublicationTemporary> {
+    let name = name.to_str()?;
+    if let Some(value) = name.strip_prefix(".staging-") {
+        return canonical_uuid(value).map(RegistrationPublicationTemporary::Staging);
+    }
+    name.strip_prefix(".runtime-")
+        .and_then(|value| value.strip_suffix(".tmp"))
+        .and_then(canonical_uuid)
+        .map(|_| RegistrationPublicationTemporary::ActivePointer)
+}
+
+fn canonical_uuid(value: &str) -> Option<Uuid> {
+    Uuid::parse_str(value).ok().filter(|uuid| {
+        uuid.hyphenated().to_string() == value
+            && uuid.get_version_num() == 4
+            && uuid.get_variant() == uuid::Variant::RFC4122
+    })
+}
+
+fn recover_registration_publication_temporary(
+    workspace_directory: &Path,
+    path: &Path,
+    temporary: RegistrationPublicationTemporary,
+) -> Result<()> {
+    let recovered = (|| -> Result<()> {
+        match temporary {
+            RegistrationPublicationTemporary::Staging(runtime_instance_id) => {
+                require_owned_directory(path)?;
+                let final_directory = workspace_directory.join(runtime_instance_id.to_string());
+                match fs::symlink_metadata(&final_directory) {
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(error.into()),
+                    Ok(_) => {
+                        return Err(setup_preflight_error(
+                            "Runtime services contain both staged and final copies of one registration.",
+                        ));
+                    }
+                }
+                fs::remove_dir_all(path)?;
+            }
+            RegistrationPublicationTemporary::ActivePointer => {
+                read_stable_file(path, true)?;
+                fs::remove_file(path)?;
+            }
+        }
+        sync_parent(path)
+    })();
+    recovered.map_err(|error| {
+        setup_preflight_error(&format!(
+            "Runtime registration publication temporary is not safe to recover: {}",
+            error.message
+        ))
+    })
 }
 
 fn runtime_setup_descriptors(
@@ -245,4 +316,15 @@ fn is_sha256(value: &str) -> bool {
 
 fn setup_preflight_error(message: &str) -> CliError {
     CliError::new("SETUP_RUNTIME_PREFLIGHT_BLOCKED", message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn publication_temporary_requires_v4_uuid_review_regression() {
+        assert!(canonical_uuid("11111111-1111-4111-8111-111111111111").is_some());
+        assert!(canonical_uuid("11111111-1111-1111-8111-111111111111").is_none());
+    }
 }

@@ -26,9 +26,19 @@ impl PinnedRuntimeService {
             .expect("release digest");
         let launcher =
             std::fs::canonicalize(release_root.join("libexec/kastctl")).expect("launcher");
-        let sleep = std::fs::canonicalize("/bin/sleep").expect("sleep executable");
-        let process = Command::new(&sleep)
-            .arg("120")
+        let socket_path = fixture_root.join("runtime.sock");
+        let runtime_command = vec![
+            "/bin/sh".to_string(),
+            "-c".to_string(),
+            "read fixture_value".to_string(),
+            "kast-runtime-fixture".to_string(),
+            format!("--socket-path={}", socket_path.display()),
+        ];
+        let process = Command::new(&runtime_command[0])
+            .args(&runtime_command[1..])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .spawn()
             .expect("registered runtime process");
         let runtime_instance_id = uuid::Uuid::new_v4();
@@ -49,11 +59,11 @@ impl PinnedRuntimeService {
             "runtimeInstanceId": runtime_instance_id,
             "ownerUid": u64::from(unsafe { libc::geteuid() }),
             "workingDirectory": workspace.display().to_string(),
-            "command": [sleep.display().to_string(), "120"],
+            "command": runtime_command,
             "environment": {},
             "logFile": fixture_root.join("runtime.log").display().to_string(),
             "descriptorDirectory": install_root.join("state/runtime/daemons").display().to_string(),
-            "socketPath": fixture_root.join("runtime.sock").display().to_string(),
+            "socketPath": socket_path.display().to_string(),
             "launcherPath": launcher.display().to_string(),
             "launcherSha256": runtime_fixture_sha256(&std::fs::read(&launcher).expect("launcher bytes")),
             "installedRelease": {

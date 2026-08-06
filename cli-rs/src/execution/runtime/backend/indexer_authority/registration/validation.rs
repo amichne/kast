@@ -68,6 +68,7 @@ pub(super) fn validate_service_registration(
     require_registration(Path::new(&launch.working_directory) == expected_root, "working directory")?;
     require_registration(workspace_key(expected_root) == launch.workspace_key, "root digest")?;
     require_registration(launch.owner_uid == effective_uid(), "owner UID")?;
+    ServiceSocketPath::from_command(&launch.command)?.require_matches(&launch.socket_path)?;
     require_registration(
         launch.runtime_config_sha256
             == sha256_stable_file(Path::new(&launch.runtime_config_path), true)?,

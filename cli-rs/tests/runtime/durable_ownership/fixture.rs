@@ -25,8 +25,12 @@ impl RuntimeServiceFixture {
         std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle settings");
         let workspace = std::fs::canonicalize(workspace).expect("canonical workspace");
         let listener = UnixListener::bind(&socket_path).expect("unservable endpoint");
-        let runtime = Command::new("/bin/sleep")
-            .arg("30")
+        let runtime_command = registered_test_command(&socket_path);
+        let runtime = Command::new(&runtime_command[0])
+            .args(&runtime_command[1..])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
             .spawn()
             .expect("registered process");
         let runtime_instance_id = uuid::Uuid::new_v4();
@@ -192,7 +196,7 @@ fn write_registration(
         "runtimeInstanceId": id,
         "ownerUid": u64::from(unsafe { libc::geteuid() }),
         "workingDirectory": workspace.display().to_string(),
-        "command": ["/bin/sleep", "30"],
+        "command": registered_test_command(socket_path),
         "environment": {},
         "logFile": temp.join("runtime.log").display().to_string(),
         "descriptorDirectory": runtime_dir.join("daemons").display().to_string(),
@@ -232,6 +236,16 @@ fn write_registration(
         &registration.join("receipt.json"),
         &serde_json::to_vec_pretty(&receipt).expect("receipt JSON"),
     );
+}
+
+fn registered_test_command(socket_path: &Path) -> Vec<String> {
+    vec![
+        "/bin/sh".to_string(),
+        "-c".to_string(),
+        "read fixture_value".to_string(),
+        "kast-runtime-fixture".to_string(),
+        format!("--socket-path={}", socket_path.display()),
+    ]
 }
 
 fn make_private_directory(path: &Path) {

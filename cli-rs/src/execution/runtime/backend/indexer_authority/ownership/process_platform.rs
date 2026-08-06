@@ -1,23 +1,52 @@
+#[cfg(any(target_os = "linux", test))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum LinuxProcessStat {
+    Live { start_ticks: u64 },
+    Terminated { start_ticks: u64 },
+}
+
+#[cfg(any(target_os = "linux", test))]
+fn parse_linux_process_stat(stat: &str) -> Result<LinuxProcessStat> {
+    let end = stat
+        .rfind(") ")
+        .ok_or_else(|| process_error("Linux process stat is malformed."))?;
+    let fields = stat[end + 2..].split_whitespace().collect::<Vec<_>>();
+    let state = fields
+        .first()
+        .filter(|state| state.len() == 1)
+        .ok_or_else(|| process_error("Linux process state is invalid."))?;
+    let start_ticks = fields
+        .get(19)
+        .ok_or_else(|| process_error("Linux process stat omits start time."))?
+        .parse::<u64>()
+        .map_err(|_| process_error("Linux process start time is invalid."))?;
+    if matches!(*state, "Z" | "X" | "x") {
+        Ok(LinuxProcessStat::Terminated { start_ticks })
+    } else {
+        Ok(LinuxProcessStat::Live { start_ticks })
+    }
+}
+
 #[cfg(target_os = "linux")]
 fn observe_linux_process(pid: u64) -> Result<Option<ObservedProcess>> {
     let Some(identity) = linux_process_identity(pid)? else {
         return Ok(None);
     };
-    let command_bytes = fs::read(format!("/proc/{pid}/cmdline"))
-        .map_err(|error| process_io_error(pid, "cmdline", error))?;
-    let command = parse_nul_command(&command_bytes)?;
-    let confirmed = linux_process_identity(pid)?.ok_or_else(|| {
-        CliError::new(
-            "RUNTIME_PROCESS_IDENTITY_CHANGED",
-            "Linux process exited while ownership evidence was collected.",
-        )
-    })?;
+    let command_bytes = match fs::read(format!("/proc/{pid}/cmdline")) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(process_io_error(pid, "cmdline", error)),
+    };
+    let Some(confirmed) = linux_process_identity(pid)? else {
+        return Ok(None);
+    };
     if confirmed != identity {
         return Err(CliError::new(
             "RUNTIME_PROCESS_IDENTITY_CHANGED",
             "Linux PID identity changed while ownership evidence was collected.",
         ));
     }
+    let command = parse_nul_command(&command_bytes)?;
     Ok(Some(ObservedProcess { identity, command }))
 }
 
@@ -29,17 +58,15 @@ fn linux_process_identity(pid: u64) -> Result<Option<ManagedProcessIdentity>> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(process_io_error(pid, "stat", error)),
     };
-    let end = stat
-        .rfind(") ")
-        .ok_or_else(|| process_error("Linux process stat is malformed."))?;
-    let fields = stat[end + 2..].split_whitespace().collect::<Vec<_>>();
-    let start_ticks = fields
-        .get(19)
-        .ok_or_else(|| process_error("Linux process stat omits start time."))?
-        .parse::<u64>()
-        .map_err(|_| process_error("Linux process start time is invalid."))?;
-    let status = fs::read_to_string(directory.join("status"))
-        .map_err(|error| process_io_error(pid, "status", error))?;
+    let start_ticks = match parse_linux_process_stat(&stat)? {
+        LinuxProcessStat::Live { start_ticks } => start_ticks,
+        LinuxProcessStat::Terminated { .. } => return Ok(None),
+    };
+    let status = match fs::read_to_string(directory.join("status")) {
+        Ok(status) => status,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(error) => return Err(process_io_error(pid, "status", error)),
+    };
     let owner_uid = status
         .lines()
         .find_map(|line| line.strip_prefix("Uid:"))
@@ -273,4 +300,60 @@ fn parse_nul_command(bytes: &[u8]) -> Result<Vec<String>> {
     } else {
         Ok(arguments)
     }
+}
+
+#[cfg(test)]
+#[test]
+fn linux_live_stat_retains_start_identity_review_regression() {
+    let stat = "42 (kast indexer) R 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 123";
+
+    assert_eq!(
+        parse_linux_process_stat(stat).expect("Linux process stat"),
+        LinuxProcessStat::Live { start_ticks: 123 },
+    );
+}
+
+#[cfg(test)]
+#[test]
+fn linux_dead_states_are_terminated_review_regression() {
+    for state in ["Z", "X", "x"] {
+        let stat = format!(
+            "42 (kast indexer) {state} 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 123"
+        );
+        assert_eq!(
+            parse_linux_process_stat(&stat).expect("Linux process stat"),
+            LinuxProcessStat::Terminated { start_ticks: 123 },
+            "state={state}",
+        );
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+#[test]
+fn linux_zombie_is_gone_review_regression() {
+    let mut child = std::process::Command::new("/bin/true")
+        .spawn()
+        .expect("short-lived process");
+    let pid = u64::from(child.id());
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    loop {
+        let stat =
+            fs::read_to_string(format!("/proc/{pid}/stat")).expect("unreaped process stat");
+        if matches!(
+            parse_linux_process_stat(&stat).expect("Linux process stat"),
+            LinuxProcessStat::Terminated { .. }
+        ) {
+            break;
+        }
+        assert!(
+            std::time::Instant::now() < deadline,
+            "process did not become a zombie"
+        );
+        thread::sleep(std::time::Duration::from_millis(10));
+    }
+
+    let observed = observe_process(pid);
+    child.wait().expect("reap short-lived process");
+
+    assert_eq!(observed.expect("zombie observation"), None);
 }
