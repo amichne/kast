@@ -19,9 +19,11 @@ data class CommittedGitTree(
 sealed interface CommittedGitTreeFailure {
     data object WorkspaceHasChanges : CommittedGitTreeFailure
 
-    data object WorkspaceHasIgnoredKotlinSources : CommittedGitTreeFailure
+    data class WorkspaceHasIgnoredKotlinSources(val path: RepositoryRelativePath) : CommittedGitTreeFailure
 
     data class GitReadFailed(val request: GitTreeReadRequest) : CommittedGitTreeFailure
+
+    data class InvalidGitOutput(val request: GitTreeReadRequest) : CommittedGitTreeFailure
 
     data class UnsupportedTreeEntry(val record: String) : CommittedGitTreeFailure
 
@@ -60,15 +62,21 @@ private sealed interface GitReadResult {
     data object Failed : GitReadResult
 }
 
+private sealed interface IgnoredKotlinSourceAuthority {
+    data object Admitted : IgnoredKotlinSourceAuthority
+
+    data class Rejected(val failure: CommittedGitTreeFailure) : IgnoredKotlinSourceAuthority
+}
+
 object CommittedGitTreeResolver {
     /**
      * Proof transition: `NormalizedPath -> CommittedGitTreeResolution`.
      *
      * A resolved tree proves that the workspace has no tracked, untracked, or
-     * ignored Kotlin changes and carries canonical repository-relative paths
-     * bound to one committed Git tree. Unavailability is finite
-     * [CommittedGitTreeFailure] data. Raw command arguments and bytes exist
-     * only inside this Git process boundary.
+     * ignored source-index-eligible Kotlin changes and carries canonical
+     * repository-relative paths bound to one committed Git tree.
+     * Unavailability is finite [CommittedGitTreeFailure] data. Raw command
+     * arguments and bytes exist only inside this Git process boundary.
      */
     fun resolve(workspaceRoot: NormalizedPath): CommittedGitTreeResolution {
         val status = read(workspaceRoot, GitTreeReadRequest.Status)
@@ -83,10 +91,10 @@ object CommittedGitTreeResolver {
         if (ignored !is GitReadResult.Completed) {
             return unavailable(GitTreeReadRequest.IgnoredKotlinSources)
         }
-        if (ignored.output.isNotEmpty()) {
-            return CommittedGitTreeResolution.Unavailable(
-                CommittedGitTreeFailure.WorkspaceHasIgnoredKotlinSources,
-            )
+        when (val authority = ignoredKotlinSourceAuthority(ignored.output)) {
+            IgnoredKotlinSourceAuthority.Admitted -> Unit
+            is IgnoredKotlinSourceAuthority.Rejected ->
+                return CommittedGitTreeResolution.Unavailable(authority.failure)
         }
 
         val prefix = read(workspaceRoot, GitTreeReadRequest.WorkspacePrefix)
@@ -118,6 +126,36 @@ object CommittedGitTreeResolver {
             return unavailable(manifestRequest)
         }
         return parseManifest(treeOid, manifest.output)
+    }
+
+    /**
+     * Proof transition: `ByteArray -> IgnoredKotlinSourceAuthority`.
+     *
+     * Admits snapshot reuse only after every NUL-delimited Git path is proven
+     * outside [SourceIndexFilePolicy]. Invalid Git output and eligible ignored
+     * sources remain finite rejection data.
+     */
+    private fun ignoredKotlinSourceAuthority(rawOutput: ByteArray): IgnoredKotlinSourceAuthority {
+        val output = runCatching { rawOutput.decodeToString(throwOnInvalidSequence = true) }
+            .getOrElse {
+                return IgnoredKotlinSourceAuthority.Rejected(
+                    CommittedGitTreeFailure.InvalidGitOutput(GitTreeReadRequest.IgnoredKotlinSources),
+                )
+            }
+        output.split('\u0000').asSequence().filter(String::isNotEmpty).forEach { value ->
+            val path = when (val resolution = RepositoryRelativePath.resolve(value)) {
+                is RepositoryRelativePathResolution.Resolved -> resolution.path
+                is RepositoryRelativePathResolution.Rejected -> return IgnoredKotlinSourceAuthority.Rejected(
+                    CommittedGitTreeFailure.InvalidRepositoryPath(value, resolution.failure),
+                )
+            }
+            if (SourceIndexFilePolicy.isEligibleWorkspaceRelative(path.value)) {
+                return IgnoredKotlinSourceAuthority.Rejected(
+                    CommittedGitTreeFailure.WorkspaceHasIgnoredKotlinSources(path),
+                )
+            }
+        }
+        return IgnoredKotlinSourceAuthority.Admitted
     }
 
     private fun parseManifest(

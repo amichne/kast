@@ -19,3 +19,13 @@
 - Proof: `ReadOnlyGitCommandTest`, `RuntimeStatusResponseTest`, `ProgressAwareFutureAwaiterTest`, `GradleModelSettlementAwaiterTest`, `KastIdeaProjectIndexingRuntimeTest`, the full Gradle test graph, and the repository-shape gate.
 - Introduced by: PR #564.
 - Compatibility: none. Callers must construct and consume the typed contracts directly.
+
+## 2026-08-07 — Source-policy-bound ignored Git evidence
+
+- Removal: the undifferentiated `WorkspaceHasIgnoredKotlinSources` singleton and the raw nonempty-byte check that treated every ignored Kotlin path as snapshot-invalidating.
+- Replacement: `IgnoredKotlinSourceAuthority`, strict NUL-delimited Git-output parsing, and a path-carrying `WorkspaceHasIgnoredKotlinSources` failure derived through `SourceIndexFilePolicy`.
+- Reason: ignored files under hard-excluded build and tool directories cannot affect the source index and must not disable committed snapshot reuse; malformed output and eligible ignored sources must still fail closed.
+- Paths: `indexer/src/main/kotlin/io/github/amichne/kast/idea/snapshot/CommittedGitTreeResolver.kt` and `indexer/src/test/kotlin/io/github/amichne/kast/idea/workspace/RepositorySnapshotIntegrationTest.kt`.
+- Proof: `RepositorySnapshotIntegrationTest`, full Gradle checks, compiler-backed analysis of every changed production Kotlin file, and the repository-shape gate.
+- Introduced by: PR #564.
+- Compatibility: none. Consumers of `WorkspaceHasIgnoredKotlinSources` must inspect its canonical repository-relative path.

@@ -2,6 +2,23 @@
 
 ## RED
 
+### Ignored non-source snapshot eligibility
+
+Command:
+
+```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --no-daemon --console=plain
+```
+
+Expected failure: an ignored generated Kotlin file under a hard-excluded
+directory is treated as source authority and rejects an otherwise reusable
+committed snapshot tree.
+
+Observed failure: FAILED as expected. With only `A.kt` committed and
+`build/generated/Generated.kt` ignored, the resolver returned `Unavailable`
+instead of the expected `Resolved` committed tree; the focused class ran eight
+tests with exactly this regression failing.
+
 ### Terminal progress-wait authority
 
 Command:
@@ -117,9 +134,11 @@ yet exist.
 Commands:
 
 ```shell
+./gradlew :indexer:test --tests io.github.amichne.kast.idea.RepositorySnapshotIntegrationTest --no-daemon --console=plain
 ./gradlew :indexer:test --tests io.github.amichne.kast.indexer.gradle.settlement.ProgressAwareFutureAwaiterTest --no-daemon --console=plain
 python3 .github/scripts/check-repository-shape.py --root .
 ./gradlew check --no-daemon --console=plain
+kast refresh indexer/src/main/kotlin/io/github/amichne/kast/idea/snapshot/CommittedGitTreeResolver.kt
 kast refresh indexer/src/main/kotlin/io/github/amichne/kast/indexer/gradle/settlement/ProgressAwareFutureAwaiter.kt
 kast refresh index-store/src/main/kotlin/io/github/amichne/kast/indexstore/store/sqlite/lifecycle/SourceIndexSnapshotStore.kt
 changed_files=(); while IFS= read -r file; do [[ -f "$file" ]] && changed_files+=("$file"); done < <(git diff --name-only "$(git merge-base HEAD origin/main)" -- '*/src/main/**/*.kt'); kast check "${changed_files[@]}"
@@ -132,9 +151,10 @@ cargo test --manifest-path cli-rs/Cargo.toml --locked workspace_transition_respo
 ./gradlew :indexer:test --tests io.github.amichne.kast.idea.WorkspaceTransitionIngressTest --tests io.github.amichne.kast.idea.backend.KastDiagnosticsCompletenessTest --tests io.github.amichne.kast.idea.backend.diagnostics.DiagnosticContentAuthorityTest --no-daemon --console=plain
 ```
 
-Observed result: PASSED. Overlay replacement and unchanged-file authority tests
-passed; all seven terminal wait-authority tests passed; all 19 durable-ownership
-tests passed; both readiness/read-action tests
+Observed result: PASSED. All eight repository snapshot integration tests passed;
+overlay replacement and unchanged-file authority tests passed; all seven
+terminal wait-authority tests passed; all 19 durable-ownership tests passed;
+both readiness/read-action tests
 passed; the host-supplied backend regression passed; and the transition timeout,
 server mutation deadline, ingress freshness, diagnostic completeness, and typed
 content-authority regressions passed. The full Gradle check and repository-shape

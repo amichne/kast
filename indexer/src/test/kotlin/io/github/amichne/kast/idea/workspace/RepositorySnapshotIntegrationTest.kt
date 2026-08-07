@@ -80,6 +80,20 @@ class RepositorySnapshotIntegrationTest {
     }
 
     @Test
+    fun `ignored Kotlin outside the source policy does not invalidate the committed tree`() {
+        git("init", "-b", "main")
+        git("config", "user.email", "kast@example.invalid")
+        git("config", "user.name", "Kast Test")
+        Files.writeString(workspace.resolve("A.kt"), "class A")
+        Files.writeString(workspace.resolve(".gitignore"), "build/\n")
+        git("add", "A.kt", ".gitignore")
+        git("commit", "-m", "initial")
+        Files.createDirectories(workspace.resolve("build/generated"))
+        Files.writeString(workspace.resolve("build/generated/Generated.kt"), "class Generated")
+        assertTrue(resolveTree(workspace) is CommittedGitTreeResolution.Resolved)
+    }
+
+    @Test
     fun `subdirectory tree identity matches its scoped manifest`() {
         git("init", "-b", "main")
         git("config", "user.email", "kast@example.invalid")
