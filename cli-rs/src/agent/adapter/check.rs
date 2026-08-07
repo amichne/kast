@@ -6,15 +6,16 @@ struct EmptyCheckResult {
     message: &'static str,
 }
 
-pub(crate) fn run_check(args: KastPathsArgs) -> Result<i32> {
+pub(crate) fn run_diagnostic(args: KastDiagnosticArgs) -> Result<i32> {
+    let KastDiagnosticCommand::Check { files } = args.command;
     let workspace_root = config::resolve_workspace_root(None)?;
-    let file_paths = if args.paths.is_empty() {
+    let file_paths = if files.is_empty() {
         match changed_kotlin_files(&workspace_root)? {
             Ok(file_paths) => file_paths,
             Err(envelope) => return print_projected_value(envelope),
         }
     } else {
-        args.paths
+        files
             .into_iter()
             .map(|path| path.display().to_string())
             .collect()

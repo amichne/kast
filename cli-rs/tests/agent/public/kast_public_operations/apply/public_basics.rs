@@ -9,7 +9,7 @@ fn public_change_exposes_only_the_four_verified_mutations() {
     let help = Command::new(env!("CARGO_BIN_EXE_kast"))
         .arg0("kast")
         .current_dir(&workspace)
-        .args(["change", "--help"])
+        .args(["change", "plan", "--help"])
         .output()
         .expect("public change help");
     assert!(
@@ -74,7 +74,7 @@ fn public_apply_owns_lease_and_returns_verified_receipt() {
     );
 
     let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", plan_id])
+        .args(["change", "apply", "--plan-id", plan_id])
         .output()
         .expect("public apply");
     assert!(
@@ -111,7 +111,7 @@ fn public_apply_owns_lease_and_returns_verified_receipt() {
     );
 
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", plan_id])
+        .args(["change", "apply", "--plan-id", plan_id])
         .output()
         .expect("terminal receipt replay");
     assert!(replay.status.success(), "{replay:?}");
@@ -148,7 +148,7 @@ fn terminal_replay_rejects_lease_evidence_substituted_across_private_files() {
         successful_verified_add_file_script(&target, content),
     );
     let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("verified apply");
     assert!(apply.status.success(), "{apply:?}");
@@ -174,7 +174,7 @@ fn terminal_replay_rejects_lease_evidence_substituted_across_private_files() {
     std::fs::write(&plan_path, encoded).expect("substitute terminal lease evidence");
 
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("substituted replay");
     assert_eq!(replay.status.code(), Some(1), "{replay:?}");
@@ -220,7 +220,7 @@ fn terminal_verified_receipt_persistence_failure_replays_from_durable_journal() 
             "KAST_TEST_MUTATION_FAILURE_POINT",
             "TERMINAL_RECEIPT_PERSISTENCE",
         )
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("terminal persistence failure");
     assert_eq!(interrupted.status.code(), Some(1), "{interrupted:?}");
@@ -237,7 +237,7 @@ fn terminal_verified_receipt_persistence_failure_replays_from_durable_journal() 
         &recover_shutdown,
     );
     let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("new-process recovery");
     assert!(recovered.status.success(), "{recovered:?}");
@@ -260,7 +260,7 @@ fn terminal_verified_receipt_persistence_failure_replays_from_durable_journal() 
     );
 
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("terminal retry");
     assert!(replay.status.success(), "{replay:?}");

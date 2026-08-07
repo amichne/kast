@@ -37,7 +37,7 @@ fn public_recover_finishes_verified_receipt_after_postwrite_interruption() {
             "KAST_TEST_MUTATION_FAILURE_POINT",
             "AFTER_VERIFIED_EVIDENCE",
         )
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("interrupted apply");
     assert_eq!(interrupted.status.code(), Some(1), "{interrupted:?}");
@@ -70,7 +70,7 @@ fn public_recover_finishes_verified_receipt_after_postwrite_interruption() {
         &recover_shutdown,
     );
     let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("recover in a new process");
     assert!(
@@ -86,7 +86,7 @@ fn public_recover_finishes_verified_receipt_after_postwrite_interruption() {
     recover_backend.join().expect("recovery backend");
 
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("terminal apply replay");
     assert!(replay.status.success(), "{replay:?}");
@@ -130,7 +130,7 @@ fn public_recover_verifies_all_postimages_after_postwrite_interruption() {
             "KAST_TEST_MUTATION_FAILURE_POINT",
             "AFTER_MUTATION_BEFORE_VERIFIED_EVIDENCE",
         )
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("ambiguous postwrite apply");
     assert_eq!(interrupted.status.code(), Some(1), "{interrupted:?}");
@@ -162,7 +162,7 @@ fn public_recover_verifies_all_postimages_after_postwrite_interruption() {
         &shutdown,
     );
     let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("recover ambiguous postwrite");
     assert!(recovered.status.success(), "{recovered:?}");
@@ -182,7 +182,7 @@ fn public_recover_verifies_all_postimages_after_postwrite_interruption() {
     );
 
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("rolled-back recovery replay");
     assert!(replay.status.success(), "{replay:?}");
@@ -224,7 +224,7 @@ fn public_recover_consumes_declared_prepared_scratch_after_apply_is_sigkilled() 
         successful_verified_add_file_script(&target, content),
     );
     let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -268,7 +268,7 @@ fn public_recover_consumes_declared_prepared_scratch_after_apply_is_sigkilled() 
         &shutdown,
     );
     let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("recover after SIGKILL");
     assert_eq!(recovered.status.code(), Some(1), "{recovered:?}");
@@ -307,7 +307,7 @@ fn public_recover_consumes_declared_prepared_scratch_after_apply_is_sigkilled() 
         "restart must consume only the journal-declared prepared path"
     );
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("SIGKILL terminal replay");
     assert_eq!(replay.status.code(), Some(1), "{replay:?}");

@@ -11,7 +11,8 @@ use crate::agent_adapter;
 use crate::cli::{
     AgentAddFileArgs, AgentCommand, AgentLeaseAccessArgs, AgentLeaseAcquireArgs,
     AgentMutationApplyArgs, AgentPlacementAnchor, AgentRenameArgs, AgentReplaceDeclarationArgs,
-    AgentScopedMutationArgs, AgentWorkspaceLeaseId, KastChangeArgs, KastChangeCommand,
+    AgentScopedMutationArgs, AgentSelectorHandle, AgentWorkspaceLeaseId, KastChangePlanArgs,
+    KastChangePlanCommand, OutputFormat,
 };
 use crate::error::{CliError, Result};
 use crate::runtime::{WorkspaceLeaseOwnership, WorkspaceLeaseReleaseReceipt, WorkspaceLeaseState};
@@ -36,6 +37,8 @@ struct StoredPlan {
     operation: StoredOperation,
     content_sha256: Option<String>,
     state: StoredPlanState,
+    #[serde(skip)]
+    runtime_output: Option<PlanOutputContext>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -61,10 +64,26 @@ enum StoredOperation {
 }
 
 enum RequestedOperation {
-    Rename { symbol: String, new_name: String },
+    Rename { selector: String, new_name: String },
     AddFile { path: PathBuf },
     AddDeclaration { path: PathBuf },
-    Replace { symbol: String },
+    Replace { selector: String },
+}
+
+enum PreparedOperation {
+    Rename {
+        selector: crate::agent::public_protocol::SymbolSelector,
+        new_name: String,
+    },
+    AddFile {
+        path: PathBuf,
+    },
+    AddDeclaration {
+        path: PathBuf,
+    },
+    Replace {
+        selector: crate::agent::public_protocol::SymbolSelector,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -72,8 +91,47 @@ enum RequestedOperation {
 struct ChangeResult {
     plan_id: String,
     operation: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    selector: Option<String>,
     plan: Value,
     next: String,
+}
+
+#[derive(Clone, Copy, Debug)]
+struct PlanOutputContext {
+    format: OutputFormat,
+    operation: crate::agent::public_protocol::OperationId,
+}
+
+fn plan_output_context(
+    format: OutputFormat,
+    operation: crate::agent::public_protocol::OperationId,
+) -> PlanOutputContext {
+    PlanOutputContext { format, operation }
+}
+
+fn print_plan_protocol(
+    context: PlanOutputContext,
+    result_type: &'static str,
+    status: crate::agent::public_protocol::OperationStatus,
+    value: &impl Serialize,
+) -> Result<()> {
+    let fields = serde_json::to_value(value)?
+        .as_object()
+        .cloned()
+        .ok_or_else(|| {
+            CliError::new(
+                "KAST_INVALID_AGENT_RESULT",
+                "The mutation operation returned a non-object result.",
+            )
+        })?;
+    let envelope = crate::agent::public_protocol::ProtocolEnvelope::projected(
+        context.operation,
+        status,
+        result_type,
+        fields,
+    );
+    output::print_structured(&envelope, context.format)
 }
 
 include!("execution.rs");

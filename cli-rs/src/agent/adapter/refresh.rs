@@ -1,10 +1,6 @@
-pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
+pub(crate) fn run_refresh(files: Vec<PathBuf>) -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(None)?;
-    if let Some(KastRefreshCommand::External { failure_ids }) = args.command {
-        return run_external_refresh(workspace_root, failure_ids);
-    }
-
-    let inferred_scope = args.paths.is_empty();
+    let inferred_scope = files.is_empty();
     let mut requested_paths = if inferred_scope {
         let plan = crate::repository_intelligence::semantic_graph_refresh_plan(&workspace_root)
             .map_err(|error| {
@@ -23,7 +19,7 @@ pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
         }
         file_paths
     } else {
-        args.paths
+        files
             .into_iter()
             .map(|path| path.display().to_string())
             .collect()
@@ -99,7 +95,7 @@ pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
                 return print_actionable_failure(
                     "GRAPH_EVIDENCE_UNAVAILABLE",
                     &error.message,
-                    "kast refresh",
+                    "kast workspace refresh",
                 );
             }
         }
@@ -144,7 +140,7 @@ pub(crate) fn run_refresh(args: KastRefreshArgs) -> Result<i32> {
         .iter()
         .map(|failure| {
             format!(
-                "kast refresh external {}",
+                "kast workspace externalize --failure-id {}",
                 failure["failureId"]
                     .as_str()
                     .expect("validated relationship failure id")

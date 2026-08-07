@@ -42,7 +42,7 @@ fn public_recover_restores_declared_quarantine_scratch_after_cas_is_sigkilled() 
         vec![("raw/plan-add-declaration", preview)],
     );
     let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -81,7 +81,7 @@ fn public_recover_restores_declared_quarantine_scratch_after_cas_is_sigkilled() 
         &shutdown,
     );
     let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("recover detached CAS scratch");
     assert_eq!(recovered.status.code(), Some(1), "{recovered:?}");
@@ -146,7 +146,7 @@ fn public_recover_rejects_wrong_bytes_at_a_journal_owned_scratch_path() {
         successful_verified_add_file_script(&target, content),
     );
     let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -187,7 +187,7 @@ fn public_recover_rejects_wrong_bytes_at_a_journal_owned_scratch_path() {
         &shutdown,
     );
     let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("recover foreign scratch");
     assert_eq!(recovered.status.code(), Some(1), "{recovered:?}");
@@ -253,7 +253,7 @@ fn assert_reverse_quarantine_only_recovery(case: &str, preimage: &[u8]) {
     );
     let interrupted = installed_public_kast(&binary, &home, &config_home, &workspace)
         .env("KAST_TEST_MUTATION_FAILURE_POINT", "AFTER_ALL_WRITES")
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("interrupt after forward write");
     assert_eq!(decode(&interrupted)["outcome"], "RECOVERY_REQUIRED");
@@ -283,7 +283,7 @@ fn assert_reverse_quarantine_only_recovery(case: &str, preimage: &[u8]) {
         )],
     );
     let recovery = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -331,7 +331,7 @@ fn assert_reverse_quarantine_only_recovery(case: &str, preimage: &[u8]) {
         &shutdown,
     );
     let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("recover reverse quarantine-only state");
     assert_eq!(recovered.status.code(), Some(1), "{recovered:?}");

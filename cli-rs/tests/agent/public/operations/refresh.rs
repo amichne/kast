@@ -86,7 +86,7 @@ fn refresh_bootstraps_clean_pending_graph_files() {
     );
 
     let refresh = kast(&home, &config_home, &workspace)
-        .arg("refresh")
+        .args(["workspace", "refresh"])
         .output()
         .expect("refresh");
     assert!(
@@ -145,7 +145,14 @@ fn refresh_external_projects_only_actionable_outcomes() {
     );
 
     let external = kast(&home, &config_home, &workspace)
-        .args(["refresh", "external", "failure-a", "failure-b"])
+        .args([
+            "workspace",
+            "externalize",
+            "--failure-id",
+            "failure-a",
+            "--failure-id",
+            "failure-b",
+        ])
         .output()
         .expect("external refresh");
     assert!(
@@ -205,7 +212,14 @@ fn refresh_external_not_found_is_an_actionable_failure() {
     );
 
     let external = kast(&home, &config_home, &workspace)
-        .args(["refresh", "external", "failure-a", "stale-failure"])
+        .args([
+            "workspace",
+            "externalize",
+            "--failure-id",
+            "failure-a",
+            "--failure-id",
+            "stale-failure",
+        ])
         .output()
         .expect("external refresh");
     assert_eq!(external.status.code(), Some(1), "{external:?}");
@@ -217,7 +231,7 @@ fn refresh_external_not_found_is_an_actionable_failure() {
                 {"failureId": "failure-a", "status": "EXTERNALIZED"},
                 {"failureId": "stale-failure", "status": "NOT_FOUND"}
             ],
-            "next": "Run `kast refresh <path>` for the affected file, then externalize the new failure ID."
+            "next": "Run `kast workspace refresh --file <path>` for the affected file, then externalize the new failure ID."
         })
     );
     backend.join().expect("external backend");
@@ -271,7 +285,12 @@ fn refresh_removes_graph_facts_without_diagnosing_a_deleted_file() {
     );
 
     let refresh = kast(&home, &config_home, &workspace)
-        .args(["refresh", removed.to_str().expect("removed path")])
+        .args([
+            "workspace",
+            "refresh",
+            "--file",
+            removed.to_str().expect("removed path"),
+        ])
         .output()
         .expect("refresh");
     assert!(

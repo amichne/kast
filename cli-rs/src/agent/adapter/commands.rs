@@ -60,13 +60,25 @@ pub(crate) fn run_up() -> Result<i32> {
     ))
 }
 
-pub(crate) fn run_files(
-    pattern: Option<String>,
-    page: Option<WorkspaceFilesPublicPageToken>,
-) -> Result<i32> {
+pub(crate) fn run_workspace(args: KastWorkspaceArgs) -> Result<i32> {
+    match args.command {
+        KastWorkspaceCommand::Ensure => run_up(),
+        KastWorkspaceCommand::Refresh { files } => run_refresh(files),
+        KastWorkspaceCommand::Externalize { failure_ids } => {
+            let workspace_root = config::resolve_workspace_root(None)?;
+            run_external_refresh(workspace_root, failure_ids)
+        }
+    }
+}
+
+pub(crate) fn run_file(args: KastFileArgs) -> Result<i32> {
+    let KastFileCommand::List {
+        pattern,
+        continuation,
+    } = args.command;
     let workspace_root = config::resolve_workspace_root(None)?;
     let mut args = workspace_files_args(workspace_root);
-    args.page_token = page;
+    args.page_token = continuation;
     args.glob = pattern
         .map(|value| {
             value
@@ -92,88 +104,68 @@ pub(crate) fn run_symbol(args: KastSymbolArgs, output_format: OutputFormat) -> R
             agent::public_protocol::symbol_show(workspace_root, selector),
             output_format,
         ),
-        KastSymbolCommand::Callers { symbol, page } => {
-            run_symbol_relation(workspace_root, symbol, |runtime, selector| {
-                AgentCommand::Callers(AgentCallsArgs {
-                    runtime,
-                    selector,
-                    depth: Default::default(),
-                    limit: maximum_relation_limit(),
-                    page_token: page,
-                    view: AgentRelationViewArgs::default(),
-                })
-            })
-        }
-        KastSymbolCommand::Callees { symbol, page } => {
-            run_symbol_relation(workspace_root, symbol, |runtime, selector| {
-                AgentCommand::Callees(AgentCallsArgs {
-                    runtime,
-                    selector,
-                    depth: Default::default(),
-                    limit: maximum_relation_limit(),
-                    page_token: page,
-                    view: AgentRelationViewArgs::default(),
-                })
-            })
-        }
-        KastSymbolCommand::Implementations { symbol, page } => {
-            run_symbol_relation(workspace_root, symbol, |runtime, selector| {
-                AgentCommand::Implementations(AgentImplementationsArgs {
-                    runtime,
-                    selector,
-                    limit: maximum_relation_limit(),
-                    page_token: page,
-                    view: AgentRelationViewArgs::default(),
-                })
-            })
-        }
-        KastSymbolCommand::Supertypes { symbol, page } => {
-            run_symbol_relation(workspace_root, symbol, |runtime, selector| {
-                AgentCommand::Hierarchy(AgentHierarchyArgs {
-                    runtime,
-                    selector,
-                    direction: AgentHierarchyDirection::Supertypes,
-                    depth: maximum_relation_depth(),
-                    limit: maximum_relation_limit(),
-                    page_token: page,
-                    view: AgentRelationViewArgs::default(),
-                })
-            })
-        }
-        KastSymbolCommand::Subtypes { symbol, page } => {
-            run_symbol_relation(workspace_root, symbol, |runtime, selector| {
-                AgentCommand::Hierarchy(AgentHierarchyArgs {
-                    runtime,
-                    selector,
-                    direction: AgentHierarchyDirection::Subtypes,
-                    depth: maximum_relation_depth(),
-                    limit: maximum_relation_limit(),
-                    page_token: page,
-                    view: AgentRelationViewArgs::default(),
-                })
-            })
-        }
     }
 }
 
 pub(crate) fn run_relation(args: KastRelationArgs, output_format: OutputFormat) -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(None)?;
     match args.command {
-        KastRelationCommand::References {
-            selector,
-            continuation,
-        } => print_protocol(
+        KastRelationCommand::References(args) => print_protocol(
             agent::public_protocol::relation_references(
                 workspace_root,
-                selector,
-                continuation,
+                args.selector,
+                args.continuation,
             ),
             output_format,
         ),
+        KastRelationCommand::Calls(args) => match args.command {
+            KastRelationCallsCommand::Incoming(args) => print_protocol(
+                agent::public_protocol::relation_calls_incoming(
+                    workspace_root,
+                    args.selector,
+                    args.continuation,
+                ),
+                output_format,
+            ),
+            KastRelationCallsCommand::Outgoing(args) => print_protocol(
+                agent::public_protocol::relation_calls_outgoing(
+                    workspace_root,
+                    args.selector,
+                    args.continuation,
+                ),
+                output_format,
+            ),
+        },
+        KastRelationCommand::Implementations(args) => print_protocol(
+            agent::public_protocol::relation_implementations(
+                workspace_root,
+                args.selector,
+                args.continuation,
+            ),
+            output_format,
+        ),
+        KastRelationCommand::Hierarchy(args) => match args.command {
+            KastRelationHierarchyCommand::Supertypes(args) => print_protocol(
+                agent::public_protocol::relation_hierarchy_supertypes(
+                    workspace_root,
+                    args.selector,
+                    args.continuation,
+                ),
+                output_format,
+            ),
+            KastRelationHierarchyCommand::Subtypes(args) => print_protocol(
+                agent::public_protocol::relation_hierarchy_subtypes(
+                    workspace_root,
+                    args.selector,
+                    args.continuation,
+                ),
+                output_format,
+            ),
+        },
     }
 }
 
-pub(crate) fn run_graph(args: KastGraphArgs) -> Result<i32> {
+pub(crate) fn run_graph(args: KastGraphArgs, output_format: OutputFormat) -> Result<i32> {
     let workspace_root = config::resolve_workspace_root(None)?;
     match args
         .command
@@ -186,27 +178,48 @@ pub(crate) fn run_graph(args: KastGraphArgs) -> Result<i32> {
             Some(projection.scope.into()),
             None,
             None,
+            output_format,
         ),
-        KastGraphCommand::Nodes { page } => print_native_graph(
+        KastGraphCommand::Nodes { continuation } => print_native_graph(
             workspace_root,
             NativeGraphOperation::Nodes,
             None,
             None,
-            page,
+            continuation
+                .map(|value| value.parse::<KastGraphNodesPageToken>())
+                .transpose()
+                .map_err(|message| CliError::new("CLI_USAGE", message))?,
+            output_format,
         ),
-        KastGraphCommand::Neighbors { symbol } => print_native_graph(
-            workspace_root,
-            NativeGraphOperation::Neighbors,
-            None,
-            Some(symbol),
-            None,
-        ),
+        KastGraphCommand::Neighbors { node_selector } => {
+            let node_selector = match agent::public_protocol::UntrustedGraphNodeSelector::parse(
+                node_selector,
+            ) {
+                Ok(selector) => selector,
+                Err(failure) => {
+                    return print_actionable_failure(
+                        failure.code(),
+                        failure.message(),
+                        "kast graph nodes",
+                    );
+                }
+            };
+            print_native_graph(
+                workspace_root,
+                NativeGraphOperation::Neighbors,
+                None,
+                Some(node_selector),
+                None,
+                output_format,
+            )
+        }
         KastGraphCommand::Topology(projection) => print_native_graph(
             workspace_root,
             NativeGraphOperation::Topology,
             Some(projection.scope.into()),
             None,
             None,
+            output_format,
         ),
         KastGraphCommand::Communities(projection) => print_native_graph(
             workspace_root,
@@ -214,19 +227,18 @@ pub(crate) fn run_graph(args: KastGraphArgs) -> Result<i32> {
             Some(projection.scope.into()),
             None,
             None,
+            output_format,
         ),
-        KastGraphCommand::Derive(args) => print_derived_topology(workspace_root, args),
-        KastGraphCommand::Impact { symbol, page } => {
-            run_symbol_relation(workspace_root, symbol, |runtime, selector| {
-                AgentCommand::Impact(AgentImpactArgs {
-                    runtime,
-                    selector,
-                    depth: Default::default(),
-                    limit: maximum_relation_limit(),
-                    page_token: page,
-                    view: AgentImpactViewArgs::default(),
-                })
-            })
+        KastGraphCommand::Derive(args) => {
+            print_derived_topology(workspace_root, args, output_format)
         }
+        KastGraphCommand::Impact(args) => print_protocol(
+            agent::public_protocol::graph_impact(
+                workspace_root,
+                args.selector,
+                args.continuation,
+            ),
+            output_format,
+        ),
     }
 }

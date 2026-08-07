@@ -21,6 +21,7 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
     let workspace = workspace.canonicalize().expect("canonical workspace");
     let declaration_file = workspace.join("Keywords.kt");
     let symbol = "io.example.OrderService.process";
+    let selector = "ksh1.issued-replacement-selector";
     let target = json!({
         "fqName": symbol,
         "kind": "FUNCTION",
@@ -111,24 +112,7 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
         }
     }]);
 
-    let resolve_response = json!({
-        "type": "RESOLVE_SUCCESS",
-        "ok": true,
-        "source": "compiler",
-        "symbol": {
-            "fqName": symbol,
-            "kind": "FUNCTION",
-            "containingType": "io.example.OrderService",
-            "location": {
-                "filePath": declaration_file,
-                "startOffset": 4,
-                "endOffset": 11,
-                "startLine": 1,
-                "startColumn": 5,
-                "preview": "fun process()"
-            }
-        }
-    });
+    let selector_identity = json!({"type": "AVAILABLE", "identity": target});
     let replacement_preview = json!({
         "edit": edit,
         "proof": proof,
@@ -142,13 +126,14 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
         &workspace,
         &socket,
         vec![
-            ("symbol/resolve", resolve_response.clone()),
+            ("selector/identity", selector_identity.clone()),
+            ("selector/identity", selector_identity.clone()),
             ("raw/plan-replacement", replacement_preview.clone()),
         ],
     );
     let binary = write_active_kast_for_test(&home, &config_home);
     let mut change = installed_public_kast(&binary, &home, &config_home, &workspace);
-    change.args(["change", "replace", symbol]);
+    change.args(["change", "plan", "replace", "--selector", selector]);
     let change = run_with_stdin(change, proposed);
     assert!(
         change.status.success(),
@@ -160,9 +145,11 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
         !String::from_utf8_lossy(&change.stdout).contains("contentBase64"),
         "public replacement plan must redact exact image bytes"
     );
-    backend.join().expect("replacement planning backend");
+    let planning_requests = backend.join().expect("replacement planning backend");
+    assert_selector_forwarding(&planning_requests, selector, "REPLACE_DECLARATION");
 
     let public = decode(&change);
+    assert_eq!(public["selector"], selector, "{public:#}");
     assert_eq!(
         public["plan"]["preview"]["proof"]["oldSignature"]["type"], "function",
         "public replacement proof must retain its semantic discriminator"
@@ -204,7 +191,7 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
         vec![("raw/plan-replacement", replacement_preview.clone())],
     );
     let applied = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("verified replacement apply");
     assert!(applied.status.success(), "{applied:?}");
@@ -226,7 +213,7 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
         1
     );
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("verified replacement replay");
     assert!(replay.status.success(), "{replay:?}");
@@ -239,12 +226,13 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
         &workspace,
         &fixture.path().join("replacement-tamper-plan.sock"),
         vec![
-            ("symbol/resolve", resolve_response),
+            ("selector/identity", selector_identity.clone()),
+            ("selector/identity", selector_identity),
             ("raw/plan-replacement", replacement_preview),
         ],
     );
     let mut tamper_change = installed_public_kast(&binary, &home, &config_home, &workspace);
-    tamper_change.args(["change", "replace", symbol]);
+    tamper_change.args(["change", "plan", "replace", "--selector", selector]);
     let tamper_change = run_with_stdin(tamper_change, proposed);
     assert!(tamper_change.status.success(), "{tamper_change:?}");
     tamper_plan_backend
@@ -279,7 +267,7 @@ fn change_replace_persists_restart_safe_exact_file_authority() {
     std::fs::write(&plan_path, encoded).expect("rewrite private plan for restart tamper proof");
 
     let tampered_apply = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("restart with tampered replacement authority");
     assert_eq!(tampered_apply.status.code(), Some(1), "{tampered_apply:?}");

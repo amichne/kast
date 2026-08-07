@@ -1,4 +1,7 @@
-fn run_external_refresh(workspace_root: PathBuf, failure_ids: Vec<String>) -> Result<i32> {
+pub(crate) fn run_external_refresh(
+    workspace_root: PathBuf,
+    failure_ids: Vec<String>,
+) -> Result<i32> {
     let response = raw_workspace_refresh(&workspace_root, &[], &failure_ids)?;
     if let Some((code, message)) = rpc_failure(&response) {
         return print_failure(code, message);
@@ -60,7 +63,7 @@ fn run_external_refresh(workspace_root: PathBuf, failure_ids: Vec<String>) -> Re
         output::print_structured(
             &json!({
                 "external": external,
-                "next": "Run `kast refresh <path>` for the affected file, then externalize the new failure ID."
+                "next": "Run `kast workspace refresh --file <path>` for the affected file, then externalize the new failure ID."
             }),
             OutputFormat::Toon,
         )?;

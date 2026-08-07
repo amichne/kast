@@ -53,7 +53,7 @@ pub(crate) fn assert_independent_verification_failure_rolls_back(
     );
 
     let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("apply with unavailable compiler verification");
     let apply_requests = apply_backend.join().expect("apply backend");
@@ -90,7 +90,7 @@ pub(crate) fn assert_independent_verification_failure_rolls_back(
         verification_script,
     );
     let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("recover unverified postimage in a new process");
     assert_eq!(recovered.status.code(), Some(1), "{recovered:?}");

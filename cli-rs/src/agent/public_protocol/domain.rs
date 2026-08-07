@@ -6,6 +6,11 @@ pub(super) enum PublicOperation {
     SymbolResolve(SymbolResolveRequest),
     SymbolShow(SymbolShowInput),
     RelationReferences(RelationReferencesInput),
+    RelationCallsIncoming(ExactSymbolRequest),
+    RelationCallsOutgoing(ExactSymbolRequest),
+    RelationImplementations(ExactSymbolRequest),
+    RelationHierarchySupertypes(ExactSymbolRequest),
+    RelationHierarchySubtypes(ExactSymbolRequest),
 }
 
 #[derive(Debug)]
@@ -25,6 +30,12 @@ pub(super) struct SymbolShowInput {
 
 #[derive(Debug)]
 pub(super) struct RelationReferencesInput {
+    pub selector: UntrustedSymbolSelector,
+    pub continuation: Option<String>,
+}
+
+#[derive(Debug)]
+pub(super) struct ExactSymbolRequest {
     pub selector: UntrustedSymbolSelector,
     pub continuation: Option<String>,
 }
@@ -64,29 +75,29 @@ impl UntrustedSymbolSelector {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 #[serde(transparent)]
-pub(super) struct IssuedSymbolSelector(String);
+pub(crate) struct IssuedSymbolSelector(String);
 
 impl IssuedSymbolSelector {
-    pub fn from_backend(value: String) -> Result<Self, &'static str> {
+    pub(super) fn from_backend(value: String) -> Result<Self, &'static str> {
         if value.is_empty() {
             return Err("backend-issued selector must not be empty");
         }
         Ok(Self(value))
     }
 
-    pub fn as_str(&self) -> &str {
+    pub(crate) fn as_str(&self) -> &str {
         &self.0
     }
 }
 
-#[derive(Debug)]
-pub(super) struct SymbolSelector {
+#[derive(Clone, Debug)]
+pub(crate) struct SymbolSelector {
     issued: IssuedSymbolSelector,
     identity: SymbolIdentity,
 }
 
 impl SymbolSelector {
-    pub fn authenticated(
+    pub(super) fn authenticated(
         input: UntrustedSymbolSelector,
         identity: SymbolIdentity,
     ) -> Result<Self, &'static str> {
@@ -96,12 +107,16 @@ impl SymbolSelector {
         })
     }
 
-    pub fn issued(&self) -> &IssuedSymbolSelector {
+    pub(super) fn issued(&self) -> &IssuedSymbolSelector {
         &self.issued
     }
 
-    pub fn identity(&self) -> &SymbolIdentity {
+    pub(super) fn identity(&self) -> &SymbolIdentity {
         &self.identity
+    }
+
+    pub(crate) fn as_str(&self) -> &str {
+        self.issued.as_str()
     }
 }
 

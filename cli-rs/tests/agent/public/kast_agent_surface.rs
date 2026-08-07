@@ -1,7 +1,13 @@
 #[path = "kast_agent_surface/developer_route.rs"]
 mod developer_route;
+#[path = "surface/graph_summary_protocol.rs"]
+mod graph_summary_protocol;
 #[path = "../../support/mod.rs"]
 mod support;
+#[path = "surface/typed_exact_operations.rs"]
+mod typed_exact_operations;
+#[path = "surface/typed_mutation_operations.rs"]
+mod typed_mutation_operations;
 
 use std::os::unix::process::CommandExt;
 use std::path::Path;
@@ -46,7 +52,13 @@ fn help_exposes_only_the_agent_contract() {
         "{stdout}"
     );
     for command in [
-        "up", "refresh", "files", "symbol", "relation", "graph", "check", "change", "apply",
+        "workspace",
+        "file",
+        "symbol",
+        "relation",
+        "graph",
+        "diagnostic",
+        "change",
     ] {
         assert!(stdout.contains(command), "missing {command}: {stdout}");
     }
@@ -73,14 +85,15 @@ fn help_exposes_only_the_agent_contract() {
 }
 
 #[test]
-fn public_pageable_commands_use_one_page_flag() {
+fn public_pageable_commands_use_one_continuation_flag() {
     for args in [
-        &["files", "--help"][..],
-        &["symbol", "callers", "--help"][..],
-        &["symbol", "callees", "--help"][..],
-        &["symbol", "implementations", "--help"][..],
-        &["symbol", "supertypes", "--help"][..],
-        &["symbol", "subtypes", "--help"][..],
+        &["file", "list", "--help"][..],
+        &["relation", "references", "--help"][..],
+        &["relation", "calls", "incoming", "--help"][..],
+        &["relation", "calls", "outgoing", "--help"][..],
+        &["relation", "implementations", "--help"][..],
+        &["relation", "hierarchy", "supertypes", "--help"][..],
+        &["relation", "hierarchy", "subtypes", "--help"][..],
         &["graph", "nodes", "--help"][..],
         &["graph", "impact", "--help"][..],
     ] {
@@ -91,11 +104,11 @@ fn public_pageable_commands_use_one_page_flag() {
         assert!(output.status.success(), "{output:?}");
         let help = String::from_utf8(output.stdout).expect("UTF-8 help");
         assert!(
-            help.contains("--page <PAGE>"),
-            "`kast {}` omitted the uniform page input:\n{help}",
+            help.contains("--continuation <CONTINUATION>"),
+            "`kast {}` omitted the uniform continuation input:\n{help}",
             args.join(" ")
         );
-        for private in ["--page-token", "--after-id", "--generation"] {
+        for private in ["--page", "--page-token", "--after-id", "--generation"] {
             assert!(
                 !help.contains(private),
                 "`kast {}` leaked {private}:\n{help}",
@@ -103,18 +116,6 @@ fn public_pageable_commands_use_one_page_flag() {
             );
         }
     }
-
-    let references = named("kast")
-        .args(["relation", "references", "--help"])
-        .output()
-        .expect("run relation references help");
-    assert!(references.status.success(), "{references:?}");
-    let references = String::from_utf8(references.stdout).expect("UTF-8 references help");
-    assert!(
-        references.contains("--continuation <CONTINUATION>"),
-        "{references}"
-    );
-    assert!(!references.contains("--page"), "{references}");
 }
 
 #[test]
@@ -163,58 +164,7 @@ fn installed_public_entrypoint_uses_private_kastctl_libexec() {
 }
 
 #[test]
-fn graph_summary_is_a_direct_deterministic_toon_result_without_protocol_cruft() {
-    let fixture = tempfile::tempdir().expect("temporary graph fixture");
-    let home = fixture.path().join("home");
-    let workspace = fixture.path().join("workspace");
-    std::fs::create_dir_all(&workspace).expect("workspace");
-    std::fs::write(
-        workspace.join("settings.gradle.kts"),
-        "rootProject.name = \"kast-graph-summary\"\n",
-    )
-    .expect("Gradle marker");
-    let workspace = workspace.canonicalize().expect("canonical workspace");
-
-    let _index = seed_public_graph(&workspace, false);
-
-    let output = published_public_kast(&home, &fixture.path().join("config"), &workspace)
-        .current_dir(&workspace)
-        .args(["graph", "summary"])
-        .output()
-        .expect("run kast graph summary");
-
-    assert!(
-        output.status.success(),
-        "stdout={} stderr={}",
-        String::from_utf8_lossy(&output.stdout),
-        String::from_utf8_lossy(&output.stderr)
-    );
-    assert!(output.stderr.is_empty(), "{output:?}");
-    let rendered = String::from_utf8(output.stdout).expect("UTF-8 graph summary");
-    assert!(
-        !rendered.trim_start().starts_with('{'),
-        "graph summary must default to TOON: {rendered}"
-    );
-    let decoded: serde_json::Value =
-        toon_format::decode_default(rendered.trim()).expect("graph summary is valid TOON");
-    assert_eq!(decoded["generation"], 41);
-    assert_eq!(decoded["nodeCount"], 2);
-    assert_eq!(decoded["edgeOccurrenceCount"], 2);
-    assert_eq!(decoded["qualification"], "CURRENT");
-    assert!(
-        decoded.get("result").is_none(),
-        "result must not be envelope-wrapped: {decoded:#}"
-    );
-    for cruft in ["ok", "method", "schemaVersion"] {
-        assert!(
-            decoded.get(cruft).is_none(),
-            "graph summary leaked {cruft}: {decoded:#}"
-        );
-    }
-}
-
-#[test]
-fn public_graph_nodes_exposes_and_consumes_an_opaque_next_page() {
+fn public_graph_nodes_issue_distinct_node_selectors_and_opaque_continuations() {
     let fixture = tempfile::tempdir().expect("temporary graph fixture");
     let home = fixture.path().join("home");
     let workspace = fixture.path().join("workspace");
@@ -255,20 +205,61 @@ fn public_graph_nodes_exposes_and_consumes_an_opaque_next_page() {
             .trim(),
     )
     .expect("first graph page TOON");
-    assert_eq!(first["nodes"].as_array().map(Vec::len), Some(500));
-    assert_eq!(first["truncated"], true);
-    let next_page = first["nextPage"]
+    assert_eq!(first["schemaVersion"], 2, "{first:#}");
+    assert_eq!(first["operation"], "graph.nodes", "{first:#}");
+    assert_eq!(first["status"], "complete", "{first:#}");
+    assert_eq!(first["result"]["type"], "graph-nodes", "{first:#}");
+    assert_eq!(first["result"]["nodes"].as_array().map(Vec::len), Some(500));
+    assert_eq!(first["result"]["truncated"], true);
+    let node_selector = first["result"]["nodes"][0]["nodeSelector"]
+        .as_str()
+        .expect("opaque graph node selector")
+        .to_string();
+    assert!(node_selector.starts_with("kgns1."), "{first:#}");
+    let continuation = first["result"]["continuation"]
         .as_str()
         .expect("opaque public graph continuation")
         .to_string();
-    assert!(next_page.starts_with("kgn1."), "{first:#}");
-    for private in ["pageToken", "nextPageToken", "afterId", "nextAfterId"] {
-        assert!(first.get(private).is_none(), "leaked {private}: {first:#}");
+    assert!(continuation.starts_with("kgn1."), "{first:#}");
+    for private in [
+        "page",
+        "nextPage",
+        "pageToken",
+        "nextPageToken",
+        "afterId",
+        "nextAfterId",
+    ] {
+        assert!(
+            first["result"].get(private).is_none(),
+            "leaked {private}: {first:#}"
+        );
     }
+
+    let neighbors = published_public_kast(&home, &fixture.path().join("config"), &workspace)
+        .current_dir(&workspace)
+        .args(["graph", "neighbors", "--node-selector", &node_selector])
+        .output()
+        .expect("graph node selector consumer");
+    assert!(
+        neighbors.status.success(),
+        "stdout={} stderr={}",
+        String::from_utf8_lossy(&neighbors.stdout),
+        String::from_utf8_lossy(&neighbors.stderr),
+    );
+    let neighbors: serde_json::Value = toon_format::decode_default(
+        std::str::from_utf8(&neighbors.stdout)
+            .expect("UTF-8 neighbors")
+            .trim(),
+    )
+    .expect("neighbors TOON");
+    assert_eq!(
+        neighbors["result"]["key"],
+        first["result"]["nodes"][0]["stableKey"]
+    );
 
     let second = published_public_kast(&home, &fixture.path().join("config"), &workspace)
         .current_dir(&workspace)
-        .args(["graph", "nodes", "--page", &next_page])
+        .args(["graph", "nodes", "--continuation", &continuation])
         .output()
         .expect("second graph page");
     assert!(
@@ -283,10 +274,15 @@ fn public_graph_nodes_exposes_and_consumes_an_opaque_next_page() {
             .trim(),
     )
     .expect("second graph page TOON");
-    assert_eq!(second["nodes"].as_array().map(Vec::len), Some(1));
-    assert_eq!(second["nodes"][0]["id"], 501);
-    assert_eq!(second["truncated"], false);
-    assert!(second.get("nextPage").is_none(), "{second:#}");
+    assert_eq!(second["result"]["nodes"].as_array().map(Vec::len), Some(1));
+    assert_eq!(second["result"]["nodes"][0]["id"], 501);
+    assert!(
+        second["result"]["nodes"][0]["nodeSelector"]
+            .as_str()
+            .is_some_and(|selector| selector.starts_with("kgns1."))
+    );
+    assert_eq!(second["result"]["truncated"], false);
+    assert!(second["result"].get("continuation").is_none(), "{second:#}");
 
     let other_workspace = fixture.path().join("other-workspace");
     std::fs::create_dir_all(&other_workspace).expect("other workspace");
@@ -297,7 +293,7 @@ fn public_graph_nodes_exposes_and_consumes_an_opaque_next_page() {
     let _other_index = seed_public_graph(&other_workspace, false);
     let wrong_root = published_public_kast(&home, &fixture.path().join("config"), &other_workspace)
         .current_dir(&other_workspace)
-        .args(["graph", "nodes", "--page", &next_page])
+        .args(["graph", "nodes", "--continuation", &continuation])
         .output()
         .expect("cross-workspace graph page");
     assert_eq!(wrong_root.status.code(), Some(1), "{wrong_root:?}");
@@ -308,69 +304,47 @@ fn public_graph_nodes_exposes_and_consumes_an_opaque_next_page() {
     )
     .expect("cross-workspace page error TOON");
     assert_eq!(wrong_root["error"], "GRAPH_PAGE_TOKEN_MISMATCH");
-}
 
-#[test]
-fn graph_summary_qualifies_stale_noncritical_persisted_facts() {
-    let fixture = tempfile::tempdir().expect("temporary graph fixture");
-    let home = fixture.path().join("home");
-    let workspace = fixture.path().join("workspace");
-    std::fs::create_dir_all(&workspace).expect("workspace");
-    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
-    let workspace = workspace.canonicalize().expect("canonical workspace");
-    let _index = seed_public_graph(&workspace, true);
-
-    let output = published_public_kast(&home, &fixture.path().join("config"), &workspace)
+    let wrong_domain = published_public_kast(&home, &fixture.path().join("config"), &workspace)
         .current_dir(&workspace)
-        .args(["graph", "summary"])
+        .args([
+            "graph",
+            "neighbors",
+            "--node-selector",
+            "ksh1.symbol-selector-cannot-substitute",
+        ])
         .output()
-        .expect("run stale graph summary");
+        .expect("wrong selector domain");
+    assert_eq!(wrong_domain.status.code(), Some(1), "{wrong_domain:?}");
+    let wrong_domain: serde_json::Value = toon_format::decode_default(
+        std::str::from_utf8(&wrong_domain.stdout)
+            .expect("UTF-8 wrong-domain failure")
+            .trim(),
+    )
+    .expect("wrong-domain failure TOON");
+    assert_eq!(wrong_domain["error"], "GRAPH_NODE_SELECTOR_MALFORMED");
 
-    assert!(output.status.success(), "{output:?}");
-    let decoded: serde_json::Value =
-        toon_format::decode_default(std::str::from_utf8(&output.stdout).expect("UTF-8").trim())
-            .expect("qualified stale graph summary is valid TOON");
-    assert_eq!(decoded["qualification"], "QUALIFIED", "{decoded:#}");
-    assert_eq!(decoded["coverage"]["stale"], 1, "{decoded:#}");
-}
-
-#[test]
-fn graph_summary_ignores_current_reference_external_boundaries() {
-    let fixture = tempfile::tempdir().expect("temporary graph fixture");
-    let home = fixture.path().join("home");
-    let workspace = fixture.path().join("workspace");
-    std::fs::create_dir_all(&workspace).expect("workspace");
-    std::fs::write(workspace.join("settings.gradle.kts"), "").expect("Gradle marker");
-    let workspace = workspace.canonicalize().expect("canonical workspace");
-    let index = seed_public_graph(&workspace, false);
-    let failure_id = uuid::Uuid::new_v4().hyphenated().to_string();
-    index
-        .connection()
-        .execute_batch(&format!(
-            "UPDATE file_stage_outcomes
-             SET outcome_status = 'EXTERNAL_BOUNDARY',
-                 limitations_json = '[]',
-                 failure_id = '{failure_id}',
-                 failure_code = 'PSI_UNAVAILABLE',
-                 failure_message = 'PSI is unavailable'
-             WHERE stage = 'RELATIONSHIPS' AND filename = 'Source0000.kt';"
-        ))
-        .expect("external reference boundary");
-
-    let output = published_public_kast(&home, &fixture.path().join("config"), &workspace)
-        .current_dir(&workspace)
-        .args(["graph", "summary"])
-        .output()
-        .expect("run graph summary with an external reference boundary");
-
-    assert!(output.status.success(), "{output:?}");
-    let decoded: serde_json::Value =
-        toon_format::decode_default(std::str::from_utf8(&output.stdout).expect("UTF-8").trim())
-            .expect("current graph summary is valid TOON");
-    assert_eq!(decoded["qualification"], "CURRENT", "{decoded:#}");
-    assert_eq!(decoded["coverage"]["limited"], 0, "{decoded:#}");
-    assert_eq!(decoded["coverage"]["pending"], 0, "{decoded:#}");
-    assert_eq!(decoded["nodeCount"], 2, "{decoded:#}");
+    let wrong_root_node =
+        published_public_kast(&home, &fixture.path().join("config"), &other_workspace)
+            .current_dir(&other_workspace)
+            .args(["graph", "neighbors", "--node-selector", &node_selector])
+            .output()
+            .expect("cross-workspace node selector");
+    assert_eq!(
+        wrong_root_node.status.code(),
+        Some(1),
+        "{wrong_root_node:?}"
+    );
+    let wrong_root_node: serde_json::Value = toon_format::decode_default(
+        std::str::from_utf8(&wrong_root_node.stdout)
+            .expect("UTF-8 wrong-root selector failure")
+            .trim(),
+    )
+    .expect("wrong-root selector failure TOON");
+    assert_eq!(
+        wrong_root_node["error"],
+        "GRAPH_NODE_SELECTOR_WRONG_WORKSPACE"
+    );
 }
 
 include!("surface/graph_fixture_and_dispatch.rs");

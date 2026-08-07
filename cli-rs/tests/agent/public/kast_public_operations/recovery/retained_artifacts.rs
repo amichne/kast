@@ -62,7 +62,7 @@ fn public_recover_blocks_on_a_retained_exact_cas_backend_artifact() {
         ],
     );
     let applied = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("apply with retained CAS artifact");
     assert_eq!(applied.status.code(), Some(1), "{applied:?}");
@@ -82,7 +82,7 @@ fn public_recover_blocks_on_a_retained_exact_cas_backend_artifact() {
         &present_shutdown,
     );
     let present = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("recover with retained CAS artifact present");
     std::fs::write(&present_shutdown, "stop\n").expect("stop present backend");
@@ -117,7 +117,7 @@ fn public_recover_blocks_on_a_retained_exact_cas_backend_artifact() {
         &absent_shutdown,
     );
     let absent = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("recover after retained CAS artifact removal");
     std::fs::write(&absent_shutdown, "stop\n").expect("stop absent backend");
@@ -135,7 +135,7 @@ fn public_recover_blocks_on_a_retained_exact_cas_backend_artifact() {
         "all-post recovery after cleanup must remain write-free"
     );
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("terminal CAS recovery replay");
     assert!(replay.status.success(), "{replay:?}");
@@ -177,7 +177,7 @@ fn public_recover_blocks_on_a_retained_add_file_rollback_artifact() {
     );
     let applied = installed_public_kast(&binary, &home, &config_home, &workspace)
         .env("KAST_TEST_MUTATION_FAILURE_POINT", "AFTER_ALL_WRITES")
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("interrupt after add-file write");
     assert_eq!(decode(&applied)["outcome"], "RECOVERY_REQUIRED");
@@ -220,7 +220,7 @@ fn public_recover_blocks_on_a_retained_add_file_rollback_artifact() {
         ],
     );
     let rollback = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("rollback with retained delete artifact");
     assert_eq!(
@@ -243,7 +243,7 @@ fn public_recover_blocks_on_a_retained_add_file_rollback_artifact() {
         &present_shutdown,
     );
     let present = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("recover with rollback artifact present");
     std::fs::write(&present_shutdown, "stop\n").expect("stop present backend");
@@ -274,7 +274,7 @@ fn public_recover_blocks_on_a_retained_add_file_rollback_artifact() {
         &absent_shutdown,
     );
     let absent = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("recover after rollback artifact removal");
     std::fs::write(&absent_shutdown, "stop\n").expect("stop absent backend");
@@ -292,7 +292,7 @@ fn public_recover_blocks_on_a_retained_add_file_rollback_artifact() {
         "all-pre recovery after cleanup must remain write-free"
     );
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("terminal rollback recovery replay");
     assert_eq!(decode(&replay), receipt);

@@ -52,7 +52,12 @@ fn explicit_refresh_does_not_expand_to_unrelated_pending_graph_files() {
     );
 
     let refresh = kast(&home, &config_home, &workspace)
-        .args(["refresh", source.to_str().expect("source")])
+        .args([
+            "workspace",
+            "refresh",
+            "--file",
+            source.to_str().expect("source"),
+        ])
         .output()
         .expect("refresh");
     assert!(

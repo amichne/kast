@@ -1,15 +1,76 @@
-impl From<KastChangeCommand> for RequestedOperation {
-    fn from(command: KastChangeCommand) -> Self {
+impl From<KastChangePlanCommand> for RequestedOperation {
+    fn from(command: KastChangePlanCommand) -> Self {
         match command {
-            KastChangeCommand::Rename { symbol, new_name } => Self::Rename { symbol, new_name },
-            KastChangeCommand::AddFile { path } => Self::AddFile { path },
-            KastChangeCommand::AddDeclaration { path } => Self::AddDeclaration { path },
-            KastChangeCommand::Replace { symbol } => Self::Replace { symbol },
+            KastChangePlanCommand::Rename {
+                selector,
+                name,
+            } => Self::Rename {
+                selector,
+                new_name: name,
+            },
+            KastChangePlanCommand::AddFile { file } => Self::AddFile { path: file },
+            KastChangePlanCommand::AddDeclaration { file } => {
+                Self::AddDeclaration { path: file }
+            }
+            KastChangePlanCommand::Replace { selector } => Self::Replace { selector },
         }
     }
 }
 
 impl RequestedOperation {
+    fn operation_id(&self) -> crate::agent::public_protocol::OperationId {
+        match self {
+            Self::Rename { .. } => crate::agent::public_protocol::OperationId::ChangePlanRename,
+            Self::AddFile { .. } => {
+                crate::agent::public_protocol::OperationId::ChangePlanAddFile
+            }
+            Self::AddDeclaration { .. } => {
+                crate::agent::public_protocol::OperationId::ChangePlanAddDeclaration
+            }
+            Self::Replace { .. } => crate::agent::public_protocol::OperationId::ChangePlanReplace,
+        }
+    }
+
+    fn prepare(
+        self,
+        workspace_root: PathBuf,
+    ) -> std::result::Result<
+        PreparedOperation,
+        Box<crate::agent::public_protocol::ProtocolEnvelope>,
+    > {
+        use crate::agent::public_protocol::{
+            MutationSelectorFamily, authenticate_mutation_selector,
+        };
+
+        match self {
+            Self::Rename { selector, new_name } => authenticate_mutation_selector(
+                workspace_root,
+                selector,
+                MutationSelectorFamily::Rename,
+            )
+            .map(|selector| PreparedOperation::Rename { selector, new_name }),
+            Self::AddFile { path } => Ok(PreparedOperation::AddFile { path }),
+            Self::AddDeclaration { path } => Ok(PreparedOperation::AddDeclaration { path }),
+            Self::Replace { selector } => authenticate_mutation_selector(
+                workspace_root,
+                selector,
+                MutationSelectorFamily::ReplaceDeclaration,
+            )
+            .map(|selector| PreparedOperation::Replace { selector }),
+        }
+    }
+}
+
+impl PreparedOperation {
+    fn selector(&self) -> Option<&str> {
+        match self {
+            Self::Rename { selector, .. } | Self::Replace { selector } => {
+                Some(selector.as_str())
+            }
+            Self::AddFile { .. } | Self::AddDeclaration { .. } => None,
+        }
+    }
+
     fn requires_content(&self) -> bool {
         !matches!(self, Self::Rename { .. })
     }
@@ -65,10 +126,10 @@ impl RequestedOperation {
             })
         };
         Ok(match self {
-            Self::Rename { symbol, new_name } => AgentCommand::Rename(AgentRenameArgs {
+            Self::Rename { selector, new_name } => AgentCommand::Rename(AgentRenameArgs {
                 runtime,
-                symbol: Some(symbol.clone()),
-                selector_handle: None,
+                symbol: None,
+                selector_handle: Some(parse_plan_selector(selector.as_str())?),
                 new_name: new_name.clone(),
                 kind: None,
                 file_hint: None,
@@ -93,11 +154,11 @@ impl RequestedOperation {
                     mutation,
                 })
             }
-            Self::Replace { symbol } => {
+            Self::Replace { selector } => {
                 AgentCommand::ReplaceDeclaration(AgentReplaceDeclarationArgs {
                     runtime,
-                    symbol: Some(symbol.clone()),
-                    selector_handle: None,
+                    symbol: None,
+                    selector_handle: Some(parse_plan_selector(selector.as_str())?),
                     content_file: content_file()?,
                     kind: None,
                     file_hint: None,
@@ -107,6 +168,12 @@ impl RequestedOperation {
             }
         })
     }
+}
+
+fn parse_plan_selector(value: &str) -> Result<AgentSelectorHandle> {
+    value
+        .parse()
+        .map_err(|message| CliError::new("KAST_INVALID_AGENT_RESULT", message))
 }
 
 impl StoredOperation {
@@ -256,6 +323,25 @@ impl StoredOperation {
         serde_json::to_vec(self).map_err(CliError::from)
     }
 
+}
+
+impl StoredPlan {
+    fn set_runtime_output(
+        &mut self,
+        format: OutputFormat,
+        operation: crate::agent::public_protocol::OperationId,
+    ) {
+        self.runtime_output = Some(plan_output_context(format, operation));
+    }
+
+    fn runtime_output(&self) -> Result<PlanOutputContext> {
+        self.runtime_output.ok_or_else(|| {
+            CliError::new(
+                "KAST_MUTATION_OUTPUT_CONTEXT_MISSING",
+                "The mutation result has no explicit output context.",
+            )
+        })
+    }
 }
 
 fn transition_from_file_image(

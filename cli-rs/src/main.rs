@@ -164,16 +164,21 @@ fn run_kast_agent(cli: KastCli) -> Result<i32> {
             install::install_agent_resources(&harnesses)?;
             Ok(0)
         }
-        KastCommand::Up => agent_adapter::run_up(),
-        KastCommand::Files { pattern, page } => agent_adapter::run_files(pattern, page),
+        KastCommand::Workspace(args) => agent_adapter::run_workspace(args),
+        KastCommand::File(args) => agent_adapter::run_file(args),
         KastCommand::Symbol(args) => agent_adapter::run_symbol(args, output_format),
         KastCommand::Relation(args) => agent_adapter::run_relation(args, output_format),
-        KastCommand::Graph(args) => agent_adapter::run_graph(args),
-        KastCommand::Check(args) => agent_adapter::run_check(args),
-        KastCommand::Refresh(args) => agent_adapter::run_refresh(args),
-        KastCommand::Change(args) => agent_plan::run_change(args),
-        KastCommand::Apply { plan_id } => agent_plan::run_apply(plan_id),
-        KastCommand::Recover { recovery_id } => agent_plan::run_recover(recovery_id),
+        KastCommand::Graph(args) => agent_adapter::run_graph(args, output_format),
+        KastCommand::Diagnostic(args) => agent_adapter::run_diagnostic(args),
+        KastCommand::Change(args) => match args.command {
+            cli::KastChangeCommand::Plan(plan) => agent_plan::run_change(plan, output_format),
+            cli::KastChangeCommand::Apply { plan_id } => {
+                agent_plan::run_apply(plan_id, output_format)
+            }
+            cli::KastChangeCommand::Recover { recovery_id } => {
+                agent_plan::run_recover(recovery_id, output_format)
+            }
+        },
     }
 }
 
@@ -217,7 +222,7 @@ fn kast_home(root: PathBuf) -> Result<KastHome> {
             "kast symbol search --query <query>".to_string(),
         ]
     } else {
-        vec!["kast up".to_string()]
+        vec!["kast workspace ensure".to_string()]
     };
     Ok(KastHome {
         bin: display_invoked_executable(),

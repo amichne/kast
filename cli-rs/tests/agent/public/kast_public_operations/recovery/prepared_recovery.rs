@@ -33,7 +33,7 @@ fn public_recover_restores_absent_prestate_after_prepared_journal_interruption()
 
     let interrupted = installed_public_kast(&binary, &home, &config_home, &workspace)
         .env("KAST_TEST_MUTATION_FAILURE_POINT", "AFTER_RECOVERY_JOURNAL")
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("interrupted apply");
     assert_eq!(interrupted.status.code(), Some(1), "{interrupted:?}");
@@ -109,7 +109,7 @@ fn public_recover_restores_absent_prestate_after_prepared_journal_interruption()
         &recover_shutdown,
     );
     let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("recover in a new process");
     assert_eq!(recovered.status.code(), Some(1), "{recovered:?}");
@@ -126,7 +126,7 @@ fn public_recover_restores_absent_prestate_after_prepared_journal_interruption()
     );
 
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["recover", &plan_id])
+        .args(["change", "recover", "--recovery-id", &plan_id])
         .output()
         .expect("terminal recovery replay");
     assert_eq!(replay.status.code(), Some(1), "{replay:?}");
@@ -164,7 +164,9 @@ fn public_recover_rejects_pre_diagnostic_evidence_not_bound_to_exact_preimages()
         let mut change = installed_public_kast(&binary, &home, &config_home, &workspace);
         change.args([
             "change",
+            "plan",
             "add-declaration",
+            "--file",
             target.to_str().expect("target"),
         ]);
         let change = run_with_stdin(change, declaration);
@@ -184,7 +186,7 @@ fn public_recover_rejects_pre_diagnostic_evidence_not_bound_to_exact_preimages()
         );
         let interrupted = installed_public_kast(&binary, &home, &config_home, &workspace)
             .env("KAST_TEST_MUTATION_FAILURE_POINT", "AFTER_RECOVERY_JOURNAL")
-            .args(["apply", &plan_id])
+            .args(["change", "apply", "--plan-id", &plan_id])
             .output()
             .expect("interrupted apply");
         assert_eq!(
@@ -247,7 +249,7 @@ fn public_recover_rejects_pre_diagnostic_evidence_not_bound_to_exact_preimages()
             &shutdown,
         );
         let recovered = installed_public_kast(&binary, &home, &config_home, &workspace)
-            .args(["recover", &plan_id])
+            .args(["change", "recover", "--recovery-id", &plan_id])
             .output()
             .expect("recover tampered journal");
         std::fs::write(&shutdown, "stop\n").expect("stop recovery backend");

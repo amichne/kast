@@ -36,7 +36,9 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
     let mut change = installed_public_kast(&binary, &home, &config_home, &workspace);
     change.args([
         "change",
+        "plan",
         "add-declaration",
+        "--file",
         target.to_str().expect("target"),
     ]);
     let change = run_with_stdin(change, declaration);
@@ -93,7 +95,7 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
         vec![("raw/plan-add-declaration", preview.clone())],
     );
     let applied = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", plan_id])
+        .args(["change", "apply", "--plan-id", plan_id])
         .output()
         .expect("verified add-declaration apply");
     assert!(applied.status.success(), "{applied:?}");
@@ -115,7 +117,7 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
         1
     );
     let replay = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", plan_id])
+        .args(["change", "apply", "--plan-id", plan_id])
         .output()
         .expect("verified add-declaration replay");
     assert!(replay.status.success(), "{replay:?}");
@@ -132,7 +134,9 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
     let mut tamper_change = installed_public_kast(&binary, &home, &config_home, &workspace);
     tamper_change.args([
         "change",
+        "plan",
         "add-declaration",
+        "--file",
         target.to_str().expect("target"),
     ]);
     let tamper_change = run_with_stdin(tamper_change, declaration);
@@ -159,7 +163,7 @@ fn change_add_declaration_persists_restart_safe_file_bottom_authority() {
     encoded.push(b'\n');
     std::fs::write(&plan_path, encoded).expect("write tampered declaration plan");
     let restarted = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("restart with tampered declaration authority");
     assert_eq!(restarted.status.code(), Some(1), "{restarted:?}");
@@ -213,7 +217,7 @@ fn change_persists_a_private_root_bound_plan() {
     );
     assert_eq!(
         change["next"],
-        format!("kast apply {plan_id}"),
+        format!("kast change apply --plan-id {plan_id}"),
         "{change:#}"
     );
 
@@ -256,7 +260,7 @@ fn change_persists_a_private_root_bound_plan() {
     std::fs::create_dir_all(&other).expect("other root");
     std::fs::write(other.join("settings.gradle.kts"), "").expect("other settings");
     let wrong_root = installed_public_kast(&binary, &home, &config_home, &other)
-        .args(["apply", plan_id])
+        .args(["change", "apply", "--plan-id", plan_id])
         .output()
         .expect("wrong-root apply");
     assert_eq!(wrong_root.status.code(), Some(1), "{wrong_root:?}");
@@ -270,7 +274,7 @@ fn change_persists_a_private_root_bound_plan() {
     encoded.push(b'\n');
     std::fs::write(&plan_path, encoded).expect("write tampered add-file plan");
     let restarted = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", plan_id])
+        .args(["change", "apply", "--plan-id", plan_id])
         .output()
         .expect("restart with tampered add-file authority");
     assert_eq!(restarted.status.code(), Some(1), "{restarted:?}");
@@ -308,7 +312,12 @@ fn refresh_keeps_relationship_failure_actionable_without_graph_extraction() {
     );
 
     let refresh = kast(&home, &config_home, &workspace)
-        .args(["refresh", source.to_str().expect("source")])
+        .args([
+            "workspace",
+            "refresh",
+            "--file",
+            source.to_str().expect("source"),
+        ])
         .output()
         .expect("refresh");
     assert!(
@@ -338,7 +347,9 @@ fn refresh_keeps_relationship_failure_actionable_without_graph_extraction() {
     );
     assert_eq!(
         refresh["next"],
-        json!([format!("kast refresh external {failure_id}")])
+        json!([format!(
+            "kast workspace externalize --failure-id {failure_id}"
+        )])
     );
     let requests = backend.join().expect("refresh backend");
     let semantic_requests = requests

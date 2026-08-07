@@ -63,11 +63,15 @@ enum RecoveryObservationClass {
     Foreign,
 }
 
-pub(crate) fn run_recover(raw_recovery_id: String) -> Result<i32> {
+pub(crate) fn run_recover(raw_recovery_id: String, output_format: OutputFormat) -> Result<i32> {
     let recovery_id = parse_recovery_id(&raw_recovery_id)?;
     let paths = PlanPaths::new(recovery_id);
     let _operation_lock = PlanOperationLock::acquire(&paths.lock)?;
     let mut plan = read_plan(&paths.plan, recovery_id)?;
+    plan.set_runtime_output(
+        output_format,
+        crate::agent::public_protocol::OperationId::ChangeRecover,
+    );
     let workspace_root = require_current_workspace(&plan, recovery_id)?;
     if let StoredPlanState::Terminal { receipt } = &plan.state {
         return replay_terminal_receipt(&paths, &plan, receipt);

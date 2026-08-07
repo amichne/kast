@@ -34,7 +34,7 @@ fn dangling_recovery_namespace_entry_is_rejected_without_overwrite() {
     );
 
     let apply = installed_public_kast(&binary, &home, &config_home, &workspace)
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("apply with occupied recovery namespace");
     std::fs::write(&shutdown, "stop\n").expect("stop dangling-recovery backend");
@@ -92,7 +92,7 @@ fn post_rename_directory_sync_failure_requires_recovery_and_retains_release_fail
             "RECOVERY_JOURNAL_DIRECTORY_SYNC",
         )
         .env("KAST_TEST_MUTATION_LEASE_RELEASE_FAILURE", "1")
-        .args(["apply", &plan_id])
+        .args(["change", "apply", "--plan-id", &plan_id])
         .output()
         .expect("post-rename directory-sync failure");
     std::fs::write(&shutdown, "stop\n").expect("stop journal-durability backend");
