@@ -157,28 +157,6 @@ private sealed interface GitBlobResolution {
     data object Unavailable : GitBlobResolution
 }
 
-private class FullIndexOverlayAuthority private constructor(
-    val absence: WorktreeOverlayAbsence,
-) {
-    companion object {
-        /**
-         * Proof transition:
-         * `(WorktreeOverlayDescriptor, WorktreeOverlayAbsence) -> FullIndexOverlayAuthority`.
-         *
-         * Revokes any previously published overlay descriptor before deriving
-         * the constrained authority to open a standalone full index. The
-         * result retains the reason, not the descriptor input.
-         */
-        fun revoke(
-            descriptor: WorktreeOverlayDescriptor,
-            absence: WorktreeOverlayAbsence,
-        ): FullIndexOverlayAuthority {
-            Files.deleteIfExists(descriptor.path.toJavaPath())
-            return FullIndexOverlayAuthority(absence)
-        }
-    }
-}
-
 object RepositorySnapshotCoordinator {
     /**
      * Proof transition:
@@ -210,8 +188,9 @@ object RepositorySnapshotCoordinator {
             buildClasspathFingerprint,
             producerVersion,
         )
-        val databasePath = workspaceDatabase.toJavaPath()
-        val overlayDescriptor = WorktreeOverlayDescriptor.beside(workspaceDatabase)
+        val database = WorkspaceSourceIndexDatabase.fromWorkspaceIdentity(workspaceDatabase)
+        val databasePath = database.path.toJavaPath()
+        val overlayDescriptor = WorktreeOverlayDescriptor.beside(database)
         val overlayPath = overlayDescriptor.path.toJavaPath()
         val snapshots = RepositorySnapshotStore(repositoryDirectory.toJavaPath())
         if (Files.exists(databasePath, LinkOption.NOFOLLOW_LINKS)) {
@@ -222,10 +201,9 @@ object RepositorySnapshotCoordinator {
                 PersistedWorktreeOverlayResolution.CurrentRepository -> existingDatabase(
                     RepositorySnapshotPublicationAuthority.Suppressed,
                 )
-                PersistedWorktreeOverlayResolution.OtherRepository -> fullIndex(
+                is PersistedWorktreeOverlayResolution.OtherRepository -> fullIndex(
                     context,
-                    overlayDescriptor,
-                    WorktreeOverlayAbsence.RepositoryAuthorityChanged,
+                    FullIndexOverlayAuthority.from(overlay.authorityChange.revoke()),
                 )
                 is PersistedWorktreeOverlayResolution.Rejected -> RepositorySnapshotPreparationResolution.Rejected(
                     RepositorySnapshotPreparationFailure.PersistedOverlayRejected(overlay.failure),
@@ -341,8 +319,24 @@ object RepositorySnapshotCoordinator {
         context: RepositorySnapshotContext,
         descriptor: WorktreeOverlayDescriptor,
         reason: WorktreeOverlayAbsence,
+    ): RepositorySnapshotPreparationResolution = fullIndex(
+        context,
+        FullIndexOverlayAuthority.revoke(descriptor, reason),
+    )
+
+    /**
+     * Proof transition:
+     * `(RepositorySnapshotContext, FullIndexOverlayAuthority)`
+     * `-> RepositorySnapshotPreparationResolution.Resolved`.
+     *
+     * Consumes previously derived revocation authority to produce a managed
+     * preparation eligible for full-index publication. The result retains the
+     * constrained absence fact rather than either filesystem input.
+     */
+    private fun fullIndex(
+        context: RepositorySnapshotContext,
+        authority: FullIndexOverlayAuthority,
     ): RepositorySnapshotPreparationResolution {
-        val authority = FullIndexOverlayAuthority.revoke(descriptor, reason)
         return RepositorySnapshotPreparationResolution.Resolved(
             RepositorySnapshotPreparation.Managed(
                 WorktreeOverlaySeed.None(authority.absence),
