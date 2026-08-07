@@ -83,7 +83,8 @@ pub struct DoctorInstallState {
 pub struct DoctorBackendState {
     pub name: String,
     pub version: String,
-    pub runtime_libs_dir: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub runtime_libs_dir: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -250,15 +251,10 @@ pub fn doctor(target: ReadyTarget, workspace_root: Option<&Path>) -> Result<Self
         backends: install
             .backends
             .iter()
-            .filter_map(|backend| {
-                backend
-                    .runtime_libs_dir
-                    .as_ref()
-                    .map(|runtime_libs_dir| DoctorBackendState {
-                        name: backend.name.clone(),
-                        version: backend.version.clone(),
-                        runtime_libs_dir: runtime_libs_dir.clone(),
-                    })
+            .map(|backend| DoctorBackendState {
+                name: backend.name.clone(),
+                version: backend.version.clone(),
+                runtime_libs_dir: backend.runtime_libs_dir.clone(),
             })
             .collect(),
         source: install.clone(),
